@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -157,3 +158,119 @@
                    (count (:fields products-related)))
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
+
+(defn- measure-definition
+  "Create an MBQL5 measure definition with a sum aggregation."
+  [table-id field-id]
+  (let [mp (mt/metadata-provider)
+        table (lib.metadata/table mp table-id)
+        query (lib/query mp table)
+        field (lib.metadata/field mp field-id)]
+    (lib/aggregate query (lib/sum field))))
+
+(defn- segment-definition
+  "Create an MBQL5 segment definition with a filter."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)
+        table (lib.metadata/table mp table-id)
+        query (lib/query mp table)
+        field (lib.metadata/field mp field-id)]
+    (lib/filter query (lib/> field value))))
+
+(deftest get-table-details-with-measures-test
+  (testing "get-table-details returns measures when with_measures is true"
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
+                                                      :table_id   (mt/id :orders)
+                                                      :definition measure-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "with_measures: false (default) does not include measures"
+            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)})
+                  output (:structured-output result)]
+              (is (nil? (:measures output)))))
+
+          (testing "with_measures: true includes measures for the table"
+            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+                                                            :with-measures? true})
+                  output (:structured-output result)
+                  measures (:measures output)]
+              (is (sequential? measures))
+              (is (= 1 (count measures)))
+              (let [measure (first measures)]
+                (is (= measure-id (:id measure)))
+                (is (= "Total Revenue" (:name measure)))
+                (is (map? (:definition measure)))))))))))
+
+(deftest get-table-details-with-segments-test
+  (testing "get-table-details returns segments when with_segments is true"
+    (let [segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
+      (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
+                                                      :table_id   (mt/id :orders)
+                                                      :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "with_segments: false (default) does not include segments"
+            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)})
+                  output (:structured-output result)]
+              (is (nil? (:segments output)))))
+
+          (testing "with_segments: true includes segments for the table"
+            (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+                                                            :with-segments? true})
+                  output (:structured-output result)
+                  segments (:segments output)]
+              (is (sequential? segments))
+              (is (= 1 (count segments)))
+              (let [segment (first segments)]
+                (is (= segment-id (:id segment)))
+                (is (= "High Value Orders" (:name segment)))
+                (is (map? (:definition segment)))))))))))
+
+(deftest get-table-details-measures-scoped-to-table-test
+  (testing "get-table-details only returns measures for the requested table, not other tables"
+    (let [orders-measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          products-measure-def (measure-definition (mt/id :products) (mt/id :products :price))]
+      (mt/with-temp [:model/Measure {orders-measure-id :id} {:name       "Orders Total"
+                                                             :table_id   (mt/id :orders)
+                                                             :definition orders-measure-def}
+                     :model/Measure {_products-measure-id :id} {:name       "Products Price"
+                                                                :table_id   (mt/id :products)
+                                                                :definition products-measure-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [result (entity-details/get-table-details {:table-id (mt/id :orders)
+                                                          :with-measures? true})
+                output (:structured-output result)
+                measures (:measures output)]
+            (is (= 1 (count measures)))
+            (is (= orders-measure-id (:id (first measures))))))))))
+
+(deftest get-metric-details-with-segments-test
+  (testing "get-metric-details returns segments when with_segments is true"
+    ;; Note: lib/available-segments requires the query to have a direct source-table-id.
+    ;; For metrics, this means the underlying card must be based on a table (not another card).
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Total Orders"
+                                                  :type          :metric}
+                     :model/Segment {segment-id :id} {:name       "Large Orders"
+                                                      :table_id   (mt/id :orders)
+                                                      :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "with_segments: false (default) does not include segments"
+            (let [result (entity-details/get-metric-details {:metric-id metric-id})
+                  output (:structured-output result)]
+              (is (nil? (:segments output)))))
+
+          (testing "with_segments: true includes segments for the metric"
+            (let [result (entity-details/get-metric-details {:metric-id metric-id
+                                                             :with-segments? true})
+                  output (:structured-output result)
+                  segments (:segments output)]
+              (is (sequential? segments))
+              (is (= 1 (count segments)))
+              (let [segment (first segments)]
+                (is (= segment-id (:id segment)))
+                (is (= "Large Orders" (:name segment)))))))))))

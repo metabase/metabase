@@ -114,12 +114,10 @@ export function SearchNew({
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+    useListDatabasesQuery();
   const { isExpanded, toggle } = useExpandedState(
     {},
-    {
-      defaultExpanded: true,
-    },
+    { defaultExpanded: true },
   );
 
   const allowedDatabaseIds = useMemo(

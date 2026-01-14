@@ -732,6 +732,13 @@ export function parseString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+export function parseNumber(value: unknown): number | undefined {
+  if (typeof value === "string") {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+}
+
 export function parseBoolean(value: unknown): boolean | undefined {
   switch (value) {
     case "true":

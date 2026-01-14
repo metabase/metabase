@@ -9,3 +9,12 @@
   metabase-enterprise.remote-sync.core
   [_collection]
   true)
+
+(defenterprise table-editable?
+  "Returns if a table's metadata can be edited. Takes a table to check.
+
+  Returns false if the table is published, in a remote-synced collection, and remote-sync-type is :read-only.
+  Always true on OSS."
+  metabase-enterprise.remote-sync.core
+  [_table]
+  true)
