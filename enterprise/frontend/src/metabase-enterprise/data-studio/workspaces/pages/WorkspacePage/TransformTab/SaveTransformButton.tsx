@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
@@ -14,7 +15,10 @@ import {
 import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import {
+  isSameSource,
+  isSourceEmpty,
+} from "metabase-enterprise/transforms/utils";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
@@ -51,15 +55,17 @@ export const SaveTransformButton = ({
   onSaveTransform,
 }: SaveTransformButtonProps) => {
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const {
     updateTransformState,
     removeUnsavedTransform,
-    removeOpenedTransform,
+    removeWorkspaceTransform,
     removeEditedTransform,
   } = useWorkspace();
 
-  const [updateTransform] = useUpdateWorkspaceTransformMutation();
+  const [updateTransform, { isLoading: isUpdating }] =
+    useUpdateWorkspaceTransformMutation();
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -213,7 +219,7 @@ export const SaveTransformButton = ({
       }).unwrap();
 
       removeEditedTransform(transform.id);
-      removeOpenedTransform(transform.id);
+      removeWorkspaceTransform(transform.id);
       onSaveTransform(savedTransform);
     } catch (error) {
       sendErrorToast(t`Failed to save transform`);
@@ -225,14 +231,20 @@ export const SaveTransformButton = ({
     if (isSaved) {
       return {
         disabled: !hasChanges || isDisabled,
+        loading: isUpdating,
         variant: "filled" as const,
         onClick: handleUpdateTransform,
       };
     }
 
     if (isNewTransform) {
+      const hasEmptyContent = isSourceEmpty(
+        editedTransform.source,
+        databaseId,
+        metadata,
+      );
       return {
-        disabled: isDisabled || !hasChanges,
+        disabled: isDisabled || hasEmptyContent,
         variant: "filled" as const,
         onClick: () => setSaveModalOpen(true),
       };

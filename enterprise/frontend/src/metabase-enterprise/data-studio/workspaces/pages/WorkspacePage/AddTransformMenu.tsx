@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import {
   getInitialNativeSource,
   getInitialPythonSource,
@@ -47,15 +47,17 @@ export const AddTransformMenu = ({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon
-            size="2rem"
-            p="0"
-            ml="auto"
-            aria-label={t`Add transform`}
-            disabled={disabled}
-          >
-            <Icon name="add" size={16} aria-hidden tooltip={t`Add transform`} />
-          </ActionIcon>
+          <Tooltip label={t`Add transform`}>
+            <ActionIcon
+              size="2rem"
+              p="0"
+              ml="auto"
+              aria-label={t`Add transform`}
+              disabled={disabled}
+            >
+              <Icon name="add" size={16} aria-hidden />
+            </ActionIcon>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item

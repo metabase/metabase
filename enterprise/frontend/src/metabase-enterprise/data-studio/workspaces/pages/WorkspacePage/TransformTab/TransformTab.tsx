@@ -95,6 +95,27 @@ export const TransformTab = ({
     [transform.id, transform.name, addOpenedTab],
   );
 
+  const handleRunTransform = useCallback(
+    (result) => {
+      const tableTabId = `table-${transform.id}`;
+
+      const tableTab: TableTab = {
+        id: tableTabId,
+        name: t`Preview (${transform.name})`,
+        type: "table",
+        table: {
+          tableId: transform.id,
+          name: t`Preview (${transform.name})`,
+          transformId: transform.id.toString(),
+          pythonPreviewResult: result,
+        },
+      };
+
+      addOpenedTab(tableTab);
+    },
+    [transform.id, transform.name, addOpenedTab],
+  );
+
   const normalizeSource = useCallback(
     (source: DraftTransformSource) => {
       if (source.type !== "query") {
@@ -250,6 +271,7 @@ export const TransformTab = ({
             onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
             onRunQueryStart={handleRunQueryStart}
+            onRunTransform={handleRunTransform}
           />
         </Box>
       )}

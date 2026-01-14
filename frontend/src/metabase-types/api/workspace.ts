@@ -75,6 +75,8 @@ export type WorkspaceOutputTableRef = {
 
 export type WorkspaceTransformId = string;
 
+export type WorkspaceRunStatus = "started" | "succeeded" | "failed" | "timeout";
+
 export type WorkspaceTransform = Omit<Transform, "id"> & {
   // Local identifier used by the UI; equal to `ref_id`
   id: WorkspaceTransformId;
@@ -85,6 +87,7 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   archived_at: string | null;
   last_run_at: string | null;
   last_run_message: string | null;
+  last_run_status: WorkspaceRunStatus | null;
 };
 
 export type WorkspaceCheckoutItem = {

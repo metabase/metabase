@@ -22,8 +22,7 @@ export const MetabotTab = ({ transform, source }: MetabotTabProps) => {
       <MetabotContextRegistration transform={transform} source={source} />
       <MetabotChat
         config={{
-          // Show top-level mention menu for transforms and databases.
-          suggestionModels: ["transform", "database"],
+          suggestionModels: ["transform", "database", "table"],
         }}
       />
     </MetabotProvider>

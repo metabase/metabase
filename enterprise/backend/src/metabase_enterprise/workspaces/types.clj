@@ -32,6 +32,19 @@
             [:name :string]
             [:schema {:optional true} [:maybe :string]]]]])
 
+(mr/def ::dry-run-result
+  "Result of a transform dry-run (preview without persisting)."
+  [:map
+   [:status [:enum :succeeded :failed]]
+   [:start_time {:optional true} [:maybe some?]]
+   [:end_time {:optional true} [:maybe some?]]
+   [:message {:optional true} [:maybe :string]]
+   [:table [:map
+            [:name :string]
+            [:schema {:optional true} [:maybe :string]]]]
+   [:rows {:optional true} [:sequential :any]]
+   [:cols {:optional true} [:sequential :map]]])
+
 ;;; ---------------------------------------- Graph/Problem Types ----------------------------------------
 
 ;; Node types used in workspace graphs and problem detection

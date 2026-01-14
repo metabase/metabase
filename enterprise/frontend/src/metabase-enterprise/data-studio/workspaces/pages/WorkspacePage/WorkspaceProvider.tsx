@@ -25,6 +25,7 @@ export interface OpenTable {
   schema?: string | null;
   transformId?: string;
   query?: DatasetQuery;
+  pythonPreviewResult?: any;
 }
 
 export interface EditedTransform {
@@ -57,7 +58,7 @@ export type WorkspaceTab = TransformTab | TableTab;
 export interface WorkspaceContextValue {
   workspaceId: number;
   openedTabs: WorkspaceTab[];
-  activeTransform?: Transform;
+  activeTransform?: Transform | WorkspaceTransform;
   activeEditedTransform?: EditedTransform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
@@ -70,7 +71,7 @@ export interface WorkspaceContextValue {
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
-  removeOpenedTransform: (transformId: string | number) => void;
+  removeWorkspaceTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
@@ -80,12 +81,10 @@ export interface WorkspaceContextValue {
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   updateTab: <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => void;
-  hasUnsavedChanges: () => boolean;
+  hasUnsavedChanges: boolean;
   hasTransformEdits: (
     originalTransform: Transform | WorkspaceTransform,
   ) => boolean;
-  isWorkspaceExecuting: boolean;
-  setIsWorkspaceExecuting: (value: boolean) => void;
   unsavedTransforms: Transform[];
   addUnsavedTransform: (transform: Transform) => void;
   removeUnsavedTransform: (transformId: number) => void;
@@ -130,8 +129,6 @@ export const WorkspaceProvider = ({
   const [workspaceStates, setWorkspaceStates] = useState<
     Map<number, WorkspaceState>
   >(new Map());
-  const [isWorkspaceExecuting, setIsWorkspaceExecuting] = useState(false);
-
   const currentState = useMemo(() => {
     const existing = workspaceStates.get(workspaceId);
     if (existing) {
@@ -338,11 +335,16 @@ export const WorkspaceProvider = ({
     [addOpenedTab],
   );
 
-  const removeOpenedTransform = useCallback(
+  const removeWorkspaceTransform = useCallback(
     (transformId: string | number) => {
       removeOpenedTab(`transform-${transformId}`);
+      for (const tab of openedTabs) {
+        if (tab.type === "table" && tab.table.transformId === transformId) {
+          removeOpenedTab(tab.id);
+        }
+      }
     },
-    [removeOpenedTab],
+    [removeOpenedTab, openedTabs],
   );
 
   const patchEditedTransform = useCallback(
@@ -489,12 +491,9 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const hasUnsavedChanges = useCallback(() => {
-    return (
-      currentState.editedTransforms.size > 0 ||
-      currentState.unsavedTransforms.length > 0
-    );
-  }, [currentState.editedTransforms, currentState.unsavedTransforms]);
+  const hasUnsavedChanges =
+    currentState.editedTransforms.size > 0 ||
+    currentState.unsavedTransforms.length > 0;
 
   const hasTransformEdits = useCallback(
     (originalTransform: Transform | WorkspaceTransform) => {
@@ -674,9 +673,9 @@ export const WorkspaceProvider = ({
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,
+      removeWorkspaceTransform,
       setOpenedTabs,
       addOpenedTransform,
-      removeOpenedTransform,
       editedTransforms: currentState.editedTransforms,
       patchEditedTransform,
       removeEditedTransform,
@@ -685,8 +684,6 @@ export const WorkspaceProvider = ({
       updateTab,
       hasUnsavedChanges,
       hasTransformEdits,
-      isWorkspaceExecuting,
-      setIsWorkspaceExecuting,
       unsavedTransforms: currentState.unsavedTransforms,
       addUnsavedTransform,
       removeUnsavedTransform,
@@ -705,7 +702,7 @@ export const WorkspaceProvider = ({
       removeOpenedTab,
       setOpenedTabs,
       addOpenedTransform,
-      removeOpenedTransform,
+      removeWorkspaceTransform,
       currentState.editedTransforms,
       currentState.runTransforms,
       currentState.unsavedTransforms,
@@ -715,7 +712,6 @@ export const WorkspaceProvider = ({
       updateTab,
       hasUnsavedChanges,
       hasTransformEdits,
-      isWorkspaceExecuting,
       addUnsavedTransform,
       removeUnsavedTransform,
     ],

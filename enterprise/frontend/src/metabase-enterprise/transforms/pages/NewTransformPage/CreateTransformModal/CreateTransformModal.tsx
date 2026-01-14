@@ -27,7 +27,6 @@ import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
 
 type CreateTransformModalProps = {

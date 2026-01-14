@@ -51,7 +51,7 @@
 }
 
 .workspacesSectionHeader {
-  background-color: var(--mb-color-bg-secondary);
+  background-color: var(--mb-color-background-secondary);
   color: var(--mb-color-text-primary);
   font-weight: 600;
   transition: background-color 150ms ease;
@@ -68,7 +68,7 @@
 }
 
 .workspaceItem {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   border: 1px solid var(--mb-color-border);
@@ -78,8 +78,8 @@
     color 150ms ease;
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
-    border-color: var(--mb-color-border-dark);
+    background-color: var(--mb-color-background-secondary);
+    border-color: var(--mb-color-border-strong);
   }
 
   &:hover .workspaceMenuButton {
@@ -112,7 +112,7 @@
   flex-shrink: 0;
 
   &:hover {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
     color: var(--mb-color-text-primary);
   }
 }

@@ -33,6 +33,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideWorkspaceAllowedDatabaseTags,
   provideWorkspaceTags,
   provideWorkspacesTags,
   tag,
@@ -58,9 +59,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest | void>(
       {
-        query: () => ({
+        query: (body) => ({
           method: "POST",
           url: "/api/ee/workspace",
+          body,
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("workspace"), listTag("transform")]),
@@ -152,6 +154,26 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/workspace/${id}`,
       }),
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData(
+            "getWorkspaces",
+            undefined,
+            (draft) => {
+              const idx = draft.items.findIndex((w) => w.id === id);
+              if (idx !== -1) {
+                draft.items.splice(idx, 1);
+              }
+            },
+          ),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
@@ -337,6 +359,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/database`,
       }),
+      providesTags: (response) =>
+        provideWorkspaceAllowedDatabaseTags(response?.databases ?? []),
     }),
   }),
 });

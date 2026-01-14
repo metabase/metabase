@@ -161,9 +161,7 @@ export function formatProblemDetails(problem: WorkspaceProblem): string {
     return problem.description;
   }
 
-  return parts.length > 0
-    ? t`${problem.description}. ${parts.join(". ")}`
-    : problem.description;
+  return [problem.description, ...parts].join(". ");
 }
 
 export function getCheckTitle(category: ProblemCheckCategory): string {
