@@ -2512,3 +2512,50 @@
             (is (not (contains? table-names "Other Table"))))
           (testing "database is not exported (no-data-model: true)"
             (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))
+
+(deftest collection-export-includes-fields-and-segments-test
+  (testing "Exporting a collection with published tables includes their Fields and Segments"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}          {:name "My Database"}
+                         :model/Collection {coll-id :id}        {:name "Export Collection"}
+                         :model/Table      {table-id :id}       {:name          "Published Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  true
+                                                                 :collection_id coll-id}
+                         :model/Field      {field1-id :id}      {:name      "Field One"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Integer}
+                         :model/Field      {field2-id :id}      {:name      "Field Two"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Text}
+                         :model/Segment    {segment-id :id}     {:name       "Test Segment"
+                                                                 :table_id   table-id
+                                                                 :definition {}}
+                         ;; Create another table with fields that should NOT be exported
+                         :model/Table      {other-table-id :id} {:name          "Other Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  false}
+                         :model/Field      _                    {:name      "Other Field"
+                                                                 :table_id  other-table-id
+                                                                 :base_type :type/Integer}]
+        (let [opts        {:targets       [["Collection" coll-id]]
+                           :no-data-model true
+                           :no-settings   true}
+              extracted   (into [] (extract/extract opts))
+              field-ids   (->> extracted
+                               (filter #(= "Field" (-> % :serdes/meta last :model)))
+                               (map #(t2/select-one-pk :model/Field
+                                                       :table_id (t2/select-one-pk :model/Table :name (-> % :serdes/meta butlast last :id))
+                                                       :name (-> % :serdes/meta last :id)))
+                               set)
+              segment-ids (->> extracted
+                               (filter #(= "Segment" (-> % :serdes/meta last :model)))
+                               (map #(:id (t2/select-one :model/Segment :entity_id (:entity_id %))))
+                               set)]
+          (testing "fields from published table are exported"
+            (is (contains? field-ids field1-id))
+            (is (contains? field-ids field2-id)))
+          (testing "segments from published table are exported"
+            (is (contains? segment-ids segment-id)))
+          (testing "fields from non-published table are NOT exported"
+            (is (= 2 (count field-ids)))))))))

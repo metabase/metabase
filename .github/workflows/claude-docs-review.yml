@@ -95,6 +95,8 @@ jobs:
 
             Use the docs-review skill to review all changed documentation files for compliance with the Metabase writing style guide.
 
+            IMPORTANT: Only review markdown files (.md and .mdx). Skip any .txt files or other non-markdown files.
+
             DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 
           claude_args: |
