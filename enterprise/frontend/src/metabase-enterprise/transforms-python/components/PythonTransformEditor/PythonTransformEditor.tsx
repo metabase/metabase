@@ -2,7 +2,11 @@ import { useHotkeys } from "@mantine/hooks";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
-import type { PythonTransformTableAliases, Table } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PythonTransformTableAliases,
+  Table,
+} from "metabase-types/api";
 
 import { isPythonTransformSource } from "../../utils";
 
@@ -30,6 +34,16 @@ export function PythonTransformEditor({
     const newSource = {
       ...source,
       body,
+    };
+    onChangeSource(newSource);
+  };
+
+  const handleDatabaseChange = (databaseId: DatabaseId) => {
+    // Clear table selections when database changes
+    const newSource = {
+      ...source,
+      "source-database": databaseId,
+      "source-tables": {},
     };
     onChangeSource(newSource);
   };
@@ -73,6 +87,7 @@ export function PythonTransformEditor({
         databaseId={source["source-database"]}
         readOnly={readOnly}
         transformId={transformId}
+        onDatabaseChange={handleDatabaseChange}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
         {!readOnly && (

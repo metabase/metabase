@@ -1,7 +1,14 @@
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Flex } from "metabase/ui";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
-import type { DatabaseId, TransformId } from "metabase-types/api";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
+import type { Database, DatabaseId, TransformId } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 
@@ -9,16 +16,26 @@ type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   readOnly?: boolean;
   transformId?: TransformId;
+  onDatabaseChange?: (databaseId: DatabaseId) => void;
 };
 
 export function PythonTransformTopBar({
   databaseId,
   readOnly,
   transformId,
+  onDatabaseChange,
 }: PythonTransformTopBarProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
+  const { data: databases } = useListDatabasesQuery();
+
+  const handleDatabaseChange = (value: string | null) => {
+    const newDatabaseId = value ? parseInt(value) : undefined;
+    if (newDatabaseId != null && newDatabaseId !== databaseId) {
+      onDatabaseChange?.(newDatabaseId);
+    }
+  };
 
   return (
     <Flex
@@ -27,15 +44,31 @@ export function PythonTransformTopBar({
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
-      <Flex
-        h="3rem"
-        p="md"
-        ml="sm"
-        align="center"
-        data-testid="selected-database"
-      >
-        {database?.name}
-      </Flex>
+      {readOnly ? (
+        <Flex
+          h="3rem"
+          p="md"
+          ml="sm"
+          align="center"
+          data-testid="selected-database"
+        >
+          {database?.name}
+        </Flex>
+      ) : (
+        <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
+          <DatabaseDataSelector
+            className={S.databaseSelector}
+            selectedDatabaseId={databaseId}
+            setDatabaseFn={handleDatabaseChange}
+            databases={databases?.data ?? []}
+            readOnly={readOnly}
+            databaseIsDisabled={(database: Database) =>
+              !doesDatabaseSupportTransforms(database) ||
+              !hasFeature(database, "transforms/python")
+            }
+          />
+        </Flex>
+      )}
       {readOnly && transformId && (
         <Flex ml="auto" mr="lg" align="center" h="3rem">
           <EditDefinitionButton
