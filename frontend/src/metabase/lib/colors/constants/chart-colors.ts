@@ -2,10 +2,6 @@
 
 import type { ChartColorV2 } from "../types";
 
-/**
- * Default chart colors for Metabase.
- * These are transformed into accent0 - accent7 via mapChartColorsToAccents.
- */
 export const DEFAULT_CHART_COLORS: ChartColorV2[] = [
   "#509EE3", // accent0 - blue
   "#88BF4D", // accent1 - green
