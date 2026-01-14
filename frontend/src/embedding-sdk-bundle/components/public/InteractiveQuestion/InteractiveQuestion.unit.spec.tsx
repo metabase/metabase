@@ -9,7 +9,9 @@ import {
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
+  setupDatabaseListEndpoint,
   setupNotificationChannelsEndpoints,
+  setupSearchEndpoints,
   setupTableEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
@@ -149,6 +151,7 @@ const setup = async ({
     card,
     createMockCardQueryMetadata({
       databases: [TEST_DB],
+      tables: [TEST_TABLE],
     }),
   );
   setupAlertsEndpoints(card, []);
@@ -168,6 +171,13 @@ const setup = async ({
   setupUserRecipientsEndpoint({ users: [] });
   setupWebhookChannelsEndpoint();
   setupCreateNotificationEndpoint();
+
+  /**
+   * These endpoints are used in query editor, we don't care about their values,
+   * we just need to mock them to not fail fetch-mock's unmocked responses error.
+   */
+  setupSearchEndpoints([]);
+  setupDatabaseListEndpoint([]);
 
   renderWithSDKProviders(
     <InteractiveQuestion
@@ -421,6 +431,39 @@ describe("InteractiveQuestion", () => {
         ).not.toBeInTheDocument();
       });
     });
+  });
+
+  it("should not show alerts and downloads buttons when editing the question", async () => {
+    await setup({
+      withDownloads: true,
+      withAlerts: true,
+      isEmailSetup: true,
+      canManageSubscriptions: true,
+      enterprisePlugins: ["sdk_notifications"],
+    });
+
+    // Both buttons are visible in view mode
+    expect(screen.queryByRole("button", { name: "Alerts" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Download results" }),
+    ).toBeVisible();
+
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit question" }),
+    );
+
+    // This button only shows on edit mode
+    expect(screen.queryByRole("button", { name: "Back" })).toBeVisible();
+    // Both buttons are hidden in edit mode
+    expect(
+      screen.queryByRole("button", { name: "Alerts" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Download results" }),
+    ).not.toBeInTheDocument();
   });
 
   describe("alert modal", () => {

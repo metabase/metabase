@@ -165,7 +165,7 @@ const setup = async ({
    * We only want to avoid getting fetch-mock's unmocked endpoints error.
    */
   setupUserRecipientsEndpoint({ users: [] });
-  setupWebhookChannelsEndpoint([]);
+  setupWebhookChannelsEndpoint();
   setupCreateNotificationEndpoint();
 
   renderWithSDKProviders(
