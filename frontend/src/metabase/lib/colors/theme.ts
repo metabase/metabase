@@ -1,8 +1,8 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
-import { INTERNAL_COLORS } from "./constants";
-import { METABASE_DARK_THEME } from "./dark";
-import { METABASE_LIGHT_THEME } from "./light";
+import { METABASE_DARK_THEME } from "./constants/dark";
+import { METABASE_LIGHT_THEME } from "./constants/light";
+import { PROTECTED_COLORS } from "./constants/protected-colors";
 import type {
   MetabaseColorKey,
   MetabaseThemeV2,
@@ -29,12 +29,14 @@ interface ThemeOverrideOptions {
 export function resolveTheme(options: ThemeOverrideOptions): MetabaseThemeV2 {
   const { baseTheme, whitelabelColors, userThemeOverride } = options;
 
-  // Filter out internal colors from user override (e.g., metabase-brand)
+  // Filter out protected colors from user override (e.g. metabase-brand)
   const filteredUserColors = userThemeOverride?.colors
     ? Object.fromEntries(
         Object.entries(userThemeOverride.colors).filter(
           ([key]) =>
-            !INTERNAL_COLORS.includes(key as (typeof INTERNAL_COLORS)[number]),
+            !PROTECTED_COLORS.includes(
+              key as (typeof PROTECTED_COLORS)[number],
+            ),
         ),
       )
     : undefined;

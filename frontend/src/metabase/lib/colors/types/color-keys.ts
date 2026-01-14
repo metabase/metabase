@@ -1,8 +1,7 @@
 /**
  * All color keys available in Metabase themes.
  *
- * This is the canonical list of color keys.
- * Both METABASE_LIGHT_THEME and METABASE_DARK_THEME must define all of these colors.
+ * Both the light and dark theme must define all of these colors.
  */
 export type MetabaseColorKey =
   | "accent-gray"

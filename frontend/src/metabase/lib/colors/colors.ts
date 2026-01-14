@@ -3,8 +3,8 @@
 
 import type { ColorSettings } from "metabase-types/api/settings";
 
-import { METABASE_DARK_THEME } from "./dark";
-import { METABASE_LIGHT_THEME } from "./light";
+import { METABASE_DARK_THEME } from "./constants/dark";
+import { METABASE_LIGHT_THEME } from "./constants/light";
 import type { MetabaseColorKey } from "./types";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);

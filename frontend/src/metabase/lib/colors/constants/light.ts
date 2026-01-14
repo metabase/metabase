@@ -1,5 +1,5 @@
 /* eslint-disable no-color-literals */
-import type { MetabaseThemeV2 } from "./types";
+import type { MetabaseThemeV2 } from "../types";
 
 /**
  * The default light theme for Metabase.

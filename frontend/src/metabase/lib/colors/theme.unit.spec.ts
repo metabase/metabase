@@ -1,6 +1,6 @@
-import { INTERNAL_COLORS } from "./constants";
-import { METABASE_DARK_THEME } from "./dark";
-import { METABASE_LIGHT_THEME } from "./light";
+import { METABASE_DARK_THEME } from "./constants/dark";
+import { METABASE_LIGHT_THEME } from "./constants/light";
+import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { resolveTheme } from "./theme";
 
 describe("theme", () => {
@@ -48,9 +48,9 @@ describe("theme", () => {
     it("filters out all internal colors from user overrides", () => {
       const userColors: Record<string, string> = {};
 
-      // Embedding user tries to override the internal colors
-      for (const internalColor of INTERNAL_COLORS) {
-        userColors[internalColor] = "#ff0000";
+      // Modular Embedding user tries to override the protected colors
+      for (const protectedColorKey of PROTECTED_COLORS) {
+        userColors[protectedColorKey] = "#ff0000";
       }
 
       const result = resolveTheme({
@@ -58,10 +58,10 @@ describe("theme", () => {
         userThemeOverride: { colors: userColors },
       });
 
-      // All internal colors must remain unchanged
-      for (const internalColor of INTERNAL_COLORS) {
-        expect(result.colors[internalColor]).toBe(
-          METABASE_LIGHT_THEME.colors[internalColor],
+      // All protected colors must remain unchanged
+      for (const protectedColorKey of PROTECTED_COLORS) {
+        expect(result.colors[protectedColorKey]).toBe(
+          METABASE_LIGHT_THEME.colors[protectedColorKey],
         );
       }
     });

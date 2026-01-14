@@ -1,4 +1,6 @@
 export type { MetabaseColorKey, MetabaseThemeV2, ChartColorV2 } from "./theme";
+import type { PROTECTED_COLORS } from "../constants/protected-colors";
+
 import type { ChartColorV2, MetabaseColorKey } from "./theme";
 
 // Backward-compatible aliases
@@ -22,3 +24,5 @@ export interface UserThemeOverride {
   colors?: Partial<Record<string, string>>;
   chartColors?: ChartColorV2[];
 }
+
+export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];
