@@ -1,7 +1,9 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
-import { colorConfig } from "./colors";
 import { INTERNAL_COLORS, type MetabaseColorV2 } from "./constants";
+import { METABASE_DARK_THEME } from "./dark";
+import { METABASE_LIGHT_THEME } from "./light";
+import type { MetabaseThemeV2, UserThemeOverride } from "./types";
 
 // Re-export from constants for backward compatibility
 export {
@@ -10,48 +12,16 @@ export {
   type MetabaseColorV2,
 } from "./constants";
 
-// Base V2 theme interface
-export interface MetabaseThemeV2 {
-  version: 2;
-  colors: Record<MetabaseColorV2, string>;
-  chartColors?: ChartColorV2[];
-}
+// Re-export theme constants
+export { METABASE_DARK_THEME } from "./dark";
+export { METABASE_LIGHT_THEME } from "./light";
 
-// Chart color type - same structure as V1
-export type ChartColorV2 =
-  | string
-  | {
-      base: string;
-      tint?: string;
-      shade?: string;
-    };
-
-// Generate base theme from colorConfig
-function createTheme(mode: "light" | "dark"): MetabaseThemeV2 {
-  return {
-    version: 2,
-    colors: Object.fromEntries(
-      Object.entries(colorConfig).map(([key, value]) => [key, value[mode]]),
-    ) as Record<MetabaseColorV2, string>,
-  };
-}
-
-export const METABASE_LIGHT_THEME = createTheme("light");
-export const METABASE_DARK_THEME = createTheme("dark");
+// Re-export types
+export type { ChartColorV2, MetabaseThemeV2, UserThemeOverride } from "./types";
 
 // Helper for runtime theme selection
 export function getThemeV2(colorScheme: "light" | "dark"): MetabaseThemeV2 {
   return colorScheme === "dark" ? METABASE_DARK_THEME : METABASE_LIGHT_THEME;
-}
-
-/**
- * User-provided theme overrides. Colors are partial since users only
- * need to specify the colors they want to change.
- */
-export interface UserThemeOverride {
-  version?: 2;
-  colors?: Partial<Record<string, string>>;
-  chartColors?: ChartColorV2[];
 }
 
 /**
