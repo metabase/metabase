@@ -4,6 +4,7 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -187,7 +188,8 @@
    {:level     level
     :timestamp (format-timestamp *log-capture-clock*)
     :fqns      (str fqns)
-    :msg       (elide-string (str msg) 4000)}
+    :msg       (elide-string (str msg) 4000)
+    :process_uuid config/local-process-uuid}
     e (assoc :exception
              (take 20 (map #(elide-string (str %) 500)
                            (seq (ExceptionUtils/getStackFrames e)))))))
