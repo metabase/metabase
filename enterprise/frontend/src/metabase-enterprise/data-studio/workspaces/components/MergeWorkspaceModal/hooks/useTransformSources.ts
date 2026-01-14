@@ -6,13 +6,24 @@ import {
   useGetTransformQuery,
   useGetWorkspaceTransformQuery,
 } from "metabase-enterprise/api";
-import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
+import type {
+  PythonTransformSource,
+  PythonTransformTableAliases,
+  TransformSource,
+  TransformTarget,
+  WorkspaceId,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
 
 import { computeDiffStats, getSourceCode } from "../utils";
 
 type UseTransformSourcesResult = {
   oldSource: string;
+  oldSourceTables: PythonTransformTableAliases | undefined;
+  oldTarget: TransformTarget | undefined;
   newSource: string;
+  newSourceTables: PythonTransformTableAliases | undefined;
+  newTarget: TransformTarget | undefined;
   isLoading: boolean;
   hasError: boolean;
   diffStats: { additions: number; deletions: number } | null;
@@ -34,6 +45,9 @@ export function useTransformSources(
     skip: isNewTransform,
   });
 
+  const globalTransform = globalTransformResult.data;
+  const workspaceTransform = workspaceTransformResult.data;
+
   const isLoading =
     workspaceTransformResult.isLoading ||
     (!isNewTransform && globalTransformResult.isLoading);
@@ -43,16 +57,14 @@ export function useTransformSources(
     (!isNewTransform && !!globalTransformResult.error);
 
   const oldSource = useMemo(() => {
-    return globalTransformResult.data
-      ? getSourceCode(globalTransformResult.data, metadata)
-      : "";
-  }, [globalTransformResult.data, metadata]);
+    return globalTransform ? getSourceCode(globalTransform, metadata) : "";
+  }, [globalTransform, metadata]);
 
   const newSource = useMemo(() => {
-    return workspaceTransformResult.data
-      ? getSourceCode(workspaceTransformResult.data, metadata)
+    return workspaceTransform
+      ? getSourceCode(workspaceTransform, metadata)
       : "";
-  }, [workspaceTransformResult.data, metadata]);
+  }, [workspaceTransform, metadata]);
 
   const diffStats = useMemo(() => {
     if (isNewTransform && newSource) {
@@ -67,9 +79,27 @@ export function useTransformSources(
 
   return {
     oldSource,
+    oldSourceTables: isPythonTransformSource(globalTransform?.source)
+      ? globalTransform.source["source-tables"]
+      : undefined,
+    oldTarget: globalTransform?.target,
     newSource,
-    isLoading,
+    newSourceTables: isPythonTransformSource(workspaceTransform?.source)
+      ? workspaceTransform.source["source-tables"]
+      : undefined,
+    newTarget: workspaceTransform?.target,
     hasError,
+    isLoading,
     diffStats,
   };
+}
+
+function isPythonTransformSource(
+  source: TransformSource | undefined,
+): source is PythonTransformSource {
+  return (
+    source != null &&
+    source.type === "python" &&
+    source["source-database"] !== undefined
+  );
 }
