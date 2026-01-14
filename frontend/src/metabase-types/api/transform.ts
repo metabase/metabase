@@ -3,7 +3,7 @@ import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
-import type { ConcreteTableId, Table } from "./table";
+import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserInfo } from "./user";
 
 export type TransformId = number;
@@ -85,15 +85,15 @@ export type TransformTargetType = "table" | "table-incremental";
 export type TableTarget = {
   type: "table";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
 };
 
 export type TableIncrementalTarget = {
   type: "table-incremental";
   name: string;
-  schema: string | null;
-  database: number;
+  schema: SchemaName | null;
+  database: DatabaseId;
   "target-incremental-strategy": TargetIncrementalStrategy;
 };
 
