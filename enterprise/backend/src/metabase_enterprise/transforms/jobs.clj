@@ -87,7 +87,7 @@
   "Run a series of transforms and their dependencies.
 
   Updates the transform-job-run specified by run-id after every completion.
-  Returns a map with :status and a :message if failed."
+  Returns a map with :status and a collection of :failures if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
         successful (volatile! #{})
