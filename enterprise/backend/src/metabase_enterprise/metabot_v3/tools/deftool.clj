@@ -11,9 +11,11 @@
 ;;; ---------------------------------------------------- Schemas ----------------------------------------------------
 
 (mr/def ::tool-request
-  "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+  "Base schema for all tool requests. Contains the optional conversation ID and profile ID.
+   conversation_id is required for internal metabot calls (for logging/history) but optional
+   for external Agent API calls."
   [:map
-   [:conversation_id ms/UUIDString]
+   [:conversation_id {:optional true} [:maybe ms/UUIDString]]
    [:profile_id {:optional true} [:maybe :string]]])
 
 (def ^:private request-transformer
@@ -53,7 +55,8 @@
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)
                        raw-result)]
-    (doto (assoc result :conversation_id conversation_id)
+    (doto (cond-> result
+            conversation_id (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (defmacro deftool
