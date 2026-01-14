@@ -40,7 +40,7 @@ jobs:
       - name: prepare dependencies in release directory
         run: bun install --frozen-lockfile --cwd release
       - name: Run frontend type-check
-        run: bun --cwd release run type-check
+        run: bun run type-check --cwd release
 
   release-tests-unit:
     needs: files-changed
@@ -55,7 +55,7 @@ jobs:
       - name: prepare dependencies in release directory
         run: bun install --frozen-lockfile --cwd release
       - name: Run release unit tests
-        run: bun --cwd release run test:unit
+        run: bun run test:unit --cwd release
 
   release-test-build:
     needs: files-changed
@@ -70,6 +70,6 @@ jobs:
       - name: prepare dependencies in release directory
         run: bun install --frozen-lockfile --cwd release
       - name: Build release bundle
-        run: bun --cwd release run build
+        run: bun run build --cwd release
       - name: Smoke test release bundle
         run: node release/dist/index.cjs

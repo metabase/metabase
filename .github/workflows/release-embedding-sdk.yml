@@ -179,7 +179,7 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - name: Prepare build scripts
-        run: bun install --frozen-lockfile --cwd release && bun --cwd release run build
+        run: bun install --frozen-lockfile --cwd release && bun run build --cwd release
 
       - name: Get current SDK version
         id: current-sdk-version
