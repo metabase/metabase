@@ -16,17 +16,14 @@ type SetupOpts = {
   databaseId?: number;
   readOnly?: boolean;
   transformId?: number;
-  source?: string;
 };
 
 function setup({
   databaseId = 1,
   readOnly = false,
   transformId = 1,
-  source = "# test script",
 }: SetupOpts = {}) {
   const onDatabaseChange = jest.fn();
-  const onSourceChange = jest.fn();
 
   setupDatabasesEndpoints([mockDatabase]);
   setupSearchEndpoints([]);
@@ -38,9 +35,7 @@ function setup({
           databaseId={databaseId}
           readOnly={readOnly}
           transformId={transformId}
-          source={source}
           onDatabaseChange={onDatabaseChange}
-          onSourceChange={onSourceChange}
         />
       )}
       path="/"
@@ -52,7 +47,7 @@ function setup({
     },
   );
 
-  return { onDatabaseChange, onSourceChange };
+  return { onDatabaseChange };
 }
 
 describe("PythonTransformTopBar", () => {
@@ -72,16 +67,6 @@ describe("PythonTransformTopBar", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render library buttons when readOnly is true", () => {
-      setup({ readOnly: true });
-      expect(
-        screen.queryByLabelText(/import common library/i),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByLabelText(/edit common library/i),
-      ).not.toBeInTheDocument();
-    });
-
     it("should display database name as static text when readOnly is true", async () => {
       setup({ readOnly: true, databaseId: 1 });
       // In read-only mode, database name is displayed as text, not a dropdown
@@ -90,14 +75,6 @@ describe("PythonTransformTopBar", () => {
   });
 
   describe("edit mode", () => {
-    it("should render library buttons when readOnly is false", () => {
-      setup({ readOnly: false });
-      expect(
-        screen.getByLabelText(/import common library/i),
-      ).toBeInTheDocument();
-      expect(screen.getByLabelText(/edit common library/i)).toBeInTheDocument();
-    });
-
     it("should not render EditDefinitionButton when readOnly is false", () => {
       setup({ readOnly: false });
       expect(

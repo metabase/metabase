@@ -115,13 +115,5 @@ describe("PythonTransformEditor", () => {
       setup({ readOnly: false });
       expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
     });
-
-    it("should render library buttons in edit mode", () => {
-      setup({ readOnly: false });
-      expect(
-        screen.getByLabelText(/import common library/i),
-      ).toBeInTheDocument();
-      expect(screen.getByLabelText(/edit common library/i)).toBeInTheDocument();
-    });
   });
 });

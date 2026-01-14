@@ -86,9 +86,7 @@ export function PythonTransformEditor({
         databaseId={source["source-database"]}
         readOnly={readOnly}
         transformId={transformId}
-        source={source.body}
         onDatabaseChange={handleDatabaseChange}
-        onSourceChange={handleScriptChange}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
         {!readOnly && (
