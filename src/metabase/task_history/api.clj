@@ -89,8 +89,8 @@
 (mr/def ::TaskRunsResponse
   [:map
    [:total  ms/IntGreaterThanOrEqualToZero]
-   [:limit  ms/PositiveInt]
-   [:offset ms/IntGreaterThanOrEqualToZero]
+   [:limit  [:maybe ms/PositiveInt]]
+   [:offset [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:data   [:sequential ::TaskRun]]])
 
 (mr/def ::TaskHistory
@@ -163,8 +163,9 @@
                  entity-type (assoc :entity_type entity-type)
                  entity-id   (assoc :entity_id entity-id)
                  status      (assoc :status status))]
-    (when (seq clause)
-      {:where (into [:and] (map (fn [[k v]] [:= k v])) clause)})))
+    (if (seq clause)
+      {:where (into [:and] (map (fn [[k v]] [:= k v])) clause)}
+      {})))
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
