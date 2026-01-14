@@ -15,19 +15,10 @@ import {
 } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
-import type { ColorSettings } from "metabase-types/api/settings";
-
-/** Whitelabel colors from MetabaseBootstrap, applied at startup. */
-const win = typeof window !== "undefined" ? window : ({} as Window);
-const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
-const shouldWhitelabel = !!tokenFeatures["whitelabel"];
-const whitelabelColors: ColorSettings =
-  (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
 
 const createColorVars = (colorScheme: "light" | "dark"): string => {
   const theme = deriveFullMetabaseTheme({
     baseTheme: getThemeFromColorScheme(colorScheme),
-    whitelabelColors,
   });
 
   return Object.entries(theme.colors)
