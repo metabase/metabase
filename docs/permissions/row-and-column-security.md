@@ -313,6 +313,10 @@ Create a SQL question that casts the advanced data type column to a basic data t
 
 If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table. You'll also need to block the original table.
 
+### People with row and column security can't create Slack subscriptions or alerts
+
+People in groups with row and column security can't create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).
+
 ## Further reading
 
 - [Row and column security examples](./row-and-column-security-examples.md)
