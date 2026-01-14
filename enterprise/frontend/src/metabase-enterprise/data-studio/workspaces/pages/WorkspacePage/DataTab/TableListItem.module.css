@@ -13,6 +13,10 @@
   &:hover {
     background-color: var(--mb-color-background-secondary);
   }
+
+  &.noResults .name {
+    opacity: 0.6;
+  }
 }
 
 .clickable {

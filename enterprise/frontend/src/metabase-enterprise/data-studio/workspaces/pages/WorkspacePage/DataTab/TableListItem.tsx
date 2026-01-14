@@ -71,12 +71,14 @@ export const TableListItem = ({
     type === "output" && !hasResults && transform && onRunTransform;
   const isClickable = (tableId && onTableClick) || canRunTransform;
   const displayTooltip = type !== "input" && !hasResults && !isRunning;
+  console.log(type === "output" && !tableId);
 
   return (
     <Box
       className={cx(S.root, {
         [S.selected]: isSelected,
         [S.clickable]: isClickable,
+        [S.noResults]: type === "output" && !tableId,
       })}
       aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}
