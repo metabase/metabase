@@ -9,7 +9,7 @@ import S from "./RunStatusInfo.module.css";
 
 type RunStatusInfoProps = {
   transform?: Transform;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
   message: string | null;
   endTime: Date | null;
 };

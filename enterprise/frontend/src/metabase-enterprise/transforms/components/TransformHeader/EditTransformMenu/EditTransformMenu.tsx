@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -104,7 +103,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
       dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
     } catch (error) {
-      console.error(error);
       sendErrorToast(t`Failed to create workspace`);
     }
   };
@@ -167,11 +165,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
                 >
                   <Stack gap={2} align="flex-start">
                     <Text fw={600}>{workspace.name}</Text>
-                    {/* {workspace.created_at && (
-                      <Text size="sm" c="text-light">
-                        {formatWorkspaceDate(workspace.created_at)}
-                      </Text>
-                    )} */}
                   </Stack>
                 </Menu.Item>
               ))}
@@ -196,8 +189,4 @@ function getTransformDatabaseId(transform: Transform) {
   }
 
   return undefined;
-}
-
-function formatWorkspaceDate(createdAt: string) {
-  return dayjs(createdAt).format("DD/MM/YYYY");
 }

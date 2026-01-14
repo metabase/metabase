@@ -1,4 +1,13 @@
+import { match } from "ts-pattern";
+import { t } from "ttag";
+
 import type { WorkspaceProblem } from "metabase-types/api";
+import {
+  isKnownWorkspaceProblemData,
+  isWorkspaceProblemDataExternalDownstreamNotRun,
+  isWorkspaceProblemDataInternalDownstreamNotRun,
+  isWorkspaceProblemDataRemovedField,
+} from "metabase-types/guards";
 
 export type ProblemCheckCategory =
   | "external-dependencies"
@@ -26,26 +35,20 @@ export function groupProblemsByCategory(
   problems: WorkspaceProblem[],
 ): GroupedProblems {
   const grouped: GroupedProblems = {
-    "external-dependencies": [],
-    "internal-dependencies": [],
-    "structural-issues": [],
-    "unused-outputs": [],
+    "external-dependencies": problems.filter(
+      (problem) => problem.category === "external-downstream",
+    ),
+    "internal-dependencies": problems.filter(
+      (problem) => problem.category === "internal-downstream",
+    ),
+    "structural-issues": problems.filter(
+      (problem) =>
+        problem.category === "internal" || problem.category === "external",
+    ),
+    "unused-outputs": problems.filter(
+      (problem) => problem.category === "unused",
+    ),
   };
-
-  for (const problem of problems) {
-    if (problem.category === "external-downstream") {
-      grouped["external-dependencies"].push(problem);
-    } else if (problem.category === "internal-downstream") {
-      grouped["internal-dependencies"].push(problem);
-    } else if (
-      problem.category === "internal" ||
-      problem.category === "external"
-    ) {
-      grouped["structural-issues"].push(problem);
-    } else if (problem.category === "unused") {
-      grouped["unused-outputs"].push(problem);
-    }
-  }
 
   return grouped;
 }
@@ -56,7 +59,9 @@ export function groupProblemsByCategory(
  */
 export function getCheckStatus(problems: WorkspaceProblem[]): CheckStatus {
   // Filter out unused problems for status calculation - they're informational only
-  const relevantProblems = problems.filter((p) => p.category !== "unused");
+  const relevantProblems = problems.filter(
+    (problem) => problem.category !== "unused",
+  );
 
   // If all problems are unused, return passed with empty array
   // If there are any non-unused problems, return failed with those problems
@@ -74,7 +79,7 @@ export function getCheckStatusWithUnused(
   problems: WorkspaceProblem[],
 ): CheckStatus {
   return {
-    status: problems.length === 0 ? "passed" : "passed", // Unused is always passed (informational)
+    status: "passed", // Unused is always passed (informational)
     count: problems.length,
     problems: problems, // Include all problems for display
   };
@@ -86,57 +91,68 @@ export function getCheckStatusWithUnused(
 export function formatProblemDetails(problem: WorkspaceProblem): string {
   const parts: string[] = [];
 
+  const transform = isKnownWorkspaceProblemData(problem)
+    ? problem.transform
+    : undefined;
+
   // Add transform reference if available
-  if ("transform" in problem.data && problem.data.transform) {
-    const transform = problem.data.transform;
-    const transformName =
-      "name" in transform && transform.name
-        ? transform.name
-        : transform.id.toString();
+  if (transform) {
+    const transformName = transform.name ?? transform.id.toString();
     const transformType =
-      transform.type === "workspace-transform" ? "workspace" : "external";
-    parts.push(`${transformType} transform "${transformName}"`);
+      transform.type === "workspace-transform"
+        ? t`workspace transform`
+        : t`external transform`;
+
+    parts.push(`${transformType} "${transformName}"`);
   }
+
+  const output = isKnownWorkspaceProblemData(problem)
+    ? problem.output
+    : undefined;
 
   // Add table reference if available
-  if ("output" in problem.data && problem.data.output) {
-    const output = problem.data.output;
-    if ("global" in output && output.global) {
-      const schema = output.global.schema || "";
-      const table = output.global.table || "";
-      if (schema && table) {
-        parts.push(`table "${schema}.${table}"`);
-      } else if (table) {
-        parts.push(`table "${table}"`);
-      }
+  if (output) {
+    const schema = output.schema || "";
+    const table = output.table || "";
+
+    if (schema && table) {
+      parts.push(t`table "${schema}.${table}"`);
+    } else if (table) {
+      parts.push(t`table "${table}"`);
     }
   }
+
+  const badRefs = isWorkspaceProblemDataRemovedField(problem)
+    ? problem["bad-refs"]
+    : undefined;
 
   // Add bad-refs for removed-field problems
-  if ("bad-refs" in problem.data && problem.data["bad-refs"]) {
-    const badRefs = problem.data["bad-refs"];
-    if (Array.isArray(badRefs) && badRefs.length > 0) {
-      const fieldNames = badRefs
-        .map((ref) => (ref.data?.name ? ref.data.name : null))
-        .filter(Boolean);
-      if (fieldNames.length > 0) {
-        parts.push(`removed fields: ${fieldNames.join(", ")}`);
-      }
+  if (badRefs) {
+    const fieldNames = badRefs
+      .map((ref) => ref.name || ref.message || null)
+      .filter(Boolean);
+
+    if (fieldNames.length > 0) {
+      parts.push(t`removed fields: ${fieldNames.join(", ")}`);
     }
   }
 
+  const dependents =
+    isWorkspaceProblemDataInternalDownstreamNotRun(problem) ||
+    isWorkspaceProblemDataExternalDownstreamNotRun(problem)
+      ? problem.dependents
+      : undefined;
+
   // Add dependents if available
-  if ("dependents" in problem.data && problem.data.dependents) {
-    const dependents = problem.data.dependents;
-    if (Array.isArray(dependents) && dependents.length > 0) {
-      const dependentNames = dependents
-        .map((dep: { name?: string; id?: string | number }) =>
-          dep.name ? dep.name : dep.id?.toString(),
-        )
-        .filter(Boolean);
-      if (dependentNames.length > 0) {
-        parts.push(`affects: ${dependentNames.join(", ")}`);
-      }
+  if (dependents) {
+    const dependentNames = dependents
+      .map((dep: { name?: string; id?: string | number }) =>
+        dep.name ? dep.name : dep.id?.toString(),
+      )
+      .filter(Boolean);
+
+    if (dependentNames.length > 0) {
+      parts.push(t`affects: ${dependentNames.join(", ")}`);
     }
   }
 
@@ -145,19 +161,14 @@ export function formatProblemDetails(problem: WorkspaceProblem): string {
     return problem.description;
   }
 
-  return parts.length > 0
-    ? `${problem.description}. ${parts.join(". ")}`
-    : problem.description;
+  return [problem.description, ...parts].join(". ");
 }
 
-/**
- * Gets user-friendly check name for a category
- */
-export function getCheckName(category: ProblemCheckCategory): string {
-  return category
-    .split("-")
-    .map((word, index) =>
-      index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word,
-    )
-    .join(" ");
+export function getCheckTitle(category: ProblemCheckCategory): string {
+  return match(category)
+    .with("external-dependencies", () => t`External dependencies`)
+    .with("internal-dependencies", () => t`Internal dependencies`)
+    .with("structural-issues", () => t`Structural issues`)
+    .with("unused-outputs", () => t`Unused outputs`)
+    .exhaustive();
 }

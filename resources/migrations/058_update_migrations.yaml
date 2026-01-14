@@ -3562,109 +3562,6 @@ databaseChangeLog:
             columnName: isolated_table_id
 
   - changeSet:
-      id: v58.2025-12-15T12:16:15
-      author: piranha
-      comment: Add target_db_id column to transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transform
-                columnName: target_db_id
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: target_db_id
-                  type: int
-                  remarks: Target database ID for the transform output
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: target_db_id
-
-  - changeSet:
-      id: v58.2025-12-15T12:16:16
-      author: piranha
-      runOnChange: true
-      comment: Backfill target_db_id column for existing transforms
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillTransformTargetDbId"
-
-            #- changeSet:
-            #    id: v58.2025-12-15T12:16:17
-            #    author: piranha
-            #    comment: Make transform.target_db_id column NOT NULL
-            #    changes:
-            #      - addNotNullConstraint:
-            #          tableName: transform
-            #          columnName: target_db_id
-            #          columnDataType: int
-            #    rollback:
-            #      - dropNotNullConstraint:
-            #          tableName: transform
-            #          columnName: target_db_id
-            #          columnDataType: int
-
-  - changeSet:
-      id: v58.2025-12-15T12:16:18
-      author: piranha
-      comment: Add index on transform.target_db_id
-      changes:
-        - createIndex:
-            tableName: transform
-            indexName: idx_transform_target_db_id
-            columns:
-              - column:
-                  name: target_db_id
-      rollback:
-        - dropIndex:
-            tableName: transform
-            indexName: idx_transform_target_db_id
-
-            #- changeSet:
-            #    id: v58.2025-12-15T12:16:19
-            #    author: piranha
-            #    comment: Add foreign key constraint for transform.target_db_id
-            #    changes:
-            #      - addForeignKeyConstraint:
-            #          baseTableName: transform
-            #          baseColumnNames: target_db_id
-            #          referencedTableName: metabase_database
-            #          referencedColumnNames: id
-            #          constraintName: fk_transform_ref_target_db_id
-
-  - changeSet:
-      id: v58.2025-12-17T10:00:00
-      author: qnkhuat
-      comment: Add access_granted column to workspace_input to track permission state
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: workspace_input
-                columnName: access_granted
-      changes:
-        - addColumn:
-            tableName: workspace_input
-            columns:
-              - column:
-                  name: access_granted
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: Whether read access has been granted to the workspace user for this table
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_input
-            columnName: access_granted
-
-  - changeSet:
       id: v58.2025-12-17T11:00:00
       author: qnkhuat
       comment: Create workspace_merge table to track batch merge events
@@ -4103,6 +4000,26 @@ databaseChangeLog:
                   remarks: Workspace containing this table
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v58.2025-12-18T16:14:03
+      author: winlost
+      comment: Add disable_links column to pulse table
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: disable_links
 
   - changeSet:
       id: v58.2025-12-19T10:00:00
@@ -4766,6 +4683,224 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback: # will be removed along the table
+
+  # Denormalize workspace_dependency into workspace_input by adding ref_id column
+  # This allows direct lookup of inputs per transform without a join table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:00
+      author: christruter
+      comment: Delete existing workspace_input rows (will be recreated when transforms marked stale)
+      changes:
+        - sql:
+            sql: DELETE FROM workspace_input
+      rollback:
+        - sql:
+            sql: SELECT 1  # No rollback needed, data will be regenerated
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:01
+      author: christruter
+      comment: Add ref_id column to workspace_input
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  remarks: ref_id of the workspace_transform that depends on this input
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: ref_id
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:02
+      author: christruter
+      comment: Add access_granted column to workspace_input
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_input
+                columnName: access_granted
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  remarks: Whether read access has been granted to the workspace user
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: access_granted
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:03
+      author: christruter
+      comment: Drop old unique constraint on workspace_input (workspace_id, db_id, schema, table)
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_logical_table
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_logical_table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:04
+      author: christruter
+      comment: Add new unique constraint on workspace_input including ref_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, ref_id, db_id, schema, table
+            constraintName: uq_workspace_input_transform_table
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_transform_table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:05
+      author: christruter
+      comment: Add index on workspace_input (workspace_id, ref_id) for DAG queries
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_ref_id
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: ref_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_ref_id
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:06
+      author: christruter
+      comment: Mark all workspace transforms as stale so inputs get recreated
+      changes:
+        - sql:
+            sql: UPDATE workspace_transform SET stale = true
+      rollback:
+        - sql:
+            sql: SELECT 1  # No rollback needed
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:07
+      author: christruter
+      comment: Drop workspace_dependency table (no longer needed after denormalization)
+      changes:
+        - dropTable:
+            tableName: workspace_dependency
+      rollback:
+        - createTable:
+            tableName: workspace_dependency
+            remarks: Edges between workspace transforms and their dependencies
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-09T09:28:40
+      author: piranha
+      comment: Add target_db_id column to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: target_db_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: target_db_id
+                  type: int
+                  remarks: Target database ID for the transform output
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: target_db_id
+
+  - changeSet:
+      id: v58.2026-01-12T10:47:48
+      author: christruter
+      comment: Add last_run_status column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_status
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: last_run_status
+                  type: varchar(20)
+                  remarks: Status of the last transform run (succeeded or failed)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: last_run_status
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

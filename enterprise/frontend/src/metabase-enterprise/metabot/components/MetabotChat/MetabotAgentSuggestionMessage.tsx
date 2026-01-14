@@ -159,11 +159,12 @@ export const AgentSuggestionMessage = ({
       const targetTransform: Transform | undefined =
         (editorTransform as Transform | undefined) ??
         (originalTransform as Transform | undefined) ??
-        (existingTransformId ? (suggestedTransform as Transform) : undefined);
+        (existingTransformId ? (suggestedTransform as unknown as Transform) : undefined);
+      const taggedTargetTransfrom = targetTransform ? { ...targetTransform, type: "transform" as const } : undefined;
 
-      if (existingTransformId != null && targetTransform) {
-        workspace.addOpenedTransform(targetTransform);
-        workspace.setActiveTransform(targetTransform);
+      if (existingTransformId != null && taggedTargetTransfrom) {
+        workspace.addOpenedTransform(taggedTargetTransfrom);
+        workspace.setActiveTransform(taggedTargetTransfrom);
         setHasAppliedInWorkspace(true);
         return;
       }
@@ -259,8 +260,10 @@ export const AgentSuggestionMessage = ({
             target: sanitizedTarget,
           }).unwrap();
 
-          workspace.addOpenedTransform(transform);
-          workspace.setActiveTransform(transform);
+          const taggedTransform = { ...transform, type: "transform" as const};
+
+          workspace.addOpenedTransform(taggedTransform);
+          workspace.setActiveTransform(taggedTransform);
           setHasAppliedInWorkspace(true);
           sendSuccessToast(t`Transform created`);
           return;
@@ -286,7 +289,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="bg-white"
+      bg="background-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -302,10 +305,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text
-            size="sm"
-            c={isNew ? "var(--mb-color-saturated-blue)" : "text-secondary"}
-          >
+          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -321,13 +321,25 @@ export const AgentSuggestionMessage = ({
       >
         {match({ isLoading, error })
           .with({ error: P.not(P.nullish) }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
               <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
-              <Loader size="xs" color="text-secondary" type="dots" />
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
+              <Loader size="xs" c="text-secondary" type="dots" />
               <Text mb="1px" c="text-secondary">{t`Loading preview`}</Text>
             </Flex>
           ))
@@ -357,7 +369,7 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-light"}
+              c={canApply ? "success" : "text-tertiary"}
               disabled={!canApply}
               onClick={handleApply}
             >

@@ -225,7 +225,6 @@ function useInitialEditorHeight(
   const headerHeight = getHeaderHeight(isNative);
   const availableHeight = windowHeight - headerHeight;
 
-
   if (editorHeightOverride) {
     return editorHeightOverride;
   }

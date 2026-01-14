@@ -13,6 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
@@ -51,6 +52,7 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
@@ -111,7 +113,6 @@
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceDependency               metabase-enterprise.workspaces.models.workspace-dependency
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log

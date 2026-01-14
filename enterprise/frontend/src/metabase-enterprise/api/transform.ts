@@ -153,7 +153,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           listTag("transform"),
-          listTag("external-transforms"),
+          listTag("external-transform"),
         ]),
     }),
     updateTransform: builder.mutation<Transform, UpdateTransformRequest>({

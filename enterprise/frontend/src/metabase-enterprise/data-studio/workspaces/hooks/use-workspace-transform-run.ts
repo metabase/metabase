@@ -4,8 +4,6 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
-  useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformQuery,
   useRunWorkspaceTransformMutation,
   workspaceApi,
@@ -18,7 +16,7 @@ import type {
 
 type UseWorkspaceTransformRunOptions = {
   workspaceId: WorkspaceId;
-  transform: WorkspaceTransform;
+  transform: WorkspaceTransform | null;
 };
 
 type UseWorkspaceTransformRunResult = {
@@ -32,13 +30,6 @@ type UseWorkspaceTransformRunResult = {
   isRunning: boolean;
   /** Trigger a transform run */
   handleRun: () => Promise<void>;
-  /** Output table info */
-  output: {
-    db_id: number;
-    table_id: number;
-    table_name: string;
-    schema: string;
-  } | null;
 };
 
 export function useWorkspaceTransformRun({
@@ -48,8 +39,6 @@ export function useWorkspaceTransformRun({
   const dispatch = useDispatch();
   const { sendErrorToast } = useMetadataToasts();
   const [runTransform] = useRunWorkspaceTransformMutation();
-  const { data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE } =
-    useGetWorkspaceTablesQuery(workspaceId);
 
   const [isRunTriggered, setIsRunTriggered] = useState(false);
   const [lastRunResult, setLastRunResult] = useState<{
@@ -63,17 +52,17 @@ export function useWorkspaceTransformRun({
     useGetWorkspaceTransformQuery(
       {
         workspaceId,
-        transformId: transform.ref_id,
+        transformId: transform?.ref_id ?? "",
       },
-      { skip: !transform.ref_id },
+      { skip: !transform?.ref_id },
     );
 
   const lastRunAt =
-    fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
+    fetchedWorkspaceTransform?.last_run_at ?? transform?.last_run_at;
   const lastRunMessage =
-    fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
-
-  const lastRunStatus = lastRunMessage ? "failed" : "succeeded";
+    fetchedWorkspaceTransform?.last_run_message ?? transform?.last_run_message;
+  const lastRunStatus =
+    fetchedWorkspaceTransform?.last_run_status ?? transform?.last_run_status;
 
   const statusRun: TransformRun | null = useMemo(
     () =>
@@ -86,56 +75,49 @@ export function useWorkspaceTransformRun({
             message: lastRunResult.message,
             run_method: "manual",
           }
-        : lastRunAt
+        : lastRunAt && lastRunStatus != null
           ? {
               id: -1,
               status: lastRunStatus,
               start_time: lastRunAt,
               end_time: lastRunAt,
-              message: lastRunMessage,
+              message: lastRunMessage ?? null,
               run_method: "manual",
             }
           : null,
     [lastRunResult, lastRunAt, lastRunMessage, lastRunStatus],
   );
 
-  const output = useMemo(() => {
-    const table = workspaceTables.outputs.find(
-      (table) => table.isolated.transform_id === transform.ref_id,
-    );
-    if (!table || statusRun?.status !== "succeeded") {
-      return null;
-    }
-    return {
-      db_id: table?.db_id,
-      table_id: table?.isolated.table_id,
-      table_name: table?.isolated.table,
-      schema: table?.isolated.schema,
-    };
-  }, [workspaceTables, transform.ref_id, statusRun]);
-
   // Run object for button - only shows feedback during/after user-triggered runs
-  const buttonRun: TransformRun | null = isRunTriggered
-    ? {
-        id: -1,
-        status: "started",
-        start_time: new Date().toISOString(),
-        end_time: null,
-        message: null,
-        run_method: "manual",
-      }
-    : lastRunResult
-      ? {
-          id: -1,
-          status: lastRunResult.status,
-          start_time: lastRunResult.end_time,
-          end_time: lastRunResult.end_time,
-          message: lastRunResult.message,
-          run_method: "manual",
-        }
-      : null;
+  const buttonRun: TransformRun | null = useMemo(
+    () =>
+      isRunTriggered
+        ? {
+            id: -1,
+            status: "started",
+            start_time: new Date().toISOString(),
+            end_time: null,
+            message: null,
+            run_method: "manual",
+          }
+        : lastRunResult
+          ? {
+              id: -1,
+              status: lastRunResult.status,
+              start_time: lastRunResult.end_time,
+              end_time: lastRunResult.end_time,
+              message: lastRunResult.message,
+              run_method: "manual",
+            }
+          : null,
+    [isRunTriggered, lastRunResult],
+  );
 
   const handleRun = async () => {
+    if (!transform) {
+      return;
+    }
+
     try {
       setIsRunTriggered(true);
       setLastRunResult(null);
@@ -147,12 +129,12 @@ export function useWorkspaceTransformRun({
 
       // Transform completed - store the result
       const endTime = result.end_time ?? new Date().toISOString();
+
       setLastRunResult({
         status: result.status,
         end_time: endTime,
         message: result.message ?? null,
       });
-      setIsRunTriggered(false);
 
       // Invalidate caches to refetch updated data
       dispatch(
@@ -167,10 +149,9 @@ export function useWorkspaceTransformRun({
         sendErrorToast(t`Transform run failed`);
       }
     } catch (error) {
-      setIsRunTriggered(false);
-      setLastRunResult(null);
       sendErrorToast(t`Failed to run transform`);
-      console.error("Failed to run transform", error);
+    } finally {
+      setIsRunTriggered(false);
     }
   };
 
@@ -180,6 +161,5 @@ export function useWorkspaceTransformRun({
     isRunStatusLoading: statusRun == null && isFetching,
     isRunning: isRunTriggered,
     handleRun,
-    output,
   };
 }

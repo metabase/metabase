@@ -3,12 +3,12 @@
   border-left: 2px solid transparent;
 
   &:hover {
-    background: var(--mb-color-bg-light);
+    background: var(--mb-color-background-secondary);
   }
 }
 
 .sidebarItemActive {
-  background: var(--mb-color-bg-light);
+  background: var(--mb-color-background-secondary);
   border-left-color: var(--mb-color-brand);
 }
 

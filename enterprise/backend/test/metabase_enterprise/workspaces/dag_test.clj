@@ -1,14 +1,10 @@
 (ns metabase-enterprise.workspaces.dag-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
-   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
-   [metabase.app-db.core :as app-db]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -17,7 +13,7 @@
   :once
   (fn [f]
     (mt/with-premium-features [:dependencies :transforms :workspaces]
-      (mt/with-model-cleanup [:model/Dependency :model/Transform :model/Table]
+      (mt/with-model-cleanup [:model/Dependency :model/Transform :model/Table :model/Workspace]
         (f)))))
 
 ;;;; Example graphs for testing
@@ -32,74 +28,6 @@
    :m13 [:x11 :m12]})
 
 ;;;; Test data helpers
-
-(defn- transform? [kw] (= \x (first (name kw))))
-(defn- table? [kw] (= \t (first (name kw))))
-(defn- kw->id [kw] (parse-long (subs (name kw) 1)))
-
-(defn- create-test-graph!
-  "Create test transforms and tables from shorthand notation, returning id mappings.
-
-   Shorthand uses keywords like :x1, :t2, :m3 where:
-   - :x<n> is a transform
-   - :t<n> is a table (source/generated)
-   - :m<n> is a model (card)
-
-   Returns a map from shorthand id to real database id, e.g. {:x1 123, :t2 456}
-
-   NOTE: Caller should wrap in mt/with-model-cleanup for proper cleanup."
-  [dependencies]
-  (let [schema     (str/replace (str (random-uuid)) "-" "_")
-        all-ids    (set (concat (keys dependencies)
-                                (mapcat val dependencies)))
-        transforms (filter transform? all-ids)
-        driver     (t2/select-one-fn :engine [:model/Database :engine] (mt/id))
-        normalize  #(sql.normalize/normalize-name driver %)
-        tables     (filter table? all-ids)
-        table-ids  (u/for-map [t tables]
-                     [t (t2/insert-returning-pk! :model/Table
-                                                 {:db_id  (mt/id)
-                                                  :schema (some-> schema normalize)
-                                                  :name   (normalize (str "test_table_" (kw->id t)))
-                                                  :active true})])
-        ;; Create transforms that reference their input tables
-        tx-ids     (u/for-map [tx transforms]
-                     (let [parent-tables (->> (get dependencies tx []) (filter table?) (map table-ids))
-                           id            (t2/insert-returning-pk! :model/Transform
-                                                                  {:name   (str "Test " (name tx))
-                                                                   :source {:type  :query
-                                                                            :query (if (seq parent-tables)
-                                                                                     #_{:database (mt/id)
-                                                                                        :type     :query
-                                                                                        :query    {:source-table (first parent-tables)
-                                                                                                   :joins        (for [pt (rest parent-tables)]
-                                                                                                                   {:source-table pt
-                                                                                                                    :condition    [:= 1 1]})}}
-                                                                                     {:database (mt/id)
-                                                                                      :type     :native
-                                                                                      :native   {:query (->> (t2/select-fn-vec #(str (:schema %) "." (:name %))
-                                                                                                                               [:model/Table :schema :name]
-                                                                                                                               :id [:in parent-tables])
-                                                                                                             (str/join ", ")
-                                                                                                             (str "SELECT * FROM "))}}
-                                                                                     {:database (mt/id)
-                                                                                      :type     :native
-                                                                                      :native   {:query "SELECT 1"}})}
-                                                                   :target {:type     "table"
-                                                                            :database (mt/id)
-                                                                            :schema   schema
-                                                                            :name     (str "test_table_" (kw->id tx))}})]
-                       [tx id]))]
-
-    ;; This is a workaround for the dependency between transforms and their output only being inserted on run.
-    (doseq [[tx-kw tx-id] tx-ids]
-      (app-db/update-or-insert! :model/Dependency
-                                {:to_entity_type   "transform"
-                                 :to_entity_id     tx-id
-                                 :from_entity_type "table"
-                                 :from_entity_id   (table-ids (keyword (str "t" (kw->id tx-kw))))}))
-
-    (merge tx-ids table-ids)))
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
@@ -121,57 +49,43 @@
 
 (deftest path-induced-subgraph-shorthand-test
   (testing "graph built from shorthand matches abstract solver"
-    (let [shorthand   {:x2 [:t1]}
-          id-map      (create-test-graph! (dag-abstract/expand-shorthand shorthand))
-          gtx         (t2/select-one :model/Transform (id-map :x2))]
-      ;; TODO make this nice and declarative too
-      (mt/with-temp [:model/Workspace          ws  {:name "Test Workspace", :database_id (mt/id)}
-                     :model/WorkspaceTransform wtx (merge
-                                                    (select-keys gtx [:name :source :target])
-                                                    {:workspace_id (:id ws)
-                                                     :global_id    (:id gtx)})]
-        (ws.tu/analyze-workspace! (:id ws))
-        (let [entity     {:entity-type :transform, :id (:ref_id wtx)}
-              result     (ws.dag/path-induced-subgraph (:id ws) [entity])
-              translated (translate-result result id-map)]
-          (is (=? {:inputs       #{:t1}
-                   :outputs      #{:t2}
-                   :entities     #{:x2}
-                   :dependencies {:x2 #{:t1}}}
-                  translated)))))))
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x2 [:t1]}
+            :workspace {:checkouts [:x2]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entity     {:entity-type :transform, :id (workspace-map :x2)}
+            result     (ws.dag/path-induced-subgraph workspace-id [entity])
+            translated (translate-result result global-map)]
+        (is (=? {:inputs       #{:t1}
+                 :outputs      #{:t2}
+                 :entities     #{:x2}
+                 :dependencies {:x2 #{:t1}}}
+                translated))))))
 
 (deftest path-induced-subgraph-larger-test
   (testing "graph built from shorthand matches abstract solver"
     ;; check-outs x2, x4
-    (let [shorthand   {:x1 [:t0]
-                       :x2 [:x1, :t10]
-                       :x3 [:x2, :t8]
-                       :x4 [:x3]
-                       :x5 [:x2, :x4, :t9]}
-          id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
-          gtx-2       (t2/select-one :model/Transform (id-map :x2))
-          gtx-4       (t2/select-one :model/Transform (id-map :x4))
-          fork        (fn [ws gtx]
-                        (merge
-                         (select-keys gtx [:name :source :target])
-                         {:workspace_id (:id ws)
-                          :global_id    (:id gtx)}))]
-      ;; TODO make a convenience method / method for doing these checkouts too
-      (mt/with-temp [:model/Workspace          ws    {:name "Test Workspace", :database_id (mt/id)}
-                     :model/WorkspaceTransform wtx-2 (fork ws gtx-2)
-                     :model/WorkspaceTransform wtx-4 (fork ws gtx-4)]
-        (ws.tu/analyze-workspace! (:id ws))
-        (let [entities   (for [wtx [wtx-2 wtx-4]]
-                           {:entity-type :transform, :id (:ref_id wtx)})
-              result     (ws.dag/path-induced-subgraph (:id ws) entities)
-              translated (translate-result result id-map)]
-          (is (=? {:inputs       #{:t1 :t8 :t10}
-                   :outputs      #{:t2 :t3 :t4}
-                   :entities     #{:x2 :x3 :x4}
-                   :dependencies {:x2 #{:t1 :t10}
-                                  :x3 #{:x2 :t8}
-                                  :x4 #{:x3}}}
-                  translated)))))))
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x1 [:t0]
+                        :x2 [:x1 :t10]
+                        :x3 [:x2 :t8]
+                        :x4 [:x3]
+                        :x5 [:x2 :x4 :t9]}
+            :workspace {:checkouts [:x2 :x4]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entities   (for [tx [:x2 :x4]]
+                         {:entity-type :transform, :id (workspace-map tx)})
+            result     (ws.dag/path-induced-subgraph workspace-id entities)
+            translated (translate-result result global-map)]
+        (is (=? {:inputs       #{:t1 :t8 :t10}
+                 :outputs      #{:t2 :t3 :t4}
+                 :entities     #{:x2 :x3 :x4}
+                 :dependencies {:x2 #{:t1 :t10}
+                                :x3 #{:x2 :t8}
+                                :x4 #{:x3}}}
+                translated))))))
 
 (deftest expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"
@@ -241,7 +155,7 @@
           :x4 []
           :x5 []}
          (#'ws.dag/collapse
-          table?
+          ws.tu/table?
           {:x1 [:t1 :t2]
            :t1 [:x2]
            :t2 [:x3]
@@ -253,18 +167,18 @@
            :x5 []}))))
 
 (defn tx->table [kw]
-  (when (transform? kw)
-    (keyword (str "t" (kw->id kw)))))
+  (when (ws.tu/transform? kw)
+    (keyword (str "t" (ws.tu/kw->id kw)))))
 
 (defn- solve-in-memory [init-nodes graph]
-  (let [tx-nodes (filter transform? init-nodes)
+  (let [tx-nodes (filter ws.tu/transform? init-nodes)
         tables   (map tx->table tx-nodes)]
     (#'ws.dag/path-induced-subgraph*
      ;; Include all changeset targets in the init-nodes
      (distinct (into init-nodes tables))
      {:node-parents (dag-abstract/expand-shorthand graph)
-      :table?       table?
-      :table-sort   kw->id
+      :table?       ws.tu/table?
+      :table-sort   ws.tu/kw->id
       :unwrap-table identity})))
 
 (defn- chain->deps [chain]

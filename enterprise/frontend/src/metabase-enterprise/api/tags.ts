@@ -9,27 +9,31 @@ import {
   provideTableTags,
   provideUserTags,
 } from "metabase/api/tags";
-import type {
-  BulkTableInfo,
-  BulkTableSelectionInfo,
-  CardDependencyNode,
-  DashboardDependencyNode,
-  DependencyGraph,
-  DependencyNode,
-  DocumentDependencyNode,
-  PythonLibrary,
-  SandboxDependencyNode,
-  SegmentDependencyNode,
-  SnippetDependencyNode,
-  SupportAccessGrant,
-  TableDependencyNode,
-  Transform,
-  TransformDependencyNode,
-  TransformJob,
-  TransformRun,
-  TransformTag,
-  Workspace,
-  WorkspaceItem,
+import {
+  type BulkTableInfo,
+  type BulkTableSelectionInfo,
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type ExternalTransform,
+  type MeasureDependencyNode,
+  type PythonLibrary,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type Transform,
+  type TransformDependencyNode,
+  type TransformJob,
+  type TransformRun,
+  type TransformTag,
+  type Workspace,
+  type WorkspaceAllowedDatabase,
+  type WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -47,7 +51,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "workspace-transforms",
   "workspace-transform",
   "workspace-tables",
-  "external-transforms",
+  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -101,12 +105,6 @@ export function provideWorkspaceTags(
   return [idTag("workspace", workspace.id)];
 }
 
-export function provideWorkspaceContentItemsTags(
-  items: WorkspaceContentItem[],
-): TagDescription<EnterpriseTagType>[] {
-  return items.flatMap((transform) => idTag("transform", transform.id));
-}
-
 export function provideTransformTags(
   transform: Transform,
 ): TagDescription<EnterpriseTagType>[] {
@@ -147,6 +145,21 @@ export function provideTransformTagListTags(
   tags: TransformTag[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideExternalTransformTags(
+  transform: ExternalTransform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("external-transform", transform.id)];
+}
+
+export function provideExternalTransformListTags(
+  transforms: ExternalTransform[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("external-transform"),
+    ...transforms.flatMap(provideExternalTransformTags),
+  ];
 }
 
 export function provideTransformJobTags(
@@ -260,6 +273,16 @@ function provideSegmentDependencyNodeTags(
   ];
 }
 
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -280,15 +303,14 @@ export function provideDependencyNodeTags(
       return provideSandboxDependencyNodeTags(node);
     case "segment":
       return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
   }
 }
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
+    ...DEPENDENCY_TYPES.map(listTag),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -330,5 +352,14 @@ export function provideBulkTableSelectionInfoTags({
     ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideWorkspaceAllowedDatabaseTags(
+  databases: WorkspaceAllowedDatabase[],
+) {
+  return [
+    listTag("database"),
+    ...databases.map((db) => idTag("database", db.id)),
   ];
 }

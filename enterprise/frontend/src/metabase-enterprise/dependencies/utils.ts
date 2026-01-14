@@ -88,6 +88,8 @@ export function getNodeIconWithType(
       return "table";
     case "transform":
       return "transform";
+    case "workspace-transform":
+      return "transform";
     case "snippet":
       return "sql";
     case "dashboard":
@@ -139,6 +141,14 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
+    case "workspace-transform": {
+      const workspaceId = node.data.workspaceId;
+      const refId = node.data.ref_id;
+      return {
+        label: t`View this workspace transform`,
+        url: Urls.dataStudioWorkspace(workspaceId, refId),
+      };
+    }
     case "dashboard":
       return {
         label: `View this dashboard`,

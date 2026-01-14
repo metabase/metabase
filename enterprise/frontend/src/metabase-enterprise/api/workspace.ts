@@ -2,11 +2,9 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
-  ExternalTransformsRequest,
-  ExternalTransformsResponse,
-  TransformDownstreamMapping,
+  ExternalTransformRequest,
+  ExternalTransformResponse,
   TransformId,
-  TransformUpstreamMapping,
   UpdateWorkspaceTransformRequest,
   ValidateTableNameRequest,
   ValidateTableNameResponse,
@@ -23,11 +21,11 @@ import type {
   WorkspaceRunResponse,
   WorkspaceTablesResponse,
   WorkspaceTransform,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
+  WorkspaceTransformListResponse,
   WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
   WorkspaceTransformRunResponse,
-  WorkspaceTransformsResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -35,7 +33,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideWorkspaceContentItemsTags,
+  provideWorkspaceAllowedDatabaseTags,
   provideWorkspaceTags,
   provideWorkspacesTags,
   tag,
@@ -59,14 +57,17 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (workspace) =>
         workspace ? provideWorkspaceTags(workspace) : [],
     }),
-    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
-      query: () => ({
-        method: "POST",
-        url: "/api/ee/workspace",
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("workspace"), listTag("transform")]),
-    }),
+    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest | void>(
+      {
+        query: (body) => ({
+          method: "POST",
+          url: "/api/ee/workspace",
+          body,
+        }),
+        invalidatesTags: (_, error) =>
+          invalidateTags(error, [listTag("workspace"), listTag("transform")]),
+      },
+    ),
     updateWorkspace: builder.mutation<
       Workspace,
       { id: WorkspaceId; name?: string; database_id?: number }
@@ -80,48 +81,29 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("workspace", id)]),
     }),
     createWorkspaceTransform: builder.mutation<
-      CreateWorkspaceTransformResponse,
-      { id: WorkspaceId } & CreateWorkspaceTransformRequest
+      WorkspaceTransform,
+      CreateWorkspaceTransformRequest
     >({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/ee/workspace/${id}/transform`,
         body,
       }),
+      transformResponse: (
+        response: CreateWorkspaceTransformResponse,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
+      }),
       invalidatesTags: (_, error, { id, global_id }) =>
         invalidateTags(error, [
           idTag("workspace", id),
           idTag("workspace-transforms", id),
-          idTag("external-transforms", id),
+          idTag("external-transform", id),
           idTag("workspace-tables", id),
           listTag("transform"),
           ...(global_id != null ? [idTag("transform", global_id)] : []),
         ]),
-      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
-    }),
-    getTransformUpstreamMapping: builder.query<
-      TransformUpstreamMapping,
-      TransformId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/mapping/transform/${id}/upstream`,
-      }),
-      providesTags: (mapping) =>
-        mapping?.transform
-          ? provideWorkspaceContentItemsTags([mapping.transform])
-          : [],
-    }),
-    getTransformDownstreamMapping: builder.query<
-      TransformDownstreamMapping,
-      TransformId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/mapping/transform/${id}/downstream`,
-      }),
-      providesTags: (mapping) =>
-        mapping ? provideWorkspaceContentItemsTags(mapping.transforms) : [],
     }),
     getWorkspaceCheckout: builder.query<WorkspaceCheckoutResponse, TransformId>(
       {
@@ -177,6 +159,26 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/workspace/${id}`,
       }),
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData(
+            "getWorkspaces",
+            undefined,
+            (draft) => {
+              const idx = draft.items.findIndex((w) => w.id === id);
+              if (idx !== -1) {
+                draft.items.splice(idx, 1);
+              }
+            },
+          ),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
@@ -212,7 +214,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
     getWorkspaceTransforms: builder.query<
-      WorkspaceTransformItem[],
+      WorkspaceTransformListItem[],
       WorkspaceId
     >({
       query: (id) => ({
@@ -220,12 +222,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/${id}/transform`,
       }),
       providesTags: (_, __, id) => [idTag("workspace-transforms", id)],
-      transformResponse: (response: WorkspaceTransformsResponse) =>
+      transformResponse: (response: WorkspaceTransformListResponse) =>
         response.transforms,
     }),
     getExternalTransforms: builder.query<
-      ExternalTransformsResponse["transforms"],
-      ExternalTransformsRequest
+      ExternalTransformResponse["transforms"],
+      ExternalTransformRequest
     >({
       query: ({ workspaceId, databaseId }) => ({
         method: "GET",
@@ -233,10 +235,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         params: { database_id: databaseId },
       }),
       providesTags: (_, __, { workspaceId: id }) => [
-        listTag("external-transforms"),
-        idTag("external-transforms", id),
+        listTag("external-transform"),
+        idTag("external-transform", id),
       ],
-      transformResponse: (response: ExternalTransformsResponse) =>
+      transformResponse: (response: ExternalTransformResponse) =>
         response.transforms,
     }),
     getWorkspaceTransform: builder.query<
@@ -247,14 +249,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
       }),
+      transformResponse: (
+        response: Omit<WorkspaceTransform, "type">,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
+      }),
       providesTags: (_, __, { transformId }) => [
-        // idTag("workspace-transforms", workspaceId),
         idTag("workspace-transform", transformId),
       ],
-      transformResponse: (response: WorkspaceTransform) => ({
-        ...response,
-        id: response.ref_id,
-      }),
     }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
       query: (id) => ({
@@ -303,6 +306,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
         body,
       }),
+      transformResponse: (
+        response: Omit<WorkspaceTransform, "type">,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
+      }),
       invalidatesTags: (_, error, { workspaceId, transformId }) =>
         invalidateTags(error, [
           idTag("workspace", workspaceId),
@@ -310,7 +319,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace-transform", transformId),
           idTag("workspace-tables", workspaceId),
         ]),
-      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
     }),
     archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
       query: ({ workspaceId, transformId }) => ({
@@ -349,7 +357,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("workspace", workspaceId),
           idTag("workspace-transforms", workspaceId),
-          idTag("external-transforms", workspaceId),
+          idTag("external-transform", workspaceId),
           idTag("workspace-transform", transformId),
           idTag("workspace-tables", workspaceId),
           tag("transform"),
@@ -363,6 +371,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/database`,
       }),
+      providesTags: (response) =>
+        provideWorkspaceAllowedDatabaseTags(response?.databases ?? []),
     }),
   }),
 });
@@ -380,8 +390,6 @@ export const {
   useArchiveWorkspaceTransformMutation,
   useUnarchiveWorkspaceTransformMutation,
   useDeleteWorkspaceTransformMutation,
-  useGetTransformUpstreamMappingQuery,
-  useGetTransformDownstreamMappingQuery,
   useGetWorkspaceCheckoutQuery,
   useMergeWorkspaceMutation,
   useMergeWorkspaceTransformMutation,

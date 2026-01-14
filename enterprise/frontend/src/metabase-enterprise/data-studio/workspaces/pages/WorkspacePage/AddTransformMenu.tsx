@@ -1,15 +1,11 @@
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import {
   getInitialNativeSource,
   getInitialPythonSource,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
-import type {
-  DatabaseId,
-  TransformSource,
-  WorkspaceId,
-} from "metabase-types/api";
+import type { DatabaseId, TransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import { useWorkspace } from "./WorkspaceProvider";
@@ -18,13 +14,11 @@ type TransformType = "sql" | "python";
 
 interface Props {
   databaseId: DatabaseId;
-  workspaceId: WorkspaceId;
   disabled?: boolean;
 }
 
 export const AddTransformMenu = ({
   databaseId,
-  workspaceId,
   disabled,
 }: Props) => {
   const { addUnsavedTransform } = useWorkspace();
@@ -47,15 +41,17 @@ export const AddTransformMenu = ({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon
-            size="2rem"
-            p="0"
-            ml="auto"
-            aria-label={t`Add transform`}
-            disabled={disabled}
-          >
-            <Icon name="add" size={16} aria-hidden tooltip={t`Add transform`} />
-          </ActionIcon>
+          <Tooltip label={t`Add transform`}>
+            <ActionIcon
+              size="2rem"
+              p="0"
+              ml="auto"
+              aria-label={t`Add transform`}
+              disabled={disabled}
+            >
+              <Icon name="add" size={16} aria-hidden />
+            </ActionIcon>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
@@ -63,9 +59,9 @@ export const AddTransformMenu = ({
             onClick={() => {
               const mockTransform = createMockTransform({
                 source: getSource("sql"),
-                workspace_id: workspaceId,
               });
-              addUnsavedTransform(mockTransform);
+
+              addUnsavedTransform(mockTransform.source);
             }}
           >
             {t`SQL Transform`}
@@ -75,9 +71,9 @@ export const AddTransformMenu = ({
             onClick={() => {
               const mockTransform = createMockTransform({
                 source: getSource("python"),
-                workspace_id: workspaceId,
               });
-              addUnsavedTransform(mockTransform);
+
+              addUnsavedTransform(mockTransform.source);
             }}
           >
             {t`Python Script`}

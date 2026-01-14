@@ -59,10 +59,10 @@ export function useTablePreview({
         ? query
         : tableBasedQuery
           ? {
-            ...Lib.toJsQuery(tableBasedQuery),
-            ignore_error: true,
-            _refetchDeps: last_transform_run_time,
-          }
+              ...Lib.toJsQuery(tableBasedQuery),
+              ignore_error: true,
+              _refetchDeps: last_transform_run_time,
+            }
           : skipToken,
   );
 
@@ -72,9 +72,9 @@ export function useTablePreview({
     rawSeries: undefined,
   };
 
-  const rawSeries = useMemo(
+  const rawSeries = useMemo<RawSeries>(
     () =>
-      queryToFetch
+      queryToFetch != null && data
         ? [
             {
               card: createMockCard({
@@ -82,13 +82,13 @@ export function useTablePreview({
                 visualization_settings: {},
               }),
               data: {
-                ...data?.data,
-                rows: _.uniq(data?.data?.rows ?? []),
+                ...data.data,
+                rows: _.uniq(data.data.rows ?? []),
               },
             },
           ]
-        : ([] as RawSeries),
-    [data?.data, queryToFetch],
+        : [],
+    [data, queryToFetch],
   );
 
   if (data?.status === "failed") {

@@ -11,8 +11,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Group } from "metabase/ui";
-import type { DependencyGraph } from "metabase-types/api";
+import { Group, useColorScheme } from "metabase/ui";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -33,6 +34,10 @@ const NODE_TYPES = {
 
 const EDGE_TYPES = {
   edge: GraphEdge,
+};
+
+const PRO_OPTIONS = {
+  hideAttribution: true,
 };
 
 type DependencyGraphProps = {
@@ -56,10 +61,17 @@ export function DependencyGraph({
   nodeTypes = NODE_TYPES,
   edgeTypes = EDGE_TYPES,
 }: DependencyGraphProps) {
+  const {
+    data: graph,
+    isFetching,
+    error,
+  } = useGetDependencyGraphQuery(entry ?? skipToken);
+
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const { sendErrorToast } = useMetadataToasts();
+  const { colorScheme } = useColorScheme();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry) : null;
@@ -85,7 +97,7 @@ export function DependencyGraph({
 
   useEffect(() => {
     if (error != null) {
-      sendErrorToast(t`Failed to load dependencies`);
+      sendErrorToast(t`Failed to load the dependency graph`);
     }
   }, [error, sendErrorToast]);
 
@@ -96,19 +108,22 @@ export function DependencyGraph({
   return (
     <GraphContext.Provider value={{ selection, setSelection }}>
       <ReactFlow
+        className={S.reactFlow}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
+        proOptions={PRO_OPTIONS}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        fitView
         data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >
         <Background />
-        <Controls />
+        <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>

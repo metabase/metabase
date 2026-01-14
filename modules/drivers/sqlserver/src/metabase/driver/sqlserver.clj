@@ -59,6 +59,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              :transforms/index-ddl                   true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -1072,6 +1073,13 @@
   ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
   128)
 
+(defmethod sql-jdbc/drop-index-sql :sqlserver [_ schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :sqlserver)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name))
+            (if schema
+              (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
+              (quote-identifier (name table-name))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1136,6 +1144,9 @@
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
+    (when-not username
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
     (doseq [schema schemas]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
     (doseq [table tables]

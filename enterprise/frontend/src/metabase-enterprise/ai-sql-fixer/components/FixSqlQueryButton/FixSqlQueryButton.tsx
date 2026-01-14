@@ -18,7 +18,7 @@ export function FixSqlQueryButton({
 
   const handleClick = () => {
     trackQueryFixClicked();
-    const promptParts = ["Fix this SQL query."];
+    const promptParts = ["Fix this SQL query"];
     if (errorMessage) {
       promptParts.push(`The database returned this error: ${errorMessage}`);
     }

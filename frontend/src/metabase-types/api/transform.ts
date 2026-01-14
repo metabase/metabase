@@ -4,6 +4,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
+import type { UserInfo } from "./user";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -25,6 +26,7 @@ export type Transform = {
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
+  creator?: UserInfo;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
@@ -99,7 +101,7 @@ export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
   start_time: string;
   end_time: string | null;
   message: string | null;
@@ -144,7 +146,7 @@ export type TransformJob = {
 export type CreateTransformRequest = {
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;

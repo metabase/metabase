@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
@@ -194,10 +195,12 @@
                                      :isolated_schema :isolated_table :isolated_table_id :transform_id]
                                     :workspace_id id order-by)
         all-outputs      (concat outputs external-outputs)
-        raw-inputs       (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
-        external-inputs  (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        raw-inputs       (distinct
+                          (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
+        external-inputs  (distinct
+                          (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
         all-raw-inputs   (concat raw-inputs external-inputs)
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         shadowed?        (into #{} (map (juxt :db_id :global_schema :global_table)) all-outputs)
@@ -488,18 +491,59 @@
     :external-transform id
     :table (str (:db id) "-" (:schema id) "-" (:table id))))
 
-(defn- target->spec [{:keys [target] :as tx}]
-  (assoc tx :target {:db     (:database target)
-                     :schema (:schema target)
-                     :table  (:name target)}))
+(defn- table-ids-by-target
+  "Batch lookup table IDs for transform targets.
+   Returns {[db_id schema name] -> table-record}."
+  [transforms]
+  (when (seq transforms)
+    (let [table-keys (into #{}
+                           (keep (fn [{:keys [target]}]
+                                   (when-let [db-id (:database target)]
+                                     [db-id (:schema target) (:name target)])))
+                           transforms)
+          with-schema    (filter second table-keys)
+          without-schema (keep (fn [[db-id schema table-name]]
+                                 (when-not schema [db-id table-name]))
+                               table-keys)]
+      (when (or (seq with-schema) (seq without-schema))
+        (let [tables (t2/select [:model/Table :id :db_id :schema :name]
+                                {:where [:or
+                                         (when (seq with-schema)
+                                           [:in [:composite :db_id :schema :name] with-schema])
+                                         (when (seq without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] without-schema]])]})]
+          (m/index-by (juxt :db_id :schema :name) tables))))))
 
-;; TODO we'll want to bulk query this of course...
-(defn- node-data [{:keys [node-type id]}]
+(defn- target->spec [{:keys [target] :as tx} table-id-map]
+  (let [table-key [(:database target) (:schema target) (:name target)]
+        table-id (:id (get table-id-map table-key))]
+    (assoc tx :target {:db       (:database target)
+                       :schema   (:schema target)
+                       :table    (:name target)
+                       :table_id table-id})))
+
+(defn- fetch-transforms-for-graph
+  "Batch fetch all transforms needed for the graph. Returns {:external {id -> tx}, :workspace {ref_id -> tx}}."
+  [entities]
+  (let [external-ids (into [] (keep #(when (= :external-transform (:node-type %)) (:id %))) entities)
+        workspace-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
+        external-txs (when (seq external-ids)
+                       (m/index-by :id (t2/select [:model/Transform :id :name :target] :id [:in external-ids])))
+        workspace-txs (when (seq workspace-ids)
+                        ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
+                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target] :ref_id [:in workspace-ids])))]
+    {:external external-txs
+     :workspace workspace-txs}))
+
+(defn- node-data [{:keys [node-type id]} transforms-map table-id-map]
   (case node-type
     :table id
-    :external-transform (t2/select-one-fn target->spec [:model/Transform :id :name :target] id)
-    ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-    :workspace-transform (t2/select-one-fn target->spec [:model/WorkspaceTransform :ref_id :name :target] :ref_id id)))
+    :external-transform (some-> (get-in transforms-map [:external id])
+                                (target->spec table-id-map))
+    :workspace-transform (some-> (get-in transforms-map [:workspace id])
+                                 (target->spec table-id-map))))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
@@ -507,6 +551,11 @@
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
         {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
+        ;; Batch fetch all transforms and build table-id lookup map
+        transforms-map (fetch-transforms-for-graph entities)
+        all-transforms (concat (vals (:external transforms-map))
+                               (vals (:workspace transforms-map)))
+        table-id-map   (table-ids-by-target all-transforms)
         ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
         ;;      It could be cheaper to build it as we go.
         inverted (reduce
@@ -525,14 +574,13 @@
                     (for [e entities]
                       {:type             (node-type e)
                        :id               (:id e)
-                       :data             (node-data e)
+                       :data             (node-data e transforms-map table-id-map)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
-              ;; Yeah, this graph points to dependents, not dependencies
-              {:from_entity_type (name (node-type parent))
-               :from_entity_id   (node-id parent)
-               :to_entity_type   (name (node-type child))
-               :to_entity_id     (node-id child)})}))
+              {:to_entity_type   (name (node-type parent))
+               :to_entity_id     (node-id parent)
+               :from_entity_type (name (node-type child))
+               :from_entity_id   (node-id child)})}))
 
 ;;; ---------------------------------------- Problems/Validation ----------------------------------------
 
@@ -635,13 +683,14 @@
    [:source :map]
    [:target :map]
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
-   [:target_stale :boolean]
+   [:target_stale [:maybe :boolean]]
    [:workspace_id ::ws.t/appdb-id]
    [:creator_id [:maybe ::ws.t/appdb-id]]
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]
    [:last_run_at :any]
+   [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
@@ -769,19 +818,32 @@
   (ws.impl/mark-workspace-stale! id)
   nil)
 
-(api.macros/defendpoint :post "/:id/transform/:tx-id/run"
+(api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
 
   App DB changes are rolled back. Warehouse DB changes persist."
-  [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
     ;; Ensure analysis is up-to-date, as we may need grants to external input tables.
     (ws.impl/analyze-transform-if-stale! workspace transform)
     (ws.impl/run-transform! workspace transform)))
+
+(api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
+  :- ::ws.t/dry-run-result
+  "Dry-run a transform in a workspace without persisting to the target table.
+
+  Returns the first 2000 rows of transform output for preview purposes.
+  Does not update last_run_at or create any database tables."
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
+    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+    (check-transforms-enabled! (:database_id workspace))
+    (ws.impl/dry-run-transform workspace transform)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"

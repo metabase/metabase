@@ -5,75 +5,9 @@ import type {
   DependencyEntry,
   DependencyNode,
   Field,
-  LastEditInfo,
-  UserInfo,
 } from "metabase-types/api";
 
 import type { NodeTableInfo } from "./types";
-
-export function getNodeCreatedAt(node: DependencyNode): string | null {
-  switch (node.type) {
-    case "card":
-    case "dashboard":
-    case "document":
-    case "segment":
-      return node.data.created_at;
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "sandbox":
-      return null;
-  }
-}
-
-export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
-  switch (node.type) {
-    case "card":
-    case "dashboard":
-    case "document":
-    case "segment":
-      return node.data.creator ?? null;
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "sandbox":
-      return null;
-  }
-}
-
-export function getNodeLastEditedAt(node: DependencyNode): string | null {
-  switch (node.type) {
-    case "card":
-    case "dashboard":
-      return node.data["last-edit-info"]?.timestamp ?? null;
-    case "segment":
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
-      return null;
-  }
-}
-
-export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
-  switch (node.type) {
-    case "card":
-    case "dashboard":
-      return node.data["last-edit-info"] ?? null;
-    case "segment":
-    case "table":
-    case "transform":
-    case "workspace-transform":
-    case "snippet":
-    case "document":
-    case "sandbox":
-      return null;
-  }
-}
 
 export function getNodeTableInfo(
   node: DependencyNode,
@@ -134,6 +68,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "dashboard":
     case "document":
     case "segment":
+    case "measure":
       return [];
   }
 }

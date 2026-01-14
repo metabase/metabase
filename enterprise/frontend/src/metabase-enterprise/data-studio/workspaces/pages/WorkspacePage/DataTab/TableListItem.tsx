@@ -10,7 +10,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { TableId, WorkspaceTransformItem } from "metabase-types/api";
+import type { TableId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import type { OpenTable } from "../WorkspaceProvider";
 import { StatusDot } from "../components/StatusDot/StatusDot";
@@ -23,13 +23,13 @@ type TableListItemProps = {
   icon?: IconName;
   type: "input" | "output";
   hasChanges?: boolean;
-  transform?: WorkspaceTransformItem;
+  transform?: WorkspaceTransformListItem;
   tableId?: TableId;
   isSelected?: boolean;
   isRunning?: boolean;
-  onTransformClick?: (transform: WorkspaceTransformItem) => void;
+  onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableClick?: (table: OpenTable) => void;
-  onRunTransform?: (transform: WorkspaceTransformItem) => void;
+  onRunTransform?: (transform: WorkspaceTransformListItem) => void;
 };
 
 export const TableListItem = ({
@@ -82,7 +82,7 @@ export const TableListItem = ({
       onClick={isClickable ? handleTableClick : undefined}
     >
       {isRunning ? (
-        <Loader size="sm" />
+        <Loader size="xs" />
       ) : (
         <Icon
           name={icon}
@@ -107,7 +107,7 @@ export const TableListItem = ({
           {displayName}
         </Text>
       </Tooltip>
-      {hasChanges && <StatusDot status="changed" />}
+      {hasChanges && <StatusDot />}
       {type === "output" && transform && (
         <Tooltip label={t`Open transform`} position="top">
           <ActionIcon
@@ -116,6 +116,7 @@ export const TableListItem = ({
             size="sm"
             variant="subtle"
             onClick={handleTransformClick}
+            aria-label={t`Open transform`}
           >
             <Icon name="code_block" size={14} c="text-medium" />
           </ActionIcon>

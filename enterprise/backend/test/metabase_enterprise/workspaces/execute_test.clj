@@ -27,6 +27,8 @@
                                    :schema   nil
                                    :name     output-table}}
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            ;; get initialized fields
+            workspace    (t2/select-one :model/Workspace (:id workspace))
             ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
@@ -41,6 +43,9 @@
                     (ws.impl/run-transform! workspace ws-transform))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
+
+          ;; Not sure why this is here, but we're testing the analysis metadata, which is lazy
+          (ws.impl/get-or-calculate-graph workspace)
           (is (=? [{:workspace_id      (:id workspace)
                     :global_table      output-table
                     :global_schema     nil
@@ -49,12 +54,43 @@
                     :isolated_table    string?
                     ;; TODO I think this is broken because of normalization breaking case equality
                     #_#_:isolated_table_id number?}]
-                  (t2/select :model/WorkspaceOutput :ref_id (:ref_id ws-transform)))))
+                  (t2/select :model/WorkspaceOutput :workspace_id (:id workspace)))))
 
         (testing "app DB records are rolled back"
           (is (= before
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
+
+(deftest dry-run-workspace-transform-test
+  (testing "Dry-running a workspace transform returns rows without persisting"
+    (let [workspace    (ws.tu/create-ready-ws! "DryRun Test Workspace")
+          db-id        (:database_id workspace)
+          body         {:name   "DryRun Transform"
+                        :source {:type  "query"
+                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                        :target {:type     "table"
+                                 :database db-id
+                                 :schema   nil
+                                 :name     "ws_dryrun_test"}}
+          ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          before       {:xf    (t2/count :model/Transform)
+                        :xfrun (t2/count :model/TransformRun)}]
+
+      (testing "dry-run returns data nested under :data like /api/dataset"
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1 "hello"] [2 "world"]]
+                          :cols [{:name "ID"} {:name "NAME"}]}
+                 :table  {:name "ws_dryrun_test"}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace ws-transform)))))
+
+      (testing "last_run_at is NOT updated in dry-run mode"
+        (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))))
+
+      (testing "app DB records are NOT created in dry-run mode"
+        (is (= before
+               {:xf    (t2/count :model/Transform)
+                :xfrun (t2/count :model/TransformRun)}))))))
 
 (deftest remap-python-source-test
   (let [remap-python-source #'ws.execute/remap-python-source]

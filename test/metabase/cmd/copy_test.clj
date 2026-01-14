@@ -25,7 +25,8 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/ApiKey
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
@@ -57,7 +58,7 @@
     :model/Undo
     :model/UserKeyValue
     :model/Workspace
-    :model/WorkspaceDependency
+    :model/WorkspaceGraph
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
     :model/WorkspaceLog

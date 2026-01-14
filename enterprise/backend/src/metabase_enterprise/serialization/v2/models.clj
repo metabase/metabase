@@ -6,6 +6,7 @@
   ["Database"
    "Field"
    "FieldUserSettings"
+   "Measure"
    "Segment"
    "Table"
    "Channel"])
@@ -48,7 +49,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["ApiKey"
+  ["AnalysisFinding"
+   "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
@@ -120,7 +122,6 @@
    "Workspace"
    ;; TODO (lbrdnk 2025/12/17): I've added rest of the workspace models. I believe some of those will be available for
    ;; serialization, hence we should revisit this later in the project.
-   "WorkspaceDependency"
    "WorkspaceInput"
    "WorkspaceInputExternal"
    "WorkspaceLog"

@@ -21,8 +21,7 @@ interface SetupTabProps {
 export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
   const { data: allowedDatabases, isLoading } =
     useGetWorkspaceAllowedDatabasesQuery();
-  const [updateWorkspace, { isLoading: isUpdating }] =
-    useUpdateWorkspaceMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const workspaceId = workspace.id;
 
@@ -37,7 +36,6 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
           }).unwrap();
           sendSuccessToast(t`Successfully updated workspace database`);
         } catch (error) {
-          console.error("Failed to update workspace database:", error);
           sendErrorToast(t`Failed to update workspace database`);
         }
       }

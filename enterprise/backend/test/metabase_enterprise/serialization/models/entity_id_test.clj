@@ -32,7 +32,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction
@@ -111,7 +112,6 @@
     ;; TODO (lbrdnk 2025/12/17): I've added rest of the workspace models here as Workspace was present. I believe
     ;; going forward all of that will be available for export. We should revisit this later in the project.
     :model/Workspace
-    :model/WorkspaceDependency
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
     :model/WorkspaceLog
