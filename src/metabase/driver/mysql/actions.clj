@@ -50,7 +50,7 @@
                          constraint-name)
               (reduced nil))))
       [[] nil nil]
-      (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
+      (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity, :transaction? false})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]

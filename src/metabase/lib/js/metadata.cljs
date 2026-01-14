@@ -412,7 +412,7 @@
   (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
         parse-card (parse-object-fn :card)]
     ;; The question objects might not contain the fields so we merge them
-    ;; in from the table matadata.
+    ;; in from the table metadata.
     (merge
      (-> metadata
          (object-get "tables")
