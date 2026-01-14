@@ -1179,11 +1179,11 @@
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title))
                  (as-> $mp
-                     (let [model-query (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))]
-                       (lib.tu/mock-metadata-provider
-                        $mp
-                        {:cards [{:id            1
-                                  :dataset-query model-query}]}))))
+                       (let [model-query (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))]
+                         (lib.tu/mock-metadata-provider
+                          $mp
+                          {:cards [{:id            1
+                                    :dataset-query model-query}]}))))
           q  (-> (lib/query mp (lib.metadata/card mp 1))
                  (lib/filter (lib/= (-> (lib.metadata/field mp (mt/id :products :title))
                                         (lib/ref)
