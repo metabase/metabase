@@ -744,7 +744,7 @@
                    (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
                    public-sharing/remove-public-uuid-if-public-sharing-is-disabled
                    add-query-description-to-metric-card
-                   ;; At this point, the card should be at schema version 20 or higher.
+      ;; At this point, the card should be at schema version 20 or higher.
                    upgrade-card-schema-to-latest)]
     ;; Track query UUIDs for debugging query corruption
     (mi/track-card-query-uuids! result)

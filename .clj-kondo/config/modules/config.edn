@@ -624,7 +624,6 @@
           metabase.lib.walk}
    :uses #{config
            legacy-mbql
-           models
            types
            util}}
 

@@ -94,21 +94,9 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (let [result (lib.computed/with-cache-sticky* metadata-providerable [:metadata/card card-id :metadata]
-                 (fn []
-                   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)))]
-    ;; Track card metadata fetch when query tracker is active (JVM only)
-    #?(:clj
-       (when-let [tracker (some-> (requiring-resolve 'metabase.models.interface/*query-uuid-tracker*) deref)]
-         (when tracker
-           (let [query-fingerprint (when-let [q (:dataset-query result)]
-                                     (hash (pr-str (or (:stages q) (get q "stages")))))]
-             (swap! tracker update :events (fnil conj [])
-                    {:stage :card-metadata-fetch
-                     :card-id card-id
-                     :card-name (:name result)
-                     :query-fingerprint query-fingerprint})))))
-    result))
+  (lib.computed/with-cache-sticky* metadata-providerable [:metadata/card card-id :metadata]
+    (fn []
+      (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."

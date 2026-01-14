@@ -317,11 +317,18 @@
     (binding [*dashboard-load-id*                        dashboard-load-id
               lib.metadata.jvm/*metadata-provider-cache* (dashboard-load-metadata-provider-cache dashboard-load-id)
               ;; Enable query tracking for debugging query corruption
-              ;; Collisions are logged in real-time as they're detected
               mi/*query-uuid-tracker* (atom {:sequence (atom 0)
-                                             :events []})]
+                                             :before-deserialize {}
+                                             :after-deserialize {}
+                                             :after-card-select {}})]
       (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
-      (body-fn))
+      (let [result (body-fn)
+            analysis (mi/analyze-query-tracking)]
+        (when (and analysis (not= :clean (:status analysis)))
+          (log/errorf "QUERY CORRUPTION DETECTED during dashboard load %s: %s"
+                      dashboard-load-id
+                      (pr-str analysis)))
+        result))
     (do
       (log/debug "No dashboard_load_id provided")
       (body-fn))))
