@@ -30,7 +30,7 @@ export type ChartColorV2 =
 
 /**
  * Metabase color keys without accent0 - accent7.
- * Those come from `chartColors`.
+ * Those will be transformed from `chartColors`.
  */
 type MetabaseColorKeyWithoutAccents = Exclude<
   MetabaseColorKey,
