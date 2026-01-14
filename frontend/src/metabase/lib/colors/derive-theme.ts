@@ -37,11 +37,6 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
-  // Transform modular embedding chart colors to accent0 - accent7
-  const embeddingChartColors = mapChartColorsToAccents(
-    embeddingThemeOverride?.chartColors ?? [],
-  );
-
   return {
     version: 2,
     colors: {
@@ -49,7 +44,7 @@ export function deriveFullMetabaseTheme({
       ...mapChartColorsToAccents(baseTheme.chartColors),
       ...whitelabelColors,
       ...filteredEmbeddingColors,
-      ...embeddingChartColors,
+      ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
     } as Record<MetabaseColorKey, string>,
   };
 }
