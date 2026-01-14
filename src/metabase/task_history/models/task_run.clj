@@ -61,6 +61,11 @@
   "The ID of the current task run. Set by [[with-task-run]]."
   nil)
 
+(defn current-run-id
+  "Returns the current task run ID, or nil if not inside a [[with-task-run]] block."
+  []
+  *run-id*)
+
 (defn with-run-id-meta
   "Given a map, returns the map with `*run-id*` attached to metadata.
    Used for propagation of run context across threads (e.g., async notification dispatch)."

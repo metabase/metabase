@@ -212,11 +212,12 @@
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
+        run-id          (task-run/current-run-id)
         th-id           (t2/insert-returning-pk! :model/TaskHistory
                                                  (cond-> (assoc info
                                                                 :status     :started
                                                                 :started_at (t/instant))
-                                                   task-run/*run-id* (assoc :run_id task-run/*run-id*)))
+                                                   run-id (assoc :run_id run-id)))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]

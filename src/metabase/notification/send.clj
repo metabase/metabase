@@ -177,8 +177,8 @@
           (throw e))
         (finally
           (prometheus/dec! :metabase-notification/concurrent-tasks)
-          (when task-history/*run-id*
-            (task-history/complete-task-run! task-history/*run-id*))))
+          (when-let [run-id (task-history/current-run-id)]
+            (task-history/complete-task-run! run-id))))
       (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
       (when-let [total-time (since-trigger-ms notification-info)]
         (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
