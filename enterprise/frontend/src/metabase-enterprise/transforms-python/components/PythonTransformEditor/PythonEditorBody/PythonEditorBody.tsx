@@ -27,6 +27,7 @@ type PythonEditorBodyProps = {
   source: string;
   proposedSource?: string;
   isRunnable: boolean;
+  readOnly?: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
   onCancel?: () => void;
@@ -45,6 +46,7 @@ export function PythonEditorBody({
   proposedSource,
   onChange,
   isRunnable,
+  readOnly,
   onRun,
   onCancel,
   isRunning,
@@ -94,7 +96,7 @@ export function PythonEditorBody({
             </>
           )}
           <RunButtonWithTooltip
-            disabled={!isRunnable}
+            disabled={!isRunnable || readOnly}
             isRunning={isRunning}
             isDirty={isDirty}
             onRun={onRun}
@@ -102,7 +104,11 @@ export function PythonEditorBody({
             getTooltip={() => t`Run Python script`}
           />
         </Stack>
-        <SharedLibraryActions source={source} onChange={onChange} />
+        <SharedLibraryActions
+          source={source}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
       </Flex>
     </MaybeResizableBox>
   );
@@ -138,14 +144,20 @@ function MaybeResizableBox({
 function SharedLibraryActions({
   source,
   onChange,
+  readOnly,
 }: {
   source: string;
   onChange: (source: string) => void;
+  readOnly?: boolean;
 }) {
   return (
     <Group className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportButton source={source} onChange={onChange} />
-      <SharedLibraryEditLink />
+      <SharedLibraryImportButton
+        source={source}
+        onChange={onChange}
+        disabled={readOnly}
+      />
+      <SharedLibraryEditLink disabled={readOnly} />
     </Group>
   );
 }
@@ -153,9 +165,11 @@ function SharedLibraryActions({
 function SharedLibraryImportButton({
   source,
   onChange,
+  disabled,
 }: {
   source: string;
   onChange: (source: string) => void;
+  disabled?: boolean;
 }) {
   const label = t`Import common library`;
 
@@ -169,14 +183,18 @@ function SharedLibraryImportButton({
 
   return (
     <Tooltip label={label}>
-      <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
+      <ActionIcon
+        aria-label={label}
+        onClick={handleToggleSharedLib}
+        disabled={disabled}
+      >
         <Icon name="reference" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );
 }
 
-function SharedLibraryEditLink() {
+function SharedLibraryEditLink({ disabled }: { disabled?: boolean }) {
   const label = t`Edit common library`;
 
   return (
@@ -186,6 +204,7 @@ function SharedLibraryEditLink() {
         target="_blank"
         aria-label={label}
         to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
+        disabled={disabled}
       >
         <Icon name="pencil" c="text-primary" />
       </ActionIcon>

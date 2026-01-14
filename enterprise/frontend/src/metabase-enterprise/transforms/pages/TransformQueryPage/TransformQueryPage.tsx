@@ -193,6 +193,8 @@ function TransformQueryPageBody({
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
               isDirty={isDirty}
+              readOnly={!isEditMode}
+              transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}

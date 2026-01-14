@@ -9,6 +9,7 @@ import { isPythonTransformSource } from "../../utils";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { PythonTransformTopBar } from "./PythonTransformTopBar";
 import { useTestPythonTransform } from "./hooks";
 import { updateTransformSignature } from "./utils";
 
@@ -16,6 +17,8 @@ export function PythonTransformEditor({
   source,
   proposedSource,
   isDirty,
+  readOnly,
+  transformId,
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
@@ -52,6 +55,9 @@ export function PythonTransformEditor({
   };
 
   const handleCmdEnter = () => {
+    if (readOnly) {
+      return;
+    }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
@@ -62,31 +68,40 @@ export function PythonTransformEditor({
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
-    <Flex h="100%" w="100%">
-      <PythonDataPicker
-        database={source["source-database"]}
-        tables={source["source-tables"]}
-        onChange={handleDataChange}
+    <Flex h="100%" w="100%" direction="column">
+      <PythonTransformTopBar
+        databaseId={source["source-database"]}
+        readOnly={readOnly}
+        transformId={transformId}
       />
-      <Stack w="100%" h="100%" gap={0}>
-        <PythonEditorBody
-          isRunnable={isPythonTransformSource(source)}
-          isRunning={isRunning}
-          isDirty={isDirty}
-          onRun={run}
-          onCancel={cancel}
-          source={source.body}
-          proposedSource={proposedSource?.body}
-          onChange={handleScriptChange}
-          withDebugger
-          onAcceptProposed={onAcceptProposed}
-          onRejectProposed={onRejectProposed}
+      <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
+        <PythonDataPicker
+          database={source["source-database"]}
+          tables={source["source-tables"]}
+          onChange={handleDataChange}
+          readOnly={readOnly}
         />
-        <PythonEditorResults
-          isRunning={isRunning}
-          executionResult={executionResult}
-        />
-      </Stack>
+        <Stack w="100%" h="100%" gap={0}>
+          <PythonEditorBody
+            isRunnable={isPythonTransformSource(source)}
+            isRunning={isRunning}
+            isDirty={isDirty}
+            readOnly={readOnly}
+            onRun={run}
+            onCancel={cancel}
+            source={source.body}
+            proposedSource={proposedSource?.body}
+            onChange={handleScriptChange}
+            withDebugger
+            onAcceptProposed={onAcceptProposed}
+            onRejectProposed={onRejectProposed}
+          />
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
+        </Stack>
+      </Flex>
     </Flex>
   );
 }

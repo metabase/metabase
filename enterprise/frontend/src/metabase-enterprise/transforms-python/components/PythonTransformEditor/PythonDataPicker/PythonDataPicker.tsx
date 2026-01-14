@@ -32,6 +32,7 @@ import {
 type PythonDataPickerProps = {
   database?: DatabaseId;
   tables: PythonTransformTableAliases;
+  readOnly?: boolean;
   onChange: (
     database: number,
     tables: PythonTransformTableAliases,
@@ -42,6 +43,7 @@ type PythonDataPickerProps = {
 export function PythonDataPicker({
   database,
   tables,
+  readOnly,
   onChange,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
@@ -162,6 +164,7 @@ export function PythonDataPicker({
           selectedDatabaseId={database}
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
+          readOnly={readOnly}
           databaseIsDisabled={(database: Database) =>
             !doesDatabaseSupportTransforms(database) ||
             !hasFeature(database, "transforms/python")
@@ -187,12 +190,12 @@ export function PythonDataPicker({
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
+                disabled={isLoadingTables || readOnly}
               />
             ))}
             <AddTableButton
               onClick={handleAddTable}
-              disabled={availableTables.length === 0}
+              disabled={availableTables.length === 0 || readOnly}
             />
           </Stack>
         </Box>
