@@ -141,7 +141,9 @@
                                  update-in [:expressions 0]
                                  lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
-              errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
+              errors (dependencies/errors-from-proposed-edits {:card [card']}
+                                                              :base-provider provider
+                                                              :graph graph)]
           (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
                           transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
                   errors))
@@ -155,8 +157,35 @@
           (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
                                                              :base-provider provider
                                                              :graph graph))))))))
-
 (deftest ^:parallel sql-snippet->card->transform->cards-test
+  (testing "changing a snippet correctly finds downstream errors when asked"
+    (let [{:keys [provider graph sql-transform snippet-inner]
+           {direct-sql-card-id       :id} :sql-base
+           {transformed-sql-card-id  :id} :sql-transform-sql-consumer
+           {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
+      (testing "when breaking the inner snippet with a nonexistent table"
+        (let [snippet' (assoc snippet-inner
+                              :content       "nonexistent_table"
+                              :template-tags {})
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph
+                                                                :include-native? true)]
+          ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
+          ;; queries that consume the transform's table.
+          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
+                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
+                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
+                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
+                  errors))
+          (is (= #{:card :transform}
+                 (set (keys errors))))
+          (is (= #{direct-sql-card-id transformed-sql-card-id transformed-mbql-card-id}
+                 (set (keys (:card errors)))))
+          (is (= #{(:id sql-transform)}
+                 (set (keys (:transform errors))))))))))
+
+(deftest ^:parallel sql-snippet-without-including-native-test
   (testing "changing a snippet correctly ignores downstream errors"
     (let [{:keys [provider graph sql-transform snippet-inner]
            {direct-sql-card-id       :id} :sql-base

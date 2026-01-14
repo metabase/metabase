@@ -112,12 +112,7 @@
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
   detected."
   ([edits :- ::updates-map
-    & {:keys [base-provider graph include-native?]}
-    :- [:maybe
-        [:map
-         [:base-provider  {:optional true} ::lib.schema.metadata/metadata-provider]
-         [:graph          {:optional true} ::graph/graph]
-         [:include-native {:optional true} :boolean]]]]
+    & {:keys [base-provider graph include-native?]}]
    (if base-provider
      (-> base-provider
          (metadata-provider edits :graph graph :include-native? include-native?)
