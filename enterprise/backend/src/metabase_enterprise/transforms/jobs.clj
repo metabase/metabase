@@ -136,8 +136,6 @@
         by-owner (group-by (comp :creator_id :transform) failures)]
     (doseq [[user-id failures] by-owner
             :let [user (t2/select-one :model/User user-id)]]
-      (println "Sending message:")
-      (prn user)
       (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
                             :recipients [(:email user)]
                             :message-type :text
