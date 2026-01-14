@@ -12,9 +12,12 @@ const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
 ];
 
 const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
+  "table",
+  "question",
   "model",
   "metric",
   "segment",
+  "measure",
   "snippet",
 ];
 

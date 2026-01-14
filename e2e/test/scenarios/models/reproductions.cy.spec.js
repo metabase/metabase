@@ -505,9 +505,6 @@ describe("filtering based on the remapped column name should result in a correct
           'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
       },
     }).then(({ body: { id } }) => {
-      // Visit the question to first load metadata
-      H.visitQuestion(id);
-
       // Turn the question into a model
       cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
