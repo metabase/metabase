@@ -187,6 +187,7 @@
         tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
     (-> [run]
         hydrate-entity-names
+        hydrate-task-counts
         first
         (assoc :tasks tasks))))
 
