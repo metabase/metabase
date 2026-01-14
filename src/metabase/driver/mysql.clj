@@ -120,6 +120,11 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defn mysql?
+  "Returns true if the database is MySQL. Assumes the database has been synced so `:dbms_version` is present."
+  [database]
+  (-> database :dbms_version :flavor (= "MySQL")))
+
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
@@ -146,7 +151,7 @@
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (not (mariadb? db))
+       (mysql? db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
