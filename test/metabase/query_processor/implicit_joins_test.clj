@@ -324,7 +324,7 @@
             (mt/with-native-query-testing-context query
                 ;; 3 logs for events after Jan 15 (Groundhog Day + March)
               (is (= [[3]]
-                     (mt/rows (qp/process-query query)))))))
+                     (mt/formatted-rows [int] (qp/process-query query)))))))
         (testing "Breakout on coerced field via implicit join"
             ;; This would fail with "function date_trunc(unknown, integer) does not exist"
             ;; if coercion is not applied to the implicitly joined field.
@@ -353,7 +353,7 @@
             (mt/with-native-query-testing-context query
                 ;; 3 logs for events after Jan 15 (Groundhog Day + March)
               (is (= [[3]]
-                     (mt/rows (qp/process-query query)))))))
+                     (mt/formatted-rows [int] (qp/process-query query)))))))
         (testing "Breakout on coerced field via explicit join"
           (let [query (mt/mbql-query logs
                         {:joins       [{:source-table $$events
