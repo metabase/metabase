@@ -413,8 +413,6 @@ export function createLegendItemClickObject(
 
 type CreateTestQueryOpts = {
   databaseId: DatabaseId;
-  metadata?: Metadata;
-
   stages: TestQueryStage[];
 };
 
@@ -492,11 +490,10 @@ type TestQueryOrderBy = {
   direction: Lib.OrderByDirection;
 };
 
-export function createTestQuery({
-  databaseId,
-  metadata = SAMPLE_METADATA,
-  stages,
-}: CreateTestQueryOpts): Lib.Query {
+export function createTestQuery(
+  metadataProvider: Lib.MetadataProvider,
+  { stages }: CreateTestQueryOpts,
+): Lib.Query {
   if (stages.length === 0) {
     throw new Error("query must have at least one stage");
   }
@@ -505,7 +502,6 @@ export function createTestQuery({
     throw new Error("query must have a source in the first stage");
   }
 
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const firstSource = findSource(metadataProvider, stages[0].source);
 
   const initialQuery = Lib.queryFromTableOrCardMetadata(
@@ -520,8 +516,11 @@ export function createTestQuery({
   );
 }
 
-export function createTestJsQuery(opts: CreateTestQueryOpts) {
-  return Lib.toJsQuery(createTestQuery(opts));
+export function createTestJsQuery(
+  metadataProvider: Lib.MetadataProvider,
+  opts: CreateTestQueryOpts,
+) {
+  return Lib.toJsQuery(createTestQuery(metadataProvider, opts));
 }
 
 function appendTestQueryStage(
