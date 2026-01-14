@@ -10,60 +10,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn- assert-keep-children-order
-  ([expected input]
-   (assert-keep-children-order expected input identity))
-  ([expected input recur?]
-   (is (= expected
-          (#'deps.metadata-update/keep-children recur? input)))))
-
-(deftest ^:parallel keep-children-handles-simple-parents-test
-  (testing "keep-children puts parents before children"
-    (assert-keep-children-order
-     [[:card 4] [:card 3] [:card 2]]
-     {[:card 4] [[:card 3]]
-      [:card 3] [[:card 2]]})))
-
-(deftest ^:parallel keep-children-sorts-nodes-at-same-level-test
-  (testing "keep-children sorts sibling nodes"
-    (assert-keep-children-order
-     [[:card 6] [:card 2] [:card 4] [:card 7] [:card 3] [:card 5]]
-     {[:card 6] [[:card 2]
-                 [:card 4]]
-      [:card 7] [[:card 3]
-                 [:card 5]]})))
-
-(deftest ^:parallel keep-children-handles-multiple-parents-test
-  (testing "keep-children handles children with multiple parents"
-    (assert-keep-children-order
-     [[:card 2] [:card 4] [:card 3]]
-     {[:card 2] [[:card 3]
-                 [:card 4]]
-      [:card 4] [[:card 3]]})))
-
-(deftest ^:parallel keep-children-ignores-children-when-asked-test
-  (testing "keep-children ignores children when asked"
-    (assert-keep-children-order
-     [[:card 2] [:card 3] [:card 4]]
-     {[:card 2] [[:card 3]
-                 [:card 4]]
-      [:card 5] [[:card 6]
-                 [:card 7]]}
-     (fn [node]
-       (if (= node [:card 5])
-         ::deps.metadata-update/stop
-         node)))))
-
-(deftest ^:parallel keep-children-recurses-through-nodes-test
-  (testing "keep-children ignores nil values while recursing through the node"
-    (assert-keep-children-order
-     [[:card 3] [:card 4]]
-     {[:segment 2] [[:card 3]
-                    [:card 4]]}
-     (fn [[node-type _node-id :as node]]
-       (when (= node-type :card)
-         node)))))
-
 (defn assert-traverses-grandchild [{:keys [grandchild-dependency-type grandchild-data should-traverse? should-include?]}]
   (let [mp (mt/metadata-provider)
         query (->> (mt/id :products)

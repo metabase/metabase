@@ -8,6 +8,7 @@
 
   Each graph defines an arbitrary **key**. This can be any hash map key, such as a number, a `[type id]` pair, etc."
   (:require
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr])
   #?@(:clj ((:import java.util.LinkedHashSet))))
@@ -19,7 +20,7 @@
     "Given a graph and a seq of keys, returns a map from each input key to the set of keys **directly reachable** from
     that key.
 
-    If you want a *transitive* search, call [[transitive]].
+    If you want a *transitive* search, call [[transitive]] or [[transitive-children-of]].
 
     Contract details:
     - If a key is not known in the graph, it should be missing from the output map.
@@ -63,16 +64,81 @@
   - Makes no guarantee about the order of keys at the same \"level\".
     - That is, if two keys `k1` and `k2` are reachable in no fewer than `n` steps from the starters, then `k1` might
       precede or follow `k2` in the output seq."
-  [graph key-seq]
-  (let [{:keys [insert-many! seen? ->iterable]} (stable-iteration-set)]
-    (insert-many! key-seq)
-    (loop [new-keys key-seq]
-      (if (seq new-keys)
-        (let [k->children  (children-of graph new-keys)
-              new-children (into #{} (comp cat (remove seen?)) (vals k->children))]
-          (insert-many! new-children)
-          (recur new-children))
-        (drop (count key-seq) (->iterable))))))
+  ([graph key-seq]
+   (transitive graph key-seq (constantly true)))
+  ([graph key-seq filter]
+   (let [{:keys [insert-many! seen? ->iterable]} (stable-iteration-set)]
+     (insert-many! key-seq)
+     (loop [new-keys key-seq]
+       (if (seq new-keys)
+         (let [k->children  (children-of graph new-keys)
+               new-children (into #{} (comp cat (remove seen?)) (vals k->children))]
+           (insert-many! new-children)
+           (recur new-children))
+         (drop (count key-seq) (->iterable)))))))
+
+(defn transitive-children-of
+  "Given a graph and `key-seq`, finds all transitive children and returns a map of `{parent #{child}}`.
+
+  Also takes in an optional filter for those children.
+
+  Effectively, this is just `children-of` except transitive children are included and the potential filter."
+  ([graph key-seq]
+   (transitive-children-of graph key-seq (constantly true)))
+  ([graph key-seq filter-fn]
+   (loop [to-traverse (into #{} key-seq)
+          child-map {}]
+     (let [new-children (->> (children-of graph to-traverse)
+                             (m/map-vals #(into #{} (filter filter-fn) %)))
+           new-traverse (into #{}
+                              (comp (remove child-map) cat)
+                              (vals new-children))
+           new-child-map (into child-map new-children)]
+       (if (seq new-traverse)
+         (recur new-traverse new-child-map)
+         new-child-map)))))
+
+(defn keep-children
+  "Iterates through a child map, calls `f` for each node, and returns the non-nil results as a list.
+
+  If `f` ever returns `:metabase.graph.core/stop`, `keep-children` does not include that in the results and does not
+  recurse down the current node's children."
+  [f children]
+  (let [all-nodes (-> (into #{}
+                            (mapcat (fn [[parent current-children]]
+                                      (conj current-children parent)))
+                            children)
+                      sort)
+        full-parent-map (->> children
+                             (mapcat (fn [[parent current-children]]
+                                       (map (fn [child]
+                                              {child #{parent}})
+                                            current-children)))
+                             (apply merge-with into))]
+    (loop [nodes-remaining all-nodes
+           parent-map full-parent-map
+           ignored #{}
+           result []]
+      (if-let [next-node (some #(when-not (or (seq (parent-map %))
+                                              (ignored %))
+                                  %)
+                               nodes-remaining)]
+        (let [new-value (f next-node)
+              new-nodes-remaining (remove #(= % next-node) nodes-remaining)]
+          (case new-value
+            nil (recur new-nodes-remaining
+                       (m/map-vals #(disj % next-node) parent-map)
+                       ignored
+                       result)
+            ::stop (recur new-nodes-remaining
+                          parent-map
+                          (conj ignored next-node)
+                          result)
+            (recur new-nodes-remaining
+                   (m/map-vals #(disj % next-node) parent-map)
+                   ignored
+                   (conj result new-value))))
+        result))))
 
 (defn edges-between
   "Calculates the edges within `nodes`, based on `graph`."
