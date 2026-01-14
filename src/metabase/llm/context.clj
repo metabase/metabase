@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.sync.core :as sync]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -78,19 +79,25 @@
             columns))))
 
 (defn- fetch-field-values
-  "Fetch cached FieldValues for columns that have them.
+  "Fetch or create FieldValues for columns that should have them.
+   Uses get-or-create-full-field-values! which will:
+   - Create field values if missing and field should have them
+   - Update field values if inactive (not used recently)
+   - Query source database if necessary to populate values
    Returns map of field-id -> values vector."
   [columns]
   (let [field-ids (->> columns
                        (keep :id)
-                       (filter pos-int?))]
+                       (filter pos-int?)
+                       set)]
     (when (seq field-ids)
-      (let [fv-map (field-values/batched-get-latest-full-field-values field-ids)]
+      (let [fields (t2/select :model/Field :id [:in field-ids])]
         (into {}
-              (keep (fn [[field-id fv]]
-                      (when-let [values (not-empty (:values fv))]
-                        [field-id values])))
-              fv-map)))))
+              (keep (fn [field]
+                      (when-let [fv (field-values/get-or-create-full-field-values! field)]
+                        (when-let [values (not-empty (:values fv))]
+                          [(:id field) values]))))
+              fields)))))
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
@@ -106,6 +113,24 @@
                      [id {:table table-name :field name}])))
             (t2/select [:model/Field :id :name :table_id]
                        :id [:in target-ids])))))
+
+;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
+
+(defn- enrich-fingerprints-on-demand!
+  "For columns missing fingerprints, trigger re-fingerprinting.
+   Returns a map of field-id -> fingerprint for columns that were missing them.
+   This queries the source database to compute fingerprints if they don't exist."
+  [columns]
+  (let [missing-fp-ids (->> columns
+                            (filter #(and (:id %) (nil? (:fingerprint %))))
+                            (map :id)
+                            (filter pos-int?)
+                            set)]
+    (when (seq missing-fp-ids)
+      (let [fields (t2/select :model/Field :id [:in missing-fp-ids])]
+        (doseq [field fields]
+          (sync/refingerprint-field! field))
+        (t2/select-pk->fn :fingerprint :model/Field :id [:in missing-fp-ids])))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
 
@@ -123,6 +148,102 @@
   (when (and earliest latest)
     (let [fmt-date #(some-> % (subs 0 (min 10 (count %))))]
       (str (fmt-date earliest) " to " (fmt-date latest)))))
+
+(defn- format-text-stats
+  "Format text fingerprint as readable string.
+   Includes average-length from type fingerprint and distinct-count/nil% from global."
+  [type-fp global-fp]
+  (let [{:keys [average-length]} type-fp
+        {:keys [distinct-count nil%]} global-fp
+        parts (cond-> []
+                distinct-count
+                (conj (str "distinct: " distinct-count))
+
+                (and nil% (pos? nil%))
+                (conj (str "nil: " (format "%.0f%%" (* 100 nil%))))
+
+                (and average-length (> average-length 0))
+                (conj (str "avg-len: " (format "%.0f" (double average-length)))))]
+    (when (seq parts)
+      (str/join ", " parts))))
+
+(defn- semantic-type->hint
+  "Convert a semantic type to a short hint string for DDL comments.
+   Returns nil for types that don't have a useful short representation."
+  [semantic-type]
+  (case semantic-type
+    ;; Keys and relationships
+    :type/PK       "PK"
+    :type/FK       "FK"
+
+    ;; Contact/Communication
+    :type/Email    "email"
+    :type/URL      "URL"
+    :type/AvatarURL "avatar URL"
+
+    ;; Categorical
+    :type/Category "category"
+    :type/Enum     "enum"
+
+    ;; Financial
+    :type/Currency "currency"
+    :type/Price    "price"
+    :type/Cost     "cost"
+    :type/Discount "discount"
+    :type/GrossMargin "gross margin"
+
+    ;; Identifiers
+    :type/Name     "name"
+    :type/Title    "title"
+    :type/Company  "company"
+    :type/Product  "product"
+
+    ;; Geographic
+    :type/Address  "address"
+    :type/City     "city"
+    :type/State    "state"
+    :type/Country  "country"
+    :type/ZipCode  "zip code"
+    :type/Latitude "latitude"
+    :type/Longitude "longitude"
+
+    ;; Temporal
+    :type/CreationTimestamp "created at"
+    :type/CreationDate      "created date"
+    :type/CreationTime      "created time"
+    :type/UpdatedTimestamp  "updated at"
+    :type/UpdatedDate       "updated date"
+    :type/UpdatedTime       "updated time"
+    :type/CancelationTimestamp "canceled at"
+    :type/CancelationDate   "canceled date"
+    :type/DeletionTimestamp "deleted at"
+    :type/DeletionDate      "deleted date"
+    :type/Birthdate         "birthdate"
+    :type/JoinTimestamp     "joined at"
+    :type/JoinDate          "joined date"
+
+    ;; Quantitative
+    :type/Quantity   "quantity"
+    :type/Score      "score"
+    :type/Percentage "percentage"
+    :type/Duration   "duration"
+    :type/Income     "income"
+
+    ;; User/Person
+    :type/Author     "author"
+    :type/Owner      "owner"
+    :type/User       "user"
+
+    ;; Content
+    :type/Description "description"
+    :type/Comment     "comment"
+    :type/SerializedJSON "JSON"
+
+    ;; Source tracking
+    :type/Source    "source"
+
+    ;; No match - return nil
+    nil))
 
 ;;; -------------------------------------------- Column Comment Building --------------------------------------------
 
@@ -145,6 +266,9 @@
    fk-target-info]
   (let [has-sample-values? (and (not-empty field-values)
                                 (<= (count field-values) max-sample-values))
+        fp-global (get fingerprint :global)
+        fp-type   (some-> fingerprint :type vals first)
+
         parts (cond-> []
                 ;; User-provided description takes priority
                 (not-empty description)
@@ -152,36 +276,34 @@
 
                 ;; FK relationship
                 (and fk_target_field_id fk-target-info)
-                (conj (str "FK->" (:table fk-target-info) "." (:field fk-target-info)))
+                (conj (str "FK->" (:table fk-target-info) "." (:field fk-target-info))))
 
-                ;; Sample values for low-cardinality fields
-                has-sample-values?
-                (conj (str/join ", " (map truncate-value field-values)))
+        ;; Sample values for low-cardinality fields
+        parts (if has-sample-values?
+                (conj parts (str/join ", " (map truncate-value field-values)))
+                ;; Semantic type hint only when no description and no sample values
+                (if-let [sem-hint (and (nil? description)
+                                       semantic_type
+                                       (semantic-type->hint semantic_type))]
+                  (conj parts sem-hint)
+                  parts))
 
-                ;; Semantic type hints (when no description and no sample values)
-                (and (nil? description) (not has-sample-values?) semantic_type)
-                (conj (case semantic_type
-                        :type/PK       "PK"
-                        :type/FK       "FK"
-                        :type/Email    "email"
-                        :type/URL      "URL"
-                        :type/Category "category"
-                        :type/Currency "currency"
-                        nil)))
+        ;; Fingerprint stats based on field type
+        stats (cond
+                ;; Numeric range
+                (and (:min fp-type) (:max fp-type))
+                (format-numeric-stats fp-type)
 
-        ;; Add fingerprint stats
-        fp-type (some-> fingerprint :type vals first)
+                ;; Temporal range
+                (and (:earliest fp-type) (:latest fp-type))
+                (format-temporal-stats fp-type)
 
-        stats-parts (cond-> []
-                      ;; Numeric range
-                      (and (:min fp-type) (:max fp-type))
-                      (conj (format-numeric-stats fp-type))
+                ;; Text stats (distinct count, nil%, avg length)
+                (or (:average-length fp-type) (:distinct-count fp-global))
+                (format-text-stats fp-type fp-global))
 
-                      ;; Temporal range
-                      (and (:earliest fp-type) (:latest fp-type))
-                      (conj (format-temporal-stats fp-type)))
-
-        all-parts (concat parts (remove nil? stats-parts))]
+        all-parts (cond-> parts
+                    stats (conj stats))]
     (when (seq all-parts)
       (str/join "; " all-parts))))
 
@@ -259,12 +381,27 @@
               comment (assoc :comment comment))))
         columns))
 
+(defn- merge-enriched-fingerprints
+  "Merge on-demand fingerprints into columns that were missing them."
+  [columns enriched-fp-map]
+  (if (seq enriched-fp-map)
+    (mapv (fn [col]
+            (if (and (nil? (:fingerprint col))
+                     (contains? enriched-fp-map (:id col)))
+              (assoc col :fingerprint (get enriched-fp-map (:id col)))
+              col))
+          columns)
+    columns))
+
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
    Uses the metadata provider to get visible columns, respecting field
    visibility settings. Includes field descriptions, sample values, and
    statistical information when available.
+
+   For fields missing fingerprints or field values, this function will
+   trigger on-demand creation by querying the source database.
 
    Parameters:
    - database-id: Database containing the tables
@@ -291,9 +428,21 @@
                 ;; Gather all columns for batch operations
                 all-columns (mapcat :columns tables-with-columns)
 
-                ;; Batch fetch FieldValues and FK targets
-                field-values-map (fetch-field-values all-columns)
-                fk-targets-map   (fetch-fk-targets all-columns)
+                ;; On-demand enrichment: trigger fingerprinting for columns missing fingerprints
+                enriched-fp-map (enrich-fingerprints-on-demand! all-columns)
+
+                ;; Update tables with enriched fingerprints
+                tables-with-enriched-fps
+                (mapv (fn [table]
+                        (update table :columns merge-enriched-fingerprints enriched-fp-map))
+                      tables-with-columns)
+
+                ;; Re-gather columns after fingerprint enrichment
+                all-enriched-columns (mapcat :columns tables-with-enriched-fps)
+
+                ;; Batch fetch FieldValues (on-demand) and FK targets
+                field-values-map (fetch-field-values all-enriched-columns)
+                fk-targets-map   (fetch-fk-targets all-enriched-columns)
 
                 ;; Enrich columns with comments
                 enriched-tables
@@ -302,7 +451,7 @@
                                 enrich-columns-with-comments
                                 field-values-map
                                 fk-targets-map))
-                      tables-with-columns)]
+                      tables-with-enriched-fps)]
 
             (when (seq enriched-tables)
               (format-schema-ddl enriched-tables))))))))
