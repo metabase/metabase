@@ -84,28 +84,33 @@ describe("scenarios > data studio > datamodel", () => {
       );
     });
 
-    it("should show 404 if field does not exist", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: 12345, // we're force navigating to a fake field id
-        skipWaiting: true,
-      });
-      cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
+    it(
+      "should show 404 if field does not exist",
+      // We eliminate the flakiness by removing the need to scroll horizontally
+      { viewportWidth: 1600 },
+      () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: 12345, // we're force navigating to a fake field id
+          skipWaiting: true,
+        });
+        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 8);
-      cy.location("pathname").should(
-        "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
-      );
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 8);
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        );
 
-      H.DataModel.get().within(() => {
-        cy.findByText("Field details").should("be.visible");
-        cy.findByText("Not found.").should("be.visible");
-      });
-    });
+        H.DataModel.get().within(() => {
+          cy.findByText("Field details").should("be.visible");
+          cy.findByText("Not found.").should("be.visible");
+        });
+      },
+    );
 
     it(
       "should not show 404 error if database is not selected",
@@ -1341,7 +1346,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1385,7 +1391,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1424,7 +1431,8 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -2784,9 +2792,9 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("Name of the product should be displayed instead of its ID");
           H.openOrdersTable();
-          cy.findByRole("gridcell", { name: "Awesome Concrete Shoes" }).should(
-            "be.visible",
-          );
+          cy.findByRole("gridcell", {
+            name: "Awesome Concrete Shoes",
+          }).should("be.visible");
         });
 
         it("should correctly apply and display custom remapping for numeric values", () => {
@@ -3565,7 +3573,8 @@ describe("scenarios > data studio > datamodel", () => {
       verifyAndCloseToast("Failed to update field order");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
@@ -3711,7 +3720,8 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.checked");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyToastAndUndo("Field order updated");

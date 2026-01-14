@@ -108,6 +108,9 @@
     (str/includes? (ex-message e) "branch")
     "Branch error: Please check the specified branch exists"
 
+    (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
+    "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 

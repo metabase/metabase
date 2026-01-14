@@ -80,7 +80,7 @@ describe("Tenants - management OSS", { tags: "@OSS" }, () => {
   });
 
   it("should not show the popup to enable multi tenancy", () => {
-    cy.visit("/admin/tenants");
+    cy.visit("/admin/people/tenants");
     cy.location("pathname").should("eq", "/admin/people");
 
     cy.findByRole("link", { name: /gear/ }).should("not.exist");
@@ -99,7 +99,7 @@ describe("Tenants - management", () => {
   it("should disable the feature if the token feature is not enabled", () => {
     H.deleteToken();
 
-    cy.visit("/admin/tenants");
+    cy.visit("/admin/people/tenants");
     cy.location("pathname").should("eq", "/admin/people");
 
     cy.findByRole("link", { name: /gear/ }).should("not.exist");
@@ -107,10 +107,10 @@ describe("Tenants - management", () => {
 
   it("should allow users to enable multi tenancy, and create / manage tenants and tenant users", () => {
     // We expect this to redirect to /admin/people
-    cy.visit("/admin/tenants");
+    cy.visit("/admin/people/tenants");
 
     cy.location("pathname").should("eq", "/admin/people");
-    cy.visit("/admin/tenants");
+    cy.visit("/admin/people/tenants");
 
     cy.findByRole("navigation", { name: "people-nav" })
       .findByRole("link", { name: /Groups/ })
@@ -581,7 +581,7 @@ describe("Tenants - management", () => {
 
     createTenants();
 
-    cy.visit("admin/tenants/people");
+    cy.visit("admin/people/tenants/people");
 
     cy.findByRole("link", { name: /Tenant users/ }).click();
     cy.button("Create tenant user").click();
@@ -669,7 +669,7 @@ describe("Tenants - management", () => {
 
     cy.log("check that tenant attributes propagate to users");
 
-    cy.visit("/admin/tenants/people");
+    cy.visit("/admin/people/tenants/people");
     cy.findByTestId("nav-item-external-users").findByText("Tenant users", 1000);
     cy.findByTestId("admin-people-list-table").within(() => {
       cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
@@ -761,7 +761,7 @@ describe("tenant users", () => {
   });
 
   it("should disable users on a tenant when disabling the tenant", () => {
-    cy.visit("/admin/tenants/people");
+    cy.visit("/admin/people/tenants/people");
 
     cy.findAllByRole("row")
       .contains("tr", "donthickey user")
@@ -1045,7 +1045,7 @@ const createTenants = () => {
 
 const createTenantGroupFromUI = (groupName: string) => {
   cy.intercept("POST", "/api/permissions/group").as("createGroup");
-  cy.visit("/admin/tenants/groups");
+  cy.visit("/admin/people/tenants/groups");
 
   // FIXME shouldn't be necessary - caused by slow route guard
   cy.findByTestId("admin-layout-sidebar")

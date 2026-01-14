@@ -22,7 +22,7 @@ export type IconProps = Omit<SVGAttributes<SVGSVGElement>, "color"> &
     tooltipPosition?: FloatingPosition;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
-    color?: ColorName | string;
+    color?: ColorName;
   };
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(

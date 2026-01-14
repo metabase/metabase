@@ -25,7 +25,6 @@ export const BrowseHeader = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;
-  color: ${({ theme }) => theme.fn.themeColor("dark")};
 `;
 
 export const BrowseMain = styled.div`

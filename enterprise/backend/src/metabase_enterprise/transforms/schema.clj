@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.schema
   (:require
    [metabase.lib.metadata.column :as lib.metadata.column]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -35,7 +36,7 @@
   [:multi {:dispatch (comp keyword :type)}
    [:query
     [:map
-     [:type [:= "query"]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query ::queries.schema/query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
@@ -43,7 +44,7 @@
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:map-of :string ::source-table-value]]
-     [:type [:= "python"]]
+     [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
@@ -73,3 +74,10 @@
   [:multi {:dispatch :type}
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
+
+(mr/def ::transform
+  [:map
+   [:description {:optional true} [:maybe :string]]
+   [:name :string]
+   [:source [:ref ::transform-source]]
+   [:target [:ref ::transform-target]]])
