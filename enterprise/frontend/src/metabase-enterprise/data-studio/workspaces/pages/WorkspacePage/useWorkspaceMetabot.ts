@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { push, replace } from "react-router-redux";
+import { useEffect, useRef, useState } from "react";
+import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  useLazyGetTransformQuery,
-  useLazyGetWorkspaceTransformQuery,
-} from "metabase-enterprise/api";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import type {
@@ -22,12 +18,11 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,
   DraftTransformSource,
-  ExternalTransform,
   Transform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
-import type { WorkspaceTab } from "./WorkspaceProvider";
+import { useWorkspace } from "./WorkspaceProvider";
 
 type MetabotConversationSnapshot = Pick<
   MetabotConverstationState,
@@ -44,17 +39,9 @@ type UseWorkspaceMetabotParams = {
   databaseId: DatabaseId | null | undefined;
   transformId: string | undefined;
   isLoading: boolean;
-  workspaceTransforms: WorkspaceTransformItem[];
-  availableTransforms: ExternalTransform[];
   allTransforms: (Transform | WorkspaceTransformItem)[];
-  openedTabs: WorkspaceTab[];
   setTab: (tab: string) => void;
-  setActiveTab: (tab: WorkspaceTab | undefined) => void;
-  addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
-  setActiveTransform: (
-    transform: Transform | WorkspaceTransformItem | undefined,
-  ) => void;
-  sendErrorToast: (message: string) => void;
+  handleNavigateToTransform: (transformId: number) => void;
 };
 
 type UseWorkspaceMetabotReturn = {
@@ -63,7 +50,6 @@ type UseWorkspaceMetabotReturn = {
   metabotContextSource: DraftTransformSource | undefined;
   setMetabotContextTransform: (transform: Transform | undefined) => void;
   setMetabotContextSource: (source: DraftTransformSource | undefined) => void;
-  handleNavigateToTransform: (transformId: number) => void;
 };
 
 export function useWorkspaceMetabot({
@@ -71,19 +57,14 @@ export function useWorkspaceMetabot({
   databaseId,
   transformId,
   isLoading,
-  workspaceTransforms,
-  availableTransforms,
   allTransforms,
-  openedTabs,
   setTab,
-  setActiveTab,
-  addOpenedTransform,
-  setActiveTransform,
-  sendErrorToast,
+  handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
   const dispatch = useDispatch();
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const { addOpenedTransform, openedTabs, setActiveTab, setActiveTransform } = useWorkspace();
 
+  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
     resetConversation: resetMetabotConversation,
@@ -95,9 +76,6 @@ export function useWorkspaceMetabot({
   const metabotSnapshots = useRef<Map<number, MetabotConversationSnapshot>>(
     new Map(),
   );
-
-  const [fetchTransform] = useLazyGetTransformQuery();
-  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
 
   const [metabotContextTransform, setMetabotContextTransform] = useState<
     Transform | undefined
@@ -170,72 +148,6 @@ export function useWorkspaceMetabot({
     };
   }, [workspaceId, dispatch, resetMetabotConversation]);
 
-  // Callback to navigate to a transform (used by metabot reactions and URL param)
-  const handleNavigateToTransform = useCallback(
-    async (targetTransformId: number) => {
-      const transform = [...workspaceTransforms, ...availableTransforms].find(
-        (transform) => {
-          if ("global_id" in transform) {
-            return transform.global_id === targetTransformId;
-          }
-          return transform.id === targetTransformId;
-        },
-      );
-
-      const isWsTransform = !!transform && "global_id" in transform;
-
-      if (transform && !isWsTransform) {
-        const { data } = await fetchTransform(transform.id, true);
-        if (data) {
-          addOpenedTransform(data);
-          setActiveTransform(data);
-          setTab(String(targetTransformId));
-        }
-      } else if (transform && isWsTransform) {
-        const { data } = await fetchWorkspaceTransform({
-          workspaceId,
-          transformId: transform.ref_id,
-        });
-        if (data) {
-          addOpenedTransform(data);
-          setActiveTransform(data);
-          setTab(String(targetTransformId));
-        }
-      } else {
-        sendErrorToast(`Transform ${targetTransformId} not found`);
-      }
-    },
-    [
-      workspaceTransforms,
-      availableTransforms,
-      workspaceId,
-      fetchTransform,
-      fetchWorkspaceTransform,
-      addOpenedTransform,
-      setActiveTransform,
-      setTab,
-      sendErrorToast,
-    ],
-  );
-
-  // Handle transformId URL param - initialize transform tab if redirected from transform page
-  useEffect(() => {
-    if (!transformId || isLoading) {
-      return;
-    }
-
-    (async () => {
-      await handleNavigateToTransform(Number(transformId));
-      dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
-    })();
-  }, [
-    transformId,
-    isLoading,
-    workspaceId,
-    handleNavigateToTransform,
-    dispatch,
-  ]);
-
   // Handle metabot navigation reactions
   useEffect(() => {
     if (!navigateToPath) {
@@ -289,6 +201,5 @@ export function useWorkspaceMetabot({
     metabotContextSource,
     setMetabotContextTransform,
     setMetabotContextSource,
-    handleNavigateToTransform,
   };
 }

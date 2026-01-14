@@ -6,44 +6,52 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
+  useLazyGetTransformQuery,
   useLazyGetWorkspaceTransformQuery,
   useMergeWorkspaceMutation,
   useRunWorkspaceTransformMutation,
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type {
+  ExternalTransform,
   Workspace,
   WorkspaceTablesResponse,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
-import type { OpenTable, WorkspaceTab } from "./WorkspaceProvider";
+import {
+  type OpenTable,
+  type WorkspaceTab,
+  useWorkspace,
+} from "./WorkspaceProvider";
 
 type UseWorkspaceActionsParams = {
   workspaceId: number;
   workspace: Workspace | undefined;
   refetchWorkspaceTables: () => Promise<{ data?: WorkspaceTablesResponse }>;
-  addOpenedTab: (tab: WorkspaceTab) => void;
-  addOpenedTransform: (transform: any) => void;
-  setTab: (tab: string) => void;
+  onOpenTab: (tabId: string) => void;
+  workspaceTransforms: WorkspaceTransformItem[];
+  availableTransforms: ExternalTransform[];
 };
 
 export function useWorkspaceActions({
   workspaceId,
   workspace,
   refetchWorkspaceTables,
-  addOpenedTab,
-  addOpenedTransform,
-  setTab,
+  onOpenTab,
+  workspaceTransforms,
+  availableTransforms,
 }: UseWorkspaceActionsParams) {
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
+  const { addOpenedTab, addOpenedTransform, setActiveTransform } = useWorkspace();
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const [runTransform] = useRunWorkspaceTransformMutation();
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
+  const [fetchTransform] = useLazyGetTransformQuery();
   const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
     new Set(),
   );
@@ -102,9 +110,9 @@ export function useWorkspaceActions({
         table,
       };
       addOpenedTab(tableTab);
-      setTab(tableTab.id);
+      onOpenTab(tableTab.id);
     },
-    [addOpenedTab, setTab],
+    [addOpenedTab, onOpenTab],
   );
 
   const handleRunTransformAndShowPreview = useCallback(
@@ -170,6 +178,55 @@ export function useWorkspaceActions({
     [workspaceId, fetchWorkspaceTransform, addOpenedTransform],
   );
 
+  // Callback to navigate to a transform (used by metabot reactions and URL param)
+  const handleNavigateToTransform = useCallback(
+    async (targetTransformId: number) => {
+      const transform = [...workspaceTransforms, ...availableTransforms].find(
+        (transform) => {
+          if ("global_id" in transform) {
+            return transform.global_id === targetTransformId;
+          }
+          return transform.id === targetTransformId;
+        },
+      );
+
+      const isWsTransform = !!transform && "global_id" in transform;
+
+      if (transform && !isWsTransform) {
+        const { data } = await fetchTransform(transform.id, true);
+        if (data) {
+          addOpenedTransform(data);
+          setActiveTransform(data);
+          onOpenTab(String(targetTransformId));
+        }
+      } else if (transform && isWsTransform) {
+        const { data } = await fetchWorkspaceTransform({
+          workspaceId,
+          transformId: transform.ref_id,
+        });
+        if (data) {
+          addOpenedTransform(data);
+          setActiveTransform(data);
+          onOpenTab(String(targetTransformId));
+        }
+      } else {
+        sendErrorToast(`Transform ${targetTransformId} not found`);
+      }
+    },
+    [
+      workspaceTransforms,
+      availableTransforms,
+      workspaceId,
+      fetchTransform,
+      fetchWorkspaceTransform,
+      addOpenedTransform,
+      setActiveTransform,
+      onOpenTab,
+      sendErrorToast,
+    ],
+  );
+
+
   return {
     isMerging,
     runningTransforms,
@@ -178,6 +235,6 @@ export function useWorkspaceActions({
     handleTableSelect,
     handleRunTransformAndShowPreview,
     handleTransformClick,
-    sendErrorToast,
+    handleNavigateToTransform,
   };
 }

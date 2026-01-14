@@ -13,13 +13,16 @@ import classNames from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import type { Route } from "react-router";
+import { replace } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Sortable } from "metabase/common/components/Sortable";
+import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { ResizeHandle } from "metabase/querying/editor/components/QueryEditor/ResizeHandle";
 import {
   ActionIcon,
@@ -71,10 +74,10 @@ function WorkspacePageContent({
   route,
   transformId,
 }: WorkspacePageProps) {
-  const workspaceId = Number(params.workspaceId);
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
   });
+  const dispatch = useDispatch();
 
   const {
     openedTabs,
@@ -84,7 +87,6 @@ function WorkspacePageContent({
     setActiveTab,
     setActiveTable,
     setActiveTransform,
-    addOpenedTab,
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
@@ -97,6 +99,8 @@ function WorkspacePageContent({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
 
   const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
+
+  const workspaceId = Number(params.workspaceId);
 
   // Data fetching
   const {
@@ -122,14 +126,14 @@ function WorkspacePageContent({
     handleTableSelect,
     handleRunTransformAndShowPreview,
     handleTransformClick,
-    sendErrorToast,
+    handleNavigateToTransform,
   } = useWorkspaceActions({
     workspaceId,
     workspace,
     refetchWorkspaceTables,
-    addOpenedTab,
-    addOpenedTransform,
-    setTab,
+    onOpenTab: setTab,
+    workspaceTransforms,
+    availableTransforms,
   });
 
   // Metabot
@@ -144,16 +148,28 @@ function WorkspacePageContent({
     databaseId: workspace?.database_id,
     transformId,
     isLoading,
-    workspaceTransforms,
-    availableTransforms,
     allTransforms,
-    openedTabs,
     setTab,
-    setActiveTab,
-    addOpenedTransform,
-    setActiveTransform,
-    sendErrorToast,
+    handleNavigateToTransform,
   });
+
+  useEffect(() => {
+    // Handle transformId URL param - initialize transform tab if redirected from transform page
+    if (!transformId || isLoading) {
+      return;
+    }
+
+    (async () => {
+      await handleNavigateToTransform(Number(transformId));
+      dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
+    })();
+  }, [
+    transformId,
+    isLoading,
+    workspaceId,
+    handleNavigateToTransform,
+    dispatch,
+  ]);
 
   const handleTransformChange = useCallback(
     (patch: Partial<EditedTransform>) => {
