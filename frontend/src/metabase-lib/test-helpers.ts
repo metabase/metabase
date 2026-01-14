@@ -510,7 +510,7 @@ function appendTestQueryStage(
   query: Lib.Query,
   stageIndex: number,
 ): Lib.Query {
-  const { source, joins = [], filters = [] } = stage;
+  const { source, joins = [], filters = [], aggregations = [] } = stage;
 
   const queryWithStage = Lib.appendStage(query);
 
@@ -555,7 +555,19 @@ function appendTestQueryStage(
     return Lib.filter(query, stageIndex, filterClause);
   }, queryWithFields);
 
-  return queryWithFilters;
+  // Add aggregations
+  const queryWithAggregations = aggregations.reduce((query, aggregation) => {
+    const aggregationClause = createTestAggregationClause(
+      metadataProvider,
+      sourceMetadata,
+      query,
+      stageIndex,
+      aggregation,
+    );
+    return Lib.aggregate(query, stageIndex, aggregationClause);
+  }, queryWithFilters);
+
+  return queryWithAggregations;
 }
 
 function findSource(
@@ -728,4 +740,31 @@ function createTestFilterClause(
     Lib.filterableColumns(query, stageIndex),
     filter,
   );
+}
+
+function createTestAggregationClause(
+  metadataProvider: Lib.MetadataProvider,
+  sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: TestQueryAggregation,
+): Lib.ExpressionClause {
+  if ("name" in aggregation && "value" in aggregation) {
+    const clause = createTestAggregationClause(
+      metadataProvider,
+      sourceMetadata,
+      query,
+      stageIndex,
+      aggregation.value,
+    );
+    return Lib.withExpressionName(clause, aggregation.name);
+  }
+
+  const clause = expressionToExpressionClause(
+    query,
+    stageIndex,
+    Lib.aggregableColumns(query, stageIndex),
+    aggregation,
+  );
+  return clause;
 }
