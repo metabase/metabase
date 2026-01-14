@@ -83,7 +83,23 @@
                   {:name "orders" :schema nil :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (str/includes? result "CREATE TABLE users"))
-      (is (str/includes? result "CREATE TABLE orders")))))
+      (is (str/includes? result "CREATE TABLE orders"))))
+
+  (testing "formats table with description"
+    (let [tables [{:name "orders"
+                   :schema "public"
+                   :description "Customer purchase transactions"
+                   :columns [{:name "id" :database_type "INTEGER"}]}]
+          result (#'context/format-schema-ddl tables)]
+      (is (= "-- Customer purchase transactions\nCREATE TABLE public.orders (\n  id INTEGER\n);" result))))
+
+  (testing "formats table without description (no comment line)"
+    (let [tables [{:name "orders"
+                   :schema nil
+                   :description nil
+                   :columns [{:name "id" :database_type "INTEGER"}]}]
+          result (#'context/format-schema-ddl tables)]
+      (is (= "CREATE TABLE orders (\n  id INTEGER\n);" result)))))
 
 ;;; ----------------------------------------- build-schema-context Tests -----------------------------------------
 
@@ -321,3 +337,20 @@
           (is (str/includes? result "pending"))
           (is (str/includes? result "shipped"))
           (is (str/includes? result "delivered")))))))
+
+(deftest build-schema-context-with-table-description-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id       (:id db)
+                                          :name        "orders"
+                                          :schema      "public"
+                                          :description "Customer purchase transactions"}
+                   :model/Field    _f1   {:table_id      (:id table)
+                                          :name          "id"
+                                          :database_type "INTEGER"
+                                          :base_type     :type/Integer}]
+      (testing "includes table description as comment above CREATE TABLE"
+        (let [result (context/build-schema-context (:id db) #{(:id table)})]
+          (is (some? result))
+          (is (str/includes? result "-- Customer purchase transactions"))
+          (is (str/includes? result "CREATE TABLE")))))))

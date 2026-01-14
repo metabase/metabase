@@ -178,6 +178,15 @@
              :mode      "rewrite"
              :value     sql}})
 
+(defn- make-context-part
+  "Create an AI SDK v5 context data part for sync responses."
+  [{:keys [system-prompt dialect table-ids]}]
+  {:type    "context"
+   :version 1
+   :value   {:system_prompt system-prompt
+             :dialect       dialect
+             :table_ids     (vec table-ids)}})
+
 (api.macros/defendpoint :post "/generate-sql"
   "Generate SQL from a natural language prompt.
 
@@ -186,13 +195,15 @@
    - At least one table mention in the prompt using [Name](metabase://table/ID) format
    - A database_id parameter
 
-   Returns AI SDK v5 data part format for frontend compatibility."
+   Returns AI SDK v5 data part format for frontend compatibility.
+   If include_context is true, includes a context part with the system prompt."
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
-            [:buffer_id {:optional true} :string]]]
+            [:buffer_id {:optional true} :string]
+            [:include_context {:optional true} :boolean]]]
   :- [:map
       [:parts [:sequential [:map
                             [:type :string]
@@ -203,7 +214,7 @@
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id buffer_id]} body
+  (let [{:keys [prompt database_id buffer_id include_context]} body
         buffer-id (or buffer_id "qb")
         ;; 2. Parse table mentions from prompt
         table-ids (llm.context/parse-table-mentions prompt)]
@@ -242,8 +253,13 @@
             (log-to-file! (str timestamp "_response.txt") (pr-str response)))
 
           ;; 9. Parse and return AI SDK formatted result
-          (let [sql (parse-sql-response response)]
-            {:parts [(make-code-edit-part buffer-id sql)]}))))))
+          (let [sql   (parse-sql-response response)
+                parts (cond-> [(make-code-edit-part buffer-id sql)]
+                        include_context
+                        (conj (make-context-part {:system-prompt system-prompt
+                                                  :dialect       dialect
+                                                  :table-ids     table-ids})))]
+            {:parts parts}))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -255,7 +271,7 @@
 
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
-   Returns {:dialect :system-prompt :buffer-id} or throws appropriate error."
+   Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
   [{:keys [prompt database_id buffer_id]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
@@ -276,7 +292,8 @@
                                                        :dialect-instructions dialect-instructions})]
         {:dialect       dialect
          :system-prompt system-prompt
-         :buffer-id     (or buffer_id "qb")}))))
+         :buffer-id     (or buffer_id "qb")
+         :table-ids     table-ids}))))
 
 (api.macros/defendpoint :post "/generate-sql-streaming"
   "Generate SQL from a natural language prompt with streaming response.
@@ -289,15 +306,17 @@
    Returns SSE stream in AI SDK v5 format:
    - 0:\"text\" - Text delta chunks as SQL is generated
    - 2:{...}   - Final code_edit data part with complete SQL
+   - 2:{...}   - Context data part (if include_context is true)
    - d:{...}   - Finish message"
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
-            [:buffer_id {:optional true} :string]]]
-  (let [{:keys [prompt]} body
-        {:keys [system-prompt buffer-id]} (validate-and-prepare-context body)
+            [:buffer_id {:optional true} :string]
+            [:include_context {:optional true} :boolean]]]
+  (let [{:keys [prompt include_context]} body
+        {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
 
     (when (debug-logging-enabled?)
@@ -322,6 +341,13 @@
                 (write-sse! os (llm.streaming/format-sse-line
                                 :data
                                 (llm.streaming/format-code-edit-part buffer-id final-sql)))
+                (when include_context
+                  (write-sse! os (llm.streaming/format-sse-line
+                                  :data
+                                  (llm.streaming/format-context-part
+                                   {:system-prompt system-prompt
+                                    :dialect       dialect
+                                    :table-ids     table-ids}))))
                 (write-sse! os (llm.streaming/format-sse-line
                                 :finish-message
                                 (llm.streaming/format-finish-message "stop"))))

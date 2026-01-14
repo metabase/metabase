@@ -195,6 +195,15 @@
              :mode      "rewrite"
              :value     sql}})
 
+(defn format-context-part
+  "Create an AI SDK v5 context data part containing the system prompt and metadata."
+  [{:keys [system-prompt dialect table-ids]}]
+  {:type    "context"
+   :version 1
+   :value   {:system_prompt system-prompt
+             :dialect       dialect
+             :table_ids     (vec table-ids)}})
+
 (defn format-finish-message
   "Create an AI SDK v5 finish message."
   [reason]
