@@ -65,34 +65,34 @@
   (testing "keep-children puts parents before children"
     (assert-keep-children-order
      [[:card 4] [:card 3] [:card 2]]
-     {[:card 4] [[:card 3]]
-      [:card 3] [[:card 2]]})))
+     {[:card 4] #{[:card 3]}
+      [:card 3] #{[:card 2]}})))
 
 (deftest ^:parallel keep-children-sorts-nodes-at-same-level-test
   (testing "keep-children sorts sibling nodes"
     (assert-keep-children-order
      [[:card 6] [:card 2] [:card 4] [:card 7] [:card 3] [:card 5]]
-     {[:card 6] [[:card 2]
-                 [:card 4]]
-      [:card 7] [[:card 3]
-                 [:card 5]]})))
+     {[:card 6] #{[:card 2]
+                  [:card 4]}
+      [:card 7] #{[:card 3]
+                  [:card 5]}})))
 
 (deftest ^:parallel keep-children-handles-multiple-parents-test
   (testing "keep-children handles children with multiple parents"
     (assert-keep-children-order
      [[:card 2] [:card 4] [:card 3]]
-     {[:card 2] [[:card 3]
-                 [:card 4]]
-      [:card 4] [[:card 3]]})))
+     {[:card 2] #{[:card 3]
+                  [:card 4]}
+      [:card 4] #{[:card 3]}})))
 
 (deftest ^:parallel keep-children-ignores-children-when-asked-test
   (testing "keep-children ignores children when asked"
     (assert-keep-children-order
      [[:card 2] [:card 3] [:card 4]]
-     {[:card 2] [[:card 3]
-                 [:card 4]]
-      [:card 5] [[:card 6]
-                 [:card 7]]}
+     {[:card 2] #{[:card 3]
+                  [:card 4]}
+      [:card 5] #{[:card 6]
+                  [:card 7]}}
      (fn [node]
        (if (= node [:card 5])
          ::graph/stop
@@ -102,8 +102,8 @@
   (testing "keep-children ignores nil values while recursing through the node"
     (assert-keep-children-order
      [[:card 3] [:card 4]]
-     {[:segment 2] [[:card 3]
-                    [:card 4]]}
+     {[:segment 2] #{[:card 3]
+                     [:card 4]}}
      (fn [[node-type _node-id :as node]]
        (when (= node-type :card)
          node)))))
@@ -131,7 +131,7 @@
                                            [1]))))))
 
 (deftest ^:parallel transitive-children-of-accepts-multiple-starts-test
-  (testing "transitive-children-of only returns connected graph nodes"
+  (testing "transitive-children-of accepts multiple start nodes"
     (let [nodes {1 #{2}
                  2 #{3}
                  3 #{}
@@ -141,15 +141,13 @@
              (graph/transitive-children-of (graph/in-memory nodes)
                                            [1 4]))))))
 
-(deftest ^:parallel transitive-children-of-filters-nodes-test
-  (testing "transitive-children-of only returns connected graph nodes"
-    (let [nodes {1 #{2}
-                 2 #{3}
-                 3 #{4}
-                 4 #{5}}]
+(deftest ^:parallel filtered-graph-test
+  (testing "filtered-graph does the thing"
+    (let [g (graph/in-memory {1 #{2}
+                              2 #{3 5}
+                              3 #{4}})]
       (is (= {1 #{2}
               2 #{3}
               3 #{}}
-             (graph/transitive-children-of (graph/in-memory nodes)
-                                           [1]
-                                           #(<= % 3)))))))
+             (graph/children-of (graph/filtered-graph g #(<= % 3))
+                                [1 2 3]))))))

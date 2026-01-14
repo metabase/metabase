@@ -36,7 +36,7 @@
                should-include? (conj grandchild-id)
                should-traverse? (conj great-grandchild-id))
              (set (#'deps.metadata-update/dependent-mbql-cards
-                   (#'deps.metadata-update/all-mbql-children mp :card parent-id)
+                   (#'deps.metadata-update/mbql-graph mp)
                    :card parent-id)))))))
 
 (deftest ^:parallel dependent-mbql-cards-traverses-cards-test

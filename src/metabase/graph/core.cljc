@@ -10,6 +10,7 @@
   (:require
    [medley.core :as m]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   #?@(:clj ((:import java.util.LinkedHashSet))))
 
@@ -53,7 +54,34 @@
               :seen?        #(.has s %)
               :->iterable   #(es6-iterator-seq (.values s))})))
 
-(defn transitive
+(deftype FilteredGraph [graph filter-fn]
+  Graph
+  (children-of [_this key-seq]
+    (->> (children-of graph key-seq)
+         (m/map-vals #(into #{} (filter filter-fn) %)))))
+
+(defn filtered-graph
+  "Wraps a graph with an implementation that filters any returned children."
+  [graph filter-fn]
+  (->FilteredGraph graph filter-fn))
+
+(defn graph?
+  "Whether `x` is a valid `Graph`."
+  [x]
+  #?(:clj  (extends? Graph (class x))
+     :cljs (satisfies? Graph x)))
+
+(mr/def ::graph
+  "Schema for anything that satisfies the [[Graph]] protocol."
+  [:fn
+   {:error/message "Valid Graph instance"}
+   #'graph?])
+
+(mr/def ::node :any)
+
+(mr/def ::child-map [:map-of ::node [:set ::node]])
+
+(mu/defn transitive :- [:sequential ::node]
   "Given a graph and `key-seq`, returns a seq of all transitive children of those starting keys.
 
   The returned seq:
@@ -64,7 +92,8 @@
   - Makes no guarantee about the order of keys at the same \"level\".
     - That is, if two keys `k1` and `k2` are reachable in no fewer than `n` steps from the starters, then `k1` might
       precede or follow `k2` in the output seq."
-  [graph key-seq]
+  [graph :- ::graph
+   key-seq :- [:sequential ::node]]
   (let [{:keys [insert-many! seen? ->iterable]} (stable-iteration-set)]
     (insert-many! key-seq)
     (loop [new-keys key-seq]
@@ -75,39 +104,37 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
-(defn transitive-children-of
+(mu/defn transitive-children-of :- ::child-map
   "Given a graph and `key-seq`, finds all transitive children and returns a map of `{parent #{child}}`.
 
   Also takes in an optional filter for those children.
 
   Effectively, this is just `children-of` except transitive children are included and the potential filter."
-  ([graph key-seq]
-   (transitive-children-of graph key-seq (constantly true)))
-  ([graph key-seq filter-fn]
-   (loop [to-traverse (into #{} key-seq)
-          child-map {}]
-     (let [new-children (->> (children-of graph to-traverse)
-                             (m/map-vals #(into #{} (filter filter-fn) %)))
-           new-traverse (into #{}
-                              (comp (remove child-map) cat)
-                              (vals new-children))
-           new-child-map (into child-map new-children)]
-       (if (seq new-traverse)
-         (recur new-traverse new-child-map)
-         new-child-map)))))
+  [graph :- ::graph
+   key-seq :- [:sequential ::node]]
+  (loop [to-traverse (into #{} key-seq)
+         child-map {}]
+    (let [new-children (children-of graph to-traverse)
+          new-traverse (into #{}
+                             (comp (remove child-map) cat)
+                             (vals new-children))
+          new-child-map (into child-map new-children)]
+      (if (seq new-traverse)
+        (recur new-traverse new-child-map)
+        new-child-map))))
 
-(defn keep-children
+(mu/defn keep-children :- [:sequential :any]
   "Iterates through a child map, calls `f` for each node, and returns the non-nil results as a list.
 
   Nodes are guaranteed to be in a consistent order, and parents are guaranteed to be before their children.
 
   If `f` ever returns `:metabase.graph.core/stop`, `keep-children` does not include that in the results and does not
   recurse down the current node's children."
-  [f children]
-  (let [all-nodes (-> (into #{}
-                            (mapcat (fn [[parent current-children]]
-                                      (conj current-children parent)))
-                            children)
+  [f :- [:-> ::node :any]
+   children :- ::child-map]
+  (let [all-nodes (-> (into (set (keys children))
+                            cat
+                            (vals children))
                       sort)
         full-parent-map (->> children
                              (mapcat (fn [[parent current-children]]
@@ -153,18 +180,6 @@
                  :to_entity_type   parent-type
                  :to_entity_id     parent-id})]
     edges))
-
-(defn graph?
-  "Whether `x` is a valid `Graph`."
-  [x]
-  #?(:clj  (extends? Graph (class x))
-     :cljs (satisfies? Graph x)))
-
-(mr/def ::graph
-  "Schema for anything that satisfies the [[Graph]] protocol."
-  [:fn
-   {:error/message "Valid Graph instance"}
-   #'graph?])
 
 ;; ## In-memory Graphs
 (deftype InMemoryGraph [adjacency-map]

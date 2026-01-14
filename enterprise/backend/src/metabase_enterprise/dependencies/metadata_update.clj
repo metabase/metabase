@@ -20,41 +20,33 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(mr/def ::node [:tuple ::deps.dependency-types/dependency-types ::deps.dependency-types/entity-id])
-
-(mr/def ::child-map [:map-of ::node [:set ::node]])
-
-(mu/defn- all-mbql-children :- ::child-map
-  [mp         :- ::lib.schema.metadata/metadata-providerable
-   start-type :- ::deps.dependency-types/dependency-types
-   start-id   :- ::deps.dependency-types/entity-id]
-  (let [graph (models.dependency/filtered-graph-dependents
-               nil
-               (fn [type-field _id-field]
-                 [:or
-                  [:= type-field "card"]
-                  [:= type-field "sandbox"]
-                  [:= type-field "segment"]
-                  [:= type-field "measure"]]))
-        start [start-type start-id]]
-    (graph/transitive-children-of graph [start]
-                                  (fn [[type id]]
-                                    (or (not= type :card)
-                                        (-> (lib.metadata/card mp id)
-                                            :dataset-query
-                                            lib/any-native-stage?
-                                            not))))))
+(defn- mbql-graph [mp]
+  (-> (models.dependency/filtered-graph-dependents
+       nil
+       (fn [type-field _id-field]
+         [:or
+          [:= type-field "card"]
+          [:= type-field "sandbox"]
+          [:= type-field "segment"]
+          [:= type-field "measure"]]))
+      (graph/filtered-graph (fn [[type id]]
+                              (or (not= type :card)
+                                  (-> (lib.metadata/card mp id)
+                                      :dataset-query
+                                      lib/any-native-stage?
+                                      not))))
+      graph/cached-graph))
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]
-  [children   :- ::child-map
+  [graph
    start-type :- ::deps.dependency-types/dependency-types
    start-id   :- ::deps.dependency-types/entity-id]
   (let [start [start-type start-id]]
-    (graph/keep-children (fn [[node-type node-id :as node]]
-                           (when (and (= node-type :card)
-                                      (not= node start))
-                             node-id))
-                         children)))
+    (->> (graph/transitive graph [[start-type start-id]])
+         (keep (fn [[node-type node-id :as node]]
+                 (when (and (= node-type :card)
+                            (not= node start))
+                   node-id))))))
 
 (mr/def ::column-metadata-edits [:map-of :keyword :any])
 (mr/def ::card-metadata-edits [:map-of :string ::column-metadata-edits])
@@ -165,8 +157,8 @@
   ;; still need to account for cases where we just upgraded an instance and the backfill job hasn't finished yet.
   (let [db-id (-> (lib.metadata/database original-mp)
                   :id)
-        children (all-mbql-children original-mp start-type start-id)
-        cards (dependent-mbql-cards children start-type start-id)
+        graph (mbql-graph original-mp)
+        cards (dependent-mbql-cards graph start-type start-id)
         previous-metadata (lib-be/instance->metadata previous-object metadata-type)
         pre-update-mp (deps.metadata-provider/override-metadata-provider
                        {:base-provider (fresh-mp db-id)
@@ -178,19 +170,19 @@
                                             (updated-metadata mp card edits))
                      :dependent-ids {:card cards}})
         start [start-type start-id]
-        updates (graph/keep-children
-                 (fn [[node-type node-id :as node]]
-                   (if (or (not= node-type :card)
-                           (= node start))
-                     nil
-                     (let [new-metadata (-> (lib.metadata/card updated-mp node-id)
-                                            :result-metadata)
-                           old-metadata (-> (lib.metadata/card original-mp node-id)
-                                            :result-metadata)]
-                       (if (= new-metadata old-metadata)
-                         ::graph/stop
-                         [node-id new-metadata]))))
-                 children)]
+        updates (->> (graph/transitive-children-of graph [start])
+                     (graph/keep-children
+                      (fn [[node-type node-id :as node]]
+                        (if (or (not= node-type :card)
+                                (= node start))
+                          nil
+                          (let [new-metadata (-> (lib.metadata/card updated-mp node-id)
+                                                 :result-metadata)
+                                old-metadata (-> (lib.metadata/card original-mp node-id)
+                                                 :result-metadata)]
+                            (if (= new-metadata old-metadata)
+                              ::graph/stop
+                              [node-id new-metadata]))))))]
 
     (doseq [[card-id new-metadata] updates]
       (t2/update! :model/Card card-id {:result_metadata new-metadata}))))

@@ -41,7 +41,7 @@
    (lib.metadata.protocols/clear-cache! base-provider)
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider
-      {:metadata-provider base-provider
+      {:base-provider base-provider
        :updated-entities updated-entities
        :dependent-ids dependents}))))
 
