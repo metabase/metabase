@@ -18,7 +18,7 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 The path to embedding settings depends on your Metabase version:
 
 - **OSS*: **Admin settings > Embedding**
-- **Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
+- **Starter/Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
 
 Toggle **Enable guest embeds**.
 
