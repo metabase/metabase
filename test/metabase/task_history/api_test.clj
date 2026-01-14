@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success"})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success" :logs nil :run_id false})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
