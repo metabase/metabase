@@ -106,7 +106,7 @@
         (vswap! failures conj {:transform transform
                                :message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
 
-    (if @failures
+    (if (seq @failures)
       {:status :failed
        :failures @failures}
       {:status :succeeded})))
