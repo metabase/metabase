@@ -134,7 +134,7 @@
   [runs]
   (let [grouped (group-by :entity_type runs)]
     (mapcat (fn [[entity-type model]]
-              (hydrate-entity-names-for-type (grouped (name entity-type)) model))
+              (hydrate-entity-names-for-type (grouped entity-type) model))
             entity-type->model)))
 
 (defn- hydrate-task-counts
