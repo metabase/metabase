@@ -11,13 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number
         required: true
   workflow_call:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number # needs to be a number to pass variables
         required: true
 
@@ -39,7 +39,7 @@ jobs:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
       - name: Install Dependencies
-        run: bun --cwd release install --frozen-lockfile && npm i -g tsx
+        run: bun install --frozen-lockfile --cwd release && npm i -g tsx
       - name: Build release scripts
         run: bun --cwd release run build
       - name: Get version number

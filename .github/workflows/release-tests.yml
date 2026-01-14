@@ -38,7 +38,7 @@ jobs:
           sparse-checkout: "release"
       - uses: oven-sh/setup-bun@v2
       - name: prepare dependencies in release directory
-        run: bun --cwd release install --frozen-lockfile
+        run: bun install --frozen-lockfile --cwd release
       - name: Run frontend type-check
         run: bun --cwd release run type-check
 
@@ -53,7 +53,7 @@ jobs:
           sparse-checkout: "release"
       - uses: oven-sh/setup-bun@v2
       - name: prepare dependencies in release directory
-        run: bun --cwd release install --frozen-lockfile
+        run: bun install --frozen-lockfile --cwd release
       - name: Run release unit tests
         run: bun --cwd release run test:unit
 
@@ -68,7 +68,7 @@ jobs:
           sparse-checkout: "release"
       - uses: oven-sh/setup-bun@v2
       - name: prepare dependencies in release directory
-        run: bun --cwd release install --frozen-lockfile
+        run: bun install --frozen-lockfile --cwd release
       - name: Build release bundle
         run: bun --cwd release run build
       - name: Smoke test release bundle

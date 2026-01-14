@@ -5,16 +5,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        description: "Major Metabase version (e.g. 45, 52, 68)"
         type: number
         required: true
       override_sha:
         description: DANGEROUSLY allow releasing from this commit sha, regardless of the state of CI (can be empty)
         type: string
         required: false
-        default: ''
+        default: ""
   schedule:
-    - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
+    - cron: "0 21 * * 1-5" # every weekday at 4 pm EST/5 pm EDT
 
 jobs:
   auto-patch-trigger:
@@ -27,7 +27,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: bun --cwd release install --frozen-lockfile && bun --cwd release run build
+        run: bun install --frozen-lockfile --cwd release && bun --cwd release run build
       - name: Trigger auto-patch
         uses: actions/github-script@v7
         with:
