@@ -314,7 +314,7 @@ export function TablePickerTreeTable({
             return null;
           }
           const rowCount = row.original.table.estimated_row_count;
-          return rowCount != null && rowCount !== 0 ? (
+          return rowCount != null ? (
             <Box w="100%" ta="center" data-testid="table-expected-rows">
               {formatNumber(rowCount)}
             </Box>

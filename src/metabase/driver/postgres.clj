@@ -258,7 +258,8 @@
                            :else nil]
                           :type]
                          [:d.description :description]
-                         [:stat.n_live_tup :estimated_row_count]]
+                         ;; 0 values can mean both no rows but also no statistics
+                         [[:nullif :stat.n_live_tup 0] :estimated_row_count]]
              :from      [[:pg_catalog.pg_class :c]]
              :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
              :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
