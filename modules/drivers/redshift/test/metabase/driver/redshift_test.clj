@@ -348,8 +348,10 @@
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
+            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+              (is (contains?
+                   (set (map :name (:tables (driver/describe-database :redshift database))))
+                   mview-nm)))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
