@@ -1,5 +1,4 @@
 import type { ComponentType, Dispatch, SetStateAction } from "react";
-import type { InjectedRouter, Route } from "react-router";
 
 import {
   getPerformanceTabMetadata,
@@ -40,8 +39,6 @@ export type PreemptiveCachingSwitchProps = {
 
 export type MetricSettingsPageProps = {
   params: { cardId: string };
-  router?: InjectedRouter;
-  route?: Route;
 };
 
 const getDefaultPluginCaching = () => ({
