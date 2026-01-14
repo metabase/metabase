@@ -9,7 +9,7 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   min-height: 1.7em;
-  max-height: 200px;
+  max-height: 12.5rem;
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
