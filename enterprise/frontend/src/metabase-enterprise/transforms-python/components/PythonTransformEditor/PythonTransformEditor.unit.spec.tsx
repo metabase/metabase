@@ -31,10 +31,6 @@ function setup({
   readOnly = false,
   transformId = 1,
 }: SetupOpts = {}) {
-  const onChangeSource = jest.fn();
-  const onAcceptProposed = jest.fn();
-  const onRejectProposed = jest.fn();
-
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
   setupSearchEndpoints([]);
@@ -44,16 +40,14 @@ function setup({
       source={source}
       readOnly={readOnly}
       transformId={transformId}
-      onChangeSource={onChangeSource}
-      onAcceptProposed={onAcceptProposed}
-      onRejectProposed={onRejectProposed}
+      onChangeSource={jest.fn()}
+      onAcceptProposed={jest.fn()}
+      onRejectProposed={jest.fn()}
     />,
     {
       storeInitialState: createMockState(),
     },
   );
-
-  return { onChangeSource, onAcceptProposed, onRejectProposed };
 }
 
 describe("PythonTransformEditor", () => {

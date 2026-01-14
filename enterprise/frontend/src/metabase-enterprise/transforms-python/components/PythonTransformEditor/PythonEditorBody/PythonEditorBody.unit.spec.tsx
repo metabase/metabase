@@ -27,10 +27,6 @@ function setup({
   onAcceptProposed,
   onRejectProposed,
 }: SetupOpts = {}) {
-  const onChange = jest.fn();
-  const onRun = jest.fn();
-  const onCancel = jest.fn();
-
   renderWithProviders(
     <PythonEditorBody
       source={source}
@@ -40,15 +36,13 @@ function setup({
       isRunning={isRunning}
       isDirty={isDirty}
       withDebugger={withDebugger}
-      onChange={onChange}
-      onRun={onRun}
-      onCancel={onCancel}
+      onChange={jest.fn()}
+      onRun={jest.fn()}
+      onCancel={jest.fn()}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
     />,
   );
-
-  return { onChange, onRun, onCancel };
 }
 
 describe("PythonEditorBody", () => {
@@ -59,13 +53,11 @@ describe("PythonEditorBody", () => {
     });
 
     it("should not render proposed changes buttons when readOnly is true", () => {
-      const onAccept = jest.fn();
-      const onReject = jest.fn();
       setup({
         readOnly: true,
         proposedSource: "# proposed",
-        onAcceptProposed: onAccept,
-        onRejectProposed: onReject,
+        onAcceptProposed: jest.fn(),
+        onRejectProposed: jest.fn(),
       });
 
       expect(
@@ -89,13 +81,11 @@ describe("PythonEditorBody", () => {
     });
 
     it("should render proposed changes buttons when proposedSource and callbacks are provided", () => {
-      const onAccept = jest.fn();
-      const onReject = jest.fn();
       setup({
         readOnly: false,
         proposedSource: "# proposed changes",
-        onAcceptProposed: onAccept,
-        onRejectProposed: onReject,
+        onAcceptProposed: jest.fn(),
+        onRejectProposed: jest.fn(),
       });
 
       expect(
