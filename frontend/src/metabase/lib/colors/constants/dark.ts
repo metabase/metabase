@@ -51,7 +51,7 @@ export const METABASE_DARK_THEME: MetabaseThemeV2 = {
     error: baseColors.lobster[50],
     filter: baseColors.octopus[40],
     focus: baseColors.blue[70],
-    "icon-primary": "var(--mb-color-brand)",
+    "icon-primary": baseColors.brand[40],
     "icon-disabled": baseColors.orionAlphaInverse[30],
     "icon-secondary": baseColors.orionAlphaInverse[50],
     "metabase-brand": baseColors.blue[40],
