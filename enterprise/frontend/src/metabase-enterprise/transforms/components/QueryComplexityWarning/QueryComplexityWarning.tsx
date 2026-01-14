@@ -37,7 +37,11 @@ export const QueryComplexityWarning = ({
   }
 
   return (
-    <Stack gap={variant === "standout" ? "sm" : "md"} {...stackStyleProps}>
+    <Stack
+      gap={variant === "standout" ? "sm" : "md"}
+      {...stackStyleProps}
+      data-testid="query-complexity-warning"
+    >
       {variant === "standout" && (
         <Text fw="bold">{t`We couldn’t add the check automatically.`}</Text>
       )}
