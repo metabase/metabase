@@ -4,12 +4,12 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
-import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
   type MetabaseEmbeddingTheme,
   isThemeV1,
   isThemeV2,
-} from "metabase/embedding-sdk/theme/theme-version";
+} from "metabase/embedding-sdk/theme";
+import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
   deriveFullMetabaseTheme,
   getThemeFromColorScheme,

@@ -5,7 +5,7 @@ import { useContext, useId, useMemo } from "react";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme/theme-version";
+import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
