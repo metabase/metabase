@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import ActionButton from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
   alertIsValid,
@@ -361,26 +362,29 @@ export const CreateOrEditQuestionAlertModal = ({
             onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`Where do you want to send the results?`}
-        >
-          <NotificationChannelsPicker
-            notificationHandlers={notification.handlers}
-            channels={channelSpec ? channelSpec.channels : undefined}
-            onChange={(newHandlers: NotificationHandler[]) => {
-              setNotification({
-                ...notification,
-                handlers: newHandlers,
-              });
-            }}
-            emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={(domains) =>
-              userCanAccessSettings
-                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
-                : t`You're only allowed to email alerts to allowed domains`
-            }
-          />
-        </AlertModalSettingsBlock>
+        {!isEmbeddingSdk() && (
+          <AlertModalSettingsBlock
+            title={t`Where do you want to send the results?`}
+          >
+            <NotificationChannelsPicker
+              notificationHandlers={notification.handlers}
+              channels={channelSpec ? channelSpec.channels : undefined}
+              onChange={(newHandlers: NotificationHandler[]) => {
+                setNotification({
+                  ...notification,
+                  handlers: newHandlers,
+                });
+              }}
+              emailRecipientText={t`Email alerts to:`}
+              getInvalidRecipientText={(domains) =>
+                userCanAccessSettings
+                  ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                  : t`You're only allowed to email alerts to allowed domains`
+              }
+            />
+          </AlertModalSettingsBlock>
+        )}
+
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
