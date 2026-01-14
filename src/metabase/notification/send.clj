@@ -367,7 +367,7 @@
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
                                                  (catch Throwable e
-                                                   (log/error e "Error in notification worker")))))))
+                                                   (log/errorf e "Error in notification worker")))))))
         ensure-enough-workers! (fn []
                                  (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
                                    (log/debugf "Not enough workers, starting a new one %d/%d"
