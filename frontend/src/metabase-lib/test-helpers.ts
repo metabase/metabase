@@ -475,114 +475,6 @@ type TestQueryOperatorExpression = {
   args: TestQueryExpression[];
 };
 
-function findColumn(
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-  columnName: string,
-) {
-  for (const column of columns) {
-    const displayInfo = Lib.displayInfo(query, stageIndex, column);
-    if (columnName === displayInfo.name) {
-      return column;
-    }
-  }
-
-  throw new Error(
-    `[stage ${stageIndex}]: Could not find column named "${columnName}"`,
-  );
-}
-
-function expressionToExpressionParts(
-  query: Lib.Query,
-  stageIndex: number,
-  availableColumns: Lib.ColumnMetadata[],
-  expression: TestQueryExpression,
-): Lib.ExpressionArg | Lib.ExpressionParts {
-  switch (expression.type) {
-    case "literal":
-      return expression.value;
-    case "column":
-      return findColumn(query, stageIndex, availableColumns, expression.name);
-    case "operator":
-      return {
-        operator: expression.operator,
-        options: {},
-        args: expression.args.map((arg) =>
-          expressionToExpressionParts(query, stageIndex, availableColumns, arg),
-        ),
-      };
-  }
-}
-
-function expressionToExpressionClause(
-  query: Lib.Query,
-  stageIndex: number,
-  availableColumns: Lib.ColumnMetadata[],
-  expression: TestQueryExpression,
-): Lib.ExpressionClause {
-  const expressionParts = expressionToExpressionParts(
-    query,
-    stageIndex,
-    availableColumns,
-    expression,
-  );
-  return Lib.expressionClause(expressionParts);
-}
-
-function expressionToJoinConditionExpression(
-  query: Lib.Query,
-  stageIndex: number,
-  joinableColumns: Lib.ColumnMetadata[],
-  expression: TestQueryExpression,
-) {
-  switch (expression.type) {
-    case "column":
-      return findColumn(query, stageIndex, joinableColumns, expression.name);
-    case "operator":
-    case "literal": {
-      return expressionToExpressionClause(
-        query,
-        stageIndex,
-        joinableColumns,
-        expression,
-      );
-    }
-  }
-}
-
-function findSource(
-  provider: Lib.MetadataProvider,
-  source: TestQuerySource,
-): Lib.TableMetadata | Lib.CardMetadata {
-  const metadata = Lib.tableOrCardMetadata(provider, source.id);
-
-  if (!metadata) {
-    throw new Error(`Could not find source metadata for source: ${source.id}`);
-  }
-
-  return metadata;
-}
-
-function findJoinStrategy(
-  query: Lib.Query,
-  stageIndex: number,
-  strategyName: JoinStrategy,
-) {
-  const availableJoinStrategies = Lib.availableJoinStrategies(
-    query,
-    stageIndex,
-  );
-  const joinStrategy = availableJoinStrategies.find(
-    (strategy) =>
-      Lib.displayInfo(query, stageIndex, strategy).shortName === strategyName,
-  );
-  if (!joinStrategy) {
-    throw new Error(`Could not find join strategy "${strategyName}"`);
-  }
-  return joinStrategy;
-}
-
 export function createTestQuery({
   databaseId,
   metadata = SAMPLE_METADATA,
@@ -676,4 +568,112 @@ function appendTestQueryStage(
         );
 
   return queryWithFields;
+}
+
+function findSource(
+  provider: Lib.MetadataProvider,
+  source: TestQuerySource,
+): Lib.TableMetadata | Lib.CardMetadata {
+  const metadata = Lib.tableOrCardMetadata(provider, source.id);
+
+  if (!metadata) {
+    throw new Error(`Could not find source metadata for source: ${source.id}`);
+  }
+
+  return metadata;
+}
+
+function findJoinStrategy(
+  query: Lib.Query,
+  stageIndex: number,
+  strategyName: JoinStrategy,
+) {
+  const availableJoinStrategies = Lib.availableJoinStrategies(
+    query,
+    stageIndex,
+  );
+  const joinStrategy = availableJoinStrategies.find(
+    (strategy) =>
+      Lib.displayInfo(query, stageIndex, strategy).shortName === strategyName,
+  );
+  if (!joinStrategy) {
+    throw new Error(`Could not find join strategy "${strategyName}"`);
+  }
+  return joinStrategy;
+}
+
+function findColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  columnName: string,
+) {
+  for (const column of columns) {
+    const displayInfo = Lib.displayInfo(query, stageIndex, column);
+    if (columnName === displayInfo.name) {
+      return column;
+    }
+  }
+
+  throw new Error(
+    `[stage ${stageIndex}]: Could not find column named "${columnName}"`,
+  );
+}
+
+function expressionToExpressionParts(
+  query: Lib.Query,
+  stageIndex: number,
+  availableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+): Lib.ExpressionArg | Lib.ExpressionParts {
+  switch (expression.type) {
+    case "literal":
+      return expression.value;
+    case "column":
+      return findColumn(query, stageIndex, availableColumns, expression.name);
+    case "operator":
+      return {
+        operator: expression.operator,
+        options: {},
+        args: expression.args.map((arg) =>
+          expressionToExpressionParts(query, stageIndex, availableColumns, arg),
+        ),
+      };
+  }
+}
+
+function expressionToExpressionClause(
+  query: Lib.Query,
+  stageIndex: number,
+  availableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+): Lib.ExpressionClause {
+  const expressionParts = expressionToExpressionParts(
+    query,
+    stageIndex,
+    availableColumns,
+    expression,
+  );
+  return Lib.expressionClause(expressionParts);
+}
+
+function expressionToJoinConditionExpression(
+  query: Lib.Query,
+  stageIndex: number,
+  joinableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+) {
+  switch (expression.type) {
+    case "column":
+      return findColumn(query, stageIndex, joinableColumns, expression.name);
+    case "operator":
+    case "literal": {
+      return expressionToExpressionClause(
+        query,
+        stageIndex,
+        joinableColumns,
+        expression,
+      );
+    }
+  }
 }
