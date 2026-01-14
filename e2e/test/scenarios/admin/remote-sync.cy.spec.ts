@@ -360,7 +360,7 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("new branch", () => {
+      it("new branch for unsynced changes", () => {
         const NEW_BRANCH = `new-branch-${Date.now()}`;
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
           cy.findByRole("radio", { name: /new branch/ }).click();
@@ -369,6 +369,7 @@ describe("Remote Sync", () => {
         });
 
         H.waitForTask({ taskName: "export" });
+        cy.findByRole("dialog").should("not.exist");
 
         H.getGitSyncControls().should("contain.text", NEW_BRANCH);
         H.collectionTable().within(() => {
@@ -380,6 +381,8 @@ describe("Remote Sync", () => {
         H.popover().findByRole("option", { name: "main" }).click();
 
         H.waitForTask({ taskName: "import" });
+        cy.findByRole("dialog").should("not.exist");
+
         H.collectionTable().within(() => {
           cy.findByText("Orders").should("not.exist");
           cy.findByText(REMOTE_QUESTION_NAME).should("exist");
