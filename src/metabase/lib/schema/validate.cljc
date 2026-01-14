@@ -42,12 +42,16 @@
     [:validate/syntax-error               [:ref ::syntax-error]]
     [:validate/validation-exception-error [:ref ::validation-exception-error]]]])
 
-;; TODO(rileythomp): Check if this enum can be reused with existing analysis_finding analyzed_entity_type
 (mr/def ::source-entity-type
   "The type of the source entity causing an error."
   [:enum :table :card])
 
-;; TODO(rileythomp): Simplify these definitions
+(mr/def ::source-entity
+  "Optional source entity tracking fields for dependency analysis."
+  [:map
+   [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
+   [:source-entity-id {:optional true} [:maybe pos-int?]]])
+
 (mr/def ::error-with-source
   "An error with optional source entity information.
    Extends the base error types with source tracking for dependency analysis."
@@ -57,23 +61,8 @@
     [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
     [:source-entity-id {:optional true} [:maybe pos-int?]]]
    [:multi {:dispatch #(-> % :type keyword)}
-    [:validate/missing-column             [:merge [:ref ::missing-column-error]
-                                           [:map
-                                            [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
-                                            [:source-entity-id {:optional true} [:maybe pos-int?]]]]]
-    [:validate/missing-table-alias        [:merge [:ref ::missing-table-alias-error]
-                                           [:map
-                                            [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
-                                            [:source-entity-id {:optional true} [:maybe pos-int?]]]]]
-    [:validate/duplicate-column           [:merge [:ref ::duplicate-column-error]
-                                           [:map
-                                            [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
-                                            [:source-entity-id {:optional true} [:maybe pos-int?]]]]]
-    [:validate/syntax-error               [:merge [:ref ::syntax-error]
-                                           [:map
-                                            [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
-                                            [:source-entity-id {:optional true} [:maybe pos-int?]]]]]
-    [:validate/validation-exception-error [:merge [:ref ::validation-exception-error]
-                                           [:map
-                                            [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
-                                            [:source-entity-id {:optional true} [:maybe pos-int?]]]]]]])
+    [:validate/missing-column             [:merge [:ref ::missing-column-error] [:ref ::source-entity]]]
+    [:validate/missing-table-alias        [:merge [:ref ::missing-table-alias-error] [:ref ::source-entity]]]
+    [:validate/duplicate-column           [:merge [:ref ::duplicate-column-error] [:ref ::source-entity]]]
+    [:validate/syntax-error               [:merge [:ref ::syntax-error] [:ref ::source-entity]]]
+    [:validate/validation-exception-error [:merge [:ref ::validation-exception-error] [:ref ::source-entity]]]]])
