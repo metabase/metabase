@@ -15,14 +15,9 @@ import type {
   WorkspaceTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
-import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
+import { isUnsavedTransform } from "metabase-types/api";
 
-import {
-  type AnyWorkspaceTransform,
-  type EditedTransform,
-  getTransformId,
-  useWorkspace,
-} from "../WorkspaceProvider";
+import { getTransformId, useWorkspace } from "../WorkspaceProvider";
 
 import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
@@ -55,7 +50,7 @@ export const CodeTab = ({
   readOnly,
   onTransformClick,
 }: CodeTabProps) => {
-  const { editedTransforms, hasTransformEdits } = useWorkspace();
+  const { editedTransforms } = useWorkspace();
 
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const [fetchTransform] = useLazyGetTransformQuery();

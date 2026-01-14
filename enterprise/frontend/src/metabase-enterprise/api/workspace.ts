@@ -22,10 +22,10 @@ import type {
   WorkspaceTablesResponse,
   WorkspaceTransform,
   WorkspaceTransformListItem,
+  WorkspaceTransformListResponse,
   WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
   WorkspaceTransformRunResponse,
-  WorkspaceTransformListResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";

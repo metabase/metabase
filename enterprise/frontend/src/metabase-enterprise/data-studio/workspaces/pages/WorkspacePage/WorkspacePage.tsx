@@ -553,7 +553,6 @@ function WorkspacePageContent({
                 {sourceDb && (
                   <AddTransformMenu
                     databaseId={sourceDb.id}
-                    workspaceId={workspaceId}
                     disabled={isArchived}
                   />
                 )}

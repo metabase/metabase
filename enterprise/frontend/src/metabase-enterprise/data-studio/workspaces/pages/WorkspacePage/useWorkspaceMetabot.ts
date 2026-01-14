@@ -18,7 +18,6 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,
   DraftTransformSource,
-  Transform,
   UnsavedTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
@@ -66,8 +65,7 @@ export function useWorkspaceMetabot({
   handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
   const dispatch = useDispatch();
-  const { addOpenedTransform, openedTabs, setActiveTab, setActiveTransform } =
-    useWorkspace();
+  const { openedTabs, setActiveTab } = useWorkspace();
 
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
