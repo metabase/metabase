@@ -13,8 +13,6 @@
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
-   ;; NOTE: we will move this out once we get "pure transforms" module.
-   #_{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [toucan2.core :as t2]))
