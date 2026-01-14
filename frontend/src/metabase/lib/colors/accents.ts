@@ -1,5 +1,5 @@
 import type { ChartColorV2 } from "./types";
-import type { MetabaseColorKey } from "./types/color-keys";
+import type { MetabaseAccentColorKey } from "./types/color-keys";
 
 /**
  * Transforms chartColors array into accent0 - accent7.
@@ -9,19 +9,19 @@ import type { MetabaseColorKey } from "./types/color-keys";
  * - A string: maps to accent{index}
  * - An object with base/tint/shade: maps to accent{index}, accent{index}-light, accent{index}-dark
  *
- * When tints or shades are not provided, they're derived by the palette system.
+ * When tints or shades are not provided they will be derived.
  */
 export function mapChartColorsToAccents(
   chartColors: ChartColorV2[],
-): Partial<Record<MetabaseColorKey, string>> {
-  const mappedColors: Partial<Record<MetabaseColorKey, string>> = {};
+): Partial<Record<MetabaseAccentColorKey, string>> {
+  const mappedColors: Partial<Record<MetabaseAccentColorKey, string>> = {};
 
   chartColors.slice(0, 8).forEach((color, index) => {
     if (!color) {
       return;
     }
 
-    const accentKey = `accent${index}` as MetabaseColorKey;
+    const accentKey = `accent${index}` as MetabaseAccentColorKey;
 
     if (typeof color === "string") {
       mappedColors[accentKey] = color;
@@ -32,11 +32,13 @@ export function mapChartColorsToAccents(
       mappedColors[accentKey] = color.base;
 
       if (color.shade) {
-        mappedColors[`accent${index}-dark` as MetabaseColorKey] = color.shade;
+        mappedColors[`accent${index}-dark` as MetabaseAccentColorKey] =
+          color.shade;
       }
 
       if (color.tint) {
-        mappedColors[`accent${index}-light` as MetabaseColorKey] = color.tint;
+        mappedColors[`accent${index}-light` as MetabaseAccentColorKey] =
+          color.tint;
       }
     }
   });

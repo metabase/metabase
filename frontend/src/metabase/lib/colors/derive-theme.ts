@@ -30,12 +30,12 @@ export function deriveFullMetabaseTheme({
 }): MetabaseDerivedThemeV2 {
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
-  const filteredUserColors = _.omit(
+  const filteredEmbeddingColors = _.omit(
     embeddingThemeOverride?.colors,
     ...PROTECTED_COLORS,
   );
 
-  // Transform embedding user's chart colors to accent0 - accent7
+  // Transform modular embedding chart colors to accent0 - accent7
   const embeddingChartColors = mapChartColorsToAccents(
     embeddingThemeOverride?.chartColors ?? [],
   );
@@ -46,7 +46,7 @@ export function deriveFullMetabaseTheme({
       ...baseTheme.colors,
       ...mapChartColorsToAccents(baseTheme.chartColors),
       ...whitelabelColors,
-      ...filteredUserColors,
+      ...filteredEmbeddingColors,
       ...embeddingChartColors,
     } as Record<MetabaseColorKey, string>,
   };
