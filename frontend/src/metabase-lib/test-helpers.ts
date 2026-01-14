@@ -466,6 +466,7 @@ type TestQueryLiteralExpression = {
 
 type TestQueryColumnExpression = {
   type: "column";
+  table?: string;
   name: string;
 };
 
@@ -563,7 +564,7 @@ function appendTestQueryStage(
           queryWithJoins,
           stageIndex,
           stage.fields.map((field) =>
-            findColumn(queryWithJoins, stageIndex, visibleColumns, field.name),
+            findColumn(queryWithJoins, stageIndex, visibleColumns, field),
           ),
         );
 
@@ -581,6 +582,34 @@ function findSource(
   }
 
   return metadata;
+}
+
+function findColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  column: TestQueryColumnExpression,
+) {
+  const candidates = columns.filter((candidate) => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, candidate);
+    const matchesName = column.name === displayInfo.name;
+    const matchesTableName =
+      column.table == null || column.table === displayInfo.table?.name;
+
+    return matchesName && matchesTableName;
+  });
+
+  if (candidates.length === 0) {
+    throw new Error(`Could not find column named "${column.name}"`);
+  } else if (candidates.length > 1 && column.table == null) {
+    throw new Error(
+      `More than one column named "${column.name}", please disambiguate using table name`,
+    );
+  } else {
+    // Just one candidate found, or they are all from the same table,
+    // so they represent the same column. Return the first candidate.
+    return candidates[0];
+  }
 }
 
 function findJoinStrategy(
@@ -602,24 +631,6 @@ function findJoinStrategy(
   return joinStrategy;
 }
 
-function findColumn(
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-  columnName: string,
-) {
-  for (const column of columns) {
-    const displayInfo = Lib.displayInfo(query, stageIndex, column);
-    if (columnName === displayInfo.name) {
-      return column;
-    }
-  }
-
-  throw new Error(
-    `[stage ${stageIndex}]: Could not find column named "${columnName}"`,
-  );
-}
-
 function expressionToExpressionParts(
   query: Lib.Query,
   stageIndex: number,
@@ -630,7 +641,7 @@ function expressionToExpressionParts(
     case "literal":
       return expression.value;
     case "column":
-      return findColumn(query, stageIndex, availableColumns, expression.name);
+      return findColumn(query, stageIndex, availableColumns, expression);
     case "operator":
       return {
         operator: expression.operator,
@@ -665,7 +676,7 @@ function expressionToJoinConditionExpression(
 ) {
   switch (expression.type) {
     case "column":
-      return findColumn(query, stageIndex, joinableColumns, expression.name);
+      return findColumn(query, stageIndex, joinableColumns, expression);
     case "operator":
     case "literal": {
       return expressionToExpressionClause(
