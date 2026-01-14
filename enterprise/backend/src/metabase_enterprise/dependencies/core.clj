@@ -4,12 +4,9 @@
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
-   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -27,7 +24,7 @@
   ;; TODO: Make this more specific.
   [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
 
-(defn transitive-dependents
+(defn- transitive-dependents
   [& {:keys [graph updated-entities include-native?]}]
   (if include-native?
     (deps.graph/transitive-dependents graph updated-entities)
