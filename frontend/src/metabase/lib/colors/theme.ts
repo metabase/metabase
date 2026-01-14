@@ -1,13 +1,11 @@
+import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
 import type { ColorSettings } from "metabase-types/api/settings";
 
 import { METABASE_DARK_THEME } from "./constants/dark";
 import { METABASE_LIGHT_THEME } from "./constants/light";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
-import type {
-  MetabaseColorKey,
-  MetabaseThemeV2,
-  UserThemeOverride,
-} from "./types";
+import type { MetabaseThemeV2 } from "./types";
+import type { MetabaseColorKey } from "./types/color-keys";
 
 export const getThemeFromColorScheme = (
   colorScheme: "light" | "dark",
@@ -23,7 +21,7 @@ export const getThemeFromColorScheme = (
 interface ThemeOverrideOptions {
   baseTheme: MetabaseThemeV2;
   whitelabelColors?: ColorSettings;
-  userThemeOverride?: UserThemeOverride;
+  userThemeOverride?: MetabaseEmbeddingThemeV2;
 }
 
 export function resolveTheme(options: ThemeOverrideOptions): MetabaseThemeV2 {
@@ -48,6 +46,5 @@ export function resolveTheme(options: ThemeOverrideOptions): MetabaseThemeV2 {
       ...whitelabelColors,
       ...filteredUserColors,
     } as Record<MetabaseColorKey, string>,
-    chartColors: userThemeOverride?.chartColors,
   };
 }

@@ -38,7 +38,7 @@ describe("theme", () => {
       const result = resolveTheme({
         baseTheme: METABASE_LIGHT_THEME,
         whitelabelColors: { brand: "#ff0000" },
-        userThemeOverride: { colors: { brand: "#00ff00" } },
+        userThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
       });
 
       // User overrides takes precedence over instance whitelabel colors
@@ -55,7 +55,7 @@ describe("theme", () => {
 
       const result = resolveTheme({
         baseTheme: METABASE_LIGHT_THEME,
-        userThemeOverride: { colors: userColors },
+        userThemeOverride: { version: 2, colors: userColors },
       });
 
       // All protected colors must remain unchanged

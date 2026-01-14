@@ -1,7 +1,7 @@
-export type { MetabaseColorKey, MetabaseThemeV2, ChartColorV2 } from "./theme";
+export type { MetabaseThemeV2, ChartColorV2 } from "./theme";
 import type { PROTECTED_COLORS } from "../constants/protected-colors";
 
-import type { ChartColorV2, MetabaseColorKey } from "./theme";
+import type { MetabaseColorKey } from "./color-keys";
 
 // Backward-compatible aliases
 export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
@@ -13,16 +13,6 @@ export interface AccentColorOptions {
   dark?: boolean;
   harmony?: boolean;
   gray?: boolean;
-}
-
-/**
- * User-provided theme overrides. Colors are partial since users only
- * need to specify the colors they want to change.
- */
-export interface UserThemeOverride {
-  version?: 2;
-  colors?: Partial<Record<string, string>>;
-  chartColors?: ChartColorV2[];
 }
 
 export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];

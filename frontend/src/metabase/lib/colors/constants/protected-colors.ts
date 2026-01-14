@@ -1,4 +1,4 @@
-import type { MetabaseColorKey } from "../types";
+import type { MetabaseColorKey } from "../types/color-keys";
 
 /**
  * Colors that cannot be modified by Modular Embedding users.
