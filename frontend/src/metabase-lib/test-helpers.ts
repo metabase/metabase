@@ -413,11 +413,10 @@ export function createLegendItemClickObject(
 
 type CreateTestQueryOpts = {
   databaseId: DatabaseId;
-  stages: TestQueryStage[];
+  stages: [TestQueryStageWithSource, ...TestQueryStage[]];
 };
 
 type TestQueryStage = {
-  source?: TestQuerySource;
   limit?: Lib.Limit;
   fields?: TestQueryColumnExpression[] | "all";
   joins?: TestQueryJoin[];
@@ -426,6 +425,10 @@ type TestQueryStage = {
   expressions?: TestQueryNamedExpression[];
   breakouts?: TestQueryBreakout[];
   orderBy?: TestQueryOrderBy[];
+};
+
+type TestQueryStageWithSource = TestQueryStage & {
+  source: TestQuerySource;
 };
 
 type TestQueryTableSource = { type: "table"; id: TableId };
