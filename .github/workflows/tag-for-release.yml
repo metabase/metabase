@@ -68,10 +68,10 @@ jobs:
       with:
         sparse-checkout: release
     - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Prepare build scripts
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Get Release Version
       uses: actions/github-script@v7
@@ -114,10 +114,10 @@ jobs:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: release
     - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Prepare build scripts
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Get Release Branch
       uses: actions/github-script@v7
