@@ -34,7 +34,8 @@ export function TableMetadata({ table }: Props) {
         label={t`View count`}
         value={formatNumber(table.view_count)}
       />
-      {!isNullOrUndefined(table.estimated_row_count) ? (
+      {!isNullOrUndefined(table.estimated_row_count) &&
+      table.estimated_row_count !== 0 ? (
         <MetadataRow
           label={t`Est. row count`}
           value={formatNumber(table.estimated_row_count)}
