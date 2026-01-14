@@ -1,7 +1,7 @@
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
-  setupTableEndpoints,
+  setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { PythonTransformSourceDraft } from "metabase-types/api";
@@ -10,90 +10,8 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformEditor } from "./PythonTransformEditor";
 
-// Mock matchMedia to include matches property (required for ColorSchemeProvider)
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: jest.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
-// Mock react-use hooks
-jest.mock("react-use", () => ({
-  ...jest.requireActual("react-use"),
-  useWindowSize: () => ({ height: 800, width: 1200 }),
-}));
-
-// Mock the hooks
-jest.mock("./hooks", () => ({
-  useTestPythonTransform: () => ({
-    isRunning: false,
-    isDirty: true,
-    cancel: jest.fn(),
-    run: jest.fn(),
-    executionResult: null,
-  }),
-}));
-
-// Mock child components to avoid deep dependency issues
-jest.mock("./PythonEditorBody", () => ({
-  PythonEditorBody: ({
-    readOnly,
-  }: {
-    readOnly?: boolean;
-    [key: string]: unknown;
-  }) => (
-    <div data-testid="python-editor-body">
-      {!readOnly && <button data-testid="run-button">Run</button>}
-    </div>
-  ),
-}));
-
-jest.mock("./PythonEditorResults", () => ({
-  PythonEditorResults: () => (
-    <div data-testid="python-results">Results Panel</div>
-  ),
-}));
-
-jest.mock("./PythonDataPicker", () => ({
-  PythonDataPicker: () => (
-    <div data-testid="python-data-picker">Data Picker</div>
-  ),
-}));
-
-jest.mock("./PythonTransformTopBar", () => ({
-  PythonTransformTopBar: ({
-    readOnly,
-    transformId,
-  }: {
-    readOnly?: boolean;
-    transformId?: number;
-    [key: string]: unknown;
-  }) => (
-    <div data-testid="python-transform-top-bar">
-      {readOnly && transformId && (
-        <a href="#" aria-label="Edit definition">
-          Edit definition
-        </a>
-      )}
-      {!readOnly && (
-        <>
-          <button aria-label="Import common library">Import</button>
-          <button aria-label="Edit common library">Edit</button>
-        </>
-      )}
-    </div>
-  ),
-}));
-
 const mockDatabase = createMockDatabase({ id: 1, name: "Test Database" });
+const mockTable = createMockTable({ id: 1, db_id: 1, name: "Test Table" });
 
 const mockPythonSource: PythonTransformSourceDraft = {
   type: "python",
@@ -117,11 +35,9 @@ function setup({
   const onAcceptProposed = jest.fn();
   const onRejectProposed = jest.fn();
 
-  const mockTable = createMockTable({ id: 1, db_id: 1, name: "Test Table" });
-
   setupDatabasesEndpoints([mockDatabase]);
+  setupTablesEndpoints([mockTable]);
   setupSearchEndpoints([]);
-  setupTableEndpoints(mockTable);
 
   renderWithProviders(
     <PythonTransformEditor
@@ -171,9 +87,7 @@ describe("PythonTransformEditor", () => {
 
     it("should render EditDefinitionButton in read-only mode", () => {
       setup({ readOnly: true, transformId: 1 });
-      expect(
-        screen.getByRole("link", { name: /edit definition/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/edit definition/i)).toBeInTheDocument();
     });
   });
 
@@ -199,9 +113,7 @@ describe("PythonTransformEditor", () => {
 
     it("should not render EditDefinitionButton in edit mode", () => {
       setup({ readOnly: false });
-      expect(
-        screen.queryByRole("link", { name: /edit definition/i }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
     });
 
     it("should render library buttons in edit mode", () => {

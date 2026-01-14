@@ -4,47 +4,6 @@ import { renderWithProviders } from "__support__/ui";
 
 import { PythonEditorBody } from "./PythonEditorBody";
 
-// Mock matchMedia to include matches property
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: jest.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
-// Mock the PythonEditor component since it requires complex setup
-jest.mock("../../PythonEditor", () => ({
-  PythonEditor: () => <div data-testid="python-editor-mock">Python Editor</div>,
-}));
-
-// Mock ResizableBox since it has complex behavior
-jest.mock("react-resizable", () => ({
-  ResizableBox: ({
-    children,
-  }: {
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => <div data-testid="resizable-box">{children}</div>,
-}));
-
-// Mock the ResizableBoxHandle
-jest.mock("./ResizableBoxHandle", () => ({
-  ResizableBoxHandle: () => <div data-testid="resize-handle" />,
-}));
-
-// Mock react-use hooks
-jest.mock("react-use", () => ({
-  ...jest.requireActual("react-use"),
-  useWindowSize: () => ({ height: 800, width: 1200 }),
-}));
-
 type SetupOpts = {
   source?: string;
   proposedSource?: string;
@@ -119,7 +78,7 @@ describe("PythonEditorBody", () => {
 
     it("should render the python editor", () => {
       setup({ readOnly: true });
-      expect(screen.getByTestId("python-editor-mock")).toBeInTheDocument();
+      expect(screen.getByTestId("python-editor")).toBeInTheDocument();
     });
   });
 
@@ -160,7 +119,7 @@ describe("PythonEditorBody", () => {
 
     it("should render the python editor", () => {
       setup({ readOnly: false });
-      expect(screen.getByTestId("python-editor-mock")).toBeInTheDocument();
+      expect(screen.getByTestId("python-editor")).toBeInTheDocument();
     });
   });
 });

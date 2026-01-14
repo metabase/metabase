@@ -1,25 +1,8 @@
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { getLocation } from "metabase/selectors/routing";
 import type {
   PythonTransformTableAliases,
   Table,
   TableId,
-  TransformId,
 } from "metabase-types/api";
-
-export function useTransformId(): TransformId | undefined {
-  const location = useSelector(getLocation);
-  const pathSegments = location?.pathname?.split("/") ?? [];
-  const transformIndex = pathSegments.indexOf("transforms");
-
-  if (transformIndex === -1 || transformIndex === pathSegments.length - 1) {
-    return undefined;
-  }
-
-  const transformIdSegment = pathSegments[transformIndex + 1];
-  return Urls.extractEntityId(transformIdSegment);
-}
 
 export function updateTransformSignature(
   script: string,
