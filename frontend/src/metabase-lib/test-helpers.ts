@@ -565,6 +565,29 @@ function getSourceMetadata(
   return metadata;
 }
 
+function findJoinStrategy(
+  query: Lib.Query,
+  stageIndex: number,
+  joinIndex: number,
+  strategyName: JoinStrategy,
+) {
+  const availableJoinStrategies = Lib.availableJoinStrategies(
+    query,
+    stageIndex,
+  );
+  const joinStrategy = availableJoinStrategies.find(
+    (strategy) =>
+      Lib.displayInfo(query, stageIndex, strategy).shortName === strategyName,
+  );
+  if (!joinStrategy) {
+    error(
+      `[stage ${stageIndex}, join ${joinIndex}]`,
+      `Could not find join strategy "${strategyName}"`,
+    );
+  }
+  return joinStrategy;
+}
+
 function error(context: string, message: string): never {
   throw new Error(`[${context}]: ${message}`);
 }
@@ -606,17 +629,12 @@ export function createTestQuery({
         );
 
         // Pick join strategy
-        const availableJoinStrategies = Lib.availableJoinStrategies(query, -1);
-        const joinStrategy = availableJoinStrategies.find(
-          (strategy) =>
-            Lib.displayInfo(query, -1, strategy).shortName === join.strategy,
+        const joinStrategy = findJoinStrategy(
+          query,
+          stageIndex,
+          joinIndex,
+          join.strategy,
         );
-        if (!joinStrategy) {
-          error(
-            `[stage ${stageIndex}, join ${joinIndex}]`,
-            `Could not find join strategy "${join.strategy}"`,
-          );
-        }
 
         // Build join conditions
         const conditions =
