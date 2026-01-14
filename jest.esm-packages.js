@@ -11,6 +11,7 @@ const esmPackages = [
   "character-reference-invalid",
   "comma-separated-tokens",
   "color",
+  "color-convert",
   "color-string",
   "csv-parse",
   "d3-*",
