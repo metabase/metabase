@@ -155,7 +155,7 @@
           (is (= {} (dependencies/errors-from-proposed-edits provider graph {:card [card']}))))))))
 
 (deftest ^:parallel sql-snippet->card->transform->cards-test
-  (testing "changing a snippet correctly finds downstream errors"
+  (testing "changing a snippet correctly ignores downstream errors"
     (let [{:keys [provider graph sql-transform snippet-inner]
            {direct-sql-card-id       :id} :sql-base
            {transformed-sql-card-id  :id} :sql-transform-sql-consumer
@@ -165,16 +165,5 @@
                               :content       "nonexistent_table"
                               :template-tags {})
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
-          ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
-          ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
-                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
-                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
-                  errors))
-          (is (= #{:card :transform}
-                 (set (keys errors))))
-          (is (= #{direct-sql-card-id transformed-sql-card-id transformed-mbql-card-id}
-                 (set (keys (:card errors)))))
-          (is (= #{(:id sql-transform)}
-                 (set (keys (:transform errors))))))))))
+          ;; Because we are changing a snippet, don't check anything downstream
+          (is (= {} errors)))))))

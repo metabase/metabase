@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
-   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.malli :as mu]))
 
 (mu/defn returned-columns

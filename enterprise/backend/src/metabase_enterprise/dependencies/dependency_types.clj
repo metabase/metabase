@@ -32,6 +32,3 @@
   (ms/enum-decode-keyword dependency-types))
 
 (mr/def ::entity-id pos-int?)
-
-(mr/def ::node
-  [:tuple ::dependency-types ::entity-id])

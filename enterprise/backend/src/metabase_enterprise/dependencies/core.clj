@@ -27,9 +27,6 @@
   ;; TODO: Make this more specific.
   [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
 
-(mr/def ::node-list
-  [:sequential ::deps.dependency-types/node])
-
 (def ^:private query-lookup
   {:card :dataset_query
    :transform :query
@@ -37,19 +34,18 @@
 
 (defn- native-lookup-map [children]
   (let [grouped (-> (graph/all-map-nodes children)
-                    deps.graph/group-nodes)
-        node-factory (fn [node-type]
-                       (fn [node-id]
-                         [node-type node-id]))]
+                    deps.graph/group-nodes)]
     (into {}
           (mapcat (fn [[node-type ids]]
                     (let [query-key (query-lookup node-type)
                           model (deps.dependency-types/dependency-type->model node-type)]
-                      (when query-key
-                        (t2/select-fn-vec (fn [entity]
-                                            [[node-type (:id entity)]
-                                             (some-> entity query-key lib/any-native-stage?)])
-                                          model :id [:in ids])))))
+                      (cond
+                        query-key (t2/select-fn-vec (fn [entity]
+                                                      [[node-type (:id entity)]
+                                                       (some-> entity query-key lib/any-native-stage?)])
+                                                    model :id [:in ids])
+                        (= node-type :snippet) (for [id ids]
+                                                 [[node-type id] true])))))
           grouped)))
 
 (defn- mbql-children
@@ -60,7 +56,8 @@
          children (graph/transitive-children-of (or graph (deps.graph/graph-dependents)) start-nodes)
          native-lookup (native-lookup-map children)]
      (->> (graph/keep-children (fn [node]
-                                 (when-not (native-lookup node)
+                                 (if (native-lookup node)
+                                   ::graph/stop
                                    node))
                                children)
           deps.graph/group-nodes))))
