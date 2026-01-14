@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -7,7 +8,6 @@ import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import {
   ActionIcon,
-  Box,
   Button,
   Flex,
   Group,
@@ -40,6 +40,8 @@ type PythonEditorBodyProps = {
 };
 
 const EDITOR_HEIGHT = 400;
+const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
+const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 export function PythonEditorBody({
   source,
@@ -55,8 +57,19 @@ export function PythonEditorBody({
   onAcceptProposed,
   onRejectProposed,
 }: PythonEditorBodyProps) {
+  const [isResizing, setIsResizing] = useState(false);
+  const editorHeight = useInitialEditorHeight(readOnly);
+
   return (
-    <MaybeResizableBox resizable={withDebugger}>
+    <ResizableBox
+      axis="y"
+      height={editorHeight}
+      handle={<ResizableBoxHandle />}
+      resizeHandles={readOnly || !withDebugger ? [] : ["s"]}
+      style={isResizing ? undefined : { transition: "height 0.25s" }}
+      onResizeStart={() => setIsResizing(true)}
+      onResizeStop={() => setIsResizing(false)}
+    >
       <Flex h="100%" align="end" bg="background-secondary" pos="relative">
         <PythonEditor
           value={source}
@@ -114,35 +127,26 @@ export function PythonEditorBody({
           />
         )}
       </Flex>
-    </MaybeResizableBox>
+    </ResizableBox>
   );
 }
 
-function MaybeResizableBox({
-  resizable,
-  children,
-}: {
-  resizable?: boolean;
-  children?: ReactNode;
-}) {
-  if (!resizable) {
-    return (
-      <Box w="100%" h="100%">
-        {children}
-      </Box>
-    );
+function useInitialEditorHeight(readOnly?: boolean) {
+  const { height: windowHeight } = useWindowSize();
+  const availableHeight = windowHeight - HEADER_HEIGHT;
+
+  if (readOnly) {
+    // When read-only, we don't need to split the container to show the results panel on the bottom
+    return availableHeight;
   }
 
-  return (
-    <ResizableBox
-      axis="y"
-      height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
-      resizeHandles={["s"]}
-    >
-      {children}
-    </ResizableBox>
+  // Let's make the preview initial height be half of the available height at most
+  const previewInitialHeight = Math.min(
+    availableHeight / 2,
+    PREVIEW_MAX_INITIAL_HEIGHT,
   );
+
+  return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
 }
 
 function SharedLibraryActions({
