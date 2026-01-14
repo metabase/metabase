@@ -424,7 +424,7 @@ type TestQueryStage = {
   joins?: TestQueryJoin[];
   filters?: TestQueryFilter[];
   aggregations?: TestQueryAggregation[];
-  expression?: TestQueryNamedExpression[];
+  expressions?: TestQueryNamedExpression[];
   breakouts?: TestQueryBreakout[];
 };
 
@@ -521,6 +521,7 @@ function appendTestQueryStage(
   const {
     source,
     joins = [],
+    expressions = [],
     filters = [],
     aggregations = [],
     breakouts = [],
@@ -542,15 +543,26 @@ function appendTestQueryStage(
     return Lib.join(query, stageIndex, joinClause);
   }, queryWithStage);
 
+  // Add expressions
+  const queryWithExpressions = expressions.reduce((query, expression) => {
+    const expressionClause = expressionToExpressionClause(
+      query,
+      stageIndex,
+      Lib.visibleColumns(query, stageIndex),
+      expression.value,
+    );
+    return Lib.expression(query, stageIndex, expression.name, expressionClause);
+  }, queryWithJoins);
+
   // Limit query fields
   const visibleColumns = Lib.visibleColumns(queryWithJoins, stageIndex);
   const queryWithFields =
     stage.fields == null || stage.fields === "all"
       ? // If no fields are specified, we use all the visible fields
-        queryWithJoins
+        queryWithExpressions
       : // If fields are specified, we use only those fields
         Lib.withFields(
-          queryWithJoins,
+          queryWithExpressions,
           stageIndex,
           stage.fields.map((field) =>
             findColumn(queryWithJoins, stageIndex, visibleColumns, field),
