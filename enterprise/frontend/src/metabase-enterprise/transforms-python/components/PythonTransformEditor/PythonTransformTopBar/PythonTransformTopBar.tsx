@@ -22,26 +22,31 @@ export function PythonTransformTopBar({
 
   return (
     <Flex
-      align="center"
-      justify="space-between"
-      h="3rem"
-      px="md"
+      align="flex-start"
       bg="background-secondary"
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
-      <Flex align="center" fw="bold" data-testid="selected-database">
+      <Flex
+        h="3rem"
+        p="md"
+        ml="sm"
+        align="center"
+        data-testid="selected-database"
+      >
         {database?.name}
       </Flex>
       {readOnly && transformId && (
-        <EditDefinitionButton
-          bg="transparent"
-          fz="sm"
-          h="1.5rem"
-          px="sm"
-          size="xs"
-          transformId={transformId}
-        />
+        <Flex ml="auto" mr="lg" align="center" h="3rem">
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
+        </Flex>
       )}
     </Flex>
   );

@@ -75,12 +75,14 @@ export function PythonTransformEditor({
         transformId={transformId}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
-        <PythonDataPicker
-          database={source["source-database"]}
-          tables={source["source-tables"]}
-          onChange={handleDataChange}
-          readOnly={readOnly}
-        />
+        {!readOnly && (
+          <PythonDataPicker
+            database={source["source-database"]}
+            tables={source["source-tables"]}
+            onChange={handleDataChange}
+            readOnly={readOnly}
+          />
+        )}
         <Stack w="100%" h="100%" gap={0}>
           <PythonEditorBody
             isRunnable={isPythonTransformSource(source)}
@@ -92,14 +94,16 @@ export function PythonTransformEditor({
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger
+            withDebugger={!readOnly}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          <PythonEditorResults
-            isRunning={isRunning}
-            executionResult={executionResult}
-          />
+          {!readOnly && (
+            <PythonEditorResults
+              isRunning={isRunning}
+              executionResult={executionResult}
+            />
+          )}
         </Stack>
       </Flex>
     </Flex>

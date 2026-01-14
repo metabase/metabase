@@ -66,49 +66,53 @@ export function PythonEditorBody({
           data-testid="python-editor"
         />
 
-        <Stack m="1rem" gap="md" mt="auto">
-          {proposedSource && onRejectProposed && onAcceptProposed && (
-            <>
-              <Tooltip label={t`Accept proposed changes`} position="left">
-                <Button
-                  data-testid="accept-proposed-changes-button"
-                  variant="filled"
-                  bg="success"
-                  px="0"
-                  w="2.5rem"
-                  onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
-              </Tooltip>
-              <Tooltip label={t`Reject proposed changes`} position="left">
-                <Button
-                  data-testid="reject-proposed-changes-button"
-                  w="2.5rem"
-                  px="0"
-                  variant="filled"
-                  bg="danger"
-                  onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
-              </Tooltip>
-            </>
-          )}
-          <RunButtonWithTooltip
-            disabled={!isRunnable || readOnly}
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={onRun}
-            onCancel={onCancel}
-            getTooltip={() => t`Run Python script`}
+        {!readOnly && (
+          <Stack m="1rem" gap="md" mt="auto">
+            {proposedSource && onRejectProposed && onAcceptProposed && (
+              <>
+                <Tooltip label={t`Accept proposed changes`} position="left">
+                  <Button
+                    data-testid="accept-proposed-changes-button"
+                    variant="filled"
+                    bg="success"
+                    px="0"
+                    w="2.5rem"
+                    onClick={onAcceptProposed}
+                  >
+                    <Icon name="check" />
+                  </Button>
+                </Tooltip>
+                <Tooltip label={t`Reject proposed changes`} position="left">
+                  <Button
+                    data-testid="reject-proposed-changes-button"
+                    w="2.5rem"
+                    px="0"
+                    variant="filled"
+                    bg="danger"
+                    onClick={onRejectProposed}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </Tooltip>
+              </>
+            )}
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={isDirty}
+              onRun={onRun}
+              onCancel={onCancel}
+              getTooltip={() => t`Run Python script`}
+            />
+          </Stack>
+        )}
+        {!readOnly && (
+          <SharedLibraryActions
+            source={source}
+            onChange={onChange}
+            readOnly={readOnly}
           />
-        </Stack>
-        <SharedLibraryActions
-          source={source}
-          onChange={onChange}
-          readOnly={readOnly}
-        />
+        )}
       </Flex>
     </MaybeResizableBox>
   );
