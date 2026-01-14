@@ -7,7 +7,10 @@ import {
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import type {
   DatabaseId,
+  TaggedTransform,
+  Transform,
   TransformSource,
+  UnsavedTransform,
   WorkspaceId,
 } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
@@ -63,14 +66,11 @@ export const AddTransformMenu = ({
           <Menu.Item
             leftSection={<Icon name="sql" />}
             onClick={() => {
-              const mockTransform = {
-                ...createMockTransform({
-                  source: getSource("sql"),
-                }),
-                workspace_id: workspaceId,
-              };
+              const mockTransform = createMockTransform({
+                source: getSource("sql"),
+              });
 
-              addUnsavedTransform(mockTransform);
+              addUnsavedTransform(mockTransform.source);
             }}
           >
             {t`SQL Transform`}
@@ -78,14 +78,11 @@ export const AddTransformMenu = ({
           <Menu.Item
             leftSection={<Icon name="code_block" />}
             onClick={() => {
-              const mockTransform = {
-                ...createMockTransform({
-                  source: getSource("python"),
-                }),
-                workspace_id: workspaceId,
-              };
+              const mockTransform = createMockTransform({
+                source: getSource("python"),
+              });
 
-              addUnsavedTransform(mockTransform);
+              addUnsavedTransform(mockTransform.source);
             }}
           >
             {t`Python Script`}

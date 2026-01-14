@@ -14,9 +14,10 @@ import {
 } from "metabase-enterprise/api";
 import type {
   ExternalTransform,
+  TaggedTransform,
   Workspace,
   WorkspaceTablesResponse,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
 } from "metabase-types/api";
 
 import {
@@ -30,7 +31,7 @@ type UseWorkspaceActionsParams = {
   workspace: Workspace | undefined;
   refetchWorkspaceTables: () => Promise<{ data?: WorkspaceTablesResponse }>;
   onOpenTab: (tabId: string) => void;
-  workspaceTransforms: WorkspaceTransformItem[];
+  workspaceTransforms: WorkspaceTransformListItem[];
   availableTransforms: ExternalTransform[];
 };
 
@@ -116,7 +117,7 @@ export function useWorkspaceActions({
   );
 
   const handleRunTransformAndShowPreview = useCallback(
-    async (transform: WorkspaceTransformItem) => {
+    async (transform: WorkspaceTransformListItem) => {
       setRunningTransforms((prev) => new Set(prev).add(transform.ref_id));
 
       try {
@@ -163,7 +164,7 @@ export function useWorkspaceActions({
   );
 
   const handleTransformClick = useCallback(
-    async (workspaceTransform: WorkspaceTransformItem) => {
+    async (workspaceTransform: WorkspaceTransformListItem) => {
       const { data: transform } = await fetchWorkspaceTransform(
         {
           workspaceId,
@@ -195,8 +196,9 @@ export function useWorkspaceActions({
       if (transform && !isWsTransform) {
         const { data } = await fetchTransform(transform.id, true);
         if (data) {
-          addOpenedTransform(data);
-          setActiveTransform(data);
+          const taggedTransform: TaggedTransform = { ...data, type: "transform" };
+          addOpenedTransform(taggedTransform);
+          setActiveTransform(taggedTransform);
           onOpenTab(String(targetTransformId));
         }
       } else if (transform && isWsTransform) {

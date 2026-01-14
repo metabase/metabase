@@ -2,8 +2,8 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceTransformRequest,
   CreateWorkspaceTransformResponse,
-  ExternalTransformsRequest,
-  ExternalTransformsResponse,
+  ExternalTransformRequest,
+  ExternalTransformResponse,
   TransformId,
   UpdateWorkspaceTransformRequest,
   ValidateTableNameRequest,
@@ -21,11 +21,11 @@ import type {
   WorkspaceRunResponse,
   WorkspaceTablesResponse,
   WorkspaceTransform,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
   WorkspaceTransformMergeResponse,
   WorkspaceTransformRef,
   WorkspaceTransformRunResponse,
-  WorkspaceTransformsResponse,
+  WorkspaceTransformListResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -98,7 +98,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           listTag("transform"),
           ...(global_id != null ? [idTag("transform", global_id)] : []),
         ]),
-      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
     }),
     getWorkspaceCheckout: builder.query<WorkspaceCheckoutResponse, TransformId>(
       {
@@ -209,7 +208,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, __, id) => [idTag("workspace", id)],
     }),
     getWorkspaceTransforms: builder.query<
-      WorkspaceTransformItem[],
+      WorkspaceTransformListItem[],
       WorkspaceId
     >({
       query: (id) => ({
@@ -217,12 +216,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/${id}/transform`,
       }),
       providesTags: (_, __, id) => [idTag("workspace-transforms", id)],
-      transformResponse: (response: WorkspaceTransformsResponse) =>
+      transformResponse: (response: WorkspaceTransformListResponse) =>
         response.transforms,
     }),
     getExternalTransforms: builder.query<
-      ExternalTransformsResponse["transforms"],
-      ExternalTransformsRequest
+      ExternalTransformResponse["transforms"],
+      ExternalTransformRequest
     >({
       query: ({ workspaceId, databaseId }) => ({
         method: "GET",
@@ -233,7 +232,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         listTag("external-transform"),
         idTag("external-transform", id),
       ],
-      transformResponse: (response: ExternalTransformsResponse) =>
+      transformResponse: (response: ExternalTransformResponse) =>
         response.transforms,
     }),
     getWorkspaceTransform: builder.query<
@@ -247,10 +246,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, __, { transformId }) => [
         idTag("workspace-transform", transformId),
       ],
-      transformResponse: (response: WorkspaceTransform) => ({
-        ...response,
-        id: response.ref_id,
-      }),
     }),
     getWorkspaceLog: builder.query<WorkspaceLogResponse, WorkspaceId>({
       query: (id) => ({
@@ -306,7 +301,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace-transform", transformId),
           idTag("workspace-tables", workspaceId),
         ]),
-      transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
     }),
     archiveWorkspaceTransform: builder.mutation<void, WorkspaceTransformRef>({
       query: ({ workspaceId, transformId }) => ({

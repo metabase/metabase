@@ -4,15 +4,19 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { useDeleteWorkspaceTransformMutation } from "metabase-enterprise/api";
 import type {
-  Transform,
+  UnsavedTransform,
   WorkspaceId,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
 } from "metabase-types/api";
+import { isUnsavedTransform } from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
 
+/** Item that can be displayed in the workspace transforms list */
+type WorkspaceTransformItem = UnsavedTransform | WorkspaceTransformListItem;
+
 interface Props {
-  transform: WorkspaceTransformItem | Transform;
+  transform: WorkspaceTransformItem;
   workspaceId: WorkspaceId;
 }
 
@@ -27,16 +31,13 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRemove = async () => {
-    // Handle unsaved transforms (negative IDs) locally
-    if ("id" in transform && transform.id < 0) {
+    // Handle unsaved transforms locally
+    if (isUnsavedTransform(transform)) {
       removeUnsavedTransform(transform.id);
       return;
     }
 
-    if (!("ref_id" in transform)) {
-      return;
-    }
-
+    // For WorkspaceTransformListItem, use ref_id
     try {
       await deleteWorkspaceTransform({
         workspaceId,

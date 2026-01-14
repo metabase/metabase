@@ -10,7 +10,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { TableId, WorkspaceTransformItem } from "metabase-types/api";
+import type { TableId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import type { OpenTable } from "../WorkspaceProvider";
 import { StatusDot } from "../components/StatusDot/StatusDot";
@@ -23,13 +23,13 @@ type TableListItemProps = {
   icon?: IconName;
   type: "input" | "output";
   hasChanges?: boolean;
-  transform?: WorkspaceTransformItem;
+  transform?: WorkspaceTransformListItem;
   tableId?: TableId;
   isSelected?: boolean;
   isRunning?: boolean;
-  onTransformClick?: (transform: WorkspaceTransformItem) => void;
+  onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableClick?: (table: OpenTable) => void;
-  onRunTransform?: (transform: WorkspaceTransformItem) => void;
+  onRunTransform?: (transform: WorkspaceTransformListItem) => void;
 };
 
 export const TableListItem = ({

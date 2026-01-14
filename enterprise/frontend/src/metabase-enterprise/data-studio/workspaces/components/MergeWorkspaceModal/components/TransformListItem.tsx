@@ -1,13 +1,13 @@
 import cx from "classnames";
 
 import { Flex, Icon, Text } from "metabase/ui";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
 
 type TransformListItemProps = {
-  transform: WorkspaceTransformItem;
+  transform: WorkspaceTransformListItem;
   isSelected: boolean;
   onClick: () => void;
   workspaceId: WorkspaceId;

@@ -7,13 +7,13 @@ import _ from "underscore";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { Flex, Loader, Text } from "metabase/ui";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
 
 type DiffViewProps = {
-  transform: WorkspaceTransformItem;
+  transform: WorkspaceTransformListItem;
   workspaceId: WorkspaceId;
 };
 
