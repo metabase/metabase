@@ -1,8 +1,8 @@
 import type { MetabaseColorKey } from "../types/color-keys";
 
 /**
- * Colors that cannot be modified by Modular Embedding users.
- * For example, the Metabase brand color must always be the same.
+ * Colors that should not be exposed to Modular Embedding users.
+ * For example, the Metabase brand color must not be modifiable.
  */
 export const PROTECTED_COLORS = [
   // Metabase's own brand
