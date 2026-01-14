@@ -23,10 +23,24 @@ export interface MetabaseDerivedThemeV2 {
   colors: Record<MetabaseColorKey, string>;
 }
 
-/** Lets users define chart colors. */
+/**
+ * Chart color definition for V2 themes.
+ *
+ * Can be a simple color string or an object with base/tint/shade variants.
+ *
+ * @category Theming
+ */
 export type ChartColorV2 =
   | string
-  | { base: string; tint?: string; shade?: string };
+  | {
+      base: string;
+
+      /** Lighter variation of the base color */
+      tint?: string;
+
+      /** Darker variation of the base color */
+      shade?: string;
+    };
 
 /**
  * Metabase color keys without accent0 - accent7.

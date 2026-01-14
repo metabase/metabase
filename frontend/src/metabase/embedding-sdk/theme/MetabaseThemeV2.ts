@@ -5,8 +5,11 @@ import type {
 } from "metabase/lib/colors";
 
 /**
- * Color keys exposed to modular embedding.
- * Excludes colors that should not be exposed such as admin colors.
+ * Color keys available for theming in modular embedding.
+ *
+ * Excludes protected colors such as admin colors that should not be exposed.
+ *
+ * @inline
  */
 export type MetabaseEmbeddingColorKeyV2 = Exclude<
   MetabaseColorKey,
@@ -14,10 +17,9 @@ export type MetabaseEmbeddingColorKeyV2 = Exclude<
 >;
 
 /**
- * V2 theme configuration for embedded Metabase components.
+ * Version 2 theme configuration for embedded Metabase components.
  *
- * Unlike V1, this uses the same color keys as the main Metabase app,
- * eliminating the need for SDK-specific color mapping.
+ * @category Theming
  */
 export interface MetabaseEmbeddingThemeV2 {
   /** Theme version must be 2 for version 2 themes. */

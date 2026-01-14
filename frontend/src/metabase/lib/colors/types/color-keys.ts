@@ -4,6 +4,9 @@ import type { ALL_ACCENT_COLOR_NAMES } from "../constants/color-names";
  * All color keys available in Metabase themes.
  *
  * Both the light and dark theme must define all of these colors.
+ *
+ * @inline
+ * @category Theming
  */
 export type MetabaseColorKey =
   | MetabaseAccentColorKey
@@ -84,4 +87,7 @@ export type MetabaseColorKey =
   | "warning"
   | "white";
 
+/**
+ * @inline
+ */
 export type MetabaseAccentColorKey = (typeof ALL_ACCENT_COLOR_NAMES)[number];

@@ -16,6 +16,12 @@ export interface AccentColorOptions {
   gray?: boolean;
 }
 
+/**
+ * Color keys that are protected and should not be exposed to embedding.
+ *
+ * @inline
+ * @category Theming
+ */
 export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];
 
 export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;

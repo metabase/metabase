@@ -1,6 +1,11 @@
 import type { MetabaseTheme } from "./MetabaseTheme";
 import type { MetabaseEmbeddingThemeV2 } from "./MetabaseThemeV2";
 
+/**
+ * Theme configuration for embedded Metabase components.
+ *
+ * @category Theming
+ */
 export type MetabaseEmbeddingTheme = MetabaseTheme | MetabaseEmbeddingThemeV2;
 
 export function isEmbeddingThemeV2(

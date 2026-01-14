@@ -87,6 +87,7 @@ export type {
 export type {
   ButtonProps,
   ChartColor,
+  ChartColorV2,
   CreateDashboardValues,
   EntityTypeFilterKeys,
   InitializationStatus,
@@ -97,6 +98,7 @@ export type {
   MetabaseAuthConfigWithSaml,
   MetabaseIsGuestAuthConfig,
   MetabaseClickActionPluginsConfig,
+  MetabaseColorKey,
   MetabaseColors,
   MetabaseClickAction,
   MetabaseComponentTheme,
@@ -105,8 +107,12 @@ export type {
   MetabaseDataPointObject,
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
+  MetabaseEmbeddingColorKeyV2,
+  MetabaseEmbeddingTheme,
+  MetabaseEmbeddingThemeV2,
   MetabaseFontFamily,
   MetabaseGlobalPluginsConfig,
+  ProtectedColorKey,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
@@ -127,6 +133,9 @@ export type {
   SdkUserId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+
+// Needed for doc generation
+export { PROTECTED_COLORS } from "embedding-sdk-bundle/lib/theme";
 
 export type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
