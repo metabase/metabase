@@ -4,19 +4,24 @@ import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
-import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import {
+  type MetabaseSdkTheme,
+  isThemeV2,
+} from "metabase/embedding-sdk/theme/theme-version";
+import { getThemeV2, resolveTheme } from "metabase/lib/colors/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { getColorShades } from "metabase/ui/utils/colors";
 
 interface Props {
-  theme?: MetabaseTheme;
+  theme?: MetabaseSdkTheme;
   children: React.ReactNode;
 }
 
@@ -25,6 +30,28 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const appColors = useSetting("application-colors");
 
   const themeOverride = useMemo(() => {
+    if (isThemeV2(theme)) {
+      const resolvedTheme = resolveTheme({
+        baseTheme: getThemeV2("light"),
+        whitelabelColors: appColors ?? {},
+        userThemeOverride: theme,
+      });
+
+      // Convert resolved colors to Mantine color tuples
+      const colors = Object.fromEntries(
+        Object.entries(resolvedTheme.colors).map(([key, value]) => [
+          key,
+          getColorShades(value),
+        ]),
+      );
+
+      return {
+        fontFamily: font ?? DEFAULT_FONT,
+        colors,
+      };
+    }
+
+    // V1: Existing processing pipeline (unchanged)
     const themeWithPreset = applyThemePreset(theme);
 
     // !! Mutate the global colors object to apply the new colors.
