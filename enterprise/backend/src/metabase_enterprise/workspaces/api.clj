@@ -880,33 +880,33 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform          (api/check-404
-                            (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
-                                           :id transform-id))
-        db-id              (:target_db_id transform)
-        workspaces         (t2/select [:model/Workspace :id :name :base_status :db_status]
-                                      :database_id db-id
-                                      :base_status [:not= :archived]
-                                      {:order-by [[:name :asc]]})
-        checkouts          (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
-                                      :global_id transform-id)
-        checkouts-by-ws-id (into {} (map (juxt :workspace_id identity) checkouts))
-        workspaces-by-id   (into {} (map (juxt :id identity) workspaces))]
+  (let [transform        (api/check-404
+                          (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
+                                         :id transform-id))
+        db-id            (:target_db_id transform)
+        workspaces       (t2/select [:model/Workspace :id :name :base_status :db_status]
+                                    :database_id db-id
+                                    :base_status [:not= :archived]
+                                    {:order-by [[:name :asc]]})
+        checkouts        (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+                                    :global_id transform-id)
+        ws-id->checkouts (into {} (map (juxt :workspace_id identity) checkouts))
+        id->workspace    (into {} (map (juxt :id identity) workspaces))]
     {:checkout_disabled (checkout-disabled-reason transform)
-     :workspaces        (vec (for [{:keys [id name] :as ws} workspaces
-                                   :let [checkout (get checkouts-by-ws-id id)]]
-                               {:id       id
-                                :name     name
-                                :status   (ws.model/computed-status ws)
-                                :existing (when checkout
-                                            {:ref_id (:ref_id checkout)
-                                             :name   (:name checkout)})}))
-     :transforms        (vec (for [{:keys [ref_id name workspace_id]} checkouts
-                                   :let [ws (get workspaces-by-id workspace_id)]
-                                   :when ws]
-                               {:id        ref_id
-                                :name      name
-                                :workspace {:id (:id ws) :name (:name ws)}}))}))
+     :workspaces        (for [{:keys [id name] :as ws} workspaces
+                              :let [checkout (get ws-id->checkouts id)]]
+                          {:id       id
+                           :name     name
+                           :status   (ws.model/computed-status ws)
+                           :existing (when checkout
+                                       {:ref_id (:ref_id checkout)
+                                        :name   (:name checkout)})})
+     :transforms        (for [{:keys [ref_id name workspace_id]} checkouts
+                              :let [ws (get id->workspace workspace_id)]
+                              :when ws]
+                          {:id        ref_id
+                           :name      name
+                           :workspace {:id (:id ws) :name (:name ws)}})}))
 
 (api.macros/defendpoint :post "/:ws-id/merge"
   :- [:or
