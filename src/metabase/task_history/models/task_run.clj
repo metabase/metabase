@@ -92,13 +92,14 @@
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
-   Must be called manually for async flows, or automatically via [[with-task-run]]."
+   Must be called manually for async flows, or automatically via [[with-task-run]].
+   Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (t2/select-fn-set :status :model/TaskHistory :run_id run-id)
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (t2/update! :model/TaskRun run-id
+    (t2/update! :model/TaskRun {:id run-id :status :started}
                 {:status   status
                  :ended_at (t/instant)})))
 
