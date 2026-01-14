@@ -170,13 +170,15 @@
    params :- [:maybe ::RunFilterParams]]
   (perms/check-has-application-permission :monitoring)
   (let [where-clause (build-run-where-clause params)
+        limit (request/limit)
+        offset (request/offset)
         runs         (t2/select :model/TaskRun (merge where-clause
-                                                      {:order-by [[:started_at :desc]]
-                                                       :limit    (request/limit)
-                                                       :offset   (request/offset)}))]
+                                                      (when limit {:limit limit})
+                                                      (when offset {:limit offset})
+                                                      {:order-by [[:started_at :desc]]}))]
     {:total  (t2/count :model/TaskRun where-clause)
-     :limit  (request/limit)
-     :offset (request/offset)
+     :limit  limit
+     :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
