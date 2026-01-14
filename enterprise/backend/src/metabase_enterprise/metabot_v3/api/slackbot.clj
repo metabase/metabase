@@ -1,16 +1,27 @@
+;; NOTE: image rendering works, but is a huge hack at the moment
+
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
-   [metabase-enterprise.metabot-v3.api :as metabot-v3.api]
+   [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.render.core :as channel.render]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -20,38 +31,109 @@
 (defn slack-get
   "GET from slack"
   [client endpoint params]
-  (http/get (str "https://slack.com/api" endpoint)
-            {:headers {"Authorization" (str "Bearer " (:bot-token client))}
-             :query-params params}))
+  (-> (http/get (str "https://slack.com/api" endpoint)
+                {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                 :query-params params})
+      :body
+      (json/decode true)))
+
+(defn slack-post-json
+  "POST to slack"
+  [client endpoint payload]
+  (-> (http/post (str "https://slack.com/api" endpoint)
+                 {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                  :content-type "application/json; charset=utf-8"
+                  :body (json/encode payload)})
+      :body
+      (json/decode true)))
+
+(defn slack-post-form
+  "POST form to slack"
+  [client endpoint payload]
+  (-> (http/post (str "https://slack.com/api" endpoint)
+                 {:headers {"Authorization" (str "Bearer " (:bot-token client))
+                            "Content-Type" "application/x-www-form-urlencoded; charset=utf-8"}
+                  :form-params payload})
+      :body
+      (json/decode true)))
 
 (defn fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
-  (-> (slack-get client "/conversations.replies" (select-keys message [:channel :ts]))
-      :body
-      (json/decode true)))
+  (slack-get client "/conversations.replies" (select-keys message [:channel :ts])))
 
-(defn slack-post
-  "POST to slack"
-  [client endpoint payload]
-  (http/post (str "https://slack.com/api" endpoint)
-             {:headers {"Authorization" (str "Bearer " (:bot-token client))}
-              :content-type "application/json; charset=utf-8"
-              :body (json/encode payload)}))
+(defn get-upload-url
+  "Get a URL we can upload to"
+  [client args]
+  (slack-post-form client "/files.getUploadURLExternal" args))
 
 (defn post-message
   "Send a Slack message"
   [client message]
-  (-> (slack-post client "/chat.postMessage" message)
-      :body
-      (json/decode true)))
+  (slack-post-json client "/chat.postMessage" message))
+
+(defn post-image
+  "Upload a PNG image and send in a message"
+  [client image-bytes filename channel thread-ts]
+  (let [{:keys [ok upload-url file-id] :as res} (get-upload-url client {:filename filename
+                                                                        :length (alength ^bytes image-bytes)})]
+    (when ok
+      (http/post upload-url
+                 {:headers {"Content-Type" "image/png"}
+                  :body image-bytes})
+      (slack-post-json client "/files.completeUploadExternal"
+                       {:files [{:id file-id
+                                 :title filename}]
+                        :channel_id channel
+                        :thread_ts thread-ts})
+      res)))
 
 (defn delete-message
   "Remove a Slack message"
   [client message]
-  (slack-post client "/chat.delete" (select-keys message [:channel :ts])))
+  (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
 
-;; -------------------- AI ---------------------------
+;; -------------------- PNG GENERATION ---------------------------
+
+(defn extract-card-id-from-url
+  "Extract card ID from preview_card_png URL"
+  [url]
+  (some-> (re-find #".*/api/pulse/preview_card_png/(\d+)" url)
+          second
+          parse-long))
+
+(defn- pulse-card-query-results
+  {:arglists '([card])}
+  [{query :dataset_query, card-id :id}]
+  ;; Use the same approach as pulse API - this works for accessible cards
+  (binding [qp.perms/*card-id* card-id]
+    (qp/process-query
+     (qp/userland-query
+      (assoc query
+             :middleware {:process-viz-settings? true
+                          :js-int-to-string?     false})
+      {:executed-by api/*current-user-id*
+       :context     :pulse
+       :card-id     card-id}))))
+
+(defn generate-card-png
+  "Generate PNG for a card using pulse rendering functionality."
+  [card-id & {:keys [width]
+              :or {width 400}}]
+  (let [card (t2/select-one :model/Card :id card-id)]
+    (when-not card
+      (throw (ex-info "Card not found" {:card-id card-id})))
+      ;; TODO; is this even needed, we're binding higher up in the call stack i think?
+    (binding [api/*is-superuser?* true
+              api/*current-user-permissions-set* (atom #{"/"})]
+      ;; TODO: should we use the user's timezone for this?
+      (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                               card
+                                               (pulse-card-query-results card)
+                                               width
+                                               {:channel.render/include-title? true}))))
+
+;; -------------------- AI SERVICE ---------------------------
 
 (defn thread->history
   "Convert a Slack thread to an ai-service history object"
@@ -62,47 +144,32 @@
                         :content (:text %)))))
 
 (defn make-ai-request
-  "Make an AI request and aggregate the streamed response text"
-  [conversation_id prompt thread]
-  (let [response-stream (metabot-v3.api/streaming-request {:context         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                                                                             :capabilities []}
-                                                           :message         prompt
-                                                           :history         (thread->history thread)
-                                                           :profile_id      "slackbot"
-                                                           :conversation_id conversation_id
-                                                           :state           {}})
-        ;; TODO: gross code, need some help on cleaning this up
+  "Make an AI request and return both text and data parts"
+  [conversation-id prompt thread]
+  (let [message    (metabot-v3.envelope/user-message prompt)
+        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
+        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+        response-stream (metabot-v3.client/streaming-request
+                         {:context         (metabot-v3.context/create-context {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                                                                               :capabilities []})
+                          :metabot-id      metabot-id
+                          :profile-id      profile-id
+                          :session-id      session-id
+                          :conversation-id conversation-id
+                          :message         message
+                          :history         (thread->history thread)
+                          :state           {}
+                          :on-complete     (fn [lines] :store-in-db)})
         baos (java.io.ByteArrayOutputStream.)
-        streaming-fn (.-f response-stream)
-        _ (streaming-fn baos (a/chan))
-        full-response (.toString baos)]
-    (->> (clojure.string/split-lines full-response)
-         (filter #(clojure.string/starts-with? % "0:"))
-         (map #(-> %
-                   (subs 2) ; remove "0:"
-                   (clojure.string/trim)
-                   (json/decode))) ; decode JSON to handle Unicode escapes
-         (clojure.string/join ""))))
-
-;; -------------------- UTILS ------------------------
-
-(comment
-  (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
-
-  (def message (post-message client {:channel "XXXXXXXXXXX" :text "_Thinking..._" :thread_ts "XXXXXXXXXXXXXXXXX"}))
-  (delete-message client message)
-  (select-keys message [:channel :ts])
-
-  (def thread (fetch-thread client message))
-  (def history (thread->history thread))
-
-  (def user (t2/select-one :model/User :is_superuser true))
-  (def response-stream
-    (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
-              api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
-      (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
-  (println response-stream)
-  (post-message client {:channel "XXXXXXXXXXX" :text response-stream :thread_ts (:ts thread)}))
+        _ ((.-f response-stream) baos (a/chan))
+        lines (-> (.toString baos) str/split-lines)
+        messages (metabot-v3.util/aisdk->messages :assistant lines)]
+    {:text (->> messages
+                (filter #(= (:_type %) :TEXT))
+                (map :content)
+                (str/join ""))
+     :data-parts (filter #(= (:_type %) :DATA) messages)}))
 
 ;; -------------------- API ---------------------------
 
@@ -143,17 +210,7 @@
                "socket_mode_enabled" false
                "token_rotation_enabled" false}})
 
-(comment
-  (json/encode (slackbot-manifest "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")))
-
-;; TODO: add auth middleware + check that user has admin settings access
-(api.macros/defendpoint :get "/manifest"
-  "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
-  []
-  (perms/check-has-application-permission :setting)
-  (slackbot-manifest (system/site-url)))
-
-;; ------------------------- VALIDATION ------------------------------------------
+;; ------------------------- VALIDATION ----------------------------------
 
 (defn assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
@@ -161,7 +218,7 @@
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status 401, :body "Invalid request signature."}))))
 
-;; ------------------------- EVENT HANDLING ENDPOINT ------------------------------
+;; ------------------------- EVENT HANDLING ------------------------------
 
 (defn- handle-url-verification
   "Respond to a url_verification request (docs: https://docs.slack.dev/reference/events/url_verification)"
@@ -188,43 +245,88 @@
    :body "ok"})
 
 (defn- process-user-message
-  "Resond to an incoming user slack message"
+  "Respond to an incoming user slack message"
   [client event]
-  (let [prompt (:text event)
-        thread (fetch-thread client message)
-        message-ctx {:channel (:channel event) :thread_ts (or (:thread_ts event) (:ts event))}
-        thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
-        ;; TODO: removing binding w/ something that converst the current user to an internal user
-        answer (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
-                         api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
-                 (make-ai-request (str (random-uuid)) prompt thread))]
-    (delete-message client thinking-message)
-    (post-message client (merge message-ctx {:text answer}))))
+  (let [admin-user (t2/select-one :model/User :is_superuser true)]
+    ;; Bind admin user context for the entire operation
+    (binding [api/*current-user* admin-user
+              api/*current-user-id* (:id admin-user)]
+      (let [prompt (:text event)
+            thread (fetch-thread client event)
+            message-ctx {:channel (:channel event) :thread_ts (or (:thread_ts event) (:ts event))}
+            thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+            {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
+        (delete-message client thinking-message)
+        (post-message client (merge message-ctx {:text text}))
+
+        ;; Process visualization images
+        (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
+          (doseq [viz vizs]
+            (when-let [card-id (extract-card-id-from-url (get-in viz [:value :url]))]
+              (let [png-bytes (generate-card-png card-id)
+                    filename (str "chart-" card-id ".png")]
+                (post-image client png-bytes filename
+                            (:channel message-ctx)
+                            (:thread_ts message-ctx))))))))))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
   [payload]
   (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
-    (println event)
     (when (user-message? event)
-      ;; we must respond to slack w/ a 200 within 3 seconds
-      ;; otherwise slack will retry their request
-
+      ;; TODO: should we queue work up another way?
       (future (process-user-message client event)))
     ack-msg))
+
+;; ----------------------- ROUTES --------------------------
+
+;; TODO: add auth middleware + check that user has admin settings access
+(api.macros/defendpoint :get "/manifest"
+  "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
+  []
+  (perms/check-has-application-permission :setting)
+  (slackbot-manifest (system/site-url)))
 
 (api.macros/defendpoint :post "/events"
   "Respond to activities in Slack"
   [_route-params _query-params body request]
   (assert-valid-slack-req request)
+  ;; all handlers must respond within 3 seconds or slack will retry
   (case (:type body)
     "url_verification" (handle-url-verification body)
     "event_callback" (handle-event-callback body)
     ack-msg))
 
-;; ----------------------- ROUTES --------------------------
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
   (api.macros/ns-handler *ns*))
+
+;; --------------------------------------------
+
+(comment
+  ;; constants for hacking
+  (def channel "XXXXXXXXXXX")
+  (def thread-ts "XXXXXXXXXXXXXXXXX")
+  ;; you can make your local env available publicly for testing via something like `cloudflared tunnel --url http://localhost:3000`
+  (def public-mb-url "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
+  (json/encode (slackbot-manifest public-mb-url))
+
+  (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
+
+  (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
+  (delete-message client message)
+  (select-keys message [:channel :ts])
+
+  (def thread (fetch-thread client message))
+  (def history (thread->history thread))
+
+  (def user (t2/select-one :model/User :is_superuser true))
+  (def response-stream
+    (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
+              api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
+      (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
+  (log/debug "Response stream:" response-stream)
+  (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
+
