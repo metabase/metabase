@@ -1522,6 +1522,9 @@ LIMIT
         },
       );
 
+      cy.log("enter edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+
       cy.log("update the query");
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
       getQueryEditor().button("Save").click();
@@ -1535,6 +1538,127 @@ LIMIT
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
     });
+
+    it(
+      "should show Python transforms in view-only mode",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("should be in read-only mode by default");
+        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        H.DataStudio.Transforms.editDefinition().should(
+          "have.attr",
+          "href",
+          "/data-studio/transforms/1/edit",
+        );
+
+        cy.log("sidebar should be hidden in read-only mode");
+        cy.findByTestId("python-data-picker").should("not.exist");
+
+        cy.log("results panel should be hidden in read-only mode");
+        cy.findByTestId("python-results").should("not.exist");
+
+        cy.log("library buttons should be hidden in read-only mode");
+        cy.findByLabelText("Import common library").should("not.exist");
+        cy.findByLabelText("Edit common library").should("not.exist");
+      },
+    );
+
+    it(
+      "should transition from read-only to edit mode for Python transforms",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("click Edit definition to enter edit mode");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        cy.log("sidebar should be visible in edit mode");
+        cy.findByTestId("python-data-picker").should("be.visible");
+
+        cy.log("results panel should be visible in edit mode");
+        cy.findByTestId("python-results").should("be.visible");
+
+        cy.log("library buttons should be visible in edit mode");
+        cy.findByLabelText("Import common library").should("be.visible");
+        cy.findByLabelText("Edit common library").should("be.visible");
+
+        cy.log("Edit definition button should be hidden in edit mode");
+        H.DataStudio.Transforms.editDefinition().should("not.exist");
+      },
+    );
+
+    it(
+      "should return to read-only mode after saving a Python transform",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("enter edit mode");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        cy.log("make a change to trigger dirty state");
+        H.PythonEditor.type(" # comment");
+
+        cy.log("save the transform");
+        getQueryEditor().button("Save").click();
+        cy.wait("@updateTransform");
+
+        cy.log("should return to read-only mode after save");
+        cy.url().should("not.include", "/edit");
+        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        cy.findByTestId("python-data-picker").should("not.exist");
+        cy.findByTestId("python-results").should("not.exist");
+      },
+    );
   });
 
   describe("runs", () => {
@@ -3103,6 +3227,9 @@ describe(
           });
         },
       );
+
+      cy.log("enter edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
 
       cy.log("running the script should work");
       runPythonScriptAndWaitForSuccess();
