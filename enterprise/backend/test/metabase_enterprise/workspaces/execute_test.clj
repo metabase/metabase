@@ -76,10 +76,10 @@
           before       {:xf    (t2/count :model/Transform)
                         :xfrun (t2/count :model/TransformRun)}]
 
-      (testing "dry-run returns rows and cols"
+      (testing "dry-run returns data nested under :data like /api/dataset"
         (is (=? {:status :succeeded
-                 :rows   [[1 "hello"] [2 "world"]]
-                 :cols   [{:name "id"} {:name "name"}]
+                 :data   {:rows [[1 "hello"] [2 "world"]]
+                          :cols [{:name "ID"} {:name "NAME"}]}
                  :table  {:name "ws_dryrun_test"}}
                 (mt/with-current-user (mt/user->id :crowberto)
                   (ws.impl/dry-run-transform workspace ws-transform)))))
