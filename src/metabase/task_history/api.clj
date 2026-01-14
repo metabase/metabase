@@ -121,21 +121,20 @@
    :card      :model/Card
    :dashboard :model/Dashboard})
 
-(defn- hydrate-entity-names-for-type
-  "Hydrate entity_name for runs of a specific entity type."
-  [runs model]
-  (when (seq runs)
-    (let [ids   (map :entity_id runs)
-          names (t2/select-pk->fn :name model :id [:in ids])]
-      (map #(assoc % :entity_name (get names (:entity_id %))) runs))))
-
 (defn- hydrate-entity-names
   "Hydrate entity names based on entity_type and entity_id."
   [runs]
-  (let [grouped (group-by :entity_type runs)]
-    (mapcat (fn [[entity-type model]]
-              (hydrate-entity-names-for-type (grouped entity-type) model))
-            entity-type->model)))
+  (if (empty? runs)
+    runs
+    (let [grouped    (group-by :entity_type runs)
+          name-lookup (into {}
+                            (mapcat (fn [[entity-type model]]
+                                      (when-let [entity-runs (grouped entity-type)]
+                                        (let [ids   (map :entity_id entity-runs)
+                                              names (t2/select-pk->fn :name model :id [:in ids])]
+                                          (map (fn [[id name]] [[entity-type id] name]) names))))
+                                    entity-type->model))]
+      (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
 
 (defn- hydrate-task-counts
   "Add task_count, success_count, failed_count to runs."
