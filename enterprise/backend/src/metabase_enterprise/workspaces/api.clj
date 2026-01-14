@@ -400,6 +400,16 @@
     (ws.model/delete! ws)
     {:ok true}))
 
+(defn- checkout-disabled-reason
+  "Returns reason why a transform cannot be checked out, or nil if checkout is allowed."
+  [{:keys [source_type source]}]
+  (case source_type
+    :mbql   "mbql"
+    :native (when (seq (lib/template-tags-referenced-cards (:query source)))
+              "card-reference")
+    :python nil
+    "unknown-type"))
+
 (def ^:private ExternalTransform
   ;; Might be interesting to show whether they're enclosed, once we have the graph.
   ;; When they're enclosed, it could also be interesting to know whether they're stale.
@@ -430,17 +440,8 @@
      (into []
            (map #(-> %
                      (dissoc :source)
-                     (assoc :checkout_disabled (case (:source_type %)
-                                                 :mbql   "mbql"
-                                                 :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
-                                                           "card-reference")
-                                                 :python nil
-                                                 "unknown-type"))))
-           ;; (Sanya 2025-12-24) - do we need this line?
-           #_(map #(update % :last_run transforms.util/localize-run-timestamps))
-           transforms
-           ;; Perhaps we want to expose some of this later?
-           #_(t2/hydrate transforms :last_run :creator))}))
+                     (assoc :checkout_disabled (checkout-disabled-reason %))))
+           transforms)}))
 
 (api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
@@ -845,28 +846,67 @@
     (check-transforms-enabled! (:database_id workspace))
     (ws.impl/dry-run-transform workspace transform)))
 
+(def ^:private CheckoutTransformLegacy
+  "Legacy format for workspace checkout transforms (DEPRECATED)."
+  [:map
+   [:id ::ws.t/ref-id]
+   [:name :string]
+   [:workspace [:map
+                [:id ms/PositiveInt]
+                [:name :string]]]])
+
+(def ^:private WorkspaceWithCheckout
+  "Workspace with checkout status information."
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:name :string]
+   [:status ::status]
+   [:existing [:maybe [:map
+                       [:ref_id ::ws.t/ref-id]
+                       [:name :string]]]]])
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"
   :- [:map
-      [:transforms [:sequential
-                    [:map
-                     [:id ::ws.t/ref-id]
-                     [:name :string]
-                     [:workspace [:map
-                                  [:id ms/PositiveInt]
-                                  [:name :string]]]]]]]
-  "Get all downstream transforms for a transform that is not in a workspace.
-   Returns the transforms that were mirrored from this upstream transform, with workspace info."
+      [:checkout_disabled [:maybe [:enum "mbql" "card-reference" "unknown-type"]]]
+      [:workspaces [:sequential WorkspaceWithCheckout]]
+      [:transforms [:sequential CheckoutTransformLegacy]]]
+  "Get checkout status for a global transform.
+
+   Returns:
+   - checkout_disabled: Why this transform cannot be checked out (nil if allowed)
+   - workspaces: All workspaces for this transform's database, with checkout status
+   - transforms: (DEPRECATED) Use :workspaces instead"
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
-  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform-id)
-        workspace-ids    (map :workspace_id transforms)
-        workspaces-by-id (when (seq transforms)
-                           (t2/select-fn->fn :id identity [:model/Workspace :id :name] :id [:in workspace-ids]))]
-    {:transforms (for [{:keys [ref_id name workspace_id]} transforms]
-                   {:id        ref_id
-                    :name      name
-                    :workspace (get workspaces-by-id workspace_id)})}))
+  (api/check-superuser)
+  (let [transform          (api/check-404
+                            (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
+                                           :id transform-id))
+        db-id              (:target_db_id transform)
+        workspaces         (t2/select [:model/Workspace :id :name :base_status :db_status]
+                                      :database_id db-id
+                                      :base_status [:not= :archived]
+                                      {:order-by [[:name :asc]]})
+        checkouts          (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+                                      :global_id transform-id)
+        checkouts-by-ws-id (into {} (map (juxt :workspace_id identity) checkouts))
+        workspaces-by-id   (into {} (map (juxt :id identity) workspaces))]
+    {:checkout_disabled (checkout-disabled-reason transform)
+     :workspaces        (vec (for [{:keys [id name] :as ws} workspaces
+                                   :let [checkout (get checkouts-by-ws-id id)]]
+                               {:id       id
+                                :name     name
+                                :status   (ws.model/computed-status ws)
+                                :existing (when checkout
+                                            {:ref_id (:ref_id checkout)
+                                             :name   (:name checkout)})}))
+     :transforms        (vec (for [{:keys [ref_id name workspace_id]} checkouts
+                                   :let [ws (get workspaces-by-id workspace_id)]
+                                   :when ws]
+                               {:id        ref_id
+                                :name      name
+                                :workspace {:id (:id ws) :name (:name ws)}}))}))
 
 (api.macros/defendpoint :post "/:ws-id/merge"
   :- [:or

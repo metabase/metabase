@@ -104,11 +104,21 @@ export type WorkspaceTransformListResponse = {
   transforms: WorkspaceTransformListItem[];
 };
 
+/**
+ * Reason why a transform cannot be checked out to a workspace.
+ * null indicates the transform can be checked out.
+ */
+export type CheckoutDisabledReason =
+  | "mbql"
+  | "card-reference"
+  | "unknown-type"
+  | null;
+
 export type ExternalTransform = {
   id: TransformId;
   name: string;
   source_type: Transform["source_type"];
-  checkout_disabled: string | null;
+  checkout_disabled: CheckoutDisabledReason;
 };
 
 export type ExternalTransformRequest = {
@@ -131,6 +141,19 @@ export type WorkspaceTransformId = string;
 
 export type WorkspaceRunStatus = "started" | "succeeded" | "failed" | "timeout";
 
+export type ExistingCheckout = {
+  ref_id: string;
+  name: string;
+};
+
+export type WorkspaceCheckoutStatus = {
+  id: WorkspaceId;
+  name: string;
+  status: WorkspaceSetupStatus;
+  existing: ExistingCheckout | null;
+};
+
+/** @deprecated Use WorkspaceCheckoutStatus instead */
 export type WorkspaceCheckoutItem = {
   id: string;
   name: string;
@@ -138,6 +161,9 @@ export type WorkspaceCheckoutItem = {
 };
 
 export type WorkspaceCheckoutResponse = {
+  checkout_disabled: CheckoutDisabledReason;
+  workspaces: WorkspaceCheckoutStatus[];
+  /** @deprecated Use workspaces instead */
   transforms: WorkspaceCheckoutItem[];
 };
 
