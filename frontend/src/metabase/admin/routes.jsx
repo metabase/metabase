@@ -35,9 +35,9 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import { TaskModal } from "metabase/admin/tools/components/TaskModal";
 import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
+import { getTasksRoutes } from "metabase/admin/tools/routes";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { isEEBuild } from "metabase/lib/utils";
@@ -276,14 +276,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             )}
           </Route>
           <Route path="tasks" component={TasksApp}>
-            <ModalRoute
-              path=":taskId"
-              modal={TaskModal}
-              modalProps={{
-                // EventSandbox interferes with mouse text selection in CodeMirror editor
-                disableEventSandbox: true,
-              }}
-            />
+            {getTasksRoutes()}
           </Route>
           <Route path="jobs" component={JobInfoApp}>
             <ModalRoute

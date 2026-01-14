@@ -1,1 +1,1 @@
-export * from "./TasksApp";
+export { TasksApp } from "./TasksApp";

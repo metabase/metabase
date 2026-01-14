@@ -1,14 +1,15 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { LogsContent } from "metabase/admin/tools/components/Logs/Logs.styled";
 import { useGetTaskQuery } from "metabase/api";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/common/components/ModalContent";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Tabs } from "metabase/ui";
 import type { Task } from "metabase-types/api";
 
 import S from "./TaskModal.module.css";
@@ -20,8 +21,10 @@ interface Props {
 
 export const TaskModal = ({ params, onClose }: Props) => {
   const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
+  const hasLogs = task?.logs?.length !== 0;
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
+  const logsText = useMemo(() => task?.logs?.join("\n") ?? "", [task?.logs]);
 
   const handleDownload = () => {
     const filename = getFilename(task);
@@ -35,35 +38,42 @@ export const TaskModal = ({ params, onClose }: Props) => {
 
   return (
     <ModalContent title={t`Task details`} onClose={onClose}>
-      <Box
-        className={S.codeContainer}
-        p={linesCount > 1 ? 0 : "xs"}
-        pos="relative"
-      >
-        <CodeEditor
-          language="json"
-          /**
-           * Hide line numbers when there's only one line:
-           * - Not useful in this case
-           * - Prevents confusion about whether it's part of the log output
-           */
-          lineNumbers={linesCount > 1}
-          readOnly
-          value={code}
-        />
+      <Tabs defaultValue="details">
+        <Tabs.List>
+          <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+          {hasLogs && <Tabs.Tab value="logs">{t`Logs`}</Tabs.Tab>}
+        </Tabs.List>
 
-        <Box p="sm" pos="absolute" right={0} top={0}>
-          <CopyButton value={code} />
-        </Box>
-      </Box>
+        <Tabs.Panel value="details">
+          <Box
+            className={S.codeContainer}
+            p={linesCount > 1 ? 0 : "xs"}
+            pos="relative"
+            mt="md"
+          >
+            <CodeEditor
+              language="json"
+              lineNumbers={linesCount > 1}
+              readOnly
+              value={code}
+            />
 
-      <Flex gap="md" justify="space-between" mt="xl">
-        <Button
-          component={Link}
-          leftSection={<Icon name="audit" />}
-          to="/admin/tools/logs"
-        >{t`See logs`}</Button>
+            <Box p="sm" pos="absolute" right={0} top={0}>
+              <CopyButton value={code} />
+            </Box>
+          </Box>
+        </Tabs.Panel>
 
+        {hasLogs && (
+          <Tabs.Panel value="logs">
+            <Box className={S.codeContainer} mt="md">
+              <AnsiLogs component={LogsContent}>{logsText}</AnsiLogs>
+            </Box>
+          </Tabs.Panel>
+        )}
+      </Tabs>
+
+      <Flex gap="md" justify="flex-end" mt="xl">
         <Button
           leftSection={<Icon name="download" />}
           variant="filled"

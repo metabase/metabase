@@ -1,116 +1,67 @@
-import type { Location } from "history";
-import type { ReactNode } from "react";
-import { withRouter } from "react-router";
+import type { PropsWithChildren } from "react";
+import { type WithRouterProps, withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Flex, Icon, Title, Tooltip } from "metabase/ui";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { useDispatch } from "metabase/lib/redux";
+import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
-import { TaskPicker } from "../../components/TaskPicker";
-import { TaskStatusPicker } from "../../components/TaskStatusPicker";
-
-import { TasksTable } from "./TasksTable";
-import { urlStateConfig } from "./utils";
-
-type TasksAppProps = {
-  children: ReactNode;
-  location: Location;
+type TabConfig = {
+  value: string;
+  label: string;
 };
 
-const PAGE_SIZE = 50;
+const BASE_PATH = "/admin/tools/tasks";
 
-const TasksAppBase = ({ children, location }: TasksAppProps) => {
-  const [
-    { page, sort_column, sort_direction, status, task },
-    { patchUrlState },
-  ] = useUrlState(location, urlStateConfig);
-  const sortingOptions = { sort_column, sort_direction };
+const getActiveTab = (
+  tabs: TabConfig[],
+  pathname: string,
+): string | undefined => {
+  const relativePath = pathname.replace(BASE_PATH, "");
+  const segments = relativePath.split("/").filter(Boolean);
+  const firstSegment = segments[0];
+  return tabs.find((tab) => tab.value === firstSegment)?.value;
+};
 
-  const {
-    data: tasksData,
-    isLoading: isLoadingTasks,
-    error: tasksError,
-  } = useListTasksQuery(
-    {
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-      sort_column,
-      sort_direction,
-      status: status ?? undefined,
-      task: task ?? undefined,
-    },
-    {
-      refetchOnMountOrArgChange: true,
-    },
-  );
+const TasksAppBase = ({
+  children,
+  location,
+}: PropsWithChildren<WithRouterProps>) => {
+  const tabs: TabConfig[] = [
+    { value: "runs", label: t`Runs` },
+    { value: "list", label: t`Tasks` },
+  ];
+  const DEFAULT_TAB = tabs[0].value;
+  const dispatch = useDispatch();
+  const activeTab = getActiveTab(tabs, location.pathname) ?? DEFAULT_TAB;
 
-  const {
-    data: databasesData,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery();
-
-  const tasks = tasksData?.data ?? [];
-  const total = tasksData?.total ?? 0;
-  const databases = databasesData?.data ?? [];
-  const isLoading = isLoadingTasks || isLoadingDatabases;
-  const error = tasksError || databasesError;
+  const handleTabChange = (value: string | null) => {
+    if (value) {
+      dispatch(push(`${BASE_PATH}/${value}`));
+    }
+  };
 
   return (
     <SettingsPageWrapper>
       <Flex align="center" gap="sm">
-        <Title order={1}>{t`Troubleshooting logs`} </Title>
+        <Title order={1}>{t`Troubleshooting logs`}</Title>
         <Tooltip
           label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
         >
           <Icon name="info" />
         </Tooltip>
       </Flex>
-      <SettingsSection>
-        <Flex gap="md" justify="space-between">
-          <Flex gap="md">
-            <TaskPicker
-              value={task}
-              onChange={(task) => patchUrlState({ task, page: 0 })}
-            />
-
-            <TaskStatusPicker
-              value={status}
-              onChange={(status) => patchUrlState({ status, page: 0 })}
-            />
-          </Flex>
-
-          <PaginationControls
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
-            page={page}
-            pageSize={50}
-            itemsLength={tasks.length}
-            total={total}
-          />
-        </Flex>
-
-        <TasksTable
-          databases={databases}
-          error={error}
-          isLoading={isLoading}
-          sortingOptions={sortingOptions}
-          tasks={tasks}
-          onSortingOptionsChange={(sortingOptions) =>
-            patchUrlState({ ...sortingOptions, page: 0 })
-          }
-        />
-      </SettingsSection>
-      {
-        // render 'children' so that the individual task modals show up
-        children
-      }
+      <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tabs.List>
+          {tabs.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
+      {children}
     </SettingsPageWrapper>
   );
 };

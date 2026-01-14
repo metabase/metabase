@@ -39,7 +39,7 @@ export const TasksTable = ({
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(`/admin/tools/tasks/${task.id}`));
+    dispatch(push(`/admin/tools/tasks/list/${task.id}`));
   };
 
   return (
