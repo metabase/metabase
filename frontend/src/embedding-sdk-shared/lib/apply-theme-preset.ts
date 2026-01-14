@@ -26,6 +26,10 @@ const PRESET_SDK_COLORS: MappableSdkColor[] = [
 ];
 
 const getPresetColors = (preset: MetabaseThemePreset): MetabaseColors => {
+  if (preset !== "light" && preset !== "dark") {
+    return {};
+  }
+
   const { colors } = deriveFullMetabaseTheme({
     baseTheme: getThemeFromColorScheme(preset),
   });
