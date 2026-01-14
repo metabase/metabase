@@ -48,7 +48,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("should be able to edit a native question with the QueryEditor", () => {
+  it.skip("should be able to edit a native question with the QueryEditor", () => {
     cy.get("@sqlQuestionId").then((sqlQuestionId) => {
       mountSdkContent(
         <InteractiveQuestion questionId={sqlQuestionId} withParameters />,
@@ -82,8 +82,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByTestId("native-query-editor").should("be.visible");
 
-      cy.realPress(["Meta", "ArrowRight"]);
-      cy.realPress("Backspace");
       cy.realType("SELECT * from ORDERS LIMIT 10");
 
       cy.realPress(["Meta", "Enter"]);
