@@ -889,3 +889,24 @@ function createTestBreakoutClause(
 
   return column;
 }
+
+export function createTestNativeQuery(
+  metadataProvider: Lib.MetadataProvider,
+  databaseId: DatabaseId,
+  query: string,
+): Lib.Query {
+  return Lib.nativeQuery(databaseId, metadataProvider, query);
+}
+
+export function createTestNativeJsQuery(
+  metadataProvider: Lib.MetadataProvider,
+  databaseId: DatabaseId,
+  query: string,
+) {
+  const nativeQuery = createTestNativeQuery(
+    metadataProvider,
+    databaseId,
+    query,
+  );
+  return Lib.toJsQuery(nativeQuery);
+}
