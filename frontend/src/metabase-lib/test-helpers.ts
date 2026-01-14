@@ -871,7 +871,7 @@ function createTestBreakoutClause(
     const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
     const bucket = buckets.find((candidate) => {
       const info = Lib.displayInfo(query, stageIndex, candidate);
-      return info.displayName === breakout.unit;
+      return info.shortName === breakout.unit;
     });
 
     if (!bucket) {
