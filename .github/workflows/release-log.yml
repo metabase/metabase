@@ -39,9 +39,9 @@ jobs:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
       - name: Install Dependencies
-        run: yarn --cwd release --frozen-lockfile && npm i -g tsx
+        run: bun install --cwd release --frozen-lockfile && npm i -g tsx
       - name: Build release scripts
-        run: yarn --cwd release build
+        run: bun run --cwd release build
       - name: Get version number
         uses: actions/github-script@v7
         with:

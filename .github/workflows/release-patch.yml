@@ -27,7 +27,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+        run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
       - name: Trigger auto-patch
         uses: actions/github-script@v7
         with:

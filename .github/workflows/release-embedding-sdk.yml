@@ -47,7 +47,7 @@ jobs:
           sparse-checkout: release
 
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
 
       - name: Cache build scripts
         uses: actions/upload-artifact@v4
@@ -179,7 +179,7 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - name: Prepare build scripts
-        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+        run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
 
       - name: Get current SDK version
         id: current-sdk-version
@@ -256,7 +256,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Run unit tests
-        run: yarn embedding-sdk:test-unit
+        run: bun run embedding-sdk:test-unit
 
   build-sdk:
     needs: [test, determine-sdk-version]
@@ -282,10 +282,10 @@ jobs:
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
       - name: Build SDK package
-        run: yarn run build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
-        run: yarn run embedding-sdk:generate-package
+        run: bun run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4

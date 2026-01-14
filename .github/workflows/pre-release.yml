@@ -35,7 +35,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
       # note: this block can be removed after we stop needing to be able to test versions before v55
       - name: Get test mode config
         id: config
@@ -257,7 +257,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
       - name: Send tests complete message
         uses: actions/github-script@v7
         env:

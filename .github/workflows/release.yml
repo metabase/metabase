@@ -65,7 +65,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+      run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Get Release Version
       uses: actions/github-script@v7
       id: canonical_version
@@ -110,7 +110,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
       - name: Send publish start message
         uses: actions/github-script@v7
         env:
@@ -191,7 +191,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: prepare release scripts
-      run: cd release && yarn && yarn build
+      run: cd release && bun install && bun run build
     - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
@@ -288,7 +288,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: prepare release scripts
-      run: cd release && yarn && yarn build
+      run: cd release && bun install && bun run build
     - name: Tag Release
       uses: actions/github-script@v7
       with:
@@ -320,7 +320,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: prepare release scripts
-        run: cd release && yarn && yarn build
+        run: cd release && bun install && bun run build
       - name: Get extra tags
         id: taglist
         uses: actions/github-script@v7
@@ -368,7 +368,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
       - name: Find milestone
         id: find-milestone
         uses: actions/github-script@v7
@@ -446,7 +446,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: prepare release scripts
-        run: cd release && yarn && yarn build
+        run: cd release && bun install && bun run build
       - name: Publish draft release notes to github
         uses: actions/github-script@v7
         with:
@@ -525,7 +525,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+      run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Publish version info
       uses: actions/github-script@v7
       id: new_version_info
@@ -582,7 +582,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && bun install && bun run build
       - name: Send publish complete message
         uses: actions/github-script@v7
         env:
@@ -613,7 +613,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+      run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Update milestones
       uses: actions/github-script@v7
       with:
