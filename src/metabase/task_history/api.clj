@@ -158,11 +158,13 @@
 
 (defn- build-run-where-clause
   [{:keys [run-type entity-type entity-id status]}]
-  (cond-> {}
-    run-type    (assoc :run_type run-type)
-    entity-type (assoc :entity_type entity-type)
-    entity-id   (assoc :entity_id entity-id)
-    status      (assoc :status status)))
+  (let [clause (cond-> {}
+                 run-type    (assoc :run_type run-type)
+                 entity-type (assoc :entity_type entity-type)
+                 entity-id   (assoc :entity_id entity-id)
+                 status      (assoc :status status))]
+    (when (seq clause)
+      {:where (into [:and] (map (fn [[k v]] [:= k v])) clause)})))
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
