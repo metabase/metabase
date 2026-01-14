@@ -357,20 +357,32 @@
   [in-or-out :- [:enum :in :out]
    query]
   (letfn [(normalize [query]
-            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
+            (let [query-type (lib/normalized-query-type query)
+                  pmbql? (= query-type :mbql/query)]
+              ;; DEBUG: Log query fingerprint on the way out (reading from DB)
+              (when (= in-or-out :out)
+                (log/errorf "maybe-normalize-query :out - hash=%s pmbql?=%s query-type=%s"
+                            (hash query)
+                            pmbql?
+                            query-type))
+              (let [f (if pmbql?
                       ;; MLv2 queries
                       (case in-or-out
                         :in  serialize-mlv2-query
                         :out deserialize-mlv2-query)
-                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                        ;; legacy queries: just normalize them with the legacy normalization code for now
                       (case in-or-out
                         :in  mbql.normalize/normalize
                         :out mbql.normalize/normalize))]
-              (f query)))]
-    (cond-> query
+                (f query))))]
+    (let [normalized-query (cond-> query
       (and (map? query) (seq query))
-      normalize)))
+                             normalize)]
+      (when (= in-or-out :out)
+        (log/errorf "maybe-normalize-query :out - old-hash=%s new-hash=%s"
+                    (hash query)
+                    (hash normalized-query)))
+      normalized-query)))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
