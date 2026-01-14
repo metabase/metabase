@@ -46,6 +46,21 @@
                        (str/replace "_" " ")
                        u.cron/cron-string->schedule-map)}))
 
+(defn- pulse->task-run-info
+  [{:keys [dashboard_id cards]}]
+  (cond
+    dashboard_id
+    {:run_type    :subscription
+     :entity_type :dashboard
+     :entity_id   dashboard_id}
+
+    (seq cards)
+    {:run_type    :subscription
+     :entity_type :card
+     :entity_id   (:id (first cards))}
+
+    :else nil))
+
 (defn- send-pulse!
   [pulse-id channel-ids]
   (try
@@ -53,10 +68,7 @@
                                                        :archived false
                                                        ;; alerts should all be migrated to notifications by now
                                                        :alert_condition nil)]
-      (task-history/with-task-run {:run_type      :subscription
-                                   :entity_type   :dashboard
-                                   :entity_id     (:dashboard_id pulse)
-                                   :auto-complete false}
+      (task-history/with-task-run (some-> (pulse->task-run-info pulse) (assoc :auto-complete false))
         (task-history/with-task-history {:task         "send-pulse"
                                          :task_details {:pulse-id    pulse-id
                                                         :channel-ids (seq channel-ids)}}
