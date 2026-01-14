@@ -12,7 +12,10 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.channel.email :as email]
+   [metabase.channel.urls :as urls]
    [metabase.task.core :as task]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -88,21 +91,24 @@
   [run-id transform-ids-to-run {:keys [run-method start-promise]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
         successful (volatile! #{})
-        messages (volatile! [])]
+        failures (volatile! [])]
     (when start-promise
       (deliver start-promise :started))
 
     (doseq [transform plan]
-      (when (every? @successful (get deps (:id transform)))
+      (if (every? @successful (get deps (:id transform)))
         (try
           (run-transform! run-id run-method transform)
           (vswap! successful conj (:id transform))
           (catch Exception e
-            (vswap! messages conj (str (:name transform) ":\n" (.getMessage e)))))))
+            (vswap! failures conj {:transform transform
+                                   :message (.getMessage e)})))
+        (vswap! failures conj {:transform transform
+                               :message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
 
-    (if @messages
+    (if @failures
       {:status :failed
-       :message (str/join "\n\n" @messages)}
+       :failures @failures}
       {:status :succeeded})))
 
 (defn- job-transform-ids [job-id]
@@ -122,6 +128,36 @@
   [job-id]
   (:order (get-plan (job-transform-ids job-id))))
 
+(defn- compile-transform-failure-messages [failures]
+  (str/join "\n\n" (map #(str (:name (:transform %)) ":\n" (:message %)) failures)))
+
+(defn- notify-transform-failures [job-id failures]
+  (let [job (t2/select-one :model/TransformJob job-id)
+        by-owner (group-by (comp :creator_id :transform) failures)]
+    (doseq [[user-id failures] by-owner
+            :let [user (t2/select-one :model/User user-id)]]
+      (println "Sending message:")
+      (prn user)
+      (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
+                            :recipients [(:email user)]
+                            :message-type :text
+                            :message (i18n/trs "Hello,\n\nThe following {0} occured when running the transform job called {1}:\n\n{2}\n\nVisit {3} for more information.\n\nThanks\n\nYour Metabase job scheduler"
+                                               (i18n/trun "failure" "failures" (count failures))
+                                               (:name job)
+                                               (compile-transform-failure-messages failures)
+                                               (urls/transform-job-url job-id))}))))
+
+(defn- notify-job-failure [job-id message]
+  (let [job (t2/select-one :model/TransformJob job-id)
+        admin-emails (keep :email (t2/select :model/User :is_superuser true :is_active true))]
+    (email/send-message! {:subject (i18n/trs "[Metabase] Failed transform job")
+                          :recipients admin-emails
+                          :message-type :text
+                          :message (i18n/trs "Hello,\n\nThe following errors occured when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information.\n\nThanks\n\nYour Metabase job scheduler"
+                                             (:name job)
+                                             message
+                                             (urls/transform-job-url job-id))})))
+
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
@@ -135,9 +171,16 @@
             (let [result (run-transforms! run-id transforms opts)]
               (case (:status result)
                 :succeeded (transforms.job-run/succeed-started-run! run-id)
-                :failed (transforms.job-run/fail-started-run! run-id {:message (:message result)})))
+                :failed (do
+                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (:failures result))})
+                          (when (= :cron run-method)
+                            (notify-transform-failures job-id (:failures result))))))
             (catch Throwable t
+              ;; We don't expect a catastrophic failure, but neither did the Titanic.
+              ;; We should clean up in this case and notify the admin users.
               (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+              (when (= :cron run-method)
+                (notify-job-failure job-id (.getMessage t)))
               (throw t))))
         run-id))))
 

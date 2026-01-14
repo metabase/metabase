@@ -2316,6 +2316,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            collections
            driver
            events
