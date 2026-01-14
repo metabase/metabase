@@ -354,6 +354,22 @@ databaseChangeLog:
             columnName: run_id
 
   - changeSet:
+      id: v59.2026-01-12T15:30:04
+      author: bronsa
+      comment: Add index on task_history.run_id
+      changes:
+        - createIndex:
+            tableName: task_history
+            indexName: idx_task_history_run_id
+            columns:
+              - column:
+                  name: run_id
+      rollback:
+        - dropIndex:
+            tableName: task_history
+            indexName: idx_task_history_run_id
+
+  - changeSet:
       id: v59.2026-01-12T15:30:05
       author: bronsa
       comment: Add foreign key from task_history.run_id to task_run
@@ -388,23 +404,6 @@ databaseChangeLog:
         - dropColumn:
             tableName: task_history
             columnName: logs
-
-  - changeSet:
-      id: v59.2026-01-14T12:55:04
-      author: bronsa
-      comment: Add index on task_history.run_id
-      changes:
-        - createIndex:
-            tableName: task_history
-            indexName: idx_task_history_run_id
-            columns:
-              - column:
-                  name: run_id
-      rollback:
-        - dropIndex:
-            tableName: task_history
-            indexName: idx_task_history_run_id
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
