@@ -53,4 +53,17 @@ describe("EmbeddingSdkSettings (EE)", () => {
 
     expect(screen.getByText("Tenants")).toBeInTheDocument();
   });
+
+  it("should show Security and Appearance in related settings", async () => {
+    await setup({
+      enterprisePlugins: [
+        "embedding-sdk",
+        "embedding_iframe_sdk",
+        "embedding_iframe_sdk_setup",
+      ],
+    });
+
+    expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
+  });
 });
