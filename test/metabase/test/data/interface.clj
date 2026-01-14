@@ -641,7 +641,7 @@
     :semantic_type :type/Quantity
     :name          "count"
     :display_name  (case aggregation-type
-                     :count "Count"
+                     :count     "Count"
                      :cum-count "Cumulative count")
     :source        :aggregation
     :field_ref     [:aggregation 0]})
@@ -651,7 +651,7 @@
    (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                             :type     :query
                                             :query    {:source-table table-id
-                                                       :aggregation [[aggregation-type [:field-id field-id]]]}})
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]}})
        first
        (merge (when (= aggregation-type :cum-count)
                 {:base_type     :type/Decimal
@@ -937,7 +937,7 @@
                            (if (string? field-name)
                              (get-in table->id->k->v [table id field-name])
                              (let [[fk-from-name fk-table fk-dest-name] field-name
-                                   fk-id (get-in table->id->k->v [table id fk-from-name])]
+                                   fk-id                                (get-in table->id->k->v [table id fk-from-name])]
                                (resolve-field fk-table fk-id fk-dest-name))))]
     (for [id (range 1 (inc (count (:rows (tabledef-with-name dbdef table-name)))))]
       (for [{:keys [field-name]} nested-fielddefs]

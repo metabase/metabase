@@ -285,11 +285,11 @@
 
 (mu/defmethod tx/dataset-already-loaded? :redshift
   [driver :- :keyword
-   dbdef :- [:map
-             [:database-name     :string]
-             [:table-definitions [:sequential
-                                  [:map
-                                   [:table-name :string]]]]]]
+   dbdef  :- [:map
+              [:database-name     :string]
+              [:table-definitions [:sequential
+                                   [:map
+                                    [:table-name :string]]]]]]
   (or
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
