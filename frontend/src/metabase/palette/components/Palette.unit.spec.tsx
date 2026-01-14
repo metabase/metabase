@@ -7,7 +7,8 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SearchResult } from "metabase-types/api";
 import {
   createMockSearchResult,
   createMockUser,
@@ -18,15 +19,21 @@ import { Palette } from "./Palette";
 
 const setup = ({
   routeProps,
-}: { routeProps?: { disableCommandPalette?: boolean } } = {}) => {
+  searchResults = [],
+}: {
+  routeProps?: { disableCommandPalette?: boolean };
+  searchResults?: SearchResult[];
+} = {}) => {
   setupDatabasesEndpoints([]);
-  setupSearchEndpoints([]);
+  setupSearchEndpoints(searchResults);
   setupRecentViewsEndpoints([]);
   renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
     withKBar: true,
     withRouter: true,
     storeInitialState: createMockState({
-      currentUser: createMockUser(),
+      currentUser: createMockUser({
+        permissions: { can_create_queries: true },
+      }),
     }),
   });
 };
@@ -83,66 +90,27 @@ describe("command palette", () => {
   });
 
   it("should preserve user navigation selection when search results load", async () => {
-    setupDatabasesEndpoints([]);
-    setupRecentViewsEndpoints([]);
+    const getSelectedOption = () =>
+      screen
+        .getAllByRole("option")
+        .find((option) => option.getAttribute("aria-selected") === "true");
 
-    // Set up a delayed search response to simulate slow API
-    const searchResults = [
-      createMockSearchResult({ name: "New metric", model: "card" }),
-      createMockSearchResult({ name: "Browse metrics", model: "collection" }),
-      createMockSearchResult({ name: "Metric Model", model: "dataset" }),
-    ];
-
-    fetchMock.get(
-      "path:/api/search",
-      {
-        data: searchResults,
-        total: searchResults.length,
-      },
-      { delay: 100 },
-    );
-
-    renderWithProviders(<Route path="/" component={Palette} />, {
-      withKBar: true,
-      withRouter: true,
-      storeInitialState: createMockState({
-        currentUser: createMockUser(),
-      }),
+    setup({
+      searchResults: [createMockSearchResult({ name: "Metric search result" })],
     });
 
-    // Open command palette
     await userEvent.keyboard("[ControlLeft>]k");
     await screen.findByTestId("command-palette");
     const input = await screen.findByPlaceholderText(/search for anything/i);
-
-    // Type search query
     await userEvent.type(input, "metric");
 
-    // Wait for initial actions to appear (New metric, Browse metrics from basic actions)
-    await waitFor(() => {
-      expect(screen.getByText("New metric")).toBeInTheDocument();
-    });
+    await screen.findByText("Loading...");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
 
-    // Navigate down to select the second action (Browse metrics)
     await userEvent.keyboard("{ArrowDown}");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
 
-    // Wait a bit more for the delayed search results to load
-    await waitFor(
-      () => {
-        // Search results should now be loaded (will include "Results" header)
-        expect(screen.getByText("Results")).toBeInTheDocument();
-      },
-      { timeout: 200 },
-    );
-
-    // Verify that the user's selection is preserved
-    const options = screen.getAllByRole("option");
-    const selectedOption = options.find(
-      (option) => option.getAttribute("aria-selected") === "true",
-    );
-
-    expect(selectedOption).toBeDefined();
-    // The selection should still be on "Browse metrics", not reset to first item
-    expect(selectedOption).toHaveTextContent("Browse metrics");
+    await screen.findByText("Metric search result");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
   });
 });
