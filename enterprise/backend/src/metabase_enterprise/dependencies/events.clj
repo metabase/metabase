@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -252,20 +253,6 @@
   [_ {:keys [object]}]
   (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object)))
 
-(defn- check-dependents! [type object recur-through-transforms?]
-  (let [graph (if recur-through-transforms?
-                (models.dependency/graph-dependents)
-                (models.dependency/filtered-graph-dependents
-                 nil
-                 (fn [type-field _id-field]
-                   [:not= type-field "transform"])))
-        children-map (models.dependency/transitive-dependents graph {type [object]})]
-    (doseq [[type children] children-map
-            :when (deps.findings/supported-entities type)
-            instances (partition 50 50 nil children)]
-      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
-          deps.findings/analyze-instances!))))
-
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
 (derive :event/measure-create ::measure-deps)
@@ -290,6 +277,20 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
 
+(defn- check-dependents! [type object recur-through-transforms?]
+  (let [graph (if recur-through-transforms?
+                (models.dependency/graph-dependents)
+                (models.dependency/filtered-graph-dependents
+                 nil
+                 (fn [type-field _id-field]
+                   [:not= type-field "transform"])))
+        children-map (models.dependency/transitive-mbql-dependents graph {type [object]})]
+    (doseq [[type children] children-map
+            :when (deps.findings/supported-entities type)
+            instances (partition 50 50 nil children)]
+      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
+          deps.findings/analyze-instances!))))
+
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)
@@ -297,7 +298,8 @@
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (some-> (:dataset_query object) lib/any-native-stage?)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
       (check-dependents! :card object false))))
@@ -309,7 +311,8 @@
 
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (some-> (:source object) :query lib/any-native-stage?)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object))))
 
@@ -320,7 +323,8 @@
 
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (some-> (:definition object) lib/any-native-stage?)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
       (check-dependents! :segment object false))))

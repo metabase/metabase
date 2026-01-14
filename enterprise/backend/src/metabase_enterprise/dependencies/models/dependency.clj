@@ -1,7 +1,9 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.graph.core :as graph]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -181,6 +183,45 @@
    (let [graph (or graph (graph-dependents))
          starters (entities->nodes updated-entities)]
      (->> (graph/transitive graph starters) ; This returns a flat list.
+          group-nodes))))
+
+(def ^:private query-lookup
+  {:card      [:dataset_query]
+   :transform [:source :query]
+   :segment   [:definition]})
+
+(defn- native-lookup-map [children]
+  (let [grouped (-> (graph/all-map-nodes children)
+                    group-nodes)]
+    (into {}
+          (mapcat (fn [[node-type ids]]
+                    (let [query-keys (query-lookup node-type)
+                          model (deps.dependency-types/dependency-type->model node-type)]
+                      (cond
+                        query-keys (t2/select-fn-vec (fn [entity]
+                                                       [[node-type (:id entity)]
+                                                        (some-> entity (get-in query-keys) lib/any-native-stage?)])
+                                                     model :id [:in ids])
+                        (= node-type :snippet) (for [id ids]
+                                                 [[node-type id] true])))))
+          grouped)))
+
+(defn transitive-mbql-dependents
+  "Equivalent to `transitive-dependents`, except it excludes any native cards/transforms/segments and their children.
+
+  Also, the order is more flexible (though consistent between runs)"
+  ([updated-entities]
+   (transitive-mbql-dependents nil updated-entities))
+  ([graph updated-entities]
+   (let [start-nodes (entities->nodes updated-entities)
+         children (graph/transitive-children-of (or graph (graph-dependents)) start-nodes)
+         native-lookup (native-lookup-map children)]
+     (->> (graph/keep-children (fn [node]
+                                 (if (native-lookup node)
+                                   ::graph/stop
+                                   node))
+                               children)
+          (remove (set start-nodes))
           group-nodes))))
 
 (defn replace-dependencies!

@@ -152,7 +152,9 @@
                         (assoc-in [:dataset-query :query :filter]
                                   [:> [:field (meta/id :orders :quantity) nil] 100])
                         (dissoc :result-metadata))]
-          (is (= {} (dependencies/errors-from-proposed-edits provider graph {:card [card']}))))))))
+          (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
+                                                             :base-provider provider
+                                                             :graph graph))))))))
 
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly ignores downstream errors"
@@ -164,6 +166,8 @@
         (let [snippet' (assoc snippet-inner
                               :content       "nonexistent_table"
                               :template-tags {})
-              errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
+              errors   (dependencies/errors-from-proposed-edits {:snippet [snippet']}
+                                                                :base-provider provider
+                                                                :graph graph)]
           ;; Because we are changing a snippet, don't check anything downstream
           (is (= {} errors)))))))

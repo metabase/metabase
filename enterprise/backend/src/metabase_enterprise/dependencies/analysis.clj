@@ -21,8 +21,8 @@
 (mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error]]
   "Find any bad refs in a `query`."
   [driver :- :keyword
-   query   :- ::lib.schema/query]
-  (if lib/any-native-stage?
+   query  :- ::lib.schema/query]
+  (if (lib/any-native-stage? query)
     (deps.native/validate-native-query driver query)
     (lib/find-bad-refs query)))
 
