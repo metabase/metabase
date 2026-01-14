@@ -1,28 +1,18 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
-import { INTERNAL_COLORS, type MetabaseColorV2 } from "./constants";
+import { INTERNAL_COLORS } from "./constants";
 import { METABASE_DARK_THEME } from "./dark";
 import { METABASE_LIGHT_THEME } from "./light";
-import type { MetabaseThemeV2, UserThemeOverride } from "./types";
+import type {
+  MetabaseColorKey,
+  MetabaseThemeV2,
+  UserThemeOverride,
+} from "./types";
 
-// Re-export from constants for backward compatibility
-export {
-  INTERNAL_COLORS,
-  type InternalColorKey,
-  type MetabaseColorV2,
-} from "./constants";
-
-// Re-export theme constants
-export { METABASE_DARK_THEME } from "./dark";
-export { METABASE_LIGHT_THEME } from "./light";
-
-// Re-export types
-export type { ChartColorV2, MetabaseThemeV2, UserThemeOverride } from "./types";
-
-// Helper for runtime theme selection
-export function getThemeV2(colorScheme: "light" | "dark"): MetabaseThemeV2 {
-  return colorScheme === "dark" ? METABASE_DARK_THEME : METABASE_LIGHT_THEME;
-}
+export const getThemeFromColorScheme = (
+  colorScheme: "light" | "dark",
+): MetabaseThemeV2 =>
+  colorScheme === "dark" ? METABASE_DARK_THEME : METABASE_LIGHT_THEME;
 
 /**
  * Universal theme resolution with layered overrides.
@@ -55,7 +45,7 @@ export function resolveTheme(options: ThemeOverrideOptions): MetabaseThemeV2 {
       ...baseTheme.colors,
       ...whitelabelColors,
       ...filteredUserColors,
-    } as Record<MetabaseColorV2, string>,
+    } as Record<MetabaseColorKey, string>,
     chartColors: userThemeOverride?.chartColors,
   };
 }

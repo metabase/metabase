@@ -12,7 +12,10 @@ import {
   type MetabaseSdkTheme,
   isThemeV2,
 } from "metabase/embedding-sdk/theme/theme-version";
-import { getThemeV2, resolveTheme } from "metabase/lib/colors/theme";
+import {
+  getThemeFromColorScheme,
+  resolveTheme,
+} from "metabase/lib/colors/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -32,7 +35,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const themeOverride = useMemo(() => {
     if (isThemeV2(theme)) {
       const resolvedTheme = resolveTheme({
-        baseTheme: getThemeV2("light"),
+        baseTheme: getThemeFromColorScheme("light"),
         whitelabelColors: appColors ?? {},
         userThemeOverride: theme,
       });

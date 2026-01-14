@@ -1,7 +1,7 @@
-import type { colorConfig } from "./colors";
+import type { MetabaseColorKey } from "./types";
 
-// All color keys from colorConfig (~85 keys)
-export type MetabaseColorV2 = keyof typeof colorConfig;
+/** @deprecated Use MetabaseColorKey from "./types" instead */
+export type MetabaseColorV2 = MetabaseColorKey;
 
 // Colors not exposed to Modular Embedding.
 export const INTERNAL_COLORS = [

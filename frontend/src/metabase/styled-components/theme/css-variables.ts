@@ -9,13 +9,13 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { colorConfig } from "metabase/lib/colors";
+import { getThemeFromColorScheme } from "metabase/lib/colors/theme";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
 
 const createColorVars = (colorScheme: "light" | "dark"): string =>
-  Object.entries(colorConfig)
-    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+  Object.entries(getThemeFromColorScheme(colorScheme).colors)
+    .map(([name, value]) => `--mb-color-${name}: ${value};`)
     .join("\n");
 
 /**

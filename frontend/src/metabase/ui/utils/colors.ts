@@ -1,9 +1,12 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
-import { colorConfig } from "metabase/lib/colors";
+import { METABASE_LIGHT_THEME } from "metabase/lib/colors";
+import { getThemeFromColorScheme } from "metabase/lib/colors/theme";
 import type { ColorName } from "metabase/lib/colors/types";
 
-export const ALL_COLOR_NAMES = Object.keys(colorConfig);
+export const ALL_COLOR_NAMES = Object.keys(
+  METABASE_LIGHT_THEME.colors,
+) as string[];
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -41,14 +44,16 @@ export function getColorShades(colorName: string): MantineColorsTuple {
 export function getThemeColors(
   colorScheme: "light" | "dark",
 ): Record<string, MantineColorsTuple> {
+  const { colors } = getThemeFromColorScheme(colorScheme);
+
   return {
     ...Object.fromEntries(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      Object.entries(colorConfig).map(([name, colors]) => [
+      Object.entries(colors).map(([name, value]) => [
         name,
-        getColorShades(colors[colorScheme] || colors.light),
+        getColorShades(value),
       ]),
     ),
   };

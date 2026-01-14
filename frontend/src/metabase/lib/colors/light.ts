@@ -3,7 +3,6 @@ import type { MetabaseThemeV2 } from "./types";
 
 /**
  * The default light theme for Metabase.
- * These values are extracted from colorConfig light mode.
  */
 export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
   version: 2,
