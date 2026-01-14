@@ -1,0 +1,163 @@
+import { useMemo } from "react";
+import { Link } from "react-router";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { LogsViewer } from "metabase/admin/tools/components/Logs/LogsViewer";
+import {
+  formatTaskStatus,
+  getTaskStatusColor,
+} from "metabase/admin/tools/utils";
+import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { openSaveDialog } from "metabase/lib/dom";
+import {
+  Anchor,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
+import type { Database } from "metabase-types/api";
+
+import S from "./TaskDetailsPage.module.css";
+import { formatTaskDetails, getFilename } from "./utils";
+
+type TaskDetailsPageProps = {
+  params: { taskId: number };
+};
+
+export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
+  const { data: task, error, isLoading } = useGetTaskQuery(params.taskId);
+  const code = formatTaskDetails(task);
+  const linesCount = useMemo(() => code.split("\n").length, [code]);
+  const { data: databasesData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery();
+
+  if (!task || error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+  const hasLogs = task?.logs?.length !== 0;
+  const databases = databasesData?.data ?? [];
+  const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
+  const db = task.db_id ? databaseByID[task.db_id] : null;
+  const name = db ? db.name : null;
+  const engine = db ? db.engine : null;
+
+  const handleDownload = () => {
+    const filename = getFilename(task);
+    const blob = new Blob([code], { type: "text/json" });
+    openSaveDialog(filename, blob);
+  };
+
+  return (
+    <SettingsSection>
+      <Flex align="center" gap="sm">
+        <Link to="/admin/tools/tasks/list">
+          <Flex align="center" gap="xs" c="text-secondary">
+            <Icon name="chevronleft" />
+            {t`Back to Tasks`}
+          </Flex>
+        </Link>
+      </Flex>
+
+      <Stack>
+        <Title order={3}>{t`Task details`}</Title>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`ID`}</Text>
+          <Text>{task.id}</Text>
+        </Flex>
+        <Flex gap="md" align="center">
+          <Text fw="bold" w={120}>{t`Status`}</Text>
+          <Badge color={getTaskStatusColor(task.status)}>
+            {formatTaskStatus(task.status)}
+          </Badge>
+        </Flex>
+        <Flex gap="md" align="baseline">
+          <Text fw="bold" w={120}>{t`Task run`}</Text>
+          {task.run_id !== null && (
+            <Anchor
+              component={Link}
+              to={`/admin/tools/tasks/runs/${task.run_id}`}
+            >
+              {t`Go to the corresponding run`}
+            </Anchor>
+          )}
+        </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`DB Name`}</Text>
+          <Text>
+            {isLoadingDatabases ? (
+              <Loader size="xs" />
+            ) : task.db_id ? (
+              name || t`Unknown name`
+            ) : null}
+          </Text>
+        </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`DB Engine`}</Text>
+          <Text>
+            {isLoadingDatabases ? (
+              <Loader size="xs" />
+            ) : task.db_id ? (
+              engine || t`Unknown engine`
+            ) : null}
+          </Text>
+        </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`Started at`}</Text>
+          <Text>{task.started_at}</Text>
+        </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`Ended at`}</Text>
+          <Text>{task.ended_at ?? "—"}</Text>
+        </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`Duration (ms)`}</Text>
+          <Text>{task.duration}</Text>
+        </Flex>
+        <Flex justify="space-between" align="flex-end">
+          <Title order={3}>{t`JSON details`}</Title>
+          <Button
+            leftSection={<Icon name="download" />}
+            variant="filled"
+            onClick={handleDownload}
+          >{t`Download`}</Button>
+        </Flex>
+        <Box
+          className={S.codeContainer}
+          p={linesCount > 1 ? 0 : "xs"}
+          pos="relative"
+          mt="md"
+        >
+          <CodeEditor
+            language="json"
+            lineNumbers={linesCount > 1}
+            readOnly
+            value={code}
+          />
+
+          <Box p="sm" pos="absolute" right={0} top={0}>
+            <CopyButton value={code} />
+          </Box>
+        </Box>
+
+        <Title order={3}>{t`Logs`}</Title>
+        {!hasLogs && <Text>{t`There are no captured logs`}</Text>}
+        {hasLogs && (
+          <Box className={S.codeContainer} mt="md">
+            <LogsViewer logs={task?.logs ?? []}></LogsViewer>
+          </Box>
+        )}
+      </Stack>
+    </SettingsSection>
+  );
+};

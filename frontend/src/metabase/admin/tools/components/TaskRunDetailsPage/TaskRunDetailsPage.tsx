@@ -84,7 +84,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 {taskRun.entity_name ?? taskRun.entity_id}
               </Anchor>
             </Flex>
-            <Flex gap="md">
+            <Flex gap="md" align="center">
               <Text fw="bold" w={120}>{t`Status`}</Text>
               <Badge color={getTaskRunStatusColor(taskRun.status)}>
                 {formatTaskRunStatus(taskRun.status)}
