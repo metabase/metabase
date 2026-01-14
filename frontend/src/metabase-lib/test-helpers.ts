@@ -510,7 +510,7 @@ function appendTestQueryStage(
   query: Lib.Query,
   stageIndex: number,
 ): Lib.Query {
-  const { source, joins = [] } = stage;
+  const { source, joins = [], filters = [] } = stage;
 
   const queryWithStage = Lib.appendStage(query);
 
@@ -543,7 +543,19 @@ function appendTestQueryStage(
           ),
         );
 
-  return queryWithFields;
+  // Add filters
+  const queryWithFilters = filters.reduce((query, filter) => {
+    const filterClause = createTestFilterClause(
+      metadataProvider,
+      sourceMetadata,
+      query,
+      stageIndex,
+      filter,
+    );
+    return Lib.filter(query, stageIndex, filterClause);
+  }, queryWithFields);
+
+  return queryWithFilters;
 }
 
 function findSource(
@@ -701,4 +713,19 @@ function expressionToJoinConditionExpression(
       );
     }
   }
+}
+
+function createTestFilterClause(
+  _metadataProvider: Lib.MetadataProvider,
+  _sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
+  query: Lib.Query,
+  stageIndex: number,
+  filter: TestQueryFilter,
+): Lib.ExpressionClause {
+  return expressionToExpressionClause(
+    query,
+    stageIndex,
+    Lib.filterableColumns(query, stageIndex),
+    filter,
+  );
 }
