@@ -142,8 +142,14 @@
                                  lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
-                          transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
+          (is (=? {:card {downstream-card-id  #{{:type              :validate/missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :card
+                                                 :source-entity-id  101}}
+                          transformed-card-id #{{:type              :validate/missing-column
+                                                 :name              "Tax Rate"
+                                                 :source-entity-type :table
+                                                 :source-entity-id  1234567}}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
@@ -169,7 +175,10 @@
           ;; queries that consume the transform's table.
           (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
                                transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
-                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
+                               transformed-mbql-card-id #{{:type              :validate/missing-column
+                                                           :name              "RATING"
+                                                           :source-entity-type :table
+                                                           :source-entity-id  1234568}}}
                    :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
                   errors))
           (is (= #{:card :transform}
