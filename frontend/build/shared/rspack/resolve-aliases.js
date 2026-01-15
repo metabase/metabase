@@ -1,6 +1,5 @@
 // @ts-check
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
 
 const path = require("path");
 
@@ -54,7 +53,7 @@ const RESOLVE_ALIASES = {
   e2e: E2E_PATH,
   style: SRC_PATH + "/css/core/index",
   // NOTE @kdoh - 7/24/18
-  // icepick 2.x is es6 by defalt, to maintain backwards compatability
+  // icepick 2.x is es6 by default, to maintain backwards compatibility
   // with ie11 point to the minified version
   icepick: ROOT_PATH + "/node_modules/icepick/icepick.min",
   // conditionally load either the EE plugins file or a empty file in the CE code tree

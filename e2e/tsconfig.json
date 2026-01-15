@@ -13,6 +13,9 @@
     "paths": {
       "e2e/*": ["./*"],
       "@metabase/embedding-sdk-react": ["../enterprise/frontend/src/embedding-sdk-package/index.ts"],
+      "@bahmutov/*": ["../node_modules/@bahmutov/*"],
+      "@esbuild-plugins/*": ["../node_modules/@esbuild-plugins/*"],
+      "cypress-*": ["../node_modules/cypress-*"],
       "*": ["../frontend/src/*"]
     }
   },

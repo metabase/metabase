@@ -30,7 +30,11 @@ module.exports = {
       ...RESOLVE_ALIASES,
       ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
-    fallback: { path: false, fs: false }, // FIXME: this might break file download tests, we might need to implement this properly
+    fallback: {
+      path: false,
+      fs: false,
+      querystring: require.resolve("querystring-es3"),
+    },
   },
   entry: [path.join(__dirname, "src", "index.js")],
   output: {
