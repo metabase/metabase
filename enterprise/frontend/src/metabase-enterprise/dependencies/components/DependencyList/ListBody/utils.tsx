@@ -24,6 +24,7 @@ function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
     id: "name",
     header: t`Name`,
     minWidth: 100,
+    enableSorting: true,
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -37,6 +38,7 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
     id: "location",
     header: t`Location`,
     minWidth: 100,
+    enableSorting: true,
     accessorFn: (node) => {
       const location = getNodeLocationInfo(node);
       const links = location?.links ?? [];

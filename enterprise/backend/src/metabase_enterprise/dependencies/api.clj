@@ -572,7 +572,7 @@
                              (= (-> % :data :type) dependent_card_type))))))))
 
 (defn- dependency-items-query
-  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections]}]
+  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections sort-column]}]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -587,20 +587,32 @@
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
-        join (case query-type
-               :unreferenced [:dependency [:and
-                                           [:= :dependency.to_entity_id :entity.id]
-                                           [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
-               :broken [:analysis_finding [:and
-                                           [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                           [:= :analysis_finding.analyzed_entity_type (name entity-type)]]])
-        join-filter (case query-type
-                      :unreferenced [:= :dependency.id nil]
-                      :broken [:= :analysis_finding.result false])
-
+        location-column (case entity-type
+                          :card [:case
+                                 [:not= :entity.dashboard_id nil] :location_dashboard.name
+                                 [:not= :entity.document_id nil] :location_document.name
+                                 :else :collection.name]
+                          :table :database.name
+                          (:transform :snippet :dashboard :document) :collection.name
+                          :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                          (:segment :measure) :location_table.name)
+        dependency-join (case query-type
+                          :unreferenced [:dependency [:and
+                                                      [:= :dependency.to_entity_id :entity.id]
+                                                      [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+                          :broken [:analysis_finding [:and
+                                                      [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                                      [:= :analysis_finding.analyzed_entity_type (name entity-type)]]])
+        dependency-filter (case query-type
+                            :unreferenced [:= :dependency.id nil]
+                            :broken [:= :analysis_finding.result false])
+        card-type-filter (when (and (= entity-type :card)
+                                    (seq card-types))
+                           [:in :entity.type (mapv name card-types)])
+        query-filter (when (and query (not= entity-type :sandbox))
+                       [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")])
         database-filter (when (= entity-type :table)
                           [:and [:not :database.is_sample] [:not :database.is_audit]])
-        needs-database-join? (= entity-type :table)
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
                             (:card :dashboard :document :snippet :segment :measure)
@@ -625,22 +637,32 @@
                                         (for [pid personal-ids]
                                           [:not-like :collection.location (str "/" pid "/%")]))]]))
                             nil))
-        needs-collection-join? (and (not include-personal-collections)
-                                    (#{:card :dashboard :document :snippet} entity-type))]
+        sort-key-column (if (= sort-column :location) location-column name-column)
+        sort-by-location? (= sort-column :location)
+        needs-database-join? (= entity-type :table)
+        needs-collection-join? (or (and (not include-personal-collections)
+                                        (#{:card :dashboard :document :snippet} entity-type))
+                                   (and sort-by-location?
+                                        (#{:card :transform :snippet :dashboard :document} entity-type)))
+        needs-dashboard-join? (and sort-by-location? (= entity-type :card))
+        needs-document-join? (and sort-by-location? (= entity-type :card))
+        needs-location-table-join? (and sort-by-location? (#{:segment :measure} entity-type))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
-              [name-column :sort_key]]
+              [sort-key-column :sort_key]]
      :from [[table-name :entity]]
-     :left-join (cond-> join
+     :left-join (cond-> dependency-join
                   needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
-                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id]))
-     :where (cond->> join-filter
-              (and (= entity-type :card)
-                   (seq card-types))
-              (conj [:and [:in :entity.type (mapv name card-types)]])
+                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id])
+                  needs-dashboard-join? (conj [:report_dashboard :location_dashboard] [:= :entity.dashboard_id :location_dashboard.id])
+                  needs-document-join? (conj [:document :location_document] [:= :entity.document_id :location_document.id])
+                  needs-location-table-join? (conj [:metabase_table :location_table] [:= :entity.table_id :location_table.id]))
+     :where (cond->> dependency-filter
+              card-type-filter
+              (conj [:and card-type-filter])
 
-              (and query (not= entity-type :sandbox))
-              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+              query-filter
+              (conj [:and query-filter])
 
               database-filter
               (conj [:and database-filter])
@@ -653,7 +675,7 @@
 
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
-  #{:name})
+  #{:name :location})
 
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
@@ -690,7 +712,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (currently only \"name\" is supported, default: \"name\")
+   - `sort_column`: Column to sort by (\"name\" or \"location\", default: \"name\")
    - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
@@ -720,7 +742,8 @@
                                                      :card-types card-types
                                                      :query query
                                                      :include-archived-items include-archived-items
-                                                     :include-personal-collections include_personal_collections})
+                                                     :include-personal-collections include_personal_collections
+                                                     :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
@@ -748,7 +771,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (currently only \"name\" is supported, default: \"name\")
+   - `sort_column`: Column to sort by (\"name\" or \"location\", default: \"name\")
    - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
@@ -778,7 +801,8 @@
                                                      :card-types card-types
                                                      :query query
                                                      :include-archived-items include-archived-items
-                                                     :include-personal-collections include_personal_collections})
+                                                     :include-personal-collections include_personal_collections
+                                                     :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
