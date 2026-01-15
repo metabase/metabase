@@ -79,7 +79,7 @@ describe("issue 14636", () => {
   });
 
   it("pagination should work (metabase#14636)", () => {
-    cy.visit("/admin/tools/tasks");
+    cy.visit("/admin/tools/tasks/list");
     cy.wait("@first");
 
     cy.location("search").should("eq", "");
@@ -115,14 +115,14 @@ describe("issue 14636", () => {
 
     cy.log("pagination should affect browser history");
     cy.go("back");
-    cy.location("pathname").should("eq", "/admin/tools/tasks");
+    cy.location("pathname").should("eq", "/admin/tools/tasks/list");
     cy.location("search").should("eq", "?page=1");
     cy.go("back");
-    cy.location("pathname").should("eq", "/admin/tools/tasks");
+    cy.location("pathname").should("eq", "/admin/tools/tasks/list");
     cy.location("search").should("eq", "");
 
     cy.log("it should respect page query param on page load");
-    cy.visit("/admin/tools/tasks?page=1");
+    cy.visit("/admin/tools/tasks/list?page=1");
     cy.wait("@second");
 
     cy.findByLabelText("pagination")
@@ -131,7 +131,9 @@ describe("issue 14636", () => {
   });
 
   it("filtering should work", () => {
-    cy.visit("/admin/tools/tasks?status=success&task=field+values+scanning");
+    cy.visit(
+      "/admin/tools/tasks/list?status=success&task=field+values+scanning",
+    );
 
     cy.findByPlaceholderText("Filter by task").should(
       "have.value",
@@ -181,13 +183,13 @@ describe("issue 14636", () => {
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
 
     cy.log("should reset pagination when changing filters");
-    cy.visit("/admin/tools/tasks?page=1");
+    cy.visit("/admin/tools/tasks/list?page=1");
     cy.findByPlaceholderText("Filter by status").click();
     H.popover().findByText("Success").click();
     cy.location("search").should("eq", "?status=success");
 
     cy.log("should remove invalid query params");
-    cy.visit("/admin/tools/tasks?status=foobar");
+    cy.visit("/admin/tools/tasks/list?status=foobar");
     cy.location("search").should("eq", "");
     cy.findByPlaceholderText("Filter by status").should("have.value", "");
   });
@@ -222,20 +224,16 @@ describe("scenarios > admin > tools > tasks", () => {
     }).as("getTask");
   });
 
-  it("shows task modal", () => {
-    cy.visit("/admin/tools/tasks");
+  it("shows task details page", () => {
+    cy.visit("/admin/tools/tasks/list");
     cy.wait("@getTasks");
 
     cy.findByTestId("tasks-table").findByText("A task").click();
     cy.wait("@getTask");
-    cy.location("pathname").should("eq", `/admin/tools/tasks/${task.id}`);
+    cy.location("pathname").should("eq", `/admin/tools/tasks/list/${task.id}`);
 
     cy.log("task details");
-    H.modal()
-      .get(".cm-content")
-      .should("be.visible")
-      .get(".cm-line")
-      .as("lines");
+    cy.get(".cm-content").should("be.visible").get(".cm-line").as("lines");
     cy.get("@lines").eq(0).should("have.text", "{");
     cy.get("@lines").eq(1).should("have.text", '  "useful": {');
     cy.get("@lines").eq(2).should("have.text", '    "information": true');
@@ -480,17 +478,17 @@ describe("admin > tools", () => {
   });
 
   describe("issue 57113", () => {
-    it("should navigate to /admin/tools/tasks when closing Task details modal even with no browser history", () => {
-      cy.visit("/admin/tools/tasks");
+    it("should navigate to /admin/tools/tasks/list when clicking Back to Tasks even with no browser history", () => {
+      cy.visit("/admin/tools/tasks/list");
 
       cy.log("Pick an existing task url");
 
       cy.findAllByTestId("task").should("be.visible").first().click();
 
       cy.location("pathname")
-        .should("match", /\/admin\/tools\/tasks\/[0-9]+$/)
+        .should("match", /\/admin\/tools\/tasks\/list\/[0-9]+$/)
         .then((pathname) => {
-          // Clear all history and navigate to the task detail modal page
+          // Clear all history and navigate to the task detail page
           cy.window().then((window) => {
             window.history.replaceState(null, "", pathname);
             // Clear the entire history stack by going to about:blank first
@@ -498,8 +496,8 @@ describe("admin > tools", () => {
           });
 
           cy.visit(pathname);
-          H.modal().findByRole("img", { name: "close icon" }).click();
-          cy.location("pathname").should("eq", "/admin/tools/tasks");
+          cy.findByText("Back to Tasks").click();
+          cy.location("pathname").should("eq", "/admin/tools/tasks/list");
         });
     });
   });
