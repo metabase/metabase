@@ -160,6 +160,36 @@
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
+;; Native agent endpoint - always uses Clojure implementation, bypasses feature flag
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/native-agent-streaming"
+  "Send a chat message using the native Clojure agent implementation.
+  This endpoint bypasses the use-native-agent feature flag and always uses the native agent."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:profile_id {:optional true} :string]
+            [:metabot_id {:optional true} :string]
+            [:message ms/NonBlankString]
+            [:context ::metabot-v3.context/context]
+            [:conversation_id ms/UUIDString]
+            [:history [:maybe ::metabot-v3.client.schema/messages]]
+            [:state :map]]]
+  (let [{:keys [metabot_id profile_id message context history conversation_id state]} body
+        message    (metabot-v3.envelope/user-message message)
+        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
+    (metabot-v3.context/log body :llm.log/fe->be)
+    (store-message! conversation_id profile-id [message])
+    (log/info "Using native Clojure agent (direct endpoint)" {:profile-id profile-id})
+    (native-agent-streaming-request
+     {:profile-id profile-id
+      :message message
+      :context context
+      :history history
+      :conversation-id conversation_id
+      :state state})))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

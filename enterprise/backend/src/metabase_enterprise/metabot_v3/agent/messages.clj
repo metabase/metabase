@@ -3,7 +3,8 @@
   (:require
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
-   [metabase-enterprise.metabot-v3.agent.user-context :as user-context]))
+   [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
+   [metabase.util.log :as log]))
 
 (defn- format-message
   "Format a message into Claude/OpenAI format."
@@ -35,18 +36,21 @@
     msg))
 
 (defn- part->message
-  "Convert an AI SDK part to a message format."
+  "Convert an AI SDK part to a message format.
+  Returns nil for parts that shouldn't become messages (start, finish, usage, data, etc.)"
   [part]
   (case (:type part)
     :text
-    {:role "assistant"
-     :content (:text part)}
+    (when-let [text (:text part)]
+      {:role "assistant"
+       :content text})
 
     :tool-input
     {:role "assistant"
-     :tool_calls [{:id (:id part)
-                   :name (:function part)
-                   :arguments (str (:arguments part))}]}
+     :content [{:type "tool_use"
+                :id (:id part)
+                :name (:function part)
+                :input (:arguments part)}]}
 
     :tool-output
     {:role "user"
@@ -54,6 +58,7 @@
                 :tool_use_id (:id part)
                 :content (str (:result part))}]}
 
+    ;; Ignore other part types (start, finish, usage, data, etc.)
     nil))
 
 (defn- step->messages
@@ -69,10 +74,18 @@
   [memory]
   (let [input-messages (memory/get-input-messages memory)
         steps (memory/get-steps memory)
-        step-messages (mapcat step->messages steps)]
-    (concat
-     (map format-message input-messages)
-     step-messages)))
+        step-messages (mapcat step->messages steps)
+        formatted-input (map format-message input-messages)
+        result (concat formatted-input step-messages)]
+    (log/info "Building message history"
+              {:input-message-count (count input-messages)
+               :input-messages input-messages
+               :formatted-input (vec formatted-input)
+               :step-count (count steps)
+               :steps steps
+               :step-messages (vec step-messages)
+               :total-messages (count result)})
+    result))
 
 (defn build-system-message
   "Build system message with templated prompt and enriched context.
