@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
@@ -21,10 +22,12 @@ import type { MetabotFeedback } from "metabase-types/api";
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
 
 const FEEDBACK_SCHEMA = Yup.object({
-  issue_type: Yup.string().nullable(),
+  issue_type: Yup.string().nullable().default(""),
   freeform_feedback: Yup.string().when("issue_type", {
     is: (value: string) =>
-      ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as any),
+      ISSUE_TYPES_REQUIRING_FREEFORM.includes(
+        value as (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number],
+      ),
     then: (schema) => schema.required(Errors.required),
     otherwise: (schema) => schema.nullable(),
   }),
@@ -36,6 +39,28 @@ interface MetabotFeedbackModalProps {
   messageId: string;
   positive: boolean;
 }
+
+const FeedbackTextLabel = ({ positive }: { positive: boolean }) => {
+  const { values } = useFormikContext<{
+    issue_type?: string;
+    freeform_feedback: string;
+  }>();
+
+  const isRequired =
+    !positive &&
+    values.issue_type &&
+    ISSUE_TYPES_REQUIRING_FREEFORM.includes(
+      values.issue_type as (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number],
+    );
+
+  return (
+    <Text>
+      {isRequired
+        ? t`Any details that you'd like to share? (required)`
+        : t`Any details that you'd like to share? (optional)`}
+    </Text>
+  );
+};
 
 export const MetabotFeedbackModal = ({
   onClose,
@@ -115,7 +140,7 @@ export const MetabotFeedbackModal = ({
               </Stack>
             )}
             <Stack gap="xs">
-              <Text>{t`Any details that you'd like to share? (optional)`}</Text>
+              <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
                 placeholder={
