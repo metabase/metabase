@@ -418,8 +418,7 @@
                      :limit    1}))
 
 (defn- minimum-graph
-  "Fetch the latest graph (and its version) that meets a minimum version constraint.
-   It's possible that we have not persisted all the related tables yet."
+  "Fetch the latest graph (and its version) that meets a minimum version constraint."
   [ws-id min-version]
   (t2/select-one [:model/WorkspaceGraph :graph [:graph_version :version]]
                  :workspace_id ws-id
@@ -438,11 +437,9 @@
 
    1. workspace_input  (per tx)
    2. workspace_output (per tx, marks that we're done for that tx)
-   3. workspace_input_external
-   4. workspace_output_external
-   5. workspace_graph (marks that we're done)
-
-   (It's a pity we write the graph only after the external input and output, as it's authoritative for them)
+   3. workspace_graph
+   4. workspace_input_external
+   5. workspace_output_external
 
    Returns the graph."
   [{ws-id :id, isolated-schema :schema :as workspace} min-version]
