@@ -26,6 +26,14 @@
                 chan?
                 sse-chan
                 aisdk-xf
+                aisdk-line-xf
+                format-text-line
+                format-data-line
+                format-error-line
+                format-tool-call-line
+                format-tool-result-line
+                format-finish-line
+                format-start-line
                 tool-executor-rff])
 
 (p/import-vars [openai
