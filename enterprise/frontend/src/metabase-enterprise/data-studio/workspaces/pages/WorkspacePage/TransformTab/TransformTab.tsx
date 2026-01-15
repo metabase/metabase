@@ -19,16 +19,25 @@ import type {
   DatabaseId,
   DatasetQuery,
   DraftTransformSource,
-  Transform,
+  TaggedTransform,
   WorkspaceId,
   WorkspaceTransform,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
 } from "metabase-types/api";
+import { isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform, TableTab } from "../WorkspaceProvider";
-import { useWorkspace } from "../WorkspaceProvider";
+import type {
+  AnyWorkspaceTransform,
+  EditedTransform,
+  TableTab,
+} from "../WorkspaceProvider";
+import {
+  getNumericTransformId,
+  getTransformId,
+  useWorkspace,
+} from "../WorkspaceProvider";
 
 import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -36,12 +45,12 @@ import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
 interface Props {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
-  transform: Transform | WorkspaceTransform;
+  transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
-  workspaceTransforms: WorkspaceTransformItem[];
+  workspaceTransforms: WorkspaceTransformListItem[];
   isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
-  onSaveTransform: (transform: Transform | WorkspaceTransform) => void;
+  onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
 }
 
 export const TransformTab = ({
@@ -61,13 +70,15 @@ export const TransformTab = ({
     { open: openChangeTargetModal, close: closeChangeTargetModal },
   ] = useDisclosure();
   const dispatch = useDispatch();
+  const transformId = getTransformId(transform);
+  const numericTransformId = getNumericTransformId(transform);
   const suggestedTransform = useSelector((state) =>
-    getMetabotSuggestedTransform(state, transform.id),
+    getMetabotSuggestedTransform(state, numericTransformId),
   );
   const metadata = useSelector(getMetadata);
 
-  // Cast to WorkspaceTransform since we're in workspace context
-  const wsTransform = transform as WorkspaceTransform;
+  // Only WorkspaceTransforms can be run - cast for the hook
+  const wsTransform = isWorkspaceTransform(transform) ? transform : null;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -78,46 +89,48 @@ export const TransformTab = ({
 
   const handleRunQueryStart = useCallback(
     async (query: DatasetQuery) => {
-      const tableTabId = `table-${transform.id}`;
+      // Preview doesn't have a real table ID, but we need to provide a unique identifier
+      // to open preview tab correctly.
+      const tableTabId = `table-${transformId}`;
 
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: transform.id,
+          tableId: transformId,
           name: t`Preview (${transform.name})`,
           query,
         },
       };
       addOpenedTab(tableTab);
     },
-    [transform.id, transform.name, addOpenedTab],
+    [transformId, transform.name, addOpenedTab],
   );
 
   const handleRunTransform = useCallback(
-    (result) => {
-      const tableTabId = `table-${transform.id}`;
+    (result: unknown) => {
+      const tableTabId = `table-${transformId}`;
 
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: transform.id,
+          tableId: null,
           name: t`Preview (${transform.name})`,
-          transformId: transform.id.toString(),
+          transformId: String(transformId),
           pythonPreviewResult: result,
         },
       };
 
       addOpenedTab(tableTab);
     },
-    [transform.id, transform.name, addOpenedTab],
+    [transformId, transform.name, addOpenedTab],
   );
 
   const normalizeSource = useCallback(
-    (source: DraftTransformSource) => {
+    (source: DraftTransformSource): DraftTransformSource => {
       if (source.type !== "query") {
         return source;
       }
@@ -133,14 +146,14 @@ export const TransformTab = ({
         : query;
 
       return {
-        type: "query",
+        type: "query" as const,
         query: question.setQuery(normalizedQuery).datasetQuery(),
       };
     },
     [metadata],
   );
 
-  const proposedSource =
+  const proposedSource: DraftTransformSource | undefined =
     suggestedTransform?.source &&
     !isSameSource(suggestedTransform.source, editedTransform.source)
       ? normalizeSource(suggestedTransform.source)
@@ -152,9 +165,9 @@ export const TransformTab = ({
   );
   const hasChanges = hasSourceChanged;
 
-  const isSaved = workspaceTransforms.some(
-    (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
-  );
+  const isSaved =
+    isWorkspaceTransform(transform) &&
+    workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isEditable = !isDisabled;
 
   const handleSourceChange = (source: DraftTransformSource) => {
@@ -225,7 +238,7 @@ export const TransformTab = ({
           <Group>
             {isSaved && (
               <WorkspaceRunButton
-                id={transform.id}
+                id={numericTransformId}
                 run={buttonRun}
                 isDisabled={hasChanges || isDisabled}
                 onRun={handleRun}
@@ -276,9 +289,9 @@ export const TransformTab = ({
         </Box>
       )}
 
-      {isChangeTargetModalOpen && (
+      {isChangeTargetModalOpen && wsTransform && (
         <UpdateTargetModal
-          transform={transform as WorkspaceTransform}
+          transform={wsTransform}
           onUpdate={handleTargetUpdate}
           onClose={closeChangeTargetModal}
         />

@@ -1,15 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Collapse,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Collapse, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
 
@@ -77,7 +69,7 @@ export const QualityChecksSection = ({
               >
                 <Text>{getCheckTitle(category)}</Text>
                 {isLoading ? (
-                  <Loader size="xs" />
+                  <Loader size="xs" aria-label={t`Loading`} />
                 ) : (
                   <Group gap="xs">
                     {checkStatus.status === "passed" && (

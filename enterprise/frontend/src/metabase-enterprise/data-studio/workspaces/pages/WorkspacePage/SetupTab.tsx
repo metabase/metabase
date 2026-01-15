@@ -21,8 +21,7 @@ interface SetupTabProps {
 export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
   const { data: allowedDatabases, isLoading } =
     useGetWorkspaceAllowedDatabasesQuery();
-  const [updateWorkspace, { isLoading: isUpdating }] =
-    useUpdateWorkspaceMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const workspaceId = workspace.id;
 

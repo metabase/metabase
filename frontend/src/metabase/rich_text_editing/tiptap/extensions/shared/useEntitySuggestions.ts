@@ -164,13 +164,11 @@ export function useEntitySuggestions({
   const isInModelSelectionMode =
     !selectedSearchModel && hasSearchModels && hasMatchingFilteredModels;
 
-  // If searchModels are provided (e.g., only transforms), skip recents and always search.
   const shouldFetchRecents =
     enabled &&
     query.length === 0 &&
     !isInModelSelectionMode &&
-    !selectedSearchModel &&
-    !searchModels;
+    !selectedSearchModel;
 
   const {
     menuItems: entityMenuItems,

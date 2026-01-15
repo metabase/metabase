@@ -7,7 +7,7 @@ import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Flex, Icon, Modal, Text, Title } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import S from "./MergeWorkspaceModal.module.css";
 import { DiffView } from "./components/DiffView";
@@ -20,7 +20,7 @@ type MergeWorkspaceModalProps = {
   isLoading?: boolean;
   workspaceId: WorkspaceId;
   workspaceName: string;
-  workspaceTransforms: WorkspaceTransformItem[];
+  workspaceTransforms: WorkspaceTransformListItem[];
 };
 
 export type MergeWorkspaceFormValues = {
@@ -119,7 +119,7 @@ export const MergeWorkspaceModal = ({
       >
         {({ values, touched, errors }) => (
           <Form style={{ display: "flex", flexDirection: "column" }}>
-            <Flex h={500}>
+            <Flex h={540}>
               <Box
                 pt="md"
                 w={220}

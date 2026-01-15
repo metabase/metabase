@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
@@ -14,19 +15,26 @@ import {
 import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import {
+  isSameSource,
+  isSourceEmpty,
+} from "metabase-enterprise/transforms/utils";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
-  DraftTransformSource,
-  ExternalTransform,
-  Transform,
+  TaggedTransform,
+  TransformSource,
   WorkspaceId,
   WorkspaceTransform,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
+import {
+  isTaggedTransform,
+  isUnsavedTransform,
+  isWorkspaceTransform,
 } from "metabase-types/api";
 
-import type { EditedTransform } from "../WorkspaceProvider";
+import type { AnyWorkspaceTransform, EditedTransform } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { useTransformValidation } from "./useTransformValidation";
@@ -34,11 +42,11 @@ import { useTransformValidation } from "./useTransformValidation";
 type SaveTransformButtonProps = {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
-  transform: Transform | WorkspaceTransform;
+  transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
-  workspaceTransforms: WorkspaceTransformItem[];
+  workspaceTransforms: WorkspaceTransformListItem[];
   isDisabled: boolean;
-  onSaveTransform: (transform: Transform | WorkspaceTransform) => void;
+  onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
 };
 
 export const SaveTransformButton = ({
@@ -51,6 +59,7 @@ export const SaveTransformButton = ({
   onSaveTransform,
 }: SaveTransformButtonProps) => {
   const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const {
     updateTransformState,
@@ -59,19 +68,16 @@ export const SaveTransformButton = ({
     removeEditedTransform,
   } = useWorkspace();
 
-  const [updateTransform] = useUpdateWorkspaceTransformMutation();
+  const [updateTransform, { isLoading: isUpdating }] =
+    useUpdateWorkspaceTransformMutation();
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   // Determine transform state
-  const isSaved = workspaceTransforms.some(
-    (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
-  );
-  const isNewTransform =
-    !isSaved && typeof transform.id === "number" && transform.id < 0;
-  const isCheckoutDisabled =
-    isExternalTransform(transform) &&
-    typeof transform.checkout_disabled === "string";
+  const isSaved =
+    isWorkspaceTransform(transform) &&
+    workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
+  const isNewTransform = isUnsavedTransform(transform);
 
   // Check for changes
   const hasSourceChanged = !isSameSource(
@@ -98,7 +104,7 @@ export const SaveTransformButton = ({
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
-    target: transform.target,
+    target: isUnsavedTransform(transform) ? undefined : transform.target,
     workspaceId,
   });
 
@@ -111,14 +117,14 @@ export const SaveTransformButton = ({
 
   // Handler for updating existing workspace transform (scenario 1)
   const handleUpdateTransform = async () => {
-    if (typeof transform.id !== "string") {
+    if (!isWorkspaceTransform(transform)) {
       throw new Error(t`This is not a workspace transform`);
     }
 
     const updated = await updateTransform({
       workspaceId,
-      transformId: transform.id,
-      source: editedTransform.source,
+      transformId: transform.ref_id,
+      source: editedTransform.source as TransformSource,
       name: editedTransform.name,
       target: {
         type: "table",
@@ -137,14 +143,14 @@ export const SaveTransformButton = ({
   // Handler for creating new transform via modal (scenario 2)
   const handleCreateNewTransform = async (
     values: NewTransformValues,
-  ): Promise<Transform> => {
+  ): Promise<WorkspaceTransform> => {
     try {
       const request: CreateWorkspaceTransformRequest = values.incremental
         ? {
             id: workspaceId,
             name: values.name,
             description: null,
-            source: editedTransform.source,
+            source: editedTransform.source as TransformSource,
             target: {
               type: "table-incremental" as const,
               name: values.targetName,
@@ -159,7 +165,7 @@ export const SaveTransformButton = ({
             id: workspaceId,
             name: values.name,
             description: null,
-            source: editedTransform.source,
+            source: editedTransform.source as TransformSource,
             target: {
               type: "table" as const,
               name: values.targetName,
@@ -197,7 +203,7 @@ export const SaveTransformButton = ({
 
   // Handler for checking out external transform (scenario 3)
   const handleSaveExternalTransform = async () => {
-    if (typeof transform.id !== "number") {
+    if (!isTaggedTransform(transform)) {
       return;
     }
 
@@ -207,7 +213,7 @@ export const SaveTransformButton = ({
         global_id: transform.id,
         name: editedTransform.name,
         description: transform.description,
-        source: editedTransform.source as DraftTransformSource,
+        source: editedTransform.source as TransformSource,
         target: transform.target,
         tag_ids: transform.tag_ids,
       }).unwrap();
@@ -225,14 +231,20 @@ export const SaveTransformButton = ({
     if (isSaved) {
       return {
         disabled: !hasChanges || isDisabled,
+        loading: isUpdating,
         variant: "filled" as const,
         onClick: handleUpdateTransform,
       };
     }
 
     if (isNewTransform) {
+      const hasEmptyContent = isSourceEmpty(
+        editedTransform.source,
+        databaseId,
+        metadata,
+      );
       return {
-        disabled: isDisabled,
+        disabled: isDisabled || hasEmptyContent,
         variant: "filled" as const,
         onClick: () => setSaveModalOpen(true),
       };
@@ -240,7 +252,7 @@ export const SaveTransformButton = ({
 
     // External transform
     return {
-      disabled: isDisabled || isCheckoutDisabled,
+      disabled: isDisabled,
       variant: (hasChanges ? "filled" : "default") as "filled" | "default",
       onClick: handleSaveExternalTransform,
     };
@@ -254,7 +266,7 @@ export const SaveTransformButton = ({
 
       {saveModalOpen && (
         <CreateTransformModal
-          source={editedTransform.source}
+          source={editedTransform.source as TransformSource}
           defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
           schemas={allowedSchemas}
@@ -268,9 +280,3 @@ export const SaveTransformButton = ({
     </>
   );
 };
-
-function isExternalTransform(
-  transform: Transform | ExternalTransform | WorkspaceTransform,
-): transform is ExternalTransform {
-  return "checkout_disabled" in transform;
-}

@@ -27,5 +27,5 @@ export function WorkspaceRunButton({ run, ...rest }: WorkspaceRunButtonProps) {
       ? run
       : null;
 
-  return <RunButton run={activeRun} {...rest} />;
+  return <RunButton run={activeRun} size="sm" {...rest} />;
 }

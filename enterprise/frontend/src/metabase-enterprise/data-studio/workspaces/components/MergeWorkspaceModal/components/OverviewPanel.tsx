@@ -49,8 +49,8 @@ export const OverviewPanel = ({
         <Box
           p="md"
           style={{
-            backgroundColor: "var(--mb-color-bg-light)",
-            borderRadius: "var(--mb-radius-sm)",
+            backgroundColor: "var(--mb-color-background-secondary)",
+            borderRadius: "var(--mantine-radius-sm)",
           }}
         >
           <Text>

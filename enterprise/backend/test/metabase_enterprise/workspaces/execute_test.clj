@@ -61,6 +61,37 @@
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
+(deftest dry-run-workspace-transform-test
+  (testing "Dry-running a workspace transform returns rows without persisting"
+    (let [workspace    (ws.tu/create-ready-ws! "DryRun Test Workspace")
+          db-id        (:database_id workspace)
+          body         {:name   "DryRun Transform"
+                        :source {:type  "query"
+                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                        :target {:type     "table"
+                                 :database db-id
+                                 :schema   nil
+                                 :name     "ws_dryrun_test"}}
+          ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          before       {:xf    (t2/count :model/Transform)
+                        :xfrun (t2/count :model/TransformRun)}]
+
+      (testing "dry-run returns data nested under :data like /api/dataset"
+        (is (=? {:status :succeeded
+                 :data   {:rows [[1 "hello"] [2 "world"]]
+                          :cols [{:name "ID"} {:name "NAME"}]}
+                 :table  {:name "ws_dryrun_test"}}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/dry-run-transform workspace ws-transform)))))
+
+      (testing "last_run_at is NOT updated in dry-run mode"
+        (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))))
+
+      (testing "app DB records are NOT created in dry-run mode"
+        (is (= before
+               {:xf    (t2/count :model/Transform)
+                :xfrun (t2/count :model/TransformRun)}))))))
+
 (deftest remap-python-source-test
   (let [remap-python-source #'ws.execute/remap-python-source]
     (testing "remaps to table ID when mapping has :id"

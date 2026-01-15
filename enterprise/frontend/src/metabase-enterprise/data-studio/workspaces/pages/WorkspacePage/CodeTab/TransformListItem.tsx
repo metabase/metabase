@@ -40,7 +40,7 @@ export const TransformListItem = ({
       <Text c={isActive ? "brand" : "text-dark"} truncate>
         {name}
       </Text>
-      {isEdited && <StatusDot />}
+      {isEdited && <StatusDot data-testid="status-dot" />}
     </Box>
   );
 

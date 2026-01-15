@@ -94,7 +94,9 @@ export const Workspaces = {
   },
 
   getRunTransformButton() {
-    return this.getTransformTabHeader().findByTestId("run-button");
+    return this.getTransformTabHeader().findByTestId("run-button", {
+      timeout: 10_000,
+    });
   },
 
   getSaveTransformButton() {
@@ -106,7 +108,7 @@ export const Workspaces = {
   },
 
   getMainlandTransforms() {
-    return cy.findByTestId("mainland-transforms");
+    return cy.findByTestId("mainland-transforms", { timeout: 10_000 });
   },
 
   getNewWorkspaceButton() {
@@ -122,6 +124,6 @@ export const Workspaces = {
   },
 
   getTransformStatusDot(name: string | RegExp) {
-    return cy.findByText(name).parent().find('[class*="statusDot"]');
+    return cy.findByText(name).parent().findByTestId("status-dot");
   },
 };

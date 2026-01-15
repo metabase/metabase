@@ -2371,6 +2371,8 @@
            lib-be
            models
            queries
+           ;; NOTE: we will remove this once we get "pure transforms" module.
+           query-processor
            request
            system
            util

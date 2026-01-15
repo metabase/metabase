@@ -50,20 +50,7 @@ describe("scenarios > data studio > workspaces", () => {
     );
     cy.intercept("POST", "/api/ee/workspace/*/run").as("runTransforms");
     cy.intercept("POST", "/api/dataset").as("dataset");
-    // cy.intercept("PUT", "/api/field/*").as("updateField");
-    // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-    // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-    // cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-    //   "deleteTransformTable",
-    // );
-    // cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-    // cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-    // cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
-
-  // afterEach(() => {
-  //   H.expectNoBadSnowplowEvents();
-  // });
 
   describe("should be able to create, navigate, archive, unarchive, rename, and delete workspaces", () => {
     it("creates, navigates, archives, renames and deletes workspaces", () => {
@@ -159,9 +146,43 @@ describe("scenarios > data studio > workspaces", () => {
             .clear()
             .type("Renamed workspace")
             .blur();
+          verifyAndCloseToast("Workspace renamed successfully");
           Workspaces.getWorkspaceItem("Renamed workspace").should("be.visible");
         });
       });
+    });
+
+    it("shows unsaved changes warning", () => {
+      createTransforms({ visit: false });
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 2");
+
+      cy.log("try to navigate away with unsaved changes - cancel navigation");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().findByText("Discard your changes?").should("be.visible");
+      H.modal().button("Cancel").click();
+
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getSaveTransformButton().should("be.disabled");
+
+      cy.log("try to navigate away without unsaved changes");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().should("not.exist");
+      cy.location("pathname").should("eq", "/data-studio/glossary");
+      cy.go("back");
+
+      Workspaces.getWorkspaceTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(";");
+
+      cy.log("try to navigate away with unsaved changes - discard changes");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().findByText("Discard your changes?").should("be.visible");
+      H.modal().button("Discard changes").click();
+      H.modal().should("not.exist");
+      cy.location("pathname").should("eq", "/data-studio/glossary");
     });
 
     it("preserves workspace tabs state", () => {
@@ -180,6 +201,7 @@ describe("scenarios > data studio > workspaces", () => {
         .click();
 
       H.NativeEditor.type(" LIMIT 2");
+      Workspaces.getSaveTransformButton().click();
 
       cy.log("Create a second workspace");
       createWorkspace();
@@ -390,7 +412,8 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("Transform diffs are displayed");
         cy.findByText("Modified transforms").should("exist");
-        cy.contains('[class*="sidebarItem"]', "SQL transform")
+        cy.findByTestId("transform-list-item")
+          .should("contain.text", "SQL transform")
           .should("be.visible")
           .should(($el) => {
             expect($el.text()).to.include("SQL transform");
@@ -409,6 +432,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Merge/ }).click();
       });
+      verifyAndCloseToast("merged successfully");
 
       Transforms.list()
         .findByRole("row", { name: /SQL transform/ })
@@ -418,7 +442,7 @@ describe("scenarios > data studio > workspaces", () => {
         'SELECT * FROM "Schema A"."Animals" LIMIT 2',
       );
       Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      runTransformAndWaitForSuccessOnTransformsPage();
       Transforms.settingsTab().click();
       getTableLink().should("contain.text", TARGET_TABLE_SQL).click();
 
@@ -503,14 +527,14 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getSaveTransformButton().click();
       runTransformAndWaitForSuccess();
 
-      // Open the transform table tab
+      cy.log("Open the transform table tab");
       Workspaces.openDataTab();
       Workspaces.getWorkspaceSidebar()
         .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
         .should("be.visible")
         .click();
 
-      // Verify both tabs are open
+      cy.log("Verify both tabs are open");
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(TARGET_TABLE_SQL, [
           "Setup",
@@ -522,7 +546,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.openCodeTab();
 
-      // Remove the transform from the workspace
+      cy.log("Remove the transform from the workspace");
       Workspaces.getWorkspaceTransforms()
         .findByText("SQL transform")
         .realHover();
@@ -532,7 +556,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByText("Remove").click();
       verifyAndCloseToast("Transform removed from the workspace");
 
-      // Verify both transform tab and table tab have been closed
+      cy.log("Verify both transform tab and table tab have been closed");
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
       });
@@ -556,6 +580,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
 
       cy.log("Verify database was changed");
+      verifyAndCloseToast("Successfully updated workspace database");
       Workspaces.getWorkspaceDatabaseSelect().should(
         "have.value",
         "Writable Postgres12",
@@ -628,7 +653,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Make additional changes to the saved transform");
       Workspaces.getWorkspaceContent().within(() => {
-        H.NativeEditor.type(" ORDER BY 1");
+        H.NativeEditor.type(";");
       });
 
       cy.log("Check that transform has yellow dot status again");
@@ -727,6 +752,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
+      verifyAndCloseToast("Transform saved successfully");
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
@@ -758,6 +784,7 @@ describe("scenarios > data studio > workspaces", () => {
           .type("new_table");
         cy.findByRole("button", { name: /Change target/ }).click();
       });
+      verifyAndCloseToast("Transform target updated");
 
       Workspaces.getWorkspaceSidebar()
         .findByText("Schema B.new_table")
@@ -834,6 +861,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
+      verifyAndCloseToast("Transform saved successfully");
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
@@ -880,6 +908,7 @@ describe("scenarios > data studio > workspaces", () => {
           .type("new_table");
         cy.findByRole("button", { name: /Change target/ }).click();
       });
+      verifyAndCloseToast("Transform target updated");
 
       Workspaces.getWorkspaceSidebar()
         .findByText("Schema B.new_table")
@@ -935,6 +964,72 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
+  describe("data tab", () => {
+    it("should list input and output tables", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Close saved transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findAllByRole("tab").eq(2).findByLabelText("close icon").click();
+      });
+
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${SOURCE_TABLE}`)
+        .should("be.visible");
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .as("outputTable")
+        .should("be.visible")
+        .realHover();
+      cy.root()
+        .findByText("Run transform to see the results")
+        .should("be.visible");
+
+      cy.get("@outputTable").realHover().click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByText("Loading...").should("be.visible");
+        H.assertTableData({
+          columns: ["Name", "Score"],
+          firstRows: [["Duck", "10"]],
+        });
+      });
+
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`, [
+          "Setup",
+          "Agent Chat",
+          `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
+        ]);
+      });
+
+      Workspaces.getWorkspaceSidebar()
+        .findByLabelText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .findByLabelText("Open transform")
+        .as("transformLink")
+        .realHover();
+      cy.root().findByText("Open transform").should("be.visible");
+      cy.get("@transformLink").click();
+
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
+          "SQL transform",
+        ]);
+      });
+    });
+  });
+
   describe("run transform", () => {
     it("should run and fail transform runs", () => {
       createTransforms();
@@ -946,19 +1041,20 @@ describe("scenarios > data studio > workspaces", () => {
 
       H.NativeEditor.type(" LIMIT");
       Workspaces.getSaveTransformButton().click();
-      Workspaces.getRunTransformButton().click();
 
-      H.undoToast().findByText("Failed to run transform");
       Workspaces.getWorkspaceContent().findByText(
         "This transform hasn't been run before.",
       );
+
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText(/Transform run failed/);
 
       H.NativeEditor.type(" 1;");
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
-      // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
-      // Workspaces.getWorkspaceContent().findByText("Ran successfully");
+      Workspaces.getWorkspaceContent().findByText("Ran successfully");
       Workspaces.getWorkspaceContent().findByText(
         "Last ran a few seconds ago successfully.",
       );
@@ -967,7 +1063,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
-      H.undoToast().findByText("Failed to run transform");
+      H.undoToast().findByText(/Transform run failed/);
     });
 
     it("should show ad-hoc results", () => {
@@ -1007,10 +1103,24 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getRunAllTransformsButton().should("be.disabled");
 
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      cy.log("Verify native editor is loaded");
+      H.NativeEditor.get().should("contain.text", "SELECT");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Verify sql transform is saved to the workspace");
+      Workspaces.getWorkspaceTransforms().should(
+        "contain.text",
+        "SQL transform",
+      );
 
       Workspaces.getMainlandTransforms().findByText("Python transform").click();
+      cy.log("Verify Python editor is loaded");
+      H.PythonEditor.get().should("contain.text", "import");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Verify python transform is saved to the workspace");
+      Workspaces.getWorkspaceTransforms().should(
+        "contain.text",
+        "Python transform",
+      );
 
       Workspaces.getRunAllTransformsButton().should("be.enabled").click();
 
@@ -1020,15 +1130,10 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       Workspaces.getRunAllTransformsButton().should(
-        "have.attr",
-        "data-loading",
-        "true",
-      );
-
-      Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
       );
+      verifyAndCloseToast("Transforms ran successfully");
 
       Workspaces.getWorkspaceContent()
         .findByText("Last ran a few seconds ago successfully.")
@@ -1095,11 +1200,11 @@ describe("scenarios > data studio > workspaces", () => {
         "data-loading",
         "true",
       );
-
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
       );
+      verifyAndCloseToast("Transforms ran successfully");
 
       cy.findByRole("tab", { name: "SQL transform" }).click();
 
@@ -1256,7 +1361,10 @@ describe("scenarios > data studio > workspaces", () => {
         verifyAndCloseToast("Workspace archived successfully");
 
         // Verify it's archived
-        Workspaces.getWorkspaceItem(workspaceName).should("contain.text", "Archived");
+        Workspaces.getWorkspaceItem(workspaceName).should(
+          "contain.text",
+          "Archived",
+        );
 
         // Delete the archived workspace
         Workspaces.getWorkspaceItemActions(workspaceName).click();
@@ -1363,6 +1471,11 @@ function getTableLink({ isActive = true }: { isActive?: boolean } = {}) {
 }
 
 function runTransformAndWaitForSuccess() {
+  Workspaces.getRunTransformButton().click();
+  Workspaces.getRunTransformButton().should("have.text", "Ran successfully");
+}
+
+function runTransformAndWaitForSuccessOnTransformsPage() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
 }

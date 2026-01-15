@@ -1,9 +1,16 @@
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  TaggedTransform,
+  UnsavedTransform,
+  WorkspaceTransform,
+} from "metabase-types/api";
+
+type AnyWorkspaceTransform = TaggedTransform | WorkspaceTransform | UnsavedTransform;
 
 type MetabotTabProps = {
-  transform?: Transform;
+  transform?: AnyWorkspaceTransform;
   source?: DraftTransformSource;
   workspaceId?: number;
 };
@@ -22,8 +29,7 @@ export const MetabotTab = ({ transform, source }: MetabotTabProps) => {
       <MetabotContextRegistration transform={transform} source={source} />
       <MetabotChat
         config={{
-          // Show top-level mention menu for transforms and databases.
-          suggestionModels: ["transform", "database"],
+          suggestionModels: ["transform", "database", "table"],
         }}
       />
     </MetabotProvider>

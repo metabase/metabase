@@ -11,7 +11,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 }
 
@@ -20,7 +20,7 @@
 }
 
 .selected {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 .name {
   flex: 1;
@@ -29,6 +29,6 @@
 
 .actionIcon {
   &:hover {
-    background-color: var(--mb-color-bg-medium) !important;
+    background-color: var(--mb-color-background-tertiary) !important;
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -6,17 +6,17 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetWorkspaceTransformQuery,
   useRunWorkspaceTransformMutation,
-  workspaceApi
+  workspaceApi,
 } from "metabase-enterprise/api";
 import type {
   TransformRun,
   WorkspaceId,
-  WorkspaceTransform
+  WorkspaceTransform,
 } from "metabase-types/api";
 
 type UseWorkspaceTransformRunOptions = {
   workspaceId: WorkspaceId;
-  transform: WorkspaceTransform;
+  transform: WorkspaceTransform | null;
 };
 
 type UseWorkspaceTransformRunResult = {
@@ -47,23 +47,22 @@ export function useWorkspaceTransformRun({
     message: string | null;
   } | null>(null);
 
-
   // Fetch workspace transform to get updated last_run_at
   const { data: fetchedWorkspaceTransform, isFetching } =
     useGetWorkspaceTransformQuery(
       {
         workspaceId,
-        transformId: transform.ref_id,
+        transformId: transform?.ref_id ?? "",
       },
-      { skip: !transform.ref_id },
+      { skip: !transform?.ref_id },
     );
 
   const lastRunAt =
-    fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
+    fetchedWorkspaceTransform?.last_run_at ?? transform?.last_run_at;
   const lastRunMessage =
-    fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
+    fetchedWorkspaceTransform?.last_run_message ?? transform?.last_run_message;
   const lastRunStatus =
-    fetchedWorkspaceTransform?.last_run_status ?? transform.last_run_status;
+    fetchedWorkspaceTransform?.last_run_status ?? transform?.last_run_status;
 
   const statusRun: TransformRun | null = useMemo(
     () =>
@@ -76,13 +75,13 @@ export function useWorkspaceTransformRun({
             message: lastRunResult.message,
             run_method: "manual",
           }
-        : lastRunAt
+        : lastRunAt && lastRunStatus != null
           ? {
               id: -1,
               status: lastRunStatus,
               start_time: lastRunAt,
               end_time: lastRunAt,
-              message: lastRunMessage,
+              message: lastRunMessage ?? null,
               run_method: "manual",
             }
           : null,
@@ -90,29 +89,35 @@ export function useWorkspaceTransformRun({
   );
 
   // Run object for button - only shows feedback during/after user-triggered runs
-  const buttonRun: TransformRun | null = useMemo(() => isRunTriggered
-    ? {
-        id: -1,
-        status: "started",
-        start_time: new Date().toISOString(),
-        end_time: null,
-        message: null,
-        run_method: "manual",
-      }
-    : lastRunResult
-      ? {
-          id: -1,
-          status: lastRunResult.status,
-          start_time: lastRunResult.end_time,
-          end_time: lastRunResult.end_time,
-          message: lastRunResult.message,
-          run_method: "manual",
-        }
-      : null,
+  const buttonRun: TransformRun | null = useMemo(
+    () =>
+      isRunTriggered
+        ? {
+            id: -1,
+            status: "started",
+            start_time: new Date().toISOString(),
+            end_time: null,
+            message: null,
+            run_method: "manual",
+          }
+        : lastRunResult
+          ? {
+              id: -1,
+              status: lastRunResult.status,
+              start_time: lastRunResult.end_time,
+              end_time: lastRunResult.end_time,
+              message: lastRunResult.message,
+              run_method: "manual",
+            }
+          : null,
     [isRunTriggered, lastRunResult],
   );
 
   const handleRun = async () => {
+    if (!transform) {
+      return;
+    }
+
     try {
       setIsRunTriggered(true);
       setLastRunResult(null);

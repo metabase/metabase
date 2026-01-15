@@ -1,13 +1,13 @@
 import cx from "classnames";
 
 import { Flex, Icon, Text } from "metabase/ui";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
 
 type TransformListItemProps = {
-  transform: WorkspaceTransformItem;
+  transform: WorkspaceTransformListItem;
   isSelected: boolean;
   onClick: () => void;
   workspaceId: WorkspaceId;
@@ -29,6 +29,7 @@ export const TransformListItem = ({
       py="sm"
       className={cx(S.sidebarItem, isSelected && S.sidebarItemActive)}
       onClick={onClick}
+      data-testid={`transform-list-item`}
     >
       <Flex align="center" gap="sm" style={{ overflow: "hidden" }}>
         <Icon name="code_block" size={14} c="text-medium" />
