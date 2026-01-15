@@ -189,6 +189,7 @@
                                                            org.eclipse.jetty/jetty-unixdomain-server
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
+  selmer/selmer                             {:mvn/version "1.12.70"}            ; Jinja-like templates for Clojure
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
   software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
