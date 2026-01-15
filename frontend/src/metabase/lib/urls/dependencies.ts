@@ -1,4 +1,8 @@
-import type { DependencyEntry, DependencyGroupType } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencySortingOptions,
+} from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
 const GRAPH_URL = `${BASE_URL}/dependencies`;
@@ -30,6 +34,7 @@ export type DependencyListParams = {
   page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
+  sorting?: DependencySortingOptions;
   includePersonalCollections?: boolean;
 };
 
@@ -37,6 +42,7 @@ function dependencyListQueryString({
   page,
   query,
   groupTypes,
+  sorting,
   includePersonalCollections,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
@@ -50,6 +56,10 @@ function dependencyListQueryString({
     groupTypes.forEach((groupType) => {
       searchParams.append("groupTypes", groupType);
     });
+  }
+  if (sorting != null) {
+    searchParams.set("sortColumn", sorting.column);
+    searchParams.set("sortDirection", sorting.direction);
   }
   if (includePersonalCollections != null) {
     searchParams.set(

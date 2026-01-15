@@ -1,7 +1,12 @@
+import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import type { TreeTableColumnDef } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
+import type {
+  DependencyNode,
+  DependencySortColumn,
+  DependencySortingOptions,
+} from "metabase-types/api";
 
 import {
   getNodeDependentsCount,
@@ -19,7 +24,6 @@ function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
     id: "name",
     header: t`Name`,
     minWidth: 100,
-    enableSorting: false,
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -33,7 +37,6 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
     id: "location",
     header: t`Location`,
     minWidth: 100,
-    enableSorting: false,
     accessorFn: (node) => {
       const location = getNodeLocationInfo(node);
       const links = location?.links ?? [];
@@ -69,7 +72,6 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
     id: "dependents-count",
     header: t`Downstream dependents`,
     minWidth: 100,
-    enableSorting: false,
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -95,6 +97,27 @@ export function getColumnWidths(mode: DependencyListMode): number[] {
   } else {
     return [0.5, 0.5];
   }
+}
+
+export function getSortingState(
+  sorting: DependencySortingOptions | undefined,
+): SortingState {
+  return sorting != null
+    ? [{ id: sorting.column, desc: sorting.direction === "desc" }]
+    : [];
+}
+
+export function getSortingOptions(
+  sortingState: SortingState,
+): DependencySortingOptions | undefined {
+  if (sortingState.length === 0) {
+    return undefined;
+  }
+  const { id, desc } = sortingState[0];
+  return {
+    column: id as DependencySortColumn,
+    direction: desc ? "desc" : "asc",
+  };
 }
 
 export function getNotFoundMessage(mode: DependencyListMode) {
