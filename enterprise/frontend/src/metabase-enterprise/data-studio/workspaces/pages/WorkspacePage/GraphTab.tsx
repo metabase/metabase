@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Loader } from "metabase/ui";
+import { Box, Loader } from "metabase/ui";
 import { useGetWorkspaceGraphQuery } from "metabase-enterprise/api";
 import { DependencyGraph as DependencyGraphComponent } from "metabase-enterprise/dependencies/components/DependencyGraph/DependencyGraph";
 import { WorkspaceGraphNode } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphNode/WorkspaceGraphNode";
@@ -62,7 +62,7 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
   const getGraphUrl = () => `/api/ee/workspace/${workspaceId}/graph`;
 
   return (
-    <div style={{ width: "100%", height: "100%" }}>
+    <Box h="100%" w="100%">
       <DependencyGraphComponent
         entry={dummyEntry}
         graph={dependencyGraph}
@@ -71,7 +71,7 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
         nodeTypes={NODE_TYPES}
         openLinksInNewTab={false}
       />
-    </div>
+    </Box>
   );
 }
 

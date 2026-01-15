@@ -293,6 +293,7 @@ function WorkspacePageContent({
 
   return (
     <Stack
+      bg="background-primary"
       className={classNames({
         [styles.resizing]: isResizing,
       })}
@@ -468,7 +469,12 @@ function WorkspacePageContent({
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
               </Tabs.Panel>
-              <Tabs.Panel value="graph" h="100%" p="md">
+              <Tabs.Panel
+                bg="background-secondary"
+                value="graph"
+                h="100%"
+                p="md"
+              >
                 <GraphTab workspaceId={workspace?.id} />
               </Tabs.Panel>
               {isMetabotAvailable && (

@@ -152,7 +152,6 @@ function PythonPreviewResults({
         <Box
           fz="sm"
           p="md"
-          bg="background-secondary"
           h="100%"
           style={{
             whiteSpace: "pre",
