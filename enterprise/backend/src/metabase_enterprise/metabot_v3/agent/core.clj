@@ -35,8 +35,9 @@
      (has-tool-calls? parts))))
 
 (defn- run-llm-with-tools
-  "Run LLM with messages and tools, return collected parts.
-  Uses existing self/claude-raw + transducers for streaming and tool execution."
+  "Run LLM with messages and tools, return channel with collected parts.
+  Uses existing self/claude-raw + transducers for streaming and tool execution.
+  Returns a channel that will contain the collected parts vector."
   [messages tools profile]
   (let [model (get profile :model "claude-sonnet-4-5-20250929")
         ;; TODO: Add temperature support to claude-raw
@@ -53,13 +54,16 @@
                       (self/tool-executor-rff tools)
                       self/aisdk-xf)
                 raw-stream)
-    ;; Collect all parts from output channel
-    (a/<!! (a/into [] out-chan))))
+    ;; Return channel with collected parts (non-blocking)
+    (a/into [] out-chan)))
 
 (defn- build-messages-for-llm
-  "Build complete message array for LLM from memory."
-  [memory]
-  (messages/build-message-history memory))
+  "Build complete message array for LLM from memory, context, profile, and tools.
+  Prepends system message with enriched context."
+  [memory context profile tools]
+  (let [system-msg (messages/build-system-message context profile tools)
+        history (messages/build-message-history memory)]
+    (cons system-msg history)))
 
 (defn- stream-parts-to-output
   "Stream parts to output channel."
@@ -110,12 +114,14 @@
         (loop [iteration 0]
           (log/debug "Agent iteration" {:iteration iteration})
 
-          ;; Build message history from memory
-          (let [llm-messages (build-messages-for-llm @memory-atom)]
+          ;; Build message history from memory with system message
+          (let [llm-messages (build-messages-for-llm @memory-atom context profile tools)
+                ;; Call LLM with tools (returns channel)
+                parts-chan (run-llm-with-tools llm-messages tools profile)
+                ;; Wait for parts (non-blocking in go block)
+                parts (a/<! parts-chan)]
 
-            ;; Call LLM with tools
-            (let [parts (run-llm-with-tools llm-messages tools profile)]
-
+            (when parts
               ;; Update memory with this step
               (swap! memory-atom memory/add-step parts)
 
