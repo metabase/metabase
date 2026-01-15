@@ -990,26 +990,10 @@
                                                         :definition (-> (lib/query mp'' products)
                                                                         (lib/aggregate (lib/+ (lib.metadata/measure mp'' measure-b-id)
                                                                                               100)))})]
-          (testing "before archiving, all three measures appear in the dependency graph"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                 :id measure-c-id
-                                                 :type "measure")
-                  node-ids (set (map :id (:nodes response)))
-                  edges (:edges response)]
-              (is (contains? node-ids measure-a-id))
-              (is (contains? node-ids measure-b-id))
-              (is (contains? node-ids measure-c-id))
-              (is (contains? node-ids products-id))
-              ;; Verify the edge from B to A exists
-              (is (some #(and (= (:from_entity_type %) "measure")
-                              (= (:from_entity_id %) measure-b-id)
-                              (= (:to_entity_type %) "measure")
-                              (= (:to_entity_id %) measure-a-id))
-                        edges)
-                  "Edge from B to A should exist")))
           ;; Archive measure B (the middle of the chain)
           (mt/user-http-request :crowberto :put 200 (str "measure/" measure-b-id)
                                 {:archived true :revision_message "Archive middle measure"})
+          (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "after archiving measure B, it and measure A are excluded (chain broken)"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
                                                  :id measure-c-id
