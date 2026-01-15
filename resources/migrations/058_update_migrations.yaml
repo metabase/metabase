@@ -1308,6 +1308,9 @@ databaseChangeLog:
       changes:
         - sql:
             sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
+      rollback:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
 
   - changeSet:
       id: v58.2026-01-09T12:00:01
@@ -1321,6 +1324,12 @@ databaseChangeLog:
               FROM permissions_group pg, collection c
               WHERE pg.magic_group_type = 'data-analyst'
                 AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
