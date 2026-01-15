@@ -41,7 +41,7 @@
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/card-update
-                             {:object remote-sync-card :user-id (mt/user->id :rasta)})
+                             {:object remote-sync-card :previous-object remote-sync-card :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Card"
@@ -58,6 +58,7 @@
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/card-update
                              {:object (assoc remote-sync-card :archived true)
+                              :previous-object remote-sync-card
                               :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
@@ -99,7 +100,7 @@
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
               (events/publish-event! :event/card-update
-                                     {:object remote-sync-card :user-id (mt/user->id :rasta)})))
+                                     {:object remote-sync-card :previous-object remote-sync-card :user-id (mt/user->id :rasta)})))
           (let [entries (t2/select :model/RemoteSyncObject)]
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
@@ -571,6 +572,7 @@
         (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/card-update
                                {:object (assoc card :collection_id (:id normal-collection))
+                                :previous-object card
                                 :user-id (mt/user->id :rasta)})
 
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
@@ -591,6 +593,7 @@
         (is (= "create" (:status initial-entry)))
         (events/publish-event! :event/card-update
                                {:object (assoc card :collection_id (:id normal-collection))
+                                :previous-object card
                                 :user-id (mt/user->id :rasta)})
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
           (is (nil? update-entry)))))))
@@ -699,7 +702,7 @@
                                      :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/card-update
-                             {:object card :user-id (mt/user->id :rasta)})
+                             {:object card :previous-object card :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= 0 (count entries)))))))
 
