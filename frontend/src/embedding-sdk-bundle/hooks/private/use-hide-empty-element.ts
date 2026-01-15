@@ -6,10 +6,21 @@ import { useEffect } from "react";
  * to decide whether it will render content or not. And we need to expose all those logics to the
  * parent component which would make the code more complex and less maintainable.
  */
+
+/**
+ * A hook that hides elements matching the given selector if they are empty
+ * @param {string} selector - CSS selector targeting elements we want to hide if empty
+ * @param {React.RefObject<HTMLDivElement>} parentElementRef - The parent element ref within which to search for elements to hide
+ */
 export function useHideEmptyElement(
   selector: string,
   parentElementRef: React.RefObject<HTMLDivElement>,
 ) {
+  /**
+   * This hook will traverse the DOM tree starting from the children and going up to the parent.
+   * This ensures MutationObserver captures changes in child elements before evaluating parent elements
+   * in case a parent component uses this hook as well.
+   */
   useEffect(() => {
     const parentElement = parentElementRef.current;
     if (!parentElement) {
