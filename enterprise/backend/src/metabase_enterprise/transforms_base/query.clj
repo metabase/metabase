@@ -103,8 +103,8 @@
       (log/info "Executing transform" id "with target" (pr-str target))
 
       ;; Create schema if needed
-      (when-not (driver/schema-exists? driver db (:output-schema target))
-        (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:output-schema target)))
+      (when-not (driver/schema-exists? driver db (:schema target))
+        (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
 
       ;; Check cancellation before running query
       (when (and cancelled? (cancelled?))
