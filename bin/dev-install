@@ -560,7 +560,7 @@ main() {
     echo "    java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
     echo ""
     echo "Frontend in another terminal:"
-    echo "  yarn build-hot"
+    echo "  bun run build-hot"
     echo ""
 }
 

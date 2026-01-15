@@ -24,10 +24,10 @@
 #      working directory.
 #
 #   2. Use the -C flag to specify the project directory:
-#      mise exec -C /path/to/metabase -- yarn build
+#      mise exec -C /path/to/metabase -- bun run build
 #
 #   3. Set MISE_PROJECT_DIR environment variable:
-#      MISE_PROJECT_DIR=/path/to/metabase yarn build
+#      MISE_PROJECT_DIR=/path/to/metabase bun run build
 #
 #  For more info, see: docs/developers-guide/devenv.md > 'IDE and editor setup' Section
 
@@ -39,7 +39,7 @@ auto_install = true
 # Add bin/ to PATH so mage and other project scripts are available
 _.path = ["{{ config_root }}/bin"]
 
-# Disable corepack - we use yarn classic installed via mise
+# Disable corepack - we use bun installed via mise
 COREPACK_ENABLE_AUTO_PIN = "0"
 
 # =============================================================================
@@ -52,9 +52,8 @@ COREPACK_ENABLE_AUTO_PIN = "0"
 # This should match .nvmrc for compatibility with other version managers.
 node = "22.13.1"
 
-# Yarn Classic - for package management
-# IMPORTANT: Metabase requires Yarn 1.x (Classic), NOT Yarn 2+ (Berry)
-yarn = "1.22.22"
+# Bun - for package management and running scripts
+bun = "1.3.5"
 
 # Java - for Clojure backend
 # We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.

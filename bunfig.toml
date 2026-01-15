@@ -1,7 +1,5 @@
 [install]
-# Use isolated mode for strict dependency isolation (prevents phantom dependencies)
 linker = "isolated"
-# 10 minute timeout for large packages (same as .yarnrc)
 timeout = 600000
 
 # Override duplicate package versions to ensure type consistency
