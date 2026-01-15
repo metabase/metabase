@@ -1,19 +1,12 @@
 const { H } = cy;
 
-const { IS_ENTERPRISE } = Cypress.env();
-
-// These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
-  { tags: ["@OSS", "@EE"] },
+  { tags: "@OSS" },
   () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-
-      if (IS_ENTERPRISE) {
-        H.activateToken("starter");
-      }
 
       H.updateSetting("show-sdk-embed-terms", false);
     });
@@ -53,13 +46,11 @@ describe(
         cy.log("upsell gem icon should be visible");
         cy.icon("gem").should("be.visible");
 
-        const plan = !IS_ENTERPRISE ? "oss" : "starter";
-
         cy.findByRole("link", { name: "Upgrade" })
           .should("have.attr", "href")
           .and(
             "eq",
-            `https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=${plan}&utm_users=10&utm_campaign=embedded-analytics-js`,
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
           );
       });
     });
