@@ -18,15 +18,11 @@ import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 
-// Use absolute paths to bypass tsconfig-paths resolution (which doesn't handle bun's node_modules structure)
-const nodeModulesPath = path.resolve(__dirname, "../../node_modules");
-const createBundler = require(
-  path.join(nodeModulesPath, "@bahmutov/cypress-esbuild-preprocessor"),
-);
-const { NodeModulesPolyfillPlugin } = require(
-  path.join(nodeModulesPath, "@esbuild-plugins/node-modules-polyfill"),
-);
-const cypressSplit = require(path.join(nodeModulesPath, "cypress-split"));
+const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const {
+  NodeModulesPolyfillPlugin,
+} = require("@esbuild-plugins/node-modules-polyfill");
+const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
@@ -137,7 +133,7 @@ const defaultConfig = {
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
-    require(path.join(nodeModulesPath, "@cypress/grep/src/plugin"))(config);
+    require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
       cypressSplit(on, config);
