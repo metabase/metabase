@@ -37,26 +37,36 @@
 (defn- run-llm-with-tools
   "Run LLM with messages and tools, return channel with collected parts.
   Uses existing self/claude-raw + transducers for streaming and tool execution.
-  Returns a channel that will contain the collected parts vector."
+  Returns a channel that will contain either:
+  - The collected parts vector on success
+  - An exception object on failure (caller should check with instance?)"
   [messages tools profile]
-  (let [model (get profile :model "claude-sonnet-4-5-20250929")
-        ;; TODO: Add temperature support to claude-raw
-        ;; temperature (get profile :temperature 0.3)
-        ;; Call claude-raw to get SSE stream
-        raw-stream (self/claude-raw {:model model
-                                     :input messages
-                                     :tools (vals tools)})
-        ;; Create output channel for processed parts
-        out-chan (a/chan 100)]
-    ;; Pipeline: raw-stream -> claude->aisdk-xf -> tool-executor-rff -> aisdk-xf -> out-chan
-    ;; Use pipeline-blocking because tool-executor-rff blocks in its completion arity
-    (a/pipeline-blocking 1 out-chan
-                         (comp self/claude->aisdk-xf
-                               (self/tool-executor-rff tools)
-                               self/aisdk-xf)
-                         raw-stream)
-    ;; Return channel with collected parts (non-blocking)
-    (a/into [] out-chan)))
+  (let [model (get profile :model "claude-sonnet-4-5-20250929")]
+    ;; TODO: Add temperature support to claude-raw
+    ;; temperature (get profile :temperature 0.3)
+    ;; Call claude-raw to get SSE stream, then process in a thread
+    ;; NOTE: We use a/thread instead of pipeline because tool-executor-rff
+    ;; uses blocking operations (a/<!!) in its completion arity, which
+    ;; cannot run in go-block contexts (pipeline uses go-blocks internally)
+    (a/thread
+      (try
+        (let [raw-stream (self/claude-raw {:model model
+                                           :input messages
+                                           :tools (vals tools)})
+              ;; Collect all chunks from the raw stream
+              raw-chunks (loop [acc []]
+                           (if-let [chunk (a/<!! raw-stream)]
+                             (recur (conj acc chunk))
+                             acc))]
+          ;; Apply transducers synchronously in this thread context
+          ;; where blocking operations are safe
+          (into [] (comp self/claude->aisdk-xf
+                         (self/tool-executor-rff tools)
+                         self/aisdk-xf)
+                raw-chunks))
+        (catch Exception e
+          ;; Return exception as value so caller can handle it
+          e)))))
 
 (defn- build-messages-for-llm
   "Build complete message array for LLM from memory, context, profile, and tools.
@@ -66,23 +76,27 @@
         history (messages/build-message-history memory)]
     (cons system-msg history)))
 
-(defn- stream-parts-to-output
-  "Stream parts to output channel."
+(defn- stream-parts-to-output!
+  "Stream parts to output channel. Must be called from within a go block.
+  Returns a channel that completes when all parts are written."
   [out-chan parts]
-  (doseq [part parts]
-    (a/>!! out-chan part)))
+  (a/go
+    (doseq [part parts]
+      (a/>! out-chan part))))
 
-(defn- finalize-stream
-  "Finalize the output stream with final state and close channel."
+(defn- finalize-stream!
+  "Finalize the output stream with final state and close channel.
+  Must be called from within a go block. Returns a channel that completes when done."
   [out-chan memory]
-  (let [state (memory/get-state memory)]
-    ;; Stream final state
-    (a/>!! out-chan {:type :data
-                     :id (str "state-" (random-uuid))
-                     :data state})
-    ;; Stream finish message
-    (a/>!! out-chan {:type :finish})
-    (a/close! out-chan)))
+  (a/go
+    (let [state (memory/get-state memory)]
+      ;; Stream final state
+      (a/>! out-chan {:type :data
+                      :id (str "state-" (random-uuid))
+                      :data state})
+      ;; Stream finish message
+      (a/>! out-chan {:type :finish})
+      (a/close! out-chan))))
 
 (defn run-agent-loop
   "Main agent loop using existing streaming infrastructure.
@@ -119,27 +133,31 @@
           (let [llm-messages (build-messages-for-llm @memory-atom context profile tools)
                 ;; Call LLM with tools (returns channel)
                 parts-chan (run-llm-with-tools llm-messages tools profile)
-                ;; Wait for parts (non-blocking in go block)
-                parts (a/<! parts-chan)]
+                ;; Wait for result (non-blocking in go block)
+                ;; Result may be parts vector or an exception
+                result (a/<! parts-chan)]
 
-            (when parts
-              ;; Update memory with this step
-              (swap! memory-atom memory/add-step parts)
+            ;; Check if result is an exception
+            (if (instance? Throwable result)
+              (throw result)
+              (when result
+                ;; Update memory with this step
+                (swap! memory-atom memory/add-step result)
 
-              ;; Stream parts to output
-              (stream-parts-to-output out-chan parts)
+                ;; Stream parts to output (wait for completion)
+                (a/<! (stream-parts-to-output! out-chan result))
 
-              ;; Decide whether to continue
-              (if (should-continue? iteration profile parts)
-                (recur (inc iteration))
-                (do
-                  (log/info "Agent loop complete"
-                            {:iterations (inc iteration)
-                             :reason (cond
-                                       (>= iteration (:max-iterations profile)) :max-iterations
-                                       (has-text-response? parts) :text-response
-                                       :else :no-tool-calls)})
-                  (finalize-stream out-chan @memory-atom))))))
+                ;; Decide whether to continue
+                (if (should-continue? iteration profile result)
+                  (recur (inc iteration))
+                  (do
+                    (log/info "Agent loop complete"
+                              {:iterations (inc iteration)
+                               :reason (cond
+                                         (>= iteration (:max-iterations profile)) :max-iterations
+                                         (has-text-response? result) :text-response
+                                         :else :no-tool-calls)})
+                    (a/<! (finalize-stream! out-chan @memory-atom))))))))
         (catch Exception e
           (log/error e "Error in agent loop")
           (a/>! out-chan {:type :error
