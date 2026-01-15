@@ -154,33 +154,15 @@ describe("scenarios > dependencies > dependency checks", () => {
       H.NativeEditor.clear().type(queryString);
     };
 
-    it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
+    it("should ignore breaking changes to a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
       goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
-      cy.log("cancel breaking changes");
+      cy.log("no confirmation is shown");
       H.DataStudio.Transforms.saveChangesButton().click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base transform").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateTransform.all").should("have.length", 0);
-
-      goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
-
-      cy.log("confirm breaking changes");
-      H.DataStudio.Transforms.saveChangesButton().click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base transform").should("not.exist");
-        cy.button("Save anyway").click();
-      });
       cy.wait("@updateTransform");
     });
 
