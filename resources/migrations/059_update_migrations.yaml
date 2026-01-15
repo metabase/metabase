@@ -417,8 +417,9 @@ databaseChangeLog:
                   name: process_uuid
                   type: varchar(36)
                   remarks: UUID of the Metabase instance that created this run
+                  defaultValue: "unknown"
                   constraints:
-                    nullable: true
+                    nullable: false
       rollback:
         - dropColumn:
             tableName: task_run
@@ -435,9 +436,10 @@ databaseChangeLog:
               - column:
                   name: updated_at
                   type: ${timestamp_type}
-                  remarks: Last heartbeat timestamp - updated hourly for running tasks
+                  remarks: Last heartbeat timestamp - updated periodically for running tasks
+                  defaultValueComputed: current_timestamp
                   constraints:
-                    nullable: true
+                    nullable: false
       rollback:
         - dropColumn:
             tableName: task_run
