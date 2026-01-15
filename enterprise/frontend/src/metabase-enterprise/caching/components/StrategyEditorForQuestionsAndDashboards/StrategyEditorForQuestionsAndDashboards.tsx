@@ -4,32 +4,32 @@ import _ from "underscore";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
-import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import { skipToken, useSearchQuery } from "metabase/api";
+import { translateConfigFromAPI } from "metabase/admin/performance/utils";
+import { useListCacheConfigsQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
-import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
+import { Table } from "metabase/common/components/Table";
 import type { ColumnItem } from "metabase/common/components/Table/types";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { Center, Flex, Repeat, Skeleton, Stack } from "metabase/ui";
-import type { CacheableModel } from "metabase-types/api";
+import type {
+  CacheConfig,
+  CacheSortColumn,
+  CacheableModel,
+} from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
-import type {
-  CacheableItem,
-  DashboardResult,
-  QuestionResult,
-  UpdateTarget,
-} from "../types";
+import type { CacheableItem, UpdateTarget } from "../types";
 
 import Styles from "./StrategyEditorForQuestionsAndDashboards.module.css";
 import { TableRowForCacheableItem } from "./TableRowForCacheableItem";
 import { getConstants } from "./constants";
-import { formatValueForSorting } from "./utils";
 
-type CacheableItemResult = DashboardResult | QuestionResult;
+const PAGE_SIZE = 25;
 
 export const StrategyEditorForQuestionsAndDashboards = () => {
   const [
@@ -42,89 +42,65 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
 
   const [targetModel, setTargetModel] = useState<CacheableModel | null>(null);
 
-  const configurableModels: CacheableModel[] = useMemo(
-    () => ["dashboard", "question"],
-    [],
+  const { page, handleNextPage, handlePreviousPage, resetPage } =
+    usePagination();
+
+  const [sortColumn, setSortColumn] = useState<CacheSortColumn>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    SortDirection.Asc,
   );
+
+  const [configs, setConfigs] = useState<CacheConfig[]>([]);
 
   const {
-    configs,
-    setConfigs,
+    data: cacheConfigsResponse,
     error: configsError,
-    loading: configsAreLoading,
-  } = useCacheConfigs({ configurableModels });
+    isLoading: configsAreLoading,
+  } = useListCacheConfigsQuery({
+    model: ["dashboard", "question"],
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    sort_column: sortColumn,
+    sort_direction: sortDirection === SortDirection.Asc ? "asc" : "desc",
+  });
 
-  const dashboardIds = useMemo(
-    () =>
-      configs
-        .filter((config) => config.model === "dashboard")
-        .map((c) => c.model_id),
-    [configs],
+  const total = cacheConfigsResponse?.total ?? 0;
+  const configsFromAPI = useMemo(
+    () => (cacheConfigsResponse?.data ?? []).map(translateConfigFromAPI),
+    [cacheConfigsResponse?.data],
   );
 
-  const questionIds = useMemo(
-    () =>
-      configs
-        .filter((config) => config.model === "question")
-        .map((c) => c.model_id),
-    [configs],
+  // Update local configs state when API data changes
+  useEffect(() => {
+    setConfigs(configsFromAPI);
+  }, [configsFromAPI]);
+
+  // Handle sort column click
+  const handleSort = useCallback(
+    (columnName: string, direction: SortDirection) => {
+      setSortColumn(columnName as CacheSortColumn);
+      setSortDirection(direction);
+      resetPage();
+    },
+    [resetPage],
   );
 
-  const dashboardsResult = useSearchQuery(
-    dashboardIds.length
-      ? {
-          models: ["dashboard"],
-          ids: dashboardIds,
-          //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
-        }
-      : skipToken,
-  );
-  const questionsResult = useSearchQuery(
-    questionIds.length
-      ? {
-          models: ["card"],
-          ids: questionIds,
-          include_dashboard_questions: true,
-          //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
-        }
-      : skipToken,
-  );
-
-  const dashboardsAndQuestions = useMemo(
-    () =>
-      (dashboardsResult.data?.data || []).concat(
-        questionsResult.data?.data || [],
-      ) as CacheableItemResult[],
-    [dashboardsResult.data, questionsResult.data],
-  );
-
-  const cacheableItems = useMemo(() => {
-    const items = new Map<string, CacheableItem>();
-    for (const config of configs) {
-      items.set(`${config.model}${config.model_id}`, {
-        ..._.omit(config, "model_id"),
+  // Transform configs to cacheable items - data comes directly from API
+  const cacheableItems: CacheableItem[] = useMemo(() => {
+    return configsFromAPI
+      .filter(
+        (config): config is typeof config & { name: string } =>
+          config.name !== undefined,
+      )
+      .map((config) => ({
         id: config.model_id,
-      });
-    }
-
-    // Hydrate data from the search results into the cacheable items
-    for (const result of dashboardsAndQuestions ?? []) {
-      const normalizedModel =
-        result.model === "card" ? "question" : result.model;
-      const item = items.get(`${normalizedModel}${result.id}`);
-      if (item) {
-        item.name = result.name;
-        item.collection = result.collection;
-        item.iconModel = result.model;
-      }
-    }
-    // Filter out items that have no match in the dashboard and question list
-    const hydratedCacheableItems: CacheableItem[] = [...items.values()].filter(
-      (item) => item.name !== undefined,
-    );
-
-    return hydratedCacheableItems;
-  }, [configs, dashboardsAndQuestions]);
+        model: config.model,
+        strategy: config.strategy,
+        name: config.name,
+        collection: config.collection ?? undefined,
+        iconModel: config.model === "question" ? "card" : "dashboard",
+      }));
+  }, [configsFromAPI]);
 
   useEffect(
     /** When the user configures an item to 'Use default' and that item
@@ -148,7 +124,19 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
         model: targetModel,
       })
     : undefined;
-  const savedStrategy = targetConfig?.strategy;
+
+  // Create a mutable copy of the strategy since RTK Query data is frozen
+  const savedStrategy = useMemo(() => {
+    const strategy = targetConfig?.strategy;
+    if (!strategy) {
+      return undefined;
+    }
+    // Return a mutable copy, normalizing duration unit to hours
+    if (strategy.type === "duration") {
+      return { ...strategy, unit: CacheDurationUnit.Hours };
+    }
+    return { ...strategy };
+  }, [targetConfig?.strategy]);
 
   const targetName = useMemo(() => {
     if (targetId === null || targetModel === null) {
@@ -160,10 +148,6 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
     });
     return item?.name;
   }, [targetId, targetModel, cacheableItems]);
-
-  if (savedStrategy?.type === "duration") {
-    savedStrategy.unit = CacheDurationUnit.Hours;
-  }
 
   const {
     askBeforeDiscardingChanges,
@@ -201,14 +185,10 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
     targetModel,
   );
 
-  const cacheableItemsAreLoading = configs.length > 0 && !cacheableItems.length;
+  const error = configsError;
+  const loading = configsAreLoading;
 
-  const error = configsError || dashboardsResult.error || questionsResult.error;
-  const loading =
-    configsAreLoading ||
-    dashboardsResult.isLoading ||
-    questionsResult.isLoading ||
-    cacheableItemsAreLoading;
+  const hasPagination = total > PAGE_SIZE;
 
   const rowRenderer = useCallback(
     (item: CacheableItem) => (
@@ -249,27 +229,40 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
             loading={loading}
             loader={<TableSkeleton columns={tableColumns} />}
           >
-            <Flex align="flex-start">
-              <ClientSortableTable<CacheableItem>
-                className={Styles.CacheableItemTable}
-                columns={tableColumns}
-                data-testid="cache-config-table"
-                rows={cacheableItems}
-                rowRenderer={rowRenderer}
-                defaultSortColumn="name"
-                defaultSortDirection={SortDirection.Asc}
-                formatValueForSorting={formatValueForSorting}
-                emptyBody={<NoResultsTableRow />}
-                aria-labelledby={explanatoryAsideId}
-                cols={
-                  <>
-                    <col />
-                    <col />
-                    <col />
-                  </>
-                }
-              />
-            </Flex>
+            <Stack gap="md" w="100%">
+              <Flex align="flex-start">
+                <Table<CacheableItem>
+                  className={Styles.CacheableItemTable}
+                  columns={tableColumns}
+                  data-testid="cache-config-table"
+                  rows={cacheableItems}
+                  rowRenderer={rowRenderer}
+                  emptyBody={<NoResultsTableRow />}
+                  aria-labelledby={explanatoryAsideId}
+                  sortColumnName={sortColumn}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  cols={
+                    <>
+                      <col />
+                      <col />
+                      <col />
+                    </>
+                  }
+                />
+              </Flex>
+              {hasPagination && (
+                <PaginationControls
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  itemsLength={cacheableItems.length}
+                  total={total}
+                  showTotal
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                />
+              )}
+            </Stack>
           </DelayedLoadingAndErrorWrapper>
         </Flex>
       </Stack>
@@ -298,7 +291,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
 };
 
 const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
-  <ClientSortableTable<{ id: number }>
+  <Table<{ id: number }>
     columns={columns}
     rows={[{ id: 0 }, { id: 1 }, { id: 2 }]}
     rowRenderer={() => (

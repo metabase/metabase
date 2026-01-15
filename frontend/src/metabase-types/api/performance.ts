@@ -1,3 +1,5 @@
+import type { CollectionType } from "./collection";
+
 /** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
 
@@ -67,3 +69,34 @@ export interface CacheConfig {
 export type CacheConfigAPIResponse = {
   data: CacheConfig[];
 };
+
+export type CacheSortColumn = "name" | "collection" | "policy";
+export type SortDirection = "asc" | "desc";
+
+export interface ListCacheConfigsRequest {
+  model?: CacheableModel[];
+  collection?: number;
+  id?: number;
+  limit?: number;
+  offset?: number;
+  sort_column?: CacheSortColumn;
+  sort_direction?: SortDirection;
+}
+
+/** Cache config with hydrated name and collection data */
+export interface CacheConfigWithDetails extends CacheConfig {
+  name?: string;
+  collection?: {
+    id: number;
+    name: string;
+    authority_level?: "official" | null;
+    type?: CollectionType;
+  } | null;
+}
+
+export interface ListCacheConfigsResponse {
+  data: CacheConfigWithDetails[];
+  total: number;
+  limit: number | null;
+  offset: number | null;
+}

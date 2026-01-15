@@ -2,8 +2,11 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
+import {
+  useDeleteCacheConfigMutation,
+  useUpdateCacheConfigMutation,
+} from "metabase/api";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfig,
   CacheStrategy,
@@ -24,6 +27,9 @@ export const useSaveStrategy = (
   setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel | null,
 ) => {
+  const [updateCacheConfig] = useUpdateCacheConfigMutation();
+  const [deleteCacheConfig] = useDeleteCacheConfigMutation();
+
   const saveStrategy = useCallback(
     async (values: CacheStrategy) => {
       if (targetId === null || model === null) {
@@ -45,7 +51,7 @@ export const useSaveStrategy = (
         // To set "don't cache" as the root strategy, we delete the root strategy
         (isRoot && values.type === "nocache");
       if (shouldDeleteStrategy) {
-        await CacheConfigApi.delete(baseConfig, { hasBody: true });
+        await deleteCacheConfig(baseConfig);
         setConfigs(otherConfigs);
       } else {
         // If you change strategies, Formik will keep the old values
@@ -64,7 +70,7 @@ export const useSaveStrategy = (
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
-        await CacheConfigApi.update(translatedConfig);
+        await updateCacheConfig(translatedConfig);
 
         if (newConfig.strategy.type === "ttl") {
           newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
@@ -73,7 +79,14 @@ export const useSaveStrategy = (
         setConfigs([...otherConfigs, newConfig]);
       }
     },
-    [configs, setConfigs, targetId, model],
+    [
+      configs,
+      setConfigs,
+      targetId,
+      model,
+      updateCacheConfig,
+      deleteCacheConfig,
+    ],
   );
   return saveStrategy;
 };
