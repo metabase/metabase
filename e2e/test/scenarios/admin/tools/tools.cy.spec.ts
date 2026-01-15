@@ -258,6 +258,61 @@ describe("scenarios > admin > tools > tasks", () => {
       task.task_details,
     );
   });
+
+  it("should render logs when they are present", () => {
+    const taskWithLogs = {
+      ...task,
+      logs: [
+        {
+          timestamp: "2024-01-10T10:00:00.000Z",
+          process_uuid: "test-uuid-1234",
+          fqns: "metabase.sync.sync",
+          msg: "Starting database sync",
+          level: "INFO",
+          exception: null,
+        },
+        {
+          timestamp: "2024-01-10T10:00:01.000Z",
+          process_uuid: "test-uuid-1234",
+          fqns: "metabase.sync.sync",
+          msg: "Sync completed successfully",
+          level: "DEBUG",
+          exception: null,
+        },
+      ],
+    };
+
+    cy.intercept("GET", `/api/task/${task.id}`, {
+      body: taskWithLogs,
+    }).as("getTaskWithLogs");
+
+    cy.visit(`/admin/tools/tasks/list/${task.id}`);
+    cy.wait("@getTaskWithLogs");
+
+    cy.findByTestId("task-logs").scrollIntoView().should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
+  });
+
+  it("should show empty state when no logs are present", () => {
+    const taskWithoutLogs = {
+      ...task,
+      logs: [],
+    };
+
+    cy.intercept("GET", `/api/task/${task.id}`, {
+      body: taskWithoutLogs,
+    }).as("getTaskWithoutLogs");
+
+    cy.visit(`/admin/tools/tasks/list/${task.id}`);
+    cy.wait("@getTaskWithoutLogs");
+
+    cy.findByTestId("task-logs").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("There are no captured logs").should("be.visible");
+  });
 });
 
 describe("scenarios > admin > tools > logs", () => {
@@ -500,5 +555,380 @@ describe("admin > tools", () => {
           cy.location("pathname").should("eq", "/admin/tools/tasks/list");
         });
     });
+  });
+});
+
+describe("scenarios > admin > tools > task runs", () => {
+  const taskRun = {
+    id: 1,
+    run_type: "sync",
+    entity_type: "database",
+    entity_id: 1,
+    entity_name: "Sample Database",
+    started_at: "2024-01-10T10:00:00Z",
+    ended_at: "2024-01-10T10:05:00Z",
+    status: "success",
+    task_count: 3,
+    success_count: 2,
+    failed_count: 1,
+  };
+
+  const taskRunExtended = {
+    ...taskRun,
+    tasks: [
+      {
+        id: 101,
+        task: "sync-database",
+        status: "success",
+        db_id: 1,
+        duration: 100,
+        started_at: "2024-01-10T10:00:00Z",
+        ended_at: "2024-01-10T10:01:00Z",
+        task_details: null,
+        logs: null,
+        run_id: 1,
+      },
+      {
+        id: 102,
+        task: "analyze",
+        status: "success",
+        db_id: 1,
+        duration: 200,
+        started_at: "2024-01-10T10:01:00Z",
+        ended_at: "2024-01-10T10:03:00Z",
+        task_details: null,
+        logs: null,
+        run_id: 1,
+      },
+      {
+        id: 103,
+        task: "fingerprint",
+        status: "failed",
+        db_id: 1,
+        duration: 50,
+        started_at: "2024-01-10T10:03:00Z",
+        ended_at: "2024-01-10T10:05:00Z",
+        task_details: null,
+        logs: null,
+        run_id: 1,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("GET", "/api/task/runs?*", (request) => {
+      request.reply((response) => {
+        response.body = {
+          data: [taskRun],
+          total: 1,
+          limit: 50,
+          offset: 0,
+        };
+      });
+    }).as("getTaskRuns");
+
+    cy.intercept("GET", /\/api\/task\/runs\/\d+$/, {
+      body: taskRunExtended,
+    }).as("getTaskRun");
+  });
+
+  it("should switch between Tasks and Runs tabs", () => {
+    cy.visit("/admin/tools/tasks/list");
+
+    cy.findByTestId("tasks-table").should("be.visible");
+
+    cy.findByRole("tab", { name: /Runs/i }).click();
+    cy.location("pathname").should("eq", "/admin/tools/tasks/runs");
+    cy.findByTestId("task-runs-table").should("be.visible");
+
+    cy.findByRole("tab", { name: /Tasks/i }).click();
+    cy.location("pathname").should("eq", "/admin/tools/tasks/list");
+    cy.findByTestId("tasks-table").should("be.visible");
+  });
+
+  it("should navigate to task run details and show associated tasks", () => {
+    cy.visit("/admin/tools/tasks/runs");
+    cy.wait("@getTaskRuns");
+
+    cy.findByTestId("task-runs-table")
+      .findAllByTestId("task-run")
+      .first()
+      .click();
+    cy.wait("@getTaskRun");
+
+    cy.location("pathname").should(
+      "eq",
+      `/admin/tools/tasks/runs/${taskRun.id}`,
+    );
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Run type").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Entity").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Sample Database").should("be.visible");
+
+    cy.findByTestId("task-run-tasks-table").should("be.visible");
+    cy.findAllByTestId("task-run-task").should("have.length", 3);
+  });
+
+  it("should navigate back to runs list from run details", () => {
+    cy.visit(`/admin/tools/tasks/runs/${taskRun.id}`);
+    cy.wait("@getTaskRun");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Back to Runs").click();
+    cy.location("pathname").should("eq", "/admin/tools/tasks/runs");
+  });
+
+  it("should have clickable entity link in task run details", () => {
+    cy.visit(`/admin/tools/tasks/runs/${taskRun.id}`);
+    cy.wait("@getTaskRun");
+
+    cy.findByRole("link", { name: /Sample Database/i }).click();
+    cy.location("pathname").should("eq", "/admin/databases/1");
+  });
+
+  it("should navigate to task details from task run details", () => {
+    cy.visit(`/admin/tools/tasks/runs/${taskRun.id}`);
+    cy.wait("@getTaskRun");
+
+    cy.findByTestId("task-run-tasks-table")
+      .findAllByTestId("task-run-task")
+      .first()
+      .click();
+
+    cy.location("pathname").should(
+      "eq",
+      `/admin/tools/tasks/list/${taskRunExtended.tasks[0].id}`,
+    );
+  });
+});
+
+describe("scenarios > admin > tools > task runs pagination", () => {
+  const total = 57;
+  const limit = 50;
+
+  function stubRunsPageResponses({
+    page,
+    alias,
+  }: {
+    page: number;
+    alias: string;
+  }) {
+    const offset = page * limit;
+
+    cy.intercept("GET", `/api/task/runs?limit=${limit}&offset=${offset}`, {
+      status: 200,
+      body: {
+        data: stubRunsPageRows(page),
+        limit,
+        offset,
+        total,
+      },
+    }).as(alias);
+  }
+
+  function stubRunsPageRows(page: number) {
+    const runTypes = ["sync", "fingerprint"];
+
+    const row = {
+      id: 1,
+      run_type: runTypes[page],
+      entity_type: "database",
+      entity_id: 1,
+      entity_name: "Sample Database",
+      started_at: "2024-01-10T10:00:00Z",
+      ended_at: "2024-01-10T10:05:00Z",
+      status: "success",
+      task_count: 3,
+      success_count: 2,
+      failed_count: 1,
+    };
+
+    const pageRows = [limit, total - limit];
+    const length = pageRows[page];
+
+    return Array.from({ length }, (_, index) => ({
+      ...row,
+      id: index + 1,
+    }));
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    stubRunsPageResponses({ page: 0, alias: "firstRunsPage" });
+    stubRunsPageResponses({ page: 1, alias: "secondRunsPage" });
+  });
+
+  it("pagination should work for task runs", () => {
+    cy.visit("/admin/tools/tasks/runs");
+    cy.wait("@firstRunsPage");
+
+    cy.location("search").should("eq", "");
+
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Sync");
+
+    cy.findByLabelText("Previous page").should("be.disabled");
+    cy.findByLabelText("Next page").should("not.be.disabled").click();
+    cy.wait("@secondRunsPage");
+
+    cy.location("search").should("eq", "?page=1");
+
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Fingerprint");
+
+    cy.findByLabelText("Next page").should("be.disabled");
+    cy.findByLabelText("Previous page").should("not.be.disabled").click();
+
+    cy.location("search").should("eq", "");
+  });
+});
+
+describe("scenarios > admin > tools > task runs filtering", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("GET", "/api/task/runs?*", (request) => {
+      request.reply((response) => {
+        response.body = {
+          data: [],
+          total: 0,
+          limit: 50,
+          offset: 0,
+        };
+      });
+    }).as("getTaskRuns");
+
+    cy.intercept("GET", "/api/task/runs/entities?*", (request) => {
+      request.reply((response) => {
+        response.body = [
+          {
+            entity_type: "database",
+            entity_id: 1,
+            entity_name: "Sample Database",
+          },
+          {
+            entity_type: "database",
+            entity_id: 2,
+            entity_name: "Test Database",
+          },
+        ];
+      });
+    }).as("getEntities");
+  });
+
+  it("filtering should work for task runs", () => {
+    cy.visit("/admin/tools/tasks/runs");
+    cy.wait("@getTaskRuns");
+
+    cy.log("Filter by run type");
+    cy.findByPlaceholderText("Filter by run type").click();
+    H.popover().findByText("Sync").click();
+    cy.location("search").should("contain", "run-type=sync");
+    cy.wait("@getTaskRuns");
+
+    cy.wait("@getEntities");
+    cy.log("Filter by entity");
+    cy.findByPlaceholderText("Filter by entity").click();
+    H.popover().findByText("Sample Database").click();
+    cy.location("search").should("contain", "entity-type=database");
+    cy.location("search").should("contain", "entity-id=1");
+    cy.wait("@getTaskRuns");
+
+    cy.log("Filter by status");
+    cy.findByPlaceholderText("Filter by status").click();
+    H.popover().findByText("Success").click();
+    cy.location("search").should("contain", "status=success");
+    cy.wait("@getTaskRuns");
+
+    cy.log("Clear all filters");
+    cy.findByPlaceholderText("Filter by run type")
+      .parent()
+      .findByLabelText("Clear")
+      .click();
+    cy.findByPlaceholderText("Filter by status")
+      .parent()
+      .findByLabelText("Clear")
+      .click();
+    cy.location("search").should("eq", "");
+  });
+
+  it("entity picker should be disabled/enabled based on run type and entities availability", () => {
+    cy.visit("/admin/tools/tasks/runs");
+    cy.wait("@getTaskRuns");
+
+    cy.log("Should be disabled when no run type is selected");
+    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
+
+    cy.log("Should show tooltip 'Select a run type first' when hovering");
+    cy.findByPlaceholderText("Filter by entity").trigger("mouseenter", {
+      force: true,
+    });
+    cy.findByRole("tooltip").should("have.text", "Select a run type first");
+    cy.findByPlaceholderText("Filter by entity").trigger("mouseleave", {
+      force: true,
+    });
+
+    cy.log("Should show loader while loading entities");
+    cy.intercept("GET", "/api/task/runs/entities?*", {
+      body: [
+        {
+          entity_type: "database",
+          entity_id: 1,
+          entity_name: "Sample Database",
+        },
+      ],
+      delay: 500,
+    }).as("getEntitiesDelayed");
+
+    cy.findByPlaceholderText("Filter by run type").click();
+    H.popover().findByText("Sync").click();
+
+    cy.findByPlaceholderText("Filter by entity")
+      .should("be.disabled")
+      .closest(".mb-mantine-Select-root")
+      .find(".mb-mantine-Loader-root")
+      .should("exist");
+
+    cy.wait("@getEntitiesDelayed");
+
+    cy.log("Should be enabled after entities are loaded");
+    cy.findByPlaceholderText("Filter by entity").should("not.be.disabled");
+
+    cy.log("Should clear and disable entity filter when run type is cleared");
+    cy.findByPlaceholderText("Filter by run type")
+      .parent()
+      .findByLabelText("Clear")
+      .click();
+
+    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
+    cy.findByPlaceholderText("Filter by entity").should("have.value", "");
+
+    cy.log("Should show tooltip 'No entities available' when no entities");
+    cy.intercept("GET", "/api/task/runs/entities?*", {
+      body: [],
+    }).as("getEmptyEntities");
+
+    cy.findByPlaceholderText("Filter by run type").click();
+    H.popover().findByText("Alert").click();
+    cy.wait("@getEmptyEntities");
+
+    cy.findByPlaceholderText("Filter by entity").should("be.disabled");
+    cy.findByPlaceholderText("Filter by entity").trigger("mouseenter", {
+      force: true,
+    });
+    cy.findByRole("tooltip").should("have.text", "No entities available");
   });
 });

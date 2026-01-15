@@ -144,8 +144,11 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
 
         <Title order={3}>{t`Logs`}</Title>
         {hasLogs ? (
-          <Box className={S.codeContainer} mt="md">
-            <LogsViewer logs={task?.logs ?? []}></LogsViewer>
+          <Box className={S.codeContainer}>
+            <LogsViewer
+              logs={task?.logs ?? []}
+              data-testid="task-logs"
+            ></LogsViewer>
           </Box>
         ) : (
           <Text>{t`There are no captured logs`}</Text>
