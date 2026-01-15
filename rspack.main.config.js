@@ -18,28 +18,13 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  RESOLVE_ALIASES,
+} = require("./frontend/build/shared/rspack/resolve-aliases");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
-const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
-const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
-const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
-const DOCS_PATH = __dirname + "/docs";
-const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
-const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
-const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_PACKAGE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
-const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
-const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
-const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const E2E_PATH = __dirname + "/e2e";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
@@ -101,11 +86,6 @@ class OnScriptError {
     });
   }
 }
-
-const resolveEnterprisePathOrNoop = (path) =>
-  process.env.MB_EDITION === "ee"
-    ? ENTERPRISE_SRC_PATH + path
-    : SRC_PATH + "/lib/noop";
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
@@ -214,47 +194,7 @@ const config = {
       ".css",
       ".svg",
     ],
-    alias: {
-      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
-      assets: ASSETS_PATH,
-      img: IMAGES_PATH,
-      fonts: FONTS_PATH,
-      docs: DOCS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.ts`,
-      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: SRC_PATH + "/css/core/index",
-      // NOTE @kdoh - 7/24/18
-      // icepick 2.x is es6 by defalt, to maintain backwards compatability
-      // with ie11 point to the minified version
-      icepick: __dirname + "/node_modules/icepick/icepick.min",
-      // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/plugins"
-          : SRC_PATH + "/plugins/noop",
-      "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
-      embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
-      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
-      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
-        "/sdk-iframe-embedding-plugins",
-      ),
-      "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
-        "/sdk-iframe-embedding-script-plugins",
-      ),
-      "sdk-ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
-          : SRC_PATH + "/plugins/noop",
-      "sdk-specific-imports": SRC_PATH + "/lib/noop",
-    },
+    alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),
       url: require.resolve("url/"),
