@@ -85,9 +85,10 @@ export const EnableEmbeddingCard = ({
   const { title, buttonCaption } = data;
 
   return (
-    <Stack gap={0}>
+    <Stack gap={0} data-testid="enable-embedding-card">
       <Text fz="md" c="text-primary">
         {title}
+
         {!termsAccepted && (
           <HoverCard position="bottom" withArrow>
             <HoverCard.Target>
