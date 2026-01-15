@@ -13,7 +13,7 @@ describe(
       cy.signInAsAdmin();
 
       if (IS_ENTERPRISE) {
-        H.deleteToken();
+        H.activateToken("starter");
       }
 
       H.updateSetting("show-sdk-embed-terms", false);
