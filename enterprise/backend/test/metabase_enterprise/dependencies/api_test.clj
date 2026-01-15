@@ -40,12 +40,17 @@
    (let [mp (mt/metadata-provider)]
      (card-with-query card-name (lib/query mp (lib.metadata/table mp (mt/id table-keyword)))))))
 
-(defn wrap-card
-  "Construct a card depending on `inner-card` for dependency testing."
+(defn wrap-card-query
+  "Construct a query depending on `inner-card` for dependency testing."
   [inner-card]
   (let [mp (mt/metadata-provider)
         card-meta (lib.metadata/card mp (:id inner-card))]
-    (card-with-query "Downstream card" (lib/query mp card-meta))))
+    (lib/query mp card-meta)))
+
+(defn wrap-card
+  "Construct a card depending on `inner-card` for dependency testing."
+  [inner-card]
+  (card-with-query "Downstream card" (wrap-card-query inner-card)))
 
 (defn wrap-two-cards
   "Construct a card depending on both `card1` and `card2` via a join."
@@ -64,6 +69,13 @@
                                      (lib/with-join-alias "joined")))])
                         (lib/with-join-fields :all))]
     (card-with-query "Card with join" (lib/join base-query join-clause))))
+
+(defn broken-mbql-query
+  "Construct a broken MBQL query that references a field from a wrong table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))))
 
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check_card"
@@ -1637,14 +1649,15 @@
 (deftest ^:sequential unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card               _ {:name "0 Card sorttest"}
-                     :model/Table              _ {:name "1 Table sorttest", :display_name "1 Table sorttest"}
-                     :model/Transform          _ {:name "2 Transform sorttest"}
-                     :model/NativeQuerySnippet _ {:name "3 Snippet sorttest"}
-                     :model/Dashboard          _ {:name "4 Dashboard sorttest"}
-                     :model/Document           _ {:name "5 Document sorttest"}
-                     :model/Segment            _ {:name "6 Segment sorttest"}
-                     :model/Measure            _ {:name "7 Measure sorttest"}]
+      (mt/with-temp [:model/Card               _ {:name "A Card sorttest"}
+                     :model/Table              _ {:name "B Table sorttest"
+                                                  :display_name "B Table sorttest"}
+                     :model/Transform          _ {:name "C Transform sorttest"}
+                     :model/NativeQuerySnippet _ {:name "D Snippet sorttest"}
+                     :model/Dashboard          _ {:name "E Dashboard sorttest"}
+                     :model/Document           _ {:name "F Document sorttest"}
+                     :model/Segment            _ {:name "G Segment sorttest"}
+                     :model/Measure            _ {:name "H Measure sorttest"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200
@@ -1653,14 +1666,14 @@
                                                :sort_column :name
                                                :sort_direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
-            (is (= (cond-> ["0 Card sorttest"
-                            "1 Table sorttest"
-                            "2 Transform sorttest"
-                            "3 Snippet sorttest"
-                            "4 Dashboard sorttest"
-                            "5 Document sorttest"
-                            "6 Segment sorttest"
-                            "7 Measure sorttest"]
+            (is (= (cond-> ["A Card sorttest"
+                            "B Table sorttest"
+                            "C Transform sorttest"
+                            "D Snippet sorttest"
+                            "E Dashboard sorttest"
+                            "F Document sorttest"
+                            "G Segment sorttest"
+                            "H Measure sorttest"]
                      (= sort-direction :desc) reverse)
                    names))))))))
 
@@ -1668,41 +1681,47 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [;; locations
-                     :model/Database   {db-id :id}          {:name "0 Database"}
-                     :model/Table      {table1-id :id}      {:name "1 Table", :display_name "1 Table", :db_id db-id}
-                     :model/Table      {table2-id :id}      {:name "2 Table", :display_name "2 Table", :db_id db-id}
-                     :model/Collection {collection1-id :id} {:name "3 Collection"}
-                     :model/Collection {collection2-id :id} {:name "4 Collection"
+                     :model/Database   {db-id :id}          {:name "A Database"}
+                     :model/Table      {table1-id :id}      {:name "B Table"
+                                                             :display_name "B Table"
+                                                             :db_id db-id}
+                     :model/Table      {table2-id :id}      {:name "C Table"
+                                                             :display_name "C Table"
+                                                             :db_id db-id}
+                     :model/Collection {collection1-id :id} {:name "D Collection"}
+                     :model/Collection {collection2-id :id} {:name "E Collection"
                                                              :namespace :transforms}
-                     :model/Collection {collection3-id :id} {:name "5 Collection"
+                     :model/Collection {collection3-id :id} {:name "F Collection"
                                                              :namespace :snippets}
-                     :model/Collection {collection4-id :id} {:name "6 Collection"}
-                     :model/Collection {collection5-id :id} {:name "7 Collection"}
-                     :model/Dashboard  {dashboard-id :id}   {:name "8 Dashboard", :collection_id collection1-id}
-                     :model/Document   {document-id :id}    {:name "9 Document", :collection_id collection1-id}
+                     :model/Collection {collection4-id :id} {:name "G Collection"}
+                     :model/Collection {collection5-id :id} {:name "H Collection"}
+                     :model/Dashboard  {dashboard-id :id}   {:name "I Dashboard"
+                                                             :collection_id collection1-id}
+                     :model/Document   {document-id :id}    {:name "J Document"
+                                                             :collection_id collection1-id}
                      ;; entities
-                     :model/Card               _ {:name "Card with Collection 1 sorttest"
+                     :model/Card               _ {:name          "Card with Collection 1 sorttest"
                                                   :collection_id collection1-id}
-                     :model/Card               _ {:name "Card with Dashboard sorttest"
+                     :model/Card               _ {:name          "Card with Dashboard sorttest"
                                                   :collection_id collection1-id
-                                                  :dashboard_id dashboard-id}
-                     :model/Card               _ {:name "Card with Document sorttest"
+                                                  :dashboard_id  dashboard-id}
+                     :model/Card               _ {:name          "Card with Document sorttest"
                                                   :collection_id collection1-id
-                                                  :document_id document-id}
-                     :model/Table              _ {:name "Table with Database sorttest"
+                                                  :document_id   document-id}
+                     :model/Table              _ {:name         "Table with Database sorttest"
                                                   :display_name "Table sorttest"
-                                                  :db_id db-id}
-                     :model/Transform          _ {:name "Transform with Collection 2 sorttest"
+                                                  :db_id        db-id}
+                     :model/Transform          _ {:name          "Transform with Collection 2 sorttest"
                                                   :collection_id collection2-id}
-                     :model/NativeQuerySnippet _ {:name "Snippet with Collection 3 sorttest"
+                     :model/NativeQuerySnippet _ {:name          "Snippet with Collection 3 sorttest"
                                                   :collection_id collection3-id}
-                     :model/Dashboard          _ {:name "Dashboard with Collection 4 sorttest"
+                     :model/Dashboard          _ {:name          "Dashboard with Collection 4 sorttest"
                                                   :collection_id collection4-id}
-                     :model/Document           _ {:name "Document with Collection 5 sorttest"
+                     :model/Document           _ {:name          "Document with Collection 5 sorttest"
                                                   :collection_id collection5-id}
-                     :model/Segment            _ {:name "Segment with Table 1 sorttest"
+                     :model/Segment            _ {:name     "Segment with Table 1 sorttest"
                                                   :table_id table1-id}
-                     :model/Measure            _ {:name "Measure with Table 2 sorttest"
+                     :model/Measure            _ {:name     "Measure with Table 2 sorttest"
                                                   :table_id table2-id}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (doseq [sort-direction [:asc :desc]]
@@ -1724,3 +1743,77 @@
                             "Card with Document sorttest"]
                      (= sort-direction :desc) reverse)
                    names))))))))
+
+(deftest ^:sequential broken-sort-by-name-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by name"
+    (mt/with-premium-features #{:dependencies}
+      (let [broken-query (broken-mbql-query)]
+        (mt/with-temp [:model/Card _ {:name "A Card sorttest"
+                                      :dataset_query broken-query}
+                       :model/Card _ {:name "B Card sorttest"
+                                      :dataset_query broken-query}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (doseq [sort-direction [:asc :desc]]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/broken"
+                                                 :query "sorttest"
+                                                 :sort_column :name
+                                                 :sort_direction sort-direction)
+                  names (mapv #(get-in % [:data :name]) (:data response))]
+              (is (= (cond-> ["A Card sorttest"
+                              "B Card sorttest"]
+                       (= sort-direction :desc) reverse)
+                     names)))))))))
+
+(deftest ^:sequential broken-sort-by-location-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by location"
+    (mt/with-premium-features #{:dependencies}
+      (let [broken-query (broken-mbql-query)]
+        (mt/with-temp [:model/Collection {collection1-id :id} {:name "B Collection"}
+                       :model/Collection {collection2-id :id} {:name "A Collection"}
+                       :model/Card _ {:name           "Card with Collection 1 sorttest"
+                                      :dataset_query broken-query
+                                      :collection_id collection1-id}
+                       :model/Card _ {:name          "Card with Collection 2 sorttest"
+                                      :dataset_query broken-query
+                                      :collection_id collection2-id}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (doseq [sort-direction [:asc :desc]]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/broken"
+                                                 :query "sorttest"
+                                                 :sort_column :location
+                                                 :sort_direction sort-direction)
+                  names (mapv #(get-in % [:data :name]) (:data response))]
+              (is (= (cond-> ["Card with Collection 2 sorttest"
+                              "Card with Collection 1 sorttest"]
+                       (= sort-direction :desc) reverse)
+                     names)))))))))
+
+(deftest ^:sequential broken-sort-by-dependents-count-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents count"
+    (mt/with-premium-features #{:dependencies}
+      (let [broken-query (broken-mbql-query)]
+        (mt/with-temp [:model/Card card1 {:name           "Card 1 sorttest"
+                                          :dataset_query broken-query}
+                       :model/Card card2 {:name          "Card 2 sorttest"
+                                          :dataset_query broken-query}
+                       :model/Card _     {:name          "Card 1.1 sorttest"
+                                          :dataset_query (wrap-card-query card1)}
+                       :model/Card _     {:name          "Card 1.2 sorttest"
+                                          :dataset_query (wrap-card-query card1)}
+                       :model/Card _     {:name          "Card 2.1 sorttest"
+                                          :dataset_query (wrap-card-query card2)}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (doseq [sort-direction [:asc :desc]]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/dependencies/graph/broken"
+                                                 :query "sorttest"
+                                                 :sort_column :dependents-count
+                                                 :sort_direction sort-direction)
+                  names (mapv #(get-in % [:data :name]) (:data response))]
+              (is (= (cond-> ["Card 2 sorttest"
+                              "Card 1 sorttest"]
+                       (= sort-direction :desc) reverse)
+                     names)))))))))
