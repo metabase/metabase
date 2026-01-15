@@ -1,22 +1,32 @@
 import * as Lib from "metabase-lib";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { createQueryWithClauses } from "./test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_METADATA,
+  createTestQuery,
+} from "./test-helpers";
 
 describe("findColumnIndexesFromLegacyRefs", () => {
   const stageIndex = -1;
 
   it("should match columns that differ only by temporal buckets", () => {
-    const query = createQueryWithClauses({
-      breakouts: [
+    const provider = Lib.metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
+    const query = createTestQuery(provider, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Year",
-        },
-        {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              name: "CREATED_AT",
+              unit: "year",
+            },
+            {
+              name: "CREATED_AT",
+              unit: "month",
+            },
+          ],
         },
       ],
     });
@@ -31,17 +41,22 @@ describe("findColumnIndexesFromLegacyRefs", () => {
   });
 
   it("should match columns that differ only by binning", () => {
-    const query = createQueryWithClauses({
-      breakouts: [
+    const provider = Lib.metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
+    const query = createTestQuery(provider, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
         {
-          tableName: "ORDERS",
-          columnName: "TOTAL",
-          binningStrategyName: "10 bins",
-        },
-        {
-          tableName: "ORDERS",
-          columnName: "TOTAL",
-          binningStrategyName: "50 bins",
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              name: "TOTAL",
+              binningCount: 10,
+            },
+            {
+              name: "TOTAL",
+              binningCount: 50,
+            },
+          ],
         },
       ],
     });
