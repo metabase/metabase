@@ -46,12 +46,8 @@ jobs:
         with:
           sparse-checkout: release
 
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && bun install && bun run build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Cache build scripts
         uses: actions/upload-artifact@v4
@@ -182,12 +178,8 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Prepare build scripts
-        run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Get current SDK version
         id: current-sdk-version
