@@ -1667,7 +1667,6 @@
 (deftest ^:sequential unreferenced-sort-by-location-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location"
     (mt/with-premium-features #{:dependencies}
-
       (mt/with-temp [;; locations
                      :model/Database {db-id :id} {:name "0 Database"}
                      :model/Table {table1-id :id} {:name "1 Table", :display_name "2 Table", :db_id db-id}
@@ -1683,13 +1682,13 @@
                      :model/Card _ {:name "Card with Collection 1 sorttest", :collection_id collection1-id}
                      :model/Card _ {:name "Card with Dahsboard sorttest", :collection_id collection1-id, :dashboard_id dashboard-id}
                      :model/Card _ {:name "Card with Document sorttest", :collection_id collection1-id, :document_id document-id}
-                     :model/Table _ {:name "Table with Database sorttest", :display_name "Table sorttest", :db_id db-id}]
-        :model/Transform _ {:name "Transform with Collection 2 sorttest", :collection_id collection2-id}
-        :model/Snippet _ {:name "Snippet with Collection 3 sorttest", :collection_id collection3-id}
-        :model/Dashboard _ {:name "Dashboard with Collection 4 sorttest", :collection_id collection4-id}
-        :model/Document _ {:name "Document with Collection 5 sorttest", :collection_id collection5-id}
-        :model/Segment _ {:name "Segment with Table 1 sorttest", :table_id table1-id}
-        :model/Measure _ {:name "Measure with Table 2 sorttest", :table_id table2-id}
+                     :model/Table _ {:name "Table with Database sorttest", :display_name "Table sorttest", :db_id db-id}
+                     :model/Transform _ {:name "Transform with Collection 2 sorttest", :collection_id collection2-id}
+                     :model/Snippet _ {:name "Snippet with Collection 3 sorttest", :collection_id collection3-id}
+                     :model/Dashboard _ {:name "Dashboard with Collection 4 sorttest", :collection_id collection4-id}
+                     :model/Document _ {:name "Document with Collection 5 sorttest", :collection_id collection5-id}
+                     :model/Segment _ {:name "Segment with Table 1 sorttest", :table_id table1-id}
+                     :model/Measure _ {:name "Measure with Table 2 sorttest", :table_id table2-id}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200
