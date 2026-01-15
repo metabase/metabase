@@ -181,11 +181,11 @@ export function useWorkspaceActions({
 
   // Callback to navigate to a transform (used by metabot reactions and URL param)
   const handleNavigateToTransform = useCallback(
-    async (targetTransformId: number) => {
+    async (targetTransformId: number | string) => {
       const transform = [...workspaceTransforms, ...availableTransforms].find(
         (transform) => {
           if ("global_id" in transform) {
-            return transform.global_id === targetTransformId;
+            return transform.global_id === targetTransformId || transform.ref_id === targetTransformId;
           }
           return transform.id === targetTransformId;
         },

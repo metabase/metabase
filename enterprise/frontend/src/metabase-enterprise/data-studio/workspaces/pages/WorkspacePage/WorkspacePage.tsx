@@ -163,7 +163,9 @@ function WorkspacePageContent({
     }
 
     (async () => {
-      await handleNavigateToTransform(Number(transformId));
+      const parsedId = parseInt(transformId, 10);
+      await handleNavigateToTransform(isNaN(parsedId) ? transformId : parsedId);
+
       dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
     })();
   }, [

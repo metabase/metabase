@@ -14,7 +14,7 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyGraph } from "metabase-types/api";
+import type { DependencyGraph, WorkspaceDependencyGraph } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -42,7 +42,7 @@ const PRO_OPTIONS = {
 };
 
 type DependencyGraphProps = {
-  graph?: DependencyGraph | null;
+  graph?: DependencyGraph | WorkspaceDependencyGraph | null;
   isFetching?: boolean;
   error?: any;
   getGraphUrl: (entry?: any) => string;

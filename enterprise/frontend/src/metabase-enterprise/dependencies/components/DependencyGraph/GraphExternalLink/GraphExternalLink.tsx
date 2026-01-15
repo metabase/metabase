@@ -14,7 +14,7 @@ export function GraphExternalLink({ label, url }: GraphExternalLinkProps) {
       <ActionIcon
         component={ForwardRefLink}
         to={url}
-        target="_blank"
+        // target="_blank"
         m="-sm"
         aria-label={label}
       >

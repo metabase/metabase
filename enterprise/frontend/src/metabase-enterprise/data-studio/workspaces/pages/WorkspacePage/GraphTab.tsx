@@ -33,11 +33,10 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
 
   const dependencyGraph = useDependencyGraph(graphData, workspaceId);
 
-  // Create a dummy entry to prevent DependencyGraph from clearing the graph
-  // The workspace graph shows the entire workspace without filtering
+  // Create a dummy entry to initialize GraphComponent correctly (not empty).
   const dummyEntry: DependencyEntry = {
-    id: workspaceId, // Convert number to string
-    type: "transform", // Using transform as the type since it's a valid dependency type
+    id: workspaceId,
+    type: "workspace-transform",
   };
 
   if (isFetching) {
