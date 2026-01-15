@@ -36,7 +36,7 @@ describe("scenarios > data studio > datamodel", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
@@ -84,28 +84,33 @@ describe("scenarios > data studio > datamodel", () => {
       );
     });
 
-    it("should show 404 if field does not exist", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: 12345, // we're force navigating to a fake field id
-        skipWaiting: true,
-      });
-      cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
+    it(
+      "should show 404 if field does not exist",
+      // We eliminate the flakiness by removing the need to scroll horizontally
+      { viewportWidth: 1600 },
+      () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: 12345, // we're force navigating to a fake field id
+          skipWaiting: true,
+        });
+        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 8);
-      cy.location("pathname").should(
-        "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
-      );
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 8);
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        );
 
-      H.DataModel.get().within(() => {
-        cy.findByText("Field details").should("be.visible");
-        cy.findByText("Not found.").should("be.visible");
-      });
-    });
+        H.DataModel.get().within(() => {
+          cy.findByText("Field details").should("be.visible");
+          cy.findByText("Not found.").should("be.visible");
+        });
+      },
+    );
 
     it(
       "should not show 404 error if database is not selected",
@@ -1059,10 +1064,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.findByText("New description").should("be.visible");
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the table name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the table name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
         cy.signIn("none");
@@ -1137,10 +1139,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the field name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -1347,7 +1346,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1391,7 +1391,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1430,7 +1431,8 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1532,10 +1534,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the field name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -1982,10 +1981,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findByLabelText("Left column").should("contain.text", "User ID");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change the field foreign key target with no permissions to Reviews table", () => {
-          H.activateToken("pro-self-hosted");
+        it("should allow to change the field foreign key target with no permissions to Reviews table", () => {
           setDataModelPermissions({
             tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
           });
@@ -2041,10 +2037,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findByLabelText("Left column").should("contain.text", "User ID");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should not allow setting foreign key target for inaccessible tables", () => {
-          H.activateToken("pro-self-hosted");
+        it("should not allow setting foreign key target for inaccessible tables", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
@@ -2660,10 +2653,7 @@ describe("scenarios > data studio > datamodel", () => {
             .and("have.value", "Title");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change foreign key target for accessible tables", () => {
-          H.activateToken("pro-self-hosted");
+        it("should allow to change foreign key target for accessible tables", () => {
           setDataModelPermissions({
             tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
           });
@@ -2802,9 +2792,9 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("Name of the product should be displayed instead of its ID");
           H.openOrdersTable();
-          cy.findByRole("gridcell", { name: "Awesome Concrete Shoes" }).should(
-            "be.visible",
-          );
+          cy.findByRole("gridcell", {
+            name: "Awesome Concrete Shoes",
+          }).should("be.visible");
         });
 
         it("should correctly apply and display custom remapping for numeric values", () => {
@@ -2878,10 +2868,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should show a proper error message when using custom mapping", () => {
-          H.activateToken("pro-self-hosted");
+        it("should show a proper error message when using custom mapping", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
@@ -3586,7 +3573,8 @@ describe("scenarios > data studio > datamodel", () => {
       verifyAndCloseToast("Failed to update field order");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
@@ -3732,7 +3720,8 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.checked");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyToastAndUndo("Field order updated");

@@ -17,6 +17,7 @@ import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
+  isDisabledForVisualizer,
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
@@ -221,6 +222,7 @@ function DashCardActionsPanelInner({
       !isVisualizerDashboardCard(dashcard) &&
       !isVisualizerSupportedVisualization(dashcard?.card.display) &&
       !isVirtualDashCard(dashcard) &&
+      !isDisabledForVisualizer(dashcard?.card.display) &&
       onEditVisualization
     ) {
       buttons.push(

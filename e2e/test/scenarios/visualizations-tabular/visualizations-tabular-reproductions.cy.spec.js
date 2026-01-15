@@ -543,7 +543,8 @@ describe("issue 25250", () => {
     cy.findByText("Product ID").should("be.visible");
 
     H.openVizSettingsSidebar();
-    H.moveDnDKitElement(H.getDraggableElements().contains("Product ID"), {
+    H.getDraggableElements().contains("Product ID").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: -100,
     });
     H.getDraggableElements().eq(0).should("contain", "Product ID");

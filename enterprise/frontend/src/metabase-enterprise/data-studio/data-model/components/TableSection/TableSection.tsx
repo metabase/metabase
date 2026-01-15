@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -21,6 +21,7 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -36,6 +37,7 @@ import { PublishTablesModal } from "metabase-enterprise/data-studio/common/compo
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -60,6 +62,7 @@ const TableSectionBase = ({
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
+  const isAdmin = useSelector(getUserIsAdmin);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
@@ -212,16 +215,18 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        <Button
-          flex="1"
-          p="sm"
-          leftSection={
-            <Icon name={table.is_published ? "unpublish" : "publish"} />
-          }
-          onClick={handlePublishToggle}
-        >
-          {table.is_published ? t`Unpublish` : t`Publish`}
-        </Button>
+        {isAdmin && (
+          <Button
+            flex="1"
+            p="sm"
+            leftSection={
+              <Icon name={table.is_published ? "unpublish" : "publish"} />
+            }
+            onClick={handlePublishToggle}
+          >
+            {table.is_published ? t`Unpublish` : t`Publish`}
+          </Button>
+        )}
         <Button
           flex="1"
           leftSection={<Icon name="settings" />}
@@ -257,87 +262,99 @@ const TableSectionBase = ({
 
       {table.is_published && <TableCollection table={table} />}
 
-      <Tabs value={activeTab} onChange={handleTabChange}>
-        <Tabs.List mb="md">
-          <Tabs.Tab
-            value="field"
-            leftSection={<Icon name="list" />}
-          >{t`Fields`}</Tabs.Tab>
-          <Tabs.Tab
-            value="segments"
-            leftSection={<Icon name="segment2" />}
-          >{t`Segments`}</Tabs.Tab>
-        </Tabs.List>
+      <Box px="lg">
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tabs.List mb="md">
+            <Tabs.Tab
+              value="field"
+              leftSection={<Icon name="list" />}
+            >{t`Fields`}</Tabs.Tab>
+            <Tabs.Tab
+              value="segments"
+              leftSection={<Icon name="segment2" />}
+            >{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab
+              value="measures"
+              leftSection={<Icon name="sum" />}
+            >{t`Measures`}</Tabs.Tab>
+          </Tabs.List>
 
-        <Tabs.Panel value="field">
-          <Stack gap="md">
-            <Group gap="md" justify="flex-start" wrap="nowrap">
-              {isUpdatingSorting && (
-                <Loader data-testid="loading-indicator" size="xs" />
-              )}
+          <Tabs.Panel value="field">
+            <Stack gap="md">
+              <Group gap="md" justify="flex-start" wrap="nowrap">
+                {isUpdatingSorting && (
+                  <Loader data-testid="loading-indicator" size="xs" />
+                )}
 
-              {!isSorting && hasFields && (
-                <ResponsiveButton
-                  icon="sort_arrows"
-                  showLabel
-                  onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</ResponsiveButton>
-              )}
+                {!isSorting && hasFields && (
+                  <ResponsiveButton
+                    icon="sort_arrows"
+                    showLabel
+                    onClick={() => setIsSorting(true)}
+                  >{t`Sorting`}</ResponsiveButton>
+                )}
 
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={handleFieldOrderTypeChange}
-                />
-              )}
-
-              {isSorting && (
-                <ResponsiveButton
-                  icon="check"
-                  showLabel
-                  onClick={() => setIsSorting(false)}
-                >{t`Done`}</ResponsiveButton>
-              )}
-            </Group>
-
-            {!hasFields && <EmptyState message={t`This table has no fields`} />}
-
-            {hasFields && (
-              <>
-                <Box
-                  style={{
-                    display: isSorting ? "block" : "none",
-                  }}
-                  aria-hidden={!isSorting}
-                >
-                  <TableSortableFieldList
-                    activeFieldId={activeFieldId}
-                    table={table}
-                    onChange={handleCustomFieldOrderChange}
+                {isSorting && (
+                  <FieldOrderPicker
+                    value={table.field_order}
+                    onChange={handleFieldOrderTypeChange}
                   />
-                </Box>
+                )}
 
-                <Box
-                  style={{
-                    display: isSorting ? "none" : "block",
-                  }}
-                  aria-hidden={isSorting}
-                >
-                  <TableFieldList
-                    table={table}
-                    activeFieldId={activeFieldId}
-                    getFieldHref={getFieldHref}
-                  />
-                </Box>
-              </>
-            )}
-          </Stack>
-        </Tabs.Panel>
+                {isSorting && (
+                  <ResponsiveButton
+                    icon="check"
+                    showLabel
+                    onClick={() => setIsSorting(false)}
+                  >{t`Done`}</ResponsiveButton>
+                )}
+              </Group>
 
-        <Tabs.Panel value="segments">
-          <SegmentList table={table} />
-        </Tabs.Panel>
-      </Tabs>
+              {!hasFields && (
+                <EmptyState message={t`This table has no fields`} />
+              )}
+
+              {hasFields && (
+                <>
+                  <Box
+                    style={{
+                      display: isSorting ? "block" : "none",
+                    }}
+                    aria-hidden={!isSorting}
+                  >
+                    <TableSortableFieldList
+                      activeFieldId={activeFieldId}
+                      table={table}
+                      onChange={handleCustomFieldOrderChange}
+                    />
+                  </Box>
+
+                  <Box
+                    style={{
+                      display: isSorting ? "none" : "block",
+                    }}
+                    aria-hidden={isSorting}
+                  >
+                    <TableFieldList
+                      table={table}
+                      activeFieldId={activeFieldId}
+                      getFieldHref={getFieldHref}
+                    />
+                  </Box>
+                </>
+              )}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="segments">
+            <SegmentList table={table} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="measures">
+            <MeasureList table={table} />
+          </Tabs.Panel>
+        </Tabs>
+      </Box>
 
       <CreateLibraryModal
         title={t`First, let's create your Library`}

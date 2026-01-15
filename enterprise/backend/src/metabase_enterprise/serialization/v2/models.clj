@@ -6,9 +6,17 @@
   ["Database"
    "Field"
    "FieldUserSettings"
+   "Measure"
    "Segment"
    "Table"
    "Channel"])
+
+(def data-model-in-collection
+  "Data model types that can be found in collections (via published tables).
+   These are extracted by ID when discovered via descendants, even if no-data-model is set."
+  ["Table"
+   "Field"
+   "Segment"])
 
 (def content
   "Content model types"
@@ -48,7 +56,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["ApiKey"
+  ["AnalysisFinding"
+   "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"

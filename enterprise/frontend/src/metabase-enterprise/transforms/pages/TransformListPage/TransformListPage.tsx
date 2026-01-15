@@ -13,6 +13,7 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -56,10 +57,10 @@ const countTransforms = (node: TreeNode): number => {
   }, 0);
 };
 
-const NODE_ICON_COLORS: Record<TreeNode["nodeType"], string> = {
-  folder: "text-medium",
+const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
+  folder: "text-secondary",
   transform: "brand",
-  library: "text-dark",
+  library: "text-primary",
 };
 
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
@@ -135,6 +136,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         accessorKey: "name",
         header: t`Name`,
         minWidth: 320,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) => (
           <EntityNameCell
@@ -164,6 +166,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         accessorFn: (node) => node.target?.name ?? "",
         header: t`Output table`,
         minWidth: 240,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) =>
           row.original.target?.name ? (

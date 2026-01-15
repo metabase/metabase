@@ -106,6 +106,7 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
+    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     custom-formatting: {}
@@ -161,7 +162,7 @@ config:
     index-update-thread-count: 2
     install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
-    jdbc-networkout-timeout-ms: 1800000
+    jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
     jwt-attribute-groups: groups

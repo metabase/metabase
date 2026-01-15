@@ -11,6 +11,7 @@ import {
   EditableDashboard,
   InteractiveDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
@@ -39,6 +40,9 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const isReadOnly = settings.readOnly ?? true;
 
   const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
+
+  const { canWrite: canWriteToInitialCollection } =
+    useCollectionData(initialCollection);
 
   const [currentView, setCurrentView] = useState<MetabaseBrowserView>({
     type: "collection",
@@ -160,8 +164,17 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const handleNewExploration = () => {
     setCurrentView({ type: "exploration" });
-    reportLocation({ type: "question", id: "new", name: "New exploration" });
   };
+
+  // Only show "New exploration" button if user has write access and it's enabled
+  const showNewExplorationButton =
+    (settings.withNewQuestion ?? true) && canWriteToInitialCollection;
+
+  // Only show "New dashboard" button if not read-only and user has write access
+  const showNewDashboardButton =
+    !isReadOnly &&
+    (settings.withNewDashboard ?? true) &&
+    canWriteToInitialCollection;
 
   return (
     <Stack pos="relative" h="100%">
@@ -182,13 +195,13 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
           {currentView.type === "collection" && (
             <Group gap="sm">
-              {(settings.withNewQuestion ?? true) && (
+              {showNewExplorationButton && (
                 <Button justify="center" onClick={handleNewExploration}>
                   {t`New exploration`}
                 </Button>
               )}
 
-              {!isReadOnly && (settings.withNewDashboard ?? true) && (
+              {showNewDashboardButton && (
                 <Button
                   justify="center"
                   onClick={() => setCurrentView({ type: "create-dashboard" })}

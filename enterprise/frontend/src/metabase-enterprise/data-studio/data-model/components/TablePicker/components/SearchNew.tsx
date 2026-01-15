@@ -114,12 +114,10 @@ export function SearchNew({
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+    useListDatabasesQuery();
   const { isExpanded, toggle } = useExpandedState(
     {},
-    {
-      defaultExpanded: true,
-    },
+    { defaultExpanded: true },
   );
 
   const allowedDatabaseIds = useMemo(
@@ -157,7 +155,7 @@ export function SearchNew({
   if (filteredTables.length === 0) {
     return (
       <Box p="xl">
-        <Text c="text.2">{t`No tables found`}</Text>
+        <Text c="text-tertiary">{t`No tables found`}</Text>
       </Box>
     );
   }

@@ -21,7 +21,7 @@ export const multiSelectOverrides = {
         keepMounted: false,
       },
       clearButtonProps: {
-        color: "text-dark",
+        color: "text-primary",
       },
       "data-testid": "multi-select",
       inputWrapperOrder: ["label", "description", "input", "error"],

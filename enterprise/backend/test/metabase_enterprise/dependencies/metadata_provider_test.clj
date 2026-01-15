@@ -110,7 +110,7 @@
                                 (lib/remove-clause (first (lib/breakouts upstream)))
                                 (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day))
                                 (replace-query card1)))
-      ;; NOTE: Theses lines are important: this is what would happen to all the dependents returned by the graph.
+      ;; NOTE: These lines are important: this is what would happen to all the dependents returned by the graph.
       ;; There's no update (`nil`) but it still includes the downstream stuff in the scope of the
       ;; OverrideMetadataProvider.
       (deps.mp/add-override mp :card 2 nil)

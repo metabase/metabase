@@ -85,7 +85,7 @@ function CategoryHeader({
   ...props
 }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box px="sm" pos="sticky" top={0} bg="var(--mb-color-bg-white)" {...props}>
+    <Box px="sm" pos="sticky" top={0} bg="background-primary" {...props}>
       <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>
@@ -93,7 +93,11 @@ function CategoryHeader({
   );
 }
 
-function Emoji({ emoji, ref, ...props }: EmojiPickerListEmojiProps) {
+function Emoji({
+  emoji,
+  ref,
+  ...props
+}: Omit<EmojiPickerListEmojiProps, "color">) {
   return (
     <ActionIcon
       c="text-primary"

@@ -107,6 +107,8 @@
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
+    ;; v49+
+    :model/ApiKey
     ;; 51+
     :model/Notification
     :model/NotificationSubscription
@@ -120,7 +122,9 @@
     :model/Document
     :model/DocumentBookmark
     :model/Comment
-    :model/CommentReaction]
+    :model/CommentReaction
+    ;; 59+
+    :model/Measure]
    (when config/ee-available?
      [:model/Sandbox
       :model/Tenant

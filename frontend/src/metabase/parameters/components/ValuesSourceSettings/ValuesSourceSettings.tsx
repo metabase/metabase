@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Modal from "metabase/common/components/Modal";
-import { Box, Button, Flex, Radio, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Modal, Radio, Stack, Tooltip } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -66,15 +65,19 @@ export function ValuesSourceSettings({
           />
         </Stack>
       </Radio.Group>
-      {isModalOpened && (
-        <Modal medium onClose={closeModal}>
-          <ValuesSourceModal
-            parameter={parameter}
-            onSubmit={onChangeSourceSettings}
-            onClose={closeModal}
-          />
-        </Modal>
-      )}
+      <Modal
+        opened={isModalOpened}
+        onClose={closeModal}
+        size="65%"
+        padding={0}
+        withCloseButton={false}
+      >
+        <ValuesSourceModal
+          parameter={parameter}
+          onSubmit={onChangeSourceSettings}
+          onClose={closeModal}
+        />
+      </Modal>
     </>
   );
 }

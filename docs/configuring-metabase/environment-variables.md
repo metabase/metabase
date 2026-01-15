@@ -293,6 +293,13 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
+### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
+
+- Type: integer
+- Default: `250`
+
+Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
+
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -812,7 +819,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
-### `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
+### `MB_JDBC_NETWORK_TIMEOUT_MS`
 
 - Type: integer
 - Default: `1800000`
