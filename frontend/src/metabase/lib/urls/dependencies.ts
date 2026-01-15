@@ -31,24 +31,22 @@ export function dependencyTasks() {
 }
 
 export type DependencyListParams = {
-  page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
-  sorting?: DependencySortingOptions;
   includePersonalCollections?: boolean;
+  sorting?: DependencySortingOptions;
+  page?: number;
 };
 
 function dependencyListQueryString({
-  page,
   query,
   groupTypes,
-  sorting,
   includePersonalCollections,
+  sorting,
+  page,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
-  if (page != null) {
-    searchParams.set("page", String(page));
-  }
+
   if (query != null) {
     searchParams.set("query", query);
   }
@@ -57,15 +55,18 @@ function dependencyListQueryString({
       searchParams.append("group-types", groupType);
     });
   }
-  if (sorting != null) {
-    searchParams.set("sort-column", sorting.column);
-    searchParams.set("sort-direction", sorting.direction);
-  }
   if (includePersonalCollections != null) {
     searchParams.set(
       "include-personal-collections",
       String(includePersonalCollections),
     );
+  }
+  if (sorting != null) {
+    searchParams.set("sort-column", sorting.column);
+    searchParams.set("sort-direction", sorting.direction);
+  }
+  if (page != null) {
+    searchParams.set("page", String(page));
   }
 
   const queryString = searchParams.toString();

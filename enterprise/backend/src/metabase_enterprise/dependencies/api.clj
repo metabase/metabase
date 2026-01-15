@@ -651,6 +651,14 @@
               personal-filter
               (conj [:and personal-filter]))}))
 
+(def ^:private sort-columns
+  "Valid sort columns for dependency item endpoints."
+  #{:name})
+
+(def ^:private sort-directions
+  "Valid sort directions for dependency item endpoints."
+  #{:asc :desc})
+
 (def ^:private dependency-items-args
   [:map
    [:types {:optional true} [:or
@@ -661,7 +669,9 @@
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]])
+   [:include_personal_collections {:optional true} :boolean]
+   [:sort_column {:optional true} (ms/enum-decode-keyword sort-columns)]
+   [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (def ^:private dependency-items-response
   [:map
@@ -680,6 +690,8 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `sort_column`: Column to sort by (currently only \"name\" is supported, default: \"name\")
+   - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
 
@@ -689,10 +701,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- dependency-items-args]
+         include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -710,7 +724,7 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key :asc]]
+                                      :order-by [[:sort_key sort_direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
@@ -734,6 +748,8 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `sort_column`: Column to sort by (currently only \"name\" is supported, default: \"name\")
+   - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
 
@@ -743,10 +759,12 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- dependency-items-args]
+         include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -764,7 +782,7 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key :asc]]
+                                      :order-by [[:sort_key sort_direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]

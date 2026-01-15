@@ -72,6 +72,7 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
     id: "dependents-count",
     header: t`Downstream dependents`,
     minWidth: 100,
+    enableSorting: false,
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;

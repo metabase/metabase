@@ -54,9 +54,9 @@ export function DependencyList({
     query,
     types: getDependencyTypes(groupTypes),
     card_types: getCardTypes(groupTypes),
+    include_personal_collections: includePersonalCollections,
     sort_column: sorting?.column,
     sort_direction: sorting?.direction,
-    include_personal_collections: includePersonalCollections,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });

@@ -25,17 +25,17 @@ export function parseParams(
   );
 
   return {
-    page: parseNumber(params.page),
     query: parseString(params.query),
     groupTypes: parseList(params["group-types"], (item) =>
       parseEnum(item, DEPENDENCY_GROUP_TYPES),
+    ),
+    includePersonalCollections: parseBoolean(
+      params["include-personal-collections"],
     ),
     sorting:
       sortColumn != null && sortDirection != null
         ? { column: sortColumn, direction: sortDirection }
         : undefined,
-    includePersonalCollections: parseBoolean(
-      params["include-personal-collections"],
-    ),
+    page: parseNumber(params.page),
   };
 }
