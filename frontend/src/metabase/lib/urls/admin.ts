@@ -142,7 +142,7 @@ export function adminToolsTasksBase() {
   return "/admin/tools/tasks";
 }
 export function adminToolsTasksList() {
-  return `${adminToolsTasksBase()}/lists`;
+  return `${adminToolsTasksBase()}/list`;
 }
 
 export function adminToolsTaskDetails(taskId: number) {
