@@ -1634,8 +1634,6 @@
                    :limit  1}
                   (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1"))))))))
 
-;;; ------------------------------------------------- Sorting tests -------------------------------------------------
-
 (deftest ^:sequential unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
