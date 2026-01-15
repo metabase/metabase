@@ -79,7 +79,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getWorkspaceContent().within(() => {
         cy.log("Starts on setup tab, and has only 2 tabs");
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
@@ -209,7 +209,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Second workspace should start with default tabs");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
       });
 
       cy.log("Navigate back to first workspace");
@@ -221,7 +221,12 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("First workspace should preserve its tabs state");
         Workspaces.getWorkspaceContent().within(() => {
-          H.tabsShouldBe(sourceTable, ["Setup", "Agent Chat", "SQL transform"]);
+          H.tabsShouldBe(sourceTable, [
+            "Setup",
+            "Agent Chat",
+            "Graph",
+            "SQL transform",
+          ]);
         });
 
         H.NativeEditor.value().should("contain", "LIMIT 2");
@@ -331,6 +336,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
         ]);
       });
@@ -364,6 +370,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe(sourceTable, [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
           sourceTable,
         ]);
@@ -384,6 +391,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe(targetTableSql, [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
           sourceTable,
           targetTableSql,
@@ -465,7 +473,7 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
       });
 
       cy.log("Open transform tabs");
@@ -477,6 +485,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "Python transform",
           "SQL transform",
         ]);
@@ -484,7 +493,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Reorder and close tabs");
       Workspaces.getWorkspaceContent().within(() => {
-        cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
+        cy.findAllByRole("tab").eq(4).as("sqlTransformTab");
         H.moveDnDKitElementByAlias("@sqlTransformTab", {
           horizontal: -150,
         });
@@ -500,9 +509,13 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findAllByRole("tab")
           .eq(2)
           .findByLabelText("close icon")
-          .should("exist");
+          .should("not.exist");
         cy.findAllByRole("tab")
           .eq(3)
+          .findByLabelText("close icon")
+          .should("exist");
+        cy.findAllByRole("tab")
+          .eq(4)
           .findByLabelText("close icon")
           .should("exist")
           .click();
@@ -512,6 +525,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
         ]);
       });
@@ -539,6 +553,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe(TARGET_TABLE_SQL, [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
           "transform_table",
         ]);
@@ -558,7 +573,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify both transform tab and table tab have been closed");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
       });
     });
   });
@@ -610,6 +625,133 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("Setup log should be visible");
         cy.findByText(/Setting up the workspace/).should("be.visible");
+      });
+    });
+  });
+
+  describe("graph tab", () => {
+    it("should display transform dependencies in the graph", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+      runTransformAndWaitForSuccess();
+
+      Workspaces.openGraphTab();
+
+      H.DependencyGraph.graph().should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText(SOURCE_TABLE)
+        .should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText("SQL transform")
+        .should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText(TARGET_TABLE_SQL)
+        .should("be.visible");
+
+      // Verify edges connecting nodes
+      H.DependencyGraph.graph()
+        .findByLabelText(/Edge from.*Animals.*to.*workspace-transform/)
+        .should("exist");
+      H.DependencyGraph.graph()
+        .findByLabelText(/Edge from.*workspace-transform.*to.*table/)
+        .should("exist");
+    });
+
+    it("should display multiple transforms and their connections", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.getRunAllTransformsButton().click();
+      H.popover().findByText("Run all transforms").click();
+      verifyAndCloseToast("Transforms ran successfully");
+
+      Workspaces.openGraphTab();
+
+      // Verify nodes
+      H.DependencyGraph.graph().should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText("SQL transform")
+        .should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText("Python transform")
+        .should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText(TARGET_TABLE_SQL)
+        .should("be.visible");
+      H.DependencyGraph.graph()
+        .findByLabelText(TARGET_TABLE_PYTHON)
+        .should("be.visible");
+
+      // Verify edges: input tables -> transforms -> output tables
+      // To simplify test logic, we just check that all edges are present.
+      // In total there should be 4 edges:
+      // - Animals -> SQL transform
+      // - Animals -> Python transform
+      // - SQL transform -> target table
+      // - Python transform -> target table
+      H.DependencyGraph.graph()
+        .findAllByLabelText(/Edge from.*Animals.*to.*workspace-transform/)
+        .should("have.length", 2);
+      H.DependencyGraph.graph()
+        .findAllByLabelText(/Edge from.*workspace-transform.*to.*target/)
+        .should("have.length", 2);
+    });
+
+    it("should allow clicking on graph nodes to see details", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      Workspaces.getSaveTransformButton().click();
+      runTransformAndWaitForSuccess();
+
+      Workspaces.openGraphTab();
+
+      H.DependencyGraph.graph().findByLabelText(SOURCE_TABLE).click();
+      H.DependencyGraph.graph()
+        .findByLabelText(SOURCE_TABLE)
+        .should("have.attr", "aria-selected", "true");
+
+      cy.log("Verify info panel shows fields for input table");
+      cy.findByTestId("graph-info-panel").within(() => {
+        cy.findByText("2 fields").should("be.visible");
+        cy.findByText("Name").should("be.visible");
+        cy.findByText("Score").should("be.visible");
+      });
+
+      H.DependencyGraph.graph().findByLabelText("SQL transform").click();
+      H.DependencyGraph.graph()
+        .findByLabelText("SQL transform")
+        .should("have.attr", "aria-selected", "true");
+
+      cy.log("Verify info panel shows transform link");
+      cy.findByTestId("graph-info-panel").within(() => {
+        cy.findByLabelText("View this workspace transform").should("be.visible");
+      });
+
+      cy.log("Click transform link and verify navigation to transform tab");
+      cy.findByTestId("graph-info-panel")
+        .findByLabelText("View this workspace transform")
+        .click();
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "Graph",
+          "SQL transform",
+        ]);
       });
     });
   });
@@ -717,6 +859,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("New transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "New transform",
         ]);
         H.NativeEditor.value().should("be.empty");
@@ -759,6 +902,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("New transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "New transform",
         ]);
       });
@@ -818,6 +962,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("New transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "New transform",
         ]);
       });
@@ -868,6 +1013,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("New transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "New transform",
         ]);
       });
@@ -977,7 +1123,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Close saved transform tab");
       Workspaces.getWorkspaceContent().within(() => {
-        cy.findAllByRole("tab").eq(2).findByLabelText("close icon").click();
+        cy.findByRole("tab", { name: "SQL transform" }).findByLabelText("close icon").click();
       });
 
       Workspaces.openDataTab();
@@ -1007,6 +1153,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`, [
           "Setup",
           "Agent Chat",
+          "Graph",
           `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
         ]);
       });
@@ -1023,6 +1170,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
           "SQL transform",
         ]);
@@ -1081,6 +1229,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("Preview (SQL transform)", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
           "Preview (SQL transform)",
         ]);
@@ -1263,6 +1412,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
         ]);
       });
@@ -1311,6 +1461,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
         ]);
       });
@@ -1323,6 +1474,7 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
           "Agent Chat",
+          "Graph",
           "SQL transform",
         ]);
       });
@@ -1343,7 +1495,12 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByText("New workspace").click();
       H.undoToast().should("not.exist");
       Workspaces.getWorkspaceTabs().within(() => {
-        H.tabsShouldBe("My transform", ["Setup", "Agent Chat", "My transform"]);
+        H.tabsShouldBe("My transform", [
+          "Setup",
+          "Agent Chat",
+          "Graph",
+          "My transform",
+        ]);
       });
     });
 
@@ -1385,6 +1542,7 @@ describe("scenarios > data studio > workspaces", () => {
         .should("be.visible");
     });
   });
+
 });
 
 function createWorkspace() {

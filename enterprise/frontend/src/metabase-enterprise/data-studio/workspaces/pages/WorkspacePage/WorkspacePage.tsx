@@ -45,6 +45,7 @@ import { isWorkspaceUninitialized } from "../../utils";
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
+import { GraphTab } from "./GraphTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
@@ -162,7 +163,9 @@ function WorkspacePageContent({
     }
 
     (async () => {
-      await handleNavigateToTransform(Number(transformId));
+      const parsedId = parseInt(transformId, 10);
+      await handleNavigateToTransform(isNaN(parsedId) ? transformId : parsedId);
+
       dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
     })();
   }, [
@@ -397,6 +400,12 @@ function WorkspacePageContent({
                         </Group>
                       </Tabs.Tab>
                     )}
+                    <Tabs.Tab value="graph">
+                      <Group gap="xs" wrap="nowrap">
+                        <Icon name="dependencies" aria-hidden />
+                        {t`Graph`}
+                      </Group>
+                    </Tabs.Tab>
 
                     {openedTabs.map((tab, index) => (
                       <Sortable
@@ -459,7 +468,9 @@ function WorkspacePageContent({
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
               </Tabs.Panel>
-
+              <Tabs.Panel value="graph" h="100%" p="md">
+                <GraphTab workspaceId={workspace?.id} />
+              </Tabs.Panel>
               {isMetabotAvailable && (
                 <Tabs.Panel
                   value="metabot"

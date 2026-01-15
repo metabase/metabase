@@ -43,23 +43,34 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   last_run_status: WorkspaceRunStatus | null;
 };
 
-
 export function isTaggedTransform(
-  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+  transform:
+    | TaggedTransform
+    | WorkspaceTransform
+    | UnsavedTransform
+    | WorkspaceTransformListItem,
 ): transform is TaggedTransform {
-  return 'type' in transform && transform.type === "transform";
+  return "type" in transform && transform.type === "transform";
 }
 
 export function isWorkspaceTransform(
-  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+  transform:
+    | TaggedTransform
+    | WorkspaceTransform
+    | UnsavedTransform
+    | WorkspaceTransformListItem,
 ): transform is WorkspaceTransform {
-  return 'type' in transform && transform.type === "workspace-transform";
+  return "type" in transform && transform.type === "workspace-transform";
 }
 
 export function isUnsavedTransform(
-  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+  transform:
+    | TaggedTransform
+    | WorkspaceTransform
+    | UnsavedTransform
+    | WorkspaceTransformListItem,
 ): transform is UnsavedTransform {
-  return 'type' in transform && transform.type === "unsaved-transform";
+  return "type" in transform && transform.type === "unsaved-transform";
 }
 
 export type WorkspaceId = number;
@@ -251,21 +262,100 @@ export type WorkspaceTablesResponse = {
 // Graph types for React Flow dependency diagram
 export type WorkspaceGraphNode = {
   id: string;
-  type?: string;
-  data?: Record<string, unknown>;
-  position?: { x: number; y: number };
-};
+  dependents_count: Record<string, number>;
+} & (
+  | {
+      type: "input-table";
+      data: {
+        db: number;
+        id: number;
+        schema: string;
+        table: string;
+        table_id: number;
+      };
+    }
+  | {
+      type: "workspace-transform";
+      data: {
+        ref_id: string;
+        name: string;
+        target: {
+          db: number;
+          schema: string;
+          table: string;
+          table_id: number | null;
+        };
+      };
+    }
+);
 
+// Note: entity IDs are strings from backend (node-id returns strings for tables like "1-public-users")
 export type WorkspaceGraphEdge = {
-  id: string;
-  source: string;
-  target: string;
-  type?: string;
+  from_entity_type: string;
+  from_entity_id: string;
+  to_entity_type: string;
+  to_entity_id: string;
 };
 
 export type WorkspaceGraphResponse = {
   nodes: WorkspaceGraphNode[];
   edges: WorkspaceGraphEdge[];
+};
+
+// Workspace graph dependency types that use string IDs (matching backend node-id function)
+// These are separate from the standard DependencyNode/DependencyEdge types in dependencies.ts
+export type WorkspaceGraphDependencyId = string;
+
+export type WorkspaceGraphTableNodeData = {
+  name: string;
+  display_name: string;
+  description: string | null;
+  db_id: number;
+  schema: string;
+  fields: unknown[];
+  table_id?: number;
+};
+
+export type WorkspaceGraphTransformNodeData = {
+  name: string;
+  workspace_id?: WorkspaceId;
+  ref_id: string;
+  target?: {
+    db: number;
+    schema: string;
+    table: string;
+    table_id?: number | null;
+  };
+};
+
+export type WorkspaceGraphTableNode = {
+  id: WorkspaceGraphDependencyId;
+  type: "table";
+  data: WorkspaceGraphTableNodeData;
+  dependents_count?: Record<string, number>;
+};
+
+export type WorkspaceGraphTransformNode = {
+  id: WorkspaceGraphDependencyId;
+  type: "workspace-transform";
+  data: WorkspaceGraphTransformNodeData;
+  dependents_count?: Record<string, number>;
+};
+
+export type WorkspaceGraphDependencyNode =
+  | WorkspaceGraphTableNode
+  | WorkspaceGraphTransformNode;
+
+export type WorkspaceGraphDependencyEdge = {
+  from_entity_id: WorkspaceGraphDependencyId;
+  from_entity_type: "table" | "workspace-transform";
+  to_entity_id: WorkspaceGraphDependencyId;
+  to_entity_type: "table" | "workspace-transform";
+};
+
+export type WorkspaceDependencyGraph = {
+  nodes: WorkspaceGraphDependencyNode[];
+  edges: WorkspaceGraphDependencyEdge[];
 };
 
 // Problem types for workspace validation
