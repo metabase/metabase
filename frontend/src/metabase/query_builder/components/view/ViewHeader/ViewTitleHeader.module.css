@@ -311,11 +311,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-
-  @container query-builder (max-width: 40em) {
-    flex-direction: column;
-    align-items: start;
-  }
+  column-gap: 1rem;
+  row-gap: 0.25rem;
 }
 
 .FilterPanel:not([data-css-specificity-hack]) {
