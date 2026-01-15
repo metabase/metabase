@@ -143,7 +143,7 @@ export function ExplicitSize<T>({
 
       _getRefreshMode = () => {
         if (this.context) {
-          return this.context;
+          return this.context as RefreshMode;
         }
 
         const calculatedRefreshMode =
@@ -155,11 +155,9 @@ export function ExplicitSize<T>({
           (isCypressActive || this._printMediaQuery?.matches)
         ) {
           return "none";
-        } else if (typeof refreshMode === "function") {
-          return refreshMode(this.props);
-        } else {
-          return refreshMode;
         }
+
+        return calculatedRefreshMode;
       };
 
       _updateRefreshMode = () => {
