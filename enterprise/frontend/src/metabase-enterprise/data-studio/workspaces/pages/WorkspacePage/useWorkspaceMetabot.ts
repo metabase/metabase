@@ -23,7 +23,11 @@ import type {
 } from "metabase-types/api";
 import { isUnsavedTransform } from "metabase-types/api";
 
-import { type AnyWorkspaceTransform, getTransformId, useWorkspace } from "./WorkspaceProvider";
+import {
+  type AnyWorkspaceTransform,
+  getTransformId,
+  useWorkspace,
+} from "./WorkspaceProvider";
 
 type MetabotConversationSnapshot = Pick<
   MetabotConverstationState,

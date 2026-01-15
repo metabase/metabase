@@ -159,8 +159,12 @@ export const AgentSuggestionMessage = ({
       const targetTransform: Transform | undefined =
         (editorTransform as Transform | undefined) ??
         (originalTransform as Transform | undefined) ??
-        (existingTransformId ? (suggestedTransform as unknown as Transform) : undefined);
-      const taggedTargetTransfrom = targetTransform ? { ...targetTransform, type: "transform" as const } : undefined;
+        (existingTransformId
+          ? (suggestedTransform as unknown as Transform)
+          : undefined);
+      const taggedTargetTransfrom = targetTransform
+        ? { ...targetTransform, type: "transform" as const }
+        : undefined;
 
       if (existingTransformId != null && taggedTargetTransfrom) {
         workspace.addOpenedTransform(taggedTargetTransfrom);
@@ -260,7 +264,7 @@ export const AgentSuggestionMessage = ({
             target: sanitizedTarget,
           }).unwrap();
 
-          const taggedTransform = { ...transform, type: "transform" as const};
+          const taggedTransform = { ...transform, type: "transform" as const };
 
           workspace.addOpenedTransform(taggedTransform);
           workspace.setActiveTransform(taggedTransform);

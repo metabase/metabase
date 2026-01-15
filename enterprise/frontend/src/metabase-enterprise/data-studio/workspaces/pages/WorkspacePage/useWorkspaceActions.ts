@@ -46,7 +46,8 @@ export function useWorkspaceActions({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const { addOpenedTab, addOpenedTransform, setActiveTransform } = useWorkspace();
+  const { addOpenedTab, addOpenedTransform, setActiveTransform } =
+    useWorkspace();
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
@@ -185,7 +186,10 @@ export function useWorkspaceActions({
       const transform = [...workspaceTransforms, ...availableTransforms].find(
         (transform) => {
           if ("global_id" in transform) {
-            return transform.global_id === targetTransformId || transform.ref_id === targetTransformId;
+            return (
+              transform.global_id === targetTransformId ||
+              transform.ref_id === targetTransformId
+            );
           }
           return transform.id === targetTransformId;
         },
@@ -196,7 +200,10 @@ export function useWorkspaceActions({
       if (transform && !isWsTransform) {
         const { data } = await fetchTransform(transform.id, true);
         if (data) {
-          const taggedTransform: TaggedTransform = { ...data, type: "transform" };
+          const taggedTransform: TaggedTransform = {
+            ...data,
+            type: "transform",
+          };
           addOpenedTransform(taggedTransform);
           setActiveTransform(taggedTransform);
           onOpenTab(String(targetTransformId));
@@ -227,7 +234,6 @@ export function useWorkspaceActions({
       sendErrorToast,
     ],
   );
-
 
   return {
     isMerging,

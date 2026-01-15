@@ -34,7 +34,10 @@ import {
   isWorkspaceTransform,
 } from "metabase-types/api";
 
-import type { AnyWorkspaceTransform, EditedTransform } from "../WorkspaceProvider";
+import type {
+  AnyWorkspaceTransform,
+  EditedTransform,
+} from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { useTransformValidation } from "./useTransformValidation";

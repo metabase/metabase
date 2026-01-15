@@ -17,10 +17,7 @@ interface Props {
   disabled?: boolean;
 }
 
-export const AddTransformMenu = ({
-  databaseId,
-  disabled,
-}: Props) => {
+export const AddTransformMenu = ({ databaseId, disabled }: Props) => {
   const { addUnsavedTransform } = useWorkspace();
 
   const getSource = (type: TransformType): TransformSource => {

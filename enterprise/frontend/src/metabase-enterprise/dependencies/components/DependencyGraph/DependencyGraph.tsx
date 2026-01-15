@@ -14,7 +14,10 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyGraph, WorkspaceDependencyGraph } from "metabase-types/api";
+import type {
+  DependencyGraph,
+  WorkspaceDependencyGraph,
+} from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -111,7 +114,9 @@ export function DependencyGraph({
   };
 
   return (
-    <GraphContext.Provider value={{ selection, setSelection, openLinksInNewTab }}>
+    <GraphContext.Provider
+      value={{ selection, setSelection, openLinksInNewTab }}
+    >
       <ReactFlow
         className={S.reactFlow}
         nodes={nodes}

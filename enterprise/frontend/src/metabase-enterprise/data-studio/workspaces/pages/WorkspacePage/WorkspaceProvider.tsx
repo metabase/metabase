@@ -685,7 +685,7 @@ export const WorkspaceProvider = ({
 
   const activeEditedTransform = activeTransform
     ? (currentState.editedTransforms.get(getTransformId(activeTransform)) ??
-        activeTransform)
+      activeTransform)
     : activeTransform;
 
   const value = useMemo(
