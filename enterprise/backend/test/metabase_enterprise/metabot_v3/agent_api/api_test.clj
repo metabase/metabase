@@ -139,3 +139,52 @@
                         :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                        (client/client :get 401 "agent/v1/ping"
                                       {:request-options {:headers {"x-metabase-session" session-key}}})))))))))))
+
+(deftest get-table-details-test
+  (with-agent-api-setup!
+    (testing "Returns table details for valid table ID"
+      (let [table-id (mt/id :orders)]
+        (is (=? {:type           "table"
+                 :id             table-id
+                 :name           "ORDERS"
+                 :display_name   "Orders"
+                 :database_id    (mt/id)
+                 :fields         sequential?
+                 :related_tables sequential?}
+                (client/client :get 200 (str "agent/v1/tables/" table-id)
+                               {:request-options {:headers (auth-headers)}})))))
+
+    (testing "Returns 404 for non-existent table"
+      (is (= "Not found."
+             (client/client :get 404 "agent/v1/tables/999999"
+                            {:request-options {:headers (auth-headers)}}))))
+
+    (testing "Respects query parameters"
+      (let [table-id (mt/id :orders)]
+        (is (=? {:type   "table"
+                 :id     table-id
+                 :fields empty?}
+                (client/client :get 200 (str "agent/v1/tables/" table-id)
+                               {:request-options {:headers (auth-headers)}}
+                               :with-fields false
+                               :with-related-tables false)))))))
+
+(deftest get-metric-details-test
+  (with-agent-api-setup!
+    (testing "Returns metric details for valid metric ID"
+      (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (mt/mbql-query orders
+                                                          {:aggregation [[:count]]})}]
+        (is (=? {:type                  "metric"
+                 :id                    (:id metric)
+                 :name                  "Test Metric"
+                 :queryable-dimensions  sequential?}
+                (client/client :get 200 (str "agent/v1/metrics/" (:id metric))
+                               {:request-options {:headers (auth-headers)}})))))
+
+    (testing "Returns 404 for non-existent metric"
+      (is (= "Not found."
+             (client/client :get 404 "agent/v1/metrics/999999"
+                            {:request-options {:headers (auth-headers)}}))))))

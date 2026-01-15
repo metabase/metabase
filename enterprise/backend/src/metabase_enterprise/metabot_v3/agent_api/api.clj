@@ -3,11 +3,17 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.settings :as metabot-settings]
+   [metabase-enterprise.metabot-v3.tools.api :as tools.api]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
@@ -16,6 +22,52 @@
   "Health check endpoint for the Agent API."
   []
   {:message "pong"})
+
+(api.macros/defendpoint :get "/v1/tables/:id" :- ::tools.api/table-result
+  "Get details for a table by ID."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
+    :or   {with-fields true, with-field-values true, with-related-tables true,
+           with-metrics true, with-measures false, with-segments false}}
+   :- [:map
+       [:with-field-values   {:optional true} [:maybe :boolean]]
+       [:with-fields         {:optional true} [:maybe :boolean]]
+       [:with-related-tables {:optional true} [:maybe :boolean]]
+       [:with-metrics        {:optional true} [:maybe :boolean]]
+       [:with-measures       {:optional true} [:maybe :boolean]]
+       [:with-segments       {:optional true} [:maybe :boolean]]]]
+  (let [result (entity-details/get-table-details
+                {:table-id             id
+                 :with-fields?         with-fields
+                 :with-field-values?   with-field-values
+                 :with-related-tables? with-related-tables
+                 :with-metrics?        with-metrics
+                 :with-measures?       with-measures
+                 :with-segments?       with-segments})]
+    (if-let [data (:structured-output result)]
+      data
+      {:status 404, :body {:error (or (:output result) "Table not found")}})))
+
+(api.macros/defendpoint :get "/v1/metrics/:id" :- ::tools.api/full-metric
+  "Get details for a metric by ID."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
+    :or   {with-default-temporal-breakout true, with-field-values true,
+           with-queryable-dimensions true, with-segments false}}
+   :- [:map
+       [:with-default-temporal-breakout {:optional true} [:maybe :boolean]]
+       [:with-field-values              {:optional true} [:maybe :boolean]]
+       [:with-queryable-dimensions      {:optional true} [:maybe :boolean]]
+       [:with-segments                  {:optional true} [:maybe :boolean]]]]
+  (let [result (entity-details/get-metric-details
+                {:metric-id                       id
+                 :with-default-temporal-breakout? with-default-temporal-breakout
+                 :with-field-values?              with-field-values
+                 :with-queryable-dimensions?      with-queryable-dimensions
+                 :with-segments?                  with-segments})]
+    (if-let [data (:structured-output result)]
+      data
+      {:status 404, :body {:error (or (:output result) "Metric not found")}})))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
