@@ -35,6 +35,7 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
@@ -72,6 +73,7 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -215,7 +217,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {isAdmin && (
+        {isAdmin && !remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"
