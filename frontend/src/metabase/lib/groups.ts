@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SpecialGroupType } from "metabase/admin/permissions/types";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupInfo } from "metabase-types/api";
@@ -25,6 +26,22 @@ export function isAdminGroup(group: Pick<GroupInfo, "magic_group_type">) {
 
 export function isDataAnalystGroup(group: Pick<GroupInfo, "magic_group_type">) {
   return group.magic_group_type === "data-analyst";
+}
+
+export function getSpecialGroupType(
+  group: Pick<GroupInfo, "magic_group_type">,
+  isExternal: boolean = false,
+): SpecialGroupType {
+  if (isAdminGroup(group)) {
+    return "admin";
+  }
+  if (isDataAnalystGroup(group)) {
+    return "analyst";
+  }
+  if (isExternal) {
+    return "external";
+  }
+  return null;
 }
 
 export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {

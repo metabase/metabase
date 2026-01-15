@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { getSpecialGroupType, isDefaultGroup } from "metabase/lib/groups";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -184,7 +184,6 @@ export const getDatabasesPermissionEditor = createSelector(
       return null;
     }
 
-    const isAdmin = isAdminGroup(group);
     const defaultGroup = _.find(groups, isDefaultGroup);
     const externalUsersGroup = _.find(
       groups,
@@ -199,6 +198,8 @@ export const getDatabasesPermissionEditor = createSelector(
       !!externalUsersGroup &&
       (PLUGIN_TENANTS.isExternalUsersGroup(group) ||
         PLUGIN_TENANTS.isTenantGroup(group));
+
+    const groupType = getSpecialGroupType(group, isExternal);
 
     const hasSingleSchema =
       databaseId != null &&
@@ -226,8 +227,7 @@ export const getDatabasesPermissionEditor = createSelector(
             permissions: buildFieldsPermissions(
               entityId,
               groupId,
-              isAdmin,
-              isExternal,
+              groupType,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -250,8 +250,7 @@ export const getDatabasesPermissionEditor = createSelector(
             permissions: buildTablesPermissions(
               entityId,
               groupId,
-              isAdmin,
-              isExternal,
+              groupType,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -281,8 +280,7 @@ export const getDatabasesPermissionEditor = createSelector(
             permissions: buildSchemasPermissions(
               entityId,
               groupId,
-              isAdmin,
-              isExternal,
+              groupType,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -399,12 +397,12 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         tableId != null ? "fields" : schemaName != null ? "tables" : "schemas";
 
       const entities = sortedGroups.map((group) => {
-        const isAdmin = isAdminGroup(group);
-
         const isAllTenantUsersGroup =
           !!allTenantUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
 
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+        const isExternal = isAllTenantUsersGroup || isTenantGroup;
+        const groupType = getSpecialGroupType(group, isExternal);
         let groupPermissions;
 
         const shouldUseAllExternalUsersGroup =
@@ -418,8 +416,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               tableId,
             },
             group.id,
-            isAdmin,
-            isAllTenantUsersGroup,
+            groupType,
             permissions,
             originalPermissions,
             shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
@@ -432,8 +429,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               schemaName,
             },
             group.id,
-            isAdmin,
-            isAllTenantUsersGroup,
+            groupType,
             permissions,
             originalPermissions,
             shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
@@ -445,8 +441,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               databaseId,
             },
             group.id,
-            isAdmin,
-            isAllTenantUsersGroup,
+            groupType,
             permissions,
             originalPermissions,
             shouldUseAllExternalUsersGroup ? allTenantUsersGroup : defaultGroup,
@@ -455,15 +450,24 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           );
         }
 
+        const getHint = () => {
+          switch (groupType) {
+            case "admin":
+              return t`The Administrators group is special, and always has Unrestricted access.`;
+            case "analyst":
+              return t`The Data Analysts group always has full access to edit table metadata.`;
+            default:
+              return null;
+          }
+        };
+
         return {
           id: group.id,
           name: group.name,
           icon: isTenantGroup ? (
             <PLUGIN_TENANTS.TenantGroupHintIcon />
           ) : undefined,
-          hint: isAdmin
-            ? t`The Administrators group is special, and always has Unrestricted access.`
-            : null,
+          hint: getHint(),
           entityId: params,
           permissions: groupPermissions,
         };
