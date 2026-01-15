@@ -143,7 +143,7 @@ describe(
 
         cy.visit("/admin/embedding");
 
-        cy.findAllByTestId("sdk-setting-card")
+        cy.findAllByTestId("guest-embeds-setting-card")
           .first()
           .within(() => {
             cy.findByText("New embed").click();
