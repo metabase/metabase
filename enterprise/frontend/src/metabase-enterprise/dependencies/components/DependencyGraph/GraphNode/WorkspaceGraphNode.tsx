@@ -17,6 +17,7 @@ import {
   Group,
   Pill,
   Stack,
+  Text,
   UnstyledButton,
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -99,13 +100,7 @@ export const WorkspaceGraphNode = memo(function ItemNode({
             {getDependencyGroupTitle(node, groups)}
           </Box>
           {groups.map((group) => (
-            <DependencyGroupButton
-              key={group.type}
-              node={node}
-              group={group}
-              selection={selection}
-              onSelectionChange={setSelection}
-            />
+            <Text key={group.type}>{getDependentGroupLabel(group)}</Text>
           ))}
         </Stack>
       </Card>
@@ -136,7 +131,10 @@ type DependencyGroupButtonProps = {
   onSelectionChange: (selection: GraphSelection) => void;
 };
 
-function DependencyGroupButton({
+// TODO (@stasgavrylov 15/01/2026):
+// Leave a simpler representation for rependency group right now, but will
+// probably return to this in
+function _DependencyGroupButton({
   node,
   group,
   selection,
