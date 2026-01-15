@@ -69,6 +69,7 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
         getGraphUrl={getGraphUrl}
         withEntryPicker={false}
         nodeTypes={NODE_TYPES}
+        openLinksInNewTab={false}
       />
     </div>
   );

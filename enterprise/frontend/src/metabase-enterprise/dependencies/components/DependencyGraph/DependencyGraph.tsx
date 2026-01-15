@@ -50,6 +50,7 @@ type DependencyGraphProps = {
   entry?: any;
   nodeTypes?: typeof NODE_TYPES;
   edgeTypes?: typeof EDGE_TYPES;
+  openLinksInNewTab?: boolean;
 };
 
 export function DependencyGraph({
@@ -61,6 +62,7 @@ export function DependencyGraph({
   withEntryPicker,
   nodeTypes = NODE_TYPES,
   edgeTypes = EDGE_TYPES,
+  openLinksInNewTab = true,
 }: DependencyGraphProps) {
   const shouldFetch = entry != null && !externalGraph;
   const dependencyGraph = useGetDependencyGraphQuery(
@@ -109,7 +111,7 @@ export function DependencyGraph({
   };
 
   return (
-    <GraphContext.Provider value={{ selection, setSelection }}>
+    <GraphContext.Provider value={{ selection, setSelection, openLinksInNewTab }}>
       <ReactFlow
         className={S.reactFlow}
         nodes={nodes}

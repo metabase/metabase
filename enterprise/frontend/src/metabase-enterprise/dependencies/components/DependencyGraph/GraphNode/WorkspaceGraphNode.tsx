@@ -95,7 +95,6 @@ export const WorkspaceGraphNode = memo(function ItemNode({
           </Box>
         </Stack>
         <Stack mt="md" gap="sm" align="start">
-          {/* // TODO (@stasgavrylov 7/01/2025) - implement dependency groups */}
           <Box c="text-secondary" fz="sm" lh="1rem">
             {getDependencyGroupTitle(node, groups)}
           </Box>
