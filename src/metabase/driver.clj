@@ -782,6 +782,11 @@
     ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
     :test/uuids-in-create-table-statements
 
+    ;; Use fake sync for slow drivers (e.g., Redshift). When enabled, the test infrastructure directly inserts
+    ;; Table/Field rows from the dbdef instead of calling sync-database!, which can take ~10 minutes for Redshift.
+    ;; Generally should be enabled for any driver where sync-database! takes longer than a few seconds.
+    :test/use-fake-sync
+
     ;; Does this driver support Metabase's database routing feature?
     :database-routing
 
@@ -846,6 +851,7 @@
                               :test/create-table-without-data         true
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
+                              :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
                               :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))

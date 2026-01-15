@@ -10,6 +10,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.core.memoize :as memoize]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
@@ -339,7 +340,7 @@
   "Run [[metabase.test.data.interface/after-run]] methods for drivers."
   [_options]
   (doseq [driver (tx.env/test-drivers)
-          :when  (isa? driver/hierarchy driver ::test-extensions)]
+          :when (isa? driver/hierarchy driver ::test-extensions)]
     (log/infof "Running after-run hooks for %s..." driver)
     (after-run driver)))
 
@@ -515,6 +516,53 @@
   [_driver _dbdef]
   false)
 
+(defmulti fake-sync-schema
+  "Return the schema name to use for fake sync Table rows. Returns nil by default.
+   Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
+   their session schema name."
+  {:arglists '([driver]), :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-schema ::test-extensions
+  [_driver]
+  nil)
+
+(defn on-master-or-release-branch?
+  "Returns true if running on master or a release-* branch.
+   Detection methods (in priority order):
+   1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
+   2. Git branch name via shell (local development)
+
+   Used to conditionally enable features like fake-sync that should be disabled
+   on master/release branches to ensure full test coverage."
+  []
+  (let [branch-name (or (System/getenv "GITHUB_REF_NAME")
+                        (try (-> (shell/sh "git" "rev-parse" "--abbrev-ref" "HEAD")
+                                 :out
+                                 str/trim)
+                             (catch Exception _ nil)))]
+    (boolean
+     (and branch-name
+          (or (= branch-name "master")
+              (str/starts-with? branch-name "release-"))))))
+
+(defmacro with-driver-supports-feature!
+  "Temporarily override `driver/database-supports?` to return a specific value for a driver/feature combo.
+   Useful for testing code paths that depend on driver features.
+
+   Example:
+     (with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+       (do-something-that-requires-real-sync))"
+  [[driver feature value] & body]
+  `(let [original-db-supports?# driver/database-supports?]
+     (with-redefs [driver/database-supports?
+                   (fn [driver-arg# feature-arg# db-arg#]
+                     (if (and (= driver-arg# ~driver) (= feature-arg# ~feature))
+                       ~value
+                       (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
+       ~@body)))
+
 (defmulti track-dataset
   "Track the creation or the usage of the database.
    This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
@@ -589,7 +637,7 @@
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
    {:base_type     (case aggregation-type
-                     :count     :type/BigInteger
+                     :count :type/BigInteger
                      :cum-count :type/Decimal)
     :semantic_type :type/Quantity
     :name          "count"
@@ -903,7 +951,7 @@
       (-> fk-table
           (str/replace #"ies$" "y")
           (str/replace #"s$" "")
-          (str  \_ (flatten-field-name fk-dest-name))))))
+          (str \_ (flatten-field-name fk-dest-name))))))
 
 (mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
