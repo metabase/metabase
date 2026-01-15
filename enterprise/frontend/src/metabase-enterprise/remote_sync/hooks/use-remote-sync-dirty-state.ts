@@ -13,6 +13,8 @@ export interface RemoteSyncDirtyState {
   changedCollections: Record<number, boolean>;
   /** Whether any dirty changes exist globally */
   isDirty: boolean;
+  /** Whether any entities have "removed" status */
+  hasRemovedItems: boolean;
   /** Whether data is loading */
   isLoading: boolean;
   /** Check if a specific collection has dirty items */
@@ -45,6 +47,10 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     [dirtyData?.changedCollections],
   );
   const isDirty = dirty.length > 0;
+  const hasRemovedItems = useMemo(
+    () => dirty.some((entity) => entity.sync_status === "removed"),
+    [dirty],
+  );
 
   const isCollectionDirty = useCallback(
     (collectionId: number | string | undefined) => {
@@ -93,6 +99,7 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     dirty,
     changedCollections,
     isDirty,
+    hasRemovedItems,
     isLoading,
     isCollectionDirty,
     hasAnyCollectionDirty,
