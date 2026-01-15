@@ -411,6 +411,7 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.11",
     "@lezer/common": "^1.5.0",
+    "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.4.2",
     "@types/react": "^18.2.42",
     "@types/react-dom": "^18.2.17",

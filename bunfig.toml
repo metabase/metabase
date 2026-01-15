@@ -1,21 +1,8 @@
 [install]
 linker = "isolated"
+
 timeout = 600000
 
-# Override duplicate package versions to ensure type consistency
-[install.overrides]
-# CodeMirror ecosystem - ensure all packages use the same versions
-"@codemirror/state" = "^6.5.4"
-"@codemirror/view" = "^6.39.11"
-"@codemirror/language" = "^6.12.1"
-"@codemirror/autocomplete" = "^6.18.6"
-"@codemirror/commands" = "^6.10.1"
-"@codemirror/lint" = "^6.9.2"
-"@codemirror/search" = "^6.6.0"
-"@lezer/common" = "^1.5.0"
-"@lezer/lr" = "^1.4.2"
-"@lezer/highlight" = "^1.2.1"
-# ProseMirror ecosystem - ensure all packages use the same versions
-"prosemirror-state" = "^1.4.4"
-"prosemirror-view" = "^1.40.1"
-"prosemirror-model" = "^1.25.4"
+# Only install package versions published at least 3 days ago
+minimumReleaseAge = 259200
+

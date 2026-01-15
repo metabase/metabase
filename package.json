@@ -438,6 +438,7 @@
     "@codemirror/search": "^6.6.0",
     "@lezer/common": "^1.5.0",
     "@lezer/lr": "^1.4.2",
+    "@lezer/highlight": "^1.2.1",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.40.1",
     "prosemirror-model": "^1.25.4"
