@@ -178,10 +178,11 @@
             coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
-            targeted-tables (when (seq targets) (get by-model "Table"))
+            targeted-data-model (when (seq targets)
+                                  (select-keys by-model serdes.models/data-model-in-collection))
             by-model        (cond-> (select-keys by-model models)
                               ;; Add Tables back if they were found in descendants
-                              (seq targeted-tables) (assoc "Table" targeted-tables)
+                              (seq targeted-data-model) (merge targeted-data-model)
                               ;; Remove analytics cards from extraction - they have stable entity_ids across instances
                               ;; so cards that reference them can still be exported and imported correctly
                               (and analytics-card-ids (contains? by-model "Card"))

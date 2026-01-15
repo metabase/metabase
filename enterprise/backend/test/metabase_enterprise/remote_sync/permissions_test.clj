@@ -365,3 +365,193 @@
               (testing "Regular collection remains editable by superuser"
                 (is (true? (mi/can-write? regular-coll))
                     "Regular collection should be writable")))))))))
+
+;;; ------------------------------------------------ Table Remote Sync Tests ------------------------------------------------
+
+(deftest table-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Published tables in remote-synced collections have can_write=false"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published true
+                         :collection_id library-coll-id})
+            (try
+              (is (false? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Published table in remote-synced collection should not be writable when remote-sync-type is read-only")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Published tables in remote-synced collections have can_write=true"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published true
+                         :collection_id library-coll-id})
+            (try
+              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Published table in remote-synced collection should be writable when remote-sync-type is read-write")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-unpublished-in-remote-synced-collection-test
+  (testing "can_write should be true for unpublished tables in remote-synced collections regardless of remote-sync-type"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Unpublished tables in remote-synced collections have can_write=true"
+            (t2/update! :model/Table (mt/id :venues)
+                        {:is_published false
+                         :collection_id library-coll-id})
+            (try
+              (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                  "Unpublished table in remote-synced collection should be writable even when remote-sync-type is read-only")
+              (finally
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published false
+                             :collection_id nil})))))))))
+
+(deftest table-regular-collection-unaffected-test
+  (testing "can_write for tables in regular collections should be unaffected by remote-sync-type setting"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
+                                                              :type nil}]
+        (doseq [remote-sync-setting [:read-only :read-write]]
+          (testing (str "When remote-sync-type is " remote-sync-setting)
+            (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
+              (testing "Published tables in regular collections have can_write=true"
+                (t2/update! :model/Table (mt/id :venues)
+                            {:is_published true
+                             :collection_id regular-coll-id})
+                (try
+                  (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
+                      "Published table in regular collection should be writable regardless of remote-sync-type")
+                  (finally
+                    (t2/update! :model/Table (mt/id :venues)
+                                {:is_published false
+                                 :collection_id nil})))))))))))
+
+;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
+
+(deftest field-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for fields of published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Fields on published tables in remote-synced collections have can_write=false"
+            (let [table-id (mt/id :venues)
+                  field-id (mt/id :venues :name)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                (is (false? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                    "Field on published table in remote-synced collection should not be writable when remote-sync-type is read-only")
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest field-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for fields of published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Fields on published tables in remote-synced collections have can_write=true"
+            (let [table-id (mt/id :venues)
+                  field-id (mt/id :venues :name)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                (is (true? (mi/can-write? (t2/select-one :model/Field :id field-id)))
+                    "Field on published table in remote-synced collection should be writable when remote-sync-type is read-write")
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+;;; ------------------------------------------------ Segment Remote Sync Tests ------------------------------------------------
+
+(deftest segment-remote-synced-permissions-read-only-test
+  (testing "can_write should be false for segments of published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segments on published tables in remote-synced collections have can_write=false"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Use empty definition {} which is valid for segments
+                (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
+                                                                :table_id table-id
+                                                                :definition {}}]
+                  (is (false? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                      "Segment on published table in remote-synced collection should not be writable when remote-sync-type is read-only"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest segment-remote-synced-permissions-read-write-test
+  (testing "can_write should be true for segments of published tables in remote-synced collections when remote-sync-type is read-write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segments on published tables in remote-synced collections have can_write=true"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Use empty definition {} which is valid for segments
+                (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
+                                                                :table_id table-id
+                                                                :definition {}}]
+                  (is (true? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
+                      "Segment on published table in remote-synced collection should be writable when remote-sync-type is read-write"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))
+
+(deftest segment-creation-blocked-in-read-only-mode-test
+  (testing "can_create should be false for segments on published tables in remote-synced collections when remote-sync-type is read-only"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
+                                                                :is_remote_synced true}]
+          (testing "Segment creation should be blocked on published tables in remote-synced collections"
+            (let [table-id (mt/id :venues)]
+              (t2/update! :model/Table table-id
+                          {:is_published true
+                           :collection_id library-coll-id})
+              (try
+                ;; Pass the table directly to can-create? so it uses the updated values
+                (let [table (t2/select-one :model/Table :id table-id)]
+                  (is (false? (mi/can-create? :model/Segment {:table_id table-id
+                                                              :table table
+                                                              :name "New Segment"
+                                                              :definition {}}))
+                      "Segment creation should be blocked on published table in remote-synced collection when remote-sync-type is read-only"))
+                (finally
+                  (t2/update! :model/Table table-id
+                              {:is_published false
+                               :collection_id nil}))))))))))

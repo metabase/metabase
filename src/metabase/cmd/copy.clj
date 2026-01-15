@@ -107,6 +107,8 @@
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
+    ;; v49+
+    :model/ApiKey
     ;; 51+
     :model/Notification
     :model/NotificationSubscription
