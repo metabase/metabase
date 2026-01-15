@@ -473,7 +473,9 @@
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
     :table (t2/hydrate entities :fields :db)
-    :transform (t2/hydrate entities :creator :table-with-db-and-fields :last_run)
+    :transform (-> entities
+                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection)
+                   (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
                    (->> (map collection.root/hydrate-root-collection))
@@ -483,7 +485,7 @@
                   (->> (map collection.root/hydrate-root-collection)))
     :sandbox (t2/hydrate entities [:table :db :fields])
     :snippet (-> entities
-                 (t2/hydrate :creator)
+                 (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
     (:segment :measure) (t2/hydrate entities :creator [:table :db])))
 
