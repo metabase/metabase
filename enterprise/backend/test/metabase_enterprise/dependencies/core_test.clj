@@ -136,10 +136,11 @@
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
         (let [card'  (-> mbql-base
-                         ;; ridiculous
-                         (update :dataset-query lib/update-query-stage -1
-                                 update-in [:expressions 0]
-                                 lib/update-options assoc :lib/expression-name "Sales Taxes")
+                         (assoc :dataset-query
+                                (-> (lib/query provider (meta/table-metadata :orders))
+                                    ;; ridiculous
+                                    (lib/expression "Sales Taxes" (lib// (meta/field-metadata :orders :tax)
+                                                                         (meta/field-metadata :orders :subtotal)))))
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits {:card [card']}
                                                               :base-provider provider
@@ -151,8 +152,8 @@
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
       (testing "changing something unrelated will cause no errors"
         (let [card' (-> mbql-base
-                        (assoc-in [:dataset-query :query :filter]
-                                  [:> [:field (meta/id :orders :quantity) nil] 100])
+                        (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity)
+                                                                 100))
                         (dissoc :result-metadata))]
           (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
                                                              :base-provider provider
