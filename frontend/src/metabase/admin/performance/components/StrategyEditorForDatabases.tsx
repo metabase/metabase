@@ -106,7 +106,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
     targetId,
     configs,
     setConfigs,
-    "database",
+    targetId === rootId ? "root" : "database",
   );
 
   const error = configsError || databasesResult.error;
