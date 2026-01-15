@@ -71,7 +71,6 @@ export const TableListItem = ({
     type === "output" && !hasResults && transform && onRunTransform;
   const isClickable = (tableId && onTableClick) || canRunTransform;
   const displayTooltip = type !== "input" && !hasResults && !isRunning;
-  console.log(type === "output" && !tableId);
 
   return (
     <Box
