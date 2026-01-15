@@ -175,8 +175,13 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
+<<<<<<< HEAD
                           (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Sent successfully")))
+=======
+                          (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
+                  (log/info "Done processing notification")))
+>>>>>>> f3c0be5fc16 (Log error instead of warning if a subscription is not sent through the channel rather than a warning (#68214))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
