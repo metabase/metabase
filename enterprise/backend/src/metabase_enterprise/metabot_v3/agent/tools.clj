@@ -4,14 +4,18 @@
   (:require
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as create-subscription-tools]
+   [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query-tools]
+   [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details-tools]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats-tools]
    [metabase-enterprise.metabot-v3.tools.filters :as filter-tools]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as outliers-tools]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as insights-tools]
    [metabase-enterprise.metabot-v3.tools.invite-user :as invite-user-tools]
+   [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.search :as search-tools]
    [metabase-enterprise.metabot-v3.tools.show-results-to-user :as show-results-tools]
+   [metabase-enterprise.metabot-v3.tools.sql-search :as sql-search-tools]
    [metabase-enterprise.metabot-v3.tools.transforms :as transform-tools]
    [metabase.util.malli :as mu]))
 
@@ -26,11 +30,11 @@
 (mu/defn search-tool
   "Search for tables, models, metrics, and saved questions in the Metabase instance."
   [{:keys [term_queries entity_types limit]} :- [:map {:closed true}
-                                                  [:term_queries {:optional true}
-                                                   [:maybe [:sequential [:string {:description "Search term queries"}]]]]
-                                                  [:entity_types {:optional true}
-                                                   [:maybe [:sequential [:enum "table" "model" "question" "metric" "dashboard" "database" "transform"]]]]
-                                                  [:limit {:optional true} [:maybe [:int {:min 1 :max 100}]]]]]
+                                                 [:term_queries {:optional true}
+                                                  [:maybe [:sequential [:string {:description "Search term queries"}]]]]
+                                                 [:entity_types {:optional true}
+                                                  [:maybe [:sequential [:enum "table" "model" "question" "metric" "dashboard" "database" "transform"]]]]
+                                                 [:limit {:optional true} [:maybe [:int {:min 1 :max 100}]]]]]
   (search-tools/search-tool {:term-queries term_queries
                              :entity-types entity_types
                              :limit (or limit 10)}))
@@ -71,10 +75,10 @@
 (mu/defn get-field-values-tool
   "Return statistics and/or values for a given field of a given entity."
   [{:keys [entity_type entity_id field_id limit]} :- [:map {:closed true}
-                                                       [:entity_type [:enum "table" "model" "metric"]]
-                                                       [:entity_id :int]
-                                                       [:field_id :string]
-                                                       [:limit {:optional true} [:maybe :int]]]]
+                                                      [:entity_type [:enum "table" "model" "metric"]]
+                                                      [:entity_id :int]
+                                                      [:field_id :string]
+                                                      [:limit {:optional true} [:maybe :int]]]]
   (field-stats-tools/field-values {:entity-type entity_type
                                    :entity-id entity_id
                                    :field-id field_id
@@ -184,6 +188,64 @@
                        [:email :string]]]
   (invite-user-tools/invite-user {:email email}))
 
+;;; SQL Query Tools
+
+(mu/defn create-sql-query-tool
+  "Create a new SQL query."
+  [{:keys [database_id sql name description collection_id]}
+   :- [:map {:closed true}
+       [:database_id :int]
+       [:sql :string]
+       [:name {:optional true} [:maybe :string]]
+       [:description {:optional true} [:maybe :string]]
+       [:collection_id {:optional true} [:maybe :int]]]]
+  (create-sql-query-tools/create-sql-query-tool
+   {:database-id database_id
+    :sql sql
+    :name name
+    :description description
+    :collection-id collection_id}))
+
+(mu/defn edit-sql-query-tool
+  "Edit an existing SQL query using structured edits."
+  [{:keys [query_id edit name description]}
+   :- [:map {:closed true}
+       [:query_id :int]
+       [:edit :map]
+       [:name {:optional true} [:maybe :string]]
+       [:description {:optional true} [:maybe :string]]]]
+  (edit-sql-query-tools/edit-sql-query-tool
+   {:query-id query_id
+    :edit edit
+    :name name
+    :description description}))
+
+(mu/defn replace-sql-query-tool
+  "Replace the SQL content of an existing query entirely."
+  [{:keys [query_id sql name description]}
+   :- [:map {:closed true}
+       [:query_id :int]
+       [:sql :string]
+       [:name {:optional true} [:maybe :string]]
+       [:description {:optional true} [:maybe :string]]]]
+  (replace-sql-query-tools/replace-sql-query-tool
+   {:query-id query_id
+    :sql sql
+    :name name
+    :description description}))
+
+(mu/defn sql-search-tool
+  "Search for SQL queries by content."
+  [{:keys [query database_id limit]}
+   :- [:map {:closed true}
+       [:query :string]
+       [:database_id {:optional true} [:maybe :int]]
+       [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]]]
+  (sql-search-tools/sql-search-tool
+   {:query query
+    :database-id database_id
+    :limit limit}))
+
 ;; Tool registry - maps tool name to var
 (def all-tools
   "Registry of all available tools."
@@ -199,7 +261,11 @@
    "generate_insights"             #'generate-insights-tool
    "create_dashboard_subscription" #'create-dashboard-subscription-tool
    "get_transform_details"         #'get-transform-details-tool
-   "invite_user"                   #'invite-user-tool})
+   "invite_user"                   #'invite-user-tool
+   "create_sql_query"              #'create-sql-query-tool
+   "edit_sql_query"                #'edit-sql-query-tool
+   "replace_sql_query"             #'replace-sql-query-tool
+   "sql_search"                    #'sql-search-tool})
 
 (defn filter-by-capabilities
   "Filter tool names by user capabilities.
