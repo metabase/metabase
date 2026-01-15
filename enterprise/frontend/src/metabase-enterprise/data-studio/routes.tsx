@@ -20,7 +20,6 @@ import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
-import { getDataStudioSettingsRoutes } from "./settings/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
@@ -29,8 +28,6 @@ export function getDataStudioRoutes(
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
   CanAccessTransforms: ComponentType,
-  CanAccessAnalystFeatures: ComponentType,
-  CanAccessGlossary: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -52,10 +49,8 @@ export function getDataStudioRoutes(
             </Route>
           </Route>
         )}
-        <Route component={CanAccessGlossary}>
-          {getDataStudioGlossaryRoutes()}
-        </Route>
-        <Route path="library" component={CanAccessAnalystFeatures}>
+        {getDataStudioGlossaryRoutes()}
+        <Route path="library">
           <IndexRoute component={LibrarySectionLayout} />
           {getDataStudioTableRoutes()}
           {getDataStudioMetricRoutes()}
@@ -63,20 +58,15 @@ export function getDataStudioRoutes(
           {getDataStudioSnippetRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="tasks" component={CanAccessAnalystFeatures}>
-            <Route component={TasksSectionLayout}>
-              {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-            </Route>
+          <Route path="tasks" component={TasksSectionLayout}>
+            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
           </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="dependencies" component={CanAccessAnalystFeatures}>
-            <Route component={DependenciesSectionLayout}>
-              {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
-            </Route>
+          <Route path="dependencies" component={DependenciesSectionLayout}>
+            {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
         )}
-        {getDataStudioSettingsRoutes()}
       </Route>
     </Route>
   );
@@ -89,5 +79,5 @@ function getIndexPath(state: State) {
   if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
     return Urls.transformList();
   }
-  return Urls.dataStudioSettings();
+  return Urls.dataStudioLibrary();
 }

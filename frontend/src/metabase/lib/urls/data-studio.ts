@@ -297,10 +297,6 @@ export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
 }
 
-export function dataStudioSettings() {
-  return `${dataStudio()}/settings`;
-}
-
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
 }

@@ -122,24 +122,6 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserIsAnalyst = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserIsAnalyst",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) => Boolean(state.currentUser?.is_data_analyst),
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
-const UserCanAccessGlossary = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessGlossary",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) => PLUGIN_DATA_STUDIO.canAccessGlossary(state),
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -172,12 +154,4 @@ export const CanAccessDataModel = UserCanAccessDataModel(
 
 export const CanAccessTransforms = UserCanAccessTransforms(
   ({ children }) => children,
-);
-
-export const CanAccessAnalystFeatures = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAnalyst(({ children }) => children)),
-);
-
-export const CanAccessGlossary = MetabaseIsSetup(
-  UserIsAuthenticated(UserCanAccessGlossary(({ children }) => children)),
 );

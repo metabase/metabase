@@ -141,8 +141,6 @@ export type ListUsersRequest = {
   group_id?: number;
   include_deactivated?: boolean;
   tenancy?: UserTenancy;
-  is_data_analyst?: boolean;
-  can_access_data_studio?: boolean;
   tenant_id?: number;
 } & PaginationRequest;
 
@@ -158,7 +156,6 @@ export type UpdateUserRequest = {
   locale?: string | null;
   is_group_manager?: boolean;
   is_superuser?: boolean;
-  is_data_analyst?: boolean;
   login_attributes?: UserAttributeMap | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };

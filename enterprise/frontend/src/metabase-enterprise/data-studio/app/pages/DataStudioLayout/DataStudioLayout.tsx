@@ -10,7 +10,6 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
-  PLUGIN_DATA_STUDIO,
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
@@ -89,10 +88,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
-  const canAccessAnalystFeatures = useSelector(
-    PLUGIN_DATA_STUDIO.canAccessAnalystFeatures,
-  );
-  const canAccessGlossary = useSelector(PLUGIN_DATA_STUDIO.canAccessGlossary);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
@@ -111,21 +106,18 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        {canAccessAnalystFeatures && (
-          <DataStudioTab
-            label={t`Library`}
-            icon="repository"
-            to={Urls.dataStudioLibrary()}
-            isSelected={currentTab === "library"}
-            showLabel={isNavbarOpened}
-            rightSection={
-              hasDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
-            }
-          />
-        )}
+        <DataStudioTab
+          label={t`Library`}
+          icon="repository"
+          to={Urls.dataStudioLibrary()}
+          isSelected={currentTab === "library"}
+          showLabel={isNavbarOpened}
+          rightSection={
+            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
+        />
 
         {canAccessDataModel && (
           <DataStudioTab
@@ -136,16 +128,14 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessGlossary && (
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled && canAccessAnalystFeatures && (
+        <DataStudioTab
+          label={t`Glossary`}
+          icon="glossary"
+          to={Urls.dataStudioGlossary()}
+          isSelected={currentTab === "glossary"}
+          showLabel={isNavbarOpened}
+        />
+        {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
             icon="dependencies"
@@ -196,13 +186,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        <DataStudioTab
-          label={t`Settings`}
-          icon="gear"
-          to={Urls.dataStudioSettings()}
-          isSelected={currentTab === "settings"}
-          showLabel={isNavbarOpened}
-        />
         <DataStudioTab
           label={t`Exit`}
           icon="exit"
