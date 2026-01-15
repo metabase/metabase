@@ -50,7 +50,7 @@ function serializeNode(node: JSONContent): string {
 }
 
 export function serializeTiptapToMetabotMessage(content: JSONContent): string {
-  return serializeNodes(content?.content || []);
+  return serializeNodes(content?.content || []).trim();
 }
 
 const MENTION_REGEX = new RegExp(METABSE_PROTOCOL_MD_LINK, "g");
