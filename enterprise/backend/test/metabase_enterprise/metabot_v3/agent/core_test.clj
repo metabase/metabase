@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -16,13 +17,62 @@
       (recur (conj acc val))
       acc)))
 
-(defn- mock-llm-response
-  "Create a mock LLM response channel with given parts."
+(defn- parts->claude-raw
+  "Convert simple test parts to Claude raw SSE format.
+  Accepts parts like {:type :text :text \"Hello\"} or {:type :tool-input :id \"t1\" :function \"search\" :arguments {...}}
+  and returns Claude raw chunks that claude->aisdk-xf can process."
   [parts]
-  (let [ch (a/chan 10)]
+  (let [msg-id (str "msg-" (random-uuid))]
+    (concat
+     ;; message_start
+     [{:type "message_start"
+       :message {:id msg-id
+                 :model "claude-sonnet-4-5-20250929"
+                 :role "assistant"
+                 :content []
+                 :usage {:input_tokens 10 :output_tokens 0}}}]
+     ;; content blocks for each part
+     (mapcat
+      (fn [idx {:keys [type text id function arguments]}]
+        (case type
+          :text
+          [{:type "content_block_start"
+            :index idx
+            :content_block {:type "text" :text ""}}
+           {:type "content_block_delta"
+            :index idx
+            :delta {:type "text_delta" :text text}}
+           {:type "content_block_stop"
+            :index idx}]
+
+          :tool-input
+          [{:type "content_block_start"
+            :index idx
+            :content_block {:type "tool_use" :id id :name function}}
+           {:type "content_block_delta"
+            :index idx
+            :delta {:type "input_json_delta" :partial_json (json/encode arguments)}}
+           {:type "content_block_stop"
+            :index idx}]
+
+          ;; Default: skip unknown types
+          []))
+      (range)
+      parts)
+     ;; message_delta with usage
+     [{:type "message_delta"
+       :delta {:stop_reason "end_turn"}
+       :usage {:input_tokens 10 :output_tokens 50}}
+      {:type "message_stop"}])))
+
+(defn- mock-llm-response
+  "Create a mock LLM response channel with given parts in Claude raw format."
+  [parts]
+  (let [ch (a/chan 100)
+        claude-chunks (parts->claude-raw parts)]
     (a/go
-      (doseq [part parts]
-        (a/>! ch part))
+      (doseq [chunk claude-chunks]
+        (a/>! ch chunk))
       (a/close! ch))
     ch))
 
@@ -38,36 +88,36 @@
 
 (deftest has-tool-calls-test
   (testing "detects tool calls in parts"
-    (is (true? (#'agent/has-tool-calls? [{:type :tool-input :id "t1"}])))
-    (is (false? (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
-    (is (true? (#'agent/has-tool-calls? [{:type :text :text "hi"}
-                                          {:type :tool-input :id "t1"}])))))
+    (is (#'agent/has-tool-calls? [{:type :tool-input :id "t1"}]))
+    (is (not (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
+    (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
+                                  {:type :tool-input :id "t1"}]))))
 
 (deftest has-text-response-test
   (testing "detects text responses in parts"
-    (is (true? (#'agent/has-text-response? [{:type :text :text "hello"}])))
-    (is (false? (#'agent/has-text-response? [{:type :tool-input :id "t1"}])))
-    (is (true? (#'agent/has-text-response? [{:type :tool-input :id "t1"}
-                                             {:type :text :text "done"}])))))
+    (is (#'agent/has-text-response? [{:type :text :text "hello"}]))
+    (is (not (#'agent/has-text-response? [{:type :tool-input :id "t1"}])))
+    (is (#'agent/has-text-response? [{:type :tool-input :id "t1"}
+                                     {:type :text :text "done"}]))))
 
 (deftest should-continue-test
   (let [profile {:max-iterations 3}]
     (testing "continues when iteration < max and has tool calls"
-      (is (true? (#'agent/should-continue? 0 profile [{:type :tool-input}])))
-      (is (true? (#'agent/should-continue? 2 profile [{:type :tool-input}]))))
+      (is (#'agent/should-continue? 0 profile [{:type :tool-input}]))
+      (is (#'agent/should-continue? 2 profile [{:type :tool-input}])))
 
     (testing "stops at max iterations"
-      (is (false? (#'agent/should-continue? 3 profile [{:type :tool-input}])))
-      (is (false? (#'agent/should-continue? 4 profile [{:type :tool-input}]))))
+      (is (not (#'agent/should-continue? 3 profile [{:type :tool-input}])))
+      (is (not (#'agent/should-continue? 4 profile [{:type :tool-input}]))))
 
     (testing "stops when text response present"
-      (is (false? (#'agent/should-continue? 0 profile [{:type :text}])))
-      (is (false? (#'agent/should-continue? 0 profile [{:type :tool-input}
-                                                        {:type :text}]))))
+      (is (not (#'agent/should-continue? 0 profile [{:type :text}])))
+      (is (not (#'agent/should-continue? 0 profile [{:type :tool-input}
+                                                    {:type :text}]))))
 
     (testing "stops when no tool calls"
-      (is (false? (#'agent/should-continue? 0 profile [{:type :usage}])))
-      (is (false? (#'agent/should-continue? 0 profile []))))))
+      (is (not (#'agent/should-continue? 0 profile [{:type :usage}])))
+      (is (not (#'agent/should-continue? 0 profile []))))))
 
 (deftest run-agent-loop-with-mock-test
   (testing "runs agent loop with mocked LLM returning text"
@@ -92,31 +142,33 @@
         (is (some #(= :data (:type %)) result)))))
 
   (testing "runs agent loop with tool execution"
-    (with-redefs [self/claude-raw (fn [{:keys [input]}]
-                                    ;; First call returns tool-input, second returns text
-                                    (if (= 1 (count input))
-                                      (mock-llm-response
-                                       [{:type :tool-input
-                                         :id "t1"
-                                         :function "search"
-                                         :arguments {:query "test"}}])
-                                      (mock-llm-response
-                                       [{:type :text :text "Found results"}])))]
-      (let [messages [{:role :user :content "Search for test"}]
-            state {}
-            profile-id :metabot-embedding
-            context {}
-            response-chan (agent/run-agent-loop
-                           {:messages messages
-                            :state state
-                            :profile-id profile-id
-                            :context context})
-            result (chan->seq response-chan)]
-        ;; Should complete successfully
-        (is (pos? (count result)))
-        (is (some #(= :finish (:type %)) result))
-        ;; Should have tool-related parts
-        (is (some #(= :tool-input (:type %)) result)))))
+    (let [call-count (atom 0)]
+      (with-redefs [self/claude-raw (fn [_]
+                                      ;; First call returns tool-input, second returns text
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mock-llm-response
+                                           [{:type :tool-input
+                                             :id "t1"
+                                             :function "search"
+                                             :arguments {:query "test"}}])
+                                          (mock-llm-response
+                                           [{:type :text :text "Found results"}]))))]
+        (let [messages [{:role :user :content "Search for test"}]
+              state {}
+              profile-id :metabot-embedding
+              context {}
+              response-chan (agent/run-agent-loop
+                             {:messages messages
+                              :state state
+                              :profile-id profile-id
+                              :context context})
+              result (chan->seq response-chan)]
+          ;; Should complete successfully
+          (is (pos? (count result)))
+          (is (some #(= :finish (:type %)) result))
+          ;; Should have tool-related parts
+          (is (some #(= :tool-input (:type %)) result))))))
 
   (testing "handles errors gracefully"
     (with-redefs [self/claude-raw (fn [_]
@@ -153,14 +205,17 @@
     (let [out-chan (a/chan 10)
           parts [{:type :text :text "hello"}
                  {:type :usage :tokens 100}]]
-      (#'agent/stream-parts-to-output out-chan parts)
+      ;; Wait for the go block to complete
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts))
+      (a/close! out-chan)
       (is (= parts (chan->seq out-chan))))))
 
 (deftest finalize-stream-test
   (testing "finalizes stream with state and finish"
     (let [out-chan (a/chan 10)
           memory {:state {:queries {} :charts {}}}]
-      (#'agent/finalize-stream out-chan memory)
+      ;; Wait for the go block to complete
+      (a/<!! (#'agent/finalize-stream! out-chan memory))
       (let [result (chan->seq out-chan)]
         (is (= 2 (count result)))
         (is (= :data (:type (first result))))
