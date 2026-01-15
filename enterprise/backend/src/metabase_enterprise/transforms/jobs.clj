@@ -14,7 +14,9 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.channel.email :as email]
    [metabase.channel.urls :as urls]
+   [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -133,7 +135,10 @@
 
 (defn- notify-transform-failures [job-id failures]
   (let [job (t2/select-one :model/TransformJob job-id)
-        by-owner (group-by (comp :creator_id :transform) failures)]
+        revisions (revisions/latest-revisions :model/Transform (map #(-> % :transform :id) failures))
+        transform-id->user-id (u/index-by :model_id :user_id revisions)
+        by-owner (group-by #(or (get transform-id->user-id (-> % :transform :id))
+                                (-> % :transform :creator_id)) failures)]
     (doseq [[user-id failures] by-owner
             :let [user (t2/select-one :model/User user-id)]]
       (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))

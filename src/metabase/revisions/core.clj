@@ -10,6 +10,7 @@
 
 (p/import-vars
  [metabase.revisions.models.revision
+  latest-revisions
   serialize-instance
   revert-to-revision!]
  [metabase.revisions.models.revision.last-edit

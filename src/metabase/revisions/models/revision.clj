@@ -179,6 +179,23 @@
   (let [model-name (name model)]
     (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
+(mu/defn latest-revisions
+  "Get the latest revision for `model` for the given `ids`."
+  [model :- [:fn toucan-model?]
+   ids   :- [:sequential {:min 1} pos-int?]]
+  (let [model-name (name model)]
+    (t2/select :model/Revision
+               {:select [:revision.*]
+                :from [:revision]
+                :join [[{:select [[:%max.id :jid]]
+                         :from [:revision]
+                         :where [:and
+                                 [:= :model model-name]
+                                 [:in :model_id ids]]
+                         :group-by [:model_id]}
+                        :j]
+                       [:= :id :jid]]})))
+
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
   [model :- [:fn toucan-model?]
