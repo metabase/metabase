@@ -37,22 +37,23 @@
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
-  (let [update {:analyzed_at      (mi/now)
-                :analysis_version *current-analysis-finding-version*
-                :result           result}
-        existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                                      :analyzed_entity_type type
-                                      :analyzed_entity_id instance-id)]
-    (if existing-id
-      (t2/update! :model/AnalysisFinding existing-id update)
-      (t2/insert! :model/AnalysisFinding
-                  (assoc update
-                         :analyzed_entity_type type
-                         :analyzed_entity_id instance-id)))
-    (deps.analysis-finding-error/replace-errors-for-entity!
-     type
-     instance-id
-     (map error->finding-error-row finding-details))))
+  (t2/with-transaction [_conn]
+    (let [update {:analyzed_at (mi/now)
+                  :analysis_version *current-analysis-finding-version*
+                  :result result}
+          existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
+                                        :analyzed_entity_type type
+                                        :analyzed_entity_id instance-id)]
+      (if existing-id
+        (t2/update! :model/AnalysisFinding existing-id update)
+        (t2/insert! :model/AnalysisFinding
+                    (assoc update
+                           :analyzed_entity_type type
+                           :analyzed_entity_id instance-id)))
+      (deps.analysis-finding-error/replace-errors-for-entity!
+       type
+       instance-id
+       (map error->finding-error-row finding-details)))))
 
 (defn instances-for-analysis
   "Find a batch of instances with missing or outdated AnalysisFindings"
