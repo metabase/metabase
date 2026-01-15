@@ -32,7 +32,7 @@ describe("createTestQuery", () => {
             },
             {
               type: "column",
-              groupName: "ORDERS",
+              groupName: "Orders",
               name: "ID",
             },
           ],
