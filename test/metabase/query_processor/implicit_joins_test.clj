@@ -326,7 +326,7 @@
             (let [query (-> query
                             (lib/aggregate (lib/count))
                             (lib/filter (lib/> event-timestamp
-                                               (lib/absolute-datetime "2024-01-15T00:00:00Z" :default))))]
+                                               (lib/absolute-datetime #t "2024-01-15T00:00:00Z" :default))))]
               (mt/with-native-query-testing-context query
                 ;; 3 logs for events after Jan 15 (Groundhog Day + March)
                 (is (= [[3]]
@@ -367,7 +367,7 @@
             (let [query (-> query
                             (lib/aggregate (lib/count))
                             (lib/filter (lib/> event-timestamp
-                                               (lib/absolute-datetime "2024-01-15T00:00:00Z" :default))))]
+                                               (lib/absolute-datetime #t "2024-01-15T00:00:00Z" :default))))]
               (mt/with-native-query-testing-context query
                 ;; 3 logs for events after Jan 15 (Groundhog Day + March)
                 (is (= [[3]]
