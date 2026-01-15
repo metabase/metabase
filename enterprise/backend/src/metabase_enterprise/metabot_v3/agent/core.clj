@@ -49,11 +49,12 @@
         ;; Create output channel for processed parts
         out-chan (a/chan 100)]
     ;; Pipeline: raw-stream -> claude->aisdk-xf -> tool-executor-rff -> aisdk-xf -> out-chan
-    (a/pipeline 1 out-chan
-                (comp self/claude->aisdk-xf
-                      (self/tool-executor-rff tools)
-                      self/aisdk-xf)
-                raw-stream)
+    ;; Use pipeline-blocking because tool-executor-rff blocks in its completion arity
+    (a/pipeline-blocking 1 out-chan
+                         (comp self/claude->aisdk-xf
+                               (self/tool-executor-rff tools)
+                               self/aisdk-xf)
+                         raw-stream)
     ;; Return channel with collected parts (non-blocking)
     (a/into [] out-chan)))
 
@@ -135,9 +136,9 @@
                   (log/info "Agent loop complete"
                             {:iterations (inc iteration)
                              :reason (cond
-                                      (>= iteration (:max-iterations profile)) :max-iterations
-                                      (has-text-response? parts) :text-response
-                                      :else :no-tool-calls)})
+                                       (>= iteration (:max-iterations profile)) :max-iterations
+                                       (has-text-response? parts) :text-response
+                                       :else :no-tool-calls)})
                   (finalize-stream out-chan @memory-atom))))))
         (catch Exception e
           (log/error e "Error in agent loop")
