@@ -8,8 +8,12 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
@@ -355,7 +359,7 @@
 
 (mt/defdataset unix-timestamps
   [["timestamps"
-    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [{:field-name "timestamp", :base-type {:native "numeric"}, :effective-type :type/Decimal}]
     [[1642704550656]]]])
 
 (deftest unix-timestamp-test
@@ -368,12 +372,19 @@
               (is (= [1 1642704550656M]
                      (mt/first-row (qp/process-query query)))))))
         (testing "WITH coercion strategy"
-          (mt/with-temp-vals-in-db :model/Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                                :effective_type    :type/Instant}
-            (let [query (mt/mbql-query timestamps)]
-              (mt/with-native-query-testing-context query
-                (is (= [1 "2022-01-20T18:49:10.656Z"]
-                       (mt/first-row (qp/process-query query))))))))))))
+          ;; Use merged-mock-metadata-provider to set coercion strategy, avoiding
+          ;; caching issues with with-temp-vals-in-db (see coercion_test.clj for pattern)
+          (let [mp    (lib.tu/merged-mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:fields [{:id                (mt/id :timestamps :timestamp)
+                                  :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                  :effective-type    :type/Instant}]})
+                query (lib/query mp (lib.metadata/table mp (mt/id :timestamps)))]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "2022-01-20T18:49:10.656Z"]]
+                     (mt/formatted-rows [int str]
+                                        (qp.store/with-metadata-provider mp
+                                          (qp/process-query query))))))))))))
 
 (deftest interval-test
   (mt/test-drivers #{:postgres :redshift}
