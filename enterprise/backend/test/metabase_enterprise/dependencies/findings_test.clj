@@ -53,11 +53,7 @@
 (deftest ^:sequential does-not-analyze-native-entities-test
   (testing "assumes native queries are always fine"
     (backfill-all-entity-analyses!)
-    (let [mp (mt/metadata-provider)
-          products-id (mt/id :products)
-          orders-id (mt/id :orders)
-          products (lib.metadata/table mp products-id)
-          orders (lib.metadata/table mp orders-id)]
+    (let [mp (mt/metadata-provider)]
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "utter nonsense")}]
           (is (= 1 (deps.findings/analyze-batch! :card 1)))
