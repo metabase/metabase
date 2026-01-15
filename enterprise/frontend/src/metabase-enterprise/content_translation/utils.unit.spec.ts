@@ -10,7 +10,10 @@ import type {
 import { createMockDatasetData } from "metabase-types/api/mocks";
 
 import { leaveUntranslated } from "./use-translate-content";
-import { translateFieldValuesInSeries } from "./utils";
+import {
+  getTranslatedFilterDisplayName,
+  translateFieldValuesInSeries,
+} from "./utils";
 
 registerVisualizations();
 
@@ -297,5 +300,87 @@ describe("translateFieldValuesInSeries", () => {
 
     expect(result[0].data?.rows).toEqual([]);
     expect(result[0].data?.untranslatedRows).toEqual([]);
+  });
+});
+
+describe("getTranslatedFilterDisplayName", () => {
+  const tcWithPlanTranslation: ContentTranslationFunction = (str) =>
+    str === "Plan" ? "My new name" : str;
+
+  const tcWithStatusTranslation: ContentTranslationFunction = (str) =>
+    str === "Status" ? "Estado" : str;
+
+  const tcWithPriceTranslation: ContentTranslationFunction = (str) =>
+    str === "Price" ? "Preis" : str;
+
+  it("should only replace the first occurrence of column name - 'Plan is Plan' becomes 'My new name is Plan'", () => {
+    const result = getTranslatedFilterDisplayName(
+      "Plan is Plan",
+      tcWithPlanTranslation,
+      "Plan",
+    );
+
+    expect(result).toBe("My new name is Plan");
+  });
+
+  it("should preserve the value when column name appears multiple times", () => {
+    const result = getTranslatedFilterDisplayName(
+      "Status is Status",
+      tcWithStatusTranslation,
+      "Status",
+    );
+
+    expect(result).toBe("Estado is Status");
+  });
+
+  it("should handle column name at the start of the string", () => {
+    const result = getTranslatedFilterDisplayName(
+      "Price is between 10 and 20",
+      tcWithPriceTranslation,
+      "Price",
+    );
+
+    expect(result).toBe("Preis is between 10 and 20");
+  });
+
+  it("should not replace anything if column name is not in display name", () => {
+    const tcWithQuantityTranslation: ContentTranslationFunction = (str) =>
+      str === "Quantity" ? "Menge" : str;
+
+    const result = getTranslatedFilterDisplayName(
+      "Total is greater than 100",
+      tcWithQuantityTranslation,
+      "Quantity",
+    );
+
+    expect(result).toBe("Total is greater than 100");
+  });
+
+  it("should return displayName unchanged when tc returns same value (no translations)", () => {
+    const result = getTranslatedFilterDisplayName(
+      "Total is greater than 100",
+      mockTranslateWithoutTranslations,
+      "Total",
+    );
+
+    expect(result).toBe("Total is greater than 100");
+  });
+
+  it("should return empty string when displayName is empty", () => {
+    const result = getTranslatedFilterDisplayName("", tcWithPlanTranslation);
+
+    expect(result).toBe("");
+  });
+
+  it("should fallback to translating the whole string when no columnDisplayName provided", () => {
+    const tcWithFullTranslation: ContentTranslationFunction = (str) =>
+      str === "Some filter" ? "Ein Filter" : str;
+
+    const result = getTranslatedFilterDisplayName(
+      "Some filter",
+      tcWithFullTranslation,
+    );
+
+    expect(result).toBe("Ein Filter");
   });
 });
