@@ -1637,14 +1637,14 @@
 (deftest ^:sequential unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card _ {:name "A Card sorttest"}
-                     :model/Table _ {:name "B Table sorttest" :display_name "B Table sorttest"}
-                     :model/Transform _ {:name "C Transform sorttest"}
-                     :model/NativeQuerySnippet _ {:name "D Snippet sorttest"}
-                     :model/Dashboard _ {:name "E Dashboard sorttest"}
-                     :model/Document _ {:name "F Document sorttest"}
-                     :model/Segment _ {:name "G Segment sorttest"}
-                     :model/Measure _ {:name "H Measure sorttest"}]
+      (mt/with-temp [:model/Card               _ {:name "0 Card sorttest"}
+                     :model/Table              _ {:name "1 Table sorttest", :display_name "1 Table sorttest"}
+                     :model/Transform          _ {:name "2 Transform sorttest"}
+                     :model/NativeQuerySnippet _ {:name "3 Snippet sorttest"}
+                     :model/Dashboard          _ {:name "4 Dashboard sorttest"}
+                     :model/Document           _ {:name "5 Document sorttest"}
+                     :model/Segment            _ {:name "6 Segment sorttest"}
+                     :model/Measure            _ {:name "7 Measure sorttest"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200
@@ -1653,12 +1653,60 @@
                                                :sort_column :name
                                                :sort_direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
-            (is (= names (cond-> ["A Card sorttest"
-                                  "B Table sorttest"
-                                  "C Transform sorttest"
-                                  "D Snippet sorttest"
-                                  "E Dashboard sorttest"
-                                  "F Document sorttest"
-                                  "G Segment sorttest"
-                                  "H Measure sorttest"]
-                           (= sort-direction :desc) reverse)))))))))
+            (is (= (cond-> ["0 Card sorttest"
+                            "1 Table sorttest"
+                            "2 Transform sorttest"
+                            "3 Snippet sorttest"
+                            "4 Dashboard - sorttest"
+                            "4 Document sorttest"
+                            "5 Segment sorttest"
+                            "6 Measure sorttest"]
+                     (= sort-direction :desc) reverse)
+                   names))))))))
+
+(deftest ^:sequential unreferenced-sort-by-location-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location"
+    (mt/with-premium-features #{:dependencies}
+
+      (mt/with-temp [;; locations
+                     :model/Database {db-id :id} {:name "0 Database"}
+                     :model/Table {table1-id :id} {:name "1 Table", :display_name "2 Table", :db_id db-id}
+                     :model/Table {table2-id :id} {:name "2 Table", :display_name "2 Table", :db_id db-id}
+                     :model/Collection {collection1-id :id} {:name "3 Collection"}
+                     :model/Collection {collection2-id :id} {:name "4 Collection"}
+                     :model/Collection {collection3-id :id} {:name "5 Collection"}
+                     :model/Collection {collection3-id :id} {:name "6 Collection"}
+                     :model/Collection {collection3-id :id} {:name "7 Collection"}
+                     :model/Dashboard {dashboard-id :id} {:name "8 Dashboard", :collection_id collection1-id}
+                     :model/Document {document-id :id} {:name "9 Document", :collection_id collection1-id}
+                     ;; entities
+                     :model/Card _ {:name "Card with Collection 1 sorttest", :collection_id collection1-id}
+                     :model/Card _ {:name "Card with Dahsboard sorttest", :collection_id collection1-id, :dashboard_id dashboard-id}
+                     :model/Card _ {:name "Card with Document sorttest", :collection_id collection1-id, :document_id document-id}
+                     :model/Table _ {:name "Table with Database sorttest", :display_name "Table sorttest", :db_id db-id}]
+        :model/Transform _ {:name "Transform with Collection 2 sorttest", :collection_id collection2-id}
+        :model/Snippet _ {:name "Snippet with Collection 3 sorttest", :collection_id collection3-id}
+        :model/Dashboard _ {:name "Dashboard with Collection 4 sorttest", :collection_id collection4-id}
+        :model/Document _ {:name "Document with Collection 5 sorttest", :collection_id collection5-id}
+        :model/Segment _ {:name "Segment with Table 1 sorttest", :table_id table1-id}
+        :model/Measure _ {:name "Measure with Table 2 sorttest", :table_id table2-id}
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :query "sorttest"
+                                               :sort_column :location
+                                               :sort_direction sort-direction)
+                names (mapv #(get-in % [:data :name]) (:data response))]
+            (is (= (cond-> ["Table with Database sorttest"
+                            "Segment with Table 1 sorttest"
+                            "Measure with Table 2 sorttest"
+                            "Card with Collection 1 sorttest"
+                            "Transform with Collection 2 sorttest"
+                            "Snippet with Collection 3 sorttest"
+                            "Dashboard with Collection 4 sorttest"
+                            "Document with Collection 5 sorttest"
+                            "Card with Dahsboard sorttest"
+                            "Card with Document sorttest"]
+                     (= sort-direction :desc) reverse)
+                   names))))))))
