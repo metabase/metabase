@@ -1,13 +1,21 @@
 const { H } = cy;
 
+const { IS_ENTERPRISE } = Cypress.env();
+const IS_OSS = !IS_ENTERPRISE;
+
 // These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
-  { tags: "@OSS" },
+  { ...(IS_OSS && { tags: "@OSS" }) },
   () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
+      if (IS_ENTERPRISE) {
+        H.deleteToken();
+      }
+
       H.updateSetting("show-sdk-embed-terms", false);
     });
 
