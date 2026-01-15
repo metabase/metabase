@@ -127,8 +127,8 @@ function PythonPreviewResults({
         <Tabs
           value={tab}
           onChange={(value) => {
-            if (value) {
-              setTab(value as ResultsTab);
+            if (value === "output" || value === "results") {
+              setTab(value);
             }
           }}
         >

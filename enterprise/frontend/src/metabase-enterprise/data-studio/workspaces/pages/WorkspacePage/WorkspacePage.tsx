@@ -651,9 +651,8 @@ function useWorkspaceUiTabs() {
   useEffect(() => {
     // Scroll to active tab on change.
     if (tabsListRef.current && tab) {
-      const activeTabElement = tabsListRef.current.querySelector(
-        `[data-active="true"]`,
-      ) as HTMLElement;
+      const activeTabElement =
+        tabsListRef.current.querySelector(`[data-active="true"]`);
 
       if (activeTabElement) {
         activeTabElement.scrollIntoView({
