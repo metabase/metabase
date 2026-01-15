@@ -38,7 +38,11 @@
             "find_outliers"
             "generate_insights"
             "create_dashboard_subscription"
-            "invite_user"]}
+            "invite_user"
+            "create_sql_query"
+            "edit_sql_query"
+            "replace_sql_query"
+            "sql_search"]}
 
    :metabot-transforms-codegen
    {:prompt-template "transform-codegen.selmer"
@@ -48,7 +52,20 @@
     :tools ["search"
             "get_transform_details"
             "get_entity_details"
-            "get_field_stats"]}})
+            "get_field_stats"]}
+
+   :metabot-sql-only
+   {:prompt-template "sql-querying-only.selmer"
+    :model "claude-sonnet-4-5-20250929"
+    :max-iterations 8
+    :temperature 0.3
+    :tools ["search"
+            "get_entity_details"
+            "get_field_stats"
+            "create_sql_query"
+            "edit_sql_query"
+            "replace_sql_query"
+            "sql_search"]}})
 
 (defn get-profile
   "Get profile configuration by profile-id keyword."
