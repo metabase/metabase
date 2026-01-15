@@ -86,6 +86,7 @@
     (str value)))
 
 (defn get-color-from-segment
+  "Returns the color of the first segment who's max is higher than value and min is lower than value"
   [viz-settings value]
   (let
    [{segments :scalar.segments} viz-settings]

@@ -96,10 +96,11 @@ WithFormattingHover.play = async ({
   const canvas = within(canvasElement.parentElement as HTMLElement);
   const value = await canvas.findByTestId("scalar-value");
 
-  value.classList.add("pseudo-hover");
   await userEvent.hover(value);
+  value.classList.add("pseudo-hover");
 
   await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
+  expect(value.classList.contains("pseudo-hover")).toBe(true);
 
   asyncCallback();
 };
