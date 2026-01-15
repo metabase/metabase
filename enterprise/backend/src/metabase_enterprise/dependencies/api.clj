@@ -457,11 +457,33 @@
 (defn- node-errors [nodes-by-type]
   (-> (into {}
             (mapcat (fn [[type ids]]
-                      (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
+                      (->> (t2/select :model/AnalysisFindingError
                                       :analyzed_entity_type type
                                       :analyzed_entity_id [:in ids])
-                           (map (fn [{:keys [analyzed_entity_id finding_details]}]
-                                  [[type analyzed_entity_id] finding_details])))))
+                           (group-by (juxt :analyzed_entity_type :analyzed_entity_id))
+                           (map (fn [[[entity-type entity-id] errors]]
+                                  [[entity-type entity-id]
+                                   (into #{}
+                                         (map (fn [{:keys [error_type error_detail]}]
+                                                ;; error_type is stored without namespace (e.g. :missing-column)
+                                                ;; but API schema expects :validate/missing-column
+                                                (let [full-type (keyword "validate" (name error_type))]
+                                                  (case full-type
+                                                    ;; These error types use :name
+                                                    (:validate/missing-column
+                                                     :validate/missing-table-alias
+                                                     :validate/duplicate-column)
+                                                    {:type full-type :name error_detail}
+                                                    ;; validation-exception-error uses :message
+                                                    :validate/validation-exception-error
+                                                    {:type full-type :message error_detail}
+                                                    ;; syntax-error has no additional fields
+                                                    :validate/syntax-error
+                                                    {:type full-type}
+                                                    ;; Default: use :name if detail exists
+                                                    (cond-> {:type full-type}
+                                                      error_detail (assoc :name error_detail))))))
+                                         errors)])))))
             nodes-by-type)
       not-empty))
 

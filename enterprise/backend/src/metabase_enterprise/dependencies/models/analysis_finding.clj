@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -11,14 +10,8 @@
 
 (derive :model/AnalysisFinding :metabase/model)
 
-(defn- analysis-finding-details-out [finding]
-  (some->> (mi/json-out-with-keywordization finding)
-           (into #{} (map #(lib.normalize/normalize :metabase.lib.schema.validate/error %)))))
-
 (t2/deftransforms :model/AnalysisFinding
-  {:analyzed_entity_type mi/transform-keyword
-   :finding_details {:in  mi/json-in
-                     :out analysis-finding-details-out}})
+  {:analyzed_entity_type mi/transform-keyword})
 
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
@@ -29,8 +22,9 @@
 
   Version history:
   - 3: Initial version
-  - 4: Added source entity tracking in analysis_finding_error table"
-  4)
+  - 4: Added source entity tracking in analysis_finding_error table
+  - 5: Removed finding_details column (now reads from analysis_finding_error)"
+  5)
 
 (defn- error->finding-error-row
   "Convert an error from find-bad-refs-with-source to a row for analysis_finding_error table."
@@ -44,10 +38,9 @@
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
-  (let [update {:analyzed_at (mi/now)
+  (let [update {:analyzed_at      (mi/now)
                 :analysis_version *current-analysis-finding-version*
-                :result result
-                :finding_details finding-details}
+                :result           result}
         existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
                                       :analyzed_entity_type type
                                       :analyzed_entity_id instance-id)]

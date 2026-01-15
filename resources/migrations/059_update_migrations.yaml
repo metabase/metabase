@@ -348,6 +348,25 @@ databaseChangeLog:
             tableName: analysis_finding_error
             indexName: idx_analysis_finding_error_type
 
+  - changeSet:
+      id: v59.2026-01-15T00:00:00
+      author: rileythomp
+      comment: Drop redundant finding_details column from analysis_finding table
+      changes:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: finding_details
+      rollback:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: finding_details
+                  type: ${text.type}
+                  remarks: Arbitrary EDN text of the findings
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
