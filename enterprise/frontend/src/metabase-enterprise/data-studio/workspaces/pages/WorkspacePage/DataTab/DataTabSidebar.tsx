@@ -5,7 +5,7 @@ import type {
   TableId,
   Transform,
   WorkspaceTablesResponse,
-  WorkspaceTransformItem,
+  WorkspaceTransformListItem,
 } from "metabase-types/api";
 
 import { type OpenTable, useWorkspace } from "../WorkspaceProvider";
@@ -14,13 +14,13 @@ import { TableListItem } from "./TableListItem";
 
 type DataTabSidebarProps = {
   tables: WorkspaceTablesResponse;
-  workspaceTransforms: WorkspaceTransformItem[];
+  workspaceTransforms: WorkspaceTransformListItem[];
   dbTransforms: Transform[];
   selectedTableId?: TableId | null;
   runningTransforms?: Set<string>;
-  onTransformClick?: (transform: WorkspaceTransformItem) => void;
+  onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableSelect?: (table: OpenTable) => void;
-  onRunTransform?: (transform: WorkspaceTransformItem) => void;
+  onRunTransform?: (transform: WorkspaceTransformListItem) => void;
 };
 
 export const DataTabSidebar = ({
@@ -54,7 +54,7 @@ export const DataTabSidebar = ({
               ? dbTransforms.find((t) => t.id === workspaceTransform.global_id)
               : undefined;
             const hasChanges = originalTransform
-              ? hasTransformEdits(originalTransform)
+              ? hasTransformEdits({ ...originalTransform, type: "transform" })
               : false;
             const tableId = table.isolated.table_id;
 

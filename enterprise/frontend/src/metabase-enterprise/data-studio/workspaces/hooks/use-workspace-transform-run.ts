@@ -16,7 +16,7 @@ import type {
 
 type UseWorkspaceTransformRunOptions = {
   workspaceId: WorkspaceId;
-  transform: WorkspaceTransform;
+  transform: WorkspaceTransform | null;
 };
 
 type UseWorkspaceTransformRunResult = {
@@ -52,17 +52,17 @@ export function useWorkspaceTransformRun({
     useGetWorkspaceTransformQuery(
       {
         workspaceId,
-        transformId: transform.ref_id,
+        transformId: transform?.ref_id ?? "",
       },
-      { skip: !transform.ref_id },
+      { skip: !transform?.ref_id },
     );
 
   const lastRunAt =
-    fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
+    fetchedWorkspaceTransform?.last_run_at ?? transform?.last_run_at;
   const lastRunMessage =
-    fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
+    fetchedWorkspaceTransform?.last_run_message ?? transform?.last_run_message;
   const lastRunStatus =
-    fetchedWorkspaceTransform?.last_run_status ?? transform.last_run_status;
+    fetchedWorkspaceTransform?.last_run_status ?? transform?.last_run_status;
 
   const statusRun: TransformRun | null = useMemo(
     () =>
@@ -75,13 +75,13 @@ export function useWorkspaceTransformRun({
             message: lastRunResult.message,
             run_method: "manual",
           }
-        : lastRunAt
+        : lastRunAt && lastRunStatus != null
           ? {
               id: -1,
               status: lastRunStatus,
               start_time: lastRunAt,
               end_time: lastRunAt,
-              message: lastRunMessage,
+              message: lastRunMessage ?? null,
               run_method: "manual",
             }
           : null,
@@ -114,6 +114,10 @@ export function useWorkspaceTransformRun({
   );
 
   const handleRun = async () => {
+    if (!transform) {
+      return;
+    }
+
     try {
       setIsRunTriggered(true);
       setLastRunResult(null);

@@ -412,7 +412,8 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("Transform diffs are displayed");
         cy.findByText("Modified transforms").should("exist");
-        cy.contains('[class*="sidebarItem"]', "SQL transform")
+        cy.findByTestId("transform-list-item")
+          .should("contain.text", "SQL transform")
           .should("be.visible")
           .should(($el) => {
             expect($el.text()).to.include("SQL transform");
@@ -652,7 +653,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Make additional changes to the saved transform");
       Workspaces.getWorkspaceContent().within(() => {
-        H.NativeEditor.type(" LIMIT 1");
+        H.NativeEditor.type(";");
       });
 
       cy.log("Check that transform has yellow dot status again");
@@ -1102,21 +1103,32 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getRunAllTransformsButton().should("be.disabled");
 
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      cy.log("Verify native editor is loaded");
+      H.NativeEditor.get().should("contain.text", "SELECT");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Verify sql transform is saved to the workspace");
+      Workspaces.getWorkspaceTransforms().should(
+        "contain.text",
+        "SQL transform",
+      );
 
       Workspaces.getMainlandTransforms().findByText("Python transform").click();
+      cy.log("Verify Python editor is loaded");
+      H.PythonEditor.get().should("contain.text", "import");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Verify python transform is saved to the workspace");
+      Workspaces.getWorkspaceTransforms().should(
+        "contain.text",
+        "Python transform",
+      );
 
       Workspaces.getRunAllTransformsButton().should("be.enabled").click();
-
-      cy.intercept("GET", "/api/ee/transform/*").as("getTransform");
 
       H.popover().within(() => {
         cy.findByText("Run stale transforms").should("be.visible");
         cy.findByText("Run all transforms").should("be.visible").click();
       });
 
-      cy.wait("@getTransform");
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",

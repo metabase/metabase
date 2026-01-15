@@ -159,11 +159,12 @@ export const AgentSuggestionMessage = ({
       const targetTransform: Transform | undefined =
         (editorTransform as Transform | undefined) ??
         (originalTransform as Transform | undefined) ??
-        (existingTransformId ? (suggestedTransform as Transform) : undefined);
+        (existingTransformId ? (suggestedTransform as unknown as Transform) : undefined);
+      const taggedTargetTransfrom = targetTransform ? { ...targetTransform, type: "transform" as const } : undefined;
 
-      if (existingTransformId != null && targetTransform) {
-        workspace.addOpenedTransform(targetTransform);
-        workspace.setActiveTransform(targetTransform);
+      if (existingTransformId != null && taggedTargetTransfrom) {
+        workspace.addOpenedTransform(taggedTargetTransfrom);
+        workspace.setActiveTransform(taggedTargetTransfrom);
         setHasAppliedInWorkspace(true);
         return;
       }
@@ -259,8 +260,10 @@ export const AgentSuggestionMessage = ({
             target: sanitizedTarget,
           }).unwrap();
 
-          workspace.addOpenedTransform(transform);
-          workspace.setActiveTransform(transform);
+          const taggedTransform = { ...transform, type: "transform" as const};
+
+          workspace.addOpenedTransform(taggedTransform);
+          workspace.setActiveTransform(taggedTransform);
           setHasAppliedInWorkspace(true);
           sendSuccessToast(t`Transform created`);
           return;

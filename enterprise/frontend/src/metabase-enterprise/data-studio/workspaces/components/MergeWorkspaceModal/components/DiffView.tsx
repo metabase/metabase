@@ -6,22 +6,25 @@ import _ from "underscore";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
-import { Flex, Loader, Text } from "metabase/ui";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import { Flex, Loader, Stack, Text } from "metabase/ui";
+import type {
+  WorkspaceId,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
 
+import { TransformTargetDiff } from "./TransformTargetDiff";
+
 type DiffViewProps = {
-  transform: WorkspaceTransformItem;
+  transform: WorkspaceTransformListItem;
   workspaceId: WorkspaceId;
 };
 
 export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
-  const { oldSource, newSource, isLoading, hasError } = useTransformSources(
-    workspaceId,
-    transform,
-  );
+  const { oldSource, newSource, oldTarget, newTarget, isLoading, hasError } =
+    useTransformSources(workspaceId, transform);
 
   const extensions = useMemo(
     () =>
@@ -58,21 +61,30 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
     );
   }
 
-  if (!newSource) {
-    return (
-      <Flex align="center" justify="center" h="100%">
-        <Text c="text-medium">{t`No source code to display`}</Text>
-      </Flex>
-    );
-  }
+  const schemaChanged = oldTarget?.schema !== newTarget?.schema;
+  const tableChanged = oldTarget?.name !== newTarget?.name;
+  const targetChanged = schemaChanged || tableChanged;
 
   return (
-    <CodeMirror
-      className={cx(EditorS.editor, S.diffEditor)}
-      extensions={extensions}
-      value={newSource}
-      readOnly
-      autoCorrect="off"
-    />
+    <Stack gap={0} h="100%">
+      {oldTarget && newTarget && targetChanged && (
+        <Stack
+          px="md"
+          py="sm"
+          style={{
+            borderBottom: "1px solid var(--mb-color-border)",
+          }}
+        >
+          <TransformTargetDiff newTarget={newTarget} oldTarget={oldTarget} />
+        </Stack>
+      )}
+      <CodeMirror
+        className={cx(EditorS.editor, S.diffEditor)}
+        extensions={extensions}
+        value={newSource}
+        readOnly
+        autoCorrect="off"
+      />
+    </Stack>
   );
 };

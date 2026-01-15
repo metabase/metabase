@@ -104,7 +104,7 @@
 
 (defn- run-sql-preview
   "Run SQL transform query and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with rows and cols."
+   Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
   [{:keys [source target]} remapping]
   (let [s-type          (transforms/transform-source-type source)
         table-mapping   (:tables remapping no-mapping)
@@ -115,15 +115,15 @@
     (try
       (let [result (qp/process-query
                     (assoc query :constraints {:max-results           preview-row-limit
-                                               :max-results-bare-rows preview-row-limit}))]
+                                               :max-results-bare-rows preview-row-limit}))
+            data (:data result)]
         (if (= :completed (:status result))
           {:status     :succeeded
            :start_time start-time
            :end_time   (t/offset-date-time)
            :table      {:name   (:name target)
                         :schema (:schema target)}
-           :rows       (vec (get-in result [:data :rows]))
-           :cols       (vec (get-in result [:data :cols]))}
+           :data       (select-keys data [:rows :cols :results_metadata])}
           {:status     :failed
            :start_time start-time
            :end_time   (t/offset-date-time)
@@ -141,7 +141,7 @@
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with status, rows, and cols."
+   Returns a ::ws.t/dry-run-result map with data nested under :data."
   [{:keys [source] :as transform} remapping]
   (let [s-type (transforms/transform-source-type source)]
     (case s-type

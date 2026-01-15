@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
@@ -399,6 +400,16 @@
     (ws.model/delete! ws)
     {:ok true}))
 
+(defn- checkout-disabled-reason
+  "Returns reason why a transform cannot be checked out, or nil if checkout is allowed."
+  [{:keys [source_type source]}]
+  (case source_type
+    :mbql   "mbql"
+    :native (when (seq (lib/template-tags-referenced-cards (:query source)))
+              "card-reference")
+    :python nil
+    "unknown-type"))
+
 (def ^:private ExternalTransform
   ;; Might be interesting to show whether they're enclosed, once we have the graph.
   ;; When they're enclosed, it could also be interesting to know whether they're stale.
@@ -429,17 +440,8 @@
      (into []
            (map #(-> %
                      (dissoc :source)
-                     (assoc :checkout_disabled (case (:source_type %)
-                                                 :mbql   "mbql"
-                                                 :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
-                                                           "card-reference")
-                                                 :python nil
-                                                 "unknown-type"))))
-           ;; (Sanya 2025-12-24) - do we need this line?
-           #_(map #(update % :last_run transforms.util/localize-run-timestamps))
-           transforms
-           ;; Perhaps we want to expose some of this later?
-           #_(t2/hydrate transforms :last_run :creator))}))
+                     (assoc :checkout_disabled (checkout-disabled-reason %))))
+           transforms)}))
 
 (api.macros/defendpoint :post "/:ws-id/run"
   :- [:map
@@ -490,18 +492,59 @@
     :external-transform id
     :table (str (:db id) "-" (:schema id) "-" (:table id))))
 
-(defn- target->spec [{:keys [target] :as tx}]
-  (assoc tx :target {:db     (:database target)
-                     :schema (:schema target)
-                     :table  (:name target)}))
+(defn- table-ids-by-target
+  "Batch lookup table IDs for transform targets.
+   Returns {[db_id schema name] -> table-record}."
+  [transforms]
+  (when (seq transforms)
+    (let [table-keys (into #{}
+                           (keep (fn [{:keys [target]}]
+                                   (when-let [db-id (:database target)]
+                                     [db-id (:schema target) (:name target)])))
+                           transforms)
+          with-schema    (filter second table-keys)
+          without-schema (keep (fn [[db-id schema table-name]]
+                                 (when-not schema [db-id table-name]))
+                               table-keys)]
+      (when (or (seq with-schema) (seq without-schema))
+        (let [tables (t2/select [:model/Table :id :db_id :schema :name]
+                                {:where [:or
+                                         (when (seq with-schema)
+                                           [:in [:composite :db_id :schema :name] with-schema])
+                                         (when (seq without-schema)
+                                           [:and
+                                            [:= :schema nil]
+                                            [:in [:composite :db_id :name] without-schema]])]})]
+          (m/index-by (juxt :db_id :schema :name) tables))))))
 
-;; TODO we'll want to bulk query this of course...
-(defn- node-data [{:keys [node-type id]}]
+(defn- target->spec [{:keys [target] :as tx} table-id-map]
+  (let [table-key [(:database target) (:schema target) (:name target)]
+        table-id (:id (get table-id-map table-key))]
+    (assoc tx :target {:db       (:database target)
+                       :schema   (:schema target)
+                       :table    (:name target)
+                       :table_id table-id})))
+
+(defn- fetch-transforms-for-graph
+  "Batch fetch all transforms needed for the graph. Returns {:external {id -> tx}, :workspace {ref_id -> tx}}."
+  [entities]
+  (let [external-ids (into [] (keep #(when (= :external-transform (:node-type %)) (:id %))) entities)
+        workspace-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
+        external-txs (when (seq external-ids)
+                       (m/index-by :id (t2/select [:model/Transform :id :name :target] :id [:in external-ids])))
+        workspace-txs (when (seq workspace-ids)
+                        ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
+                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target] :ref_id [:in workspace-ids])))]
+    {:external external-txs
+     :workspace workspace-txs}))
+
+(defn- node-data [{:keys [node-type id]} transforms-map table-id-map]
   (case node-type
     :table id
-    :external-transform (t2/select-one-fn target->spec [:model/Transform :id :name :target] id)
-    ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-    :workspace-transform (t2/select-one-fn target->spec [:model/WorkspaceTransform :ref_id :name :target] :ref_id id)))
+    :external-transform (some-> (get-in transforms-map [:external id])
+                                (target->spec table-id-map))
+    :workspace-transform (some-> (get-in transforms-map [:workspace id])
+                                 (target->spec table-id-map))))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
@@ -509,6 +552,11 @@
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
         {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
+        ;; Batch fetch all transforms and build table-id lookup map
+        transforms-map (fetch-transforms-for-graph entities)
+        all-transforms (concat (vals (:external transforms-map))
+                               (vals (:workspace transforms-map)))
+        table-id-map   (table-ids-by-target all-transforms)
         ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
         ;;      It could be cheaper to build it as we go.
         inverted (reduce
@@ -527,7 +575,7 @@
                     (for [e entities]
                       {:type             (node-type e)
                        :id               (:id e)
-                       :data             (node-data e)
+                       :data             (node-data e transforms-map table-id-map)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
               {:to_entity_type   (name (node-type parent))
@@ -801,28 +849,67 @@
     (check-transforms-enabled! (:database_id workspace))
     (ws.impl/dry-run-transform workspace transform)))
 
+(def ^:private CheckoutTransformLegacy
+  "Legacy format for workspace checkout transforms (DEPRECATED)."
+  [:map
+   [:id ::ws.t/ref-id]
+   [:name :string]
+   [:workspace [:map
+                [:id ms/PositiveInt]
+                [:name :string]]]])
+
+(def ^:private WorkspaceWithCheckout
+  "Workspace with checkout status information."
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:name :string]
+   [:status ::status]
+   [:existing [:maybe [:map
+                       [:ref_id ::ws.t/ref-id]
+                       [:name :string]]]]])
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"
   :- [:map
-      [:transforms [:sequential
-                    [:map
-                     [:id ::ws.t/ref-id]
-                     [:name :string]
-                     [:workspace [:map
-                                  [:id ms/PositiveInt]
-                                  [:name :string]]]]]]]
-  "Get all downstream transforms for a transform that is not in a workspace.
-   Returns the transforms that were mirrored from this upstream transform, with workspace info."
+      [:checkout_disabled [:maybe [:enum "mbql" "card-reference" "unknown-type"]]]
+      [:workspaces [:sequential WorkspaceWithCheckout]]
+      [:transforms [:sequential CheckoutTransformLegacy]]]
+  "Get checkout status for a global transform.
+
+   Returns:
+   - checkout_disabled: Why this transform cannot be checked out (nil if allowed)
+   - workspaces: All workspaces for this transform's database, with checkout status
+   - transforms: (DEPRECATED) Use :workspaces instead"
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
-  (let [transforms       (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id] :global_id transform-id)
-        workspace-ids    (map :workspace_id transforms)
-        workspaces-by-id (when (seq transforms)
-                           (t2/select-fn->fn :id identity [:model/Workspace :id :name] :id [:in workspace-ids]))]
-    {:transforms (for [{:keys [ref_id name workspace_id]} transforms]
-                   {:id        ref_id
-                    :name      name
-                    :workspace (get workspaces-by-id workspace_id)})}))
+  (api/check-superuser)
+  (let [transform          (api/check-404
+                            (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
+                                           :id transform-id))
+        db-id              (:target_db_id transform)
+        workspaces         (t2/select [:model/Workspace :id :name :base_status :db_status]
+                                      :database_id db-id
+                                      :base_status [:not= :archived]
+                                      {:order-by [[:name :asc]]})
+        checkouts          (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+                                      :global_id transform-id)
+        checkouts-by-ws-id (into {} (map (juxt :workspace_id identity) checkouts))
+        workspaces-by-id   (into {} (map (juxt :id identity) workspaces))]
+    {:checkout_disabled (checkout-disabled-reason transform)
+     :workspaces        (vec (for [{:keys [id name] :as ws} workspaces
+                                   :let [checkout (get checkouts-by-ws-id id)]]
+                               {:id       id
+                                :name     name
+                                :status   (ws.model/computed-status ws)
+                                :existing (when checkout
+                                            {:ref_id (:ref_id checkout)
+                                             :name   (:name checkout)})}))
+     :transforms        (vec (for [{:keys [ref_id name workspace_id]} checkouts
+                                   :let [ws (get workspaces-by-id workspace_id)]
+                                   :when ws]
+                               {:id        ref_id
+                                :name      name
+                                :workspace {:id (:id ws) :name (:name ws)}}))}))
 
 (api.macros/defendpoint :post "/:ws-id/merge"
   :- [:or
