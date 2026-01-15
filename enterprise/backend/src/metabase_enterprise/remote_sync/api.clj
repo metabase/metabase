@@ -53,6 +53,26 @@
   (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty-global?)})
 
+(api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
+  "Check if there are new changes on the remote branch that can be pulled.
+   Uses in-memory caching (configurable TTL via remote-sync-check-changes-cache-ttl-seconds setting).
+
+   Returns:
+   - has_changes: true if remote version differs from last imported version, or if never imported
+   - remote_version: current Git SHA on remote branch
+   - local_version: Git SHA of last successful import (nil if never imported)
+   - cached: true if result was served from cache"
+  [_route-params
+   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   _body]
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
+    {:has_changes (:has-changes? result)
+     :remote_version (:remote-version result)
+     :local_version (:local-version result)
+     :cached (:cached? result)}))
+
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
   remote-synced collection."
