@@ -1633,3 +1633,35 @@
                    :offset 1
                    :limit  1}
                   (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1"))))))))
+
+;;; ------------------------------------------------- Sorting tests -------------------------------------------------
+
+(deftest ^:sequential unreferenced-sort-by-name-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card _ {:name "A Card sorttest"}
+                     :model/Table _ {:name "B" :display_name "B Table sorttest"}
+                     :model/Transform _ {:name "C Transform sorttest"}
+                     :model/NativeQuerySnippet _ {:name "D Snippet sorttest"}
+                     :model/Dashboard _ {:name "E Dashboard sorttest"}
+                     :model/Document _ {:name "F Document sorttest"}
+                     :model/Segment _ {:name "G Segment sorttest"}
+                     :model/Measure _ {:name "H Measure sorttest"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :query "sorttest"
+                                               :sort_column :name
+                                               :sort_direction sort-direction)
+                names (mapv #(get-in % [:data :name]) (:data response))]
+            (is (= names (cond-> expected-names-asc ["A Card sorttest"
+                                                     "B Table sorttest"
+                                                     "C Transform sorttest"
+                                                     "D Snippet sorttest"
+                                                     "E Dashboard sorttest"
+                                                     "F Document sorttest"
+                                                     "G Segment sorttest"
+                                                     "H Measure sorttest"]
+                                 (sort-direction :desc) reverse)))))))))
