@@ -1,9 +1,11 @@
 import { c, t } from "ttag";
+import * as Yup from "yup";
 
 import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
+import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -14,6 +16,19 @@ import {
   getMetabotState,
 } from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
+
+// Issue types that require free text feedback
+const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
+
+const FEEDBACK_SCHEMA = Yup.object({
+  issue_type: Yup.string().nullable(),
+  freeform_feedback: Yup.string().when("issue_type", {
+    is: (value: string) =>
+      ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as any),
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
+});
 
 interface MetabotFeedbackModalProps {
   onClose: () => void;
@@ -67,6 +82,7 @@ export const MetabotFeedbackModal = ({
           issue_type: positive ? undefined : "",
           freeform_feedback: "",
         }}
+        validationSchema={FEEDBACK_SCHEMA}
         onSubmit={handleSubmit}
       >
         <Form>
