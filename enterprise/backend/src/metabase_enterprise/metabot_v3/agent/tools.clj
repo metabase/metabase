@@ -12,6 +12,7 @@
    [metabase-enterprise.metabot-v3.tools.find-outliers :as outliers-tools]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as insights-tools]
    [metabase-enterprise.metabot-v3.tools.invite-user :as invite-user-tools]
+   [metabase-enterprise.metabot-v3.tools.read-resource :as read-resource-tools]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.search :as search-tools]
    [metabase-enterprise.metabot-v3.tools.show-results-to-user :as show-results-tools]
@@ -246,6 +247,22 @@
     :database-id database_id
     :limit limit}))
 
+;;; Resource Reading Tools
+
+(mu/defn read-resource-tool
+  "Read detailed information about Metabase resources via URI patterns.
+
+  Supports fetching multiple resources in parallel using metabase:// URIs:
+  - metabase://table/{id}/fields - Get table structure with fields
+  - metabase://model/{id}/fields/{field_id} - Get specific field details
+  - metabase://metric/{id}/dimensions - Get metric dimensions
+  - metabase://transform/{id} - Get transform details
+  - metabase://dashboard/{id} - Get dashboard details"
+  [{:keys [uris]}
+   :- [:map {:closed true}
+       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
+  (read-resource-tools/read-resource-tool {:uris uris}))
+
 ;; Tool registry - maps tool name to var
 (def all-tools
   "Registry of all available tools."
@@ -265,7 +282,8 @@
    "create_sql_query"              #'create-sql-query-tool
    "edit_sql_query"                #'edit-sql-query-tool
    "replace_sql_query"             #'replace-sql-query-tool
-   "sql_search"                    #'sql-search-tool})
+   "sql_search"                    #'sql-search-tool
+   "read_resource"                 #'read-resource-tool})
 
 (defn filter-by-capabilities
   "Filter tool names by user capabilities.
