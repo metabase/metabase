@@ -280,11 +280,29 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
+export const DEPENDENCY_SORT_COLUMNS = [
+  "name",
+  "location",
+  "dependents-count",
+] as const;
+export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
+
+export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type DependencySortDirection =
+  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
+
+export type DependencySortingOptions = {
+  column: DependencySortColumn;
+  direction: DependencySortDirection;
+};
+
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type ListBrokenGraphNodesResponse = PaginationResponse & {
@@ -296,6 +314,8 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
   card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
