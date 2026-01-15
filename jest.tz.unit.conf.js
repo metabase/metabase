@@ -1,34 +1,10 @@
 // @ts-check
 
-const esmPackages = [
-  "ccount",
-  "character-entities-html4",
-  "comma-separated-tokens",
-  "csv-parse",
-  "d3-*",
-  "d3",
-  "devlop",
-  "echarts",
-  "fetch-mock",
-  "hast.*",
-  "html-void-elements",
-  "is-absolute-url",
-  "jose",
-  "property-information",
-  "rehype-external-links",
-  "space-separated-tokens",
-  "stringify-entities",
-  "unist-util-visit-parents",
-  "unist-util-visit",
-  "vfile-location",
-  "vfile-message",
-  "vfile",
-  "web-namespaces",
-  "zrender",
-  "zwitch",
-];
+// eslint-disable-next-line import/no-commonjs
+const esmPackages = require("./jest.esm-packages.js");
 
 /** @type {import('jest').Config} */
+// eslint-disable-next-line import/no-commonjs
 module.exports = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
