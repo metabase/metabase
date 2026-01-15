@@ -801,8 +801,13 @@
                        :type              "question"}
                       (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (empty? (query-metadata 204 card-id))))))))))
+            ;; card-id-1 is deleted, so it returns 204 empty
+            (is (empty? (query-metadata 204 card-id-1)))
+            ;; card-id-2 still exists, so it returns 200 with metadata
+            (is (=? {:db_id (mt/id)
+                     :id (str "card__" card-id-2)
+                     :type "question"}
+                    (query-metadata 200 card-id-2)))))))))
 
 (deftest ^:parallel include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
