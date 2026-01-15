@@ -4,33 +4,21 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { TaskRunStatusBadge } from "metabase/admin/tools/components/TaskRunStatusBadge";
+import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
 import { useGetTaskRunQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  Anchor,
-  Badge,
-  Box,
-  Flex,
-  Grid,
-  Icon,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Anchor, Box, Flex, Grid, Icon, Stack, Text, Title } from "metabase/ui";
 import type { Task } from "metabase-types/api";
 
 import {
   formatTaskRunEntityType,
-  formatTaskRunStatus,
   formatTaskRunType,
-  formatTaskStatus,
   getEntityUrl,
-  getTaskRunStatusColor,
-  getTaskStatusColor,
   renderTaskRunCounters,
 } from "../../utils";
 
@@ -88,9 +76,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             </Flex>
             <Flex gap="md" align="center">
               <Text fw="bold" w={120}>{t`Status`}</Text>
-              <Badge color={getTaskRunStatusColor(taskRun.status)}>
-                {formatTaskRunStatus(taskRun.status)}
-              </Badge>
+              <TaskRunStatusBadge taskRun={taskRun} />
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Started at`}</Text>
@@ -139,9 +125,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 >
                   <td className={CS.textBold}>{task.task}</td>
                   <td>
-                    <Badge color={getTaskStatusColor(task.status)}>
-                      {formatTaskStatus(task.status)}
-                    </Badge>
+                    <TaskStatusBadge task={task} />
                   </td>
                 </tr>
               ))}

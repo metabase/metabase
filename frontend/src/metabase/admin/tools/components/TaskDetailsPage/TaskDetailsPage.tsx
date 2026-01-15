@@ -11,7 +11,6 @@ import { openSaveDialog } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import {
   Anchor,
-  Badge,
   Box,
   Button,
   Flex,
@@ -24,13 +23,9 @@ import {
 import type { Database } from "metabase-types/api";
 
 import { SettingsSection } from "../../../components/SettingsSection";
-import {
-  formatTaskDetails,
-  formatTaskStatus,
-  getFilename,
-  getTaskStatusColor,
-} from "../../utils";
+import { formatTaskDetails, getFilename } from "../../utils";
 import { LogsViewer } from "../Logs/LogsViewer";
+import { TaskStatusBadge } from "../TaskStatusBadge";
 
 import S from "./TaskDetailsPage.module.css";
 
@@ -84,9 +79,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         </Flex>
         <Flex gap="md" align="center">
           <Text fw="bold" w={120}>{t`Status`}</Text>
-          <Badge color={getTaskStatusColor(task.status)}>
-            {formatTaskStatus(task.status)}
-          </Badge>
+          <TaskStatusBadge task={task} />
         </Flex>
         {task.run_id !== null && (
           <Flex gap="md" align="baseline">

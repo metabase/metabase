@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -10,11 +11,9 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Badge, Box, Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
-
-import { formatTaskStatus, getTaskStatusColor } from "../../utils";
 
 interface Props {
   databases: Database[];
@@ -123,9 +122,7 @@ export const TasksTable = ({
                   </td>
                   <td>{task.duration}</td>
                   <td>
-                    <Badge color={getTaskStatusColor(task.status)}>
-                      {formatTaskStatus(task.status)}
-                    </Badge>
+                    <TaskStatusBadge task={task} />
                   </td>
                 </tr>
               );

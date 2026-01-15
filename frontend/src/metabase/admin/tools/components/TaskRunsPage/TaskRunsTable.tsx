@@ -2,21 +2,17 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { TaskRunStatusBadge } from "metabase/admin/tools/components/TaskRunStatusBadge";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Badge, Box, Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
-import {
-  formatTaskRunStatus,
-  formatTaskRunType,
-  getTaskRunStatusColor,
-  renderTaskRunCounters,
-} from "../../utils";
+import { formatTaskRunType, renderTaskRunCounters } from "../../utils";
 
 type TaskRunsTableProps = {
   error: unknown;
@@ -100,9 +96,7 @@ export const TaskRunsTable = ({
                   </Ellipsified>
                 </td>
                 <td>
-                  <Badge color={getTaskRunStatusColor(taskRun.status)}>
-                    {formatTaskRunStatus(taskRun.status)}
-                  </Badge>
+                  <TaskRunStatusBadge taskRun={taskRun} />
                 </td>
                 <td>{renderTaskRunCounters(taskRun)}</td>
               </tr>
