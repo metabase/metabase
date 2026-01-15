@@ -86,7 +86,8 @@
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
   non-magic-groups
-  all-users-magic-group-type]
+  all-users-magic-group-type
+  check-permissions-not-locked]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!

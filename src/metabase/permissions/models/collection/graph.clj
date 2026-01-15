@@ -303,9 +303,6 @@
   ([collection-namespace :- [:maybe ms/KeywordOrString]
     new-graph :- PermissionsGraph
     force? :- [:maybe boolean?]]
-   ;; Check that we're not trying to modify permissions for locked groups (like Data Analysts)
-   (doseq [group-id (keys (:groups new-graph))]
-     (perms-group/check-permissions-not-locked {:id group-id}))
    (let [new-group-ids (-> new-graph :groups keys set)
          new-collection-ids (->> new-graph :groups vals (mapcat keys) set)
          filtered-new-graph (-> (remove-personal-collections-from-graph new-graph new-collection-ids)
@@ -316,6 +313,9 @@
          [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
                                                                 (filter (comp seq second))
                                                                 (into {})))]
+
+     (doseq [group-id (keys (:groups changes))]
+       (perms-group/check-permissions-not-locked {:id group-id}))
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
