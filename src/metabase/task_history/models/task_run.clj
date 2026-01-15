@@ -2,6 +2,7 @@
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -35,7 +36,7 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed})
+(def ^:private task-run-status #{:started :success :failed :unknown})
 
 (defn- assert-task-run-status
   [status]
@@ -88,12 +89,15 @@
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
   [{:keys [run_type entity_type entity_id]} :- ::TaskRunInfo]
-  (t2/insert-returning-pk! :model/TaskRun
-                           {:run_type    run_type
-                            :entity_type entity_type
-                            :entity_id   entity_id
-                            :status      :started
-                            :started_at  (t/instant)}))
+  (let [now (mi/now)]
+    (t2/insert-returning-pk! :model/TaskRun
+                             {:run_type     run_type
+                              :entity_type  entity_type
+                              :entity_id    entity_id
+                              :status       :started
+                              :started_at   now
+                              :updated_at   now
+                              :process_uuid config/local-process-uuid})))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
