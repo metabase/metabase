@@ -117,9 +117,9 @@ jobs:
       id-token: write
 
     steps:
-      - uses: ./.github/actions/maximize-disk-space
-
       - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/maximize-disk-space
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
