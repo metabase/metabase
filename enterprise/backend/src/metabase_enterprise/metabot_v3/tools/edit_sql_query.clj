@@ -19,9 +19,14 @@
     card))
 
 (defn- extract-sql-content
-  "Extract SQL content from a card's dataset_query."
+  "Extract SQL content from a card's dataset_query.
+  Handles both legacy format and lib/query format."
   [card]
-  (get-in card [:dataset_query :native :query]))
+  (or
+   ;; Try lib/query format (with stages)
+   (get-in card [:dataset_query :stages 0 :native])
+   ;; Try legacy format
+   (get-in card [:dataset_query :native :query])))
 
 (defn- apply-sql-edit
   "Apply an edit to SQL content.
@@ -104,7 +109,11 @@
 
     ;; Apply the edit
     (let [new-sql (apply-sql-edit current-sql edit)
-          updates (cond-> {:dataset_query (assoc-in (:dataset_query card) [:native :query] new-sql)}
+          ;; Update dataset_query - handle both lib/query format (with :stages) and legacy format
+          updated-query (if (get-in card [:dataset_query :stages])
+                          (assoc-in (:dataset_query card) [:stages 0 :native] new-sql)
+                          (assoc-in (:dataset_query card) [:native :query] new-sql))
+          updates (cond-> {:dataset_query updated-query}
                     name (assoc :name name)
                     description (assoc :description description))]
 
