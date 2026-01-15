@@ -182,6 +182,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => {
               component={EmbeddingHubAdminSettingsPage}
             />
 
+            {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
               <>
                 <Route

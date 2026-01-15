@@ -38,6 +38,7 @@ export function EmbeddingNav() {
           icon="gear"
         />
 
+        {/* EE with non-starter plan has embedding settings on different pages */}
         {hasSimpleEmbedding && (
           <>
             <EmbeddingNavItem
