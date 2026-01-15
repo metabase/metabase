@@ -91,13 +91,13 @@
     dir :sort_direction}]
   {:order-by [[col dir]]})
 
-(def ^:private avaialble-sort-columns
+(def ^:private available-sort-columns
   #{:duration :ended_at :started_at})
 
 (def SortParams
   "Sorting map schema."
   [:map
-   [:sort_column    {:default :started_at} (into [:enum] avaialble-sort-columns)]
+   [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
 
 (mu/defn all
