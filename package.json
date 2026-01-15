@@ -420,7 +420,6 @@
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
     "elliptic": "^6.6.1",
-    "fetch-mock/path-to-regexp": "3.3.0",
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
