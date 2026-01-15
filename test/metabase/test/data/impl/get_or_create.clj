@@ -9,6 +9,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.analyze :as sync.analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
@@ -244,12 +245,15 @@
 
 (defn- fake-sync-database!
   "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
-   This skips network calls entirely, which is useful for slow remote databases like Redshift."
+   This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
+   For test-data, also runs fingerprinting to enable fingerprint-dependent tests."
   [driver {:keys [database-name] :as database-definition} db]
   (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
   (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
         table-name->tbl (insert-fake-sync-rows! rows)]
-    (resolve-fk-relationships! table-name->tbl database-definition)))
+    (resolve-fk-relationships! table-name->tbl database-definition)
+    (log/info "Running real fingerprinting after a fake sync + analyze")
+    (sync.analyze/analyze-db! db)))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
