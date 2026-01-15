@@ -261,19 +261,11 @@ function WorkspacePageContent({
       if (newTab) {
         setTab(newTab);
       }
-      if (
-        newTab === "setup" ||
-        (newTab === "metabot" && (activeTransform || activeTable))
-      ) {
-        setActiveTab(undefined);
-      }
     },
     [
       activeTransform,
       activeEditedTransform,
-      activeTable,
       setTab,
-      setActiveTab,
       setMetabotContextTransform,
       setMetabotContextSource,
     ],
