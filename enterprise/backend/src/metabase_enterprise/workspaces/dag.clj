@@ -78,6 +78,10 @@
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
                     :ref_id ref-id
+                    ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
+                    ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze
+                    ;; things to the expected snapshot.
+                    ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
                     {:order-by [[:transform_version :desc]] :limit 1}))
 
 (defn- table-producers [ws-id id-or-coord]
@@ -93,7 +97,10 @@
                                                [:= :db_id db]
                                                [:= :global_schema schema]
                                                [:= :global_table table]]]]
-                                     ;; There may be stale records from other transforms that previously targeted it.
+                                     ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
+                                     ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze
+                                     ;; things to the expected snapshot.
+                                     ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
                                      :order-by [[:id :desc]]
                                      :limit 1})]
     (if tx-ref-id
