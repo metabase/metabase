@@ -1640,7 +1640,7 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card _ {:name "A Card sorttest"}
-                     :model/Table _ {:name "B" :display_name "B Table sorttest"}
+                     :model/Table _ {:name "B Table" :display_name "B Table sorttest"}
                      :model/Transform _ {:name "C Transform sorttest"}
                      :model/NativeQuerySnippet _ {:name "D Snippet sorttest"}
                      :model/Dashboard _ {:name "E Dashboard sorttest"}
@@ -1656,12 +1656,12 @@
                                                :sort_column :name
                                                :sort_direction sort-direction)
                 names (mapv #(get-in % [:data :name]) (:data response))]
-            (is (= names (cond-> expected-names-asc ["A Card sorttest"
-                                                     "B Table sorttest"
-                                                     "C Transform sorttest"
-                                                     "D Snippet sorttest"
-                                                     "E Dashboard sorttest"
-                                                     "F Document sorttest"
-                                                     "G Segment sorttest"
-                                                     "H Measure sorttest"]
-                                 (sort-direction :desc) reverse)))))))))
+            (is (= names (cond-> ["A Card sorttest"
+                                  "B Table sorttest"
+                                  "C Transform sorttest"
+                                  "D Snippet sorttest"
+                                  "E Dashboard sorttest"
+                                  "F Document sorttest"
+                                  "G Segment sorttest"
+                                  "H Measure sorttest"]
+                           (sort-direction :desc) reverse)))))))))
