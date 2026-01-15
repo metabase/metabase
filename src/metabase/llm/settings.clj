@@ -16,7 +16,6 @@
   (deferred-tru "Anthropic model for AI-assisted SQL generation.")
   :encryption :no
   :visibility :settings-manager
-  :default "claude-sonnet-4-20250514"
   :export? false
   :doc false)
 

@@ -19,6 +19,10 @@
 (def ^:private anthropic-api-version
   "2023-06-01")
 
+(def default-model
+  "Default Anthropic model for SQL generation."
+  "claude-sonnet-4-5-20250929")
+
 (def ^:private generate-sql-tool
   "Tool definition for structured SQL output.
    Forces the model to return a JSON object with sql and optional explanation."
@@ -83,17 +87,15 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (def tsp-system system)
-  (def tsp-messages messages)
-  (println "TSP anthropic chat completion")
   (let [api-key (llm-settings/llm-anthropic-api-key)]
     (when-not api-key
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
-    (let [model   (or model (llm-settings/llm-anthropic-model) "claude-sonnet-4-20250514")
+    (let [model   (or model (llm-settings/llm-anthropic-model) default-model)
           request {:model    model
                    :system   system
                    :messages messages}]
+      (println "TSP sync completion with model: " model)
       (try
         (let [response (http/post anthropic-messages-url
                                   {:headers      (build-request-headers api-key)
@@ -152,17 +154,14 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (def tsp-system system)
-  (def tsp-messages messages)
-  (println "TSP anthropic chat completion")
   (let [api-key (llm-settings/llm-anthropic-api-key)]
     (when-not api-key
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
-    (let [model        (or model (llm-settings/llm-anthropic-model) "claude-opus-4-5-20251101")
+    (let [model        (or model (llm-settings/llm-anthropic-model) default-model)
           request      {:model model :system system :messages messages}
           request-body (build-streaming-request-body request)]
-      (def tsp-model model)
+      (println "TSP using model: " model)
       (try
         (let [response (http/post anthropic-messages-url
                                   {:as               :stream
