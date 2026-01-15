@@ -23,8 +23,7 @@ export function EmailSettingsPage() {
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
     "email_restrict_recipients",
   );
-  // eslint-disable-next-line no-console
-  console.log("kick");
+
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
