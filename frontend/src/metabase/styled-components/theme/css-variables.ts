@@ -9,10 +9,7 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import {
-  deriveFullMetabaseTheme,
-  getThemeFromColorScheme,
-} from "metabase/lib/colors";
+import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
 import type { ColorSettings } from "metabase-types/api";
@@ -22,7 +19,7 @@ const createColorVars = (
   whitelabelColors?: ColorSettings | null,
 ): string => {
   const theme = deriveFullMetabaseTheme({
-    baseTheme: getThemeFromColorScheme(colorScheme),
+    colorScheme,
     whitelabelColors,
   });
 

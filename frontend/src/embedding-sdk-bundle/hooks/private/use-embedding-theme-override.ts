@@ -10,10 +10,7 @@ import {
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import {
-  METABASE_LIGHT_THEME,
-  deriveFullMetabaseTheme,
-} from "metabase/lib/colors";
+import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -41,7 +38,7 @@ export function useEmbeddingThemeOverride(
 
     if (isEmbeddingThemeV2(theme)) {
       const derivedTheme = deriveFullMetabaseTheme({
-        baseTheme: METABASE_LIGHT_THEME,
+        colorScheme: "light",
         whitelabelColors: appColors ?? {},
         embeddingThemeOverride: theme,
       });

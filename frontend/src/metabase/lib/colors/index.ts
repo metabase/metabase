@@ -8,5 +8,4 @@ export { ALL_COLOR_NAMES } from "./constants/color-names";
 
 export type * from "./types";
 
-export { getThemeFromColorScheme } from "./theme-from-color-scheme";
 export { deriveFullMetabaseTheme } from "./derive-theme";

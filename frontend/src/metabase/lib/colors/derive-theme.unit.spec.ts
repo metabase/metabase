@@ -5,7 +5,7 @@ import { deriveFullMetabaseTheme } from "./derive-theme";
 describe("deriveFullMetabaseTheme", () => {
   it("applies whitelabel colors over the base theme", () => {
     const derived = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
       whitelabelColors: { brand: "#ff0000" },
     });
 
@@ -20,7 +20,7 @@ describe("deriveFullMetabaseTheme", () => {
 
   it("applies embedding theme overrides over whitelabel colors", () => {
     const derived = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
       whitelabelColors: { brand: "#ff0000" },
       embeddingThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
     });
@@ -31,7 +31,7 @@ describe("deriveFullMetabaseTheme", () => {
 
   it("filters out all internal colors from embedding overrides", () => {
     const derivedBaseLightTheme = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
     });
 
     const embeddingColors: Record<string, string> = {};
@@ -42,7 +42,7 @@ describe("deriveFullMetabaseTheme", () => {
     }
 
     const derived = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
       embeddingThemeOverride: { version: 2, colors: embeddingColors },
     });
 
@@ -56,7 +56,7 @@ describe("deriveFullMetabaseTheme", () => {
 
   it("maps chartColors to accent colors", () => {
     const derived = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
       embeddingThemeOverride: {
         version: 2,
         chartColors: ["#ff0000", "#00ff00"],
@@ -69,7 +69,7 @@ describe("deriveFullMetabaseTheme", () => {
 
   it("overrides accent colors via chartColors", () => {
     const result = deriveFullMetabaseTheme({
-      baseTheme: METABASE_LIGHT_THEME,
+      colorScheme: "light",
       embeddingThemeOverride: {
         version: 2,
         chartColors: [{ base: "#ff0000", tint: "#ff8888", shade: "#880000" }],

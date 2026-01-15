@@ -1,10 +1,6 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
-import {
-  ALL_COLOR_NAMES,
-  deriveFullMetabaseTheme,
-  getThemeFromColorScheme,
-} from "metabase/lib/colors";
+import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/lib/colors";
 import type { ColorName, MetabaseColorKey } from "metabase/lib/colors/types";
 
 const ORIGINAL_COLORS = [
@@ -43,9 +39,7 @@ export function getColorShades(colorName: string): MantineColorsTuple {
 export function getMantineThemeColors(
   colorScheme: "light" | "dark",
 ): Record<string, MantineColorsTuple> {
-  const { colors } = deriveFullMetabaseTheme({
-    baseTheme: getThemeFromColorScheme(colorScheme),
-  });
+  const { colors } = deriveFullMetabaseTheme({ colorScheme });
 
   return {
     ...Object.fromEntries(

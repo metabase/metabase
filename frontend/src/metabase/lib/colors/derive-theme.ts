@@ -5,11 +5,8 @@ import type { ColorSettings } from "metabase-types/api";
 
 import { mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
-import type {
-  MetabaseColorKey,
-  MetabaseDerivedThemeV2,
-  MetabaseThemeV2,
-} from "./types";
+import { getThemeFromColorScheme } from "./theme-from-color-scheme";
+import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
 
 /**
  * Derives the _full_ metabase themes given a theme configuration.
@@ -22,14 +19,16 @@ import type {
  * TODO(EMB-1016): derive full color palette based on the given color object
  */
 export function deriveFullMetabaseTheme({
-  baseTheme,
+  colorScheme,
   whitelabelColors,
   embeddingThemeOverride,
 }: {
-  baseTheme: MetabaseThemeV2;
+  colorScheme: "light" | "dark";
   whitelabelColors?: ColorSettings | null;
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
 }): MetabaseDerivedThemeV2 {
+  const baseTheme = getThemeFromColorScheme(colorScheme);
+
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
   const filteredEmbeddingColors = _.omit(

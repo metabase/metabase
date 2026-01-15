@@ -3,7 +3,6 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
-import { METABASE_LIGHT_THEME } from "./constants/light";
 import { deriveFullMetabaseTheme } from "./derive-theme";
 import type { MetabaseColorKey } from "./types/color-keys";
 
@@ -16,10 +15,7 @@ const whitelabelColors =
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 
 export const getColors = (whitelabelColors?: ColorSettings) =>
-  deriveFullMetabaseTheme({
-    baseTheme: METABASE_LIGHT_THEME,
-    whitelabelColors,
-  }).colors;
+  deriveFullMetabaseTheme({ colorScheme: "light", whitelabelColors }).colors;
 
 export const colors: Record<MetabaseColorKey, string> = {
   ...getColors(whitelabelColors),

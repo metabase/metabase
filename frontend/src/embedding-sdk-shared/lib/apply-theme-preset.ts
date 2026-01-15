@@ -7,10 +7,7 @@ import {
   type MappableSdkColor,
   SDK_TO_MAIN_APP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import {
-  deriveFullMetabaseTheme,
-  getThemeFromColorScheme,
-} from "metabase/lib/colors";
+import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 
 const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background",
@@ -30,9 +27,7 @@ const getPresetColors = (preset: MetabaseThemePreset): MetabaseColors => {
     return {};
   }
 
-  const { colors } = deriveFullMetabaseTheme({
-    baseTheme: getThemeFromColorScheme(preset),
-  });
+  const { colors } = deriveFullMetabaseTheme({ colorScheme: preset });
 
   return Object.fromEntries(
     PRESET_SDK_COLORS.map((sdkColor) => {
