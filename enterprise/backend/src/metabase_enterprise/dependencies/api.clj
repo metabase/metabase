@@ -135,7 +135,7 @@
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   {:keys [id content], snippet-name :name}
+   {:keys [id], snippet-name :name}
    :- [:map
        [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]

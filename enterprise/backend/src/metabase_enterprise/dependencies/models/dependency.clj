@@ -187,7 +187,7 @@
           group-nodes))))
 
 (mu/defn is-native-entity? :- [:maybe :boolean]
-  "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadta object."
+  "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity]
   (case entity-type

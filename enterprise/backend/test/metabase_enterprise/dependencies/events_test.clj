@@ -668,18 +668,16 @@
   (run-with-dependencies-setup
    (fn [mp]
      (testing "Native card updates should not trigger analysis"
-       (let [products-id (mt/id :products)
-             products (lib.metadata/table mp products-id)]
-         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
-                        :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
-                        :model/Dependency _ {:from_entity_type :card
-                                             :from_entity_id child-card-id
-                                             :to_entity_type :card
-                                             :to_entity_id parent-card-id}]
-           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
-           (assert-has-analyses
-            {:card {parent-card-id nil
-                    child-card-id nil}})))))))
+       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
+                      :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                      :model/Dependency _ {:from_entity_type :card
+                                           :from_entity_id child-card-id
+                                           :to_entity_type :card
+                                           :to_entity_id parent-card-id}]
+         (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+         (assert-has-analyses
+          {:card {parent-card-id nil
+                  child-card-id nil}}))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup
