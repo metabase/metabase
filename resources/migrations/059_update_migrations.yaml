@@ -380,7 +380,7 @@ databaseChangeLog:
             referencedTableName: task_run
             referencedColumnNames: id
             constraintName: fk_task_history_run_id
-            onDelete: CASCADE
+            onDelete: SET NULL
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: task_history
