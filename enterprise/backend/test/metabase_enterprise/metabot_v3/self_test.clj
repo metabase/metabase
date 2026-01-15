@@ -282,3 +282,90 @@
           result (into [] (self/tool-executor-rff TOOLS) chunks)]
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
+
+;;; AI SDK v4 Line Protocol tests
+
+(deftest format-text-line-test
+  (testing "formats text as JSON-encoded string with 0: prefix"
+    (is (= "0:\"Hello world\"" (self/format-text-line {:text "Hello world"})))
+    (is (= "0:\"Line with \\\"quotes\\\"\"" (self/format-text-line {:text "Line with \"quotes\""})))))
+
+(deftest format-data-line-test
+  (testing "formats data with type, version, and value"
+    (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
+           (self/format-data-line {:data-type "state" :data {:queries {}}})))
+    (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
+           (self/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
+
+(deftest format-error-line-test
+  (testing "formats error message as JSON string with 3: prefix"
+    (is (= "3:\"Something went wrong\"" (self/format-error-line {:error {:message "Something went wrong"}})))
+    (is (= "3:\"Unknown error\"" (self/format-error-line {:error "Unknown error"})))))
+
+(deftest format-tool-call-line-test
+  (testing "formats tool call with toolCallId, toolName, and args"
+    (let [line (self/format-tool-call-line {:id "call-123"
+                                            :function "search"
+                                            :arguments {:query "revenue"}})]
+      (is (str/starts-with? line "9:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "call-123" (:toolCallId parsed)))
+        (is (= "search" (:toolName parsed)))
+        ;; args should be JSON string, not object
+        (is (string? (:args parsed)))))))
+
+(deftest format-tool-result-line-test
+  (testing "formats tool result with toolCallId and result"
+    (let [line (self/format-tool-result-line {:id "call-123"
+                                              :result {:data [{:id 1}]}})]
+      (is (str/starts-with? line "a:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "call-123" (:toolCallId parsed)))
+        ;; result should be JSON string
+        (is (string? (:result parsed))))))
+
+  (testing "formats tool error"
+    (let [line (self/format-tool-result-line {:id "call-456"
+                                              :error {:message "Tool failed"}})]
+      (is (str/starts-with? line "a:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "call-456" (:toolCallId parsed)))
+        (is (string? (:error parsed)))))))
+
+(deftest format-finish-line-test
+  (testing "formats finish message with usage"
+    (let [line (self/format-finish-line {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
+      (is (str/starts-with? line "d:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "stop" (:finishReason parsed)))
+        ;; Keys are keywordized when parsing JSON
+        (is (= 100 (get-in parsed [:usage :claude-sonnet-4-5-20250929 :prompt])))))))
+
+(deftest format-start-line-test
+  (testing "formats start message with messageId"
+    (let [line (self/format-start-line {:id "msg-123"})]
+      (is (str/starts-with? line "f:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "msg-123" (:messageId parsed)))))))
+
+(deftest aisdk-line-xf-test
+  (testing "converts internal parts to AI SDK v4 line protocol"
+    (let [parts [{:type :start :id "msg-1"}
+                 {:type :text :text "Hello"}
+                 {:type :tool-input :id "call-1" :function "search" :arguments {:q "test"}}
+                 {:type :tool-output :id "call-1" :result {:data []}}
+                 {:type :usage :id "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
+                 {:type :finish}]
+          lines (into [] self/aisdk-line-xf parts)]
+      ;; Should have: start, text, tool-call, tool-result, finish (usage is folded into finish)
+      (is (= 5 (count lines)))
+      (is (str/starts-with? (nth lines 0) "f:"))  ;; start
+      (is (str/starts-with? (nth lines 1) "0:"))  ;; text
+      (is (str/starts-with? (nth lines 2) "9:"))  ;; tool-call
+      (is (str/starts-with? (nth lines 3) "a:"))  ;; tool-result
+      (is (str/starts-with? (nth lines 4) "d:"))  ;; finish with usage
+      ;; Verify usage is in finish message
+      (let [finish-data (json/decode+kw (subs (nth lines 4) 2))]
+        ;; Keys are keywordized when parsing JSON
+        (is (= 10 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :prompt])))
+        (is (= 5 (get-in finish-data [:usage :claude-sonnet-4-5-20250929 :completion])))))))
