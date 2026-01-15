@@ -53,11 +53,13 @@ describe(
         cy.log("upsell gem icon should be visible");
         cy.icon("gem").should("be.visible");
 
+        const plan = !IS_ENTERPRISE ? "oss" : "starter";
+
         cy.findByRole("link", { name: "Upgrade" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
+            `https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=${plan}&utm_users=10&utm_campaign=embedded-analytics-js`,
           );
       });
     });
