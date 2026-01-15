@@ -88,7 +88,9 @@
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}
-        breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
+        breakages (if (dependency/is-native-entity? :card card)
+                    {}
+                    (dependencies/errors-from-proposed-edits edits :base-provider base-provider))]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
@@ -119,7 +121,9 @@
                         (cond-> #_transform source (assoc :source source))
                         (cond-> #_transform target (assoc :target target)))
           edits {:transform [transform]}
-          breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
+          breakages (if (dependency/is-native-entity? :transform transform)
+                      {}
+                      (dependencies/errors-from-proposed-edits edits :base-provider base-provider))]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
@@ -142,14 +146,8 @@
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))
             (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))
-        snippet (cond-> (m/assoc-some original
-                                      :lib/type :metadata/native-query-snippet
-                                      :name snippet-name
-                                      :content content)
-                  content native-query-snippets/add-template-tags)
-        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
-    (broken-cards-response breakages)))
+                            {:status-code 400})))]
+    (broken-cards-response {})))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields]

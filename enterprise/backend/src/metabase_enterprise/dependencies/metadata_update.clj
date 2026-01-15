@@ -35,11 +35,9 @@
           [:= type-field "segment"]
           [:= type-field "measure"]]))
       (graph/filtered-graph (fn [[type id]]
-                              (or (not= type :card)
-                                  (-> (lib.metadata/card mp id)
-                                      :dataset-query
-                                      lib/any-native-stage?
-                                      not))))
+                              (not (and (= type :card)
+                                        (->> (lib.metadata/card mp id)
+                                             (models.dependency/is-native-entity? :card))))))
       graph/cached-graph))
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]

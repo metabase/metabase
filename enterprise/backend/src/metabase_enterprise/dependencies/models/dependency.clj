@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -185,43 +186,52 @@
      (->> (graph/transitive graph starters) ; This returns a flat list.
           group-nodes))))
 
-(def ^:private query-lookup
-  {:card      [:dataset_query]
-   :transform [:source :query]
-   :segment   [:definition]})
+(mu/defn is-native-entity? :- [:maybe :boolean]
+  "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadta object."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity]
+  (case entity-type
+    :card (some-> entity
+                  ((some-fn :dataset-query :dataset_query))
+                  lib/any-native-stage?)
+    :transform (some-> entity
+                       :source
+                       :query
+                       lib/any-native-stage?)
+    :snippet true
+    false))
 
 (defn- native-lookup-map [children]
   (let [grouped (-> (graph/all-map-nodes children)
                     group-nodes)]
     (into {}
           (mapcat (fn [[node-type ids]]
-                    (let [query-keys (query-lookup node-type)
-                          model (deps.dependency-types/dependency-type->model node-type)]
-                      (cond
-                        query-keys (t2/select-fn-vec (fn [entity]
-                                                       [[node-type (:id entity)]
-                                                        (some-> entity (get-in query-keys) lib/any-native-stage?)])
-                                                     model :id [:in ids])
-                        (= node-type :snippet) (for [id ids]
-                                                 [[node-type id] true])))))
+                    (let [model (deps.dependency-types/dependency-type->model node-type)]
+                      (t2/select-fn-vec (fn [entity]
+                                          [[node-type (:id entity)]
+                                           (is-native-entity? node-type entity)])
+                                        model :id [:in ids]))))
           grouped)))
 
 (defn transitive-mbql-dependents
   "Equivalent to `transitive-dependents`, except it excludes any native cards/transforms/segments and their children.
 
-  Also, the order is more flexible (though consistent between runs)"
+  Also, the order is more flexible (though consistent between runs).
+
+  Note that this does not check the passed in entities for native-ness -- the filter is only applied to their
+  transitive children."
   ([updated-entities]
    (transitive-mbql-dependents nil updated-entities))
   ([graph updated-entities]
-   (let [start-nodes (entities->nodes updated-entities)
-         children (graph/transitive-children-of (or graph (graph-dependents)) start-nodes)
+   (let [start-nodes (set (entities->nodes updated-entities))
+         children (graph/transitive-children-of (or graph (graph-dependents)) (seq start-nodes))
          native-lookup (native-lookup-map children)]
      (->> (graph/keep-children (fn [node]
-                                 (if (native-lookup node)
-                                   ::graph/stop
-                                   node))
+                                 (cond
+                                   (start-nodes node) nil
+                                   (native-lookup node) ::graph/stop
+                                   :else node))
                                children)
-          (remove (set start-nodes))
           group-nodes))))
 
 (defn replace-dependencies!

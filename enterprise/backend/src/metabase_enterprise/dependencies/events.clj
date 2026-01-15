@@ -299,7 +299,7 @@
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
   (when (and (premium-features/has-feature? :dependencies)
-             (not (some-> (:dataset_query object) lib/any-native-stage?)))
+             (not (models.dependency/is-native-entity? :card object)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
       (check-dependents! :card object false))))
@@ -312,7 +312,7 @@
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
   (when (and (premium-features/has-feature? :dependencies)
-             (not (some-> (:source object) :query lib/any-native-stage?)))
+             (not (models.dependency/is-native-entity? :transform object)))
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object))))
 
@@ -323,8 +323,7 @@
 
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
-  (when (and (premium-features/has-feature? :dependencies)
-             (not (some-> (:definition object) lib/any-native-stage?)))
+  (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
       (check-dependents! :segment object false))))
