@@ -37,7 +37,10 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Match flat node_modules structure
+    `<rootDir>/node_modules/(?!\\.bun/)(?!(${esmPackages.join("|")})/)`,
+    // Match bun's nested .bun/ structure (packages stored as package@version)
+    `<rootDir>/node_modules/\\.bun/(?!(${esmPackages.join("|")})@)`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
