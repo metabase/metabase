@@ -19,6 +19,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
@@ -494,14 +496,17 @@
 
 (defn- table-ids-by-target
   "Batch lookup table IDs for transform targets.
-   Returns {[db_id schema name] -> table-record}."
-  [transforms]
+   Returns {[db_id normalized_schema normalized_name] -> table-record}.
+   Schema and table names are normalized per database driver to match how tables are stored in metabase_table."
+  [db-id driver transforms]
   (when (seq transforms)
-    (let [table-keys (into #{}
-                           (keep (fn [{:keys [target]}]
-                                   (when-let [db-id (:database target)]
-                                     [db-id (:schema target) (:name target)])))
-                           transforms)
+    (let [table-keys     (into #{}
+                               (keep (fn [{:keys [target]}]
+                                       (when (:database target)
+                                         [db-id
+                                          (sql.normalize/normalize-name driver (:schema target))
+                                          (sql.normalize/normalize-name driver (:name target))])))
+                               transforms)
           with-schema    (filter second table-keys)
           without-schema (keep (fn [[db-id schema table-name]]
                                  (when-not schema [db-id table-name]))
@@ -517,9 +522,11 @@
                                             [:in [:composite :db_id :name] without-schema]])]})]
           (m/index-by (juxt :db_id :schema :name) tables))))))
 
-(defn- target->spec [{:keys [target] :as tx} table-id-map]
-  (let [table-key [(:database target) (:schema target) (:name target)]
-        table-id (:id (get table-id-map table-key))]
+(defn- target->spec [driver table-id-map {:keys [target] :as tx}]
+  (let [table-key [(:database target)
+                   (sql.normalize/normalize-name driver (:schema target))
+                   (sql.normalize/normalize-name driver (:name target))]
+        table-id  (:id (get table-id-map table-key))]
     (assoc tx :target {:db       (:database target)
                        :schema   (:schema target)
                        :table    (:name target)
@@ -538,25 +545,27 @@
     {:external external-txs
      :workspace workspace-txs}))
 
-(defn- node-data [{:keys [node-type id]} transforms-map table-id-map]
+(defn- node-data [driver transforms-map table-id-map {:keys [node-type id]}]
   (case node-type
     :table id
-    :external-transform (some-> (get-in transforms-map [:external id])
-                                (target->spec table-id-map))
-    :workspace-transform (some-> (get-in transforms-map [:workspace id])
-                                 (target->spec table-id-map))))
+    :external-transform (some->> (get-in transforms-map [:external id])
+                                 (target->spec driver table-id-map))
+    :workspace-transform (some->> (get-in transforms-map [:workspace id])
+                                  (target->spec driver table-id-map))))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+        db-id     (:database_id workspace)
+        driver    (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
         {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
         ;; Batch fetch all transforms and build table-id lookup map
         transforms-map (fetch-transforms-for-graph entities)
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
-        table-id-map   (table-ids-by-target all-transforms)
+        table-id-map   (table-ids-by-target db-id driver all-transforms)
         ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
         ;;      It could be cheaper to build it as we go.
         inverted (reduce
@@ -575,7 +584,7 @@
                     (for [e entities]
                       {:type             (node-type e)
                        :id               (:id e)
-                       :data             (node-data e transforms-map table-id-map)
+                       :data             (node-data driver transforms-map table-id-map e)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
               {:to_entity_type   (name (node-type parent))
