@@ -48,6 +48,9 @@ type QueryOpts = MetadataProviderOpts & {
   query?: DatasetQuery;
 };
 
+/**
+ * @deprecated: Use createTestQuery, createTestJsQuery, createTestNativeQuery or createTestNativeJsQuery instead.
+ */
 export function createQuery({
   databaseId = SAMPLE_DATABASE.id,
   metadata = SAMPLE_METADATA,
@@ -202,6 +205,9 @@ interface QueryWithClausesOpts {
   orderBys?: OrderByClauseOpts[];
 }
 
+/**
+ * @deprecated: Use createTestQuery or createTestJsQuery instead.
+ */
 export function createQueryWithClauses({
   query = createQuery(),
   expressions = [],
