@@ -340,27 +340,27 @@
   [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   (when (seq query)
+   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
+   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
+   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
+   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
+   (when (and (seq query)
+              (map? query)
+              (not mi/*deserializing?*))
      (merge
-      (when-let [source-id (source-card-id query)]
-        {:source_card_id source-id})
-      ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-      ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-      ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-      ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-      (when (and (map? query)
-                 (not mi/*deserializing?*))
-        (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-          ;; TODO -- not sure `query_type` is actually used for anything important anyway
-          (let [query-type (if (query/query-is-native? query)
-                             :native
-                             :query)]
-            (merge
-             {:query_type (keyword query-type)}
-             (when database-id
-               {:database_id database-id})
-             (when table-id
-               {:table_id table-id})))))))))
+      ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
+      {:source_card_id (source-card-id query)}
+      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+        ;; TODO -- not sure `query_type` is actually used for anything important anyway
+        (let [query-type (if (query/query-is-native? query)
+                           :native
+                           :query)]
+          (merge
+           {:query_type (keyword query-type)}
+           (when database-id
+             {:database_id database-id})
+           (when table-id
+             {:table_id table-id}))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -425,7 +425,10 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::queries.schema/card]]
+  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
+  (assert (not (and (query/query-is-native? query)
+                    (some? source-card)))
+          "A native SQL question cannot have a source card.")
   (when (= (keyword card-type) :model)
     (let [template-tag-types (into #{}
                                    (map :type)
@@ -632,7 +635,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes)))))
+      (assert-valid-type card))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
@@ -820,8 +823,9 @@
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
+        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
         populate-query-fields
+        (pre-update changes)
         maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
