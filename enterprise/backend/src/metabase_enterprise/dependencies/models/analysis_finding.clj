@@ -26,7 +26,7 @@
   4)
 
 (defn- error->finding-error-row
-  "Convert an error from find-bad-refs-with-source to a row for analysis_finding_error table."
+  "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table."
   [error]
   {:error-type          (:type error)
    :error-detail        (or (:name error) (:message error))
