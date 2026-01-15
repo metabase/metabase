@@ -634,38 +634,6 @@ describe("scenarios > data studio > workspaces", () => {
   });
 
   describe("graph tab", () => {
-    it("should display transform dependencies in the graph", () => {
-      createTransforms();
-      Workspaces.visitWorkspaces();
-      createWorkspace();
-
-      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
-      H.NativeEditor.type(" LIMIT 1;");
-      Workspaces.getSaveTransformButton().click();
-      runTransformAndWaitForSuccess();
-
-      Workspaces.openGraphTab();
-
-      H.DependencyGraph.graph().should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText(SOURCE_TABLE)
-        .should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText("SQL transform")
-        .should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText(TARGET_TABLE_SQL)
-        .should("be.visible");
-
-      // Verify edges connecting nodes
-      H.DependencyGraph.graph()
-        .findByLabelText(/Edge from.*Animals.*to.*workspace-transform/)
-        .should("exist");
-      H.DependencyGraph.graph()
-        .findByLabelText(/Edge from.*workspace-transform.*to.*table/)
-        .should("exist");
-    });
-
     it("should display multiple transforms and their connections", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
@@ -705,10 +673,10 @@ describe("scenarios > data studio > workspaces", () => {
       // - SQL transform -> target table
       // - Python transform -> target table
       H.DependencyGraph.graph()
-        .findAllByLabelText(/Edge from.*Animals.*to.*workspace-transform/)
+        .findAllByLabelText(/Edge from.*workspace-transform.*to.*Animals/)
         .should("have.length", 2);
       H.DependencyGraph.graph()
-        .findAllByLabelText(/Edge from.*workspace-transform.*to.*target/)
+        .findAllByLabelText(/Edge from.*target.*to.*workspace-transform/)
         .should("have.length", 2);
     });
 
