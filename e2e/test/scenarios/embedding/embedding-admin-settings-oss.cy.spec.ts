@@ -1,12 +1,11 @@
 const { H } = cy;
 
 const { IS_ENTERPRISE } = Cypress.env();
-const IS_OSS = !IS_ENTERPRISE;
 
 // These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
-  { ...(IS_OSS && { tags: "@OSS" }) },
+  { tags: ["@OSS", "@EE"] },
   () => {
     beforeEach(() => {
       H.restore();
