@@ -462,22 +462,21 @@
             [{:keys [error_type error_detail]}]
             ;; error_type is stored without namespace (e.g. :missing-column)
             ;; but API schema expects :validate/missing-column
-            (let [full-type (keyword "validate" (name error_type))]
-              (case full-type
+            (case error_type
                 ;; These error types use :name
-                (:validate/missing-column
-                 :validate/missing-table-alias
-                 :validate/duplicate-column)
-                {:type full-type :name error_detail}
+              (:validate/missing-column
+               :validate/missing-table-alias
+               :validate/duplicate-column)
+              {:type error_type :name error_detail}
                 ;; validation-exception-error uses :message
-                :validate/validation-exception-error
-                {:type full-type :message error_detail}
+              :validate/validation-exception-error
+              {:type error_type :message error_detail}
                 ;; syntax-error has no additional fields
-                :validate/syntax-error
-                {:type full-type}
+              :validate/syntax-error
+              {:type error_type}
                 ;; Default: use :name if detail exists
-                (cond-> {:type full-type}
-                  error_detail (assoc :name error_detail)))))
+              (cond-> {:type error_type}
+                error_detail (assoc :name error_detail))))
           (normalize-entity-errors [[[entity-type entity-id] errors]]
             (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
               [[entity-type entity-id] normalized-errors]))

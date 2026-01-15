@@ -22,7 +22,7 @@
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id 1)]
             (is (= 2 (count stored)))
-            (is (= #{:missing-column} (set (map :error_type stored))))
+            (is (= #{:validate/missing-column} (set (map :error_type stored))))
             (is (= #{"CATEGORY" "PRICE"} (set (map :error_detail stored))))
             (is (= #{:table} (set (map :source_entity_type stored))))
             (is (= #{100} (set (map :source_entity_id stored))))))))
@@ -44,7 +44,7 @@
           (let [stored (t2/select-one :model/AnalysisFindingError
                                       :analyzed_entity_type :card
                                       :analyzed_entity_id 1)]
-            (is (= :syntax-error (:error_type stored)))
+            (is (= :validate/syntax-error (:error_type stored)))
             (is (nil? (:error_detail stored)))
             (is (nil? (:source_entity_type stored)))
             (is (nil? (:source_entity_id stored)))))))
