@@ -70,7 +70,7 @@
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
-   [:status      {:optional true} [:enum "started" "success" "failed"]]])
+   [:status      {:optional true} [:enum "started" "success" "failed" "unknown"]]])
 
 (mr/def ::TaskRun
   [:map
@@ -80,7 +80,7 @@
    [:entity_id   ms/PositiveInt]
    [:started_at  :any]
    [:ended_at    [:maybe :any]]
-   [:status      [:enum :started :success :failed]]
+   [:status      [:enum :started :success :failed :unknown]]
    [:entity_name {:optional true} [:maybe :string]]
    [:task_count  {:optional true} :int]
    [:success_count {:optional true} :int]
