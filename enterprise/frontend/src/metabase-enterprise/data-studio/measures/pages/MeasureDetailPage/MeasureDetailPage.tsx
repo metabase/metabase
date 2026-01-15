@@ -11,6 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
 import type { Measure } from "metabase-types/api";
 
@@ -35,6 +36,7 @@ export function MeasureDetailPage({
   onRemove,
 }: MeasureDetailPageProps) {
   const metadata = useSelector(getMetadata);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [description, setDescription] = useState(measure.description ?? "");
@@ -117,12 +119,14 @@ export function MeasureDetailPage({
             </Group>
           )
         }
+        readOnly={remoteSyncReadOnly}
       />
       <MeasureEditor
         query={query}
         description={description}
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
+        readOnly={remoteSyncReadOnly}
       />
       <LeaveRouteConfirmModal
         key={measure.id}
