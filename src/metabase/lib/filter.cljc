@@ -352,7 +352,8 @@
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]
-  (if-not new-filter
+  ;; Use nil? instead of if-not because `false` is a valid boolean filter literal
+  (if (nil? new-filter)
     stage
     (let [existing-filter? (some (fn [existing-filter]
                                    (lib.equality/= existing-filter new-filter))
@@ -394,6 +395,15 @@
     (cond-> stage
       (seq (:filters stage)) (update :filters flatten-filters))))
 
+(defn- wrap-boolean-literal
+  "Wrap a raw boolean literal in a :value clause so it has a :lib/uuid and can be
+   properly identified for removal/replacement. Raw booleans like `false` need this
+   because they're not MBQL clause vectors."
+  [x]
+  (if (boolean? x)
+    (lib.options/ensure-uuid [:value {:effective-type :type/Boolean :base-type :type/Boolean} x])
+    x))
+
 (mu/defn filter :- :metabase.lib.schema/query
   "Sets `boolean-expression` as a filter on `query`. Ignores duplicate filters (ignoring :lib/uuid)."
   ([query :- :metabase.lib.schema/query
@@ -407,7 +417,9 @@
    (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
      (recur query stage-number (lib.ref/ref boolean-expression))
      (let [stage-number (clojure.core/or stage-number -1)
-           new-filter (lib.common/->op-arg boolean-expression)]
+           new-filter (-> boolean-expression
+                          lib.common/->op-arg
+                          wrap-boolean-literal)]
        (lib.util/update-query-stage query stage-number add-filter-to-stage new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
