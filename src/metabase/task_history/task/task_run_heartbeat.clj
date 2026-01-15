@@ -38,8 +38,8 @@
   []
   (let [cutoff           (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
         orphaned-run-ids (t2/select-fn-set :id :model/TaskRun
-                                           {:status     :started
-                                            :updated_at [:< cutoff]})]
+                                           :status     :started
+                                           :updated_at [:< cutoff])]
     (when (seq orphaned-run-ids)
       (t2/update! :model/TaskRun {:id [:in orphaned-run-ids]}
                   {:status   :abandoned
