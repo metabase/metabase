@@ -18,7 +18,7 @@ import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 
-const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
