@@ -3,9 +3,17 @@
   Each profile defines model settings, iteration limits, and available tools.")
 
 (def profiles
-  "Map of profile-id to profile configuration."
+  "Map of profile-id to profile configuration.
+
+  Each profile includes:
+  - :prompt-template - Selmer template name from resources/metabot/prompts/system/
+  - :model - LLM model identifier
+  - :max-iterations - Maximum agent loop iterations
+  - :temperature - LLM temperature setting
+  - :tools - Vector of tool names available to this profile"
   {:metabot-embedding
-   {:model "claude-sonnet-4-5-20250929"
+   {:prompt-template "embedding.selmer"
+    :model "claude-sonnet-4-5-20250929"
     :max-iterations 6
     :temperature 0.3
     :tools ["search"
@@ -15,7 +23,8 @@
             "show_results_to_user"]}
 
    :metabot-internal
-   {:model "claude-sonnet-4-5-20250929"
+   {:prompt-template "internal.selmer"
+    :model "claude-sonnet-4-5-20250929"
     :max-iterations 10
     :temperature 0.3
     :tools ["search"
@@ -32,7 +41,8 @@
             "invite_user"]}
 
    :metabot-transforms-codegen
-   {:model "claude-sonnet-4-5-20250929"
+   {:prompt-template "transform-codegen.selmer"
+    :model "claude-sonnet-4-5-20250929"
     :max-iterations 30
     :temperature 0.3
     :tools ["search"
