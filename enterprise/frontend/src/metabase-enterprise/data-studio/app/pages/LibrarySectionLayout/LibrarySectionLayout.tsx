@@ -44,8 +44,51 @@ import {
   useBuildTreeForCollection,
   useErrorHandling,
 } from "./hooks";
-import { type TreeItem, isCollection, isEmptyStateData } from "./types";
+import {
+  type EmptyStateData,
+  type TreeItem,
+  isCollection,
+  isEmptyStateData,
+} from "./types";
 import { getAccessibleCollection } from "./utils";
+
+interface EmptyStateActionProps {
+  data: EmptyStateData;
+  onPublishTable: () => void;
+}
+
+function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
+  if (data.sectionType === "data") {
+    return (
+      <Anchor
+        component="button"
+        type="button"
+        fz="inherit"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPublishTable();
+        }}
+      >
+        {data.actionLabel}
+      </Anchor>
+    );
+  }
+
+  if (data.actionUrl) {
+    return (
+      <Anchor
+        component={ForwardRefLink}
+        to={data.actionUrl}
+        fz="inherit"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {data.actionLabel}
+      </Anchor>
+    );
+  }
+
+  return null;
+}
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
@@ -201,48 +244,18 @@ export function LibrarySectionLayout() {
         accessorKey: "name",
         minWidth: 200,
         cell: ({ row }) => {
-          const { model, data } = row.original;
+          const { data } = row.original;
 
-          if (model === "empty-state" && isEmptyStateData(data)) {
-            const renderAction = () => {
-              if (data.sectionType === "data") {
-                return (
-                  <Anchor
-                    component="button"
-                    type="button"
-                    fz="inherit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsPublishTableModalOpen(true);
-                    }}
-                  >
-                    {data.actionLabel}
-                  </Anchor>
-                );
-              }
-
-              if (data.actionUrl) {
-                return (
-                  <Anchor
-                    component={ForwardRefLink}
-                    to={data.actionUrl}
-                    fz="inherit"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {data.actionLabel}
-                  </Anchor>
-                );
-              }
-
-              return null;
-            };
-
+          if (isEmptyStateData(data)) {
             return (
               <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
                 <Text c="text-tertiary" fz="inherit">
                   {data.description}
                 </Text>
-                {renderAction()}
+                <EmptyStateAction
+                  data={data}
+                  onPublishTable={() => setIsPublishTableModalOpen(true)}
+                />
               </Flex>
             );
           }
@@ -276,15 +289,10 @@ export function LibrarySectionLayout() {
         id: "actions",
         width: 48,
         cell: ({ row }) => {
-          if (row.original.model === "empty-state") {
-            return null;
-          }
-
           const { data } = row.original;
           if (isEmptyStateData(data)) {
             return null;
           }
-
           if (
             isCollection(data) &&
             data.model === "collection" &&
