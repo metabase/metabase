@@ -63,7 +63,7 @@
 
       ;; Case 2: :join-alias present - find the join's source table/card
       join-alias
-      (when-let [join (m/find-first #(= (:alias %) join-alias) (lib.join/joins query stage-number))]
+      (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
         (let [first-join-stage (first (:stages join))]
           (cond
             (:source-table first-join-stage)
