@@ -11,7 +11,7 @@
   - :max-iterations - Maximum agent loop iterations
   - :temperature - LLM temperature setting
   - :tools - Vector of tool names available to this profile"
-  {:metabot-embedding
+  {:embedding
    {:prompt-template "embedding.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 6
@@ -23,7 +23,7 @@
             "show_results_to_user"
             "read_resource"]}
 
-   :metabot-internal
+   :internal
    {:prompt-template "internal.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 10
@@ -48,7 +48,7 @@
             "create_chart"
             "edit_chart"]}
 
-   :metabot-transforms-codegen
+   :transforms-codegen
    {:prompt-template "transform-codegen.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 30
@@ -59,7 +59,7 @@
             "get_field_stats"
             "read_resource"]}
 
-   :metabot-sql-only
+   :sql-only
    {:prompt-template "sql-querying-only.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 8
@@ -75,7 +75,7 @@
 
    ;; New profiles for additional use cases
 
-   :metabot-next
+   :next
    {:prompt-template "metabot-next.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 10
@@ -100,7 +100,7 @@
             "create_chart"
             "edit_chart"]}
 
-   :metabot-nlq-only
+   :nlq-only
    {:prompt-template "natural-language-querying-only.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 8
@@ -112,7 +112,7 @@
             "show_results_to_user"
             "read_resource"]}
 
-   :metabot-beta-customer
+   :beta-customer
    {:prompt-template "internal.selmer"
     :model "claude-sonnet-4-5-20250929"
     :max-iterations 8

@@ -16,22 +16,18 @@
   [parts]
   (some #(= (:type %) :tool-input) parts))
 
-(defn- has-text-response?
-  "Check if any parts contain text responses."
-  [parts]
-  (some #(= (:type %) :text) parts))
-
 (defn- should-continue?
   "Determine if agent should continue iterating.
   Stops if:
   - Max iterations reached
-  - LLM responded with text (final response)
-  - No tool calls made"
+  - No tool calls made (text-only response is final answer)
+
+  Note: LLM may output text alongside tool calls (e.g., 'I'll search for that...').
+  We continue as long as there are tool calls to process."
   [iteration profile parts]
   (let [max-iterations (get profile :max-iterations 10)]
     (and
      (< iteration max-iterations)
-     (not (has-text-response? parts))
      (has-tool-calls? parts))))
 
 (defn- run-llm-with-tools
@@ -41,7 +37,17 @@
   - The collected parts vector on success
   - An exception object on failure (caller should check with instance?)"
   [messages tools profile]
-  (let [model (get profile :model "claude-sonnet-4-5-20250929")]
+  (let [model (get profile :model "claude-sonnet-4-5-20250929")
+        ;; Claude API takes system message separately, not in the messages array
+        ;; Extract the system message content and filter it from input messages
+        system-msg (first (filter #(= (:role %) "system") messages))
+        input-msgs (vec (remove #(= (:role %) "system") messages))]
+    (log/info "Calling Claude API"
+              {:model model
+               :system-msg-present (boolean system-msg)
+               :input-msg-count (count input-msgs)
+               :input-msgs input-msgs
+               :tool-count (count tools)})
     ;; TODO: Add temperature support to claude-raw
     ;; temperature (get profile :temperature 0.3)
     ;; Call claude-raw to get SSE stream, then process in a thread
@@ -50,9 +56,11 @@
     ;; cannot run in go-block contexts (pipeline uses go-blocks internally)
     (a/thread
       (try
-        (let [raw-stream (self/claude-raw {:model model
-                                           :input messages
-                                           :tools (vals tools)})
+        (let [raw-stream (self/claude-raw (cond-> {:model model
+                                                   :input input-msgs
+                                                   ;; Pass tools as [name, var] pairs so Claude sees the registry key names
+                                                   :tools (vec tools)}
+                                            system-msg (assoc :system (:content system-msg))))
               ;; Collect all chunks from the raw stream
               raw-chunks (loop [acc []]
                            (if-let [chunk (a/<!! raw-stream)]
@@ -73,8 +81,15 @@
   Prepends system message with enriched context."
   [memory context profile tools]
   (let [system-msg (messages/build-system-message context profile tools)
-        history (messages/build-message-history memory)]
-    (cons system-msg history)))
+        history (messages/build-message-history memory)
+        result (into [system-msg] history)]
+    (log/debug "Built messages for LLM"
+               {:system-msg-length (count (:content system-msg))
+                :history-count (count history)
+                :total-messages (count result)
+                :message-roles (mapv :role result)
+                :messages-preview (mapv #(select-keys % [:role :content]) result)})
+    result))
 
 (defn- stream-parts-to-output!
   "Stream parts to output channel. Must be called from within a go block.
@@ -153,10 +168,9 @@
                   (do
                     (log/info "Agent loop complete"
                               {:iterations (inc iteration)
-                               :reason (cond
-                                         (>= iteration (:max-iterations profile)) :max-iterations
-                                         (has-text-response? result) :text-response
-                                         :else :no-tool-calls)})
+                               :reason (if (>= iteration (:max-iterations profile))
+                                         :max-iterations
+                                         :no-tool-calls)})
                     (a/<! (finalize-stream! out-chan @memory-atom))))))))
         (catch Exception e
           (log/error e "Error in agent loop")
