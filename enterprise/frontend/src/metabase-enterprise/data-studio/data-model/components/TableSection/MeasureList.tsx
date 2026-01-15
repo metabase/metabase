@@ -2,8 +2,10 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 
 import { MeasureItem } from "./MeasureItem";
@@ -21,24 +23,27 @@ export function MeasureList({ table }: MeasureListProps) {
       tableId: table.id,
       measureId,
     });
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return (
     <Stack gap="md" data-testid="table-measures-page">
-      <Group gap="md" justify="flex-start" wrap="nowrap">
-        <Button
-          component={ForwardRefLink}
-          to={Urls.newDataStudioDataModelMeasure({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-          })}
-          h={32}
-          px="sm"
-          py="xs"
-          size="xs"
-          leftSection={<Icon name="add" />}
-        >{t`New measure`}</Button>
-      </Group>
+      {!remoteSyncReadOnly && (
+        <Group gap="md" justify="flex-start" wrap="nowrap">
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newDataStudioDataModelMeasure({
+              databaseId: table.db_id,
+              schemaName: table.schema,
+              tableId: table.id,
+            })}
+            h={32}
+            px="sm"
+            py="xs"
+            size="xs"
+            leftSection={<Icon name="add" />}
+          >{t`New measure`}</Button>
+        </Group>
+      )}
 
       {measures.length === 0 ? (
         <EmptyState

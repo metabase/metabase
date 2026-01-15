@@ -244,7 +244,7 @@
                         (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)))
                  (is (empty? (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card))))
                (testing "on update event"
-                 (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*})
+                 (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})
                  (is (some #(and (= "Dependency calculation failed" (ex-message (:e %)))
                                  (= :error (:level %)))
                            (messages)))
@@ -624,7 +624,7 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
+           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
            (assert-has-analyses
             {:card {parent-card-id -1
                     child-card-id -1}})))))))
@@ -655,7 +655,7 @@
                       child-card-id old-version
                       other-card-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
            (testing "Checking that the analyses were updated appropriately"
              (assert-has-analyses
               {:card {parent-card-id new-version
@@ -697,7 +697,7 @@
                       child-card-id old-version}
                :transform {transform-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
            (testing "Checking that analyses were updated correctly"
              (assert-has-analyses
               {:card {parent-card-id new-version

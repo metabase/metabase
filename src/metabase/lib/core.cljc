@@ -160,7 +160,8 @@
   breakouts-metadata
   remove-all-breakouts]
  [metabase.lib.card
-  card->underlying-query]
+  card->underlying-query
+  model-preserved-keys]
  [lib.column-group
   columns-group-columns
   group-columns]
