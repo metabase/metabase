@@ -135,12 +135,18 @@
         (is (some #(= :error (:type %)) result))))))
 
 (deftest build-messages-for-llm-test
-  (testing "builds messages from memory"
+  (testing "builds messages from memory with context"
     (let [memory {:input-messages [{:role :user :content "Hello"}]
                   :steps-taken [{:parts [{:type :text :text "Hi"}]}]
-                  :state {}}]
-      ;; Just verify it doesn't throw
-      (is (sequential? (#'agent/build-messages-for-llm memory))))))
+                  :state {}}
+          context {}
+          profile {:prompt-template "internal.selmer"}
+          tools {}
+          messages (#'agent/build-messages-for-llm memory context profile tools)]
+      ;; Should have system message first
+      (is (sequential? messages))
+      (is (pos? (count messages)))
+      (is (= "system" (:role (first messages)))))))
 
 (deftest stream-parts-to-output-test
   (testing "streams parts to output channel"
