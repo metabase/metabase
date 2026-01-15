@@ -12,6 +12,7 @@ const esmPackages = [
   "comma-separated-tokens",
   "color",
   "color-convert",
+  "color-name",
   "color-string",
   "csv-parse",
   "d3-*",

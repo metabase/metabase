@@ -19,12 +19,9 @@
       (java.time ZoneId))]
     :cljs
     [(:require
-      ["moment" :as moment]
+      ;; moment-timezone exports the augmented moment with .tz property
+      ;; In bun's isolated mode, plain "moment" and moment-timezone's internal moment are different instances
       ["moment-timezone" :as mtz])]))
-
-#?(:cljs
-   ;; so the moment-timezone stuff gets loaded
-   (comment mtz/keep-me))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
@@ -191,7 +188,9 @@
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
               ;; 596 timezones on moment-timezone 0.5.38
-              :cljs (.names (.-tz moment)))))
+              ;; Use mtz (moment-timezone export) instead of moment because in bun's isolated mode,
+              ;; moment-timezone has its own nested moment copy that gets augmented with .tz
+              :cljs (.names (.-tz mtz)))))
     ::literal/string.zone-offset]])
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone
