@@ -36,6 +36,7 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   ref_id: WorkspaceTransformId;
   workspace_id: WorkspaceId;
   global_id: TransformId | null;
+  target_isolated: TransformTarget;
   target_stale: boolean;
   archived_at: string | null;
   last_run_at: string | null;
