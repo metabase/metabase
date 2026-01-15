@@ -117,6 +117,13 @@ jobs:
       id-token: write
 
     steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
       - uses: actions/checkout@v4
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
