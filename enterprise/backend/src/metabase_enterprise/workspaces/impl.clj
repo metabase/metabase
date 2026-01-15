@@ -139,6 +139,35 @@
   []
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
+(defn- has-stale-transform-dependencies?
+  "Check if a workspace transform has any stale transform dependencies.
+   Returns true if any parent transform (workspace or external) is stale.
+   This is used to determine whether we should clear execution_stale after running.
+
+   Uses the cached graph to find dependencies, then queries DB directly for staleness
+   to avoid circular dependencies with graph hydration."
+  [ws-id ref-id]
+  (when-let [cached-graph (:graph (t2/select-one :model/WorkspaceGraph :workspace_id ws-id))]
+    (let [transform-id {:node-type :workspace-transform :id ref-id}
+          deps         (get (:dependencies cached-graph) transform-id)
+          ;; Separate workspace and external transform dependencies
+          ws-tx-deps   (into [] (comp (filter #(= :workspace-transform (:node-type %)))
+                                      (map :id))
+                             deps)
+          ext-tx-deps  (into [] (comp (filter #(= :external-transform (:node-type %)))
+                                      (map :id))
+                             deps)]
+      ;; Check if any parent transform is stale in the DB
+      (or (and (seq ws-tx-deps)
+               (t2/exists? :model/WorkspaceTransform
+                           :workspace_id ws-id
+                           :ref_id [:in ws-tx-deps]
+                           :execution_stale true))
+          (and (seq ext-tx-deps)
+               (t2/exists? :model/Transform
+                           :id [:in ext-tx-deps]
+                           :execution_stale true))))))
+
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
   ([workspace transform]
@@ -162,11 +191,16 @@
                           :table      (select-keys (ws.execute/remapped-target transform remapping) [:schema :name])}))]
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
-       (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
-                   {:last_run_at      (:end_time result)
-                    :last_run_status  (name (:status result))
-                    :last_run_message (:message result)
-                    :execution_stale  false}))
+       ;; Only clear execution_stale if no upstream dependencies are stale.
+       ;; This prevents incorrectly marking a transform as not stale when its inputs
+       ;; haven't been refreshed yet. See: https://github.com/metabase/metabase/pull/67974
+       (let [clear-stale? (and (= :succeeded (:status result))
+                               (not (has-stale-transform-dependencies? (:id workspace) ref-id)))]
+         (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
+                     (cond-> {:last_run_at      (:end_time result)
+                              :last_run_status  (name (:status result))
+                              :last_run_message (:message result)}
+                       clear-stale? (assoc :execution_stale false)))))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform

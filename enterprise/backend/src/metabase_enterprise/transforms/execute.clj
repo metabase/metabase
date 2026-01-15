@@ -5,6 +5,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- has-stale-transform-dependencies?
+  "Check if a global transform has any stale parent transforms.
+   Returns true if any parent transform is stale."
+  [transform-id]
+  (let [parent-transform-ids (t2/select-fn-set :to_entity_id
+                                               :model/Dependency
+                                               :from_entity_type "transform"
+                                               :from_entity_id transform-id
+                                               :to_entity_type "transform")]
+    (and (seq parent-transform-ids)
+         (t2/exists? :model/Transform
+                     :id [:in parent-transform-ids]
+                     :execution_stale true))))
+
 (defn execute!
   "Run `transform` and sync its target table.
 
@@ -16,5 +30,9 @@
   ([transform opts]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (let [result (transforms.i/execute! transform opts)]
-     (t2/update! :model/Transform (:id transform) {:execution_stale false})
+     ;; Only clear execution_stale if no upstream transforms are stale.
+     ;; This prevents incorrectly marking a transform as not stale when its inputs
+     ;; haven't been refreshed yet. See: https://github.com/metabase/metabase/pull/67974
+     (when-not (has-stale-transform-dependencies? (:id transform))
+       (t2/update! :model/Transform (:id transform) {:execution_stale false}))
      result)))

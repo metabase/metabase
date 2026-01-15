@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
@@ -181,14 +182,21 @@
         (is (= {true #{t1 t2}} (stale->id (:entities result))))))))
 
 (deftest mark-execution-stale-depends-on-stale-global
+  ;; Covers Case 1 & 2 from staleness discussion: https://github.com/metabase/metabase/pull/67974
+  ;; Case 1: (x1) -> x2* -> (x3) -- enclosed external transform is locally stale
+  ;; Case 2: x1* -> (x2)         -- direct external ancestor is locally stale
+  ;; (notation: (x)=workspace transform, x=external transform, *=stale)
   (testing "workspace-transforms are marked stale if they depend on stale global-transforms"
     (let [g (global-transform)
           ws1 (workspace-transform)
           ws2 (workspace-transform)
+          ;; Graph: g* -> ws1 -> ws2 (g is stale, ws1 and ws2 depend on it)
           graph {:entities [g ws1 ws2]
                  :dependencies {ws1 [g] ws2 [ws1]}}
           stale-entities #{g}
           result (#'ws.impl/mark-execution-stale graph stale-entities)]
+      ;; ws1 and ws2 should be marked stale (downstream of stale g)
+      ;; g stays false (external transforms don't get marked in graph)
       (is (= {true #{ws1 ws2} false #{g}} (stale->id (:entities result)))))))
 
 (deftest mark-execution-stale-mixed-workspace-and-global-parents
@@ -278,3 +286,25 @@
         (testing "after marking not stale in DB, graph read reflects the change"
           (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
             (is (nil? (:execution_stale (first (:entities graph)))))))))))
+
+;;; Case 3 from staleness discussion - NOT YET COVERED
+;;; See: https://github.com/metabase/metabase/pull/67974
+#_(deftest mark-execution-stale-indirect-external-ancestor
+    ;; Case 3: x1* -> x2 -> (x3) -- indirect external ancestor is locally stale
+    ;; TODO: This test is expected to fail until we track global staleness on external transforms
+    ;; or include all ancestors in the graph.
+    ;; Currently, if x2 is not locally stale, we don't know that x1 (its ancestor) is stale.
+    (testing "workspace transform stale when indirect external ancestor is stale"
+      (let [ext1 (global-transform 100)
+            ext2 (global-transform 200)
+            ws (workspace-transform "ws1")
+            ;; Graph: ext1* -> ext2 -> ws (ext1 is stale, ext2 is NOT, ws depends on ext2)
+            graph {:entities     [ext1 ext2 ws]
+                   :dependencies {ext2 #{ext1}
+                                  ws   #{ext2}}}
+            ;; Only ext1 is locally stale; ext2 is NOT in stale-entities
+            stale-entities #{ext1}
+            result (#'ws.impl/mark-execution-stale graph stale-entities)]
+        ;; ws SHOULD be marked stale because its indirect ancestor (ext1) is stale
+        ;; But current implementation won't catch this since ext2 is not locally stale
+        (is (= {true #{ws} false #{ext1 ext2}} (stale->id (:entities result)))))))

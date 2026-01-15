@@ -52,5 +52,17 @@
   [transform]
   (let [changes (t2/changes transform)]
     (cond-> transform
-      ;; Mark as execution_stale if source or target changes
+      ;; Mark as execution_stale if source or target changes.
+      ;; This hook is a safety net - prefer using mark-definition-changed! explicitly.
       (or (:source changes) (:target changes)) (assoc :execution_stale true))))
+
+(defn mark-definition-changed!
+  "Mark a workspace transform as stale due to definition changes (source/target).
+   Sets both execution_stale and analysis_stale flags.
+   This should be called when source or target is modified.
+
+   Returns true if the update was performed, false otherwise."
+  [ref-id]
+  (pos? (t2/update! :model/WorkspaceTransform ref-id
+                    {:execution_stale true
+                     :analysis_stale  true})))
