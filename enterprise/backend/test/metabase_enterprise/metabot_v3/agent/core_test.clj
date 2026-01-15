@@ -93,29 +93,24 @@
     (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
                                   {:type :tool-input :id "t1"}]))))
 
-(deftest has-text-response-test
-  (testing "detects text responses in parts"
-    (is (#'agent/has-text-response? [{:type :text :text "hello"}]))
-    (is (not (#'agent/has-text-response? [{:type :tool-input :id "t1"}])))
-    (is (#'agent/has-text-response? [{:type :tool-input :id "t1"}
-                                     {:type :text :text "done"}]))))
-
 (deftest should-continue-test
   (let [profile {:max-iterations 3}]
     (testing "continues when iteration < max and has tool calls"
       (is (#'agent/should-continue? 0 profile [{:type :tool-input}]))
       (is (#'agent/should-continue? 2 profile [{:type :tool-input}])))
 
+    (testing "continues when text AND tool calls present (LLM thinking aloud)"
+      (is (#'agent/should-continue? 0 profile [{:type :tool-input}
+                                               {:type :text}]))
+      (is (#'agent/should-continue? 0 profile [{:type :text}
+                                               {:type :tool-input}])))
+
     (testing "stops at max iterations"
       (is (not (#'agent/should-continue? 3 profile [{:type :tool-input}])))
       (is (not (#'agent/should-continue? 4 profile [{:type :tool-input}]))))
 
-    (testing "stops when text response present"
+    (testing "stops when no tool calls (text-only is final answer)"
       (is (not (#'agent/should-continue? 0 profile [{:type :text}])))
-      (is (not (#'agent/should-continue? 0 profile [{:type :tool-input}
-                                                    {:type :text}]))))
-
-    (testing "stops when no tool calls"
       (is (not (#'agent/should-continue? 0 profile [{:type :usage}])))
       (is (not (#'agent/should-continue? 0 profile []))))))
 
@@ -126,7 +121,7 @@
                                      [{:type :text :text "Hello"}]))]
       (let [messages [{:role :user :content "Hi"}]
             state {}
-            profile-id :metabot-embedding
+            profile-id :embedding
             context {}
             response-chan (agent/run-agent-loop
                            {:messages messages
@@ -156,7 +151,7 @@
                                            [{:type :text :text "Found results"}]))))]
         (let [messages [{:role :user :content "Search for test"}]
               state {}
-              profile-id :metabot-embedding
+              profile-id :embedding
               context {}
               response-chan (agent/run-agent-loop
                              {:messages messages
@@ -175,7 +170,7 @@
                                     (throw (ex-info "Mock error" {})))]
       (let [messages [{:role :user :content "Hi"}]
             state {}
-            profile-id :metabot-embedding
+            profile-id :embedding
             context {}
             response-chan (agent/run-agent-loop
                            {:messages messages
@@ -231,7 +226,7 @@
             response-chan (agent/run-agent-loop
                            {:messages messages
                             :state {}
-                            :profile-id :metabot-embedding
+                            :profile-id :embedding
                             :context {}})
             result (chan->seq response-chan)]
         ;; Verify basic structure
