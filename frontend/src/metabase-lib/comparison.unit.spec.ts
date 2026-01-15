@@ -3,7 +3,7 @@ import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   SAMPLE_DATABASE,
-  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
   createTestQuery,
 } from "./test-helpers";
 
@@ -11,8 +11,7 @@ describe("findColumnIndexesFromLegacyRefs", () => {
   const stageIndex = -1;
 
   it("should match columns that differ only by temporal buckets", () => {
-    const provider = Lib.metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
-    const query = createTestQuery(provider, {
+    const query = createTestQuery(SAMPLE_PROVIDER, {
       databaseId: SAMPLE_DATABASE.id,
       stages: [
         {
@@ -41,8 +40,7 @@ describe("findColumnIndexesFromLegacyRefs", () => {
   });
 
   it("should match columns that differ only by binning", () => {
-    const provider = Lib.metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
-    const query = createTestQuery(provider, {
+    const query = createTestQuery(SAMPLE_PROVIDER, {
       databaseId: SAMPLE_DATABASE.id,
       stages: [
         {

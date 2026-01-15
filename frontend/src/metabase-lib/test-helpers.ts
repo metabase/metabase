@@ -22,7 +22,12 @@ const SAMPLE_DATABASE = createSampleDatabase();
 
 const SAMPLE_METADATA = createMockMetadata({ databases: [SAMPLE_DATABASE] });
 
-export { SAMPLE_DATABASE, SAMPLE_METADATA };
+const SAMPLE_PROVIDER = createMetadataProvider(
+  SAMPLE_DATABASE.id,
+  SAMPLE_METADATA,
+);
+
+export { SAMPLE_DATABASE, SAMPLE_METADATA, SAMPLE_PROVIDER };
 
 type MetadataProviderOpts = {
   databaseId?: DatabaseId;
