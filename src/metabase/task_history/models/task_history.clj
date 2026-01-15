@@ -155,7 +155,7 @@
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overriden for tests."
   (Clock/systemUTC))
 
-(def ^:private log-capture-truncation-threshold 1000)
+(def ^:private log-capture-truncation-threshold 100)
 
 (defn- log-capture-atom []
   (atom {:queue PersistentQueue/EMPTY
