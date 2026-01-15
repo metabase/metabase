@@ -42,6 +42,8 @@
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
             ;; remove the persisted_model schemas
             (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
+            ;; remove the workspace isolation schemas (matches metabase-enterprise.workspaces.util/isolated-prefix)
+            (remove (fn [schema] (re-find #"^mb__isolation.*" schema)))
             (filter #(include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters %))
             (all-schemas metadata)))
 

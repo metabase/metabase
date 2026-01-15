@@ -7,8 +7,12 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.sql Connection)))
 
 (ws.tu/ws-fixtures!)
 
@@ -205,3 +209,32 @@
                    database
                    nil))
             "Should succeed when test-table is nil")))))
+
+(deftest isolation-schemas-excluded-from-sync-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (ws.tu/with-workspaces! [workspace {:name "Test isolation schema filtering"}]
+      (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
+                                   :transform nil
+                                   {:name   "Transform A"
+                                    :source {:type "query" :query (mt/mbql-query orders {:limit 1})}
+                                    :target {:database (mt/id)
+                                             :schema   "analytics"
+                                             :name     "table_a"}})
+      (let [database          (mt/db)
+            driver            (driver.u/database->driver database)
+            isolation-pattern (re-pattern (str "^" isolated-prefix "_.*"))]
+        (testing "isolation schema exists in the database"
+          (let [resources (workspace-isolation-resources-exist? database workspace)]
+            (is (:schema resources) "Isolation schema should exist")))
+        (testing "isolation schema is excluded from filtered-syncable-schemas"
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           database
+           nil
+           (fn [^Connection conn]
+             (let [metadata          (.getMetaData conn)
+                   syncable-schemas  (into [] (sql-jdbc.sync.interface/filtered-syncable-schemas
+                                               driver database metadata nil nil))
+                   isolation-schemas (filter #(re-find isolation-pattern %) syncable-schemas)]
+               (is (empty? isolation-schemas)
+                   (format "No isolation schemas should be in syncable schemas, but found: %s" isolation-schemas))))))))))
