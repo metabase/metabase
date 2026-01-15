@@ -1744,6 +1744,30 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
+(deftest ^:sequential unreferenced-sort-by-location-with-root-collection-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location with root collection"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Collection {collection1-id :id} {:name "Collection 1"}
+                     :model/Card               _ {:name "Our analytics sorttest"}
+                     :model/Card               _ {:name "Collection 1 sorttest"
+                                                  :collection_id collection1-id}
+                     :model/NativeQuerySnippet _ {:name "SQL snippets sorttest"}
+                     :model/Transform          _ {:name "Transforms sorttest"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (doseq [sort-direction [:asc :desc]]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :query "sorttest"
+                                               :sort_column :location
+                                               :sort_direction sort-direction)
+                names (mapv #(get-in % [:data :name]) (:data response))]
+            (is (= (cond-> ["Collection 1 sorttest"
+                            "Our analytics sorttest"
+                            "SQL snippets sorttest"
+                            "Transforms sorttest"]
+                     (= sort-direction :desc) reverse)
+                   names))))))))
+
 (deftest ^:sequential broken-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/broken - sorting by name"
     (mt/with-premium-features #{:dependencies}

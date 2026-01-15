@@ -587,13 +587,17 @@
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
+        root-collection (collection.root/root-collection-with-ui-details (case entity-type
+                                                                           :transform :transforms
+                                                                           :snippet :snippets
+                                                                           nil))
         location-column (case entity-type
                           :card [:case
                                  [:not= :entity.dashboard_id nil] :dashboard.name
                                  [:not= :entity.document_id nil] :document.name
-                                 :else :collection.name]
+                                 :else [:coalesce :collection.name [:inline (:name root-collection)]]]
                           :table :database.name
-                          (:transform :snippet :dashboard :document) :collection.name
+                          (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :table.display_name)
         dependents-count-column {:select [[:%count.*]]
