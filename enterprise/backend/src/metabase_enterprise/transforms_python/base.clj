@@ -314,69 +314,73 @@
     :error <exception if failed>}"
   [transform {:keys [cancelled? run-id with-stage-timing-fn]}]
   (assert (transforms-base.util/python-transform? transform) "Transform must be a python transform")
-  (try
-    ;; Check cancellation before starting
-    (when (and cancelled? (cancelled?))
-      (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
+  (let [message-log (empty-message-log)]
+    (try
+      ;; Check cancellation before starting
+      (when (and cancelled? (cancelled?))
+        (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
 
-    (let [message-log (empty-message-log)
-          {:keys [target] transform-id :id} transform
-          db (t2/select-one :model/Database (:database target))
-          ;; Use run-id if provided, otherwise generate a temp one for python runner
-          effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
-          cancel-chan (a/promise-chan)
-          ;; Bridge cancelled? to cancel-chan
-          _ (when cancelled?
-              (a/go
-                (loop []
-                  (when-not (a/poll! cancel-chan)
-                    (if (cancelled?)
-                      (a/>! cancel-chan :cancel!)
-                      (do
-                        (a/<! (a/timeout 100))
-                        (recur)))))))
-          start-ms (u/start-timer)]
+      (let [{:keys [target] transform-id :id} transform
+            db (t2/select-one :model/Database (:database target))
+            ;; Use run-id if provided, otherwise generate a temp one for python runner
+            effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
+            cancel-chan (a/promise-chan)
+            ;; Bridge cancelled? to cancel-chan
+            _ (when cancelled?
+                (a/go
+                  (loop []
+                    (when-not (a/poll! cancel-chan)
+                      (if (cancelled?)
+                        (a/>! cancel-chan :cancel!)
+                        (do
+                          (a/<! (a/timeout 100))
+                          (recur)))))))
+            start-ms (u/start-timer)]
 
-      (log! message-log (i18n/tru "Executing Python transform"))
-      (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+        (log! message-log (i18n/tru "Executing Python transform"))
+        (log/info "Executing Python transform" transform-id "with target" (pr-str target))
 
-      (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log)]
-        (log! message-log (i18n/tru "Python execution finished successfully in {0}"
-                                    (u.format/format-milliseconds (u/since-ms start-ms))))
+        (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log)]
+          (log! message-log (i18n/tru "Python execution finished successfully in {0}"
+                                      (u.format/format-milliseconds (u/since-ms start-ms))))
 
-        ;; Check cancellation after python but before sync
-        (when (and cancelled? (cancelled?))
-          (throw (ex-info "Transform cancelled after python execution" {:status :cancelled})))
+          ;; Check cancellation after python but before sync
+          (when (and cancelled? (cancelled?))
+            (throw (ex-info "Transform cancelled after python execution" {:status :cancelled})))
 
-        ;; Sync target table
-        (transforms-base.util/sync-target! target db)
+          ;; Sync target table
+          (transforms-base.util/sync-target! target db)
 
-        ;; Create secondary indexes if needed
-        (transforms-base.util/execute-secondary-index-ddl-if-required!
-         transform run-id db target with-stage-timing-fn)
+          ;; Create secondary indexes if needed
+          (transforms-base.util/execute-secondary-index-ddl-if-required!
+           transform run-id db target with-stage-timing-fn)
 
-        {:status :succeeded
-         :result result
-         :logs (message-log->string message-log)}))
+          {:status :succeeded
+           :result result
+           :logs (message-log->string message-log)}))
 
-    (catch Exception e
-      (let [data (ex-data e)]
-        (cond
-          (= :cancelled (:status data))
-          {:status :cancelled
-           :error e}
+      (catch Exception e
+        (let [data (ex-data e)
+              logs (message-log->string message-log)]
+          (cond
+            (= :cancelled (:status data))
+            {:status :cancelled
+             :error e
+             :logs logs}
 
-          (:timeout data)
-          {:status :timeout
-           :error e
-           :logs (when-let [events (:events data)]
-                   (str/join "\n" (map :message events)))}
+            (:timeout data)
+            {:status :timeout
+             :error e
+             :logs (or (when-let [events (:events data)]
+                         (str/join "\n" (map :message events)))
+                       logs)}
 
-          :else
-          (do
-            (log/error e "Error executing Python transform")
-            {:status :failed
-             :error e}))))))
+            :else
+            (do
+              (log/error e "Error executing Python transform")
+              {:status :failed
+               :error e
+               :logs logs})))))))
 
 ;;; ------------------------------------------------- Interface Implementation -------------------------------------------------
 

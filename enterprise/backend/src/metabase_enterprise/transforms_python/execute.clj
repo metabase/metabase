@@ -53,7 +53,10 @@
         (when-let [logs (:logs result)]
           (save-log-to-transform-run-message! run-id logs))
         {:run_id run-id
-         :result result}))
-    (catch Throwable t
-      (log/error t "Error executing Python transform")
-      (throw t))))
+         :result result})
+      (catch Throwable t
+        ;; Save logs from exception data if available
+        (when-let [logs (:logs (ex-data t))]
+          (save-log-to-transform-run-message! run-id logs))
+        (log/error t "Error executing Python transform")
+        (throw t)))))

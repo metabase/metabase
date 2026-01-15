@@ -59,22 +59,20 @@
         :succeeded
         (do
           (transform-run/succeed-started-run! run-id)
-          (:result result))
+          result)
 
         :cancelled
         (do
           (transform-run/cancel-run! run-id)
-          (throw (or (:error result)
-                     (ex-info "Transform cancelled" {:status :cancelled}))))
+          (throw (ex-info "Transform cancelled" (assoc result :status :cancelled))))
 
         :timeout
         (do
           (transform-run/timeout-run! run-id)
-          (throw (or (:error result)
-                     (ex-info "Transform timed out" {:status :timeout}))))
+          (throw (ex-info "Transform timed out" (assoc result :status :timeout))))
 
         :failed
-        (throw (:error result))))
+        (throw (ex-info "Transform failed" result))))
     (catch Throwable t
       (transform-run/fail-started-run! run-id {:message (ex-message-fn t)})
       (throw t))
