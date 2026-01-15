@@ -36,7 +36,7 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed :unknown})
+(def ^:private task-run-status #{:started :success :failed :abandoned})
 
 (defn- assert-task-run-status
   [status]
