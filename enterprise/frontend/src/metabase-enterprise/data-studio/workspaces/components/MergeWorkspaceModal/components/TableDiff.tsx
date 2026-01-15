@@ -28,7 +28,9 @@ export const TableDiff = ({
           </Text>
         )}
 
-        <Text c={schemaChanged ? "success" : undefined}>{newSchema}</Text>
+        {newSchema && (
+          <Text c={schemaChanged ? "success" : undefined}>{newSchema}</Text>
+        )}
       </Group>
 
       <Divider />
@@ -42,7 +44,9 @@ export const TableDiff = ({
           </Text>
         )}
 
-        <Text c={tableChanged ? "success" : undefined}>{newTable}</Text>
+        {newTable && (
+          <Text c={tableChanged ? "success" : undefined}>{newTable}</Text>
+        )}
       </Group>
     </Group>
   );

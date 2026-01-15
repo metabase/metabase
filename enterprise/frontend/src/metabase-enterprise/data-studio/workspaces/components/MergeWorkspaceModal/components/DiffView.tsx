@@ -83,6 +83,7 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
     <Stack gap={0} h="100%">
       {oldTarget && newTarget && targetChanged && (
         <Stack
+          data-testid="transform-target-diff"
           gap="xs"
           px="md"
           py="sm"
@@ -102,6 +103,7 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
 
       {oldSourceTables && newSourceTables && sourceTablesChanged && (
         <Stack
+          data-testid="source-tables-diff"
           gap="xs"
           px="md"
           py="sm"

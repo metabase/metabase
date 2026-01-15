@@ -18,6 +18,10 @@ const TARGET_TABLE_SQL = "transform_table_2";
 const TARGET_TABLE_PYTHON = "transform_table_3";
 const TARGET_SCHEMA = "Schema A";
 
+const COLOR_TEXT = "rgba(7, 23, 34, 0.84)";
+const COLOR_SUCCESS = "rgb(104, 151, 53)";
+const COLOR_DANGER = "rgb(227, 89, 94)";
+
 describe("scenarios > data studio > workspaces", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -738,7 +742,9 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify info panel shows transform link");
       cy.findByTestId("graph-info-panel").within(() => {
-        cy.findByLabelText("View this workspace transform").should("be.visible");
+        cy.findByLabelText("View this workspace transform").should(
+          "be.visible",
+        );
       });
 
       cy.log("Click transform link and verify navigation to transform tab");
@@ -1123,7 +1129,9 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Close saved transform tab");
       Workspaces.getWorkspaceContent().within(() => {
-        cy.findByRole("tab", { name: "SQL transform" }).findByLabelText("close icon").click();
+        cy.findByRole("tab", { name: "SQL transform" })
+          .findByLabelText("close icon")
+          .click();
       });
 
       Workspaces.openDataTab();
@@ -1481,6 +1489,146 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
+  describe("merge workspace", () => {
+    it("shows target table diff and input tables diff", () => {
+      H.getTableId({
+        name: "Animals",
+        databaseId: WRITABLE_DB_ID,
+        schema: "Schema A",
+      }).then((id1) => {
+        H.getTableId({
+          name: "Animals",
+          databaseId: WRITABLE_DB_ID,
+          schema: "Schema B",
+        }).then((id2) => {
+          createPythonTransform({
+            body: TEST_PYTHON_TRANSFORM,
+            sourceTables: { foo: id1, bar: id2 },
+            visitTransform: true,
+          });
+        });
+      });
+
+      cy.findByRole("button", { name: /Edit transform/ }).click();
+      H.popover().findByText("New workspace").click();
+
+      cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
+
+      cy.log("rename 1st table's name");
+      cy.findAllByLabelText("Reset alias to default")
+        .should("have.length", 2)
+        .eq(0)
+        .click();
+
+      cy.log("change 2nd table");
+      cy.findByTestId("python-data-picker")
+        .findAllByText("Animals")
+        .should("have.length", 2)
+        .eq(1)
+        .click();
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema C").click();
+        cy.findByText("Animals").click();
+      });
+
+      cy.log("add 3rd table");
+      cy.button(/Add a table/).click();
+      cy.findByTestId("python-data-picker")
+        .findByText("Select a table…")
+        .click();
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema D").click();
+        cy.findByText("Animals").click();
+      });
+
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("change target table");
+      cy.button(/Change target/).click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").clear().type("new_schema");
+        cy.findByLabelText("New table name").clear().type("epic_table");
+        cy.button("Change target").click();
+      });
+      verifyAndCloseToast("Transform target updated");
+
+      cy.button("Merge").click();
+      H.modal().within(() => {
+        cy.findByText("Python transform").click();
+
+        Workspaces.getTransformTargetDiff().within(() => {
+          cy.findByText("Transform target").should("be.visible");
+          verifyNormalText("Schema A");
+          verifyRemovedText("transform_table_3");
+          verifyAddedText("epic_table");
+        });
+
+        Workspaces.getSourceTablesDiff().within(() => {
+          cy.findByText("Source tables").should("be.visible");
+
+          cy.log("1st table");
+          verifyRemovedText("foo");
+          verifyAddedText("animals");
+          verifyNormalText("Schema A");
+          cy.findAllByText("Animals")
+            .should("have.length", 3)
+            .eq(0)
+            .should("have.css", "text-decoration", "none")
+            .and("have.css", "color", COLOR_TEXT);
+
+          cy.log("2nd table");
+          verifyNormalText("bar");
+          verifyRemovedText("Schema B");
+          verifyAddedText("Schema C");
+          cy.findAllByText("Animals")
+            .should("have.length", 3)
+            .eq(1)
+            .should("have.css", "text-decoration", "none")
+            .and("have.css", "color", COLOR_TEXT);
+
+          cy.log("3rd table");
+          verifyAddedText("animals_1");
+          verifyAddedText("Schema D");
+          cy.findAllByText("Animals")
+            .should("have.length", 3)
+            .eq(2)
+            .should("have.css", "text-decoration", "none")
+            .and("have.css", "color", COLOR_SUCCESS);
+        });
+      });
+
+      cy.realPress("Escape");
+
+      cy.findAllByLabelText("Remove this table")
+        .should("have.length", 3)
+        .last()
+        .click();
+      cy.findAllByLabelText("Remove this table")
+        .should("have.length", 2)
+        .last()
+        .click();
+      Workspaces.getSaveTransformButton().click();
+
+      cy.button("Merge").click();
+      H.modal().within(() => {
+        cy.findByText("Python transform").click();
+
+        Workspaces.getSourceTablesDiff().within(() => {
+          cy.findByText("Source tables").should("be.visible");
+
+          cy.log("2nd table - removed");
+          verifyRemovedText("bar");
+          verifyRemovedText("Schema B");
+          cy.findAllByText("Animals")
+            .should("have.length", 2)
+            .eq(1)
+            .should("have.css", "text-decoration", "line-through")
+            .and("have.css", "color", COLOR_DANGER);
+        });
+      });
+    });
+  });
+
   describe("repros", () => {
     it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
       Workspaces.visitTransformListPage();
@@ -1542,7 +1690,6 @@ describe("scenarios > data studio > workspaces", () => {
         .should("be.visible");
     });
   });
-
 });
 
 function createWorkspace() {
@@ -1653,4 +1800,22 @@ function registerWorkspaceAliasName(name: string) {
     // Backend returns randomized name.
     cy.wrap(workspaceName).as(name);
   });
+}
+
+function verifyNormalText(text: string) {
+  cy.findByText(text)
+    .should("have.css", "text-decoration", "none")
+    .and("have.css", "color", COLOR_TEXT);
+}
+
+function verifyAddedText(text: string) {
+  cy.findByText(text)
+    .should("have.css", "text-decoration", "none")
+    .and("have.css", "color", COLOR_SUCCESS);
+}
+
+function verifyRemovedText(text: string) {
+  cy.findByText(text)
+    .should("have.css", "text-decoration", "line-through")
+    .and("have.css", "color", COLOR_DANGER);
 }

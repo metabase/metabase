@@ -130,4 +130,12 @@ export const Workspaces = {
   getTransformStatusDot(name: string | RegExp) {
     return cy.findByText(name).parent().findByTestId("status-dot");
   },
+
+  getTransformTargetDiff() {
+    return cy.findByTestId("transform-target-diff");
+  },
+
+  getSourceTablesDiff() {
+    return cy.findByTestId("source-tables-diff");
+  },
 };
