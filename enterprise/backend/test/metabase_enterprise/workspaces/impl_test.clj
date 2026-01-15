@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
@@ -302,3 +303,69 @@
         (testing "after marking not stale in DB, graph read reflects the change"
           (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
             (is (nil? (:execution_stale (first (:entities graph)))))))))))
+
+(deftest run-transform-stays-stale-when-ancestor-is-stale-test
+  (testing "Workspace transform stays stale after run if ancestor is stale"
+    ;; t1 queries from orders, outputs to t1
+    ;; t2 queries from t1 (t1's output), outputs to t2
+    ;; Dependency: t2 -> t1 (t2 depends on t1's output)
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          mp     (mt/metadata-provider)
+          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
+      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t1-ref
+                                                            :name            "Transform 1"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
+                                                            :execution_stale true}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t2-ref
+                                                            :name            "Transform 2"
+                                                            :source          {:type "query" :query query2}
+                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
+                                                            :execution_stale true}
+                     ;; Graph showing t2 depends on t1
+                     :model/WorkspaceGraph     _           {:workspace_id ws-id
+                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
+                                                                                          {:node-type :workspace-transform :id t2-ref}]
+                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
+                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
+                                                                           :inputs       []
+                                                                           :outputs      []}}]
+        (testing "sanity check: both transforms start as stale"
+          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))
+
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :end_time (java.time.Instant/now)
+                                       :message "Mocked execution"})]
+          (let [workspace    (t2/select-one :model/Workspace ws-id)
+                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t2-ref)]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (ws.impl/run-transform! workspace ws-transform))))
+
+        (testing "t1 is still stale (never ran)"
+          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t1-ref))))
+
+        (testing "t2 stays stale because its ancestor (t1) is stale"
+          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))
+
+        (t2/update! :model/WorkspaceTransform t1-ref {:execution_stale false})
+
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :end_time (java.time.Instant/now)
+                                       :message "Mocked execution"})]
+          (let [workspace    (t2/select-one :model/Workspace ws-id)
+                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t2-ref)]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (ws.impl/run-transform! workspace ws-transform))))
+
+        (testing "t2 becomes not stale after run when ancestor is also not stale"
+          (is (false? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
