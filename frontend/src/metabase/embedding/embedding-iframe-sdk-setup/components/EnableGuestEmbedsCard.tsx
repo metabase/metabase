@@ -5,15 +5,8 @@ import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-ifra
 import { EnableEmbeddingCard } from "./EnableEmbeddingCard";
 
 export const EnableGuestEmbedsCard = () => {
-  const {
-    isSimpleEmbedFeatureAvailable,
-    isGuestEmbedsEnabled,
-    isGuestEmbedsTermsAccepted,
-  } = useSdkIframeEmbedSetupContext();
-
-  if (isSimpleEmbedFeatureAvailable) {
-    return null;
-  }
+  const { isGuestEmbedsEnabled, isGuestEmbedsTermsAccepted } =
+    useSdkIframeEmbedSetupContext();
 
   // Not yet fetched
   if (isGuestEmbedsEnabled === undefined) {

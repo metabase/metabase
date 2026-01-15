@@ -162,6 +162,13 @@ export const SdkIframeEmbedSetupProvider = ({
       embeddingParameters,
     });
 
+  const isGuestEmbed = !!settings.isGuest;
+  const allowPreviewAndNavigation = isGuestEmbed
+    ? isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted
+    : isSimpleEmbedFeatureAvailable
+      ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
+      : false;
+
   const value: SdkIframeEmbedSetupContextType = {
     isSimpleEmbedFeatureAvailable,
     isSimpleEmbeddingEnabled,
@@ -177,6 +184,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isFirstStep,
     isLastStep,
     initialState,
+    allowPreviewAndNavigation,
     experience,
     resource,
     isError,
