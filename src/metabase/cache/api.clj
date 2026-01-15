@@ -132,11 +132,16 @@
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
   (check-cache-access (first model) id)
-  (let [sort-params (select-keys params [:sort_column :sort_direction])]
-    {:data   (cache-config/get-list model collection id (request/limit) (request/offset) sort-params)
-     :total  (cache-config/get-list-total model collection id)
-     :limit  (request/limit)
-     :offset (request/offset)}))
+  (let [sort-params (select-keys params [:sort_column :sort_direction])
+        limit       (request/limit)
+        offset      (request/offset)
+        data        (cache-config/get-list model collection id limit offset sort-params)]
+    (if limit
+      {:data   data
+       :total  (cache-config/get-list-total model collection id)
+       :limit  limit
+       :offset offset}
+      {:data data})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

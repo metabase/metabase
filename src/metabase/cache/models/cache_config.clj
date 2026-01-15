@@ -126,10 +126,12 @@
                  :collection       [:= :collection.id
                                     [:coalesce :report_card.collection_id
                                      :report_dashboard.collection_id]]]
-     :where     [:case
-                 [:= :model [:inline "question"]]  [:!= :report_card.id nil]
-                 [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
-                 :else                             true]}))
+     :where     [:and
+                 [:in :model models]
+                 [:case
+                  [:= :model [:inline "question"]]  [:!= :report_card.id nil]
+                  [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
+                  :else                             true]]}))
 
 (mu/defn get-list
   "Get a list of cache configurations for given `models` and a `collection`.
@@ -140,10 +142,12 @@
    sort-params :- [:maybe SortParams]]
   (let [{:keys [sort_column sort_direction]
          :or   {sort_column :name sort_direction :asc}} sort-params
+        ;; Only apply sorting when paginating (limit provided) and not querying by id
+        apply-sorting? (and limit (nil? id))
         query (cond-> (base-query models collection id)
-                true         (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
-                limit        (assoc :limit limit)
-                offset       (assoc :offset offset))]
+                apply-sorting? (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
+                limit          (assoc :limit limit)
+                offset         (assoc :offset offset))]
     (->> (t2/select :model/CacheConfig query)
          (mapv row->config))))
 
