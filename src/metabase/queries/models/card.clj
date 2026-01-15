@@ -633,7 +633,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes)))))
+      (assert-valid-type card))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
@@ -824,8 +824,9 @@
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
+        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
         populate-query-fields
+        (pre-update changes)
         maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
