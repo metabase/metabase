@@ -50,7 +50,7 @@ How you authenticate the embed determines how cool the embed can get. This page 
 
 ### 3. Customize your embed
 
-The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/plans) you're on. You'll see a live preview of the embed with your customizations.
+The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/pricing) you're on. You'll see a live preview of the embed with your customizations.
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 

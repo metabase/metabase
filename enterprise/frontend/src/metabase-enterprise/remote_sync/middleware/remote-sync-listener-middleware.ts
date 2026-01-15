@@ -6,11 +6,15 @@ import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { documentApi } from "metabase/api/document";
+import { fieldApi } from "metabase/api/field";
+import { segmentApi } from "metabase/api/segment";
+import { tableApi as coreTableApi } from "metabase/api/table";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
+import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type {
   Card,
   CardId,
@@ -295,6 +299,52 @@ remoteSyncListenerMiddleware.startListening({
     timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
     timelineEventApi.endpoints.updateTimelineEvent.matchFulfilled,
     timelineEventApi.endpoints.deleteTimelineEvent.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Enterprise table mutations (publish/unpublish/edit)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    enterpriseTableApi.endpoints.publishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.unpublishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.editTables.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Core table mutations (metadata edits)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    coreTableApi.endpoints.updateTable.matchFulfilled,
+    coreTableApi.endpoints.updateTableFieldsOrder.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Field mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    fieldApi.endpoints.updateField.matchFulfilled,
+    fieldApi.endpoints.createFieldDimension.matchFulfilled,
+    fieldApi.endpoints.deleteFieldDimension.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Segment mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    segmentApi.endpoints.createSegment.matchFulfilled,
+    segmentApi.endpoints.updateSegment.matchFulfilled,
   ),
   effect: async (_action, { dispatch }) => {
     invalidateRemoteSyncTags(dispatch);
