@@ -3,12 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { LogsViewer } from "metabase/admin/tools/components/Logs/LogsViewer";
-import {
-  formatTaskStatus,
-  getTaskStatusColor,
-} from "metabase/admin/tools/utils";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -28,8 +22,16 @@ import {
 } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
+import { SettingsSection } from "../../../components/SettingsSection";
+import {
+  formatTaskDetails,
+  formatTaskStatus,
+  getFilename,
+  getTaskStatusColor,
+} from "../../utils";
+import { LogsViewer } from "../Logs/LogsViewer";
+
 import S from "./TaskDetailsPage.module.css";
-import { formatTaskDetails, getFilename } from "./utils";
 
 type TaskDetailsPageProps = {
   params: { taskId: number };
@@ -85,17 +87,17 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             {formatTaskStatus(task.status)}
           </Badge>
         </Flex>
-        <Flex gap="md" align="baseline">
-          <Text fw="bold" w={120}>{t`Task run`}</Text>
-          {task.run_id !== null && (
+        {task.run_id !== null && (
+          <Flex gap="md" align="baseline">
+            <Text fw="bold" w={120}>{t`Task run`}</Text>
             <Anchor
               component={Link}
               to={`/admin/tools/tasks/runs/${task.run_id}`}
             >
               {t`Go to the corresponding run`}
             </Anchor>
-          )}
-        </Flex>
+          </Flex>
+        )}
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`DB Name`}</Text>
           <Text>

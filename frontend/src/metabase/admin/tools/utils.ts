@@ -63,3 +63,9 @@ export const getTaskStatusColor = (status: TaskStatus) =>
     .with("success", () => "success" as const)
     .with("failed", () => "error" as const)
     .otherwise(() => "text-primary" as const);
+
+export const getFilename = (task: Task | undefined) =>
+  task ? `task-${task.id}.json` : "task.json";
+
+export const formatTaskDetails = (task: Task | undefined): string =>
+  task ? JSON.stringify(task.task_details, null, 2) : "";

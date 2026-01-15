@@ -2,15 +2,28 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
+import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
 import type { TaskRunStatus } from "metabase-types/api";
 
-interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+type TaskRunStatusPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   value: TaskRunStatus | null;
   onChange: (value: TaskRunStatus | null) => void;
-}
+};
 
-export const TaskRunStatusPicker = ({ value, onChange, ...props }: Props) => {
-  const data = useMemo(() => getData(), []);
+export const TaskRunStatusPicker = ({
+  value,
+  onChange,
+  ...props
+}: TaskRunStatusPicker) => {
+  const data: SelectData<TaskRunStatus> = useMemo(
+    () => [
+      { label: t`Started`, value: "started" },
+      { label: t`Success`, value: "success" },
+      { label: t`Failed`, value: "failed" },
+      { label: t`Abandoned`, value: "abandoned" },
+    ],
+    [],
+  );
 
   return (
     <Select
@@ -32,15 +45,4 @@ export const TaskRunStatusPicker = ({ value, onChange, ...props }: Props) => {
       {...props}
     />
   );
-};
-
-const getData = () => {
-  const statusNames: { [T in TaskRunStatus]: { label: string; value: T } } = {
-    started: { label: t`Started`, value: "started" },
-    success: { label: t`Success`, value: "success" },
-    failed: { label: t`Failed`, value: "failed" },
-    abandoned: { label: t`Abandoned`, value: "abandoned" },
-  };
-
-  return Object.values(statusNames);
 };
