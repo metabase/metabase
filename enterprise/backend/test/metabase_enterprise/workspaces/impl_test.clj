@@ -107,160 +107,176 @@
           {}
           entities))
 
-(deftest mark-execution-stale-single-workspace-chain
-  (testing "marks all workspace-transform descendants when root transform is stale"
+;;;; Workspace-only transform tests
+;; These test staleness propagation through workspace transforms, which is the
+;; primary use case. The graph only contains workspace transforms and tables.
+
+(deftest mark-execution-stale-linear-chain-test
+  (testing "linear chain: stale root propagates to all descendants"
+    ;; t1* -> t2 -> t3 (root stale)
     (let [t1 (workspace-transform)
           t2 (workspace-transform)
           t3 (workspace-transform)
           graph {:entities [t1 t2 t3]
-                 :dependencies {t2 [t1] t3 [t2]}}
-          stale-entities #{t1}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{t1 t2 t3}} (stale->id (:entities result)))))))
+                 :dependencies {t2 [t1] t3 [t2]}}]
+      (is (= {true #{t1 t2 t3}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1})))))))
 
-(deftest mark-execution-stale-multiple-stale-roots
-  (testing "marks descendants of each independent stale root separately"
-    (let [r1 (workspace-transform)
-          c1 (workspace-transform)
-          r2 (workspace-transform)
-          c2 (workspace-transform)
-          graph {:entities [r1 c1 r2 c2]
-                 :dependencies {c1 [r1] c2 [r2]}}
-          stale-entities #{r1 r2}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{r1 c1 r2 c2}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-diamond-dependency
-  (testing "marks descendants reachable through multiple paths from stale root"
-    (let [r (workspace-transform)
-          l (workspace-transform)
-          rg (workspace-transform)
-          m (workspace-transform)
-          graph {:entities [r l rg m]
-                 :dependencies {l [r] rg [r] m [l rg]}}
-          stale-entities #{r}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{r l rg m}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-no-stale-transforms
-  (testing "marks no entities when stale sets are empty"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          graph {:entities [t1 t2]
-                 :dependencies {t2 [t1]}}
-          stale-entities #{}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {false #{t1 t2}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-leaf-node
-  (testing "marks stale node even when it's a leaf (has no children)"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          graph {:entities [t1 t2]
-                 :dependencies {t2 [t1]}}
-          stale-entities #{t2}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true  #{t2}
-              false #{t1}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-preserves-other-fields
-  (testing "Marked entities retain their original fields"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t1-with-name (assoc t1 :name "Transform 1")
-          t2-with-name (assoc t2 :name "Transform 2")
-          graph {:entities [t1-with-name t2-with-name]
-                 :dependencies {t2-with-name [t1-with-name]}}
-          stale-entities #{t1}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)
-          entity-map (reduce (fn [m e] (assoc m (select-keys e [:node-type :id]) e)) {} (:entities result))]
-      (let [t1-result (entity-map t1)
-            t2-result (entity-map t2)]
-        (is (= :workspace-transform (:node-type t2-result)))
-        (is (= (:id t2) (:id t2-result)))
-        (is (= "Transform 2" (:name t2-result)))
-        (is (= {true #{t1 t2}} (stale->id (:entities result))))))))
-
-(deftest mark-execution-stale-depends-on-stale-global
-  ;; Covers Case 1 & 2 from staleness discussion: https://github.com/metabase/metabase/pull/67974
-  ;; Case 1: (x1) -> x2* -> (x3) -- enclosed external transform is locally stale
-  ;; Case 2: x1* -> (x2)         -- direct external ancestor is locally stale
-  ;; (notation: (x)=workspace transform, x=external transform, *=stale)
-  (testing "workspace-transforms are marked stale if they depend on stale global-transforms"
-    (let [g (global-transform)
-          ws1 (workspace-transform)
-          ws2 (workspace-transform)
-          ;; Graph: g* -> ws1 -> ws2 (g is stale, ws1 and ws2 depend on it)
-          graph {:entities [g ws1 ws2]
-                 :dependencies {ws1 [g] ws2 [ws1]}}
-          stale-entities #{g}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      ;; ws1 and ws2 should be marked stale (downstream of stale g)
-      ;; g stays false (external transforms don't get marked in graph)
-      (is (= {true #{ws1 ws2} false #{g}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-mixed-workspace-and-global-parents
-  (testing "workspace-transform with both workspace and global parents marks if either parent is stale"
-    (let [g1 (global-transform)
-          g2 (global-transform)
-          ws (workspace-transform)
-          graph {:entities [g1 g2 ws]
-                 :dependencies {ws [g1 g2]}}
-          stale-entities #{g1}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{ws} false #{g1 g2}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-deep-chain
-  (testing "marks all descendants in a deep chain (5 levels)"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          t4 (workspace-transform)
-          t5 (workspace-transform)
-          graph {:entities [t1 t2 t3 t4 t5]
-                 :dependencies {t2 [t1] t3 [t2] t4 [t3] t5 [t4]}}
-          stale-entities #{t1}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{t1 t2 t3 t4 t5}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-complex-convergence
-  (testing "marks all descendants in complex convergence pattern with multiple paths"
-    (let [r1 (workspace-transform)
-          r2 (workspace-transform)
-          a (workspace-transform)
-          b (workspace-transform)
-          c (workspace-transform)
-          d (workspace-transform)
-          m (workspace-transform)
-          graph {:entities [r1 r2 a b c d m]
-                 :dependencies {a [r1] b [r2] c [r1] d [r2] m [a b c d]}}
-          stale-entities #{r1 r2}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{r1 r2 a b c d m}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-only-global-transforms
-  (testing "graph with only global (external) transforms marks none as stale"
-    (let [g1 (global-transform)
-          g2 (global-transform)
-          g3 (global-transform)
-          graph {:entities [g1 g2 g3]
-                 :dependencies {g2 [g1] g3 [g2]}}
-          stale-entities #{g1}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {false #{g1 g2 g3}} (stale->id (:entities result)))))))
-
-(deftest mark-execution-stale-stale-entity-as-non-root
-  (testing "stale entities that are descendants (not roots) still mark their descendants"
+  (testing "linear chain: stale middle propagates only to descendants"
+    ;; t1 -> t2* -> t3 -> t4 (middle stale)
     (let [t1 (workspace-transform)
           t2 (workspace-transform)
           t3 (workspace-transform)
           t4 (workspace-transform)
           graph {:entities [t1 t2 t3 t4]
-                 :dependencies {t2 [t1] t3 [t2] t4 [t3]}}
-          ;; Mark t2 as stale (not the root), should mark t3 and t4
-          stale-entities #{t2}
-          result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{t2 t3 t4} false #{t1}} (stale->id (:entities result)))))))
+                 :dependencies {t2 [t1] t3 [t2] t4 [t3]}}]
+      (is (= {true #{t2 t3 t4} false #{t1}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2})))))))
+
+  (testing "linear chain: stale leaf marks only itself"
+    ;; t1 -> t2* (leaf stale)
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          graph {:entities [t1 t2]
+                 :dependencies {t2 [t1]}}]
+      (is (= {true #{t2} false #{t1}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2}))))))))
+
+(deftest mark-execution-stale-diamond-test
+  (testing "diamond: stale root propagates through all paths"
+    ;;     t1*
+    ;;    /    \
+    ;;   t2    t3
+    ;;    \    /
+    ;;      t4
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          t3 (workspace-transform)
+          t4 (workspace-transform)
+          graph {:entities [t1 t2 t3 t4]
+                 :dependencies {t2 [t1] t3 [t1] t4 [t2 t3]}}]
+      (is (= {true #{t1 t2 t3 t4}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1})))))))
+
+  (testing "diamond: stale on one branch propagates only through that path"
+    ;;     t1
+    ;;    /    \
+    ;;   t2*   t3
+    ;;    \    /
+    ;;      t4
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          t3 (workspace-transform)
+          t4 (workspace-transform)
+          graph {:entities [t1 t2 t3 t4]
+                 :dependencies {t2 [t1] t3 [t1] t4 [t2 t3]}}]
+      (is (= {true #{t2 t4} false #{t1 t3}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2}))))))))
+
+(deftest mark-execution-stale-independent-subgraphs-test
+  (testing "independent subgraphs: staleness doesn't cross between them"
+    ;; r1* -> c1    r2 -> c2 (only first subgraph stale)
+    (let [r1 (workspace-transform)
+          c1 (workspace-transform)
+          r2 (workspace-transform)
+          c2 (workspace-transform)
+          graph {:entities [r1 c1 r2 c2]
+                 :dependencies {c1 [r1] c2 [r2]}}]
+      (is (= {true #{r1 c1} false #{r2 c2}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{r1})))))))
+
+  (testing "independent subgraphs: multiple stale roots in different subgraphs"
+    ;; r1* -> c1    r2* -> c2 (both subgraphs stale)
+    (let [r1 (workspace-transform)
+          c1 (workspace-transform)
+          r2 (workspace-transform)
+          c2 (workspace-transform)
+          graph {:entities [r1 c1 r2 c2]
+                 :dependencies {c1 [r1] c2 [r2]}}]
+      (is (= {true #{r1 c1 r2 c2}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{r1 r2}))))))))
+
+(deftest mark-execution-stale-wide-graph-test
+  (testing "wide graph: stale root propagates to all direct children"
+    ;;        t1*
+    ;;    / | | | \
+    ;;   t2 t3 t4 t5 t6
+    (let [t1 (workspace-transform)
+          children (repeatedly 5 workspace-transform)
+          graph {:entities (into [t1] children)
+                 :dependencies (zipmap children (repeat [t1]))}]
+      (is (= {true (into #{t1} children)}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1}))))))))
+
+(deftest mark-execution-stale-multiple-stale-in-chain-test
+  (testing "multiple stale nodes in same chain"
+    ;; t1* -> t2* -> t3 -> t4 (both root and middle stale)
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          t3 (workspace-transform)
+          t4 (workspace-transform)
+          graph {:entities [t1 t2 t3 t4]
+                 :dependencies {t2 [t1] t3 [t2] t4 [t3]}}]
+      (is (= {true #{t1 t2 t3 t4}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1 t2}))))))))
+
+(deftest mark-execution-stale-edge-cases-test
+  (testing "empty stale set marks nothing"
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          graph {:entities [t1 t2]
+                 :dependencies {t2 [t1]}}]
+      (is (= {false #{t1 t2}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{})))))))
+
+  (testing "preserves other entity fields"
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          t1-with-meta (assoc t1 :name "Transform 1" :extra :data)
+          t2-with-meta (assoc t2 :name "Transform 2")
+          graph {:entities [t1-with-meta t2-with-meta]
+                 :dependencies {t2-with-meta [t1-with-meta]}}
+          result (#'ws.impl/mark-execution-stale graph #{t1})
+          entity-map (into {} (map (juxt #(select-keys % [:node-type :id]) identity)) (:entities result))]
+      (is (= "Transform 1" (:name (entity-map t1))))
+      (is (= :data (:extra (entity-map t1))))
+      (is (= "Transform 2" (:name (entity-map t2)))))))
+
+;;;; External (global) transform tests
+;; NOTE: Currently, external transforms only appear in the graph if they are
+;; "enclosed" - i.e., they sit between workspace transforms in the dependency chain.
+;; External transforms that produce input tables (direct ancestors) are NOT included
+;; in the graph - only the table itself appears as an input.
+;;
+;; These tests verify that IF external transforms are in the graph (enclosed case),
+;; staleness propagates correctly. They also future-proof for when we might include
+;; direct ancestor transforms in the graph.
+;;
+;; See: https://github.com/metabase/metabase/pull/67974 for staleness discussion.
+
+(deftest mark-execution-stale-with-external-transforms-test
+  (testing "enclosed external transform: staleness propagates through to workspace transforms"
+    ;; (ws1) -> ext* -> (ws2)  where ext is enclosed and stale
+    ;; This is Case 1 from the staleness discussion
+    (let [ws1 (workspace-transform)
+          ext (global-transform)
+          ws2 (workspace-transform)
+          graph {:entities [ws1 ext ws2]
+                 :dependencies {ext [ws1] ws2 [ext]}}]
+      ;; ws2 should be marked stale (downstream of stale ext)
+      ;; ext itself is not marked (only workspace-transforms get marked)
+      (is (= {true #{ws2} false #{ws1 ext}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{ext})))))))
+
+  (testing "workspace transform with mixed parents: stale if any parent is stale"
+    ;; ws1 depends on both ext* (stale) and ws2 (not stale)
+    (let [ext (global-transform)
+          ws1 (workspace-transform)
+          ws2 (workspace-transform)
+          graph {:entities [ext ws1 ws2]
+                 :dependencies {ws1 [ext ws2]}}]
+      (is (= {true #{ws1} false #{ext ws2}}
+             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{ext}))))))))
 
 (deftest staleness-recomputed-on-graph-read
   (testing "Graph staleness reflects current DB state, not cached state"
@@ -286,25 +302,3 @@
         (testing "after marking not stale in DB, graph read reflects the change"
           (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
             (is (nil? (:execution_stale (first (:entities graph)))))))))))
-
-;;; Case 3 from staleness discussion - NOT YET COVERED
-;;; See: https://github.com/metabase/metabase/pull/67974
-#_(deftest mark-execution-stale-indirect-external-ancestor
-    ;; Case 3: x1* -> x2 -> (x3) -- indirect external ancestor is locally stale
-    ;; TODO: This test is expected to fail until we track global staleness on external transforms
-    ;; or include all ancestors in the graph.
-    ;; Currently, if x2 is not locally stale, we don't know that x1 (its ancestor) is stale.
-    (testing "workspace transform stale when indirect external ancestor is stale"
-      (let [ext1 (global-transform 100)
-            ext2 (global-transform 200)
-            ws (workspace-transform "ws1")
-            ;; Graph: ext1* -> ext2 -> ws (ext1 is stale, ext2 is NOT, ws depends on ext2)
-            graph {:entities     [ext1 ext2 ws]
-                   :dependencies {ext2 #{ext1}
-                                  ws   #{ext2}}}
-            ;; Only ext1 is locally stale; ext2 is NOT in stale-entities
-            stale-entities #{ext1}
-            result (#'ws.impl/mark-execution-stale graph stale-entities)]
-        ;; ws SHOULD be marked stale because its indirect ancestor (ext1) is stale
-        ;; But current implementation won't catch this since ext2 is not locally stale
-        (is (= {true #{ws} false #{ext1 ext2}} (stale->id (:entities result)))))))

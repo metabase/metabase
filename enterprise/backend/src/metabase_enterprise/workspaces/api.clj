@@ -694,7 +694,7 @@
    [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
-(def ^:private workspace-transform-alias {:target_stale :stale})
+(def ^:private workspace-transform-alias {:target_stale :execution_stale})
 
 (defn- attach-isolated-target [{:keys [workspace_id ref_id] :as ws-transform}]
   (let [{:keys [db_id isolated_schema isolated_table]}
