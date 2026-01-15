@@ -69,6 +69,8 @@ export function ExplicitSize<T>({
 
       static contextType = ExplicitSizeRefreshModeContext;
 
+      declare context: React.ContextType<typeof ExplicitSizeRefreshModeContext>;
+
       state: ExplicitSizeState = {
         width: null,
         height: null,
@@ -155,11 +157,9 @@ export function ExplicitSize<T>({
           (isCypressActive || this._printMediaQuery?.matches)
         ) {
           return "none";
-        } else if (typeof refreshMode === "function") {
-          return refreshMode(this.props);
-        } else {
-          return refreshMode;
         }
+
+        return calculatedRefreshMode;
       };
 
       _updateRefreshMode = () => {

@@ -82,7 +82,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
