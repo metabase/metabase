@@ -73,5 +73,8 @@
                                                   :finish_reason (:finishReason v)
                                                   :usage         (-> (:usage v)
                                                                      (dissoc :promptTokens :completionTokens))})
-                                               block))))))
+                                               block)
+                          ;; START_STEP and FINISH_STEP are metadata, not stored as messages
+                          (:START_STEP
+                           :FINISH_STEP)  [])))))
         lines))
