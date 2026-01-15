@@ -93,6 +93,110 @@
            (u/prog1 result
              (vswap! acc conj chunk))))))))
 
+;;; AI SDK v4 Line Protocol Output
+;;
+;; Converts internal parts to the AI SDK v4 line protocol format used by the Python ai-service.
+;; Format examples:
+;;   0:"text content"           - Text (just the string, JSON encoded)
+;;   2:{"type":"state",...}     - Data parts
+;;   3:"error message"          - Errors
+;;   9:{"toolCallId":...}       - Tool calls
+;;   a:{"toolCallId":...}       - Tool results
+;;   d:{"finishReason":...}     - Finish message
+;;   e:{...}                    - Finish step
+;;   f:{"messageId":...}        - Start step
+
+(defn format-text-line
+  "Format text part as AI SDK line: 0:\"content\""
+  [{:keys [text]}]
+  (str "0:" (json/encode text)))
+
+(defn format-data-line
+  "Format data part as AI SDK line: 2:{\"type\":...,\"version\":1,\"value\":...}"
+  [{:keys [data-type data] :as part}]
+  ;; Support both old format (data-type + data) and new format (data map with type inside)
+  (let [type-str (or data-type
+                     (get data :type)
+                     "data")
+        value (or data (dissoc part :type :id))]
+    (str "2:" (json/encode {:type (if (keyword? type-str) (name type-str) type-str)
+                            :version 1
+                            :value value}))))
+
+(defn format-error-line
+  "Format error part as AI SDK line: 3:\"error message\""
+  [{:keys [error]}]
+  (str "3:" (json/encode (or (:message error) (str error)))))
+
+(defn format-tool-call-line
+  "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
+  [{:keys [id function arguments]}]
+  (str "9:" (json/encode {:toolCallId id
+                          :toolName function
+                          :args (if (string? arguments)
+                                  arguments
+                                  (json/encode arguments))})))
+
+(defn format-tool-result-line
+  "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}"
+  [{:keys [id result error]}]
+  (str "a:" (json/encode (cond-> {:toolCallId id}
+                           result (assoc :result (if (string? result)
+                                                   result
+                                                   (json/encode result)))
+                           error (assoc :error (json/encode error))))))
+
+(defn format-finish-line
+  "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
+  [accumulated-usage]
+  (str "d:" (json/encode {:finishReason "stop"
+                          :usage (or accumulated-usage {})})))
+
+(defn format-start-line
+  "Format start part as AI SDK line: f:{\"messageId\":...}"
+  [{:keys [id messageId]}]
+  (str "f:" (json/encode {:messageId (or messageId id)})))
+
+(defn aisdk-line-xf
+  "Transducer that converts internal parts to AI SDK v4 line protocol format.
+  Returns strings ready to be written to the output stream (without newlines).
+
+  Input types and their output:
+    :text       -> 0:\"content\"
+    :data       -> 2:{\"type\":...,\"version\":1,\"value\":...}
+    :error      -> 3:\"message\"
+    :tool-input -> 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}
+    :tool-output -> a:{\"toolCallId\":...,\"result\":...}
+    :start      -> f:{\"messageId\":...}
+    :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
+    :usage      -> (accumulated into finish message)"
+  [rf]
+  (let [usage-acc (volatile! {})]
+    (fn
+      ([] (rf))
+      ([result]
+       ;; Emit finish message with accumulated usage at the end
+       (rf (rf result (format-finish-line @usage-acc))))
+      ([result part]
+       (case (:type part)
+         :text        (rf result (format-text-line part))
+         :data        (rf result (format-data-line part))
+         :error       (rf result (format-error-line part))
+         :tool-input  (rf result (format-tool-call-line part))
+         :tool-output (rf result (format-tool-result-line part))
+         :start       (rf result (format-start-line part))
+         :finish      result ;; Don't emit here, we emit in completion arity
+         :usage       (do
+                        ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
+                        (let [{:keys [usage id]} part
+                              model (or id "claude-sonnet-4-5-20250929")]
+                          (vswap! usage-acc assoc model
+                                  {:prompt (:promptTokens usage 0)
+                                   :completion (:completionTokens usage 0)}))
+                        result)
+         ;; Pass through unknown types as data
+         (rf result (format-data-line part)))))))
+
 ;;; Fancy tool executor guy
 
 (defn tool-executor-rff
