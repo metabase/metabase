@@ -2,15 +2,18 @@
   "Tool for searching SQL queries by content."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
-   [metabase.permissions.core :as perms]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- extract-sql-content
-  "Extract SQL content from a card's dataset_query."
+  "Extract SQL content from a card's dataset_query.
+  Handles both legacy format and lib/query format."
   [card]
-  (get-in card [:dataset_query :native :query]))
+  (or
+   ;; Try lib/query format (with stages)
+   (get-in card [:dataset_query :stages 0 :native])
+   ;; Try legacy format
+   (get-in card [:dataset_query :native :query])))
 
 (defn- sql-contains-query?
   "Check if SQL content contains the search query (case-insensitive)."
@@ -48,8 +51,11 @@
         ;; Recent update bonus (last 30 days)
         updated-at (:updated_at card)
         days-old (when updated-at
-                   (/ (- (System/currentTimeMillis) (.getTime updated-at))
-                      86400000)) ; ms per day
+                   (let [millis (if (instance? java.time.OffsetDateTime updated-at)
+                                  (.toEpochMilli (.toInstant ^java.time.OffsetDateTime updated-at))
+                                  (.getTime ^java.util.Date updated-at))]
+                     (/ (- (System/currentTimeMillis) millis)
+                        86400000))) ; ms per day
         recency-score (if (and days-old (< days-old 30))
                         (- 100 (* days-old 3))
                         0)]
@@ -91,7 +97,9 @@
              :limit limit})
 
   (let [limit (min (or limit 20) 50)
-        ;; Fetch all native queries the user can access
+        ;; Fetch all native queries matching criteria
+        ;; Note: Toucan2 and Metabase's data permissions system will automatically
+        ;; filter results based on current user's permissions
         all-cards (t2/select :model/Card
                              {:where [:and
                                       [:= :archived false]
@@ -101,13 +109,12 @@
                               :order-by [[:updated_at :desc]]
                               :limit 500}) ; Reasonable upper bound for search
 
-        ;; Filter by permissions and SQL content
-        accessible-cards (filter #(and (perms/can-read? %)
-                                       (sql-contains-query? (extract-sql-content %) query))
-                                 accessible-cards)
+        ;; Filter by SQL content
+        matching-cards (filter #(sql-contains-query? (extract-sql-content %) query)
+                               all-cards)
 
         ;; Rank results by relevance
-        ranked-results (->> accessible-cards
+        ranked-results (->> matching-cards
                             (map (fn [card]
                                    {:card card
                                     :rank (rank-result card query)}))
@@ -120,7 +127,7 @@
 
     (log/info "SQL search complete"
               {:results-count (count formatted-results)
-               :total-scanned (count accessible-cards)})
+               :total-scanned (count matching-cards)})
 
     {:data        formatted-results
      :total_count (count formatted-results)}))

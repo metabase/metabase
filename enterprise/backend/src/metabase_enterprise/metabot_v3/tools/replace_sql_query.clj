@@ -37,15 +37,21 @@
   (log/info "Replacing SQL query" {:query-id query-id :sql-length (count sql)})
 
   ;; Get and validate card
-  (let [card (get-query-card query-id)]
+  (let [card (get-query-card query-id)
+        ;; Check if this is a SQL query (handle both lib/query format and legacy format)
+        is-sql? (or (get-in card [:dataset_query :stages 0 :native])
+                    (get-in card [:dataset_query :native :query]))]
 
-    (when-not (get-in card [:dataset_query :native :query])
+    (when-not is-sql?
       (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
                       {:agent-error? true
                        :query-id query-id})))
 
-    ;; Replace the SQL content
-    (let [updates (cond-> {:dataset_query (assoc-in (:dataset_query card) [:native :query] sql)}
+    ;; Replace the SQL content - handle both formats
+    (let [updated-query (if (get-in card [:dataset_query :stages])
+                          (assoc-in (:dataset_query card) [:stages 0 :native] sql)
+                          (assoc-in (:dataset_query card) [:native :query] sql))
+          updates (cond-> {:dataset_query updated-query}
                     name (assoc :name name)
                     description (assoc :description description))]
 
