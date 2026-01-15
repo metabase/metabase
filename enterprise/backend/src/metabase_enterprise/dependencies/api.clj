@@ -600,7 +600,11 @@
                                  :from [:dependency]
                                  :where [:and
                                          [:= :dependency.to_entity_id :entity.id]
-                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]]}
+                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]
+                                         (visible-entities-filter-clause
+                                          :dependency.from_entity_type
+                                          :dependency.from_entity_id
+                                          {:include-archived-items include-archived-items})]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
