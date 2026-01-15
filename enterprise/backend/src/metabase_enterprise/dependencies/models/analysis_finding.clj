@@ -22,9 +22,8 @@
 
   Version history:
   - 3: Initial version
-  - 4: Added source entity tracking in analysis_finding_error table
-  - 5: Removed finding_details column (now reads from analysis_finding_error)"
-  5)
+  - 4: Added source entity tracking in analysis_finding_error table"
+  4)
 
 (defn- error->finding-error-row
   "Convert an error from find-bad-refs-with-source to a row for analysis_finding_error table."
