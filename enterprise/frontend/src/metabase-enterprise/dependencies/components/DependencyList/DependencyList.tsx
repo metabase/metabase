@@ -43,11 +43,11 @@ export function DependencyList({
       : useListUnreferencedGraphNodesQuery;
 
   const {
-    page = 0,
     query,
     groupTypes = getAvailableGroupTypes(mode),
-    sorting,
     includePersonalCollections = true,
+    sorting,
+    page = 0,
   } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
