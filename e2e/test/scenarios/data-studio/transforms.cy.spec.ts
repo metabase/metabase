@@ -234,7 +234,7 @@ describe("scenarios > admin > transforms", () => {
           event_detail: "python",
         });
 
-        cy.findByTestId("python-data-picker")
+        cy.findByTestId("python-transform-top-bar")
           .findByText("Writable Postgres12")
           .click();
 
@@ -246,7 +246,7 @@ describe("scenarios > admin > transforms", () => {
         cy.log("Select database");
         H.popover().findByText(DB_NAME).click();
 
-        getPythonDataPicker().button("Select a table…").click();
+        getPythonDataPicker().findByText("Select a table…").click();
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {
@@ -1611,10 +1611,6 @@ LIMIT
         cy.log("results panel should be visible in edit mode");
         cy.findByTestId("python-results").should("be.visible");
 
-        cy.log("library buttons should be visible in edit mode");
-        cy.findByLabelText("Import common library").should("be.visible");
-        cy.findByLabelText("Edit common library").should("be.visible");
-
         cy.log("Edit definition button should be hidden in edit mode");
         H.DataStudio.Transforms.editDefinition().should("not.exist");
       },
@@ -1980,8 +1976,12 @@ LIMIT
         cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
 
+        cy.log("import common should be included by default");
+        H.PythonEditor.value().should("contain", "import common");
+
         H.PythonEditor.clear().type(
           dedent`
+            import common
             import pandas as pd
 
             def transform():
@@ -1989,9 +1989,6 @@ LIMIT
           `,
           { allowFastSet: true },
         );
-
-        getQueryEditor().findByLabelText("Import common library").click();
-        H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
@@ -3285,7 +3282,9 @@ describe("scenarios > admin > transforms", () => {
     cy.button("Create a transform").click();
     H.popover().findByText("Python script").click();
 
-    getPythonDataPicker().findByText("Select a database").should("be.visible");
+    cy.findByTestId("python-transform-top-bar")
+      .findByText("Select a database")
+      .should("be.visible");
   });
 });
 
