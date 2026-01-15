@@ -18,8 +18,12 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private orphan-threshold-hours
-  "Runs and tasks with no heartbeat for this many hours are marked as orphaned."
+  "Runs with no heartbeat for this many hours are marked as orphaned."
   1)
+
+(def ^:private max-run-duration-hours
+  "Runs older than this many hours are marked as orphaned regardless of heartbeat."
+  24)
 
 (defn send-heartbeat!
   "Update updated_at for all :started runs belonging to this process."
@@ -33,13 +37,19 @@
     updated))
 
 (defn mark-orphaned-runs!
-  "Mark runs as :abandoned if updated_at is older than threshold.
+  "Mark runs as :abandoned if:
+   1. updated_at is older than threshold (no heartbeat), OR
+   2. started_at is older than max run duration (stuck run)
    Returns the set of run IDs that were marked as orphaned."
   []
-  (let [cutoff           (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
+  (let [heartbeat-cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- orphan-threshold-hours) :hour)
+        duration-cutoff  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- max-run-duration-hours) :hour)
         orphaned-run-ids (t2/select-fn-set :id :model/TaskRun
-                                           :status     :started
-                                           :updated_at [:< cutoff])]
+                                           {:where [:and
+                                                    [:= :status "started"]
+                                                    [:or
+                                                     [:< :updated_at heartbeat-cutoff]
+                                                     [:< :started_at duration-cutoff]]]})]
     (when (seq orphaned-run-ids)
       (t2/update! :model/TaskRun {:id [:in orphaned-run-ids]}
                   {:status   :abandoned
