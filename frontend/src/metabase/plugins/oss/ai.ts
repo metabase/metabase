@@ -157,17 +157,15 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
-  useMetabotSQLSuggestion: () => ({
-    source: undefined,
-    isLoading: false,
-    generate: async () => {},
-    error: undefined,
-    cancelRequest: () => {},
-    clear: () => {},
-    reject: () => {},
-    reset: () => {},
-    suggestionModels: [],
-  }),
+  useMetabotSQLSuggestion: (databaseId, bufferId) => {
+    const {
+      useMetabotSQLSuggestion,
+      // lazy require to avoid loading metabase/api and its cljs dependencies at
+      // module init time. without this the jest unit tests will break.
+      /* eslint-disable @typescript-eslint/no-var-requires */
+    } = require("metabase/metabot/hooks/use-metabot-sql-suggestion");
+    return useMetabotSQLSuggestion(databaseId, bufferId);
+  },
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

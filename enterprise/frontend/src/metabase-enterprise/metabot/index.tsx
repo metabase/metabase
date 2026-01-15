@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useMetabotSQLSuggestion as useMetabotSQLSuggestionOSS } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -39,18 +38,12 @@ PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
  * Initialize metabot plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
-  // setting the OSS value within the default implementation changes import order
-  // in a way that breaks the jest module system and prevents running unit tests (cljs gets imported twice)
-  if (hasPremiumFeature("metabot_v3")) {
-    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionEE;
-  } else {
-    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionOSS;
-  }
-
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
+
+    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionEE;
 
     PLUGIN_METABOT.getAdminPaths = () => [
       {
