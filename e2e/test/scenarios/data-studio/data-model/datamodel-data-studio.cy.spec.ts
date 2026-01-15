@@ -19,7 +19,6 @@ const {
   FEEDBACK_ID,
   ORDERS,
   ORDERS_ID,
-  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS,
@@ -27,9 +26,6 @@ const {
 } = SAMPLE_DATABASE;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
-
-const CUSTOM_MAPPING_ERROR =
-  "You need unrestricted data access on this table to map custom display values.";
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -1132,8 +1128,10 @@ describe("scenarios > data studio > datamodel", () => {
         cy.log("verify changes in data reference as admin");
         cy.signInAsAdmin();
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        cy.findByText("Analyst Orders").should("be.visible");
-        cy.findByText("Description by analyst").should("be.visible");
+        cy.get("main").within(() => {
+          cy.findByText("Analyst Orders").should("be.visible");
+          cy.findByText("Description by analyst").should("be.visible");
+        });
 
         cy.log("verify changes in question picker as normal user");
         cy.signInAsNormalUser();
@@ -1312,8 +1310,10 @@ describe("scenarios > data studio > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        cy.findByText("Total").should("be.visible");
-        cy.findByText("Analyst total description").should("be.visible");
+        cy.get("main").within(() => {
+          cy.findByText("Total").should("be.visible");
+          cy.findByText("Analyst total description").should("be.visible");
+        });
 
         cy.log("verify field changes in table visualization as normal user");
         cy.signInAsNormalUser();
@@ -3757,14 +3757,7 @@ function clickAway() {
 }
 
 function setUserAsAnalyst(userId: number) {
-  cy.request("POST", "/api/permissions/group", { name: "analysts" }).then(
-    ({ body: group }) => {
-      cy.request("POST", "/api/permissions/membership", {
-        group_id: group.id,
-        user_id: userId,
-      });
-    },
-  );
+  cy.request("PUT", `/api/user/${userId}`, { is_data_analyst: true });
 }
 
 type TableSummary = {
