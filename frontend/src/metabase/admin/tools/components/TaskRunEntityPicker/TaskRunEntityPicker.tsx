@@ -1,22 +1,24 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListTaskRunEntitiesQuery } from "metabase/api";
+import { skipToken, useListTaskRunEntitiesQuery } from "metabase/api";
 import { Loader, Select, type SelectProps, Tooltip } from "metabase/ui";
-import type { RunEntity, TaskRunType } from "metabase-types/api";
+import type { TaskRunType } from "metabase-types/api";
 
-export type EntityValue = {
-  entityType: RunEntity["entity_type"];
-  entityId: RunEntity["entity_id"];
-} | null;
+import type { EntityValue } from "./types";
+import {
+  convertEntitiesToSelectOptions,
+  parseValue,
+  serializeValue,
+} from "./utils";
 
 type TaskRunEntityPickerProps = Omit<
   SelectProps,
   "data" | "value" | "onChange"
 > & {
   runType: TaskRunType | null;
-  value: EntityValue;
-  onChange: (value: EntityValue) => void;
+  value: EntityValue | null;
+  onChange: (value: EntityValue | null) => void;
 };
 
 export const TaskRunEntityPicker = ({
@@ -26,15 +28,15 @@ export const TaskRunEntityPicker = ({
   ...props
 }: TaskRunEntityPickerProps) => {
   const { data: entities, isLoading } = useListTaskRunEntitiesQuery(
-    { "run-type": runType! },
-    { skip: !runType },
+    runType ? { "run-type": runType } : skipToken,
   );
 
-  const data = useMemo(() => getData(entities), [entities]);
+  const data = useMemo(
+    () => convertEntitiesToSelectOptions(entities),
+    [entities],
+  );
 
-  const serializedValue = value
-    ? serializeValue(value.entityType, value.entityId)
-    : null;
+  const serializedValue = value ? serializeValue(value) : null;
 
   const handleChange = (serialized: string | null) => {
     if (!serialized) {
@@ -81,35 +83,3 @@ export const TaskRunEntityPicker = ({
 
   return select;
 };
-
-function getData(entities?: RunEntity[]) {
-  if (!entities) {
-    return [];
-  }
-
-  return entities.map((entity) => ({
-    label: entity.entity_name ?? `${entity.entity_type} ${entity.entity_id}`,
-    value: serializeValue(entity.entity_type, entity.entity_id),
-  }));
-}
-
-function serializeValue(
-  entityType: RunEntity["entity_type"],
-  entityId: RunEntity["entity_id"],
-): string {
-  return `${entityType}:${entityId}`;
-}
-
-function parseValue(serialized: string): EntityValue {
-  const [entityType, entityIdStr] = serialized.split(":");
-  const entityId = parseInt(entityIdStr, 10);
-
-  if (!entityType || !Number.isFinite(entityId)) {
-    return null;
-  }
-
-  return {
-    entityType: entityType as RunEntity["entity_type"],
-    entityId,
-  };
-}

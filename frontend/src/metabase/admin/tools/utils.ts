@@ -5,8 +5,10 @@ import * as Urls from "metabase/lib/urls";
 import type {
   Task,
   TaskRun,
+  TaskRunEntityType,
   TaskRunExtended,
   TaskRunStatus,
+  TaskRunType,
   TaskStatus,
 } from "metabase-types/api";
 
@@ -86,3 +88,20 @@ export const renderTaskRunCounters = ({
   const failed = t`Failed`;
   return `${task_count} (${success}: ${success_count} / ${failed}: ${failed_count})`;
 };
+
+export const guardTaskRunRunType = (value: string): value is TaskRunType =>
+  (
+    ["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[]
+  ).includes(value as TaskRunType);
+
+export const guardTaskRunEntityType = (
+  value: string,
+): value is TaskRunEntityType =>
+  (["database", "card", "dashboard"] satisfies TaskRunEntityType[]).includes(
+    value as TaskRunEntityType,
+  );
+
+export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
+  (
+    ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
+  ).includes(value as TaskRunStatus);

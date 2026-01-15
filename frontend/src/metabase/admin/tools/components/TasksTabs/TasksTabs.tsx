@@ -2,29 +2,18 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "../../../components/SettingsSection";
+
 type TabConfig = {
   value: string;
   label: string;
-};
-
-const BASE_PATH = Urls.adminToolsTasksBase();
-
-const getActiveTab = (
-  tabs: TabConfig[],
-  pathname: string,
-): string | undefined => {
-  const relativePath = pathname.replace(BASE_PATH, "");
-  const segments = relativePath.split("/").filter(Boolean);
-  const firstSegment = segments[0];
-  return tabs.find((tab) => tab.value === firstSegment)?.value;
 };
 
 type TasksTabsProps = WithRouterProps & {
@@ -33,16 +22,17 @@ type TasksTabsProps = WithRouterProps & {
 
 const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
   const tabs: TabConfig[] = [
-    { value: "list", label: t`Tasks` },
-    { value: "runs", label: t`Runs` },
+    { value: Urls.adminToolsTasksList(), label: t`Tasks` },
+    { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
   ];
   const DEFAULT_TAB = tabs[0].value;
   const dispatch = useDispatch();
-  const activeTab = getActiveTab(tabs, location.pathname) ?? DEFAULT_TAB;
+  const activeTab =
+    tabs.find(({ value }) => value === location.pathname)?.value ?? DEFAULT_TAB;
 
   const handleTabChange = (value: string | null) => {
     if (value) {
-      dispatch(push(`${BASE_PATH}/${value}`));
+      dispatch(push(value));
     }
   };
 

@@ -2,7 +2,6 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { TaskRunStatusBadge } from "metabase/admin/tools/components/TaskRunStatusBadge";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
@@ -13,6 +12,7 @@ import { Box, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
 import { formatTaskRunType, renderTaskRunCounters } from "../../utils";
+import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 
 type TaskRunsTableProps = {
   error: unknown;

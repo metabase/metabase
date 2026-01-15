@@ -93,7 +93,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
         />
       </Flex>
 
-      <TaskRunsTable error={error} isLoading={isLoading} taskRuns={taskRuns} />
+      <TaskRunsTable taskRuns={taskRuns} isLoading={isLoading} error={error} />
     </TasksTabs>
   );
 };

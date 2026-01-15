@@ -35,8 +35,6 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
-import { getTasksRoutes } from "metabase/admin/tools/routes";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { isEEBuild } from "metabase/lib/utils";
@@ -56,7 +54,9 @@ import { ModelPersistenceConfiguration } from "./performance/components/ModelPer
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
+import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
+import { getTasksRoutes } from "./tools/routes";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,

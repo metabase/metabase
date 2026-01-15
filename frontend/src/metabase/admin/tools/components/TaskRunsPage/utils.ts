@@ -9,6 +9,12 @@ import type {
   TaskRunType,
 } from "metabase-types/api";
 
+import {
+  guardTaskRunEntityType,
+  guardTaskRunRunType,
+  guardTaskRunStatus,
+} from "../../utils";
+
 type UrlState = {
   page: number;
   "run-type": TaskRunType | null;
@@ -20,10 +26,10 @@ type UrlState = {
 export const urlStateConfig: UrlStateConfig<UrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
-    "run-type": parseRunType(query["run-type"]),
-    "entity-type": parseEntityType(query["entity-type"]),
-    "entity-id": parseEntityId(query["entity-id"]),
-    status: parseStatus(query.status),
+    "run-type": parseTaskRunRunType(query["run-type"]),
+    "entity-type": parseTaskRunEntityType(query["entity-type"]),
+    "entity-id": parseTaskRunEntityId(query["entity-id"]),
+    status: parseTaskRunStatus(query.status),
   }),
   serialize: ({
     page,
@@ -46,27 +52,17 @@ const parsePage = (param: QueryParam): UrlState["page"] => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
-const parseRunType = (param: QueryParam): UrlState["run-type"] => {
+const parseTaskRunRunType = (param: QueryParam): UrlState["run-type"] => {
   const value = getFirstParamValue(param);
-  return value && isRunType(value) ? value : null;
+  return value && guardTaskRunRunType(value) ? value : null;
 };
 
-const isRunType = (value: string): value is TaskRunType =>
-  (
-    ["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[]
-  ).includes(value as TaskRunType);
-
-const parseEntityType = (param: QueryParam): UrlState["entity-type"] => {
+const parseTaskRunEntityType = (param: QueryParam): UrlState["entity-type"] => {
   const value = getFirstParamValue(param);
-  return value && isEntityType(value) ? value : null;
+  return value && guardTaskRunEntityType(value) ? value : null;
 };
 
-const isEntityType = (value: string): value is TaskRunEntityType =>
-  (["database", "card", "dashboard"] satisfies TaskRunEntityType[]).includes(
-    value as TaskRunEntityType,
-  );
-
-const parseEntityId = (param: QueryParam): UrlState["entity-id"] => {
+const parseTaskRunEntityId = (param: QueryParam): UrlState["entity-id"] => {
   const value = getFirstParamValue(param);
   if (!value) {
     return null;
@@ -75,12 +71,7 @@ const parseEntityId = (param: QueryParam): UrlState["entity-id"] => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const parseStatus = (param: QueryParam): UrlState["status"] => {
+const parseTaskRunStatus = (param: QueryParam): UrlState["status"] => {
   const value = getFirstParamValue(param);
-  return value && isTaskRunStatus(value) ? value : null;
+  return value && guardTaskRunStatus(value) ? value : null;
 };
-
-const isTaskRunStatus = (value: string): value is TaskRunStatus =>
-  (
-    ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
-  ).includes(value as TaskRunStatus);

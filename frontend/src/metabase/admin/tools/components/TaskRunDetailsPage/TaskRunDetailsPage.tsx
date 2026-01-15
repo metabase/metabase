@@ -4,8 +4,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { TaskRunStatusBadge } from "metabase/admin/tools/components/TaskRunStatusBadge";
-import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
 import { useGetTaskRunQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
@@ -21,6 +19,8 @@ import {
   getEntityUrl,
   renderTaskRunCounters,
 } from "../../utils";
+import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
+import { TaskStatusBadge } from "../TaskStatusBadge";
 
 type TaskRunDetailsPageProps = {
   params: { runId: number };

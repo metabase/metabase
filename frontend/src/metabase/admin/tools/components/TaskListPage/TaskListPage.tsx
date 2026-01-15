@@ -1,5 +1,4 @@
-import type { PropsWithChildren } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+import type { WithRouterProps } from "react-router";
 
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -15,10 +14,7 @@ import { urlStateConfig } from "./utils";
 
 const PAGE_SIZE = 50;
 
-const TaskListPageBase = ({
-  children,
-  location,
-}: PropsWithChildren<WithRouterProps>) => {
+export const TaskListPage = ({ location }: WithRouterProps) => {
   const [
     { page, sort_column, sort_direction, status, task },
     { patchUrlState },
@@ -90,9 +86,6 @@ const TaskListPageBase = ({
           patchUrlState({ ...sortingOptions, page: 0 })
         }
       />
-      {children}
     </TasksTabs>
   );
 };
-
-export const TaskListPage = withRouter(TaskListPageBase);
