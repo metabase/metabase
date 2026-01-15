@@ -33,7 +33,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
   it("should show cards with related settings", async () => {
     await setup({
-      isEmbeddingSdkEnabled: true,
+      isEmbeddingSdkEnabled: false,
       showSdkEmbedTerms: false,
     });
 

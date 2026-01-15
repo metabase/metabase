@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isEEBuild } from "metabase/lib/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 
@@ -12,14 +11,15 @@ export interface RelatedSettingItem {
 
 export const getModularEmbeddingRelatedSettingItems = ({
   isUsingTenants,
+  hasSimpleEmbedding,
 }: {
   isUsingTenants?: boolean;
+  hasSimpleEmbedding?: boolean;
 }): RelatedSettingItem[] => {
   const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
-  const isEE = isEEBuild();
 
   const items: RelatedSettingItem[] = [
-    ...(isEE
+    ...(hasSimpleEmbedding
       ? [
           {
             icon: "shield_outline" as const,
@@ -48,7 +48,7 @@ export const getModularEmbeddingRelatedSettingItems = ({
       name: t`Permissions`,
       to: "/admin/permissions",
     },
-    ...(isEE
+    ...(hasSimpleEmbedding
       ? [
           {
             icon: "palette" as const,
