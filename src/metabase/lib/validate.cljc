@@ -1,7 +1,6 @@
 (ns metabase.lib.validate
   "Checks and validation for queries."
   (:require
-   [medley.core :as m]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
