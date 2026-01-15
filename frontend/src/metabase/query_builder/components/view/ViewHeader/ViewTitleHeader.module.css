@@ -223,10 +223,6 @@
     flex-direction: column;
     align-items: start;
     padding: 0.5rem 0;
-
-    &.isNavBarOpen {
-      margin-top: var(--app-subheader-height);
-    }
   }
 }
 
