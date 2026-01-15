@@ -41,7 +41,6 @@ jobs:
     strategy:
       matrix:
         project:
-          # snyk doesn't support bun yetso we generate yarn.lock and scan that
           - name: Main Frontend (bun w/ yarn.lock)
             file: yarn.lock
             package-manager: yarn
@@ -52,7 +51,9 @@ jobs:
             category: release-helper
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses:
+          oven-sh/setup-bun@v2
+          # snyk doesn't support bun yetso we generate yarn.lock and scan that
       - name: Generate yarn.lock for Snyk compatibility
         run: |
           bun install --yarn
