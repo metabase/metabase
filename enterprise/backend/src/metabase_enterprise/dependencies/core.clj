@@ -107,21 +107,36 @@
   The 1-arity groups all the dependents by which Database they are part of, and runs the analysis for each of them.
 
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
-  detected."
+  detected.
+
+  When `include-native?` is false, this function will ignore any entities using native sql and their children."
   ([edits :- ::updates-map
     & {:keys [base-provider graph include-native?]}]
-   (if base-provider
-     (-> base-provider
-         (metadata-provider edits :graph graph :include-native? include-native?)
-         check-query-soundness)
-     (let [all-deps (transitive-dependents :updated-entities edits :include-native? include-native?)
-           by-db    (group-by-db all-deps)]
-       (reduce (fn [errors [db-id deps]]
-                 (-> (lib-be/application-database-metadata-provider db-id)
-                     (metadata-provider edits :dependents deps)
-                     check-query-soundness
-                     (merge errors)))
-               {} by-db)))))
+   (let [valid-edits (if include-native?
+                       edits
+                       (into {}
+                             (map (fn [[entity-type instances]]
+                                    [entity-type (remove #(deps.graph/is-native-entity? entity-type %)
+                                                         instances)]))
+                             edits))]
+     (cond
+       (->> (vals valid-edits) (some seq) not)
+       {}
+
+       base-provider
+       (-> base-provider
+           (metadata-provider valid-edits :graph graph :include-native? include-native?)
+           check-query-soundness)
+
+       :else
+       (let [all-deps (transitive-dependents :updated-entities valid-edits :include-native? include-native?)
+             by-db    (group-by-db all-deps)]
+         (reduce (fn [errors [db-id deps]]
+                   (-> (lib-be/application-database-metadata-provider db-id)
+                       (metadata-provider valid-edits :dependents deps)
+                       check-query-soundness
+                       (merge errors)))
+                 {} by-db))))))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment

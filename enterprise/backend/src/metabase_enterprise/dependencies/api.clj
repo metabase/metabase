@@ -88,9 +88,7 @@
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}
-        breakages (if (dependency/is-native-entity? :card card)
-                    {}
-                    (dependencies/errors-from-proposed-edits edits :base-provider base-provider))]
+        breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
@@ -121,9 +119,7 @@
                         (cond-> #_transform source (assoc :source source))
                         (cond-> #_transform target (assoc :target target)))
           edits {:transform [transform]}
-          breakages (if (dependency/is-native-entity? :transform transform)
-                      {}
-                      (dependencies/errors-from-proposed-edits edits :base-provider base-provider))]
+          breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
