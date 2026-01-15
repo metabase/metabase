@@ -27,6 +27,16 @@ When counting or summing across joined tables, be aware of row multiplication:
 Current date and time: {{current_time}}
 {{/current_time}}
 
+{{#source_sql}}
+## Existing Query
+
+The user is viewing this SQL query:
+
+```sql
+{{{source_sql}}}
+```
+{{/source_sql}}
+
 {{#dialect_instructions}}
 ## {{dialect}} Specific Rules
 

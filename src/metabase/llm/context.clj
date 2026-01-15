@@ -3,12 +3,15 @@
    and fetches table metadata formatted as DDL for SQL generation."
   (:require
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -36,6 +39,32 @@
          (keep (fn [[_ id-str]]
                  (parse-long id-str)))
          set)))
+
+(defn extract-tables-from-sql
+  "Extract table IDs from a raw SQL string using Macaw parser.
+
+   Parses the SQL to identify referenced table names, then queries the
+   database to resolve those names to table IDs.
+
+   Returns a set of table IDs (integers), or empty set if parsing fails
+   or no tables are found."
+  [database-id sql-string]
+  (if (and database-id (seq sql-string))
+    (try
+      (let [result (macaw/query->tables sql-string {:mode :compound-select})
+            tables (:tables result)]
+        (if (seq tables)
+          (let [table-names (into #{} (map (comp u/lower-case-en :table)) tables)
+                matched-tables (t2/select :model/Table
+                                          :db_id database-id
+                                          :active true
+                                          [:lower :name] [:in table-names])]
+            (into #{} (map :id) matched-tables))
+          #{}))
+      (catch Exception e
+        (log/warn e "Failed to extract tables from source SQL")
+        #{}))
+    #{}))
 
 ;;; ------------------------------------------ Permission-Filtered Fetch ------------------------------------------
 

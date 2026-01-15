@@ -354,3 +354,43 @@
           (is (some? result))
           (is (str/includes? result "-- Customer purchase transactions"))
           (is (str/includes? result "CREATE TABLE")))))))
+
+;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
+
+(deftest extract-tables-from-sql-test
+  (testing "returns empty set for nil inputs"
+    (is (= #{} (context/extract-tables-from-sql nil nil)))
+    (is (= #{} (context/extract-tables-from-sql 1 nil)))
+    (is (= #{} (context/extract-tables-from-sql nil "SELECT 1"))))
+
+  (testing "returns empty set for empty SQL"
+    (is (= #{} (context/extract-tables-from-sql 1 "")))
+    (is (= #{} (context/extract-tables-from-sql 1 "   ")))))
+
+(deftest extract-tables-from-sql-with-sample-database-test
+  (mt/with-test-user :crowberto
+    (testing "extracts single table from simple SELECT"
+      (let [result (context/extract-tables-from-sql (mt/id) "SELECT * FROM ORDERS")]
+        (is (set? result))
+        (is (contains? result (mt/id :orders)))))
+
+    (testing "extracts multiple tables from JOIN"
+      (let [result (context/extract-tables-from-sql (mt/id)
+                                                    "SELECT * FROM ORDERS o JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID")]
+        (is (set? result))
+        (is (contains? result (mt/id :orders)))
+        (is (contains? result (mt/id :products)))))
+
+    (testing "extracts tables from subquery"
+      (let [result (context/extract-tables-from-sql (mt/id)
+                                                    "SELECT * FROM (SELECT * FROM PEOPLE) sub")]
+        (is (set? result))
+        (is (contains? result (mt/id :people)))))
+
+    (testing "returns empty set for non-existent table"
+      (let [result (context/extract-tables-from-sql (mt/id) "SELECT * FROM NONEXISTENT_TABLE")]
+        (is (= #{} result))))
+
+    (testing "returns empty set for invalid SQL (graceful failure)"
+      (let [result (context/extract-tables-from-sql (mt/id) "THIS IS NOT SQL")]
+        (is (= #{} result))))))

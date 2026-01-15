@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -147,13 +148,15 @@
   (.format (LocalDateTime/now) datetime-formatter))
 
 (defn- build-system-prompt
-  "Build the system prompt for SQL generation with dialect, schema, and optional dialect instructions."
-  [{:keys [dialect schema-ddl dialect-instructions]}]
+  "Build the system prompt for SQL generation with dialect, schema, and optional dialect instructions.
+   When source-sql is provided, includes the existing query for context."
+  [{:keys [dialect schema-ddl dialect-instructions source-sql]}]
   (stencil/render-file sql-generation-prompt-template
-                       {:dialect              dialect
-                        :schema               schema-ddl
-                        :current_time         (current-datetime-str)
-                        :dialect_instructions dialect-instructions}))
+                       (cond-> {:dialect              dialect
+                                :schema               schema-ddl
+                                :current_time         (current-datetime-str)
+                                :dialect_instructions dialect-instructions}
+                         source-sql (assoc :source_sql source-sql))))
 
 ;;; ------------------------------------------ Response Formatting ------------------------------------------
 
@@ -192,7 +195,7 @@
 
    Requires:
    - LLM to be configured (Anthropic API key set in admin settings)
-   - At least one table mention in the prompt using [Name](metabase://table/ID) format
+   - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
    Returns AI SDK v5 data part format for frontend compatibility.
@@ -202,6 +205,7 @@
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
+            [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
             [:include_context {:optional true} :boolean]]]
   :- [:map
@@ -214,14 +218,18 @@
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id buffer_id include_context]} body
+  (let [{:keys [prompt database_id source_sql buffer_id include_context]} body
         buffer-id (or buffer_id "qb")
-        ;; 2. Parse table mentions from prompt
-        table-ids (llm.context/parse-table-mentions prompt)]
+        ;; 2. Parse table mentions from prompt (explicit) and source SQL (implicit)
+        explicit-table-ids (llm.context/parse-table-mentions prompt)
+        implicit-table-ids (when source_sql
+                             (llm.context/extract-tables-from-sql database_id source_sql))
+        table-ids          (set/union (or explicit-table-ids #{})
+                                      (or implicit-table-ids #{}))]
 
-    ;; 3. Validate at least one table is mentioned
+    ;; 3. Validate at least one table is referenced
     (when (empty? table-ids)
-      (throw (ex-info (tru "No tables mentioned in prompt. Use @mentions to specify tables.")
+      (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
 
     ;; 4. Fetch schema context for mentioned tables
@@ -236,7 +244,8 @@
             dialect-instructions (load-dialect-instructions engine)
             system-prompt       (build-system-prompt {:dialect              dialect
                                                       :schema-ddl           schema-ddl
-                                                      :dialect-instructions dialect-instructions})
+                                                      :dialect-instructions dialect-instructions
+                                                      :source-sql           source_sql})
             timestamp           (current-timestamp)]
 
         ;; 6. Log the system prompt (if debug logging enabled)
@@ -272,13 +281,17 @@
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
    Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id buffer_id]}]
+  [{:keys [prompt database_id source_sql buffer_id]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-  (let [table-ids (llm.context/parse-table-mentions prompt)]
+  (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
+        implicit-table-ids (when source_sql
+                             (llm.context/extract-tables-from-sql database_id source_sql))
+        table-ids          (set/union (or explicit-table-ids #{})
+                                      (or implicit-table-ids #{}))]
     (when (empty? table-ids)
-      (throw (ex-info (tru "No tables mentioned in prompt. Use @mentions to specify tables.")
+      (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
     (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
       (when-not schema-ddl
@@ -289,7 +302,8 @@
             dialect-instructions (load-dialect-instructions engine)
             system-prompt        (build-system-prompt {:dialect              dialect
                                                        :schema-ddl           schema-ddl
-                                                       :dialect-instructions dialect-instructions})]
+                                                       :dialect-instructions dialect-instructions
+                                                       :source-sql           source_sql})]
         {:dialect       dialect
          :system-prompt system-prompt
          :buffer-id     (or buffer_id "qb")
@@ -300,7 +314,7 @@
 
    Requires:
    - LLM to be configured (Anthropic API key set in admin settings)
-   - At least one table mention in the prompt using [Name](metabase://table/ID) format
+   - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
    Returns SSE stream in AI SDK v5 format:
@@ -313,6 +327,7 @@
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
+            [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
             [:include_context {:optional true} :boolean]]]
   (let [{:keys [prompt include_context]} body
