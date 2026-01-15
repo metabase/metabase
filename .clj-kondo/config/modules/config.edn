@@ -2326,8 +2326,8 @@
            premium-features
            queries
            query-processor
-           revisions
            request
+           revisions
            search
            settings
            sync
