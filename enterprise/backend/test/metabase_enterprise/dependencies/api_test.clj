@@ -1683,7 +1683,7 @@
                      ;; entities
                      :model/Card               _ {:name "Card with Collection 1 sorttest"
                                                   :collection_id collection1-id}
-                     :model/Card               _ {:name "Card with Dahsboard sorttest"
+                     :model/Card               _ {:name "Card with Dashboard sorttest"
                                                   :collection_id collection1-id
                                                   :dashboard_id dashboard-id}
                      :model/Card               _ {:name "Card with Document sorttest"
@@ -1720,7 +1720,7 @@
                             "Snippet with Collection 3 sorttest"
                             "Dashboard with Collection 4 sorttest"
                             "Document with Collection 5 sorttest"
-                            "Card with Dahsboard sorttest"
+                            "Card with Dashboard sorttest"
                             "Card with Document sorttest"]
                      (= sort-direction :desc) reverse)
                    names))))))))
