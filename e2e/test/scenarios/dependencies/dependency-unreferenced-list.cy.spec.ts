@@ -88,6 +88,10 @@ const MODELS_SORTED_BY_LOCATION = [
   MODEL_FOR_METRIC_DATA_SOURCE,
   MODEL_FOR_MODEL_DATA_SOURCE,
   MODEL_FOR_QUESTION_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
 ];
 
 describe("scenarios > dependencies > unreferenced list", () => {
@@ -242,7 +246,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should sort by location", () => {
       createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-      H.DataStudio.Tasks.searchInput().type("data source");
+      H.DataStudio.Tasks.searchInput().type("Model for");
 
       cy.log("sorted by location ascending");
       H.DataStudio.Tasks.list().findByText("Location").click();

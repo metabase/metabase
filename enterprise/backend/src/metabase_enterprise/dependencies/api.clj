@@ -765,7 +765,7 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort_direction]]
+                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
@@ -824,7 +824,7 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort_direction]]
+                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
                                       :offset offset
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
