@@ -44,7 +44,9 @@
             "edit_sql_query"
             "replace_sql_query"
             "sql_search"
-            "read_resource"]}
+            "read_resource"
+            "create_chart"
+            "edit_chart"]}
 
    :metabot-transforms-codegen
    {:prompt-template "transform-codegen.selmer"
@@ -65,6 +67,64 @@
     :tools ["search"
             "get_entity_details"
             "get_field_stats"
+            "create_sql_query"
+            "edit_sql_query"
+            "replace_sql_query"
+            "sql_search"
+            "read_resource"]}
+
+   ;; New profiles for additional use cases
+
+   :metabot-next
+   {:prompt-template "metabot-next.selmer"
+    :model "claude-sonnet-4-5-20250929"
+    :max-iterations 10
+    :temperature 0.3
+    :tools ["search"
+            "query_metric"
+            "query_model"
+            "get_field_values"
+            "get_entity_details"
+            "get_metric_details"
+            "get_field_stats"
+            "show_results_to_user"
+            "find_outliers"
+            "generate_insights"
+            "create_dashboard_subscription"
+            "invite_user"
+            "create_sql_query"
+            "edit_sql_query"
+            "replace_sql_query"
+            "sql_search"
+            "read_resource"
+            "create_chart"
+            "edit_chart"]}
+
+   :metabot-nlq-only
+   {:prompt-template "natural-language-querying-only.selmer"
+    :model "claude-sonnet-4-5-20250929"
+    :max-iterations 8
+    :temperature 0.3
+    :tools ["search"
+            "query_metric"
+            "query_model"
+            "get_field_values"
+            "show_results_to_user"
+            "read_resource"]}
+
+   :metabot-beta-customer
+   {:prompt-template "internal.selmer"
+    :model "claude-sonnet-4-5-20250929"
+    :max-iterations 8
+    :temperature 0.3
+    :tools ["search"
+            "query_metric"
+            "query_model"
+            "get_field_values"
+            "get_entity_details"
+            "get_metric_details"
+            "get_field_stats"
+            "show_results_to_user"
             "create_sql_query"
             "edit_sql_query"
             "replace_sql_query"

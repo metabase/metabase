@@ -67,15 +67,16 @@
                         :profile-id (keyword profile-id)
                         :context enriched-context})]
     (sr/streaming-response {:content-type "text/event-stream"}
-      [^java.io.OutputStream os _canceled-chan]
+                           [^java.io.OutputStream os _canceled-chan]
       (loop [lines []]
         (if-let [part (a/<!! response-chan)]
           (do
             ;; Write part to output stream
             (let [line (str (get metabot-v3.u/TYPE-PREFIX (:type part) "0:")
-                            (json/encode part))]
+                            (json/encode part))
+                  newline "\n"]
               (.write os (.getBytes ^String line "UTF-8"))
-              (.write os (.getBytes ^String "\n" "UTF-8"))
+              (.write os (.getBytes ^String newline "UTF-8"))
               (.flush os))
             (recur (conj lines line)))
           ;; Channel closed, store messages

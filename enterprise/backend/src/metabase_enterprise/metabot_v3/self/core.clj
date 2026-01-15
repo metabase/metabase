@@ -112,8 +112,20 @@
     (let [active-tools (volatile! {})]
       (fn
         ([result]
-         (let [merged (a/merge (keep :chan (vals @active-tools)))]
-           (rf (reduce rf result (take-while some? (repeatedly #(let [v (a/<!! merged)] v)))))))
+         (let [chans (keep :chan (vals @active-tools))]
+           (if (empty? chans)
+             (rf result)
+             ;; Use a/thread to drain channels to avoid blocking in dispatch thread
+             ;; a/<!! is safe inside a/thread block
+             (let [results-promise (promise)
+                   merged (a/merge chans)]
+               (a/thread
+                 (deliver results-promise
+                          (loop [acc []]
+                            (if-let [v (a/<!! merged)]
+                              (recur (conj acc v))
+                              acc))))
+               (rf (reduce rf result @results-promise))))))
 
         ([result chunk]
          (case (:type chunk)

@@ -3,8 +3,10 @@
   Bridges existing deftool handlers to mu/defn format for tool-executor-rff."
   (:require
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
+   [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as create-subscription-tools]
    [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query-tools]
+   [metabase-enterprise.metabot-v3.tools.edit-chart :as edit-chart-tools]
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details-tools]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats-tools]
@@ -247,6 +249,42 @@
     :database-id database_id
     :limit limit}))
 
+;;; Chart Tools
+
+(mu/defn create-chart-tool
+  "Create a chart from a query.
+
+  Takes a query ID and chart type, creates a new chart visualization.
+  Returns the chart ID and a link to view it."
+  [{:keys [query_id chart_type queries_state]}
+   :- [:map {:closed true}
+       [:query_id :string]
+       [:chart_type [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
+                     "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+                     "smartscalar" "gauge" "progress" "funnel" "object" "map"]]
+       [:queries_state {:optional true} [:maybe :map]]]]
+  (create-chart-tools/create-chart-tool
+   {:query-id query_id
+    :chart-type (keyword chart_type)
+    :queries-state (or queries_state {})}))
+
+(mu/defn edit-chart-tool
+  "Edit an existing chart's visualization type.
+
+  Changes the chart type (e.g., bar to line, table to pie) but preserves
+  the underlying query. Returns a new chart with the updated settings."
+  [{:keys [chart_id new_chart_type charts_state]}
+   :- [:map {:closed true}
+       [:chart_id :string]
+       [:new_chart_type [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
+                         "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+                         "smartscalar" "gauge" "progress" "funnel" "object" "map"]]
+       [:charts_state {:optional true} [:maybe :map]]]]
+  (edit-chart-tools/edit-chart-tool
+   {:chart-id chart_id
+    :new-chart-type (keyword new_chart_type)
+    :charts-state (or charts_state {})}))
+
 ;;; Resource Reading Tools
 
 (mu/defn read-resource-tool
@@ -283,7 +321,9 @@
    "edit_sql_query"                #'edit-sql-query-tool
    "replace_sql_query"             #'replace-sql-query-tool
    "sql_search"                    #'sql-search-tool
-   "read_resource"                 #'read-resource-tool})
+   "read_resource"                 #'read-resource-tool
+   "create_chart"                  #'create-chart-tool
+   "edit_chart"                    #'edit-chart-tool})
 
 (defn filter-by-capabilities
   "Filter tool names by user capabilities.
