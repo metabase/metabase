@@ -1,7 +1,10 @@
-import { Group, Icon, Stack, Text } from "metabase/ui";
-import type { PythonTransformTableAliases } from "metabase-types/api";
+import { Fragment } from "react";
 
-import _ from "underscore";
+import { skipToken, useGetTableQuery } from "metabase/api";
+import { Box, Group, Loader, Text } from "metabase/ui";
+import type { PythonTransformTableAliases, TableId } from "metabase-types/api";
+
+import { TableDiff } from "./TableDiff";
 
 interface Props {
   newSourceTables: PythonTransformTableAliases;
@@ -14,7 +17,7 @@ export const TransformSourceTablesDiff = ({
 }: Props) => {
   const oldSourceTablesIds = Object.values(oldSourceTables);
   const newSourceTablesIds = Object.values(newSourceTables);
-  const uniqueTableIds = _.uniq([...oldSourceTablesIds, ...newSourceTablesIds]);
+
   const oldSourceNames = Object.fromEntries(
     Object.entries(oldSourceTables).map(([k, v]) => [v, k]),
   );
@@ -22,46 +25,84 @@ export const TransformSourceTablesDiff = ({
     Object.entries(newSourceTables).map(([k, v]) => [v, k]),
   );
 
-  const removedTablesIds = oldSourceTablesIds.filter(
-    (id) => !newSourceTablesIds.includes(id),
-  );
-  const addedTablesIds = newSourceTablesIds.filter(
-    (id) => !oldSourceTablesIds.includes(id),
-  );
-  // const renamedTablesIds = oldSourceTablesIds.filter((id) => )
+  const removedTablesIds = oldSourceTablesIds.slice(newSourceTablesIds.length);
 
   return (
-    <Stack gap="sm">
-      {uniqueTableIds.map((id) => {
-        const isRemoved =
-          oldSourceTablesIds.includes(id) && !newSourceTablesIds.includes(id);
-        const isAdded =
-          !oldSourceTablesIds.includes(id) && newSourceTablesIds.includes(id);
-        const isRenamed =
-          oldSourceTablesIds.includes(id) &&
-          newSourceTablesIds.includes(id) &&
-          oldSourceNames[id] !== newSourceNames[id];
+    <Box
+      display="grid"
+      style={{
+        alignItems: "center",
+        gridTemplateColumns: "auto 1fr",
+        rowGap: 4,
+        columnGap: 32,
+      }}
+    >
+      {newSourceTablesIds.map((id, index) => {
+        const oldTableId = oldSourceTablesIds[index];
+        const oldSourceName = oldSourceNames[oldTableId];
+        const newSourceName = newSourceNames[id];
+        const sourceNameChanged = oldSourceName !== newSourceName;
 
         return (
-          <Group gap="xs" key={id}>
-            <Icon c="text-secondary" name="folder" />
+          <Fragment key={id}>
+            <Group gap="xs">
+              {sourceNameChanged && oldSourceName && (
+                <Text c="danger" component="s" td="line-through">
+                  {oldSourceName}
+                </Text>
+              )}
 
-            {isRemoved && (
-              <Text c="danger" component="s" td="line-through">
-                {oldSourceTables.schema}
+              <Text c={sourceNameChanged ? "success" : undefined}>
+                {newSourceName}
               </Text>
-            )}
+            </Group>
 
-            <Text c={schemaChanged ? "success" : undefined}>
-              {newSourceTables.schema}
-            </Text>
-          </Group>
+            <TableItem oldTableId={oldTableId} tableId={id} />
+          </Fragment>
         );
       })}
-    </Stack>
+
+      {removedTablesIds.map((id) => {
+        const oldSourceName = oldSourceNames[id];
+
+        return (
+          <Fragment key={id}>
+            <Text c="danger" component="s" td="line-through">
+              {oldSourceName}
+            </Text>
+
+            <TableItem oldTableId={id} tableId={undefined} />
+          </Fragment>
+        );
+      })}
+    </Box>
   );
 };
 
-function Divider() {
-  return <Icon name="chevronright" size={8} />;
+function TableItem({
+  oldTableId,
+  tableId,
+}: {
+  oldTableId: TableId | undefined;
+  tableId: TableId | undefined;
+}) {
+  const { data: oldTable } = useGetTableQuery(
+    oldTableId ? { id: oldTableId } : skipToken,
+  );
+  const { data: table } = useGetTableQuery(
+    tableId ? { id: tableId } : skipToken,
+  );
+
+  if (!table && tableId) {
+    return <Loader size="xs" />;
+  }
+
+  return (
+    <TableDiff
+      newSchema={table?.schema}
+      newTable={table?.name}
+      oldSchema={oldTable?.schema}
+      oldTable={oldTable?.name}
+    />
+  );
 }
