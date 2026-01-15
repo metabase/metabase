@@ -6,8 +6,8 @@ import type {
 export type DependencyListQueryParams = {
   page?: string;
   query?: string;
-  groupTypes?: string | string[];
-  includePersonalCollections?: string;
-  sortColumn?: DependencySortColumn;
-  sortDirection?: DependencySortDirection;
+  "group-types"?: string | string[];
+  "include-personal-collections"?: string;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: DependencySortDirection;
 };

@@ -54,16 +54,16 @@ function dependencyListQueryString({
   }
   if (groupTypes != null) {
     groupTypes.forEach((groupType) => {
-      searchParams.append("groupTypes", groupType);
+      searchParams.append("group-types", groupType);
     });
   }
   if (sorting != null) {
-    searchParams.set("sortColumn", sorting.column);
-    searchParams.set("sortDirection", sorting.direction);
+    searchParams.set("sort-column", sorting.column);
+    searchParams.set("sort-direction", sorting.direction);
   }
   if (includePersonalCollections != null) {
     searchParams.set(
-      "includePersonalCollections",
+      "include-personal-collections",
       String(includePersonalCollections),
     );
   }

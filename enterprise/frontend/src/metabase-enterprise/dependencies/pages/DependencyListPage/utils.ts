@@ -18,22 +18,24 @@ import type { DependencyListQueryParams } from "./types";
 export function parseParams(
   params: DependencyListQueryParams,
 ): Urls.DependencyListParams {
-  const sortColumn = parseEnum(params.sortColumn, DEPENDENCY_SORT_COLUMNS);
+  const sortColumn = parseEnum(params["sort-column"], DEPENDENCY_SORT_COLUMNS);
   const sortDirection = parseEnum(
-    params.sortDirection,
+    params["sort-direction"],
     DEPENDENCY_SORT_DIRECTIONS,
   );
 
   return {
     page: parseNumber(params.page),
     query: parseString(params.query),
-    groupTypes: parseList(params.groupTypes, (item) =>
+    groupTypes: parseList(params["group-types"], (item) =>
       parseEnum(item, DEPENDENCY_GROUP_TYPES),
     ),
     sorting:
       sortColumn != null && sortDirection != null
         ? { column: sortColumn, direction: sortDirection }
         : undefined,
-    includePersonalCollections: parseBoolean(params.includePersonalCollections),
+    includePersonalCollections: parseBoolean(
+      params["include-personal-collections"],
+    ),
   };
 }
