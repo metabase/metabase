@@ -724,8 +724,8 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (\"name\", \"location\", or \"dependents_count\", default: \"name\")
-   - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
+   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents_count` (default: `:name`)
+   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
 
@@ -783,8 +783,8 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (\"name\", \"location\", or \"dependents_count\", default: \"name\")
-   - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
+   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents_count` (default: `:name`)
+   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
 
