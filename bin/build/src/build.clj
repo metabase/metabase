@@ -65,14 +65,9 @@
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
 
-    (u/step "Run `yarn licenses generate-disclaimer`"
-      (let [license-text (str/join \newline
-                                   (u/sh {:dir    u/project-root-directory
-                                          :quiet? true}
-                                         "yarn" "licenses" "generate-disclaimer"))]
-        (spit (u/filename u/project-root-directory
-                          "resources"
-                          "license-frontend-third-party.txt") license-text)))))
+    (u/step "Run `bun run generate-license-disclaimer`"
+      (u/sh {:dir u/project-root-directory}
+            "bun" "run" "generate-license-disclaimer"))))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
