@@ -246,14 +246,16 @@
 (defn- fake-sync-database!
   "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
    This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
-   For test-data, also runs fingerprinting to enable fingerprint-dependent tests."
-  [driver {:keys [database-name] :as database-definition} db]
+   When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
+  [driver {:keys [database-name] :as database-definition} db scan]
   (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
   (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
         table-name->tbl (insert-fake-sync-rows! rows)]
     (resolve-fk-relationships! table-name->tbl database-definition)
-    (log/info "Running real fingerprinting after a fake sync + analyze")
-    (sync.analyze/analyze-db! db)))
+    ;; Only run fingerprinting for :full scan, matching the real sync behavior
+    (when (= scan :full)
+      (log/info "Running real fingerprinting for :full scan after fake sync")
+      (sync.analyze/analyze-db! db))))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
@@ -262,28 +264,30 @@
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
-      (if (driver/database-supports? driver :test/use-fake-sync nil)
-        ;; Use fake sync - directly insert Table/Field rows from dbdef, skipping network calls
-        (fake-sync-database! driver database-definition db)
-        ;; Original sync path - call sync-database! against the actual database
-        (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                     "NONE")
-              full-sync?         (= database-name "test-data")]
-          (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                             (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+      (let [;; only do "full sync" (with fingerprinting) for test-data, because it can take literally MINUTES on CI.
+            scan (if (= database-name "test-data") :full :schema)]
+        (if (driver/database-supports? driver :test/use-fake-sync nil)
+          ;; Use fake sync - directly insert Table/Field rows from dbdef, skipping network calls
+          (fake-sync-database! driver database-definition db scan)
+          ;; Original sync path - call sync-database! against the actual database
+          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                       "NONE")
+                full-sync?         (= scan :full)]
+            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
             ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
             ;;
             ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
             ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
             ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
             ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-            (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
-              (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
+              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+                (sync/sync-database! db {:scan scan}))
             ;; add extra metadata for fields
-            (try
-              (add-extra-metadata! database-definition db)
-              (catch Throwable e
-                (log/error e "Error adding extra metadata")))))))
+              (try
+                (add-extra-metadata! database-definition db)
+                (catch Throwable e
+                  (log/error e "Error adding extra metadata"))))))))
     (catch Throwable e
       (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
             e       (ex-info message
