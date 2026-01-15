@@ -1,6 +1,5 @@
-import fetchMock from "fetch-mock";
-
 import {
+  setupCollectionsEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
@@ -12,116 +11,233 @@ import { initializePlugin as initializeDependenciesPlugin } from "metabase-enter
 import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
 import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
 import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
-  createMockCollection,
+  createMockDirtyCardEntity,
+  createMockDirtyTransformEntity,
+  createMockLibraryCollection,
   createMockSettings,
   createMockTokenFeatures,
+  createMockTransformsCollection,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DataStudioLayout } from "./DataStudioLayout";
 
-interface SetupEndpointsOpts {
-  isNavbarOpened?: boolean;
-  remoteSyncEnabled?: boolean;
-  remoteSyncBranch?: string | null;
-  remoteSyncType?: "read-only" | "read-write";
-  hasDirtyChanges?: boolean;
+// ============================================================================
+// Settings Helpers
+// ============================================================================
+
+const DEFAULT_TOKEN_FEATURES = createMockTokenFeatures({
+  remote_sync: true,
+  advanced_permissions: true,
+  transforms: true,
+});
+
+interface RemoteSyncSettings {
+  enabled: boolean;
+  branch: string | null;
+  type: "read-only" | "read-write";
+  transforms: boolean;
 }
 
-const setupEndpoints = ({
-  isNavbarOpened = true,
-  remoteSyncEnabled = false,
-  remoteSyncBranch = null,
-  remoteSyncType = "read-write",
-  hasDirtyChanges = false,
-}: SetupEndpointsOpts = {}) => {
-  // Mock session properties for settings (used by useAdminSetting and useSetting)
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "remote-sync-enabled": remoteSyncEnabled,
-      "remote-sync-branch": remoteSyncBranch,
-      "remote-sync-type": remoteSyncType,
-    }),
-  );
+const createRemoteSyncSettings = ({
+  enabled = false,
+  branch = null,
+  type = "read-write",
+  transforms = false,
+}: Partial<RemoteSyncSettings> = {}) => ({
+  "remote-sync-enabled": enabled,
+  "remote-sync-branch": branch,
+  "remote-sync-type": type,
+  "remote-sync-transforms": transforms,
+});
 
-  // Mock settings details endpoint
+// ============================================================================
+// Endpoint Setup Functions
+// ============================================================================
+
+export const setupBaseEndpoints = () => {
   setupSettingsEndpoints([]);
+};
 
-  // Mock collection tree endpoint (used by useHasLibraryDirtyChanges)
-  fetchMock.get("path:/api/collection/tree", () => {
-    if (hasDirtyChanges) {
-      return [
-        createMockCollection({
-          id: 1,
-          name: "Library",
-          type: "library",
-        }),
-      ];
+export const setupRemoteSyncSettingsEndpoints = (
+  settings: Partial<RemoteSyncSettings> = {},
+) => {
+  const remoteSyncSettings = createRemoteSyncSettings(settings);
+  setupPropertiesEndpoints(createMockSettings(remoteSyncSettings));
+};
+
+export const setupGitSyncVisibleEndpoints = (
+  settings: Partial<Omit<RemoteSyncSettings, "enabled" | "branch">> = {},
+) => {
+  setupRemoteSyncSettingsEndpoints({
+    enabled: true,
+    branch: "main",
+    type: "read-write",
+    ...settings,
+  });
+};
+
+export const setupGitSettingsVisibleEndpoints = () => {
+  setupRemoteSyncSettingsEndpoints({
+    enabled: false,
+    branch: null,
+  });
+};
+
+export const setupDirtyEndpoints = ({
+  dirty = [],
+  collections = [],
+}: {
+  dirty?: RemoteSyncEntity[];
+  collections?: Collection[];
+} = {}) => {
+  const changedCollections: Record<number, boolean> = {};
+  for (const entity of dirty) {
+    if (entity.collection_id != null) {
+      changedCollections[entity.collection_id] = true;
     }
-    return [];
+  }
+
+  setupRemoteSyncEndpoints({
+    dirty,
+    changedCollections,
+    branches: ["main"],
   });
 
-  const dirty: RemoteSyncEntity[] = hasDirtyChanges
-    ? [createMockRemoteSyncEntity({ id: 1, model: "card", collection_id: 1 })]
-    : [];
-  const branches = remoteSyncBranch ? [remoteSyncBranch] : [];
-  setupRemoteSyncEndpoints({ dirty, branches });
+  setupCollectionsEndpoints({ collections });
+};
 
+export const setupNavbarEndpoints = (isOpened = true) => {
   setupUserKeyValueEndpoints({
     namespace: "data_studio",
     key: "isNavbarOpened",
-    value: isNavbarOpened,
+    value: isOpened,
   });
-
-  // Mock user key value PUT endpoint
-  fetchMock.put(
-    "express:/api/user-key-value/namespace/data_studio/key/isNavbarOpened",
-    { status: 200 },
-  );
 };
 
-const createStoreState = ({
-  isAdmin = true,
-  remoteSyncEnabled = false,
-  remoteSyncBranch = null as string | null,
-  remoteSyncType = "read-write" as "read-only" | "read-write",
-  canAccessDataModel = true,
-}: {
+// ============================================================================
+// Store State Helpers
+// ============================================================================
+
+interface StoreStateOptions {
   isAdmin?: boolean;
-  remoteSyncEnabled?: boolean;
-  remoteSyncBranch?: string | null;
-  remoteSyncType?: "read-only" | "read-write";
-  canAccessDataModel?: boolean;
-} = {}) => {
+  remoteSyncSettings?: Partial<RemoteSyncSettings>;
+}
+
+export const createStoreState = ({
+  isAdmin = true,
+  remoteSyncSettings = {},
+}: StoreStateOptions = {}) => {
+  const settings = createRemoteSyncSettings(remoteSyncSettings);
+
   return createMockState({
     currentUser: createMockUser({
       is_superuser: isAdmin,
       permissions: {
-        can_access_data_model: canAccessDataModel,
+        can_access_data_model: isAdmin,
         can_access_db_details: false,
       },
     }),
     settings: mockSettings({
-      "remote-sync-enabled": remoteSyncEnabled,
-      "remote-sync-branch": remoteSyncBranch,
-      "remote-sync-type": remoteSyncType,
-      "token-features": createMockTokenFeatures({
-        remote_sync: true,
-        advanced_permissions: true,
-      }),
+      ...settings,
+      "token-features": DEFAULT_TOKEN_FEATURES,
     }),
   });
 };
+
+// ============================================================================
+// Plugin Initialization
+// ============================================================================
+
+export const initializePlugins = () => {
+  initializeRemoteSyncPlugin();
+  initializeFeatureLevelPermissionsPlugin();
+  initializeTransformsPlugin();
+  initializeDependenciesPlugin();
+};
+
+// ============================================================================
+// Render Helper
+// ============================================================================
+
+export const renderDataStudioLayout = (
+  storeOptions: StoreStateOptions = {},
+) => {
+  renderWithProviders(
+    <DataStudioLayout>
+      <div data-testid="content">{"Content"}</div>
+    </DataStudioLayout>,
+    {
+      storeInitialState: createStoreState(storeOptions),
+      withRouter: false,
+    },
+  );
+
+  initializePlugins();
+};
+
+// ============================================================================
+// Convenience Setup Functions (for common test scenarios)
+// ============================================================================
+
+export const setupForGitSyncVisible = ({
+  isNavbarOpened = true,
+  dirty = [] as RemoteSyncEntity[],
+  collections = [] as Collection[],
+  transforms = false,
+}: {
+  isNavbarOpened?: boolean;
+  dirty?: RemoteSyncEntity[];
+  collections?: Collection[];
+  transforms?: boolean;
+} = {}) => {
+  setupBaseEndpoints();
+  setupGitSyncVisibleEndpoints({ transforms });
+  setupDirtyEndpoints({ dirty, collections });
+  setupNavbarEndpoints(isNavbarOpened);
+
+  renderDataStudioLayout({
+    remoteSyncSettings: {
+      enabled: true,
+      branch: "main",
+      type: "read-write",
+      transforms,
+    },
+  });
+};
+
+export const setupForGitSettingsVisible = ({
+  isNavbarOpened = true,
+}: {
+  isNavbarOpened?: boolean;
+} = {}) => {
+  setupBaseEndpoints();
+  setupGitSettingsVisibleEndpoints();
+  setupDirtyEndpoints();
+  setupNavbarEndpoints(isNavbarOpened);
+
+  renderDataStudioLayout({
+    remoteSyncSettings: {
+      enabled: false,
+      branch: null,
+    },
+  });
+};
+
+// ============================================================================
+// Legacy setup function (for backwards compatibility during migration)
+// ============================================================================
 
 interface SetupOpts {
   isGitSyncVisible?: boolean;
   isGitSettingsVisible?: boolean;
   isAdmin?: boolean;
   hasDirtyChanges?: boolean;
+  hasTransformDirtyChanges?: boolean;
+  remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
 }
 
@@ -130,55 +246,57 @@ export const setup = ({
   isGitSettingsVisible = false,
   isAdmin = true,
   hasDirtyChanges = false,
+  hasTransformDirtyChanges = false,
+  remoteSyncTransforms = false,
   isNavbarOpened = true,
 }: SetupOpts = {}) => {
-  // Derive API state from the visibility flags
-  // useGitSyncVisible returns isVisible when: isAdmin && remoteSyncEnabled && currentBranch && syncType === "read-write"
-  // useGitSettingsVisible returns true when: isAdmin && !remoteSyncEnabled
+  // Build collections list
+  const collections: Collection[] = [];
+  if (hasDirtyChanges) {
+    collections.push(createMockLibraryCollection());
+  }
+  if (hasTransformDirtyChanges) {
+    collections.push(createMockTransformsCollection());
+  }
+
+  // Build dirty entities list
+  const dirty: RemoteSyncEntity[] = [];
+  if (hasDirtyChanges) {
+    dirty.push(createMockDirtyCardEntity());
+  }
+  if (hasTransformDirtyChanges) {
+    dirty.push(createMockDirtyTransformEntity());
+  }
+
+  // Determine remote sync settings from visibility flags
   let remoteSyncEnabled: boolean;
   let remoteSyncBranch: string | null;
-  const remoteSyncType = "read-write" as const;
 
   if (isGitSyncVisible) {
-    // Git sync visible requires: enabled + branch + admin + read-write
     remoteSyncEnabled = true;
     remoteSyncBranch = "main";
   } else if (isGitSettingsVisible) {
-    // Git settings visible requires: admin + NOT enabled
     remoteSyncEnabled = false;
     remoteSyncBranch = null;
   } else {
-    // Neither visible - could be enabled with no branch, or not admin
     remoteSyncEnabled = true;
     remoteSyncBranch = null;
   }
 
-  setupEndpoints({
-    isNavbarOpened,
-    remoteSyncEnabled,
-    remoteSyncBranch,
-    remoteSyncType,
-    hasDirtyChanges,
+  const remoteSyncSettings: Partial<RemoteSyncSettings> = {
+    enabled: remoteSyncEnabled,
+    branch: remoteSyncBranch,
+    type: "read-write",
+    transforms: remoteSyncTransforms,
+  };
+
+  setupBaseEndpoints();
+  setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
+  setupDirtyEndpoints({ dirty, collections });
+  setupNavbarEndpoints(isNavbarOpened);
+
+  renderDataStudioLayout({
+    isAdmin,
+    remoteSyncSettings,
   });
-
-  renderWithProviders(
-    <DataStudioLayout>
-      <div data-testid="content">{"Content"}</div>
-    </DataStudioLayout>,
-    {
-      storeInitialState: createStoreState({
-        isAdmin,
-        remoteSyncEnabled,
-        remoteSyncBranch,
-        remoteSyncType,
-        canAccessDataModel: isAdmin,
-      }),
-      withRouter: false,
-    },
-  );
-
-  initializeRemoteSyncPlugin();
-  initializeFeatureLevelPermissionsPlugin();
-  initializeTransformsPlugin();
-  initializeDependenciesPlugin();
 };

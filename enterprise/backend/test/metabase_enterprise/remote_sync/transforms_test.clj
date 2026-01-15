@@ -371,7 +371,11 @@ is_sample: false
                          :model/Transform {transform-id :id transform-eid :entity_id}
                          {:name "Child Transform"
                           :collection_id coll-id
-                          :entity_id "child-transform-xxxxx"}]
+                          :entity_id "child-transform-xxxxx"}
+                         :model/Transform {root-transform-id :id root-transform-eid :entity_id}
+                         {:name "Root Transform"
+                          :collection_id nil
+                          :entity_id "root-transform-xxxxxx"}]
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection"
                           :model_id coll-id
@@ -383,6 +387,12 @@ is_sample: false
                           :model_name "Child Transform"
                           :model_collection_id coll-id
                           :status "synced"
+                          :status_changed_at (t/offset-date-time)}
+                         {:model_type "Transform"
+                          :model_id root-transform-id
+                          :model_name "Root Transform"
+                          :model_collection_id nil
+                          :status "create"
                           :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
                                          (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
@@ -401,4 +411,7 @@ is_sample: false
                 (is (= :success (:status result)))
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
                   (is (not (some #(str/includes? % coll-eid) (keys files-after-export))))
-                  (is (not (some #(str/includes? % transform-eid) (keys files-after-export)))))))))))))
+                  (is (not (some #(str/includes? % transform-eid) (keys files-after-export))))
+                  ;; Root transform should still be exported
+                  (is (some #(str/includes? % root-transform-eid) (keys files-after-export))
+                      "Root transform should be exported"))))))))))

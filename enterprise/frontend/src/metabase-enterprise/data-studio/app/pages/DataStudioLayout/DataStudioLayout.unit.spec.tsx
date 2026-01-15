@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import { setup } from "./DataStudioLayout.setup.spec";
 
@@ -134,6 +134,65 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
+    });
+  });
+
+  describe("transform dirty indicator", () => {
+    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
+      setup({
+        isGitSyncVisible: true,
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      // Should show the dirty indicator badge
+      const transformsTab = screen.getByLabelText("Transforms");
+      await waitFor(() => {
+        expect(
+          within(transformsTab).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
+      setup({
+        isGitSyncVisible: true,
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: false,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+      setup({
+        isGitSyncVisible: true,
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
   });
 });
