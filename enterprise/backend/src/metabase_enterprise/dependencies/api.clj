@@ -589,13 +589,13 @@
                       :entity.name)
         location-column (case entity-type
                           :card [:case
-                                 [:not= :entity.dashboard_id nil] :location_dashboard.name
-                                 [:not= :entity.document_id nil] :location_document.name
+                                 [:not= :entity.dashboard_id nil] :dashboard.name
+                                 [:not= :entity.document_id nil] :document.name
                                  :else :collection.name]
                           :table :database.name
                           (:transform :snippet :dashboard :document) :collection.name
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                          (:segment :measure) :location_table.name)
+                          (:segment :measure) :table.display_name)
         dependents-count-column {:select [[:%count.*]]
                                  :from [:dependency]
                                  :where [:and
@@ -666,9 +666,9 @@
      :left-join (cond-> dependency-join
                   needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
                   needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id])
-                  needs-dashboard-join? (conj [:report_dashboard :location_dashboard] [:= :entity.dashboard_id :location_dashboard.id])
-                  needs-document-join? (conj [:document :location_document] [:= :entity.document_id :location_document.id])
-                  needs-location-table-join? (conj [:metabase_table :location_table] [:= :entity.table_id :location_table.id]))
+                  needs-dashboard-join? (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
+                  needs-document-join? (conj :document [:= :entity.document_id :document.id])
+                  needs-location-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
      :where (cond->> dependency-filter
               card-type-filter
               (conj [:and card-type-filter])
