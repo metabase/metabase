@@ -15,12 +15,14 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
+import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
@@ -41,7 +43,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useGetWorkspaceCheckoutQuery(transform.id);
 
   const workspaces = useMemo(
-    () => workspacesData?.items ?? [],
+    () =>
+      workspacesData?.items.filter((item) => item?.status !== "archived") ?? [],
     [workspacesData],
   );
 
@@ -53,7 +56,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
     // Workspaces which already include this transform.
     const checkedWorkspaceIds =
-      checkoutData?.transforms?.map((item) => item.workspace?.id) ?? [];
+      checkoutData?.workspaces?.map((item) => item?.id) ?? [];
 
     return Array.from(
       new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
@@ -70,7 +73,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         };
       })
       .filter((workspace) => !!workspace);
-  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
+  }, [checkoutData?.workspaces, workspaces, sourceDatabaseId]);
 
   const isBusy =
     isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
@@ -110,15 +113,21 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   return (
     <Menu position="bottom-end" width={280}>
       <Menu.Target>
-        <Button
-          size="sm"
-          variant="filled"
-          leftSection={<Icon name="pencil" />}
-          rightSection={<Icon name="chevrondown" />}
-          loading={isBusy}
+        <Tooltip
+          label={getCheckoutDisabledMessage(checkoutData?.checkout_disabled)}
+          disabled={!checkoutData?.checkout_disabled}
         >
-          {t`Edit transform`}
-        </Button>
+          <Button
+            size="sm"
+            variant="filled"
+            leftSection={<Icon name="pencil" />}
+            rightSection={<Icon name="chevrondown" />}
+            loading={isBusy}
+            disabled={!!checkoutData?.checkout_disabled}
+          >
+            {t`Edit transform`}
+          </Button>
+        </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{t`Add to workspace`}</Menu.Label>
