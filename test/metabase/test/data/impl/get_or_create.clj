@@ -147,7 +147,10 @@
                            (get-in base-type [:natives driver])
 
                            :else
-                           (name base-type))
+                           ;; Use the SQL type from sql.tx/field-base-type->sql-type to get
+                           ;; the actual database type (e.g., "TIMESTAMPTZ" instead of "DateTimeWithTZ").
+                           ;; Use requiring-resolve to avoid cyclic dependency.
+                           ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
         actual-base-type (if (map? base-type)
                            (or effective-type :type/*)
                            base-type)
