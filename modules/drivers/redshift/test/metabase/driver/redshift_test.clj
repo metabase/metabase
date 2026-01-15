@@ -686,7 +686,8 @@
         (let [raw-field (second fields)] ; first is auto PK
           (is (= "VARBYTE" (:database_type raw-field)))
           (is (= :type/Text (:effective_type raw-field)))
-          (is (= :type/* (:base_type raw-field)) "Native types use :type/* as base_type")))
+          ;; When effective-type is provided, base_type uses it; otherwise would be :type/*
+          (is (= :type/Text (:base_type raw-field)))))
 
       (testing "{:natives ...} form picks driver-specific type"
         (let [multi-field (nth fields 2)]
