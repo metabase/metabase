@@ -1657,10 +1657,10 @@
                             "1 Table sorttest"
                             "2 Transform sorttest"
                             "3 Snippet sorttest"
-                            "4 Dashboard - sorttest"
-                            "4 Document sorttest"
-                            "5 Segment sorttest"
-                            "6 Measure sorttest"]
+                            "4 Dashboard sorttest"
+                            "5 Document sorttest"
+                            "6 Segment sorttest"
+                            "7 Measure sorttest"]
                      (= sort-direction :desc) reverse)
                    names))))))))
 
