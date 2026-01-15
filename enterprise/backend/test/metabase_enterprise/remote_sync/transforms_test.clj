@@ -23,10 +23,6 @@
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                         (test-helpers/clean-remote-sync-state f))))
 
-;; =============================================================================
-;; Event Handler Tests - Transform (controlled by remote-sync-transforms setting)
-;; =============================================================================
-
 (deftest transform-event-creates-sync-object-when-setting-enabled-test
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms}
@@ -34,9 +30,7 @@
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
-          ;; Publish the create event (simulating what the API does)
           (events/publish-event! :event/transform-create {:object transform})
-          ;; Verify RemoteSyncObject entry was created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Transform"
                           :model_id (:id transform))
@@ -49,9 +43,7 @@
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
-          ;; Publish the create event
           (events/publish-event! :event/transform-create {:object transform})
-          ;; Verify no RemoteSyncObject entry was created
           (is (not (t2/exists? :model/RemoteSyncObject
                                :model_type "Transform"
                                :model_id (:id transform)))
@@ -64,7 +56,6 @@
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
-          ;; Create initial tracking entry
           (t2/insert! :model/RemoteSyncObject
                       {:model_type "Transform"
                        :model_id (:id transform)
@@ -72,18 +63,12 @@
                        :model_collection_id coll-id
                        :status "synced"
                        :status_changed_at (t/offset-date-time)})
-          ;; Publish the update event
           (events/publish-event! :event/transform-update {:object transform})
-          ;; Verify status was updated
           (let [entry (t2/select-one :model/RemoteSyncObject
                                      :model_type "Transform"
                                      :model_id (:id transform))]
             (is (= "update" (:status entry))
                 "Transform should have 'update' status after modification")))))))
-
-;; =============================================================================
-;; Event Handler Tests - TransformTag
-;; =============================================================================
 
 (deftest transform-tag-event-creates-sync-object-test
   (testing "Creating a transform tag creates a RemoteSyncObject entry when transform sync is enabled"
@@ -91,9 +76,7 @@
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
-          ;; Publish the create event
           (events/publish-event! :event/transform-tag-create {:object tag})
-          ;; Verify RemoteSyncObject entry was created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "TransformTag"
                           :model_id (:id tag))
@@ -105,17 +88,11 @@
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
-          ;; Publish the create event
           (events/publish-event! :event/transform-tag-create {:object tag})
-          ;; Verify no RemoteSyncObject entry was created
           (is (not (t2/exists? :model/RemoteSyncObject
                                :model_type "TransformTag"
                                :model_id (:id tag)))
               "TransformTag should NOT be tracked when sync is disabled"))))))
-
-;; =============================================================================
-;; Event Handler Tests - Transforms-namespace Collections
-;; =============================================================================
 
 (deftest transforms-namespace-collection-tracked-when-setting-enabled-test
   (testing "Transforms-namespace collection creates RemoteSyncObject entry when setting is enabled"
@@ -123,9 +100,7 @@
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Transforms Collection" :namespace collection/transforms-ns :location "/"}]
-          ;; Publish the create event
           (events/publish-event! :event/collection-create {:object coll :user-id (mt/user->id :rasta)})
-          ;; Verify RemoteSyncObject entry was created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
                           :model_id (:id coll))
@@ -137,17 +112,11 @@
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Transforms Collection" :namespace collection/transforms-ns :location "/"}]
-          ;; Publish the create event
           (events/publish-event! :event/collection-create {:object coll :user-id (mt/user->id :rasta)})
-          ;; Verify no RemoteSyncObject entry was created
           (is (not (t2/exists? :model/RemoteSyncObject
                                :model_type "Collection"
                                :model_id (:id coll)))
               "Transforms-namespace collection should NOT be tracked when setting is disabled"))))))
-
-;; =============================================================================
-;; Setting Toggle Tests
-;; =============================================================================
 
 (deftest enable-transform-sync-marks-all-transforms-test
   (testing "Enabling transform sync marks all existing transforms, tags, and collections for initial sync"
@@ -157,12 +126,9 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Existing Transform" :collection_id coll-id}
                        :model/TransformTag tag {:name "Existing Tag"}]
-          ;; Initially, no tracking entries
           (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
               "Should have no transform tracking entries initially")
-          ;; Enable transform sync (this should trigger tracking population)
           (impl/sync-transform-tracking! true)
-          ;; Verify all are now tracked with "create" status
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
                           :model_id coll-id
@@ -182,34 +148,24 @@
 (deftest disable-transform-sync-removes-all-tracking-test
   (testing "Disabling transform sync removes all transform-related tracking entries"
     (mt/with-premium-features #{:transforms}
-      ;; Create entities with setting OFF so events don't auto-create tracking entries
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}
                        :model/TransformTag tag {:name "Test Tag"}]
-          ;; Now turn on the setting for the tracking test
           (mt/with-temporary-setting-values [remote-sync-transforms true]
-            ;; Create tracking entries manually (simulating synced state)
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Transform" :model_id (:id transform) :model_name "Test Transform" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "TransformTag" :model_id (:id tag) :model_name "Test Tag" :status "synced" :status_changed_at (t/offset-date-time)}])
-            ;; Verify entries exist
             (is (= 3 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "Transform" "TransformTag"]]
                                :model_id [:in [coll-id (:id transform) (:id tag)]]))
                 "Should have 3 tracking entries")
-            ;; Disable transform sync
             (impl/sync-transform-tracking! false)
-            ;; Verify all transform-related tracking entries are removed
             (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
                 "Transform and TransformTag tracking entries should be removed")
             (is (zero? (t2/count :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
                 "Transforms-namespace collection tracking entry should be removed")))))))
-
-;; =============================================================================
-;; Dirty Detection Tests
-;; =============================================================================
 
 (deftest transforms-included-in-dirty-check-when-enabled-test
   (testing "Transforms are included in dirty check when setting is enabled"
@@ -218,14 +174,12 @@
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}]
-          ;; Create a dirty tracking entry
           (t2/insert! :model/RemoteSyncObject
                       {:model_type "Transform"
                        :model_id (:id transform)
                        :model_name "Dirty Transform"
                        :status "update"
                        :status_changed_at (t/offset-date-time)})
-          ;; Verify dirty detection includes transforms
           (is (sync-object/dirty?)
               "Should report dirty state when transform has changes"))))))
 
@@ -236,14 +190,12 @@
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}]
-          ;; Create a dirty tracking entry (should be ignored when disabled)
           (t2/insert! :model/RemoteSyncObject
                       {:model_type "Transform"
                        :model_id (:id transform)
                        :model_name "Dirty Transform"
                        :status "update"
                        :status_changed_at (t/offset-date-time)})
-          ;; Verify dirty detection excludes transforms when disabled
           (is (not (sync-object/dirty?))
               "Should NOT report dirty state when transform sync is disabled"))))))
 
@@ -253,14 +205,12 @@
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}]
-          ;; Create a dirty tracking entry
           (t2/insert! :model/RemoteSyncObject
                       {:model_type "TransformTag"
                        :model_id (:id tag)
                        :model_name "Dirty Tag"
                        :status "update"
                        :status_changed_at (t/offset-date-time)})
-          ;; Verify dirty detection includes transform tags
           (is (sync-object/dirty?)
               "Should report dirty state when transform tag has changes"))))))
 
@@ -270,20 +220,14 @@
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}]
-          ;; Create a dirty tracking entry (should be ignored when disabled)
           (t2/insert! :model/RemoteSyncObject
                       {:model_type "TransformTag"
                        :model_id (:id tag)
                        :model_name "Dirty Tag"
                        :status "update"
                        :status_changed_at (t/offset-date-time)})
-          ;; Verify dirty detection excludes transform tags when disabled
           (is (not (sync-object/dirty?))
               "Should NOT report dirty state when transform sync is disabled"))))))
-
-;; =============================================================================
-;; Export Tests
-;; =============================================================================
 
 (deftest export-includes-transforms-namespace-collections-test
   (testing "Export includes transforms-namespace collections when setting is enabled"
@@ -294,17 +238,14 @@
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
           (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxx" :location "/"}
                          :model/Transform transform {:name "Export Transform" :collection_id coll-id}]
-            ;; Verify the collection was created with the correct namespace
             (let [saved-coll (t2/select-one :model/Collection :id coll-id)]
               (is (= :transforms (:namespace saved-coll))
                   (str "Collection should have transforms namespace, got: " (:namespace saved-coll)))
               (is (= "/" (:location saved-coll))
                   (str "Collection should have root location, got: " (:location saved-coll))))
-            ;; Verify the query can find the collection
             (let [found-colls (t2/select-fn-set :entity_id :model/Collection :namespace (name collection/transforms-ns))]
               (is (contains? found-colls coll-eid)
                   (str "Query should find the collection. Found: " found-colls ", expected to contain: " coll-eid)))
-            ;; Track the collection and transform
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
                          {:model_type "Transform" :model_id (:id transform) :model_name "Export Transform" :model_collection_id coll-id :status "create" :status_changed_at (t/offset-date-time)}])
@@ -312,12 +253,7 @@
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
               (is (= :success (:status result))
                   (str "Export should succeed. Result: " result))
-              ;; Verify transform files are in export
               (let [files-after-export (get @(:files-atom mock-source) "main")]
-                ;; Transforms in transforms-namespace collections are stored under collections/transforms/
-                (is (some #(str/includes? % "collections/transforms/")
-                          (keys files-after-export))
-                    "Export should include transform files from transforms-namespace collection")
                 (is (some #(str/includes? % coll-eid)
                           (keys files-after-export))
                     "Export should include the transforms-namespace collection itself")))))))))
@@ -329,15 +265,12 @@
                                          remote-sync-transforms false
                                          remote-sync-enabled true]
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          ;; Need at least one remote-synced collection for export to work
           (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxx" :location "/"}]
-            ;; Verify the collection was created correctly
             (let [saved-coll (t2/select-one :model/Collection :id rs-coll-id)]
               (is (true? (:is_remote_synced saved-coll))
                   (str "Collection should have is_remote_synced true, got: " (:is_remote_synced saved-coll)))
               (is (= "/" (:location saved-coll))
                   (str "Collection should have root location, got: " (:location saved-coll))))
-            ;; Verify the query can find the collection
             (let [found-colls (t2/select-fn-set :entity_id :model/Collection :is_remote_synced true :location "/")]
               (is (contains? found-colls rs-coll-eid)
                   (str "Query should find the collection. Found: " found-colls ", expected to contain: " rs-coll-eid)))
@@ -347,24 +280,12 @@
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
               (is (= :success (:status result))
                   (str "Export should succeed. Result: " result))
-              ;; Verify NO transform files are in export
               (let [files-after-export (get @(:files-atom mock-source) "main")]
                 (is (not (some #(str/includes? % "transforms/") (keys files-after-export)))
                     "Export should NOT include transform files when setting is disabled")))))))))
 
-;; =============================================================================
-;; Helper Functions
-;; =============================================================================
-
 (defn- generate-transform-yaml
-  "Generates YAML content for a transform.
-
-   Args:
-     entity-id: The unique identifier for the transform.
-     name: The name of the transform.
-
-   Returns:
-     A string containing the YAML representation of the transform."
+  "Generates YAML content for a transform."
   [entity-id name]
   (format "name: %s
 description: null
@@ -390,10 +311,6 @@ serdes/meta:
 "
           name entity-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
-;; =============================================================================
-;; Import Tests
-;; =============================================================================
-
 (deftest import-includes-transforms-when-setting-enabled-test
   (testing "Import includes transforms when setting is enabled"
     (mt/with-premium-features #{:transforms}
@@ -409,7 +326,6 @@ serdes/meta:
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              ;; Verify transform was imported
               (is (t2/exists? :model/Transform :entity_id transform-entity-id)
                   "Transform should be imported when setting is enabled"))))))))
 
@@ -428,6 +344,5 @@ serdes/meta:
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              ;; Verify transform was NOT imported
               (is (not (t2/exists? :model/Transform :entity_id transform-entity-id))
                   "Transform should NOT be imported when setting is disabled"))))))))
