@@ -2,6 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   assertDashboard,
@@ -123,7 +124,11 @@ describe(suiteTitle, () => {
 
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Metabase account (SSO)").click();
+      });
 
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
@@ -265,7 +270,11 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });

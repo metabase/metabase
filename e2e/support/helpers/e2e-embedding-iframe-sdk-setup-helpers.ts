@@ -11,7 +11,9 @@ export const embedModalEnableEmbedding = () => {
 
     if (isEmbeddingDisabled) {
       embedModalEnableEmbeddingCard().within(() => {
-        cy.findByText(/(Agree and (continue|enable)|Enable)/).click();
+        cy.findByText(
+          /(Agree and (continue|enable)|Enable and continue)/,
+        ).click();
       });
     }
   });

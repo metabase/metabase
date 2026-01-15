@@ -38,6 +38,8 @@ export const visitNewEmbedPage = (
 
   cy.get("body").then(() => {
     if (waitForResource) {
+      embedModalEnableEmbedding();
+
       cy.wait("@dashboard");
 
       cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
@@ -96,9 +98,8 @@ export const navigateToEntitySelectionStep = (
 
   if (preselectSso || !isQuestionOrDashboardExperience) {
     cy.findByLabelText("Metabase account (SSO)").click();
+    embedModalEnableEmbedding();
   }
-
-  embedModalEnableEmbedding();
 
   const labelByExperience = match(experience)
     .with("chart", () => "Chart")
