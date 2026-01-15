@@ -41,16 +41,22 @@ jobs:
     strategy:
       matrix:
         project:
-          - name: Main Frontend (bun)
-            file: bun.lock
-            package-manager: npm # bun isn't supported by snyk yet, but bun.lock is compatible with npm
+          # snyk doesn't support bun yetso we generate yarn.lock and scan that
+          - name: Main Frontend (bun w/ yarn.lock)
+            file: yarn.lock
+            package-manager: yarn
             category: main-frontend-bun
           - name: Release Helper
-            file: release/bun.lock
-            package-manager: npm
+            file: release/yarn.lock
+            package-manager: yarn
             category: release-helper
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Generate yarn.lock for Snyk compatibility
+        run: |
+          bun install --yarn
+          cd release && bun install --yarn
       - uses: snyk/actions/setup@0.4.0
       - name: Run snyk test
         env:
