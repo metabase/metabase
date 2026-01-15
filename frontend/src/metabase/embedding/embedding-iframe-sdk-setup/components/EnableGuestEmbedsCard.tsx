@@ -27,10 +27,6 @@ export const EnableGuestEmbedsCard = () => {
       termsAccepted={isGuestEmbedsTermsAccepted}
       settingsToUpdate={{
         "enable-embedding-static": true,
-        // When the simple embed feature is not available (oss), we toggle both static and simple embedding
-        ...(!isSimpleEmbedFeatureAvailable && {
-          "enable-embedding-simple": true,
-        }),
         ...(!isGuestEmbedsTermsAccepted && {
           "show-static-embed-terms": false,
         }),
