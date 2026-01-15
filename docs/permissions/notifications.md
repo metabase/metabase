@@ -9,10 +9,10 @@ Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboar
 
 ## Who can edit dashboard subscriptions and alerts
 
-What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a group with [row and column security](../permissions/row-and-column-security.md).
+What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a group with [impersonation](./impersonation.md) or [row and column security](./row-and-column-security.md).
 
 - [All Users group](#all-users-group-notification-permissions)
-- [Restricted group](#notification-permissions-for-people-in-groups-with-row-and-column-security)
+- [Groups with impersonation or row and column security](#groups-with-impersonation-or-row-and-column-security)
 - [Administrators group](#administrators-group-notification-permissions)
 
 ### All Users group notification permissions
@@ -25,9 +25,11 @@ Everyone's in the All Users group. Which means that everyone can:
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
-### Notification permissions for people in groups with row and column security
+### Groups with impersonation or row and column security
 
-Same as everyone in the All Users group, but with a special case: **people in groups with row and column security will only see themselves in the list of recipients** when creating an alert or subscription.
+People in groups with [impersonation](./impersonation.md) or [row and column security](./row-and-column-security.md) permissions cannot create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). They can still set up email alerts and subscriptions.
+
+For email alerts and subscriptions, people in these groups will only see themselves in the list of recipients.
 
 ### Administrators group notification permissions
 
