@@ -2113,6 +2113,7 @@
            util
            warehouse-schema
            warehouses-rest
+           enterprise/sso
            enterprise/dependencies
            enterprise/transforms
            enterprise/transforms-python}}
