@@ -168,18 +168,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
 
     it("should filter by location", () => {
-      createEntities({ withPersonalCollection: true });
+      createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_MODEL_DATA_SOURCE,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
-      });
-
-      H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -188,6 +178,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         ],
       });
 
+      H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
@@ -195,6 +186,15 @@ describe("scenarios > dependencies > unreferenced list", () => {
           SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         ],
         hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
+      });
+
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
       });
     });
   });
@@ -259,9 +259,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
 function createEntities({
   withReferences = false,
-  withPersonalCollection = false,
-}: { withReferences?: boolean; withPersonalCollection?: boolean } = {}) {
-  createModelContent({ withReferences, withPersonalCollection });
+}: { withReferences?: boolean } = {}) {
+  createModelContent({ withReferences });
   createSegmentContent({ withReferences });
   createMetricContent({ withReferences });
   createSnippetContent({ withReferences });
@@ -269,10 +268,8 @@ function createEntities({
 
 function createModelContent({
   withReferences = false,
-  withPersonalCollection = false,
 }: {
   withReferences?: boolean;
-  withPersonalCollection?: boolean;
 }) {
   createModelWithTableDataSource({
     name: MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -302,9 +299,7 @@ function createModelContent({
   createModelWithTableDataSource({
     name: MODEL_FOR_METRIC_DATA_SOURCE,
     tableId: ORDERS_ID,
-    collectionId: withPersonalCollection
-      ? ADMIN_PERSONAL_COLLECTION_ID
-      : undefined,
+    collectionId: ADMIN_PERSONAL_COLLECTION_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createMetricWithModelDataSource({

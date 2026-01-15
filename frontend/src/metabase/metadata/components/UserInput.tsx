@@ -81,8 +81,8 @@ export const UserInput = ({
             <Icon name="mail" />
           </Avatar>
         ) : userId === "unknown" ? (
-          <Avatar color="bg-light" name="unknown">
-            <Icon name="person" c="text-medium" />
+          <Avatar color="background-secondary" name="unknown">
+            <Icon name="person" c="text-secondary" />
           </Avatar>
         ) : null
       }
@@ -97,7 +97,7 @@ export const UserInput = ({
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && (
               <Avatar>
-                <Icon name="person" c="text-medium" />
+                <Icon name="person" c="text-secondary" />
               </Avatar>
             )}
             {option.type === "email" && (
