@@ -178,10 +178,12 @@
             (let [result (run-transforms! run-id transforms opts)]
               (case (:status result)
                 :succeeded (transforms.job-run/succeed-started-run! run-id)
-                :failed (do
+                :failed (try
                           (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (:failures result))})
                           (when (= :cron run-method)
-                            (notify-transform-failures job-id (:failures result))))))
+                            (notify-transform-failures job-id (:failures result)))
+                          (catch Exception e
+                            (log/error e "Error when failing a transform job.")))))
             (catch Throwable t
               ;; We don't expect a catastrophic failure, but neither did the Titanic.
               ;; We should clean up in this case and notify the admin users.
