@@ -6,6 +6,7 @@ import _ from "underscore";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
@@ -13,11 +14,13 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
 import {
+  Anchor,
   Card,
   EntityNameCell,
   Flex,
   Icon,
   Stack,
+  Text,
   TextInput,
   TreeTable,
   type TreeTableColumnDef,
@@ -34,13 +37,14 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
+import { PublishTableModal } from "./PublishTableModal";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 import {
   useBuildSnippetTree,
   useBuildTreeForCollection,
   useErrorHandling,
 } from "./hooks";
-import { type TreeItem, isCollection } from "./types";
+import { type TreeItem, isCollection, isEmptyStateData } from "./types";
 import { getAccessibleCollection } from "./utils";
 
 export function LibrarySectionLayout() {
@@ -53,6 +57,7 @@ export function LibrarySectionLayout() {
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
 
   const expandedIdsFromUrl = useMemo(() => {
     const rawIds = location.query?.expandedId;
@@ -106,6 +111,9 @@ export function LibrarySectionLayout() {
 
   const handleItemSelect = useCallback(
     (item: TreeItem) => {
+      if (item.model === "empty-state" || isEmptyStateData(item.data)) {
+        return;
+      }
       const entityId = item.data.id as number;
       if (item.model === "metric") {
         dispatch(push(Urls.dataStudioMetric(entityId)));
@@ -121,12 +129,16 @@ export function LibrarySectionLayout() {
     tree: tablesTree,
     isLoading: loadingTables,
     error: tablesError,
-  } = useBuildTreeForCollection(tableCollection);
+  } = useBuildTreeForCollection(tableCollection, "data");
   const {
     tree: metricsTree,
     isLoading: loadingMetrics,
     error: metricsError,
-  } = useBuildTreeForCollection(metricCollection);
+  } = useBuildTreeForCollection(
+    metricCollection,
+    "metrics",
+    metricCollection?.id,
+  );
   const {
     tree: snippetTree,
     isLoading: loadingSnippets,
@@ -141,9 +153,42 @@ export function LibrarySectionLayout() {
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
+  // Collections with only empty-state children should always be expanded
+  // (even when navigating back via breadcrumbs which may collapse other sections)
+  const alwaysExpandedIds = useMemo(() => {
+    const ids: Record<string, boolean> = {};
+    combinedTree.forEach((node) => {
+      if (node.model === "collection" && node.children) {
+        const hasOnlyEmptyState = node.children.every(
+          (child) => child.model === "empty-state",
+        );
+        if (hasOnlyEmptyState) {
+          ids[node.id] = true;
+        }
+      }
+    });
+    return ids;
+  }, [combinedTree]);
+
+  // Merge URL-based expansion with always-expanded empty sections
+  const effectiveExpandedState = useMemo(() => {
+    if (!expandedIdsFromUrl) {
+      return true; // Expand all by default
+    }
+    return {
+      ...expandedIdsFromUrl,
+      ...alwaysExpandedIds,
+    };
+  }, [expandedIdsFromUrl, alwaysExpandedIds]);
+
   const libraryHasContent = useMemo(
     () =>
-      combinedTree.some((node) => node.children && node.children.length > 0),
+      combinedTree.some(
+        (node) =>
+          node.children &&
+          node.children.length > 0 &&
+          node.children.some((child) => child.model !== "empty-state"),
+      ),
     [combinedTree],
   );
 
@@ -155,13 +200,61 @@ export function LibrarySectionLayout() {
         enableSorting: true,
         accessorKey: "name",
         minWidth: 200,
-        cell: ({ row }) => (
-          <EntityNameCell
-            data-testid={`${row.original.model}-name`}
-            icon={row.original.icon}
-            name={row.original.name}
-          />
-        ),
+        cell: ({ row }) => {
+          const { model, data } = row.original;
+
+          if (model === "empty-state" && isEmptyStateData(data)) {
+            const renderAction = () => {
+              if (data.sectionType === "data") {
+                return (
+                  <Anchor
+                    component="button"
+                    type="button"
+                    fz="inherit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPublishTableModalOpen(true);
+                    }}
+                  >
+                    {data.actionLabel}
+                  </Anchor>
+                );
+              }
+
+              if (data.actionUrl) {
+                return (
+                  <Anchor
+                    component={ForwardRefLink}
+                    to={data.actionUrl}
+                    fz="inherit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {data.actionLabel}
+                  </Anchor>
+                );
+              }
+
+              return null;
+            };
+
+            return (
+              <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
+                <Text c="text-tertiary" fz="inherit">
+                  {data.description}
+                </Text>
+                {renderAction()}
+              </Flex>
+            );
+          }
+
+          return (
+            <EntityNameCell
+              data-testid={`${row.original.model}-name`}
+              icon={row.original.icon}
+              name={row.original.name}
+            />
+          );
+        },
       },
       {
         id: "updatedAt",
@@ -171,7 +264,10 @@ export function LibrarySectionLayout() {
         sortingFn: "datetime",
         width: "auto",
         widthPadding: 20,
-        cell: ({ getValue }) => {
+        cell: ({ row, getValue }) => {
+          if (row.original.model === "empty-state") {
+            return null;
+          }
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;
         },
@@ -180,7 +276,15 @@ export function LibrarySectionLayout() {
         id: "actions",
         width: 48,
         cell: ({ row }) => {
+          if (row.original.model === "empty-state") {
+            return null;
+          }
+
           const { data } = row.original;
+          if (isEmptyStateData(data)) {
+            return null;
+          }
+
           if (
             isCollection(data) &&
             data.model === "collection" &&
@@ -207,7 +311,7 @@ export function LibrarySectionLayout() {
         },
       },
     ],
-    [],
+    [setIsPublishTableModalOpen],
   );
 
   const handleRowActivate = useCallback(
@@ -224,8 +328,9 @@ export function LibrarySectionLayout() {
     getNodeId: (node) => node.id,
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
-    isFilterable: (node) => node.model !== "collection",
-    defaultExpanded: expandedIdsFromUrl ?? true,
+    isFilterable: (node) =>
+      node.model !== "collection" && node.model !== "empty-state",
+    defaultExpanded: effectiveExpandedState,
     onRowActivate: handleRowActivate,
   });
 
@@ -277,6 +382,9 @@ export function LibrarySectionLayout() {
                   emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
                 }
                 onRowClick={(row) => {
+                  if (row.original.model === "empty-state") {
+                    return;
+                  }
                   if (row.getCanExpand()) {
                     row.toggleExpanded();
                   } else {
@@ -306,6 +414,11 @@ export function LibrarySectionLayout() {
         onClose={() => {
           dispatch(goBack());
         }}
+      />
+      <PublishTableModal
+        opened={isPublishTableModalOpen}
+        onClose={() => setIsPublishTableModalOpen(false)}
+        onPublished={() => setIsPublishTableModalOpen(false)}
       />
     </>
   );
