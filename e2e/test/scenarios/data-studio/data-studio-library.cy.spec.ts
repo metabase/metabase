@@ -135,4 +135,121 @@ describe("scenarios > data studio > library", () => {
       );
     });
   });
+
+  describe("empty state", () => {
+    it("should show empty states with action links when sections are empty", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify all sections are expanded");
+      H.DataStudio.Library.collectionItem("Data").should("be.visible");
+      H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
+      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
+
+      cy.log("Verify Data section empty state");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("button", { name: "Publish a table" })
+        .should("be.visible");
+
+      cy.log("Verify Metrics section empty state");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Standardized calculations with known dimensions")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New metric" })
+        .should("be.visible");
+
+      cy.log("Verify SQL snippets section empty state");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Reusable bits of code that save your time")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New snippet" })
+        .should("be.visible");
+    });
+
+    it("should open publish table modal when clicking 'Publish a table' in empty state", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Click on the 'Publish a table' button in the empty state");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("button", { name: "Publish a table" })
+        .click();
+
+      cy.log("Verify the publish table modal opens");
+      H.entityPickerModal().should("be.visible");
+      H.entityPickerModalItem(3, "Orders").should("exist");
+    });
+
+    it("should hide empty state when section has items", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify Data empty state is visible initially");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("be.visible");
+
+      cy.log("Publish a table");
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModal().button("Publish").click();
+
+      cy.log("Navigate back to the library");
+      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
+
+      cy.log("Verify Data empty state is hidden and table is visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("not.exist");
+    });
+
+    it("should not show empty states in search results", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Search for 'Publish'");
+      H.DataStudio.Library.libraryPage()
+        .findByPlaceholderText("Search...")
+        .type("Publish");
+
+      cy.log("Verify empty state descriptions are not in search results");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("not.exist");
+    });
+
+    it("should keep empty sections expanded when navigating back via breadcrumbs", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Publish a table so Data section has content");
+      H.DataStudio.Library.newButton().click();
+      H.popover().findByText("Publish a table").click();
+      H.entityPickerModalItem(3, "Orders").click();
+      H.entityPickerModal().button("Publish").click();
+
+      cy.log("Navigate back to Data section via breadcrumbs");
+      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
+
+      cy.log(
+        "Verify empty sections (Metrics, SQL snippets) are still expanded and showing empty states",
+      );
+      H.DataStudio.Library.libraryPage()
+        .findByText("Standardized calculations with known dimensions")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Reusable bits of code that save your time")
+        .should("be.visible");
+
+      cy.log("Verify the Data section table is also visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+    });
+  });
 });
