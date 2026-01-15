@@ -34,7 +34,7 @@ module.exports = {
       path: false,
       fs: false,
       querystring: require.resolve("querystring-es3"),
-    },
+    }, // FIXME: this might break file download tests, we might need to implement this properly
   },
   entry: [path.join(__dirname, "src", "index.js")],
   output: {
