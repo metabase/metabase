@@ -1640,7 +1640,7 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card _ {:name "A Card sorttest"}
-                     :model/Table _ {:name "B Table" :display_name "B Table sorttest"}
+                     :model/Table _ {:name "B Table sorttest" :display_name "B Table sorttest"}
                      :model/Transform _ {:name "C Transform sorttest"}
                      :model/NativeQuerySnippet _ {:name "D Snippet sorttest"}
                      :model/Dashboard _ {:name "E Dashboard sorttest"}
@@ -1648,7 +1648,6 @@
                      :model/Segment _ {:name "G Segment sorttest"}
                      :model/Measure _ {:name "H Measure sorttest"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
-
         (doseq [sort-direction [:asc :desc]]
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
@@ -1664,4 +1663,4 @@
                                   "F Document sorttest"
                                   "G Segment sorttest"
                                   "H Measure sorttest"]
-                           (sort-direction :desc) reverse)))))))))
+                           (= sort-direction :desc) reverse)))))))))
