@@ -102,21 +102,13 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`DB Name`}</Text>
           <Text>
-            {isLoadingDatabases ? (
-              <Loader size="xs" />
-            ) : task.db_id ? (
-              dbName
-            ) : null}
+            {isLoadingDatabases ? <Loader size="xs" /> : db ? dbName : "—"}
           </Text>
         </Flex>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`DB Engine`}</Text>
           <Text>
-            {isLoadingDatabases ? (
-              <Loader size="xs" />
-            ) : task.db_id ? (
-              dbEngine
-            ) : null}
+            {isLoadingDatabases ? <Loader size="xs" /> : db ? dbEngine : "—"}
           </Text>
         </Flex>
         <Flex gap="md">
