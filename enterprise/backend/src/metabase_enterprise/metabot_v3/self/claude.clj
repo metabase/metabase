@@ -100,14 +100,22 @@
            ;; end of message
            (= t "message_stop") identity))))))
 
-(defn- tool->claude [tool]
-  (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out]    schema
-        doc                           (if (str/starts-with? doc "Inputs: ")
-                                        ;; strip that stuff we're appending in mu/defn
-                                        (second (str/split doc #"\n\n  " 2))
-                                        doc)]
-    {:name         (name (:name tool))
+(defn- tool->claude
+  "Convert a tool to Claude API format.
+  Accepts either:
+  - A var (legacy) - uses var name as tool name
+  - A [name, var] pair - uses explicit name"
+  [tool-or-pair]
+  (let [[tool-name tool] (if (vector? tool-or-pair)
+                           tool-or-pair
+                           [nil tool-or-pair])
+        {:keys [doc schema]} (if (map? tool) tool (meta tool))
+        [_:=> [_:cat params] _out] schema
+        doc (if (str/starts-with? (or doc "") "Inputs: ")
+              ;; strip that stuff we're appending in mu/defn
+              (second (str/split doc #"\n\n  " 2))
+              doc)]
+    {:name         (or tool-name (name (:name (meta tool))))
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
@@ -121,8 +129,10 @@
        [:system {:optional true} :string]
        [:input {:optional true} [:vector [:map
                                           [:role [:enum "user" "assistant"]]
-                                          [:content :string]]]]
-       [:tools {:optional true} [:sequential [:fn var?]]]
+                                          ;; Content can be string or array of content blocks
+                                          ;; (for tool_use and tool_result in multi-turn)
+                                          [:content [:or :string [:sequential :map]]]]]]
+       [:tools {:optional true} [:sequential [:or [:fn var?] [:tuple :string [:fn var?]]]]]
        [:schema {:optional true} :any]]]
   (assert (llm/ee-anthropic-api-key) "No Anthropic API key!")
   (let [req (cond-> {:model      model
