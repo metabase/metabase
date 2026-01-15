@@ -54,16 +54,14 @@ describe("EmbeddingSdkSettings (EE)", () => {
     expect(screen.getByText("Tenants")).toBeInTheDocument();
   });
 
-  it("should show Security and Appearance in related settings", async () => {
+  it("should not show Security and Appearance in related settings without token", async () => {
     await setup({
-      enterprisePlugins: [
-        "embedding-sdk",
-        "embedding_iframe_sdk",
-        "embedding_iframe_sdk_setup",
-      ],
+      isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: false,
+      showSdkEmbedTerms: false,
     });
 
-    expect(screen.getByText("Security")).toBeInTheDocument();
-    expect(screen.getByText("Appearance")).toBeInTheDocument();
+    expect(screen.queryByText("Security")).not.toBeInTheDocument();
+    expect(screen.queryByText("Appearance")).not.toBeInTheDocument();
   });
 });
