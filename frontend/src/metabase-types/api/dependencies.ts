@@ -280,7 +280,11 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export const DEPENDENCY_SORT_COLUMNS = ["name", "location"] as const;
+export const DEPENDENCY_SORT_COLUMNS = [
+  "name",
+  "location",
+  "dependents-count",
+] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
 export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;

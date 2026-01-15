@@ -596,6 +596,11 @@
                           (:transform :snippet :dashboard :document) :collection.name
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :location_table.name)
+        dependents-count-column {:select [[:%count.*]]
+                                 :from [:dependency]
+                                 :where [:and
+                                         [:= :dependency.to_entity_id :entity.id]
+                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
@@ -637,7 +642,10 @@
                                         (for [pid personal-ids]
                                           [:not-like :collection.location (str "/" pid "/%")]))]]))
                             nil))
-        sort-key-column (if (= sort-column :location) location-column name-column)
+        sort-key-column (case sort-column
+                          :location location-column
+                          :dependents-count dependents-count-column
+                          name-column)
         sort-by-location? (= sort-column :location)
         needs-database-join? (= entity-type :table)
         needs-collection-join? (or (and (not include-personal-collections)
@@ -675,7 +683,7 @@
 
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
-  #{:name :location})
+  #{:name :location :dependents-count})
 
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
@@ -712,7 +720,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (\"name\" or \"location\", default: \"name\")
+   - `sort_column`: Column to sort by (\"name\", \"location\", or \"dependents_count\", default: \"name\")
    - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
@@ -771,7 +779,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Column to sort by (\"name\" or \"location\", default: \"name\")
+   - `sort_column`: Column to sort by (\"name\", \"location\", or \"dependents_count\", default: \"name\")
    - `sort_direction`: Sort direction, either \"asc\" or \"desc\" (default: \"asc\")
    - `offset`: Default 0
    - `limit`: Default 50
