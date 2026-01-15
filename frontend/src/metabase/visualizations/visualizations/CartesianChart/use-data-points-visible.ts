@@ -20,7 +20,7 @@ export const useAreAllDataPointsOutOfRange = (
   );
   return chartModel.dataset.every((data) =>
     dataKeys.every((key) => {
-      const value = data[key] as number;
+      const value = (data[key] as number) || 0;
 
       return value < yMin || yMax < value;
     }),
