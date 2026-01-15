@@ -20,7 +20,8 @@
             "query_metric"
             "query_model"
             "get_field_values"
-            "show_results_to_user"]}
+            "show_results_to_user"
+            "read_resource"]}
 
    :metabot-internal
    {:prompt-template "internal.selmer"
@@ -42,7 +43,8 @@
             "create_sql_query"
             "edit_sql_query"
             "replace_sql_query"
-            "sql_search"]}
+            "sql_search"
+            "read_resource"]}
 
    :metabot-transforms-codegen
    {:prompt-template "transform-codegen.selmer"
@@ -52,7 +54,8 @@
     :tools ["search"
             "get_transform_details"
             "get_entity_details"
-            "get_field_stats"]}
+            "get_field_stats"
+            "read_resource"]}
 
    :metabot-sql-only
    {:prompt-template "sql-querying-only.selmer"
@@ -65,7 +68,8 @@
             "create_sql_query"
             "edit_sql_query"
             "replace_sql_query"
-            "sql_search"]}})
+            "sql_search"
+            "read_resource"]}})
 
 (defn get-profile
   "Get profile configuration by profile-id keyword."
