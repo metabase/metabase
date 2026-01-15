@@ -34,6 +34,8 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
         noEvent,
         formData,
         fetch,
+        // DELETE requests with body need hasBody: true to send JSON body instead of query params
+        hasBody: method === "DELETE" && args?.body != null,
       },
     );
     return { data: response };
