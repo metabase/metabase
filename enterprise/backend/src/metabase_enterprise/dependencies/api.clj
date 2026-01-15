@@ -658,7 +658,7 @@
                                         (#{:card :transform :snippet :dashboard :document} entity-type)))
         needs-dashboard-join? (and sort-by-location? (= entity-type :card))
         needs-document-join? (and sort-by-location? (= entity-type :card))
-        needs-location-table-join? (and sort-by-location? (#{:segment :measure} entity-type))]
+        needs-table-join? (and sort-by-location? (#{:segment :measure} entity-type))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
               [sort-key-column :sort_key]]
@@ -668,7 +668,7 @@
                   needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id])
                   needs-dashboard-join? (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
                   needs-document-join? (conj :document [:= :entity.document_id :document.id])
-                  needs-location-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
+                  needs-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
      :where (cond->> dependency-filter
               card-type-filter
               (conj [:and card-type-filter])
