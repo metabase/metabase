@@ -1,8 +1,10 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import type {
   Task,
+  TaskRun,
   TaskRunExtended,
   TaskRunStatus,
   TaskStatus,
@@ -46,9 +48,9 @@ export const getEntityUrl = (
   entityId: number,
 ): string =>
   match(entityType)
-    .with("database", () => `/admin/databases/${entityId}`)
-    .with("card", () => `/question/${entityId}`)
-    .with("dashboard", () => `/dashboard/${entityId}`)
+    .with("database", () => Urls.viewDatabase(entityId))
+    .with("card", () => Urls.viewCard(entityId))
+    .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 
 export const getTaskRunStatusColor = (status: TaskRunStatus) =>
@@ -67,5 +69,20 @@ export const getTaskStatusColor = (status: TaskStatus) =>
 export const getFilename = (task: Task | undefined) =>
   task ? `task-${task.id}.json` : "task.json";
 
-export const formatTaskDetails = (task: Task | undefined): string =>
-  task ? JSON.stringify(task.task_details, null, 2) : "";
+export const formatTaskDetails = (task: Task | undefined): string => {
+  try {
+    return JSON.stringify(task?.task_details, null, 2) ?? "";
+  } catch {
+    return "";
+  }
+};
+
+export const renderTaskRunCounters = ({
+  task_count,
+  success_count,
+  failed_count,
+}: TaskRun) => {
+  const success = t`Success`;
+  const failed = t`Failed`;
+  return `${task_count} (${success}: ${success_count} / ${failed}: ${failed_count})`;
+};

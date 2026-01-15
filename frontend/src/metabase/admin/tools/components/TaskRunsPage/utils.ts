@@ -51,18 +51,20 @@ const parseRunType = (param: QueryParam): UrlState["run-type"] => {
   return value && isRunType(value) ? value : null;
 };
 
-const isRunType = (value: string): value is TaskRunType => {
-  return ["subscription", "alert", "sync", "fingerprint"].includes(value);
-};
+const isRunType = (value: string): value is TaskRunType =>
+  (
+    ["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[]
+  ).includes(value as TaskRunType);
 
 const parseEntityType = (param: QueryParam): UrlState["entity-type"] => {
   const value = getFirstParamValue(param);
   return value && isEntityType(value) ? value : null;
 };
 
-const isEntityType = (value: string): value is TaskRunEntityType => {
-  return ["database", "card", "dashboard"].includes(value);
-};
+const isEntityType = (value: string): value is TaskRunEntityType =>
+  (["database", "card", "dashboard"] satisfies TaskRunEntityType[]).includes(
+    value as TaskRunEntityType,
+  );
 
 const parseEntityId = (param: QueryParam): UrlState["entity-id"] => {
   const value = getFirstParamValue(param);
@@ -78,6 +80,7 @@ const parseStatus = (param: QueryParam): UrlState["status"] => {
   return value && isTaskRunStatus(value) ? value : null;
 };
 
-const isTaskRunStatus = (value: string): value is TaskRunStatus => {
-  return ["started", "success", "failed", "abandoned"].includes(value);
-};
+const isTaskRunStatus = (value: string): value is TaskRunStatus =>
+  (
+    ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
+  ).includes(value as TaskRunStatus);

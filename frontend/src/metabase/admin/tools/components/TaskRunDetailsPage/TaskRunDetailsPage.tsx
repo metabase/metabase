@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import {
   Anchor,
   Badge,
@@ -30,6 +31,7 @@ import {
   getEntityUrl,
   getTaskRunStatusColor,
   getTaskStatusColor,
+  renderTaskRunCounters,
 } from "../../utils";
 
 type TaskRunDetailsPageProps = {
@@ -41,7 +43,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(`/admin/tools/tasks/list/${task.id}`));
+    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
   };
 
   if (!taskRun || error || isLoading) {
@@ -51,7 +53,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to="/admin/tools/tasks/runs">
+        <Link to={Urls.adminToolsTasksRuns()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Runs`}
@@ -100,10 +102,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Task count`}</Text>
-              <Text>
-                {taskRun.task_count} ({t`Success`}: {taskRun.success_count} /{" "}
-                {t`Failed`}: {taskRun.failed_count})
-              </Text>
+              <Text>{renderTaskRunCounters(taskRun)}</Text>
             </Flex>
           </Stack>
         </Grid.Col>

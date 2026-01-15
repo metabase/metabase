@@ -1,33 +1,21 @@
 import * as React from "react";
-import { type DOMAttributes, type Ref, forwardRef, useMemo } from "react";
+import { useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
 
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
-import type { BoxProps } from "metabase/ui";
 import type { Log } from "metabase-types/api";
 
 import { LogsContent } from "./Logs.styled";
 import { formatLog } from "./utils";
 
-type LogsViewerProps = DOMAttributes<HTMLDivElement> &
-  BoxProps & {
-    logs: Log[];
-  };
+type LogsViewerProps = {
+  logs: Log[];
+};
 
-function LogsViewerInner(
-  { logs, onScroll }: LogsViewerProps,
-  ref: Ref<HTMLDivElement>,
-) {
+// TODO(egorgrushin): use it in frontend/src/metabase/admin/tools/components/Logs/Logs.tsx
+export const LogsViewer = ({ logs }: LogsViewerProps) => {
   const logText = useMemo(() => logs.map(formatLog).join("\n"), [logs]);
-  const displayLogs = useMemo(() => {
-    return reactAnsiStyle(React, logText);
-  }, [logText]);
+  const displayLogs = useMemo(() => reactAnsiStyle(React, logText), [logText]);
 
-  return (
-    <AnsiLogs ref={ref} onScroll={onScroll} component={LogsContent}>
-      {displayLogs}
-    </AnsiLogs>
-  );
-}
-
-export const LogsViewer = forwardRef(LogsViewerInner);
+  return <AnsiLogs component={LogsContent}>{displayLogs}</AnsiLogs>;
+};

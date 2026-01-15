@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Badge, Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
@@ -40,7 +41,7 @@ export const TasksTable = ({
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(`/admin/tools/tasks/list/${task.id}`));
+    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
   };
 
   return (

@@ -8,6 +8,7 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { openSaveDialog } from "metabase/lib/dom";
+import * as Urls from "metabase/lib/urls";
 import {
   Anchor,
   Badge,
@@ -47,12 +48,12 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   if (!task || error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
-  const hasLogs = task?.logs?.length !== 0;
+  const hasLogs = task.logs?.length !== 0;
   const databases = databasesData?.data ?? [];
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const db = task.db_id ? databaseByID[task.db_id] : null;
-  const name = db ? db.name : null;
-  const engine = db ? db.engine : null;
+  const dbName = db?.name ?? t`Unknown name`;
+  const dbEngine = db?.engine ?? t`Unknown engine`;
 
   const handleDownload = () => {
     const filename = getFilename(task);
@@ -63,7 +64,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to="/admin/tools/tasks/list">
+        <Link to={Urls.adminToolsTasksList()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Tasks`}
@@ -92,7 +93,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             <Text fw="bold" w={120}>{t`Task run`}</Text>
             <Anchor
               component={Link}
-              to={`/admin/tools/tasks/runs/${task.run_id}`}
+              to={Urls.adminToolsTaskRunDetails(task.run_id)}
             >
               {t`Go to the corresponding run`}
             </Anchor>
@@ -104,7 +105,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             {isLoadingDatabases ? (
               <Loader size="xs" />
             ) : task.db_id ? (
-              name || t`Unknown name`
+              dbName
             ) : null}
           </Text>
         </Flex>
@@ -114,7 +115,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             {isLoadingDatabases ? (
               <Loader size="xs" />
             ) : task.db_id ? (
-              engine || t`Unknown engine`
+              dbEngine
             ) : null}
           </Text>
         </Flex>
@@ -157,11 +158,12 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         </Box>
 
         <Title order={3}>{t`Logs`}</Title>
-        {!hasLogs && <Text>{t`There are no captured logs`}</Text>}
-        {hasLogs && (
+        {hasLogs ? (
           <Box className={S.codeContainer} mt="md">
             <LogsViewer logs={task?.logs ?? []}></LogsViewer>
           </Box>
+        ) : (
+          <Text>{t`There are no captured logs`}</Text>
         )}
       </Stack>
     </SettingsSection>

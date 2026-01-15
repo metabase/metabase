@@ -1,7 +1,7 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
+import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
 import type { TaskRunType } from "metabase-types/api";
 
 type TaskRunTypePickerProps = Omit<
@@ -17,7 +17,12 @@ export const TaskRunTypePicker = ({
   onChange,
   ...props
 }: TaskRunTypePickerProps) => {
-  const data = useMemo(() => getData(), []);
+  const data: SelectData<TaskRunType> = [
+    { label: t`Subscription`, value: "subscription" },
+    { label: t`Alert`, value: "alert" },
+    { label: t`Sync`, value: "sync" },
+    { label: t`Fingerprint`, value: "fingerprint" },
+  ];
 
   return (
     <Select
@@ -39,15 +44,4 @@ export const TaskRunTypePicker = ({
       {...props}
     />
   );
-};
-
-const getData = () => {
-  const runTypeNames: { [T in TaskRunType]: { label: string; value: T } } = {
-    subscription: { label: t`Subscription`, value: "subscription" },
-    alert: { label: t`Alert`, value: "alert" },
-    sync: { label: t`Sync`, value: "sync" },
-    fingerprint: { label: t`Fingerprint`, value: "fingerprint" },
-  };
-
-  return Object.values(runTypeNames);
 };

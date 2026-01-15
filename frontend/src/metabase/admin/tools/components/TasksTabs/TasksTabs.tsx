@@ -7,6 +7,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
 type TabConfig = {
@@ -14,7 +15,7 @@ type TabConfig = {
   label: string;
 };
 
-const BASE_PATH = "/admin/tools/tasks";
+const BASE_PATH = Urls.adminToolsTasksBase();
 
 const getActiveTab = (
   tabs: TabConfig[],

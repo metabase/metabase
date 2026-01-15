@@ -7,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Badge, Box, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
@@ -14,6 +15,7 @@ import {
   formatTaskRunStatus,
   formatTaskRunType,
   getTaskRunStatusColor,
+  renderTaskRunCounters,
 } from "../../utils";
 
 type TaskRunsTableProps = {
@@ -31,7 +33,7 @@ export const TaskRunsTable = ({
   const dispatch = useDispatch();
 
   const onClickTaskRun = (taskRun: TaskRun) => {
-    dispatch(push(`/admin/tools/tasks/runs/${taskRun.id}`));
+    dispatch(push(Urls.adminToolsTaskRunDetails(taskRun.id)));
   };
 
   return (
@@ -46,7 +48,7 @@ export const TaskRunsTable = ({
           <th>{t`Started at`}</th>
           <th>{t`Ended at`}</th>
           <th>{t`Status`}</th>
-          <th>{t`Count`}</th>
+          <th>{t`Task Count`}</th>
         </tr>
       </thead>
 
@@ -102,13 +104,7 @@ export const TaskRunsTable = ({
                     {formatTaskRunStatus(taskRun.status)}
                   </Badge>
                 </td>
-                <td>
-                  <span>{taskRun.task_count} </span>
-                  <span>
-                    ({t`Success`}:{taskRun.success_count} / {t`Failed`}:
-                    {taskRun.failed_count})
-                  </span>
-                </td>
+                <td>{renderTaskRunCounters(taskRun)}</td>
               </tr>
             ))}
           </>

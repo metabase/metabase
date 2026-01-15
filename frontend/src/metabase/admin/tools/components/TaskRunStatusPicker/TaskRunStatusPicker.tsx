@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
@@ -15,15 +14,12 @@ export const TaskRunStatusPicker = ({
   onChange,
   ...props
 }: TaskRunStatusPicker) => {
-  const data: SelectData<TaskRunStatus> = useMemo(
-    () => [
-      { label: t`Started`, value: "started" },
-      { label: t`Success`, value: "success" },
-      { label: t`Failed`, value: "failed" },
-      { label: t`Abandoned`, value: "abandoned" },
-    ],
-    [],
-  );
+  const data: SelectData<TaskRunStatus> = [
+    { label: t`Started`, value: "started" },
+    { label: t`Success`, value: "success" },
+    { label: t`Failed`, value: "failed" },
+    { label: t`Abandoned`, value: "abandoned" },
+  ];
 
   return (
     <Select
