@@ -1678,7 +1678,7 @@
           (is (= "failed" (get-in fail-entry [:permissions_status :status])))
           (is (= "permission denied" (get-in fail-entry [:permissions_status :error]))))))
 
-    (testing "databases without permission check have nil permissions_status"
+    (testing "databases without permission check have unknown permissions_status"
       (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
                                                         :engine :h2
                                                         :is_audit false
@@ -1686,4 +1686,4 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
           (is (false? (:enabled entry)))
-          (is (nil? (:permissions_status entry))))))))
+          (is (= {:status "unknown"} (:permissions_status entry))))))))

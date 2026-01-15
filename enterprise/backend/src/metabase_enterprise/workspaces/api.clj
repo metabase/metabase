@@ -345,10 +345,10 @@
                                   :is_audit false :is_sample false {:order-by [:name]})
                        (filter #(driver.u/supports? (:engine %) :workspace %)))]
     {:databases (mapv (fn [{:keys [id name workspaces_enabled workspace_permissions_status]}]
-                        (cond-> {:id      id
-                                 :name    name
-                                 :enabled workspaces_enabled}
-                          workspace_permissions_status (assoc :permissions_status workspace_permissions_status)))
+                        {:id                 id
+                         :name               name
+                         :enabled            workspaces_enabled
+                         :permissions_status (or workspace_permissions_status {:status "unknown"})})
                       databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
