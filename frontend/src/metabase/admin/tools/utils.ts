@@ -30,6 +30,7 @@ export const formatTaskRunStatus = (status: TaskRunExtended["status"]) =>
     .with("started", () => t`Started`)
     .with("success", () => t`Success`)
     .with("failed", () => t`Failed`)
+    .with("abandoned", () => t`Abandoned`)
     .exhaustive();
 
 export const formatTaskStatus = (status: Task["status"]) =>
@@ -54,6 +55,7 @@ export const getTaskRunStatusColor = (status: TaskRunStatus) =>
   match(status)
     .with("success", () => "success" as const)
     .with("failed", () => "error" as const)
+    .with("abandoned", () => "warning" as const)
     .otherwise(() => "text-primary" as const);
 
 export const getTaskStatusColor = (status: TaskStatus) =>

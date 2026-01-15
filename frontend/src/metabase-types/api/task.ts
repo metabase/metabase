@@ -66,7 +66,7 @@ export type TaskInfo = {
 
 export type TaskRunType = "subscription" | "alert" | "sync" | "fingerprint";
 export type TaskRunEntityType = "database" | "card" | "dashboard";
-export type TaskRunStatus = "started" | "success" | "failed";
+export type TaskRunStatus = "started" | "success" | "failed" | "abandoned" ;
 
 export interface TaskRun {
   id: number;

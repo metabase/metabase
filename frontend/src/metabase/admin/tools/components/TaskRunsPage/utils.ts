@@ -79,5 +79,5 @@ const parseStatus = (param: QueryParam): UrlState["status"] => {
 };
 
 const isTaskRunStatus = (value: string): value is TaskRunStatus => {
-  return ["started", "success", "failed"].includes(value);
+  return ["started", "success", "failed", "abandoned"].includes(value);
 };

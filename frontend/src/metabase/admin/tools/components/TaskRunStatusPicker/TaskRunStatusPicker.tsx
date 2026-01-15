@@ -39,6 +39,7 @@ const getData = () => {
     started: { label: t`Started`, value: "started" },
     success: { label: t`Success`, value: "success" },
     failed: { label: t`Failed`, value: "failed" },
+    abandoned: { label: t`Abandoned`, value: "abandoned" },
   };
 
   return Object.values(statusNames);
