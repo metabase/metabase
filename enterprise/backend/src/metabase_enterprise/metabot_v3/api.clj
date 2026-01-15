@@ -12,6 +12,7 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.self.core :as self.core]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
@@ -57,7 +58,8 @@
                                        (apply +))})))
 
 (defn- native-agent-streaming-request
-  "Handle streaming request using native Clojure agent."
+  "Handle streaming request using native Clojure agent.
+  Converts internal parts to AI SDK v4 line protocol format and streams them in real-time."
   [{:keys [profile-id message context history conversation-id state]}]
   (let [enriched-context (metabot-v3.context/create-context context)
         messages (concat history [message])
@@ -68,19 +70,40 @@
                         :context enriched-context})]
     (sr/streaming-response {:content-type "text/event-stream"}
                            [^java.io.OutputStream os _canceled-chan]
-      (loop [lines []]
-        (if-let [part (a/<!! response-chan)]
-          (do
-            ;; Write part to output stream
-            (let [line (str (get metabot-v3.u/TYPE-PREFIX (:type part) "0:")
-                            (json/encode part))
-                  newline "\n"]
-              (.write os (.getBytes ^String line "UTF-8"))
-              (.write os (.getBytes ^String newline "UTF-8"))
-              (.flush os))
-            (recur (conj lines line)))
-          ;; Channel closed, store messages
-          (store-message! conversation-id profile-id (metabot-v3.u/aisdk->messages :assistant lines)))))))
+      ;; Use a custom reducing function that writes lines as they're produced
+      ;; and accumulates them for storage
+      (let [usage-acc (volatile! {})
+            lines-acc (volatile! [])
+            write-line! (fn [line]
+                          (vswap! lines-acc conj line)
+                          (let [line-with-newline (str line "\n")]
+                            (.write os (.getBytes ^String line-with-newline "UTF-8"))
+                            (.flush os)))]
+        ;; Process each part as it arrives
+        (loop []
+          (if-let [part (a/<!! response-chan)]
+            (do
+              (case (:type part)
+                :text        (write-line! (self.core/format-text-line part))
+                :data        (write-line! (self.core/format-data-line part))
+                :error       (write-line! (self.core/format-error-line part))
+                :tool-input  (write-line! (self.core/format-tool-call-line part))
+                :tool-output (write-line! (self.core/format-tool-result-line part))
+                :start       (write-line! (self.core/format-start-line part))
+                :finish      nil ;; Will emit finish at the end
+                :usage       (let [{:keys [usage id]} part
+                                   model (or id "claude-sonnet-4-5-20250929")]
+                               (vswap! usage-acc assoc model
+                                       {:prompt (:promptTokens usage 0)
+                                        :completion (:completionTokens usage 0)}))
+                ;; Unknown types -> treat as data
+                (write-line! (self.core/format-data-line part)))
+              (recur))
+            ;; Channel closed - emit finish message and store
+            (do
+              (write-line! (self.core/format-finish-line @usage-acc))
+              (store-message! conversation-id profile-id
+                              (metabot-v3.u/aisdk->messages :assistant @lines-acc)))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
