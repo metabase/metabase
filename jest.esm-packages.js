@@ -22,6 +22,7 @@ const esmPackages = [
   "robust-predicates",
   "devlop",
   "echarts",
+  "escape-string-regexp",
   "estree.*",
   "fetch-mock",
   "hast.*",
