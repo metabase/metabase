@@ -131,7 +131,11 @@
   (:order (get-plan (job-transform-ids job-id))))
 
 (defn- compile-transform-failure-messages [failures]
-  (str/join "\n\n" (map #(str (:name (:transform %)) ":\n" (:message %)) failures)))
+  (str/join "\n\n" (map #(format "%s %s:\n%s"
+                                 (:name (:transform %))
+                                 (urls/transform-run-url
+                                  (:id (:transform %)))
+                                 (:message %)) failures)))
 
 (defn- notify-transform-failures [job-id failures]
   (let [job (t2/select-one :model/TransformJob job-id)
@@ -144,7 +148,7 @@
       (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
                             :recipients [(:email user)]
                             :message-type :text
-                            :message (i18n/trs "Hello,\n\nThe following {0} occurred when running the transform job called {1}:\n\n{2}\n\nVisit {3} for more information.\n\nThanks\n\nYour Metabase job scheduler"
+                            :message (i18n/trs "Hello,\n\nThe following {0} occurred when running the transform job called {1}:\n\n{2}\n\nVisit {3} for more information."
                                                (i18n/trun "failure" "failures" (count failures))
                                                (:name job)
                                                (compile-transform-failure-messages failures)
@@ -156,7 +160,7 @@
     (email/send-message! {:subject (i18n/trs "[Metabase] Failed transform job")
                           :recipients admin-emails
                           :message-type :text
-                          :message (i18n/trs "Hello,\n\nThe following errors occurred when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information.\n\nThanks\n\nYour Metabase job scheduler"
+                          :message (i18n/trs "Hello,\n\nThe following errors occurred when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information."
                                              (:name job)
                                              message
                                              (urls/transform-job-url job-id))})))
