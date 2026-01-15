@@ -1487,6 +1487,49 @@ describe("scenarios > data studio > workspaces", () => {
         ]);
       });
     });
+
+    it("should not allow to checkout transform if checkout_disabled is received", () => {
+      H.createModelFromTableName({
+        tableName: "Animals",
+        modelName: "Animals",
+        idAlias: "modelId",
+      });
+
+      cy.log("Create transform via UI with model reference");
+      Workspaces.visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText("Writable Postgres12").click();
+
+      cy.get("@modelId").then((modelId) => {
+        H.NativeEditor.type(`SELECT * FROM {{#${modelId}-animals}} as t;`);
+      });
+
+      H.DataStudio.Transforms.saveChangesButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Model Reference Transform");
+        cy.findByLabelText("Table name").type("model_ref_transform");
+        cy.button("Save").click();
+      });
+
+      cy.log("Verify Edit transform button is disabled");
+      cy.findByRole("button", { name: /Edit transform/ }).should("be.disabled");
+      cy.findByRole("button", { name: /Edit transform/ }).realHover();
+      H.tooltip().should(
+        "contain.text",
+        "This transform cannot be edited in a workspace because it references other questions.",
+      );
+
+      cy.log("Edit transform to remove model reference");
+      Transforms.editDefinition().click();
+      H.NativeEditor.type(
+        '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
+      );
+      Transforms.saveChangesButton().click();
+
+      cy.log("Verify Edit transform button is now enabled");
+      cy.findByRole("button", { name: /Edit transform/ }).should("be.enabled");
+    });
   });
 
   describe("merge workspace", () => {
