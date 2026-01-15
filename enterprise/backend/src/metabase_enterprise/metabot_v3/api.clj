@@ -2,7 +2,9 @@
   "`/api/ee/metabot-v3/` routes"
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -10,6 +12,7 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -17,12 +20,15 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.streaming-response :as sr]
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- store-message! [conversation-id profile-id messages]
   (let [finish   (let [m (u/last messages)]
@@ -50,26 +56,66 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
+(defn- native-agent-streaming-request
+  "Handle streaming request using native Clojure agent."
+  [{:keys [profile-id message context history conversation-id state]}]
+  (let [enriched-context (metabot-v3.context/create-context context)
+        messages (concat history [message])
+        response-chan (agent/run-agent-loop
+                       {:messages messages
+                        :state state
+                        :profile-id (keyword profile-id)
+                        :context enriched-context})]
+    (sr/streaming-response {:content-type "text/event-stream"}
+      [^java.io.OutputStream os _canceled-chan]
+      (loop [lines []]
+        (if-let [part (a/<!! response-chan)]
+          (do
+            ;; Write part to output stream
+            (let [line (str (get metabot-v3.u/TYPE-PREFIX (:type part) "0:")
+                            (json/encode part))]
+              (.write os (.getBytes ^String line "UTF-8"))
+              (.write os (.getBytes ^String "\n" "UTF-8"))
+              (.flush os))
+            (recur (conj lines line)))
+          ;; Channel closed, store messages
+          (store-message! conversation-id profile-id (metabot-v3.u/aisdk->messages :assistant lines)))))))
+
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
-        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
     (store-message! conversation_id profile-id [message])
-    (metabot-v3.client/streaming-request
-     {:context         (metabot-v3.context/create-context context)
-      :metabot-id      metabot-id
-      :profile-id      profile-id
-      :session-id      session-id
-      :conversation-id conversation_id
-      :message         message
-      :history         history
-      :state           state
-      :on-complete     (fn [lines]
-                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
-                         :store-in-db)})))
+
+    (if (metabot-v3.settings/use-native-agent)
+      ;; Use native Clojure agent
+      (do
+        (log/info "Using native Clojure agent" {:profile-id profile-id})
+        (native-agent-streaming-request
+         {:profile-id profile-id
+          :message message
+          :context context
+          :history history
+          :conversation-id conversation_id
+          :state state}))
+
+      ;; Fallback to Python AI Service
+      (let [session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
+        (log/info "Using Python AI Service" {:profile-id profile-id})
+        (metabot-v3.client/streaming-request
+         {:context         (metabot-v3.context/create-context context)
+          :metabot-id      metabot-id
+          :profile-id      profile-id
+          :session-id      session-id
+          :conversation-id conversation_id
+          :message         message
+          :history         history
+          :state           state
+          :on-complete     (fn [lines]
+                             (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
+                             :store-in-db)})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
