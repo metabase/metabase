@@ -177,12 +177,10 @@
     :model/Document   (select-keys entity [:id :name])
     entity))
 
-(mr/def ::entity-id pos-int?)
-
 (mr/def ::usages
   [:map-of
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
-   ::entity-id])
+   ::deps.dependency-types/entity-id])
 
 (mr/def ::base-entity
   [:map
@@ -511,9 +509,9 @@
    [:nodes [:sequential ::entity]]
    [:edges [:sequential [:map
                          [:from_entity_type ::deps.dependency-types/dependency-types]
-                         [:from_entity_id ::entity-id]
+                         [:from_entity_id ::deps.dependency-types/entity-id]
                          [:to_entity_type ::deps.dependency-types/dependency-types]
-                         [:to_entity_id ::entity-id]]]]])
+                         [:to_entity_id ::deps.dependency-types/entity-id]]]]])
 
 (api.macros/defendpoint :get "/graph" :- ::graph-response
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
