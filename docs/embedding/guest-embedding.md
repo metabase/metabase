@@ -97,8 +97,8 @@ You can set different attributes to enable/disable UI. Here are some example att
 | Attribute            | Description                                                          |
 | -------------------- | -------------------------------------------------------------------- |
 | `token`              | Required. The signed JWT token from your server.                     |
-| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.               |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.          |
+| `with-title`         | Show or hide the title. Values: `"true"` or `"false"` .              |
+| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"` .         |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'` |
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
@@ -128,6 +128,8 @@ When you set Editable parameters, you can set default values for the filters, bu
 
 **Server code**
 
+On the server, you pass an empty `params` object:
+
 ```javascript
 // you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -143,11 +145,9 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-
 **Client code**
 
 You set default parameters on the client side with the `initial-parameters` key.
-
 
 ```html
 <script defer src="YOUR_METABASE_URL/app/embed.js"></script>
@@ -191,6 +191,8 @@ Here's an example of the server and client code that Metabase will generate if y
 
 **Server code (Node.js)**
 
+You set the locker parameter on the server, passing it in the token.
+
 ```javascript
 // Install via 'npm install jsonwebtoken'
 const jwt = require("jsonwebtoken");
@@ -209,6 +211,8 @@ const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
 **Client code (HTML)**
+
+The parameter is set by the JWT:
 
 ```html
 <script defer src="YOUR_METABASE_URL/app/embed.js"></script>
@@ -265,7 +269,7 @@ You can propagate filter values into the external URL, unless the filter is lock
 
 ## Translating guest embeds
 
-To translate an embed, set the `locale` in `window.metabaseConfig`:
+To translate an embed, set the `locale` in `window.metabaseConfig` :
 
 ```html
 <script>
@@ -281,7 +285,7 @@ The `locale` setting works for all modular embeds (guest and SSO). Metabase will
 
 ## How guest embedding works
 
-Guest embeds use web components (`<metabase-dashboard>` and `<metabase-question>`) that communicate with your Metabase instance. Each embed request requires a JWT token signed with your secret key.
+Guest embeds use web components ( `<metabase-dashboard>` and `<metabase-question>` ) that communicate with your Metabase instance. Each embed request requires a JWT token signed with your secret key.
 
 When a visitor views your page:
 
