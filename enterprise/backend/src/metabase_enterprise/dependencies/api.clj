@@ -19,7 +19,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
@@ -461,13 +460,8 @@
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
-            ;; Map error_detail to the correct field based on error type to match ::lib.schema.validate/error
-            (let [detail-key (case error_type
-                               (:missing-column :missing-table-alias :duplicate-column) :name
-                               :validation-exception-error :message
-                               nil)]
-              (cond-> {:type error_type}
-                (and error_detail detail-key) (assoc detail-key error_detail))))
+            (cond-> {:type error_type}
+              error_detail (assoc :detail error_detail)))
           (normalize-source-errors [[[source-type source-id] errors]]
             [[source-type source-id]
              (into #{} (map normalize-finding-error) errors)])
@@ -488,13 +482,8 @@
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
-            ;; Map error_detail to the correct field based on error type to match ::lib.schema.validate/error
-            (let [detail-key (case error_type
-                               (:missing-column :missing-table-alias :duplicate-column) :name
-                               :validation-exception-error :message
-                               nil)]
-              (cond-> {:type error_type}
-                (and error_detail detail-key) (assoc detail-key error_detail))))
+            (cond-> {:type error_type}
+              error_detail (assoc :detail error_detail)))
           (normalize-entity-errors [[[entity-type entity-id] errors]]
             (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
               [[entity-type entity-id] normalized-errors]))
