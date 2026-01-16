@@ -79,6 +79,13 @@ export const TransformTab = ({
 
   // Only WorkspaceTransforms can be run - cast for the hook
   const wsTransform = isWorkspaceTransform(transform) ? transform : null;
+  const hasSourceChanged = !isSameSource(
+    editedTransform.source,
+    transform.source,
+  );
+  const hasChanges = hasSourceChanged;
+  const dryRunTransformId =
+    wsTransform && !hasChanges ? wsTransform.ref_id : undefined;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -88,7 +95,7 @@ export const TransformTab = ({
     });
 
   const handleRunQueryStart = useCallback(
-    async (query: DatasetQuery) => {
+    (query: DatasetQuery) => {
       // Preview doesn't have a real table ID, but we need to provide a unique identifier
       // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
@@ -101,11 +108,13 @@ export const TransformTab = ({
           tableId: transformId,
           name: t`Preview (${transform.name})`,
           query,
+          transformId: dryRunTransformId,
         },
       };
       addOpenedTab(tableTab);
+      return false;
     },
-    [transformId, transform.name, addOpenedTab],
+    [transformId, transform.name, addOpenedTab, dryRunTransformId],
   );
 
   const handleRunTransform = useCallback(
@@ -158,12 +167,6 @@ export const TransformTab = ({
     !isSameSource(suggestedTransform.source, editedTransform.source)
       ? normalizeSource(suggestedTransform.source)
       : undefined;
-
-  const hasSourceChanged = !isSameSource(
-    editedTransform.source,
-    transform.source,
-  );
-  const hasChanges = hasSourceChanged;
 
   const isSaved =
     isWorkspaceTransform(transform) &&

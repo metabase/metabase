@@ -267,7 +267,7 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
 };
 

@@ -87,6 +87,7 @@ function WorkspacePageContent({
     activeTransform,
     activeEditedTransform,
     activeTable,
+    activeTab,
     setActiveTab,
     setActiveTable,
     setActiveTransform,
@@ -491,8 +492,8 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              {activeTable && activeTable.tableId != null && (
-                <Tabs.Panel value={`table-${activeTable.tableId}`} h="100%">
+              {activeTable && activeTab?.type === "table" && (
+                <Tabs.Panel value={activeTab.id} h="100%">
                   <DataTab
                     workspaceId={workspace?.id}
                     databaseId={workspace?.database_id ?? null}
