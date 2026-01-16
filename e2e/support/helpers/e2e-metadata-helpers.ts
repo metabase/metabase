@@ -1,5 +1,6 @@
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata as getMetadataFromState } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -19,15 +20,26 @@ const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 const DEFAULT_TABLE_IDS: TableId[] = [ORDERS_ID, PEOPLE_ID];
 const DEFAULT_CARD_IDS: CardId[] = [];
 
-export function getMetadataProvider({
-  databaseId = SAMPLE_DB_ID,
-  tableIds = DEFAULT_TABLE_IDS,
-  cardIds = DEFAULT_CARD_IDS,
-}: {
+type GetMetadataOpts = {
   databaseId?: DatabaseId;
   tableIds?: TableId[];
   cardIds?: CardId[];
-} = {}): Cypress.Chainable<Lib.MetadataProvider> {
+};
+
+export function getMetadataProvider({
+  databaseId = SAMPLE_DB_ID,
+  ...rest
+}: GetMetadataOpts = {}): Cypress.Chainable<Lib.MetadataProvider> {
+  return getMetadata({ databaseId, ...rest }).then((metadata) =>
+    Lib.metadataProvider(databaseId, metadata),
+  );
+}
+
+export function getMetadata({
+  databaseId = SAMPLE_DB_ID,
+  tableIds = DEFAULT_TABLE_IDS,
+  cardIds = DEFAULT_CARD_IDS,
+}: GetMetadataOpts = {}): Cypress.Chainable<Metadata> {
   // Just one database for now, but wrapped to get the types to work
   const databaseIds = [databaseId];
 
@@ -63,10 +75,8 @@ export function getMetadataProvider({
     });
 
     const state = createMockState({ entities });
-    const metadata = getMetadata(state);
-    const provider = Lib.metadataProvider(databaseId, metadata);
-
-    return provider;
+    const metadata = getMetadataFromState(state);
+    return metadata;
   });
 }
 
