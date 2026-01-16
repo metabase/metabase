@@ -18,7 +18,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
+import type { DatabaseId, TableId, UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
@@ -36,6 +36,7 @@ import type {
   ChangeOptions,
   RootNode,
   TablePickerTreeNode,
+  TreeNode,
   TreePath,
 } from "../types";
 import {
@@ -168,139 +169,23 @@ export function TablePickerTreeTable({
         databases: selectedDatabases,
       };
 
-      const lastIndex = lastSelectedRowIndex.current;
+      const result = handleCheckboxToggleUtil({
+        row,
+        index,
+        isShiftPressed,
+        selection,
+        lastSelectedRowIndex: lastSelectedRowIndex.current,
+        rows: instanceRef.current?.rows ?? [],
+        nodeKeyToOriginal,
+      });
 
-      if (isShiftPressed && lastIndex != null) {
-        const rows = instanceRef.current?.rows ?? [];
-        const start = Math.min(lastIndex, index);
-        const end = Math.max(lastIndex, index);
-        const rangeRows = rows
-          .slice(start, end + 1)
-          .filter((r) => !r.original.isDisabled);
+      setSelectedTables(result.selection.tables);
+      setSelectedSchemas(result.selection.schemas);
+      setSelectedDatabases(result.selection.databases);
+      lastSelectedRowIndex.current = result.lastSelectedRowIndex;
 
-        const nextTables = new Set(selectedTables);
-        const nextSchemas = new Set(selectedSchemas);
-        const nextDatabases = new Set(selectedDatabases);
-
-        const lastExpandedDatabaseIndex = rangeRows.findLastIndex(
-          (r) => r.original.type === "database",
-        );
-        const lastExpandedSchemaIndex = rangeRows.findLastIndex(
-          (r) => r.original.type === "schema",
-        );
-        const lastRowIndex = rangeRows.length - 1;
-
-        // We want to allow selecting partial ranges.
-        // In case of the last db/schema, if it's expanded
-        //  and we have something selected after it (it's not last row)
-        //  then let's don't mark this parent element, and mark it's selected children
-        const indexesToSkip = [
-          lastExpandedDatabaseIndex,
-          lastExpandedSchemaIndex,
-        ].filter((index) => index !== lastRowIndex);
-
-        rangeRows.forEach((rangeRow, rowIndex) => {
-          const { original } = rangeRow;
-          if (original.type === "table") {
-            if (original.tableId != null) {
-              nextTables.add(original.tableId);
-            }
-            return;
-          }
-
-          const originalNode = nodeKeyToOriginal.get(original.nodeKey);
-
-          if (indexesToSkip.includes(rowIndex)) {
-            return;
-          }
-
-          if (original.type === "schema") {
-            if (!originalNode || originalNode.type !== "schema") {
-              return;
-            }
-
-            const updated = addSchemaToSelection(originalNode, {
-              tables: nextTables,
-              schemas: nextSchemas,
-              databases: nextDatabases,
-            });
-            updated.tables.forEach((t) => nextTables.add(t));
-            updated.schemas.forEach((s) => nextSchemas.add(s));
-            return;
-          }
-
-          if (original.type === "database") {
-            if (!originalNode || originalNode.type !== "database") {
-              return;
-            }
-
-            const updated = addDatabaseToSelection(originalNode, {
-              tables: nextTables,
-              schemas: nextSchemas,
-              databases: nextDatabases,
-            });
-            updated.tables.forEach((t) => nextTables.add(t));
-            updated.schemas.forEach((s) => nextSchemas.add(s));
-            updated.databases.forEach((d) => nextDatabases.add(d));
-          }
-        });
-
-        setSelectedTables(nextTables);
-        setSelectedSchemas(nextSchemas);
-        setSelectedDatabases(nextDatabases);
-        lastSelectedRowIndex.current = index;
-
-        if (row.original.type === "table" && row.original.tableId != null) {
-          onChange?.(nodeToTreePath(row.original));
-        }
-        return;
-      }
-
-      if (row.original.type === "table") {
-        const tableId = row.original.tableId;
-        if (tableId == null) {
-          return;
-        }
-
-        setSelectedTables((prev) => toggleInSet(prev, tableId));
-        lastSelectedRowIndex.current = index;
-
+      if (row.original.type === "table" && row.original.tableId != null) {
         onChange?.(nodeToTreePath(row.original));
-      } else if (row.original.type === "database") {
-        const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
-        if (!originalNode || originalNode.type !== "database") {
-          return;
-        }
-
-        if (originalNode.children.length > 0) {
-          const { schemas, tables, databases } = toggleDatabaseSelection(
-            originalNode,
-            selection,
-          );
-          setSelectedSchemas(schemas);
-          setSelectedTables(tables);
-          setSelectedDatabases(databases);
-        } else {
-          const databaseId = row.original.databaseId;
-          if (databaseId) {
-            setSelectedDatabases((prev) => toggleInSet(prev, databaseId));
-          }
-        }
-        lastSelectedRowIndex.current = index;
-      } else if (row.original.type === "schema") {
-        const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
-        if (!originalNode || originalNode.type !== "schema") {
-          return;
-        }
-
-        if (originalNode.children.length > 0) {
-          const { tables } = toggleSchemaSelection(originalNode, selection);
-          setSelectedTables(tables);
-        } else {
-          const schemaId = getSchemaId(originalNode);
-          setSelectedSchemas((prev) => toggleInSet(prev, schemaId));
-        }
-        lastSelectedRowIndex.current = index;
       }
     },
     [
@@ -539,6 +424,197 @@ export function TablePickerTreeTable({
       ariaLabel={t`Tables`}
     />
   );
+}
+
+export interface CheckboxToggleRow {
+  original: {
+    type: "database" | "schema" | "table";
+    nodeKey: string;
+    tableId?: TableId;
+    databaseId?: DatabaseId;
+    isDisabled?: boolean;
+  };
+}
+
+export interface CheckboxToggleResult {
+  selection: NodeSelection;
+  lastSelectedRowIndex: number;
+}
+
+export function handleCheckboxToggleUtil(params: {
+  row: CheckboxToggleRow;
+  index: number;
+  isShiftPressed: boolean;
+  selection: NodeSelection;
+  lastSelectedRowIndex: number | null;
+  rows: CheckboxToggleRow[];
+  nodeKeyToOriginal: Map<string, TreeNode>;
+}): CheckboxToggleResult {
+  const {
+    row,
+    index,
+    isShiftPressed,
+    selection,
+    lastSelectedRowIndex,
+    rows,
+    nodeKeyToOriginal,
+  } = params;
+
+  // Handle shift-click range selection
+  if (isShiftPressed && lastSelectedRowIndex != null) {
+    const start = Math.min(lastSelectedRowIndex, index);
+    const end = Math.max(lastSelectedRowIndex, index);
+    const rangeRows = rows
+      .slice(start, end + 1)
+      .filter((r) => !r.original.isDisabled);
+
+    const nextTables = new Set(selection.tables);
+    const nextSchemas = new Set(selection.schemas);
+    const nextDatabases = new Set(selection.databases);
+
+    const lastExpandedDatabaseIndex = rangeRows.findLastIndex(
+      (r) => r.original.type === "database",
+    );
+    const lastExpandedSchemaIndex = rangeRows.findLastIndex(
+      (r) => r.original.type === "schema",
+    );
+    const lastRowIndex = rangeRows.length - 1;
+
+    // We want to allow selecting partial ranges.
+    // In case of the last db/schema, if it's expanded
+    //  and we have something selected after it (it's not last row)
+    //  then let's don't mark this parent element, and mark it's selected children
+    const indexesToSkip = [
+      lastExpandedDatabaseIndex,
+      lastExpandedSchemaIndex,
+    ].filter((idx) => idx !== lastRowIndex);
+
+    rangeRows.forEach((rangeRow, rowIndex) => {
+      const { original } = rangeRow;
+      if (original.type === "table") {
+        if (original.tableId != null) {
+          nextTables.add(original.tableId);
+        }
+        return;
+      }
+
+      const originalNode = nodeKeyToOriginal.get(original.nodeKey);
+
+      if (indexesToSkip.includes(rowIndex)) {
+        return;
+      }
+
+      if (original.type === "schema") {
+        if (!originalNode || originalNode.type !== "schema") {
+          return;
+        }
+
+        const updated = addSchemaToSelection(originalNode, {
+          tables: nextTables,
+          schemas: nextSchemas,
+          databases: nextDatabases,
+        });
+        updated.tables.forEach((t) => nextTables.add(t));
+        updated.schemas.forEach((s) => nextSchemas.add(s));
+        return;
+      }
+
+      if (original.type === "database") {
+        if (!originalNode || originalNode.type !== "database") {
+          return;
+        }
+
+        const updated = addDatabaseToSelection(originalNode, {
+          tables: nextTables,
+          schemas: nextSchemas,
+          databases: nextDatabases,
+        });
+        updated.tables.forEach((t) => nextTables.add(t));
+        updated.schemas.forEach((s) => nextSchemas.add(s));
+        updated.databases.forEach((d) => nextDatabases.add(d));
+      }
+    });
+
+    return {
+      selection: {
+        tables: nextTables,
+        schemas: nextSchemas,
+        databases: nextDatabases,
+      },
+      lastSelectedRowIndex: index,
+    };
+  }
+
+  // Handle single item toggle
+  if (row.original.type === "table") {
+    const tableId = row.original.tableId;
+    if (tableId == null) {
+      return { selection, lastSelectedRowIndex: index };
+    }
+
+    return {
+      selection: {
+        ...selection,
+        tables: toggleInSet(selection.tables, tableId),
+      },
+      lastSelectedRowIndex: index,
+    };
+  }
+
+  if (row.original.type === "database") {
+    const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
+    if (!originalNode || originalNode.type !== "database") {
+      return { selection, lastSelectedRowIndex: index };
+    }
+
+    if (originalNode.children.length > 0) {
+      const { schemas, tables, databases } = toggleDatabaseSelection(
+        originalNode,
+        selection,
+      );
+      return {
+        selection: { schemas, tables, databases },
+        lastSelectedRowIndex: index,
+      };
+    } else {
+      const databaseId = row.original.databaseId;
+      if (databaseId) {
+        return {
+          selection: {
+            ...selection,
+            databases: toggleInSet(selection.databases, databaseId),
+          },
+          lastSelectedRowIndex: index,
+        };
+      }
+    }
+  }
+
+  if (row.original.type === "schema") {
+    const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
+    if (!originalNode || originalNode.type !== "schema") {
+      return { selection, lastSelectedRowIndex: index };
+    }
+
+    if (originalNode.children.length > 0) {
+      const { tables } = toggleSchemaSelection(originalNode, selection);
+      return {
+        selection: { ...selection, tables },
+        lastSelectedRowIndex: index,
+      };
+    } else {
+      const schemaId = getSchemaId(originalNode);
+      return {
+        selection: {
+          ...selection,
+          schemas: toggleInSet(selection.schemas, schemaId),
+        },
+        lastSelectedRowIndex: index,
+      };
+    }
+  }
+
+  return { selection, lastSelectedRowIndex: index };
 }
 
 function isChildrenLoading(row: Row<TablePickerTreeNode>): boolean {
