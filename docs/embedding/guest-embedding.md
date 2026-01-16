@@ -271,7 +271,7 @@ You can propagate filter values into the external URL, unless the filter is lock
 
 ## Translating guest embeds
 
-To translate an embed, set the `locale` in `window.metabaseConfig` :
+To translate an embed, set the `locale` in `window.metabaseConfig`:
 
 ```html
 <script>
@@ -287,7 +287,7 @@ The `locale` setting works for all modular embeds (guest and SSO). Metabase will
 
 ## How guest embedding works
 
-Guest embeds use web components ( `<metabase-dashboard>` and `<metabase-question>` ) that communicate with your Metabase instance. Each embed request requires a JWT token signed with your secret key.
+Guest embeds use web components (`<metabase-dashboard>` and `<metabase-question>`) that communicate with your Metabase instance. Each embed request requires a JWT token signed with your secret key.
 
 When a visitor views your page:
 
