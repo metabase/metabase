@@ -1,11 +1,11 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
-   [buddy.core.codecs :as codecs]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase.api.common :as api]
-   [metabase.lib-be.core :as lib-be]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -18,19 +18,6 @@
    :type     :native
    :native   {:query sql-content}})
 
-(defn- query->url-hash
-  "Convert a query to a base64-encoded URL hash."
-  [query]
-  (-> {:dataset_query query}
-      json/encode
-      (.getBytes "UTF-8")
-      codecs/bytes->b64-str))
-
-(defn- query->results-url
-  "Convert a query to a /question# URL for navigation."
-  [query]
-  (str "/question#" (query->url-hash query)))
-
 (defn- validate-database-access
   "Check if the current user has access to the database."
   [database-id]
@@ -41,7 +28,7 @@
   (api/read-check :model/Database database-id))
 
 (defn create-sql-query
-  "Create a new SQL query card.
+  "Create a new SQL query in memory.
 
   Parameters:
   - database-id: ID of the database to query
@@ -63,35 +50,25 @@
   ;; Validate access
   (validate-database-access database-id)
 
-  ;; Create the query structure
+  ;; Create the in-memory query structure
   (let [dataset-query (create-native-query database-id sql)
-        card-name (or name (str "SQL Query " (random-uuid)))
-        card-data (cond-> {:name                   card-name
-                           :dataset_query           dataset-query
-                           :display                 :table
-                           :visualization_settings  {}
-                           :creator_id              api/*current-user-id*}
-                    description (assoc :description description)
-                    collection-id (assoc :collection_id collection-id))
-        ;; Insert the card
-        new-card (t2/insert-returning-instance! :model/Card card-data)]
-
-    (log/info "Created SQL query card" {:card-id (:id new-card)})
-
-    {:query-id      (:id new-card)
+        query-id (u/generate-nano-id)
+        _card-name (or name (str "SQL Query " (random-uuid)))]
+    {:query-id      query-id
      :query-content sql
-     :query         dataset-query  ;; Include for memory storage
+     :query         dataset-query
      :database      database-id}))
 
 (defn create-sql-query-tool
   "Tool handler for create_sql_query tool.
-  Returns structured output with query details and a redirect reaction to auto-navigate the user."
+  Returns structured output with query details and a navigate_to data part."
   [args]
   (try
     (let [result (create-sql-query args)
-          results-url (query->results-url (:query result))]
+          results-url (streaming/query->question-url (:query result))]
       {:structured-output result
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
+       :instructions instructions/query-created-instructions
+       :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
       (log/error e "Error creating SQL query")
       (if (:agent-error? (ex-data e))
