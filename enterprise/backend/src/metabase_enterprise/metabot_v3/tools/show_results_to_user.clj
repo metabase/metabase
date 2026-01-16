@@ -2,8 +2,8 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase.lib.core :as lib]
-   [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -47,5 +47,5 @@
     (let [query-hash (query->url-hash query)
           results-url (str "/question#" query-hash)]
       (log/info "Generated results URL" {:query-id query-id :url results-url})
-      {:output (str "Results can be seen at: " (system/site-url) results-url)
-       :reactions [{:type :metabot.reaction/redirect, :url results-url}]})))
+      {:output (str "Results can be seen at: " results-url)
+       :data-parts [(streaming/navigate-to-part results-url)]})))
