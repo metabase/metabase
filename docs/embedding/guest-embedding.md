@@ -140,7 +140,7 @@ const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 const payload = {
   resource: { dashboard: 10 },
   params: {},
-  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
@@ -152,15 +152,15 @@ You set default parameters on the client side with the `initial-parameters` key.
 ```html
 <script defer src="YOUR_METABASE_URL/app/embed.js"></script>
 <script>
-function defineMetabaseConfig(config) {
-  window.metabaseConfig = config;
-}
+  function defineMetabaseConfig(config) {
+    window.metabaseConfig = config;
+  }
 </script>
 
 <script>
   defineMetabaseConfig({
-    "isGuest": true,
-    "instanceUrl": "YOUR_METABASE_URL"
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
   });
 </script>
 
@@ -170,10 +170,12 @@ NEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!
 
 Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
 -->
-<metabase-dashboard token="YOUR SIGNED TOKEN"
+<metabase-dashboard
+  token="YOUR SIGNED TOKEN"
   with-title="true"
   with-downloads="false"
-  initial-parameters='{"category":["Doohickey","Gizmo"]}'>
+  initial-parameters='{"category":["Doohickey","Gizmo"]}'
+>
 </metabase-dashboard>
 ```
 
@@ -202,7 +204,7 @@ const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 const payload = {
   resource: { dashboard: 10 },
   params: {
-    "category": ["Gadget"], // Set the locked parameter value to Gadget
+    category: ["Gadget"], // Set the locked parameter value to Gadget
   },
   exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
