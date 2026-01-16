@@ -633,6 +633,59 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByText(/Setting up the workspace/).should("be.visible");
       });
     });
+
+    it("should disable workspace actions while workspace is in pending status", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Mock /log endpoint to return pending status");
+      cy.log("Add transform to workspace");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 2");
+
+      cy.intercept("GET", "/api/ee/workspace/*/log", {
+        body: {
+          workspace_id: 1,
+          status: "pending",
+          updated_at: null,
+          last_completed_at: null,
+          logs: [
+            {
+              id: 1,
+              task: "workspace-setup",
+              description: "Setting up workspace",
+              status: "started",
+              message: null,
+            },
+          ],
+        },
+      }).as("getWorkspaceLog");
+
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Verify merge button is disabled");
+      Workspaces.getMergeWorkspaceButton().should("be.disabled");
+
+      cy.log("Verify transform actions menu is disabled");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .parent()
+        .findByLabelText("More actions")
+        .should("not.exist");
+
+      cy.log(
+        "Switch to Data tab and verify clicking uninitialized output table does not run transform",
+      );
+      Workspaces.openDataTab();
+      cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
+        "runTransformRequest",
+      );
+      cy.findByTestId("workspace-sidebar")
+        .findByLabelText(/transform_table_2/)
+        .click();
+      cy.get("@runTransformRequest.all").should("have.length", 0);
+    });
   });
 
   describe("graph tab", () => {
