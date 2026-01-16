@@ -124,7 +124,8 @@
               status (some-> resp :last_run :status keyword)]
           (when-not (contains? #{:started :succeeded} status)
             (throw (ex-info (str "Transform run failed with status " status) {:resp resp :status status})))
-          (when-not (some? (:table resp))
+          ;; Wait for both table existence AND succeeded status
+          (when-not (and (some? (:table resp)) (= :succeeded status))
             (Thread/sleep 100)
             (recur resp (inc iterations))))))))
 

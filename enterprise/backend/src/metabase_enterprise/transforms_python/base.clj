@@ -13,6 +13,7 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -21,6 +22,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.io File)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)))
 
@@ -231,8 +233,11 @@
 ;;; ------------------------------------------------- Core Execution -------------------------------------------------
 
 (defn- run-python-transform-impl!
-  "Core Python transform execution. Returns {:status :result :logs :events}."
-  [{:keys [source] :as transform} db run-id cancel-chan message-log]
+  "Core Python transform execution. Returns {:status :result :logs :events}.
+
+   Options:
+   - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
+  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.util/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
@@ -266,7 +271,7 @@
                            :timeout           (:timeout body)}))
           (try
             (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
-                  temp-file (.toFile temp-path)]
+                  temp-file ^File (.toFile temp-path)]
               (when-not (seq (:fields output-manifest))
                 (throw (ex-info "No fields in metadata"
                                 {:metadata               output-manifest
@@ -275,7 +280,13 @@
               (try
                 (with-open [in (python-runner/open-output @shared-storage-ref)]
                   (io/copy in temp-file))
-                (transfer-file-to-db driver db transform output-manifest temp-file)
+                ;; Transfer file to database with instrumentation
+                (let [file-size (.length temp-file)
+                      do-transfer (fn [] (transfer-file-to-db driver db transform output-manifest temp-file))]
+                  (if with-stage-timing-fn
+                    (with-stage-timing-fn run-id [:import :file-to-dwh] do-transfer)
+                    (do-transfer))
+                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
                 (finally
                   (.delete temp-file))))
             response
@@ -340,7 +351,8 @@
         (log! message-log (i18n/tru "Executing Python transform"))
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
 
-        (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log)]
+        (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
+                                                 {:with-stage-timing-fn with-stage-timing-fn})]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
 
