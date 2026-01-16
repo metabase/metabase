@@ -1489,9 +1489,9 @@ describe("scenarios > data studio > workspaces", () => {
         .click();
 
       cy.findByRole("button", { name: /Edit transform/ }).click();
-      H.popover().within(() => {
-        cy.get<string>("@workspaceA").then((workspaceA) => {
-          cy.get<string>("@workspaceB").then((workspaceB) => {
+      cy.get<string>("@workspaceA").then((workspaceA) => {
+        cy.get<string>("@workspaceB").then((workspaceB) => {
+          H.popover().within(() => {
             cy.findAllByRole("menuitem").eq(0).contains("New workspace");
             cy.findAllByRole("menuitem").eq(2).contains(workspaceA);
             cy.log("Edit transform in a workspace where it's been checked out");

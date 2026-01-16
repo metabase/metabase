@@ -58,9 +58,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     const checkedWorkspaceIds =
       checkoutData?.workspaces?.map((item) => item?.id) ?? [];
 
-    return Array.from(
-      new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
-    )
+    return [...checkedWorkspaceIds, ...allMatchingWorkspaceIds]
       .map((id) => {
         const workspace = workspaces.find((ws) => ws.id === id);
         if (!workspace) {
