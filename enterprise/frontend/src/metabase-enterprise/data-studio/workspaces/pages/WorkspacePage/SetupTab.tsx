@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -12,13 +12,19 @@ import type { Workspace } from "metabase-types/api";
 import { isWorkspaceUninitialized } from "../../utils";
 
 import { SetupLog } from "./SetupLog";
+import type { SetupStatus } from "./useWorkspaceData";
 
 interface SetupTabProps {
   databaseId?: number;
   workspace: Workspace;
+  setupStatus: SetupStatus;
 }
 
-export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
+export const SetupTab = ({
+  databaseId,
+  workspace,
+  setupStatus,
+}: SetupTabProps) => {
   const { data: allowedDatabases, isLoading } =
     useGetWorkspaceAllowedDatabasesQuery();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
@@ -49,13 +55,16 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
     ],
   );
 
-  const databaseOptions =
-    allowedDatabases?.databases
-      ?.filter((db) => db.supported)
-      ?.map((db) => ({
-        value: db.id.toString(),
-        label: db.name,
-      })) ?? [];
+  const databaseOptions = useMemo(
+    () =>
+      allowedDatabases?.databases
+        ?.filter((db) => db.supported)
+        ?.map((db) => ({
+          value: db.id.toString(),
+          label: db.name,
+        })) ?? [],
+    [allowedDatabases?.databases],
+  );
 
   return (
     <Stack gap="lg">
@@ -91,10 +100,7 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
         <Stack gap="xs">
           <Text fw="bold">{t`Setup log`}</Text>
 
-          <SetupLog
-            key={workspaceId} // avoid showing status of other workspaces (forces RTK query hook remount)
-            workspaceId={workspaceId}
-          />
+          {setupStatus && <SetupLog setupStatus={setupStatus} />}
         </Stack>
       )}
     </Stack>

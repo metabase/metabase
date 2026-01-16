@@ -21,6 +21,7 @@ type MergeWorkspaceModalProps = {
   onClose: VoidFunction;
   onSubmit: (commitMessage: string) => Promise<void>;
   isLoading?: boolean;
+  isDisabled?: boolean;
   workspaceId: WorkspaceId;
   workspaceName: string;
   workspaceTransforms: WorkspaceTransformListItem[];
@@ -47,6 +48,7 @@ export const MergeWorkspaceModal = ({
   onClose,
   onSubmit,
   isLoading = false,
+  isDisabled = false,
   workspaceId,
   workspaceName,
   workspaceTransforms,
@@ -224,7 +226,8 @@ export const MergeWorkspaceModal = ({
                 disabled={
                   !values.commit_message?.trim() ||
                   (touched.commit_message && !!errors.commit_message) ||
-                  hasBlockingProblems
+                  hasBlockingProblems ||
+                  isDisabled
                 }
                 label={t`Merge`}
                 loading={isLoading}

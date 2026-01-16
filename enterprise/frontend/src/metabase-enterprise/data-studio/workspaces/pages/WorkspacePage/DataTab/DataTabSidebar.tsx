@@ -21,6 +21,7 @@ type DataTabSidebarProps = {
   onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableSelect?: (table: OpenTable) => void;
   onRunTransform?: (transform: WorkspaceTransformListItem) => void;
+  readOnly?: boolean;
 };
 
 export const DataTabSidebar = ({
@@ -32,6 +33,7 @@ export const DataTabSidebar = ({
   onTransformClick,
   onTableSelect,
   onRunTransform,
+  readOnly,
 }: DataTabSidebarProps) => {
   const { hasTransformEdits } = useWorkspace();
   return (
@@ -77,6 +79,7 @@ export const DataTabSidebar = ({
                 onTransformClick={onTransformClick}
                 onTableClick={onTableSelect}
                 onRunTransform={onRunTransform}
+                readOnly={readOnly}
               />
             );
           })}
@@ -96,6 +99,7 @@ export const DataTabSidebar = ({
               tableId={table.table_id ?? undefined}
               onTransformClick={onTransformClick}
               onTableClick={onTableSelect}
+              readOnly={readOnly}
             />
           ))}
         </Stack>

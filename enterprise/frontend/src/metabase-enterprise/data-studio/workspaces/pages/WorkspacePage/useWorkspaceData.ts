@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import {
   DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
   useGetExternalTransformsQuery,
+  useGetWorkspaceLogQuery,
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
@@ -11,6 +12,7 @@ import {
 } from "metabase-enterprise/api";
 import type {
   UnsavedTransform,
+  WorkspaceId,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 
@@ -18,6 +20,8 @@ type UseWorkspaceDataParams = {
   workspaceId: number;
   unsavedTransforms: UnsavedTransform[];
 };
+
+export type SetupStatus = ReturnType<typeof useWorkspaceSetupStatus>;
 
 export function useWorkspaceData({
   workspaceId,
@@ -41,6 +45,8 @@ export function useWorkspaceData({
     data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
     refetch: refetchWorkspaceTables,
   } = useGetWorkspaceTablesQuery(workspaceId);
+
+  const setupStatus = useWorkspaceSetupStatus(workspaceId);
 
   const availableTransforms = useMemo(
     () => externalTransforms ?? [],
@@ -92,8 +98,41 @@ export function useWorkspaceData({
     allTransforms,
     dbTransforms,
     sourceDb,
+    setupStatus,
     isLoading,
     isLoadingWorkspace,
     isArchived,
+    isPending: setupStatus.workspace?.status === "pending",
   };
+}
+
+const LONG_LOGS_POLLING_INTERVAL = 5000;
+const SHORT_LOGS_POLLING_INTERVAL = 1000;
+export function useWorkspaceSetupStatus(workspaceId: WorkspaceId) {
+  const [shouldPoll, setShouldPoll] = useState(true);
+  const [pollingInterval, setPollingInterval] = useState(
+    LONG_LOGS_POLLING_INTERVAL,
+  );
+  const {
+    data: workspace,
+    error,
+    isLoading,
+  } = useGetWorkspaceLogQuery(workspaceId, {
+    pollingInterval,
+    refetchOnMountOrArgChange: true,
+    skip: !shouldPoll,
+  });
+
+  useEffect(() => {
+    if (workspace?.status === "pending") {
+      setPollingInterval(SHORT_LOGS_POLLING_INTERVAL);
+    }
+    if (workspace?.status === "ready" || workspace?.status === "archived") {
+      setShouldPoll(false);
+    }
+  }, [workspace?.status]);
+
+  const logs = useMemo(() => workspace?.logs ?? [], [workspace]);
+
+  return { workspace, error, isLoading, logs };
 }

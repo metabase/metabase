@@ -114,10 +114,12 @@ function WorkspacePageContent({
     availableTransforms,
     allTransforms,
     dbTransforms,
+    setupStatus,
     sourceDb,
     isLoading,
     isLoadingWorkspace,
     isArchived,
+    isPending,
   } = useWorkspaceData({ workspaceId, unsavedTransforms });
 
   // Workspace actions
@@ -324,6 +326,7 @@ function WorkspacePageContent({
             loading={isMerging}
             disabled={
               isArchived ||
+              isPending ||
               hasUnsavedChanges ||
               workspaceTransforms.length === 0
             }
@@ -459,7 +462,11 @@ function WorkspacePageContent({
               }}
             >
               <Tabs.Panel value="setup" h="100%" p="md">
-                <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
+                <SetupTab
+                  databaseId={sourceDb?.id}
+                  workspace={workspace}
+                  setupStatus={setupStatus}
+                />
               </Tabs.Panel>
               <Tabs.Panel
                 bg="background-secondary"
@@ -514,7 +521,7 @@ function WorkspacePageContent({
                       editedTransform={activeEditedTransform}
                       workspaceId={workspaceId}
                       workspaceTransforms={workspaceTransforms}
-                      isDisabled={isArchived}
+                      isDisabled={isArchived || isPending}
                       onChange={handleTransformChange}
                       onSaveTransform={(transform) => {
                         // After adding first transform to a workspace,
@@ -566,7 +573,7 @@ function WorkspacePageContent({
               </Flex>
               <Tabs.Panel value="code" p="md">
                 <CodeTab
-                  readOnly={isArchived}
+                  readOnly={isArchived || isPending}
                   activeTransformId={
                     activeTransform
                       ? getTransformId(activeTransform)
@@ -586,6 +593,7 @@ function WorkspacePageContent({
               </Tabs.Panel>
               <Tabs.Panel value="data" p="md">
                 <DataTabSidebar
+                  readOnly={isArchived || isPending}
                   tables={workspaceTables}
                   workspaceTransforms={workspaceTransforms}
                   dbTransforms={dbTransforms}
@@ -606,6 +614,7 @@ function WorkspacePageContent({
           onClose={() => setIsMergeModalOpen(false)}
           onSubmit={handleMergeWorkspace}
           isLoading={isMerging}
+          isDisabled={isPending}
           workspaceId={workspaceId}
           workspaceName={workspace?.name ?? ""}
           workspaceTransforms={workspaceTransforms}
