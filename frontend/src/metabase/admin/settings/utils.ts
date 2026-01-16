@@ -4,8 +4,14 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import type { SettingDefinition } from "metabase-types/api";
 
-interface SettingWithFormFields extends SettingDefinition {
+interface SettingWithFormFields {
+  key: string;
+  display_name?: string;
+  description?: string | ReactNode | null;
+  is_env_setting?: boolean;
+  env_name?: string;
   placeholder?: string;
+  default?: string;
   required?: boolean;
   autoFocus?: boolean;
 }
