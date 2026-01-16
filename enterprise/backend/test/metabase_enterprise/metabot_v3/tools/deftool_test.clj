@@ -106,32 +106,3 @@
       ;; The expansion should include 'request' in the binding vector
       (let [binding-vec (nth expansion 6)]
         (is (some #{'request} binding-vec) "Should include request binding")))))
-
-(deftest ^:parallel deftool-version-test
-  (testing "deftool with :version prepends version to route"
-    (let [expansion (macroexpand-1 '(metabase-enterprise.metabot-v3.tools.deftool/deftool "/search"
-                                      "Search endpoint"
-                                      {:version       1
-                                       :args-schema   ::my-args
-                                       :result-schema ::my-result
-                                       :handler       identity}))]
-      (is (seq? expansion) "Should expand to a form")
-      (is (= 'metabase.api.macros/defendpoint (first expansion)))
-      (is (= :post (second expansion)))
-      (is (= "/v1/search" (nth expansion 2)) "Route should have version prefix")))
-
-  (testing "deftool with :version 2 uses /v2/ prefix"
-    (let [expansion (macroexpand-1 '(metabase-enterprise.metabot-v3.tools.deftool/deftool "/query"
-                                      "Query endpoint"
-                                      {:version       2
-                                       :result-schema ::my-result
-                                       :handler       identity}))]
-      (is (= "/v2/query" (nth expansion 2)) "Route should have v2 prefix")))
-
-  (testing "deftool without :version uses original route"
-    (let [expansion (macroexpand-1 '(metabase-enterprise.metabot-v3.tools.deftool/deftool "/search"
-                                      "Search endpoint"
-                                      {:args-schema   ::my-args
-                                       :result-schema ::my-result
-                                       :handler       identity}))]
-      (is (= "/search" (nth expansion 2)) "Route should not have version prefix"))))

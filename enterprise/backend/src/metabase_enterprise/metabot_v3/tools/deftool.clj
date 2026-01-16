@@ -11,11 +11,9 @@
 ;;; ---------------------------------------------------- Schemas ----------------------------------------------------
 
 (mr/def ::tool-request
-  "Base schema for all tool requests. Contains the optional conversation ID and profile ID.
-   conversation_id is required for internal metabot calls (for logging/history) but optional
-   for external Agent API calls."
+  "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
   [:map
-   [:conversation_id {:optional true} [:maybe ms/UUIDString]]
+   [:conversation_id ms/UUIDString]
    [:profile_id {:optional true} [:maybe :string]]])
 
 (def ^:private request-transformer
@@ -55,8 +53,7 @@
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)
                        raw-result)]
-    (doto (cond-> result
-            conversation_id (assoc :conversation_id conversation_id))
+    (doto (assoc result :conversation_id conversation_id)
       (metabot-v3.context/log :llm.log/be->llm))))
 
 (defmacro deftool
@@ -75,29 +72,15 @@
     :result-schema  - Malli schema for result (required for response schema generation)
     :handler        - Function to call. Always receives an args map (may be empty for no-args tools)
                       with `:metabot-id` included when available from the request.
-    :version        - API version number (e.g., 1). When present, the version is prepended to the
-                      route path (e.g., \"/search\" becomes \"/v1/search\"). This is used for
-                      external-facing versioned APIs like the Agent API.
 
   Example:
     (deftool \"/field-values\"
       \"Return statistics and/or values for a given field.\"
       {:args-schema   ::field-values-arguments
        :result-schema ::field-values-result
-       :handler       metabot-v3.tools.field-stats/field-values})
-
-  Versioned example:
-    (deftool \"/search\"
-      \"Search for entities.\"
-      {:version       1
-       :args-schema   ::search-arguments
-       :result-schema ::search-result
-       :handler       search-v1})"
-  [route docstring {:keys [args-schema args-optional? result-schema handler version]}]
+       :handler       metabot-v3.tools.field-stats/field-values})"
+  [route docstring {:keys [args-schema args-optional? result-schema handler]}]
   (let [api-name        (keyword (subs route 1)) ; "/field-values" -> :field-values
-        versioned-route (if version
-                          (str "/v" version route)
-                          route)
         body-schema     (if args-schema
                           (if args-optional?
                             `[:merge [:map [:arguments {:optional true} ~args-schema]] ::tool-request]
@@ -108,7 +91,7 @@
                          :args-schema   args-schema
                          :result-schema result-schema
                          :handler       handler}]
-    `(api.macros/defendpoint :post ~versioned-route :- ~response-schema
+    `(api.macros/defendpoint :post ~route :- ~response-schema
        ~docstring
        [~'_route-params ~'_query-params ~'body :- ~body-schema ~'request]
        (invoke-tool ~'body ~'request ~tool-opts))))
