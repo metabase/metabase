@@ -12,7 +12,7 @@ import {
 export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Broken entities`,
+      label: t`Broken dependencies`,
       to: Urls.brokenDependencies(),
       icon: "list",
     },

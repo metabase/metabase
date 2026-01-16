@@ -8,7 +8,7 @@ type ErrorsCellProps = {
 };
 
 export function ErrorsCell({ node }: ErrorsCellProps) {
-  const errors = node.errors ?? [];
+  const errors = node.dependents_errors ?? [];
   const errorsInfo = getDependencyErrorInfo(errors);
 
   if (!errorsInfo) {

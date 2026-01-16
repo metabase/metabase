@@ -1,0 +1,19 @@
+name: Maximize disk space
+description: Removes unused stuff from GH runner
+
+runs:
+  using: "composite"
+  steps:
+    - name: Maximize build space
+      shell: bash
+      run: |
+        echo "-- Dotnet"
+        sudo rm -rf /usr/share/dotnet
+        echo "-- Android"
+        sudo rm -rf /usr/local/lib/android
+        echo "-- Haskell"
+        sudo rm -rf /opt/ghc
+        echo "-- CodeQL"
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+
+        df -h

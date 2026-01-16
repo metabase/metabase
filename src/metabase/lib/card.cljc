@@ -142,7 +142,7 @@
   [:maybe [:sequential {:min 1} ::column]])
 
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
-  "Used to track the ID of Cards we're resolving columns for, to avoid inifinte recursion for Cards that have circular
+  "Used to track the ID of Cards we're resolving columns for, to avoid infinite recursion for Cards that have circular
   references between one another."
   #{})
 
@@ -195,7 +195,7 @@
           (when (= (:type source-card) :model)
             source-card))))))
 
-(mu/defn- model-preserved-keys :- [:sequential :keyword]
+(mu/defn model-preserved-keys :- [:sequential :keyword]
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top.
