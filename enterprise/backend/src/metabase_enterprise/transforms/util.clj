@@ -72,11 +72,14 @@
           (throw (ex-info "Transform timed out" (assoc result :status :timeout))))
 
         :failed
-        ;; if there is an exception, throw original so it's easier to understand what actually has happened
-        (throw (or (:error result)
-                   (ex-info "Transform failed" result)))))
+        ;; if we have it, throw an error using original message so it's not as generic
+        (throw (ex-info (or (some-> (:error result) ex-message)
+                            "Transform failed")
+                        result
+                        (:error result)))))
     (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (ex-message-fn t)})
+      (transform-run/fail-started-run! run-id {:message (or (:logs (ex-data t))
+                                                            (ex-message-fn t))})
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))
