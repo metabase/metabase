@@ -120,7 +120,7 @@
                                                          instances)]))
                              edits))]
      (cond
-       (->> (vals valid-edits) (some seq) not)
+       (not (some seq (vals valid-edits)))
        {}
 
        base-provider
