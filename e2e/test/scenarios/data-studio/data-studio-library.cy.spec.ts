@@ -137,7 +137,7 @@ describe("scenarios > data studio > library", () => {
   });
 
   describe("empty state", () => {
-    it("should show empty states with action links when sections are empty", () => {
+    it("should show empty states with interactions when sections are empty", () => {
       H.createLibrary();
       H.DataStudio.Library.visit();
 
@@ -169,23 +169,25 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New snippet" })
         .should("be.visible");
-    });
 
-    it("should open publish table modal when clicking 'Publish a table' in empty state", () => {
-      H.createLibrary();
-      H.DataStudio.Library.visit();
-
-      cy.log("Click on the 'Publish a table' button in the empty state");
+      cy.log("Click on 'Publish a table' button and verify modal opens");
       H.DataStudio.Library.libraryPage()
         .findByRole("button", { name: "Publish a table" })
         .click();
-
-      cy.log("Verify the publish table modal opens");
       H.entityPickerModal().should("be.visible");
       H.entityPickerModalItem(3, "Orders").should("exist");
+      H.entityPickerModal().button("Close").click();
+
+      cy.log("Search for text and verify empty states are excluded");
+      H.DataStudio.Library.libraryPage()
+        .findByPlaceholderText("Search...")
+        .type("Publish");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .should("not.exist");
     });
 
-    it("should hide empty state when section has items", () => {
+    it("should hide empty states when items are added and keep empty sections expanded on navigation", () => {
       H.createLibrary();
       H.DataStudio.Library.visit();
 
@@ -194,52 +196,23 @@ describe("scenarios > data studio > library", () => {
         .findByText("Cleaned, pre-transformed data sources ready for exploring")
         .should("be.visible");
 
-      cy.log("Publish a table");
+      cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Publish a table").click();
       H.entityPickerModalItem(3, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 
-      cy.log("Navigate back to the library");
+      cy.log("Navigate back to Library via breadcrumbs");
       H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
 
-      cy.log("Verify Data empty state is hidden and table is visible");
+      cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByText("Cleaned, pre-transformed data sources ready for exploring")
         .should("not.exist");
-    });
-
-    it("should not show empty states in search results", () => {
-      H.createLibrary();
-      H.DataStudio.Library.visit();
-
-      cy.log("Search for 'Publish'");
-      H.DataStudio.Library.libraryPage()
-        .findByPlaceholderText("Search...")
-        .type("Publish");
-
-      cy.log("Verify empty state descriptions are not in search results");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
-        .should("not.exist");
-    });
-
-    it("should keep empty sections expanded when navigating back via breadcrumbs", () => {
-      H.createLibrary();
-      H.DataStudio.Library.visit();
-
-      cy.log("Publish a table so Data section has content");
-      H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
-      H.entityPickerModalItem(3, "Orders").click();
-      H.entityPickerModal().button("Publish").click();
-
-      cy.log("Navigate back to Data section via breadcrumbs");
-      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
 
       cy.log(
-        "Verify empty sections (Metrics, SQL snippets) are still expanded and showing empty states",
+        "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",
       );
       H.DataStudio.Library.libraryPage()
         .findByText("Standardized calculations with known dimensions")
@@ -247,9 +220,6 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Reusable bits of code that save your time")
         .should("be.visible");
-
-      cy.log("Verify the Data section table is also visible");
-      H.DataStudio.Library.tableItem("Orders").should("be.visible");
     });
   });
 });
