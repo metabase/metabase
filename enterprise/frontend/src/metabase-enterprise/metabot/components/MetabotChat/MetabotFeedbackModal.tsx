@@ -20,14 +20,18 @@ import type { MetabotFeedback } from "metabase-types/api";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
+type IssueTypesRequiringFreeform =
+  (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number];
+
+const isFreeformRequired = (
+  value: string,
+): value is IssueTypesRequiringFreeform =>
+  ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as IssueTypesRequiringFreeform);
 
 const FEEDBACK_SCHEMA = Yup.object({
   issue_type: Yup.string().nullable().default(""),
   freeform_feedback: Yup.string().when("issue_type", {
-    is: (value: string) =>
-      ISSUE_TYPES_REQUIRING_FREEFORM.includes(
-        value as (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number],
-      ),
+    is: isFreeformRequired,
     then: (schema) => schema.required(Errors.required),
     otherwise: (schema) => schema.nullable(),
   }),
@@ -41,17 +45,10 @@ interface MetabotFeedbackModalProps {
 }
 
 const FeedbackTextLabel = ({ positive }: { positive: boolean }) => {
-  const { values } = useFormikContext<{
-    issue_type?: string;
-    freeform_feedback: string;
-  }>();
+  const { values } = useFormikContext<Yup.InferType<typeof FEEDBACK_SCHEMA>>();
 
   const isRequired =
-    !positive &&
-    values.issue_type &&
-    ISSUE_TYPES_REQUIRING_FREEFORM.includes(
-      values.issue_type as (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number],
-    );
+    !positive && values.issue_type && isFreeformRequired(values.issue_type);
 
   return (
     <Text>
