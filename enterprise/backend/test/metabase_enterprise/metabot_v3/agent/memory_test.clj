@@ -12,10 +12,10 @@
       (is (= state (:state mem)))
       (is (= [] (:steps-taken mem)))))
 
-  (testing "initializes with empty state when nil"
+  (testing "initializes with default state when nil"
     (let [messages [{:role :user :content "Hello"}]
           mem (memory/initialize messages nil)]
-      (is (= {} (:state mem))))))
+      (is (= {:queries {} :charts {} :todos [] :transforms {}} (:state mem))))))
 
 (deftest add-step-test
   (testing "adds step to memory"
