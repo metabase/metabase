@@ -2,7 +2,7 @@
   "Main agent loop implementation using existing streaming infrastructure from self/*"
   (:require
    [clojure.core.async :as a]
-   [metabase-enterprise.metabot-v3.agent.links :as links]
+   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as markdown-link-buffer]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
@@ -40,7 +40,7 @@
   [iteration profile parts]
   (let [max-iterations (get profile :max-iterations 10)]
     (and
-     (< iteration max-iterations)
+     (< (inc iteration) max-iterations)
      (has-tool-calls? parts)
      (not (has-final-response? parts)))))
 
@@ -60,7 +60,6 @@
               {:model model
                :system-msg-present (boolean system-msg)
                :input-msg-count (count input-msgs)
-               :input-msgs input-msgs
                :tool-count (count tools)})
     ;; TODO: Add temperature support to claude-raw
     ;; temperature (get profile :temperature 0.3)
@@ -176,6 +175,47 @@
          (mapcat #(get-in % [:result :data-parts])))
         parts))
 
+(defn- normalize-context-type
+  "Normalize context :type to lowercase string."
+  [type-val]
+  (cond
+    (keyword? type-val) (name type-val)
+    (string? type-val) type-val
+    (nil? type-val) nil
+    :else (str type-val)))
+
+(defn- extract-query-from-viewing-item
+  "Extract [query-id query] from a viewing context item when possible.
+  Mirrors ai-service behavior for adhoc/native queries and transforms with query sources."
+  [item]
+  (let [item-type (normalize-context-type (:type item))]
+    (cond
+      (and (#{"adhoc" "native"} item-type)
+           (map? (:query item))
+           (:id item))
+      [(str (:id item)) (:query item)]
+
+      (and (= "transform" item-type)
+           (= "query" (normalize-context-type (get-in item [:source :type])))
+           (map? (get-in item [:source :query]))
+           (:id item))
+      [(str (:id item)) (get-in item [:source :query])]
+
+      :else
+      nil)))
+
+(defn- seed-state-from-context
+  "Seed initial state with queries derived from user_is_viewing context."
+  [state context]
+  (if-let [viewing (:user_is_viewing context)]
+    (reduce (fn [state* item]
+              (if-let [[query-id query] (extract-query-from-viewing-item item)]
+                (assoc-in state* [:queries query-id] query)
+                state*))
+            (update state :queries #(or % {}))
+            viewing)
+    state))
+
 (defn- stream-parts-to-output!
   "Stream parts to output channel with link resolution, reaction handling, and data parts.
   - Resolves metabase:// links in text parts using memory state.
@@ -191,8 +231,25 @@
       (log/debug "Processing links with state"
                  {:query-count (count queries-state)
                   :chart-count (count charts-state)})
-      ;; Process links in all parts before streaming
-      (let [processed-parts (links/process-parts-links parts queries-state charts-state)
+      ;; Process links using streaming buffer to support links split across parts
+      (let [buffer (markdown-link-buffer/create-buffer queries-state charts-state)
+            processed-parts (reduce (fn [acc part]
+                                      (if (and (= (:type part) :text)
+                                               (contains? part :text))
+                                        (let [text (:text part)]
+                                          (if (nil? text)
+                                            (conj acc part)
+                                            (let [processed-text (markdown-link-buffer/process buffer text)]
+                                              (if (or (seq processed-text) (empty? text))
+                                                (conj acc (assoc part :text processed-text))
+                                                acc))))
+                                        (conj acc part)))
+                                    []
+                                    parts)
+            flushed-text (markdown-link-buffer/flush-buffer buffer)
+            processed-parts (if (seq flushed-text)
+                              (conj processed-parts {:type :text :text flushed-text})
+                              processed-parts)
             ;; Extract reactions and convert to data parts
             reactions (extract-reactions-from-parts parts)
             reaction-data-parts (streaming/reactions->data-parts reactions)
@@ -250,12 +307,13 @@
         capabilities (get context :capabilities #{})
         base-tools (agent-tools/get-tools-for-profile profile-id capabilities)
         out-chan (a/chan 100)
+        seeded-state (seed-state-from-context (or state {}) context)
         ;; Initialize memory and load any existing state (queries, charts, transforms, todos)
-        initial-memory (-> (memory/initialize messages state)
-                           (memory/load-queries-from-state state)
-                           (memory/load-charts-from-state state)
-                           (memory/load-transforms-from-state state)
-                           (memory/load-todos-from-state state))
+        initial-memory (-> (memory/initialize messages seeded-state)
+                           (memory/load-queries-from-state seeded-state)
+                           (memory/load-charts-from-state seeded-state)
+                           (memory/load-transforms-from-state seeded-state)
+                           (memory/load-todos-from-state seeded-state))
         memory-atom (atom initial-memory)
         ;; Wrap state-dependent tools with access to memory
         tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]

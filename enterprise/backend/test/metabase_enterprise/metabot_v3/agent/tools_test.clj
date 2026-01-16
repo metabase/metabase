@@ -197,6 +197,7 @@
       (is (contains? (get wrapped-tools "show_results_to_user") :fn))
       (is (contains? (get wrapped-tools "show_results_to_user") :doc))
       (is (contains? (get wrapped-tools "show_results_to_user") :schema))
+      (is (contains? (get wrapped-tools "show_results_to_user") :system-instructions))
       ;; Non-state-dependent tool should remain as var
       (is (var? (get wrapped-tools "search")))))
 
@@ -208,6 +209,20 @@
           original-meta (meta #'agent-tools/create-chart-tool)]
       (is (= (:doc original-meta) (:doc wrapped-tool)))
       (is (= (:schema original-meta) (:schema wrapped-tool)))))
+
+  (def ^{:doc "Test tool"
+         :schema [:=> [:cat [:map]] :any]
+         :system-instructions "Follow the rules."}
+    test-stateful-tool
+    (fn [_] nil))
+
+  (deftest wrap-tools-with-state-preserves-system-instructions-test
+    (testing "preserves system instructions for wrapped tools"
+      (let [memory-atom (atom {:state {:queries {} :charts {}}})
+            base-tools {"show_results_to_user" #'test-stateful-tool}
+            wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
+        (is (= "Follow the rules."
+               (get-in wrapped-tools ["show_results_to_user" :system-instructions]))))))
 
   (testing "wrapped function receives augmented args with state"
     (let [received-args (atom nil)
