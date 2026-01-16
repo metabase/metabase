@@ -1,3 +1,5 @@
+import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -69,15 +71,21 @@ type DependentItemProps = {
 };
 
 function DependentItem({ node }: DependentItemProps) {
+  const [isOpened, setIsOpened] = useState(false);
   const label = getNodeLabel(node);
   const link = getNodeLink(node);
   const icon = getNodeIcon(node);
   const location = getNodeLocationInfo(node);
 
   return (
-    <Menu>
+    <Menu opened={isOpened} onChange={setIsOpened}>
       <Menu.Target>
-        <Stack className={S.item} p="md" gap="sm" aria-label={label}>
+        <Stack
+          className={cx(S.item, { [S.active]: isOpened })}
+          p="md"
+          gap="sm"
+          aria-label={label}
+        >
           <Group gap="sm">
             <FixedSizeIcon name={icon} />
             <Box className={CS.textWrap} lh="1rem">
@@ -92,7 +100,7 @@ function DependentItem({ node }: DependentItemProps) {
               pl="sm"
             >
               {location.links.map((link, linkIndex) => (
-                <Box key={linkIndex} lh="1rem">
+                <Box key={linkIndex} className={CS.textWrap} lh="1rem">
                   {link.label}
                 </Box>
               ))}

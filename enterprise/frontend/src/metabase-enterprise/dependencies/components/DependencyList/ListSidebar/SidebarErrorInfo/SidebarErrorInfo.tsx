@@ -1,3 +1,4 @@
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -16,7 +17,6 @@ import {
 } from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getDependencyErrorTypeLabel } from "../../../../utils";
 
 import S from "./SidebarErrorInfo.module.css";
@@ -57,27 +57,34 @@ type ErrorItemProps = {
 };
 
 function ErrorItem({ detail }: ErrorItemProps) {
+  const clipboard = useClipboard();
+
+  const handleClick = () => {
+    clipboard.copy(detail);
+  };
+
   return (
-    <Group
-      className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
-      p="md"
-      justify="space-between"
-      wrap="nowrap"
-    >
-      <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="1rem">
-        {detail}
-      </Box>
-      <CopyButton
-        className={CS.hoverChild}
-        value={detail}
-        target={
-          <Tooltip label={t`Copy`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+    <Tooltip opened={clipboard.copied} label={t`Copied!`}>
+      <Group
+        className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
+        p="md"
+        justify="space-between"
+        wrap="nowrap"
+        onClick={handleClick}
+      >
+        <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="1rem">
+          {detail}
+        </Box>
+        <CopyButton
+          className={CS.hoverChild}
+          value={detail}
+          target={
             <ActionIcon aria-label={t`Copy`}>
               <FixedSizeIcon name="copy" />
             </ActionIcon>
-          </Tooltip>
-        }
-      />
-    </Group>
+          }
+        />
+      </Group>
+    </Tooltip>
   );
 }
