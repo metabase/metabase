@@ -171,20 +171,28 @@
 
 (deftest get-metric-details-test
   (with-agent-api-setup!
-    (testing "Returns metric details for valid metric ID"
-      (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                         :type          :metric
-                                         :database_id   (mt/id)
-                                         :dataset_query (mt/mbql-query orders
-                                                          {:aggregation [[:count]]})}]
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]})}]
+      (testing "Returns metric details for valid metric ID"
         (is (=? {:type                  "metric"
                  :id                    (:id metric)
                  :name                  "Test Metric"
-                 :queryable-dimensions  sequential?}
+                 :queryable_dimensions  sequential?}
                 (client/client :get 200 (str "agent/v1/metrics/" (:id metric))
-                               {:request-options {:headers (auth-headers)}})))))
+                               {:request-options {:headers (auth-headers)}}))))
 
-    (testing "Returns 404 for non-existent metric"
-      (is (= "Not found."
-             (client/client :get 404 "agent/v1/metrics/999999"
-                            {:request-options {:headers (auth-headers)}}))))))
+      (testing "Respects query parameters"
+        (is (=? {:type "metric"
+                 :id   (:id metric)}
+                (client/client :get 200 (str "agent/v1/metrics/" (:id metric))
+                               {:request-options {:headers (auth-headers)}}
+                               :with-queryable-dimensions false
+                               :with-field-values false))))
+
+      (testing "Returns 404 for non-existent metric"
+        (is (= "Not found."
+               (client/client :get 404 "agent/v1/metrics/999999"
+                              {:request-options {:headers (auth-headers)}})))))))

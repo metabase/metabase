@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
-   [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
@@ -13,8 +12,99 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+;;; --------------------------------------------------- Schemas ------------------------------------------------------
+
+;; Response schemas for the Agent API.
+;; - Use snake_case keys in schema definitions (JSON convention)
+;; - Use :encode/api transformers to convert kebab-case data from internal functions
+;; - Convert keyword enum values (like :table, :metric) to strings for JSON
+
+(defn- ->snake_case-keys
+  "Convert all map keys to snake_case. Used for encoding responses."
+  [m]
+  (when m
+    (update-keys m u/->snake_case_en)))
+
+(defn- keyword->string
+  "Convert a keyword to its name string, or return non-keywords as-is."
+  [x]
+  (if (keyword? x) (name x) x))
+
+(mr/def ::field-type
+  [:enum {:encode/api keyword->string}
+   :boolean :date :datetime :time :number :string])
+
+(mr/def ::field
+  [:map {:encode/api ->snake_case-keys}
+   [:field_id :string]
+   [:name :string]
+   [:type {:optional true} [:maybe ::field-type]]
+   [:description {:optional true} [:maybe :string]]
+   [:database_type {:optional true} [:maybe :string]]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:field_values {:optional true} [:maybe [:sequential :any]]]])
+
+(mr/def ::entity-type
+  [:enum {:encode/api keyword->string}
+   :model :table :metric])
+
+(mr/def ::basic-metric
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:type [:= {:encode/api keyword->string} :metric]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
+
+(mr/def ::segment
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::related-table
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:type ::entity-type]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:database_engine {:optional true} [:maybe :keyword]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:fields {:optional true} [:maybe [:sequential ::field]]]
+   [:related_by {:optional true} [:maybe :string]]])
+
+(mr/def ::table-response
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:type ::entity-type]
+   [:name :string]
+   [:display_name :string]
+   [:database_id :int]
+   [:database_engine :keyword]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:fields [:sequential ::field]]
+   [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
+   [:metrics {:optional true} [:maybe [:sequential ::basic-metric]]]
+   [:segments {:optional true} [:maybe [:sequential ::segment]]]])
+
+(mr/def ::full-metric-response
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:type [:= {:encode/api keyword->string} :metric]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe :string]]
+   [:verified {:optional true} [:maybe :boolean]]
+   [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
+   [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
@@ -23,7 +113,7 @@
   []
   {:message "pong"})
 
-(api.macros/defendpoint :get "/v1/tables/:id" :- ::tools.api/table-result
+(api.macros/defendpoint :get "/v1/tables/:id" :- ::table-response
   "Get details for a table by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
@@ -48,7 +138,7 @@
       data
       {:status 404, :body {:error (or (:output result) "Table not found")}})))
 
-(api.macros/defendpoint :get "/v1/metrics/:id" :- ::tools.api/full-metric
+(api.macros/defendpoint :get "/v1/metrics/:id" :- ::full-metric-response
   "Get details for a metric by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
