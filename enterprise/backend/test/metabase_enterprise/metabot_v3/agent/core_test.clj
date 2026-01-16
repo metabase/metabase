@@ -199,11 +199,25 @@
   (testing "streams parts to output channel"
     (let [out-chan (a/chan 10)
           parts [{:type :text :text "hello"}
-                 {:type :usage :tokens 100}]]
+                 {:type :usage :tokens 100}]
+          memory {:state {:queries {} :charts {}}}]
       ;; Wait for the go block to complete
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts))
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
       (a/close! out-chan)
-      (is (= parts (chan->seq out-chan))))))
+      (is (= parts (chan->seq out-chan)))))
+
+  (testing "resolves metabase:// links in text parts"
+    (let [out-chan (a/chan 10)
+          query-id "test-query-123"
+          query {:database 1 :type :query :query {:source-table 1}}
+          parts [{:type :text :text "Check out [Results](metabase://query/test-query-123)"}]
+          memory {:state {:queries {query-id query} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            text (-> result first :text)]
+        ;; Link should be resolved to /question#...
+        (is (re-find #"\[Results\]\(/question#" text))))))
 
 (deftest finalize-stream-test
   (testing "finalizes stream with state and finish"
