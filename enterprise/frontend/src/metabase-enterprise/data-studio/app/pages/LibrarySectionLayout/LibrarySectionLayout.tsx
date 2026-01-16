@@ -6,7 +6,6 @@ import _ from "underscore";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
-import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -73,10 +72,6 @@ export function LibrarySectionLayout() {
       "include-library": true,
     });
 
-  const isInstanceRemoteSyncEnabled = Boolean(
-    useSetting("remote-sync-enabled"),
-  );
-
   const libraryCollection = useMemo(
     () => collections.find(isLibraryCollection),
     [collections],
@@ -85,23 +80,15 @@ export function LibrarySectionLayout() {
   const tableCollection = useMemo(
     () =>
       libraryCollection &&
-      getAccessibleCollection(
-        libraryCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      ),
-    [libraryCollection, isInstanceRemoteSyncEnabled],
+      getAccessibleCollection(libraryCollection, "library-data"),
+    [libraryCollection],
   );
 
   const metricCollection = useMemo(
     () =>
       libraryCollection &&
-      getAccessibleCollection(
-        libraryCollection,
-        "library-metrics",
-        isInstanceRemoteSyncEnabled,
-      ),
-    [libraryCollection, isInstanceRemoteSyncEnabled],
+      getAccessibleCollection(libraryCollection, "library-metrics"),
+    [libraryCollection],
   );
 
   const writableMetricCollection = useMemo(
