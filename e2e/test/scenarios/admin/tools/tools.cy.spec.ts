@@ -290,10 +290,10 @@ describe("scenarios > admin > tools > tasks", () => {
     cy.wait("@getTaskWithLogs");
 
     cy.findByTestId("task-logs").scrollIntoView().should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
+    cy.findByTestId("task-logs").within(() => {
+      cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
+      cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
+    });
   });
 
   it("should show empty state when no logs are present", () => {
@@ -310,8 +310,9 @@ describe("scenarios > admin > tools > tasks", () => {
     cy.wait("@getTaskWithoutLogs");
 
     cy.findByTestId("task-logs").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There are no captured logs").should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText("There are no captured logs")
+      .should("be.visible");
   });
 });
 
@@ -664,12 +665,11 @@ describe("scenarios > admin > tools > task runs", () => {
       `/admin/tools/tasks/runs/${taskRun.id}`,
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Run type").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Entity").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sample Database").should("be.visible");
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByText("Run type").should("be.visible");
+      cy.findByText("Entity").should("be.visible");
+      cy.findByText("Sample Database").should("be.visible");
+    });
 
     cy.findByTestId("task-run-tasks-table").should("be.visible");
     cy.findAllByTestId("task-run-task").should("have.length", 3);
@@ -679,8 +679,7 @@ describe("scenarios > admin > tools > task runs", () => {
     cy.visit(`/admin/tools/tasks/runs/${taskRun.id}`);
     cy.wait("@getTaskRun");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Back to Runs").click();
+    cy.findByRole("link", { name: /Back to Runs/i }).click();
     cy.location("pathname").should("eq", "/admin/tools/tasks/runs");
   });
 
@@ -773,8 +772,7 @@ describe("scenarios > admin > tools > task runs pagination", () => {
     cy.location("search").should("eq", "");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sync");
+    cy.findByTestId("task-runs-table").should("contain.text", "Sync");
 
     cy.findByLabelText("Previous page").should("be.disabled");
     cy.findByLabelText("Next page").should("not.be.disabled").click();
@@ -785,8 +783,7 @@ describe("scenarios > admin > tools > task runs pagination", () => {
     cy.findByLabelText("pagination")
       .findByText(`51 - ${total}`)
       .should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Fingerprint");
+    cy.findByTestId("task-runs-table").should("contain.text", "Fingerprint");
 
     cy.findByLabelText("Next page").should("be.disabled");
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
