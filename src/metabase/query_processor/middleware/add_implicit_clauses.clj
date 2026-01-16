@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
-  "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
+  "Middleware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:refer-clojure :exclude [every? empty? not-empty])
   (:require
    [metabase.lib.core :as lib]

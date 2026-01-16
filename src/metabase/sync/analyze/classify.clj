@@ -132,7 +132,7 @@
          :fields-failed fields-failed}))))
 
 (mu/defn ^:always-validate classify-table!
-  "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
+  "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
