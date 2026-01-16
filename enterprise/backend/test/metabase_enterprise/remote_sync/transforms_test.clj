@@ -55,14 +55,13 @@
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
-                       :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type "Transform"
-                       :model_id (:id transform)
-                       :model_name "Test Transform"
-                       :model_collection_id coll-id
-                       :status "synced"
-                       :status_changed_at (t/offset-date-time)})
+                       :model/Transform transform {:name "Test Transform" :collection_id coll-id}
+                       :model/RemoteSyncObject _rso {:model_type "Transform"
+                                                     :model_id (:id transform)
+                                                     :model_name "Test Transform"
+                                                     :model_collection_id coll-id
+                                                     :status "synced"
+                                                     :status_changed_at (t/offset-date-time)}]
           (events/publish-event! :event/transform-update {:object transform})
           (let [entry (t2/select-one :model/RemoteSyncObject
                                      :model_type "Transform"
@@ -154,18 +153,17 @@
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}
                        :model/TransformTag tag {:name "Test Tag"}]
           (mt/with-temporary-setting-values [remote-sync-transforms true]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform" :model_id (:id transform) :model_name "Test Transform" :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "TransformTag" :model_id (:id tag) :model_name "Test Tag" :status "synced" :status_changed_at (t/offset-date-time)}])
-            (is (= 3 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "Transform" "TransformTag"]]
-                               :model_id [:in [coll-id (:id transform) (:id tag)]]))
-                "Should have 3 tracking entries")
-            (impl/sync-transform-tracking! false)
-            (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
-                "Transform and TransformTag tracking entries should be removed")
-            (is (zero? (t2/count :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
-                "Transforms-namespace collection tracking entry should be removed")))))))
+            (mt/with-temp [:model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso2 {:model_type "Transform" :model_id (:id transform) :model_name "Test Transform" :status "synced" :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso3 {:model_type "TransformTag" :model_id (:id tag) :model_name "Test Tag" :status "synced" :status_changed_at (t/offset-date-time)}]
+              (is (= 3 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "Transform" "TransformTag"]]
+                                 :model_id [:in [coll-id (:id transform) (:id tag)]]))
+                  "Should have 3 tracking entries")
+              (impl/sync-transform-tracking! false)
+              (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
+                  "Transform and TransformTag tracking entries should be removed")
+              (is (zero? (t2/count :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+                  "Transforms-namespace collection tracking entry should be removed"))))))))
 
 (deftest transforms-included-in-dirty-check-when-enabled-test
   (testing "Transforms are included in dirty check when setting is enabled"
@@ -173,13 +171,12 @@
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
-                       :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type "Transform"
-                       :model_id (:id transform)
-                       :model_name "Dirty Transform"
-                       :status "update"
-                       :status_changed_at (t/offset-date-time)})
+                       :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}
+                       :model/RemoteSyncObject _rso {:model_type "Transform"
+                                                     :model_id (:id transform)
+                                                     :model_name "Dirty Transform"
+                                                     :status "update"
+                                                     :status_changed_at (t/offset-date-time)}]
           (is (sync-object/dirty?)
               "Should report dirty state when transform has changes"))))))
 
@@ -189,13 +186,12 @@
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
-                       :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type "Transform"
-                       :model_id (:id transform)
-                       :model_name "Dirty Transform"
-                       :status "update"
-                       :status_changed_at (t/offset-date-time)})
+                       :model/Transform transform {:name "Dirty Transform" :collection_id coll-id}
+                       :model/RemoteSyncObject _rso {:model_type "Transform"
+                                                     :model_id (:id transform)
+                                                     :model_name "Dirty Transform"
+                                                     :status "update"
+                                                     :status_changed_at (t/offset-date-time)}]
           (is (not (sync-object/dirty?))
               "Should NOT report dirty state when transform sync is disabled"))))))
 
@@ -204,13 +200,12 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type "TransformTag"
-                       :model_id (:id tag)
-                       :model_name "Dirty Tag"
-                       :status "update"
-                       :status_changed_at (t/offset-date-time)})
+        (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}
+                       :model/RemoteSyncObject _rso {:model_type "TransformTag"
+                                                     :model_id (:id tag)
+                                                     :model_name "Dirty Tag"
+                                                     :status "update"
+                                                     :status_changed_at (t/offset-date-time)}]
           (is (sync-object/dirty?)
               "Should report dirty state when transform tag has changes"))))))
 
@@ -219,13 +214,12 @@
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
-        (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type "TransformTag"
-                       :model_id (:id tag)
-                       :model_name "Dirty Tag"
-                       :status "update"
-                       :status_changed_at (t/offset-date-time)})
+        (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}
+                       :model/RemoteSyncObject _rso {:model_type "TransformTag"
+                                                     :model_id (:id tag)
+                                                     :model_name "Dirty Tag"
+                                                     :status "update"
+                                                     :status_changed_at (t/offset-date-time)}]
           (is (not (sync-object/dirty?))
               "Should NOT report dirty state when transform sync is disabled"))))))
 
@@ -235,28 +229,28 @@
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxx" :location "/"}
-                         :model/Transform transform {:name "Export Transform" :collection_id coll-id}]
-            (let [saved-coll (t2/select-one :model/Collection :id coll-id)]
-              (is (= :transforms (:namespace saved-coll))
-                  (str "Collection should have transforms namespace, got: " (:namespace saved-coll)))
-              (is (= "/" (:location saved-coll))
-                  (str "Collection should have root location, got: " (:location saved-coll))))
-            (let [found-colls (t2/select-fn-set :entity_id :model/Collection :namespace (name collection/transforms-ns))]
-              (is (contains? found-colls coll-eid)
-                  (str "Query should find the collection. Found: " found-colls ", expected to contain: " coll-eid)))
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform" :model_id (:id transform) :model_name "Export Transform" :model_collection_id coll-id :status "create" :status_changed_at (t/offset-date-time)}])
-            (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
-              (is (= :success (:status result))
-                  (str "Export should succeed. Result: " result))
-              (let [files-after-export (get @(:files-atom mock-source) "main")]
-                (is (some #(str/includes? % coll-eid)
-                          (keys files-after-export))
-                    "Export should include the transforms-namespace collection itself")))))))))
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxx" :location "/"}
+                           :model/Transform transform {:name "Export Transform" :collection_id coll-id}
+                           :model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso2 {:model_type "Transform" :model_id (:id transform) :model_name "Export Transform" :model_collection_id coll-id :status "create" :status_changed_at (t/offset-date-time)}]
+              (let [saved-coll (t2/select-one :model/Collection :id coll-id)]
+                (is (= :transforms (:namespace saved-coll))
+                    (str "Collection should have transforms namespace, got: " (:namespace saved-coll)))
+                (is (= "/" (:location saved-coll))
+                    (str "Collection should have root location, got: " (:location saved-coll))))
+              (let [found-colls (t2/select-fn-set :entity_id :model/Collection :namespace (name collection/transforms-ns))]
+                (is (contains? found-colls coll-eid)
+                    (str "Query should find the collection. Found: " found-colls ", expected to contain: " coll-eid)))
+              (let [mock-source (test-helpers/create-mock-source)
+                    result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+                (is (= :success (:status result))
+                    (str "Export should succeed. Result: " result))
+                (let [files-after-export (get @(:files-atom mock-source) "main")]
+                  (is (some #(str/includes? % coll-eid)
+                            (keys files-after-export))
+                      "Export should include the transforms-namespace collection itself"))))))))))
 
 (deftest export-excludes-transforms-when-setting-disabled-test
   (testing "Export excludes transforms when setting is disabled"
@@ -264,25 +258,25 @@
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms false
                                          remote-sync-enabled true]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxx" :location "/"}]
-            (let [saved-coll (t2/select-one :model/Collection :id rs-coll-id)]
-              (is (true? (:is_remote_synced saved-coll))
-                  (str "Collection should have is_remote_synced true, got: " (:is_remote_synced saved-coll)))
-              (is (= "/" (:location saved-coll))
-                  (str "Collection should have root location, got: " (:location saved-coll))))
-            (let [found-colls (t2/select-fn-set :entity_id :model/Collection :is_remote_synced true :location "/")]
-              (is (contains? found-colls rs-coll-eid)
-                  (str "Query should find the collection. Found: " found-colls ", expected to contain: " rs-coll-eid)))
-            (t2/insert! :model/RemoteSyncObject
-                        {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)})
-            (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
-              (is (= :success (:status result))
-                  (str "Export should succeed. Result: " result))
-              (let [files-after-export (get @(:files-atom mock-source) "main")]
-                (is (not (some #(str/includes? % "transforms/") (keys files-after-export)))
-                    "Export should NOT include transform files when setting is disabled")))))))))
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+            (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxx" :location "/"}
+                           :model/RemoteSyncObject _rso {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)}]
+              (let [saved-coll (t2/select-one :model/Collection :id rs-coll-id)]
+                (is (true? (:is_remote_synced saved-coll))
+                    (str "Collection should have is_remote_synced true, got: " (:is_remote_synced saved-coll)))
+                (is (= "/" (:location saved-coll))
+                    (str "Collection should have root location, got: " (:location saved-coll))))
+              (let [found-colls (t2/select-fn-set :entity_id :model/Collection :is_remote_synced true :location "/")]
+                (is (contains? found-colls rs-coll-eid)
+                    (str "Query should find the collection. Found: " found-colls ", expected to contain: " rs-coll-eid)))
+              (let [mock-source (test-helpers/create-mock-source)
+                    result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+                (is (= :success (:status result))
+                    (str "Export should succeed. Result: " result))
+                (let [files-after-export (get @(:files-atom mock-source) "main")]
+                  (is (not (some #(str/includes? % "transforms/") (keys files-after-export)))
+                      "Export should NOT include transform files when setting is disabled"))))))))))
 
 (defn- generate-transform-yaml
   "Generates YAML content for a transform."
@@ -362,56 +356,55 @@ is_sample: false
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
-                         {:name "Transforms Collection"
-                          :namespace collection/transforms-ns
-                          :entity_id "arch-transforms-collx"
-                          :location "/"}
-                         :model/Transform {transform-id :id transform-eid :entity_id}
-                         {:name "Child Transform"
-                          :collection_id coll-id
-                          :entity_id "child-transform-xxxxx"}
-                         :model/Transform {root-transform-id :id root-transform-eid :entity_id}
-                         {:name "Root Transform"
-                          :collection_id nil
-                          :entity_id "root-transform-xxxxxx"}]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection"
-                          :model_id coll-id
-                          :model_name "Transforms Collection"
-                          :status "synced"
-                          :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform"
-                          :model_id transform-id
-                          :model_name "Child Transform"
-                          :model_collection_id coll-id
-                          :status "synced"
-                          :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform"
-                          :model_id root-transform-id
-                          :model_name "Root Transform"
-                          :model_collection_id nil
-                          :status "create"
-                          :status_changed_at (t/offset-date-time)}])
-            (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
-                                         (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
-                                         (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                         (generate-transform-yaml transform-eid "Child Transform")}}
-                  mock-source (test-helpers/create-mock-source :initial-files initial-files)]
-              (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
-              (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
-              (t2/update! :model/Collection coll-id {:archived true})
-              (events/publish-event! :event/collection-update
-                                     {:object (t2/select-one :model/Collection :id coll-id)
-                                      :user-id (mt/user->id :rasta)})
-              (is (= "delete" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
-              (is (= "delete" (:status (t2/select-one :model/RemoteSyncObject :model_type "Transform" :model_id transform-id))))
-              (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
-                (is (= :success (:status result)))
-                (let [files-after-export (get @(:files-atom mock-source) "main")]
-                  (is (not (some #(str/includes? % coll-eid) (keys files-after-export))))
-                  (is (not (some #(str/includes? % transform-eid) (keys files-after-export))))
-                  ;; Root transform should still be exported
-                  (is (some #(str/includes? % root-transform-eid) (keys files-after-export))
-                      "Root transform should be exported"))))))))))
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
+                           {:name "Transforms Collection"
+                            :namespace collection/transforms-ns
+                            :entity_id "arch-transforms-collx"
+                            :location "/"}
+                           :model/Transform {transform-id :id transform-eid :entity_id}
+                           {:name "Child Transform"
+                            :collection_id coll-id
+                            :entity_id "child-transform-xxxxx"}
+                           :model/Transform {root-transform-id :id root-transform-eid :entity_id}
+                           {:name "Root Transform"
+                            :collection_id nil
+                            :entity_id "root-transform-xxxxxx"}
+                           :model/RemoteSyncObject _rso1 {:model_type "Collection"
+                                                          :model_id coll-id
+                                                          :model_name "Transforms Collection"
+                                                          :status "synced"
+                                                          :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso2 {:model_type "Transform"
+                                                          :model_id transform-id
+                                                          :model_name "Child Transform"
+                                                          :model_collection_id coll-id
+                                                          :status "synced"
+                                                          :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso3 {:model_type "Transform"
+                                                          :model_id root-transform-id
+                                                          :model_name "Root Transform"
+                                                          :model_collection_id nil
+                                                          :status "create"
+                                                          :status_changed_at (t/offset-date-time)}]
+              (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
+                                           (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
+                                           (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
+                                           (generate-transform-yaml transform-eid "Child Transform")}}
+                    mock-source (test-helpers/create-mock-source :initial-files initial-files)]
+                (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
+                (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
+                (t2/update! :model/Collection coll-id {:archived true})
+                (events/publish-event! :event/collection-update
+                                       {:object (t2/select-one :model/Collection :id coll-id)
+                                        :user-id (mt/user->id :rasta)})
+                (is (= "delete" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
+                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+                  (is (= :success (:status result)))
+                  (let [files-after-export (get @(:files-atom mock-source) "main")]
+                    (is (not (some #(str/includes? % coll-eid) (keys files-after-export))))
+                    (is (not (some #(str/includes? % transform-eid) (keys files-after-export))))
+                    ;; Root transform should still be exported
+                    (is (some #(str/includes? % root-transform-eid) (keys files-after-export))
+                        "Root transform should be exported")))))))))))

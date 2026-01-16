@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
@@ -153,3 +154,11 @@
           (when (and (contains? settings k)
                      (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))
+
+(defn library-is-remote-synced?
+  "Returns true if the Library collection exists and is remote-synced.
+   When true, all snippets and snippet collections should be synced."
+  []
+  (boolean
+   (when-let [library (collection/library-collection)]
+     (collection/remote-synced-collection? library))))

@@ -37,9 +37,10 @@
                        :prefix - Event keyword prefix (e.g., :event/card)
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
-                       :type       - :collection, :published-table, :parent-table, or :setting
-                       :collection - For :collection type: :remote-synced, :transforms-namespace, or :any
+                       :type       - :collection, :published-table, :parent-table, :setting, or :library-synced
+                       :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
+                       (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
    - :archived-key   - Key to check for archived status (nil if model has no archived concept)
    - :tracking       - RemoteSyncObject field configuration:
                        :select-fields  - Fields to select for hydration
@@ -51,10 +52,11 @@
                                     If nil, deletions are global (by entity_id only).
    - :export-path    - Export path construction:
                        :type   - Path type: :collection-entity, :table-path, :field-path, :segment-path,
-                                 :transform-path, :transform-tag-path
+                                 :transform-path, :transform-tag-path, :snippet-path, :measure-path
    - :side-effects   - Optional side effects:
                        :on-first-sync - Function to call when model first becomes synced
-   - :enabled?       - true or setting keyword (e.g., :remote-sync-transforms)"
+   - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
+                       When :library-synced, uses the library-is-remote-synced? setting."
   {:model/Card
    {:model-type     "Card"
     :model-key      :model/Card
@@ -113,15 +115,15 @@
     :identity       :entity-id
     :events         {:prefix :event/snippet
                      :types  [:create :update :delete]}
-    :eligibility    {:type       :collection
-                     :collection :remote-synced}
+    :eligibility    {:type :library-synced}  ; sync all snippets when Library is remote-synced
     :archived-key   :archived
-    :tracking       {:select-fields  [:name :id]  ; snippets don't have collection_id directly
-                     :field-mappings {:model_name :name}}
-    :removal        {:statuses  #{"removed"}
-                     :scope-key :collection_id}
-    :export-path    {:type :collection-entity}
-    :enabled?       true}
+    :tracking       {:select-fields  [:name :collection_id]
+                     :field-mappings {:model_name          :name
+                                      :model_collection_id :collection_id}}
+    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :export-path    {:type :snippet-path}
+    :export-scope   :all  ; export all snippets
+    :enabled?       :library-synced}
 
    :model/Timeline
    {:model-type     "Timeline"
@@ -290,9 +292,10 @@
   "Returns true if the spec is currently enabled based on its :enabled? value."
   [{:keys [enabled?]}]
   (cond
-    (true? enabled?)    true
-    (keyword? enabled?) (boolean (setting/get-value-of-type :boolean enabled?))
-    :else               false))
+    (true? enabled?)            true
+    (= enabled? :library-synced) (rs-settings/library-is-remote-synced?)
+    (keyword? enabled?)         (boolean (setting/get-value-of-type :boolean enabled?))
+    :else                       false))
 
 (defn enabled-specs
   "Returns a map of model-key -> spec for all currently enabled specs."
@@ -323,13 +326,14 @@
 
 (defn excluded-model-types
   "Returns a set of model type strings that should be excluded from dirty detection
-   based on current settings. Models with a setting-based :enabled? that is currently
-   false will be excluded."
+   based on current settings. Models with a setting-based or library-synced :enabled?
+   that is currently false will be excluded."
   []
   (->> remote-sync-specs
        (filter (fn [[_ spec]]
-                 (and (keyword? (:enabled? spec))
-                      (not (setting/get-value-of-type :boolean (:enabled? spec))))))
+                 (let [enabled? (:enabled? spec)]
+                   (and (keyword? enabled?)
+                        (not (spec-enabled? spec))))))
        (map (fn [[_ spec]] (:model-type spec)))
        set))
 
@@ -340,10 +344,30 @@
 
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
-(defn- transforms-namespace-collection?
+(defn transforms-namespace-collection?
   "Check if this is a transforms-namespace collection."
   [object]
   (= (keyword (:namespace object)) :transforms))
+
+(defn snippets-namespace-collection?
+  "Check if this is a snippets-namespace collection."
+  [object]
+  (= (keyword (:namespace object)) :snippets))
+
+(defn library-collection?
+  "Check if this is the Library collection."
+  [collection]
+  (= (:type collection) "library"))
+
+(defn should-sync-collection?
+  "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
+   or snippets-namespace with Library synced."
+  [collection]
+  (or (collections/remote-synced-collection? collection)
+      (and (rs-settings/remote-sync-transforms)
+           (transforms-namespace-collection? collection))
+      (and (rs-settings/library-is-remote-synced?)
+           (snippets-namespace-collection? collection))))
 
 (defmulti check-eligibility
   "Determines if a model instance should be tracked for remote sync.
@@ -363,10 +387,16 @@
       (and (rs-settings/remote-sync-transforms)
            (transforms-namespace-collection? object))
 
+      :snippets-namespace
+      (and (rs-settings/library-is-remote-synced?)
+           (snippets-namespace-collection? object))
+
       :any
       (or (collections/remote-synced-collection? (or collection-id object))
           (and (rs-settings/remote-sync-transforms)
-               (transforms-namespace-collection? object)))
+               (transforms-namespace-collection? object))
+          (and (rs-settings/library-is-remote-synced?)
+               (snippets-namespace-collection? object)))
 
       false)))
 
@@ -386,6 +416,10 @@
 (defmethod check-eligibility :setting
   [{:keys [eligibility]} _object]
   (boolean (setting/get-value-of-type :boolean (:setting eligibility))))
+
+(defmethod check-eligibility :library-synced
+  [_spec _object]
+  (rs-settings/library-is-remote-synced?))
 
 (defmethod check-eligibility :default
   [_ _]
@@ -456,12 +490,16 @@
 
 (defn- transform-entity-for-serdes
   "Transforms entity fields to serdes format for path generation.
-   - Converts integer table_id to [db-name schema table-name] format"
+   - Converts integer table_id to [db-name schema table-name] format
+   - Converts integer collection_id to entity_id string for collection path lookup"
   [entity]
   (cond-> entity
     ;; Transform table_id for Segment (and other table-based entities)
     (and (:table_id entity) (integer? (:table_id entity)))
-    (assoc :table_id (serdes/*export-table-fk* (:table_id entity)))))
+    (assoc :table_id (serdes/*export-table-fk* (:table_id entity)))
+    ;; Transform collection_id for snippet and other collection-based entities
+    (and (:collection_id entity) (integer? (:collection_id entity)))
+    (assoc :collection_id (t2/select-one-fn :entity_id :model/Collection :id (:collection_id entity)))))
 
 (defn- entity->serdes-path
   "Builds the file path for an entity using serdes/storage-path.
@@ -728,7 +766,7 @@
   [{:keys [export-scope]}]
   (case (or export-scope :derived)
     :root-collections
-    ;; Collection model: query for root-level remote-synced + transforms-namespace collections
+    ;; Collection model: query for root-level remote-synced + transforms-namespace + snippets-namespace collections
     ;; Excludes archived collections - their files are handled by the removal logic
     (concat
      (t2/select-fn-set (juxt (constantly "Collection") :id)
@@ -742,6 +780,13 @@
                          :model/Collection
                          {:where [:and
                                   [:= :namespace (name collections/transforms-ns)]
+                                  [:= :location "/"]
+                                  [:not :archived]]}))
+     (when (rs-settings/library-is-remote-synced?)
+       (t2/select-fn-set (juxt (constantly "Collection") :id)
+                         :model/Collection
+                         {:where [:and
+                                  [:= :namespace "snippets"]
                                   [:= :location "/"]
                                   [:not :archived]]})))
     :derived
@@ -763,6 +808,18 @@
 
 (defmethod query-export-roots :published-table [_] nil)  ; Derived via serdes/descendants
 (defmethod query-export-roots :parent-table [_] nil)     ; Derived via serdes/descendants
+
+(defmethod query-export-roots :library-synced
+  [{:keys [export-scope model-key model-type archived-key] :as spec}]
+  (when (spec-enabled? spec)
+    (case export-scope
+      :all
+      ;; NativeQuerySnippet: all non-archived instances
+      (if archived-key
+        (t2/select-fn-set (juxt (constantly model-type) :id) model-key archived-key false)
+        (t2/select-fn-set (juxt (constantly model-type) :id) model-key))
+      ;; Default: no root query
+      nil)))
 
 (defmethod query-export-roots :default [_] nil)
 
@@ -804,6 +861,7 @@
                          :continue-on-error false
                          :skip-archived true})]
       (eduction (map (fn [[model ids]]
-                       (serdes/extract-all model {:where [:in :id ids]})))
+                       (serdes/extract-all model {:where [:in :id ids]
+                                                  :skip-archived true})))
                 cat
                 (u/group-by first second (keys targets))))))

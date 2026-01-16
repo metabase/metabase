@@ -9,7 +9,7 @@ export type RemoteSyncEntityModel =
   | "dashboard"
   | "collection"
   | "document"
-  | "snippet"
+  | "nativequerysnippet"
   | "table"
   | "field"
   | "segment"

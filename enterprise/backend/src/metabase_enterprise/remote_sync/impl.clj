@@ -142,7 +142,9 @@
               (log/infof (:message <>)))
             (let [path-filters (cond-> [#"collections/.*" #"databases/.*"]
                                  (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*"))
+                                 (conj #"transforms/.*")
+                                 (settings/library-is-remote-synced?)
+                                 (conj #"snippets/.*"))
                   ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
@@ -445,3 +447,4 @@
           (t2/delete! :model/RemoteSyncObject
                       :model_type "Collection"
                       :model_id [:in transform-coll-ids]))))))
+

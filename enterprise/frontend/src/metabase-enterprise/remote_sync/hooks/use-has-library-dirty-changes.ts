@@ -10,7 +10,7 @@ import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
 export function useHasLibraryDirtyChanges(): boolean {
   const { isVisible: isGitSyncVisible } = useGitSyncVisible();
-  const { hasDirtyInCollectionTree, isDirty, hasRemovedItems } =
+  const { dirty, hasDirtyInCollectionTree, isDirty, hasRemovedItems } =
     useRemoteSyncDirtyState();
 
   const { data: collections = [] } = useListCollectionsTreeQuery(
@@ -19,6 +19,12 @@ export function useHasLibraryDirtyChanges(): boolean {
       "exclude-archived": true,
       "include-library": true,
     },
+    { skip: !isGitSyncVisible },
+  );
+
+  // Fetch snippets-namespace collections to check for dirty snippet collections
+  const { data: snippetsCollections = [] } = useListCollectionsTreeQuery(
+    { namespace: "snippets" },
     { skip: !isGitSyncVisible },
   );
 
@@ -32,6 +38,33 @@ export function useHasLibraryDirtyChanges(): boolean {
       return false;
     }
 
+    // Check for dirty snippets or snippet collections
+    const snippetsTree = buildCollectionTree(snippetsCollections);
+    const snippetsCollectionIds = getAllDescendantIds(snippetsTree);
+    const numericSnippetCollectionIds = new Set(
+      [...snippetsCollectionIds].filter(
+        (id): id is number => typeof id === "number",
+      ),
+    );
+
+    const hasSnippetDirtyChanges = dirty.some((entity) => {
+      if (entity.model === "nativequerysnippet") {
+        return true;
+      }
+      if (
+        entity.model === "collection" &&
+        numericSnippetCollectionIds.has(entity.id)
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (hasSnippetDirtyChanges) {
+      return true;
+    }
+
+    // Check for dirty items in the Library collection tree
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
       return false;
@@ -49,5 +82,12 @@ export function useHasLibraryDirtyChanges(): boolean {
     );
 
     return hasDirtyInCollectionTree(numericIds);
-  }, [collections, isDirty, hasRemovedItems, hasDirtyInCollectionTree]);
+  }, [
+    collections,
+    snippetsCollections,
+    dirty,
+    isDirty,
+    hasRemovedItems,
+    hasDirtyInCollectionTree,
+  ]);
 }

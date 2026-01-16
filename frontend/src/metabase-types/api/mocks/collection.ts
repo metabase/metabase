@@ -81,3 +81,13 @@ export const createMockTransformsCollection = (
     namespace: "transforms",
     ...opts,
   });
+
+export const createMockSnippetsCollection = (
+  opts?: Partial<Collection>,
+): Collection =>
+  createMockCollection({
+    id: 101,
+    name: "Snippets",
+    namespace: "snippets",
+    ...opts,
+  });
