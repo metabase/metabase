@@ -7,6 +7,7 @@ import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
+import { shouldAllowPreviewAndNavigation } from "metabase/embedding/embedding-iframe-sdk-setup/utils/should-allow-preview-and-navigation";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
@@ -163,11 +164,14 @@ export const SdkIframeEmbedSetupProvider = ({
     });
 
   const isGuestEmbed = !!settings.isGuest;
-  const allowPreviewAndNavigation = isGuestEmbed
-    ? isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted
-    : isSimpleEmbedFeatureAvailable
-      ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
-      : false;
+  const allowPreviewAndNavigation = shouldAllowPreviewAndNavigation({
+    isGuestEmbed,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
+    isSimpleEmbedFeatureAvailable,
+    isSimpleEmbeddingEnabled,
+    isSimpleEmbeddingTermsAccepted,
+  });
 
   const value: SdkIframeEmbedSetupContextType = {
     isSimpleEmbedFeatureAvailable,
