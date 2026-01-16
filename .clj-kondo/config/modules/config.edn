@@ -2285,6 +2285,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            driver
            events
            lib
@@ -2294,6 +2295,7 @@
            queries
            query-processor
            request
+           revisions
            search
            settings
            sync
