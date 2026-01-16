@@ -462,21 +462,8 @@
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
-            ;; Use the same normalization as node-errors for consistency
-            (case error_type
-              (:missing-column
-               :missing-table-alias
-               :duplicate-column)
-              {:type error_type :name error_detail}
-
-              :validation-exception-error
-              {:type error_type :message error_detail}
-
-              :syntax-error
-              {:type error_type}
-
-              (cond-> {:type error_type}
-                error_detail (assoc :name error_detail))))
+            (cond-> {:type error_type}
+              error_detail (assoc :detail error_detail)))
           (normalize-source-errors [[[source-type source-id] errors]]
             [[source-type source-id]
              (into #{} (map normalize-finding-error) errors)])
@@ -497,21 +484,8 @@
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
-            (case error_type
-                ;; These error types use :name
-              (:missing-column
-               :missing-table-alias
-               :duplicate-column)
-              {:type error_type :name error_detail}
-                ;; validation-exception-error uses :message
-              :validation-exception-error
-              {:type error_type :message error_detail}
-                ;; syntax-error has no additional fields
-              :syntax-error
-              {:type error_type}
-                ;; Default: use :name if detail exists
-              (cond-> {:type error_type}
-                error_detail (assoc :name error_detail))))
+            (cond-> {:type error_type}
+              error_detail (assoc :detail error_detail)))
           (normalize-entity-errors [[[entity-type entity-id] errors]]
             (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
               [[entity-type entity-id] normalized-errors]))
