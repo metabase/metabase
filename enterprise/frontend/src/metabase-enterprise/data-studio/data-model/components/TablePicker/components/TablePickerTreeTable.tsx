@@ -18,11 +18,12 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { TableId, UserId } from "metabase-types/api";
+import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
   type NodeSelection,
+  getSchemaChildrenTableIds,
   getSchemaId,
   isItemSelected,
   toggleDatabaseSelection,
@@ -73,7 +74,7 @@ export function TablePickerTreeTable({
   } = useSelection();
 
   const formatNumber = useNumberFormatter(NUMBER_FORMAT_OPTIONS);
-  const lastSelectedTableIndex = useRef<number | null>(null);
+  const lastSelectedRowIndex = useRef<number | null>(null);
   const instanceRef = useRef<ReturnType<
     typeof useTreeTableInstance<TablePickerTreeNode>
   > | null>(null);
@@ -165,34 +166,72 @@ export function TablePickerTreeTable({
         databases: selectedDatabases,
       };
 
-      const isTable = row.original.type === "table";
-      const lastIndex = lastSelectedTableIndex.current;
+      const lastIndex = lastSelectedRowIndex.current;
 
-      if (isShiftPressed && isTable && lastIndex != null) {
+      if (isShiftPressed && lastIndex != null) {
         const rows = instanceRef.current?.rows ?? [];
         const start = Math.min(lastIndex, index);
         const end = Math.max(lastIndex, index);
         const rangeRows = rows
           .slice(start, end + 1)
-          .filter((r) => !r.original.isDisabled && r.original.type === "table");
+          .filter((r) => !r.original.isDisabled);
 
-        const tableIds = rangeRows
-          .map((r) => r.original.tableId)
-          .filter((id): id is TableId => id != null);
+        const nextTables = new Set(selectedTables);
+        const nextSchemas = new Set(selectedSchemas);
+        const nextDatabases = new Set(selectedDatabases);
 
-        if (tableIds.length > 0) {
-          setSelectedTables((prev) => {
-            const newSet = new Set(prev);
-            tableIds.forEach((id) => newSet.add(id));
-            return newSet;
-          });
-          lastSelectedTableIndex.current = index;
-
-          if (row.original.tableId != null) {
-            onChange?.(nodeToTreePath(row.original));
+        for (const rangeRow of rangeRows) {
+          const { original } = rangeRow;
+          if (original.type === "table") {
+            if (original.tableId != null) {
+              nextTables.add(original.tableId);
+            }
+            continue;
           }
-          return;
+
+          const originalNode = nodeKeyToOriginal.get(original.nodeKey);
+
+          if (original.type === "schema") {
+            if (!originalNode || originalNode.type !== "schema") {
+              continue;
+            }
+
+            if (isExpanded(original.nodeKey)) {
+              for (const tableId of getSchemaChildrenTableIds(originalNode)) {
+                nextTables.add(tableId);
+              }
+            } else {
+              nextSchemas.add(getSchemaId(originalNode));
+            }
+            continue;
+          }
+
+          if (original.type === "database") {
+            if (!originalNode || originalNode.type !== "database") {
+              continue;
+            }
+
+            if (isExpanded(original.nodeKey)) {
+              for (const schema of originalNode.children) {
+                for (const table of schema.children) {
+                  nextTables.add(table.value.tableId);
+                }
+              }
+            } else if (original.databaseId != null) {
+              nextDatabases.add(original.databaseId);
+            }
+          }
         }
+
+        setSelectedTables(nextTables);
+        setSelectedSchemas(nextSchemas);
+        setSelectedDatabases(nextDatabases);
+        lastSelectedRowIndex.current = index;
+
+        if (row.original.type === "table" && row.original.tableId != null) {
+          onChange?.(nodeToTreePath(row.original));
+        }
+        return;
       }
 
       if (row.original.type === "table") {
@@ -206,7 +245,7 @@ export function TablePickerTreeTable({
           newSet.has(tableId) ? newSet.delete(tableId) : newSet.add(tableId);
           return newSet;
         });
-        lastSelectedTableIndex.current = index;
+        lastSelectedRowIndex.current = index;
 
         onChange?.(nodeToTreePath(row.original));
       } else if (row.original.type === "database") {
@@ -235,6 +274,7 @@ export function TablePickerTreeTable({
             });
           }
         }
+        lastSelectedRowIndex.current = index;
       } else if (row.original.type === "schema") {
         const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
         if (!originalNode || originalNode.type !== "schema") {
@@ -254,10 +294,12 @@ export function TablePickerTreeTable({
             return newSet;
           });
         }
+        lastSelectedRowIndex.current = index;
       }
     },
     [
       nodeKeyToOriginal,
+      isExpanded,
       selectedTables,
       selectedSchemas,
       selectedDatabases,
@@ -410,7 +452,7 @@ export function TablePickerTreeTable({
 
   useEffect(() => {
     if (selectedItemsCount === 0) {
-      lastSelectedTableIndex.current = null;
+      lastSelectedRowIndex.current = null;
     }
   }, [selectedItemsCount]);
 
