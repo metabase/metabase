@@ -699,10 +699,17 @@ describe("scenarios > data studio > workspaces", () => {
 
         Workspaces.getMainlandTransforms().findByText("SQL transform").click();
         Workspaces.getSaveTransformButton().click();
+        Workspaces.getWorkspaceTransforms()
+          .findByText("SQL transform")
+          .should("be.visible");
+
         Workspaces.getMainlandTransforms()
           .findByText("Python transform")
           .click();
         Workspaces.getSaveTransformButton().click();
+        Workspaces.getWorkspaceTransforms()
+          .findByText("Python transform")
+          .should("be.visible");
 
         Workspaces.getRunAllTransformsButton().click();
         H.popover().findByText("Run all transforms").click();
