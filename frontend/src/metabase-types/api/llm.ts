@@ -12,8 +12,8 @@ export interface ColumnReference {
     table_name: string;
     field_name: string;
   } | null;
-  /** Enhanced context string for LLM (ranges, sample values, etc.) */
-  context?: string | null;
+  /** Auto-generated metadata string (FK info, sample values, fingerprint stats) */
+  metadata?: string | null;
 }
 
 export interface TableReference {
@@ -63,4 +63,16 @@ export interface GenerateSqlResponse {
       value: string;
     };
   }>;
+}
+
+export interface GenerateDescriptionsRequest {
+  database_id: DatabaseId;
+  table_id: TableId;
+  column_ids?: FieldId[];
+  include_table?: boolean;
+}
+
+export interface GenerateDescriptionsResponse {
+  table_description?: string;
+  column_descriptions: Record<FieldId, string>;
 }

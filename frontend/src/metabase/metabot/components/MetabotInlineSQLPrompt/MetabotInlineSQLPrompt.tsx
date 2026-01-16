@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
+import { useUpdateFieldMutation, useUpdateTableMutation } from "metabase/api";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import {
   type MentionSelectedPayload,
@@ -99,6 +100,29 @@ export const MetabotInlineSQLPrompt = ({
   const [value, setValue] = useState("");
   const [selectedTable, setSelectedTable] = useState<TableReference | null>(
     null,
+  );
+  const [updateTable] = useUpdateTableMutation();
+  const [updateField] = useUpdateFieldMutation();
+
+  const handleSaveTableDescription = useCallback(
+    async (description: string) => {
+      if (!selectedTable) {
+        return;
+      }
+      await updateTable({ id: selectedTable.id, description }).unwrap();
+    },
+    [selectedTable, updateTable],
+  );
+
+  const handleSaveColumnDescriptions = useCallback(
+    async (descriptions: Record<number, string>) => {
+      const promises = Object.entries(descriptions).map(
+        ([fieldId, description]) =>
+          updateField({ id: Number(fieldId), description }).unwrap(),
+      );
+      await Promise.all(promises);
+    },
+    [updateField],
   );
 
   // Refresh tables when prompt opens (catches any SQL changes since last extraction)
@@ -247,6 +271,7 @@ export const MetabotInlineSQLPrompt = ({
       {selectedTable && (
         <TableColumnDialog
           table={selectedTable}
+          databaseId={databaseId}
           enabledColumns={columnFilters[selectedTable.id] ?? null}
           onToggleColumn={(columnId: number) =>
             onToggleColumn(selectedTable.id, columnId)
@@ -264,6 +289,8 @@ export const MetabotInlineSQLPrompt = ({
             onUpdateTableContext(selectedTable.id, context)
           }
           onResetTableContext={() => onResetTableContext(selectedTable.id)}
+          onSaveTableDescription={handleSaveTableDescription}
+          onSaveColumnDescriptions={handleSaveColumnDescriptions}
         />
       )}
     </>

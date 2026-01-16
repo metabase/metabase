@@ -382,6 +382,157 @@
                                                   :table-ids     table-ids})))]
             {:parts parts}))))))
 
+;;; ------------------------------------------ Description Generation ------------------------------------------
+
+(def ^:private description-generation-prompt-template "llm/prompts/description-generation-system.mustache")
+
+(def ^:private max-columns-per-request 50)
+
+(def ^:private generate-descriptions-tool
+  "Tool definition for structured description output.
+   Forces the model to return a JSON object with table and column descriptions."
+  {:name        "submit_descriptions"
+   :description "Submit generated descriptions for table and columns"
+   :input_schema {:type       "object"
+                  :properties {:table_description {:type        "string"
+                                                   :description "Description for the table (only if requested)"}
+                               :column_descriptions {:type        "object"
+                                                     :description "Map of column name to description"
+                                                     :additionalProperties {:type "string"}}}
+                  :required   ["column_descriptions"]}})
+
+(defn- build-description-generation-prompt
+  "Build the system prompt for description generation."
+  [{:keys [dialect schema-ddl include-table table-name table-description columns]}]
+  (stencil/render-file description-generation-prompt-template
+                       {:dialect           dialect
+                        :schema            schema-ddl
+                        :include_table     include-table
+                        :table_name        table-name
+                        :table_description table-description
+                        :columns           columns}))
+
+(defn- get-column-metadata-for-prompt
+  "Get column metadata with existing description for the description generation prompt.
+   Returns a vector of maps with :name, :database_type, and :existing_context.
+   Note: :existing_context is now the column's description only, not the combined
+   metadata string. This allows AI to generate descriptions without duplicating stats."
+  [table column-ids]
+  (let [columns    (:columns table)
+        column-set (when (seq column-ids) (set column-ids))
+        filtered   (if column-set
+                     (filter #(contains? column-set (:id %)) columns)
+                     columns)]
+    (when (and (seq column-set) (empty? filtered))
+      (log/warn "No columns matched for description generation"
+                {:requested-ids column-set
+                 :available-ids (set (map :id columns))}))
+    (mapv (fn [col]
+            {:name             (:name col)
+             :database_type    (:database_type col)
+             :existing_context (:description col)})
+          filtered)))
+
+(defn- map-column-names-to-ids
+  "Map column descriptions keyed by name back to column IDs.
+   Handles both keyword and string keys from LLM response."
+  [column-descriptions columns]
+  (let [name->id (into {} (map (juxt :name :id)) columns)]
+    (reduce-kv (fn [m col-name desc]
+                 (let [col-name-str (if (keyword? col-name) (name col-name) col-name)]
+                   (if-let [col-id (get name->id col-name-str)]
+                     (assoc m col-id desc)
+                     m)))
+               {}
+               column-descriptions)))
+
+(api.macros/defendpoint :post "/generate-descriptions"
+  :- [:map
+      [:table_description {:optional true} :string]
+      [:column_descriptions [:map-of pos-int? :string]]]
+  "Generate descriptions for a table and/or its columns using AI.
+
+   Requires:
+   - LLM to be configured (Anthropic API key set in admin settings)
+   - User to have read access to the table
+
+   Parameters:
+   - database_id: The database containing the table
+   - table_id: The table to generate descriptions for
+   - column_ids: Optional list of column IDs to generate descriptions for (default: all columns, max 50)
+   - include_table: Whether to generate a table description (default: true)
+
+   Returns:
+   - table_description: Generated description for the table (if include_table is true)
+   - column_descriptions: Map of column_id -> generated description"
+  [_route-params
+   _query-params
+   body :- [:map
+            [:database_id pos-int?]
+            [:table_id pos-int?]
+            [:column_ids {:optional true} [:sequential pos-int?]]
+            [:include_table {:optional true} :boolean]]]
+  ;; 1. Validate LLM is configured
+  (when-not (llm.settings/llm-enabled?)
+    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+                    {:status-code 403})))
+
+  (let [{:keys [database_id table_id column_ids include_table]} body
+        include-table (if (nil? include_table) true include_table)
+        ;; 2. Fetch table with enriched column context
+        table         (llm.context/get-table-columns-with-context database_id table_id)
+        _             (when-not table
+                        (throw (ex-info (tru "Table not found or not accessible.")
+                                        {:status-code 404})))
+        ;; 3. Validate column count
+        columns       (:columns table)
+        column-ids    (if (seq column_ids)
+                        (take max-columns-per-request column_ids)
+                        (take max-columns-per-request (map :id columns)))
+        column-count  (count column-ids)
+        _             (when (and (not include-table) (zero? column-count))
+                        (throw (ex-info (tru "No columns to generate descriptions for.")
+                                        {:status-code 400})))
+        ;; 4. Build schema context
+        schema-ddl    (llm.context/build-schema-context database_id #{table_id})
+        _             (when-not schema-ddl
+                        (throw (ex-info (tru "Failed to build schema context.")
+                                        {:status-code 500})))
+        ;; 5. Get database dialect and build prompt
+        dialect          (database-dialect database_id)
+        column-metadata  (get-column-metadata-for-prompt table column-ids)
+        system-prompt    (build-description-generation-prompt
+                          {:dialect           dialect
+                           :schema-ddl        schema-ddl
+                           :include-table     include-table
+                           :table-name        (:name table)
+                           :table-description (:description table)
+                           :columns           column-metadata})
+        timestamp        (current-timestamp)]
+    ;; 6. Log the prompt (if debug logging enabled)
+    (when (debug-logging-enabled?)
+      (log-to-file! (str timestamp "_desc_prompt.txt") system-prompt)
+      (log-to-file! (str timestamp "_desc_column_metadata.txt")
+                    (pr-str {:column-ids column-ids
+                             :column-metadata column-metadata
+                             :all-column-ids (map :id columns)})))
+    ;; 7. Call LLM with custom tool (using Haiku for cost/speed)
+    (let [response (llm.anthropic/chat-completion-with-tool
+                    {:model    llm.anthropic/description-generation-model
+                     :system   system-prompt
+                     :messages [{:role "user" :content "Generate descriptions for the specified table and columns."}]
+                     :tool     generate-descriptions-tool})]
+      ;; 8. Log the response (if debug logging enabled)
+      (when (debug-logging-enabled?)
+        (log-to-file! (str timestamp "_desc_response.txt") (pr-str response)))
+      ;; 9. Map column names back to IDs and return
+      (let [column-descriptions (map-column-names-to-ids
+                                 (:column_descriptions response)
+                                 columns)]
+        (cond-> {:column_descriptions column-descriptions}
+          (and include-table (:table_description response))
+          (assoc :table_description (:table_description response)))))))
+
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
 (defn- write-sse!

@@ -1,6 +1,8 @@
 import type {
   ExtractTablesRequest,
   ExtractTablesResponse,
+  GenerateDescriptionsRequest,
+  GenerateDescriptionsResponse,
   GenerateSqlRequest,
   GenerateSqlResponse,
   GetTableColumnsWithContextRequest,
@@ -38,6 +40,16 @@ export const llmApi = Api.injectEndpoints({
         params: { database_id },
       }),
     }),
+    generateDescriptions: builder.mutation<
+      GenerateDescriptionsResponse,
+      GenerateDescriptionsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/llm/generate-descriptions",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -46,4 +58,5 @@ export const {
   useGenerateSqlMutation,
   useGetTableColumnsWithContextQuery,
   useLazyGetTableColumnsWithContextQuery,
+  useGenerateDescriptionsMutation,
 } = llmApi;

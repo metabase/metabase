@@ -291,10 +291,11 @@
       (str (subs s 0 (- max-sample-value-length 3)) "...")
       s)))
 
-(defn- build-column-comment
-  "Build an informative comment for a column based on available metadata.
+(defn- build-column-metadata
+  "Build auto-generated metadata string for a column (FK info, sample values, stats).
+   Does NOT include the user-provided description - that's kept separate.
    Returns nil if no useful metadata is available."
-  [{:keys [description semantic_type fingerprint fk_target_field_id]}
+  [{:keys [semantic_type fingerprint fk_target_field_id description]}
    field-values
    fk-target-info]
   (let [has-sample-values? (and (not-empty field-values)
@@ -303,10 +304,6 @@
         fp-type   (some-> fingerprint :type vals first)
 
         parts (cond-> []
-                ;; User-provided description takes priority
-                (not-empty description)
-                (conj description)
-
                 ;; FK relationship
                 (and fk_target_field_id fk-target-info)
                 (conj (str "FK->" (:table fk-target-info) "." (:field fk-target-info))))
@@ -339,6 +336,19 @@
                     stats (conj stats))]
     (when (seq all-parts)
       (str/join "; " all-parts))))
+
+(defn- build-column-comment
+  "Build an informative comment for a column based on available metadata.
+   Combines description + metadata for use in DDL comments.
+   Returns nil if no useful metadata is available."
+  [column field-values fk-target-info]
+  (let [description (:description column)
+        metadata    (build-column-metadata column field-values fk-target-info)
+        parts       (cond-> []
+                      (not-empty description) (conj description)
+                      (not-empty metadata)    (conj metadata))]
+    (when (seq parts)
+      (str/join "; " parts))))
 
 ;;; ------------------------------------------------ DDL Formatting ------------------------------------------------
 
@@ -406,8 +416,9 @@
 (defn- format-column-for-api
   "Format a column map for API response with relevant metadata.
    Resolves FK target to table.field names if present.
-   When include-context? is true, also includes the :context field with
-   the enhanced metadata string used in LLM DDL."
+   When include-context? is true, also includes:
+   - :metadata - auto-generated stats (FK info, sample values, fingerprint stats)
+   The :description field is always included from the column's stored description."
   ([column fk-targets-map]
    (format-column-for-api column fk-targets-map nil nil))
   ([column fk-targets-map field-values-map include-context?]
@@ -422,9 +433,9 @@
                                               :field_name  (:field fk-info)}))]
      (if include-context?
        (let [field-values (get field-values-map (:id column))
-             context      (build-column-comment column field-values fk-info)]
+             metadata     (build-column-metadata column field-values fk-info)]
          (cond-> base
-           context (assoc :context context)))
+           metadata (assoc :metadata metadata)))
        base))))
 
 (defn get-table-columns
@@ -507,18 +518,29 @@
 
 (defn- enrich-columns-with-comments
   "Add :comment to each column based on available metadata.
-   When column-contexts is provided, uses custom context strings for columns
-   that have user-provided overrides."
+   When column-contexts is provided, it contains user-edited descriptions.
+   These are combined with auto-generated metadata (FK info, sample values, stats).
+   If column-contexts entry is empty string, only metadata is shown (description suppressed)."
   [columns field-values-map fk-targets-map column-contexts]
   (mapv (fn [col]
-          (let [custom-context (get column-contexts (:id col))
-                comment (if (some? custom-context)
-                          ;; Use user-provided context (even if empty string to suppress)
-                          (when (seq custom-context) custom-context)
-                          ;; Generate context from metadata
-                          (let [fv      (get field-values-map (:id col))
-                                fk-info (get fk-targets-map (:fk_target_field_id col))]
-                            (build-column-comment col fv fk-info)))]
+          (let [custom-description (get column-contexts (:id col))
+                fv                 (get field-values-map (:id col))
+                fk-info            (get fk-targets-map (:fk_target_field_id col))
+                metadata           (build-column-metadata col fv fk-info)
+                comment            (cond
+                                     ;; User provided a custom description
+                                     (and (some? custom-description) (seq custom-description))
+                                     (if metadata
+                                       (str custom-description "; " metadata)
+                                       custom-description)
+
+                                     ;; User explicitly cleared the description (empty string)
+                                     (some? custom-description)
+                                     metadata
+
+                                     ;; No custom description - use original description + metadata
+                                     :else
+                                     (build-column-comment col fv fk-info))]
             (cond-> col
               comment (assoc :comment comment))))
         columns))

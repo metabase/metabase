@@ -170,8 +170,8 @@ export function useInlineSQLPrompt(
         return [...prev, table];
       });
 
-      // If table doesn't have columns with context, fetch them eagerly
-      if (!table.columns?.some((c) => c.context !== undefined) && databaseId) {
+      // If table doesn't have columns with metadata, fetch them eagerly
+      if (!table.columns?.some((c) => c.metadata !== undefined) && databaseId) {
         try {
           const result = await fetchTableColumnsWithContext({
             table_id: table.id,
@@ -351,18 +351,18 @@ export function useInlineSQLPrompt(
     return Object.keys(contexts).length > 0 ? contexts : undefined;
   }, [pinnedTables, tableContexts]);
 
-  // Get effective context for a column (user-edited or auto-generated)
+  // Get effective description for a column (user-edited or from DB)
   const getColumnContext = useCallback(
     (columnId: number): string | null => {
-      // If user has edited this column's context, return the edited version
+      // If user has edited this column's description, return the edited version
       if (columnContexts[columnId] !== undefined) {
         return columnContexts[columnId];
       }
-      // Otherwise return the auto-generated context from the column data
+      // Otherwise return the stored description from the column data
       for (const table of pinnedTables) {
         const column = table.columns?.find((c) => c.id === columnId);
         if (column) {
-          return column.context ?? null;
+          return column.description ?? null;
         }
       }
       return null;

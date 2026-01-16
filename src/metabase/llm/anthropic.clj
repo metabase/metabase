@@ -23,6 +23,10 @@
   "Default Anthropic model for SQL generation."
   "claude-sonnet-4-5-20250929")
 
+(def description-generation-model
+  "Anthropic model for description generation (uses cheaper/faster Haiku)."
+  "claude-haiku-4-5-20251001")
+
 (def ^:private generate-sql-tool
   "Tool definition for structured SQL output.
    Forces the model to return a JSON object with sql and optional explanation."
@@ -62,6 +66,16 @@
          first
          :input)))
 
+(defn- build-request-body-with-tool
+  "Build the request body for Anthropic messages API with a custom tool."
+  [{:keys [model system messages tool]}]
+  (cond-> {:model      model
+           :max_tokens 4096
+           :messages   messages
+           :tools      [tool]
+           :tool_choice {:type "tool" :name (:name tool)}}
+    system (assoc :system system)))
+
 (defn- handle-api-error
   "Handle HTTP errors from Anthropic API."
   [exception]
@@ -100,6 +114,35 @@
         (let [response (http/post anthropic-messages-url
                                   {:headers      (build-request-headers api-key)
                                    :body         (json/encode (build-request-body request))
+                                   :as           :json
+                                   :content-type :json})]
+          (extract-tool-input (:body response)))
+        (catch Exception e
+          (handle-api-error e))))))
+
+(defn chat-completion-with-tool
+  "Send a chat completion request to Anthropic with a custom tool definition.
+   Returns the parsed tool input from the response.
+
+   Options:
+   - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
+   - :system   - System prompt
+   - :messages - Vector of {:role :content} maps for conversation history
+   - :tool     - Tool definition map with :name, :description, and :input_schema"
+  [{:keys [model system messages tool]}]
+  (let [api-key (llm-settings/llm-anthropic-api-key)]
+    (when-not api-key
+      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
+                      {:type :llm-not-configured})))
+    (let [model   (or model (llm-settings/llm-anthropic-model) default-model)
+          request {:model    model
+                   :system   system
+                   :messages messages
+                   :tool     tool}]
+      (try
+        (let [response (http/post anthropic-messages-url
+                                  {:headers      (build-request-headers api-key)
+                                   :body         (json/encode (build-request-body-with-tool request))
                                    :as           :json
                                    :content-type :json})]
           (extract-tool-input (:body response)))

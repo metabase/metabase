@@ -29,6 +29,11 @@
 
 (set! *warn-on-reflection* true)
 
+;; Derive field events from :metabase/event so they can be published
+(derive ::event :metabase/event)
+(doseq [e [:event/field-create :event/field-update :event/field-delete]]
+  (derive e ::event))
+
 (comment
   ;; idk why condo complains on this not being used when it is, in a keyword down there
   lib.schema.metadata/used)
