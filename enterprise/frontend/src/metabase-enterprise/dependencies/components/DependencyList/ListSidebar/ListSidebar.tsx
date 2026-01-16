@@ -27,6 +27,7 @@ export const ListSidebar = memo(function ListSidebar({
       p="lg"
       w="25rem"
       gap="lg"
+      bg="background-primary"
       data-testid="dependency-list-sidebar"
     >
       <SidebarHeader node={node} onClose={onClose} />

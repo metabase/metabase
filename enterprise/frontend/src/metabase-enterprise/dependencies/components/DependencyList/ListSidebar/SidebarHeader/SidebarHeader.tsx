@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { ActionIcon, Anchor, FixedSizeIcon, Group } from "metabase/ui";
+import * as Urls from "metabase/lib/urls";
+import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
 
 type SidebarHeaderProps = {
@@ -32,9 +34,24 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       >
         {getNodeLabel(node)}
       </Anchor>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
-        <FixedSizeIcon name="close" />
-      </ActionIcon>
+      <Group gap={0}>
+        <Tooltip
+          label={t`Open in dependency graph`}
+          openDelay={TOOLTIP_OPEN_DELAY_MS}
+        >
+          <ActionIcon
+            component={ForwardRefLink}
+            to={Urls.dependencyGraph({ entry: node })}
+            aria-label={t`Open in dependency graph`}
+            onClick={onClose}
+          >
+            <FixedSizeIcon name="dependencies" />
+          </ActionIcon>
+        </Tooltip>
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <FixedSizeIcon name="close" />
+        </ActionIcon>
+      </Group>
     </Group>
   );
 }

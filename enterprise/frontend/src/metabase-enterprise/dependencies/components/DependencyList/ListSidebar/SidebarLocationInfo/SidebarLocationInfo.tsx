@@ -26,7 +26,7 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
         {locationInfo.links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
             {linkIndex > 0 && <span>/</span>}
-            <Anchor component={Link} to={link.url} target="_blank">
+            <Anchor component={Link} to={link.url}>
               <Group gap="sm" wrap="nowrap">
                 {linkIndex === 0 && <Icon name={locationInfo.icon} />}
                 {link.label}
