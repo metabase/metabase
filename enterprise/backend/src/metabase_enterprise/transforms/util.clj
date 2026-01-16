@@ -63,7 +63,7 @@
 
         :cancelled
         (do
-          (transform-run/cancel-run! run-id)
+          (transform-run/cancel-run! run-id {:message (or (:logs result) "Canceled by user")})
           (throw (ex-info "Transform cancelled" (assoc result :status :cancelled))))
 
         :timeout
