@@ -48,10 +48,18 @@ export const QuestionAlertListModal = ({
   );
 
   useEffect(() => {
-    if (questionNotifications) {
+    /**
+     * Attempt to set the active modal only once when it's null.
+     *
+     * In the core app, this is a noop because the data is already
+     * loaded and activeModal will not be null. However, in the SDK,
+     * we'll need to wait for the data to load, so the activeModal
+     * will be null at first.
+     */
+    if (questionNotifications && activeModal === null) {
       setActiveModal(getDefaultActiveModal(questionNotifications));
     }
-  }, [questionNotifications]);
+  }, [activeModal, questionNotifications]);
 
   const previousActiveModal = usePreviousDistinct(activeModal);
 
