@@ -2,6 +2,7 @@
   "Main agent loop implementation using existing streaming infrastructure from self/*"
   (:require
    [clojure.core.async :as a]
+   [metabase-enterprise.metabot-v3.agent.links :as links]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
@@ -128,12 +129,19 @@
    parts))
 
 (defn- stream-parts-to-output!
-  "Stream parts to output channel. Must be called from within a go block.
+  "Stream parts to output channel with link resolution.
+  Resolves metabase:// links in text parts using memory state.
+  Must be called from within a go block.
   Returns a channel that completes when all parts are written."
-  [out-chan parts]
+  [out-chan parts memory]
   (a/go
-    (doseq [part parts]
-      (a/>! out-chan part))))
+    (let [state (memory/get-state memory)
+          queries-state (get state :queries {})
+          charts-state (get state :charts {})
+          ;; Process links in all parts before streaming
+          processed-parts (links/process-parts-links parts queries-state charts-state)]
+      (doseq [part processed-parts]
+        (a/>! out-chan part)))))
 
 (defn- finalize-stream!
   "Finalize the output stream with final state and close channel.
@@ -206,7 +214,8 @@
                                          (extract-charts-from-parts result))))
 
                 ;; Stream parts to output (wait for completion)
-                (a/<! (stream-parts-to-output! out-chan result))
+                ;; Pass memory so links can be resolved
+                (a/<! (stream-parts-to-output! out-chan result @memory-atom))
 
                 ;; Decide whether to continue
                 (if (should-continue? iteration profile result)
