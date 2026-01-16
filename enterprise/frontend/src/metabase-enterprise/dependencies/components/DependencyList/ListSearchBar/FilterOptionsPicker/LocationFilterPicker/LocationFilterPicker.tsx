@@ -13,13 +13,15 @@ export function LocationFilterPicker({
   params,
   onParamsChange,
 }: LocationFilterPickerProps) {
+  const { includePersonalCollections = true } = params;
+
   const handleIncludeInPersonalCollectionsChange = (
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const newValue = event.target.checked;
     onParamsChange({
       ...params,
-      includePersonalCollections: newValue || undefined,
+      includePersonalCollections: newValue ? undefined : false,
     });
   };
 
@@ -28,6 +30,7 @@ export function LocationFilterPicker({
       <Stack gap="sm" mt="sm">
         <Checkbox
           label={t`Include items in personal collections`}
+          checked={includePersonalCollections}
           onChange={handleIncludeInPersonalCollectionsChange}
         />
       </Stack>

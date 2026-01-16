@@ -50,7 +50,7 @@ How you authenticate the embed determines how cool the embed can get. This page 
 
 ### 3. Customize your embed
 
-The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/plans) you're on. You'll see a live preview of the embed with your customizations.
+The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/pricing) you're on. You'll see a live preview of the embed with your customizations.
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
@@ -222,9 +222,3 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 {% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
 
 For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
-
-## Example app with SSO embed and theming
-
-{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.

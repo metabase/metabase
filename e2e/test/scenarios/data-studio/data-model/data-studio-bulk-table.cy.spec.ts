@@ -35,7 +35,7 @@ describe("bulk table operations", () => {
     );
     cy.intercept(
       "GET",
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
     ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",

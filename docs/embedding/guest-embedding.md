@@ -193,10 +193,6 @@ Guest embeds can't take advantage of:
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 
-## Example app with guest embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.
-
 ## Further reading
 
 - [Parameters for guest embeds](./static-embedding-parameters.md).

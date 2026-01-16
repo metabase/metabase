@@ -12,10 +12,9 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-;; TODO (Tamas 2026-01-05): Remove this helper once FE tests switch to using MBQL5
 (defn- legacy-mbql-measure-definition
-  "Create an MBQL4 (legacy MBQL) measure definition. This format is used by Cypress e2e tests.
-   Remove this helper when FE tests switch to MBQL5."
+  "Create an MBQL4 (legacy MBQL) full query measure definition.
+  This format is used by Cypress e2e tests - the API accepts it and converts to MBQL5."
   [database-id table-id aggregation]
   {:database database-id
    :type     :query
@@ -229,28 +228,81 @@
                           (contains? #{id-1 id-2 id-3} measure-id))
                         (mt/user-http-request :rasta :get 200 "measure/"))))))))
 
-(deftest cypress-e2e-workflow-measure-in-expression-test
-  ;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
-  (testing "Cypress workflow: create measure via API, then use in expression with legacy MBQL4"
+;;; ------------------------------------------------ MBQL4 API Support Tests ------------------------------------------------
+;;; The API layer accepts MBQL4 definitions (for Cypress e2e test support) and converts them to MBQL5.
+;;; TODO (Tamas 2026-01-09): Remove these tests once FE tests switch to using MBQL5.
+
+(defn- mbql4-fragment-definition
+  "Create an MBQL4 fragment definition (no :database or :type keys)."
+  [table-id aggregation]
+  {:source-table table-id
+   :aggregation  aggregation})
+
+(defn- mbql5-definition?
+  "Check if a definition is in MBQL5 format (has :lib/type key)."
+  [definition]
+  (contains? definition :lib/type))
+
+(deftest api-accepts-mbql4-on-post-test
+  (testing "POST /api/measure accepts MBQL4 definitions and returns MBQL5"
     (mt/with-model-cleanup [:model/Measure]
-      ;; Create a measure via POST /api/measure
+      (testing "MBQL4 fragment format"
+        (let [response (mt/user-http-request
+                        :crowberto :post 200 "measure"
+                        {:name       "Fragment Measure"
+                         :table_id   (mt/id :venues)
+                         :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
+          (is (some? (:id response)))
+          (is (mbql5-definition? (:definition response))
+              "Returned definition should be MBQL5")))
+      (testing "MBQL4 full query format"
+        (let [response (mt/user-http-request
+                        :crowberto :post 200 "measure"
+                        {:name       "Full Query Measure"
+                         :table_id   (mt/id :venues)
+                         :definition (legacy-mbql-measure-definition (mt/id) (mt/id :venues) [[:count]])})]
+          (is (some? (:id response)))
+          (is (mbql5-definition? (:definition response))
+              "Returned definition should be MBQL5"))))))
+
+(deftest api-accepts-mbql4-on-put-test
+  (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
+    (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
+                                                    :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (testing "MBQL4 fragment format"
+        (let [response (mt/user-http-request
+                        :crowberto :put 200 (str "measure/" measure-id)
+                        {:revision_message "Update with fragment"
+                         :definition       (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
+          (is (= measure-id (:id response)))
+          (is (mbql5-definition? (:definition response))
+              "Returned definition should be MBQL5")))
+      (testing "MBQL4 full query format"
+        (let [response (mt/user-http-request
+                        :crowberto :put 200 (str "measure/" measure-id)
+                        {:revision_message "Update with full query"
+                         :definition       (legacy-mbql-measure-definition (mt/id) (mt/id :venues) [[:sum [:field (mt/id :venues :price) nil]]])})]
+          (is (= measure-id (:id response)))
+          (is (mbql5-definition? (:definition response))
+              "Returned definition should be MBQL5"))))))
+
+(deftest api-mbql4-measure-is-executable-test
+  (testing "Measures created via API with MBQL4 can be used in queries"
+    (mt/with-model-cleanup [:model/Measure]
       (let [{measure-id :id} (mt/user-http-request
                               :crowberto :post 200 "measure"
                               {:name       "Venue Count"
                                :table_id   (mt/id :venues)
-                               :definition (legacy-mbql-measure-definition
-                                            (mt/id)
-                                            (mt/id :venues)
-                                            [[:count]])})
-            ;; Reference the measure in an expression: [:+ [:measure id] 100]
-            legacy-query {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (mt/id :venues)
-                                     :aggregation  [[:+ [:measure measure-id] 100]]}}
-            ;; Equivalent direct query: count + 100
-            direct-query {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (mt/id :venues)
-                                     :aggregation  [[:+ [:count] 100]]}}]
+                               :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
+            ;; Query using the measure
+            measure-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :aggregation  [[:measure measure-id]]}}
+            ;; Equivalent direct query
+            direct-query  {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :aggregation  [[:count]]}}]
         (is (= (mt/rows (qp/process-query direct-query))
-               (mt/rows (qp/process-query legacy-query))))))))
+               (mt/rows (qp/process-query measure-query))))))))
