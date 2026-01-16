@@ -101,26 +101,81 @@ You can set different attributes to enable/disable UI. Here are some example att
 | `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.          |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'` |
 
-Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options that embeds that use SSO. See more on [components and their attributes](./components.md).
+Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 
 ### Customizing appearance of guest embeds
 
-Appearance settings available for guest embeds depend on your Metabase plan. If you're running Metabase OSS/Starter, you can select light or dark theme. If you're running Metabase Pro/Enterprise, you'll have access to granular customization options, see [Appearance](./appearance.md)
+Appearance settings available for guest embeds depend on your Metabase plan. If you're running Metabase OSS/Starter, you can select light or dark theme. If you're running Metabase Pro/Enterprise, you'll have access to granular customization options, see [Appearance](./appearance.md).
 
 ## Configuring parameters
 
 Parameters are disabled by default, which also makes them hidden from end-users. You can configure each parameter to be:
 
 - **Disabled**: Hidden from end-users. Can't be set. This is the default.
-- **Editable**: End-users can see and modify the parameter values.
-- **[Locked](#locked-parameters)**: Hidden from end-users, but **you** (not the end-users) can set their values from your app via the JWT token.
+- **[Editable](#editable-parameters)**: End-users can see and modify the parameter values.
+- **[Locked](#locked-parameters)**: Hidden from end-users, set by your server (not the end-users) via the JWT.
 
 To configure parameters:
 
 1. Go to your embedded question or dashboard.
 2. Click the **sharing icon** and select **Embed**.
-3. Under **Parameters**, select the visibility option for each parameter.
+3. Under **Parameters**, select the visibility option for each parameter, and optionally default value(s).
 4. Click **Publish**.
+
+### Editable parameters
+
+When you set Editable parameters, you can set default values for the filters, but users can change these when viewing the question or dashboard.
+
+**Server code**
+
+```javascript
+// you will need to install via 'npm install jsonwebtoken' or in your package.json
+
+const jwt = require("jsonwebtoken");
+
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+const payload = {
+  resource: { dashboard: 10 },
+  params: {},
+  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
+};
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
+```
+
+
+**Client code**
+
+You set default parameters on the client side with the `initial-parameters` key.
+
+
+```html
+<script defer src="YOUR_METABASE_URL/app/embed.js"></script>
+<script>
+function defineMetabaseConfig(config) {
+  window.metabaseConfig = config;
+}
+</script>
+
+<script>
+  defineMetabaseConfig({
+    "isGuest": true,
+    "instanceUrl": "YOUR_METABASE_URL"
+  });
+</script>
+
+<!--
+THIS IS THE EXAMPLE!
+NEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!
+
+Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
+-->
+<metabase-dashboard token="YOUR SIGNED TOKEN"
+  with-title="true"
+  with-downloads="false"
+  initial-parameters='{"category":["Doohickey","Gizmo"]}'>
+</metabase-dashboard>
+```
 
 ### Locked parameters
 
@@ -130,7 +185,7 @@ To use locked parameters, you need to:
 
 1. Set the parameter to **Locked** in the embed settings.
 2. Include the parameter value in your JWT token on the server.
-3. Include the `_embedding_params` field in your JWT to specify which parameters are locked.
+3. Publish the item.
 
 Here's an example of the server and client code that Metabase will generate if you lock a "category" parameter:
 
@@ -145,10 +200,7 @@ const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 const payload = {
   resource: { dashboard: 10 },
   params: {
-    category: ["Gadget"], // Set the locked parameter value to Gadget
-  },
-  _embedding_params: {
-    category: "locked", // Mark the parameter as locked
+    "category": ["Gadget"], // Set the locked parameter value to Gadget
   },
   exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
@@ -178,15 +230,7 @@ Fetch the token from your backend and pass it to the component programmatically.
 ></metabase-dashboard>
 ```
 
-The end-user won't see the "category" filter, but the dashboard will only show data for the "Gadget" category.
-
-## Editing parameters on an embedded question or dashboard
-
-If you change the parameters of your embedded item:
-
-1. After making your changes, copy the code Metabase generates.
-2. Click **Publish** again (or your changes won't apply)
-3. Update the code on your server so that it matches the code generated by Metabase.
+The end user won't see the "category" filter, but the dashboard will only show data for the "Gadget" category (or whatever you passed to the "category" array in the `params` object in the server payload you used to sign the JWT).
 
 ## Disabling embedding for a question or dashboard
 
@@ -260,9 +304,9 @@ Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
 - [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
-- [AI chat](./sdk/ai-chat.md).
+- [AI chat](./sdk/ai-chat.md)
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 
