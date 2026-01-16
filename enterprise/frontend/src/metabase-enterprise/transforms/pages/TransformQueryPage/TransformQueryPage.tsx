@@ -179,9 +179,9 @@ function TransformQueryPageBody({
           transform={transform}
           actions={
             <Group gap="sm">
-              {showEditWorkspaceMenu && hasPremiumFeature("workspaces") && (
-                <EditTransformMenu transform={transform} />
-              )}
+              {showEditWorkspaceMenu &&
+                hasPremiumFeature("workspaces") &&
+                !isEditMode && <EditTransformMenu transform={transform} />}
               <TransformPaneHeaderActions
                 source={source}
                 isSaving={isSaving}
