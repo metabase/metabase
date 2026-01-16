@@ -1283,6 +1283,7 @@
            lib-be
            models
            permissions
+           remote-sync
            search
            util
            xrays}}
@@ -1635,6 +1636,7 @@
            permissions
            premium-features
            query-processor
+           remote-sync
            search
            util
            warehouses}}
@@ -1645,6 +1647,7 @@
    :uses #{analytics
            api
            app-db
+           config
            database-routing
            driver
            events
@@ -1660,7 +1663,6 @@
            upload
            util
            warehouse-schema
-           warehouses-rest
            xrays}}
 
   warehouses
@@ -1778,6 +1780,7 @@
            premium-features
            query-permissions
            query-processor
+           remote-sync
            util
            warehouses
            enterprise/impersonation}}
@@ -1987,6 +1990,7 @@
            premium-features
            queries
            query-processor
+           request
            revisions
            settings
            task
