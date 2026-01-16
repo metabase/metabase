@@ -74,6 +74,26 @@ const ENTITY_NAMES = [
   ...SNIPPET_NAMES,
 ];
 
+const MODELS_SORTED_BY_NAME = [
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+];
+
+const MODELS_SORTED_BY_LOCATION = [
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+];
+
 describe("scenarios > dependencies > unreferenced list", () => {
   beforeEach(() => {
     H.restore();
@@ -168,18 +188,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
 
     it("should filter by location", () => {
-      createEntities({ withPersonalCollection: true });
+      createEntities();
       H.DataStudio.Tasks.visitUnreferencedEntities();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_MODEL_DATA_SOURCE,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
-      });
-
-      H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -188,6 +198,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         ],
       });
 
+      H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
@@ -195,6 +206,58 @@ describe("scenarios > dependencies > unreferenced list", () => {
           SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         ],
         hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
+      });
+
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
+      });
+    });
+  });
+
+  describe("sorting", () => {
+    it("should sort by name", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.searchInput().type("Model for");
+
+      cy.log("sorted by name by default");
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name ascending");
+      H.DataStudio.Tasks.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name descending");
+      H.DataStudio.Tasks.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
+      });
+    });
+
+    it("should sort by location", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.searchInput().type("Model for");
+
+      cy.log("sorted by location ascending");
+      H.DataStudio.Tasks.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_LOCATION,
+      });
+
+      cy.log("sorted by location descending");
+      H.DataStudio.Tasks.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
       });
     });
   });
@@ -259,9 +322,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
 function createEntities({
   withReferences = false,
-  withPersonalCollection = false,
-}: { withReferences?: boolean; withPersonalCollection?: boolean } = {}) {
-  createModelContent({ withReferences, withPersonalCollection });
+}: { withReferences?: boolean } = {}) {
+  createModelContent({ withReferences });
   createSegmentContent({ withReferences });
   createMetricContent({ withReferences });
   createSnippetContent({ withReferences });
@@ -269,10 +331,8 @@ function createEntities({
 
 function createModelContent({
   withReferences = false,
-  withPersonalCollection = false,
 }: {
   withReferences?: boolean;
-  withPersonalCollection?: boolean;
 }) {
   createModelWithTableDataSource({
     name: MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -302,9 +362,7 @@ function createModelContent({
   createModelWithTableDataSource({
     name: MODEL_FOR_METRIC_DATA_SOURCE,
     tableId: ORDERS_ID,
-    collectionId: withPersonalCollection
-      ? ADMIN_PERSONAL_COLLECTION_ID
-      : undefined,
+    collectionId: ADMIN_PERSONAL_COLLECTION_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createMetricWithModelDataSource({
@@ -935,6 +993,16 @@ function checkList({
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
+    });
+  });
+}
+
+function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
+  H.DataStudio.Tasks.list().within(() => {
+    visibleEntities.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
     });
   });
 }

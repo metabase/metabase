@@ -630,16 +630,16 @@ export function getDependentGroupLabel({
 
 export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
   switch (type) {
-    case "validate/missing-column":
+    case "missing-column":
       return t`Missing column`;
-    case "validate/missing-table-alias":
+    case "missing-table-alias":
       return t`Missing table alias`;
-    case "validate/duplicate-column":
+    case "duplicate-column":
       return t`Duplicate column`;
-    case "validate/syntax-error":
+    case "syntax-error":
       return t`Syntax error`;
-    case "validate/validation-error":
-      return t`Unknown error`;
+    case "validation-error":
+      return t`Unknown problem`;
   }
 }
 
@@ -648,50 +648,36 @@ export function getDependencyErrorTypeCountMessage(
   count: number,
 ): string {
   switch (type) {
-    case "validate/missing-column":
+    case "missing-column":
       return ngettext(
         msgid`${count} missing column`,
         `${count} missing columns`,
         count,
       );
-    case "validate/missing-table-alias":
+    case "missing-table-alias":
       return ngettext(
         msgid`${count} missing table alias`,
         `${count} missing table aliases`,
         count,
       );
-    case "validate/duplicate-column":
+    case "duplicate-column":
       return ngettext(
         msgid`${count} duplicate column`,
         `${count} duplicate columns`,
         count,
       );
-    case "validate/syntax-error":
+    case "syntax-error":
       return ngettext(
         msgid`${count} syntax error`,
         `${count} syntax errors`,
         count,
       );
-    case "validate/validation-error":
+    case "validation-error":
       return ngettext(
-        msgid`${count} unknown error`,
-        `${count} unknown errors`,
+        msgid`${count} unknown problem`,
+        `${count} unknown problems`,
         count,
       );
-  }
-}
-
-export function getDependencyErrorDetail(
-  error: DependencyError,
-): string | null {
-  switch (error.type) {
-    case "validate/missing-column":
-    case "validate/missing-table-alias":
-    case "validate/duplicate-column":
-      return error.name;
-    case "validate/syntax-error":
-    case "validate/validation-error":
-      return null;
   }
 }
 
@@ -705,7 +691,7 @@ export function getDependencyErrorInfo(
   if (errors.length === 1) {
     const [error] = errors;
     const label = getDependencyErrorTypeLabel(error.type);
-    const detail = getDependencyErrorDetail(error);
+    const detail = error.detail;
     return { label, detail };
   }
 
@@ -720,8 +706,8 @@ export function getDependencyErrorInfo(
 
   return {
     label: ngettext(
-      msgid`${errors.length} error`,
-      `${errors.length} errors`,
+      msgid`${errors.length} problem`,
+      `${errors.length} problems`,
       errors.length,
     ),
     detail: null,
@@ -730,6 +716,13 @@ export function getDependencyErrorInfo(
 
 export function parseString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+export function parseNumber(value: unknown): number | undefined {
+  if (typeof value === "string") {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
 }
 
 export function parseBoolean(value: unknown): boolean | undefined {

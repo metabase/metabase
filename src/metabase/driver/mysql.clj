@@ -243,9 +243,11 @@
            :visible-if {"use-auth-provider" false})
     driver.common/default-role-details
     driver.common/cloud-ip-address-info
-    driver.common/default-ssl-details
-    default-ssl-cert-details
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              default-ssl-cert-details
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
     (assoc driver.common/additional-options

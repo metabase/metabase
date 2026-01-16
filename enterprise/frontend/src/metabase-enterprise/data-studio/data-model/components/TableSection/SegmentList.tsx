@@ -6,6 +6,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";
@@ -24,10 +25,11 @@ export function SegmentList({ table }: SegmentListProps) {
       tableId: table.id,
       segmentId,
     });
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return (
     <Stack gap="md" data-testid="table-segments-page">
-      {canCreateSegment && (
+      {canCreateSegment && !remoteSyncReadOnly && (
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
