@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -208,14 +210,15 @@
 
 (defn query-metric
   "Create a query based on a metric.
-  Returns structured output with the query and a redirect reaction to auto-navigate the user."
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [metric-id] :as arguments}]
   (try
     (if (int? metric-id)
       (let [result (query-metric* arguments)
             results-url (query->results-url (:query result))]
         {:structured-output result
-         :reactions [{:type :metabot.reaction/redirect :url results-url}]})
+         :instructions instructions/query-created-instructions
+         :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid metric_id " metric-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
@@ -328,14 +331,15 @@
 
 (defn query-model
   "Create a query based on a model.
-  Returns structured output with the query and a redirect reaction to auto-navigate the user."
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [model-id] :as arguments}]
   (try
     (if (int? model-id)
       (let [result (query-model* arguments)
             results-url (query->results-url (:query result))]
         {:structured-output result
-         :reactions [{:type :metabot.reaction/redirect :url results-url}]})
+         :instructions instructions/query-created-instructions
+         :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid model_id " model-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e

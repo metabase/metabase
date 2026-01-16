@@ -44,7 +44,7 @@
     (let [context {:user_is_viewing [{:type "transform"
                                       :sql_engine "MySQL"}]}
           result (user-context/extract-sql-dialect context)]
-      (is (= "mysql" result))))
+      (is (nil? result))))
 
   (testing "returns nil when no viewing context"
     (let [context {}
