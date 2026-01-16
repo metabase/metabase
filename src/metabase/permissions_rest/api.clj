@@ -188,7 +188,11 @@
                               [:= :user_id api/*current-user-id*]
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
-           [:not :is_tenant_group])]
+           [:not :is_tenant_group])
+         (when-not (premium-features/enable-data-studio?)
+           [:or
+            [:= nil :magic_group_type]
+            [:not= "data-analyst" :magic_group_type]])]
         where (case tenancy
                 "external" (if (setting/get :use-tenants)
                              [:and base-where [:= :is_tenant_group true]]
