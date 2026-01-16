@@ -5,34 +5,68 @@
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase.util.log :as log]))
+
+(defn- format-with-instructions
+  "Wrap data with instructions in InstructionResultSchema format.
+   Matches Python AI Service pattern for consistent LLM outputs."
+  [data instruction-text]
+  (str "<result>\n" data "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
 
 (defn- format-query-result
   "Format a query result (from query_model, query_metric, etc.) for the LLM.
   Creates an XML-like structure similar to Python ai-service."
   [{:keys [type query-id result-columns]}]
-  (str "<query type=\"" (name (or type :query)) "\" id=\"" query-id "\">\n"
-       (when (seq result-columns)
-         (str "Result columns:\n"
-              (str/join "\n" (map (fn [col]
-                                    (str "- " (:name col) " (id: " (:id col) ", type: " (:base-type col) ")"))
-                                  result-columns))
-              "\n"))
-       "</query>"))
+  (let [query-xml (llm-rep/query->xml {:type type
+                                       :query-id query-id
+                                       :result-columns result-columns})]
+    (format-with-instructions query-xml instructions/query-created-instructions)))
 
 (defn- format-chart-result
   "Format a chart result for the LLM."
   [{:keys [chart-id query-id chart-type]}]
-  (str "<chart id=\"" chart-id "\" type=\"" (name chart-type) "\" query-id=\"" query-id "\">\n"
-       "Chart created successfully. Use metabase://chart/" chart-id " to reference this chart.\n"
-       "</chart>"))
+  (let [chart-xml (llm-rep/chart->xml {:chart-id chart-id
+                                       :query-id query-id
+                                       :chart-type chart-type})]
+    (format-with-instructions chart-xml (instructions/chart-created-instructions chart-id))))
+
+(defn- format-search-result
+  "Format search results for the LLM."
+  [{:keys [data total_count]}]
+  (let [results-xml (llm-rep/search-results->xml data)]
+    (format-with-instructions
+     (str results-xml "\n\nTotal results: " total_count)
+     instructions/search-result-instructions)))
+
+(defn- format-entity-result
+  "Format entity details (table, model, metric, etc.) for the LLM."
+  [structured]
+  (let [entity-xml (llm-rep/entity->xml structured)]
+    (format-with-instructions entity-xml instructions/entity-metadata-instructions)))
+
+(defn- format-answer-sources-result
+  "Format answer sources (metrics and models list) for the LLM."
+  [{:keys [metrics models]}]
+  (let [content (str (when (seq metrics)
+                       (str "<metrics>\n"
+                            (str/join "\n" (map llm-rep/metric->xml metrics))
+                            "\n</metrics>\n"))
+                     (when (seq models)
+                       (str "<models>\n"
+                            (str/join "\n" (map llm-rep/model->xml models))
+                            "\n</models>")))]
+    (format-with-instructions content instructions/answer-sources-instructions)))
 
 (defn- format-tool-result
   "Format tool result for LLM consumption.
-  Handles both :output (plain string) and :structured-output (structured data)."
+  Handles both :output (plain string) and :structured-output (structured data).
+  Uses InstructionResultSchema pattern to wrap results with LLM guidance."
   [result]
   (cond
-    ;; Plain output string
+    ;; Plain output string (usually errors)
     (:output result)
     (:output result)
 
@@ -40,13 +74,30 @@
     (:structured-output result)
     (let [structured (:structured-output result)]
       (cond
+        ;; Search results - has :data and :total_count
+        (and (:data structured) (:total_count structured))
+        (format-search-result structured)
+
+        ;; Answer sources - has :metrics and :models
+        (and (contains? structured :metrics) (contains? structured :models))
+        (format-answer-sources-result structured)
+
         ;; Query results (from query_model, query_metric, etc.)
         (and (:query-id structured) (:query structured))
         (format-query-result structured)
 
         ;; Chart results (from create_chart, edit_chart)
-        (and (:chart-id structured) (:query-id structured))
+        (:chart-id structured)
         (format-chart-result structured)
+
+        ;; Entity details (table, model, metric) - has :type
+        (#{:table :model :metric :question :user :dashboard} (:type structured))
+        (format-entity-result structured)
+
+        ;; Fallback with instructions if present in the result
+        (:instructions structured)
+        (format-with-instructions (pr-str (dissoc structured :instructions))
+                                  (:instructions structured))
 
         ;; Generic structured output - just stringify it
         :else
