@@ -1,7 +1,13 @@
 (ns metabase-enterprise.metabot-v3.tools.create-chart
   "Tool for creating charts from queries."
   (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [metabase.lib.core :as lib]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
@@ -9,14 +15,22 @@
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
 
+(defn- query->url-hash
+  "Convert an MLv2/MBQL query to a base64-encoded URL hash."
+  [query]
+  (let [dataset-query (if (and (map? query) (:lib/type query))
+                        (lib/->legacy-MBQL query)
+                        query)]
+    (-> {:dataset_query dataset-query}
+        json/encode
+        (.getBytes "UTF-8")
+        codecs/bytes->b64-str)))
+
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
-  [{:keys [chart-id query-id chart-type query-content]}]
+  [{:keys [chart-id query-id chart-type]}]
   (str "<chart id=\"" chart-id "\">\n"
-       "The chart is powered by the following query:\n"
-       "<query id=\"" query-id "\">\n"
-       query-content "\n"
-       "</query>\n"
+       "<query-id>" query-id "</query-id>\n"
        "<visualization>{\"chart_type\": \"" (name chart-type) "\"}</visualization>\n"
        "</chart>"))
 
@@ -38,9 +52,12 @@
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created
-  - :query-id - ID of the source query"
+  - :query-id - ID of the source query
+  - :reactions - Navigation action to show the chart"
   [{:keys [query-id chart-type queries-state]}]
-  (log/info "Creating chart" {:query-id query-id :chart-type chart-type})
+  (log/info "Creating chart" {:query-id query-id
+                              :chart-type chart-type
+                              :available-queries (keys queries-state)})
 
   ;; Validate chart type
   (when-not (contains? valid-chart-types chart-type)
@@ -49,44 +66,48 @@
                     {:agent-error? true
                      :chart-type chart-type})))
 
-  ;; Look up query from state
-  (let [query-data (get queries-state (str query-id))]
-    (when-not query-data
+  ;; Look up query from state - try both string and original key
+  (let [query (or (get queries-state query-id)
+                  (get queries-state (str query-id)))]
+    (when-not query
       (throw (ex-info (str "Query not found with ID: " query-id
-                           ". Please create a query first using create_sql_query.")
+                           ". Available queries: [" (str/join ", " (keys queries-state)) "]. "
+                           "Make sure you're using a query ID from a previous query_model or query_metric result.")
                       {:agent-error? true
-                       :query-id query-id})))
+                       :query-id query-id
+                       :available-queries (keys queries-state)})))
 
-    ;; Create the chart
+    ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
-          query-content (or (:query-content query-data)
-                            (:sql query-data)
-                            "")
+          results-url (str "/question#" (query->url-hash query))
           chart-data {:chart-id chart-id
                       :query-id query-id
-                      :chart-type chart-type
-                      :query-content query-content}]
+                      :chart-type chart-type}]
 
-      (log/info "Created chart" {:chart-id chart-id :chart-type chart-type})
+      (log/info "Created chart" {:chart-id chart-id
+                                 :chart-type chart-type
+                                 :results-url results-url})
 
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
        :chart-type chart-type
        :query-id query-id
-       :instructions (str "Chart has been created successfully.\n\n"
-                          "Next steps to present the chart to the user:\n"
-                          "- Always provide a direct link using: `[Chart](" (format-chart-link chart-id) ")` "
-                          "where Chart is a meaningful link text\n"
-                          "- If creating multiple charts, present all chart links")})))
+       :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
+                          "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
+                          "where 'Chart' is a meaningful description.")
+       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
 
 (defn create-chart-tool
   "Tool handler for create_chart tool.
-  Returns structured output with chart details."
-  [{:keys [query-id chart-type] :as args}]
+  Returns structured output with chart details and navigation reactions."
+  [args]
   (try
-    (let [result (create-chart args)]
-      {:structured-output result})
+    (let [result (create-chart args)
+          reactions (:reactions result)]
+      ;; Return structured output with reactions at top level for streaming
+      (cond-> {:structured-output (dissoc result :reactions)}
+        (seq reactions) (assoc :reactions reactions)))
     (catch Exception e
       (log/error e "Error creating chart")
       (if (:agent-error? (ex-data e))

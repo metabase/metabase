@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -9,7 +10,30 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
+
+;;; URL Generation for Auto-Navigation
+
+(defn- query->url-hash
+  "Convert an MLv2/MBQL query to a base64-encoded URL hash."
+  [query]
+  (let [dataset-query (if (and (map? query) (:lib/type query))
+                        (lib/->legacy-MBQL query)
+                        query)]
+    (-> {:dataset_query dataset-query}
+        json/encode
+        (.getBytes "UTF-8")
+        codecs/bytes->b64-str)))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
+
+;;; Filter Operations
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -183,11 +207,15 @@
                            returned-cols)}))
 
 (defn query-metric
-  "Create a query based on a metric."
+  "Create a query based on a metric.
+  Returns structured output with the query and a redirect reaction to auto-navigate the user."
   [{:keys [metric-id] :as arguments}]
   (try
     (if (int? metric-id)
-      {:structured-output (query-metric* arguments)}
+      (let [result (query-metric* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output result
+         :reactions [{:type :metabot.reaction/redirect :url results-url}]})
       (throw (ex-info (str "Invalid metric_id " metric-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
@@ -299,11 +327,15 @@
                            returned-cols)}))
 
 (defn query-model
-  "Create a query based on a model."
+  "Create a query based on a model.
+  Returns structured output with the query and a redirect reaction to auto-navigate the user."
   [{:keys [model-id] :as arguments}]
   (try
     (if (int? model-id)
-      {:structured-output (query-model* arguments)}
+      (let [result (query-model* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output result
+         :reactions [{:type :metabot.reaction/redirect :url results-url}]})
       (throw (ex-info (str "Invalid model_id " model-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
