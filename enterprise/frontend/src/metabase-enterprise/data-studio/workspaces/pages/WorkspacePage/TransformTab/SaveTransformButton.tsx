@@ -124,23 +124,27 @@ export const SaveTransformButton = ({
       throw new Error(t`This is not a workspace transform`);
     }
 
-    const updated = await updateTransform({
-      workspaceId,
-      transformId: transform.ref_id,
-      source: editedTransform.source as TransformSource,
-      name: editedTransform.name,
-      target: {
-        type: "table",
-        name:
-          "target" in editedTransform
-            ? editedTransform.target.name
-            : transform.target.name,
-        schema: transform.target.schema,
-        database: databaseId,
-      },
-    }).unwrap();
+    try {
+      const updated = await updateTransform({
+        workspaceId,
+        transformId: transform.ref_id,
+        source: editedTransform.source as TransformSource,
+        name: editedTransform.name,
+        target: {
+          type: "table",
+          name:
+            "target" in editedTransform
+              ? editedTransform.target.name
+              : transform.target.name,
+          schema: transform.target.schema,
+          database: databaseId,
+        },
+      }).unwrap();
 
-    updateTransformState(updated);
+      updateTransformState(updated);
+    } catch (error) {
+      sendErrorToast(t`Failed to save transform`);
+    }
   };
 
   // Handler for creating new transform via modal (scenario 2)

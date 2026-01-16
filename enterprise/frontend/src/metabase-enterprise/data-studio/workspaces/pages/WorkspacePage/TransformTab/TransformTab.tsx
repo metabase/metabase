@@ -64,7 +64,7 @@ export const TransformTab = ({
   onSaveTransform,
 }: Props) => {
   const { updateTransformState, addOpenedTab } = useWorkspace();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
     { open: openChangeTargetModal, close: closeChangeTargetModal },
@@ -207,11 +207,10 @@ export const TransformTab = ({
     (updatedTransform?: WorkspaceTransform) => {
       if (updatedTransform) {
         updateTransformState(updatedTransform);
-        sendSuccessToast(t`Transform target updated`);
       }
       closeChangeTargetModal();
     },
-    [updateTransformState, sendSuccessToast, closeChangeTargetModal],
+    [updateTransformState, closeChangeTargetModal],
   );
 
   return (
