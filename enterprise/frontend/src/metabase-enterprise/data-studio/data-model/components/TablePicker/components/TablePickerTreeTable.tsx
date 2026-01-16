@@ -23,10 +23,12 @@ import type { UserId } from "metabase-types/api";
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
   type NodeSelection,
-  getSchemaChildrenTableIds,
+  addDatabaseToSelection,
+  addSchemaToSelection,
   getSchemaId,
   isItemSelected,
   toggleDatabaseSelection,
+  toggleInSet,
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { TYPE_ICONS } from "../constants";
@@ -206,13 +208,13 @@ export function TablePickerTreeTable({
               return;
             }
 
-            if (originalNode.children.length > 0) {
-              for (const tableId of getSchemaChildrenTableIds(originalNode)) {
-                nextTables.add(tableId);
-              }
-            } else {
-              nextSchemas.add(getSchemaId(originalNode));
-            }
+            const updated = addSchemaToSelection(originalNode, {
+              tables: nextTables,
+              schemas: nextSchemas,
+              databases: nextDatabases,
+            });
+            updated.tables.forEach((t) => nextTables.add(t));
+            updated.schemas.forEach((s) => nextSchemas.add(s));
             return;
           }
 
@@ -221,15 +223,14 @@ export function TablePickerTreeTable({
               return;
             }
 
-            if (originalNode.children.length > 0) {
-              for (const schema of originalNode.children) {
-                for (const table of schema.children) {
-                  nextTables.add(table.value.tableId);
-                }
-              }
-            } else if (original.databaseId != null) {
-              nextDatabases.add(original.databaseId);
-            }
+            const updated = addDatabaseToSelection(originalNode, {
+              tables: nextTables,
+              schemas: nextSchemas,
+              databases: nextDatabases,
+            });
+            updated.tables.forEach((t) => nextTables.add(t));
+            updated.schemas.forEach((s) => nextSchemas.add(s));
+            updated.databases.forEach((d) => nextDatabases.add(d));
           }
         });
 
@@ -250,11 +251,7 @@ export function TablePickerTreeTable({
           return;
         }
 
-        setSelectedTables((prev) => {
-          const newSet = new Set(prev);
-          newSet.has(tableId) ? newSet.delete(tableId) : newSet.add(tableId);
-          return newSet;
-        });
+        setSelectedTables((prev) => toggleInSet(prev, tableId));
         lastSelectedRowIndex.current = index;
 
         onChange?.(nodeToTreePath(row.original));
@@ -275,13 +272,7 @@ export function TablePickerTreeTable({
         } else {
           const databaseId = row.original.databaseId;
           if (databaseId) {
-            setSelectedDatabases((prev) => {
-              const newSet = new Set(prev);
-              newSet.has(databaseId)
-                ? newSet.delete(databaseId)
-                : newSet.add(databaseId);
-              return newSet;
-            });
+            setSelectedDatabases((prev) => toggleInSet(prev, databaseId));
           }
         }
         lastSelectedRowIndex.current = index;
@@ -296,13 +287,7 @@ export function TablePickerTreeTable({
           setSelectedTables(tables);
         } else {
           const schemaId = getSchemaId(originalNode);
-          setSelectedSchemas((prev) => {
-            const newSet = new Set(prev);
-            newSet.has(schemaId)
-              ? newSet.delete(schemaId)
-              : newSet.add(schemaId);
-            return newSet;
-          });
+          setSelectedSchemas((prev) => toggleInSet(prev, schemaId));
         }
         lastSelectedRowIndex.current = index;
       }

@@ -168,3 +168,52 @@ export function toggleSchemaSelection(
     databases: selection.databases,
   };
 }
+
+export function toggleInSet<T>(set: Set<T>, item: T): Set<T> {
+  const newSet = new Set(set);
+  newSet.has(item) ? newSet.delete(item) : newSet.add(item);
+  return newSet;
+}
+
+export function addSchemaToSelection(
+  schema: SchemaNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const tables = new Set(selection.tables);
+  const schemas = new Set(selection.schemas);
+
+  if (schema.children.length > 0) {
+    for (const tableId of getSchemaChildrenTableIds(schema)) {
+      tables.add(tableId);
+    }
+  } else {
+    schemas.add(getSchemaId(schema));
+  }
+
+  return { tables, schemas, databases: selection.databases };
+}
+
+export function addDatabaseToSelection(
+  database: DatabaseNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const tables = new Set(selection.tables);
+  const databases = new Set(selection.databases);
+  const schemas = new Set(selection.schemas);
+
+  if (database.children.length > 0) {
+    for (const schema of database.children) {
+      const updated = addSchemaToSelection(schema, {
+        tables,
+        schemas,
+        databases,
+      });
+      updated.schemas.forEach((s) => schemas.add(s));
+      updated.databases.forEach((d) => databases.add(d));
+    }
+  } else {
+    databases.add(database.value.databaseId);
+  }
+
+  return { tables, schemas, databases };
+}
