@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -58,7 +59,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     const checkedWorkspaceIds =
       checkoutData?.workspaces?.map((item) => item?.id) ?? [];
 
-    return [...checkedWorkspaceIds, ...allMatchingWorkspaceIds]
+    return checkedWorkspaceIds
+      .concat(_.difference(allMatchingWorkspaceIds, checkedWorkspaceIds))
       .map((id) => {
         const workspace = workspaces.find((ws) => ws.id === id);
         if (!workspace) {
