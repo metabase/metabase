@@ -1,6 +1,5 @@
 const { H } = cy;
 
-import * as Lib from "metabase-lib";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -8,6 +7,7 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { createTestJsQuery } from "metabase-lib/test-helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -1455,19 +1455,21 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createQuestion({
-      name: METRIC_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-      type: "metric",
+    H.getMetadataProvider().then((provider) => {
+      H.createQuestion({
+        name: METRIC_NAME,
+        query: createTestJsQuery(provider, {
+          source: { type: "table", id: ORDERS_ID },
+          aggregation: [["count"]],
+        }),
+        type: "metric",
+      });
     });
 
     cy.visit("/");
   });
 
-  it("should not allow you to join on metrics", () => {
+  it.only("should not allow you to join on metrics", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
@@ -1476,16 +1478,5 @@ describe("issue 66210", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModalTab("Data").click();
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
-  });
-});
-
-describe("Question helpers", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it.only("should be possible to create a question from a saved question", () => {
-    H.getMetadataProvider().then((metadataProvider) => {});
   });
 });
