@@ -2,7 +2,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -22,7 +21,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("show-simple-embed-terms", false);
     H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
@@ -145,8 +146,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       H.openSharingMenu("Embed");
 
       getEmbedSidebar().within(() => {
-        embedModalEnableEmbedding();
-
         H.waitForSimpleEmbedIframesToLoad();
 
         H.getSimpleEmbedIframeContent().within(() => {
