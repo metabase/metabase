@@ -4777,13 +4777,14 @@
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
-         ;; The source table can't be resolved, but the database should still be present.
+         ;; In v56, the query metadata code doesn't fall back to the card's database_id,
+         ;; so we expect empty databases.
          #(testing "After delete"
             (is (=? {:cards      empty?
                      :fields     empty?
                      :dashboards empty?
                      :tables     empty?
-                     :databases [{:id (mt/id) :engine string?}]}
+                     :databases  empty?}
                     (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test
