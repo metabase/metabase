@@ -810,20 +810,6 @@
    Only tables and cards can be sources of errors in analysis_finding_error."
   #{:card :table})
 
-(def ^:private breaking-items-args
-  "Schema for /graph/broken endpoint parameters."
-  [:map
-   [:types {:optional true} [:or
-                             (ms/enum-decode-keyword breaking-entity-types)
-                             [:sequential (ms/enum-decode-keyword breaking-entity-types)]]]
-   ;; card_types is accepted but ignored for backwards compatibility
-   [:card_types {:optional true} :any]
-   [:query {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]
-   [:sort_column {:optional true} (ms/enum-decode-keyword sort-columns)]
-   [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
-
 (def ^:private dependency-items-args
   [:map
    [:types {:optional true} [:or
@@ -906,8 +892,8 @@
      :total  total}))
 
 (api.macros/defendpoint :get "/graph/broken" :- dependency-items-response
-  "Returns a list of entities that are causing errors in downstream dependencies.
-   These are tables or cards that other entities depend on, where those dependencies
+  "Returns a list of entities that are causing errors in downstream dependents
+   These are tables or cards that other entities depend on, where those dependents
    have validation errors traced back to this source entity.
 
    Accepts optional parameters for filtering:
@@ -921,21 +907,23 @@
    - `limit`: Default 50
 
    Returns a map with:
-   - `data`: List of breaking source entities, each with `:id`, `:type`, `:data`, and `:dependents_errors` fields
+   - `data`: List of breaking source entities
    - `total`: Total count of matched items
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
    {:keys [types query archived include_personal_collections sort_column sort_direction]
-    :or {types [:card :table]
+    :or {types (vec breaking-entity-types)
          include_personal_collections false
          sort_column :name
-         sort_direction :asc}} :- breaking-items-args]
+         sort_direction :asc}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
-        selected-types (if (sequential? types) types [types])
+        selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
+                         query (remove #{:sandbox}))
         union-queries (map #(breaking-items-query {:entity-type %
                                                    :query query
                                                    :include-archived-items include-archived-items
