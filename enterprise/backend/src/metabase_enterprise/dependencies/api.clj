@@ -176,13 +176,18 @@
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
    ::deps.dependency-types/entity-id])
 
+(mr/def ::dependency-error
+  [:map
+   [:type [:enum :missing-column :missing-table-alias :duplicate-column :syntax-error :validation-error]]
+   [:detail {:optional true} [:maybe :string]]])
+
 (mr/def ::base-entity
   [:map
    [:id                pos-int?]
    [:type              :keyword]
    [:data              [:map]]
    [:dependents_count  [:maybe [:ref ::usages]]]
-   [:dependents_errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
+   [:dependents_errors {:optional true} [:set [:ref ::dependency-error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
