@@ -4,11 +4,17 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase-enterprise.metabot-v3.settings] ; for setting definitions
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -151,12 +157,12 @@
                  :database_id    (mt/id)
                  :fields         sequential?
                  :related_tables sequential?}
-                (client/client :get 200 (str "agent/v1/tables/" table-id)
+                (client/client :get 200 (str "agent/v1/table/" table-id)
                                {:request-options {:headers (auth-headers)}})))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (client/client :get 404 "agent/v1/tables/999999"
+             (client/client :get 404 "agent/v1/table/999999"
                             {:request-options {:headers (auth-headers)}}))))
 
     (testing "Respects query parameters"
@@ -164,7 +170,7 @@
         (is (=? {:type   "table"
                  :id     table-id
                  :fields empty?}
-                (client/client :get 200 (str "agent/v1/tables/" table-id)
+                (client/client :get 200 (str "agent/v1/table/" table-id)
                                {:request-options {:headers (auth-headers)}}
                                :with-fields false
                                :with-related-tables false)))))))
@@ -181,18 +187,65 @@
                  :id                    (:id metric)
                  :name                  "Test Metric"
                  :queryable_dimensions  sequential?}
-                (client/client :get 200 (str "agent/v1/metrics/" (:id metric))
+                (client/client :get 200 (str "agent/v1/metric/" (:id metric))
                                {:request-options {:headers (auth-headers)}}))))
 
       (testing "Respects query parameters"
         (is (=? {:type "metric"
                  :id   (:id metric)}
-                (client/client :get 200 (str "agent/v1/metrics/" (:id metric))
+                (client/client :get 200 (str "agent/v1/metric/" (:id metric))
                                {:request-options {:headers (auth-headers)}}
                                :with-queryable-dimensions false
                                :with-field-values false))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (client/client :get 404 "agent/v1/metrics/999999"
+               (client/client :get 404 "agent/v1/metric/999999"
                               {:request-options {:headers (auth-headers)}})))))))
+
+(defn- ensure-fresh-field-values!
+  "Ensure field values exist for a field by deleting any existing ones and recreating them."
+  [field-id]
+  (t2/delete! :model/FieldValues :field_id field-id :type :full)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
+
+(defn- visible-field-id
+  "Find the field-id string for a field by display name within a table's visible columns."
+  [table-id field-display-name]
+  (let [mp            (mt/metadata-provider)
+        query         (lib/query mp (lib.metadata/table mp table-id))
+        field-prefix  (metabot-v3.tools.u/table-field-id-prefix table-id)
+        visible-cols  (lib/visible-columns query)]
+    (->> (keep-indexed (fn [i col]
+                         (when (= (lib/display-name query col) field-display-name)
+                           (str field-prefix i)))
+                       visible-cols)
+         first)))
+
+(deftest get-table-field-values-test
+  (with-agent-api-setup!
+    (let [admin-headers (auth-headers "crowberto@metabase.com")]
+      ;; Ensure field values exist for the field we'll test
+      (ensure-fresh-field-values! (mt/id :people :state))
+
+      (testing "Returns field statistics and values for a table field"
+        (let [table-id (mt/id :people)
+              field-id (visible-field-id table-id "State")]
+          (is (some? field-id) "Should find the State field")
+          (is (=? {:statistics {:distinct_count 49}
+                   :values     sequential?}
+                  (client/client :get 200 (format "agent/v1/table/%d/field/%s/values" table-id field-id)
+                                 {:request-options {:headers admin-headers}})))))
+
+      (testing "Respects limit parameter"
+        (let [table-id (mt/id :people)
+              field-id (visible-field-id table-id "State")
+              result   (client/client :get 200 (format "agent/v1/table/%d/field/%s/values" table-id field-id)
+                                      {:request-options {:headers admin-headers}}
+                                      :limit 5)]
+          (is (= 5 (count (:values result))) "Should respect limit parameter")))
+
+      (testing "Returns 404 for non-existent table"
+        (is (= "Not found."
+               (client/client :get 404 "agent/v1/table/999999/field/t999999-0/values"
+                              {:request-options {:headers admin-headers}})))))))

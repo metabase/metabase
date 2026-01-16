@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
+   [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
@@ -106,6 +107,30 @@
    [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
+(mr/def ::statistics
+  [:map {:encode/api ->snake_case-keys}
+   [:distinct_count {:optional true} [:maybe :int]]
+   [:percent_null   {:optional true} [:maybe number?]]
+   [:min            {:optional true} [:maybe number?]]
+   [:max            {:optional true} [:maybe number?]]
+   [:avg            {:optional true} [:maybe number?]]
+   [:q1             {:optional true} [:maybe number?]]
+   [:q3             {:optional true} [:maybe number?]]
+   [:sd             {:optional true} [:maybe number?]]
+   [:percent_json   {:optional true} [:maybe number?]]
+   [:percent_url    {:optional true} [:maybe number?]]
+   [:percent_email  {:optional true} [:maybe number?]]
+   [:percent_state  {:optional true} [:maybe number?]]
+   [:average_length {:optional true} [:maybe number?]]
+   [:earliest       {:optional true} [:maybe :string]]
+   [:latest         {:optional true} [:maybe :string]]])
+
+(mr/def ::field-values-response
+  [:map {:encode/api ->snake_case-keys}
+   [:field_id {:optional true} [:maybe :string]]
+   [:statistics {:optional true} [:maybe ::statistics]]
+   [:values {:optional true} [:maybe [:sequential :any]]]])
+
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -113,7 +138,7 @@
   []
   {:message "pong"})
 
-(api.macros/defendpoint :get "/v1/tables/:id" :- ::table-response
+(api.macros/defendpoint :get "/v1/table/:id" :- ::table-response
   "Get details for a table by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
@@ -138,7 +163,21 @@
       data
       {:status 404, :body {:error (or (:output result) "Table not found")}})))
 
-(api.macros/defendpoint :get "/v1/metrics/:id" :- ::full-metric-response
+(api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values-response
+  "Get statistics and sample values for a table field."
+  [{:keys [id field-id]} :- [:map
+                             [:id       ms/PositiveInt]
+                             [:field-id ms/NonBlankString]]]
+  (let [result (field-stats/field-values
+                {:entity-type "table"
+                 :entity-id   id
+                 :field-id    field-id
+                 :limit       (request/limit)})]
+    (if-let [data (:structured-output result)]
+      data
+      {:status 404, :body {:error (or (:output result) "Field not found")}})))
+
+(api.macros/defendpoint :get "/v1/metric/:id" :- ::full-metric-response
   "Get details for a metric by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
@@ -158,6 +197,20 @@
     (if-let [data (:structured-output result)]
       data
       {:status 404, :body {:error (or (:output result) "Metric not found")}})))
+
+(api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values-response
+  "Get statistics and sample values for a metric field."
+  [{:keys [id field-id]} :- [:map
+                             [:id       ms/PositiveInt]
+                             [:field-id ms/NonBlankString]]]
+  (let [result (field-stats/field-values
+                {:entity-type "metric"
+                 :entity-id   id
+                 :field-id    field-id
+                 :limit       (request/limit)})]
+    (if-let [data (:structured-output result)]
+      data
+      {:status 404, :body {:error (or (:output result) "Field not found")}})))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;

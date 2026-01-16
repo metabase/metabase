@@ -14,7 +14,9 @@
                       (set/rename-keys {:nil% :percent-null})
                       (into (vals (:type fp))))})
    (when-let [fvs (-> fvs :values not-empty)]
-     {:values (into [] (if limit (take limit) identity) fvs)})))
+     {:values (if limit
+                (into [] (take limit) fvs)
+                (vec fvs))})))
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint
@@ -24,7 +26,7 @@
 (defn- field-statistics
   [{:keys [id fingerprint]} limit]
   (if id
-    (let [field (t2/select-one :model/Field :id id)
+    (let [field (t2/hydrate (t2/select-one :model/Field :id id) :has_field_values)
           fvs (field-values/get-or-create-full-field-values! field)
           fp (or fingerprint (get-or-create-fingerprint! field))]
       (build-field-statistics fvs fp limit))
