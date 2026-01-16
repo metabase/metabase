@@ -91,6 +91,42 @@
                 :messages-preview (mapv #(select-keys % [:role :content]) result)})
     result))
 
+(defn- extract-queries-from-parts
+  "Extract queries from tool output parts and store them in memory.
+  Tool results with :structured-output containing :query-id and :query are stored.
+  Returns updated memory."
+  [memory parts]
+  (reduce
+   (fn [mem part]
+     (when (= (:type part) :tool-output)
+       (log/debug "Processing tool output for query extraction" {:part part}))
+     (if-let [structured (:structured-output (:result part))]
+       (if (and (:query-id structured) (:query structured))
+         (do
+           (log/info "Storing query in memory" {:query-id (:query-id structured)})
+           (memory/remember-query mem (:query-id structured) (:query structured)))
+         mem)
+       mem))
+   memory
+   parts))
+
+(defn- extract-charts-from-parts
+  "Extract charts from tool output parts and store them in memory.
+  Tool results with :structured-output containing :chart-id are stored.
+  Returns updated memory."
+  [memory parts]
+  (reduce
+   (fn [mem part]
+     (if-let [structured (:structured-output (:result part))]
+       (if (and (:chart-id structured) (:type structured) (= (:type structured) :chart))
+         (do
+           (log/info "Storing chart in memory" {:chart-id (:chart-id structured)})
+           (memory/store-chart mem (:chart-id structured) structured))
+         mem)
+       mem))
+   memory
+   parts))
+
 (defn- stream-parts-to-output!
   "Stream parts to output channel. Must be called from within a go block.
   Returns a channel that completes when all parts are written."
@@ -128,9 +164,15 @@
         _ (when-not profile
             (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        tools (agent-tools/get-tools-for-profile profile-id capabilities)
+        base-tools (agent-tools/get-tools-for-profile profile-id capabilities)
         out-chan (a/chan 100)
-        memory-atom (atom (memory/initialize messages state))]
+        ;; Initialize memory and load any existing queries/charts from state
+        initial-memory (-> (memory/initialize messages state)
+                           (memory/load-queries-from-state state)
+                           (memory/load-charts-from-state state))
+        memory-atom (atom initial-memory)
+        ;; Wrap state-dependent tools with access to memory
+        tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
 
     (log/info "Starting agent loop"
               {:profile-id profile-id
@@ -156,8 +198,12 @@
             (if (instance? Throwable result)
               (throw result)
               (when result
-                ;; Update memory with this step
-                (swap! memory-atom memory/add-step result)
+                ;; Update memory with this step and extract queries/charts from tool results
+                (swap! memory-atom (fn [mem]
+                                     (-> mem
+                                         (memory/add-step result)
+                                         (extract-queries-from-parts result)
+                                         (extract-charts-from-parts result))))
 
                 ;; Stream parts to output (wait for completion)
                 (a/<! (stream-parts-to-output! out-chan result))
