@@ -12,8 +12,8 @@
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.channel.email :as email]
    [metabase.channel.urls :as urls]
+   [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -166,6 +166,13 @@
       (seq (transform-creator transform))
       (seq (active-admins))))
 
+(defn- structure-message
+  "Split a message into first line and detail lines for safe template rendering."
+  [message]
+  (let [[first-line & rest] (str/split message #"\n")]
+    {:first_line first-line
+     :details (vec rest)}))
+
 (defn- notify-transform-failures
   [job-id failures]
   ;; We intend to notify users of failures during a cron run.
@@ -181,26 +188,33 @@
                                                        (keep :email)))))
                       failures)
         by-user (group-by ::emails failures)]
-    (doseq [[user-emails failures] by-user]
-      (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
-                            :recipients user-emails
-                            :message-type :text
-                            :message (i18n/trs "Hello,\n\nThe following {0} occurred when running the transform job called {1}:\n\n{2}\n\nVisit {3} for more information."
-                                               (i18n/trun "failure" "failures" (count failures))
-                                               (:name job)
-                                               (compile-transform-failure-messages failures)
-                                               (urls/transform-job-url job-id))}))))
+    (doseq [[user-emails failures] by-user
+            email user-emails]
+      (events/publish-event! :event/transform-failed
+                             {:email email
+                              :job_name (:name job)
+                              :job_href (urls/transform-job-url job-id)
+                              :failure_count (count failures)
+                              :failures (mapv (fn [failure]
+                                                {:transform_name (:name (::transform failure))
+                                                 :transform_href (urls/transform-run-url (:id (::transform failure)))
+                                                 :message (structure-message (::message failure))})
+                                              failures)}))))
 
-(defn- notify-job-failure [job-id message]
+(defn- notify-job-failure
+  "Notify admins of a catastrophic job failure (not individual transform failures)."
+  [job-id message]
   (let [job (t2/select-one :model/TransformJob job-id)
         admin-emails (keep :email (active-admins))]
-    (email/send-message! {:subject (i18n/trs "[Metabase] Failed transform job")
-                          :recipients admin-emails
-                          :message-type :text
-                          :message (i18n/trs "Hello,\n\nThe following error occurred when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information."
-                                             (:name job)
-                                             message
-                                             (urls/transform-job-url job-id))})))
+    (doseq [email admin-emails]
+      (events/publish-event! :event/transform-failed
+                             {:email email
+                              :job_name (:name job)
+                              :job_href (urls/transform-job-url job-id)
+                              :failure_count 1
+                              :failures [{:transform_name (:name job)
+                                          :transform_href (urls/transform-job-url job-id)
+                                          :message (structure-message message)}]}))))
 
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
