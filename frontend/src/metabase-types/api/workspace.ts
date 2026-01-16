@@ -1,5 +1,6 @@
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
+import type { DatasetColumn, ResultsMetadata, RowValues } from "./dataset";
 import type {
   DraftTransformSource,
   Transform,
@@ -529,6 +530,24 @@ export type WorkspaceTransformRunResponse = {
     name: string;
     schema?: string | null;
   };
+};
+
+export type WorkspaceTransformDryRunData = {
+  rows?: RowValues[];
+  cols?: Array<Partial<DatasetColumn>>;
+  results_metadata?: ResultsMetadata;
+};
+
+export type WorkspaceTransformDryRunResponse = {
+  status: "succeeded" | "failed";
+  start_time?: string | null;
+  end_time?: string | null;
+  message?: string | null;
+  table: {
+    name: string;
+    schema?: string | null;
+  };
+  data?: WorkspaceTransformDryRunData;
 };
 
 export type WorkspaceAllowedDatabase = {

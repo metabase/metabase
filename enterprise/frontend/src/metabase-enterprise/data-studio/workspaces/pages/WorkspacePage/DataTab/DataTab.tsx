@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
+import { useTransformDryRunPreview } from "./useTransformDryRunPreview";
 
 interface DataTabProps {
   workspaceId: number;
@@ -59,14 +60,24 @@ export function DataTab({
     [table],
   );
 
+  // we want to use /dataset for table preview
+  const shouldUseDryRunPreview = Boolean(query && transformId && workspaceId);
   const tablePreviewResult = useTablePreview({
     databaseId,
-    tableId,
+    tableId: shouldUseDryRunPreview ? null : tableId,
     metadata,
     last_transform_run_time: transform?.last_run_at,
-    query,
+    query: shouldUseDryRunPreview ? undefined : query,
   });
-  const { rawSeries, isFetching, error } = tablePreviewResult;
+  const dryRunPreviewResult = useTransformDryRunPreview({
+    workspaceId,
+    transformId: shouldUseDryRunPreview ? transformId : undefined,
+    query: shouldUseDryRunPreview ? query : undefined,
+  });
+  const previewResult = shouldUseDryRunPreview
+    ? dryRunPreviewResult
+    : tablePreviewResult;
+  const { rawSeries, isFetching, error } = previewResult;
 
   if (pythonPreviewResult) {
     return <PythonPreviewResults executionResult={pythonPreviewResult} />;

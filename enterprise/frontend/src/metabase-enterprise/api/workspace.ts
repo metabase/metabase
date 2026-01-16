@@ -21,6 +21,7 @@ import type {
   WorkspaceRunResponse,
   WorkspaceTablesResponse,
   WorkspaceTransform,
+  WorkspaceTransformDryRunResponse,
   WorkspaceTransformListItem,
   WorkspaceTransformListResponse,
   WorkspaceTransformMergeResponse,
@@ -297,6 +298,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace-tables", workspaceId),
         ]),
     }),
+    dryRunWorkspaceTransform: builder.mutation<
+      WorkspaceTransformDryRunResponse,
+      WorkspaceTransformRef
+    >({
+      query: ({ workspaceId, transformId }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${workspaceId}/transform/${transformId}/dry-run`,
+      }),
+    }),
     updateWorkspaceTransform: builder.mutation<
       WorkspaceTransform,
       UpdateWorkspaceTransformRequest
@@ -404,6 +414,7 @@ export const {
   useGetWorkspaceLogQuery,
   useRunWorkspaceMutation,
   useRunWorkspaceTransformMutation,
+  useDryRunWorkspaceTransformMutation,
   useGetWorkspaceAllowedDatabasesQuery,
 } = workspaceApi;
 
