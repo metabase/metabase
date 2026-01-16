@@ -100,6 +100,44 @@
   [memory]
   (get-in memory [:state :charts] {}))
 
+;;; Transform Management
+
+(defn remember-transform
+  "Store a transform in memory state by its ID."
+  [memory transform-id transform]
+  (update-in memory [:state :transforms] assoc (str transform-id) transform))
+
+(defn find-transform
+  "Retrieve a transform from memory by its ID.
+  Throws if transform not found."
+  [memory transform-id]
+  (let [transforms (get-in memory [:state :transforms] {})]
+    (if-let [transform (get transforms (str transform-id))]
+      transform
+      (throw (ex-info (str "Transform with ID " transform-id " not found in memory. "
+                           "Available transforms: [" (str/join ", " (keys transforms)) "]")
+                      {:agent-error? true
+                       :transform-id transform-id
+                       :available-transforms (keys transforms)})))))
+
+(defn get-transforms
+  "Get all stored transforms from memory state."
+  [memory]
+  (get-in memory [:state :transforms] {}))
+
+;;; Todo Management
+
+(defn set-todos
+  "Set the todo list in memory state.
+  Todos should be a vector of todo item maps."
+  [memory todos]
+  (assoc-in memory [:state :todos] (vec todos)))
+
+(defn get-todos
+  "Get the current todo list from memory state."
+  [memory]
+  (get-in memory [:state :todos] []))
+
 ;;; State Loading
 
 (defn load-queries-from-state
@@ -114,4 +152,18 @@
   [memory state]
   (if-let [charts (:charts state)]
     (reduce-kv store-chart memory charts)
+    memory))
+
+(defn load-transforms-from-state
+  "Load transforms from incoming state into memory."
+  [memory state]
+  (if-let [transforms (:transforms state)]
+    (reduce-kv remember-transform memory transforms)
+    memory))
+
+(defn load-todos-from-state
+  "Load todos from incoming state into memory."
+  [memory state]
+  (if-let [todos (:todos state)]
+    (set-todos memory todos)
     memory))
