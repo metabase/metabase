@@ -805,11 +805,6 @@
   "Valid sort directions for dependency item endpoints."
   #{:asc :desc})
 
-(def ^:private breaking-entity-types
-  "Entity types that can be the source of validation errors (breaking other entities).
-   Only tables and cards can be sources of errors in analysis_finding_error."
-  #{:card :table})
-
 (def ^:private dependency-items-args
   [:map
    [:types {:optional true} [:or
