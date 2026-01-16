@@ -1,49 +1,37 @@
 (ns metabase-enterprise.metabot-v3.tools.edit-sql-query
   "Tool for editing existing SQL queries."
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [metabase.api.common :as api]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defn- query->url-hash
-  "Convert a query to a base64-encoded URL hash."
-  [query]
-  (-> {:dataset_query query}
-      json/encode
-      (.getBytes "UTF-8")
-      codecs/bytes->b64-str))
-
-(defn- query->results-url
-  "Convert a query to a /question# URL for navigation."
-  [query]
-  (str "/question#" (query->url-hash query)))
-
-(defn- get-query-card
-  "Fetch a query card and validate access."
-  [query-id]
-  (let [card (t2/select-one :model/Card :id query-id)]
-    (when-not card
-      (throw (ex-info (tru "Query {0} not found" query-id)
-                      {:agent-error? true
-                       :query-id query-id})))
-    (api/write-check card)
-    card))
-
 (defn- extract-sql-content
-  "Extract SQL content from a card's dataset_query.
+  "Extract SQL content from a dataset_query map.
   Handles both legacy format and lib/query format."
-  [card]
+  [query]
   (or
    ;; Try lib/query format (with stages)
-   (get-in card [:dataset_query :stages 0 :native])
+   (get-in query [:stages 0 :native])
    ;; Try legacy format
-   (get-in card [:dataset_query :native :query])))
+   (get-in query [:native :query])))
+
+(defn- update-query-sql
+  "Update a dataset_query map with new SQL content."
+  [query new-sql]
+  (cond
+    (get-in query [:stages])
+    (assoc-in query [:stages 0 :native] new-sql)
+
+    (get-in query [:native])
+    (assoc-in query [:native :query] new-sql)
+
+    :else
+    (throw (ex-info (tru "Unsupported query format")
+                    {:agent-error? true}))))
 
 (defn- apply-sql-edit
   "Apply an edit to SQL content.
@@ -100,7 +88,7 @@
                      :type (:type edit)}))))
 
 (defn edit-sql-query
-  "Edit an existing SQL query.
+  "Edit an existing SQL query from in-memory state.
 
   Parameters:
   - query-id: ID of the query to edit
@@ -112,47 +100,42 @@
   - :query-id - The ID of the updated query
   - :query-content - The updated SQL content
   - :database - Database ID"
-  [{:keys [query-id edit name description]}]
+  [{:keys [query-id edit queries-state name description]}]
   (log/info "Editing SQL query" {:query-id query-id :edit-type (:type edit)})
 
-  ;; Get and validate card
-  (let [card (get-query-card query-id)
-        current-sql (extract-sql-content card)]
-
-    (when-not current-sql
-      (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
+  ;; Look up query from in-memory state
+  (let [query-id (str query-id)
+        query (get queries-state query-id)]
+    (when-not query
+      (throw (ex-info (tru "Query {0} not found" query-id)
                       {:agent-error? true
-                       :query-id query-id})))
+                       :query-id query-id
+                       :available-queries (keys queries-state)})))
 
-    ;; Apply the edit
-    (let [new-sql (apply-sql-edit current-sql edit)
-          ;; Update dataset_query - handle both lib/query format (with :stages) and legacy format
-          updated-query (if (get-in card [:dataset_query :stages])
-                          (assoc-in (:dataset_query card) [:stages 0 :native] new-sql)
-                          (assoc-in (:dataset_query card) [:native :query] new-sql))
-          updates (cond-> {:dataset_query updated-query}
-                    name (assoc :name name)
-                    description (assoc :description description))]
+    (let [current-sql (extract-sql-content query)]
+      (when-not current-sql
+        (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
+                        {:agent-error? true
+                         :query-id query-id})))
 
-      ;; Update the card
-      (t2/update! :model/Card query-id updates)
-
-      (log/info "Updated SQL query card" {:card-id query-id})
-
-      {:query-id      query-id
-       :query-content new-sql
-       :query         updated-query  ;; Include for memory storage
-       :database      (:database_id card)})))
+      ;; Apply the edit
+      (let [new-sql (apply-sql-edit current-sql edit)
+            updated-query (update-query-sql query new-sql)]
+        {:query-id      query-id
+         :query-content new-sql
+         :query         updated-query
+         :database      (:database query)}))))
 
 (defn edit-sql-query-tool
   "Tool handler for edit_sql_query tool.
-  Returns structured output with updated query details and a redirect reaction to auto-navigate the user."
+  Returns structured output with updated query details and a navigate_to data part."
   [args]
   (try
     (let [result (edit-sql-query args)
-          results-url (query->results-url (:query result))]
+          results-url (streaming/query->question-url (:query result))]
       {:structured-output result
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
+       :instructions instructions/query-created-instructions
+       :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))

@@ -39,21 +39,20 @@
 
 ;;; SQL Dialect Extraction
 
+(declare normalize-context-type)
+
 (defn extract-sql-dialect
   "Extract SQL dialect name from context.
 
-  Looks for dialect in:
-  1. Native query context (:sql_engine field)
-  2. Transform context (:sql_engine field)
-  3. Database connection in viewing context
+  Looks for dialect in native SQL editor context (:sql_engine field).
 
   Returns lowercase dialect name suitable for loading dialect instructions."
   [context]
   (when-let [viewing (:user_is_viewing context)]
     (or
-     ;; Check for any viewing item that includes sql_engine
      (some (fn [item]
-             (some-> (:sql_engine item) str/lower-case))
+             (when (= "native" (normalize-context-type (:type item)))
+               (some-> (:sql_engine item) str/lower-case)))
            viewing)
      ;; Default to nil if not found
      nil)))

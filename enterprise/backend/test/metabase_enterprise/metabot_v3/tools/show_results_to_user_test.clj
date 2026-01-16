@@ -3,7 +3,6 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.show-results-to-user :as metabot-v3.tools.show-results-to-user]
-   [metabase.system.core :as system]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -21,8 +20,10 @@
         queries-state {query-id query}
         query-hash (-> {:dataset_query query} json/encode .getBytes codecs/bytes->b64-str)
         results-url (str "/question#" query-hash)]
-    (is (= {:output (str "Results can be seen at: " (system/site-url) results-url)
-            :reactions [{:type :metabot.reaction/redirect, :url results-url}]}
+    (is (= {:output (str "Results can be seen at: " results-url)
+            :data-parts [{:type :data
+                          :data-type "navigate_to"
+                          :data results-url}]}
            (metabot-v3.tools.show-results-to-user/show-results-to-user
             {:query-id query-id
              :queries-state queries-state})))))
