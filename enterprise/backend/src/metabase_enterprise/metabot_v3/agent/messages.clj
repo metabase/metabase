@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (defn- format-with-instructions
@@ -63,6 +64,14 @@
                             "\n</metabase-models>")))]
     (format-with-instructions content instructions/answer-sources-instructions)))
 
+(defn- get-structured-output
+  "Extract structured output from result, handling both key formats.
+  Tools may use :structured-output (hyphen, Clojure idiomatic) or
+  :structured_output (underscore, from JSON/API responses)."
+  [result]
+  (or (:structured-output result)
+      (:structured_output result)))
+
 (defn- format-tool-result
   "Format tool result for LLM consumption.
   Handles both :output (plain string) and :structured-output (structured data).
@@ -74,8 +83,8 @@
     (:output result)
 
     ;; Structured output - format based on type
-    (:structured-output result)
-    (let [structured (:structured-output result)]
+    (get-structured-output result)
+    (let [structured (get-structured-output result)]
       (cond
         ;; Search results - has :data and :total_count
         (and (:data structured) (:total_count structured))
@@ -110,34 +119,77 @@
     :else
     (pr-str result)))
 
+(defn- normalize-role
+  "Normalize role to keyword for comparison.
+  Handles both keyword roles (:user) and string roles (\"user\")."
+  [role]
+  (if (keyword? role)
+    role
+    (keyword role)))
+
 (defn- format-message
-  "Format a message into Claude/OpenAI format."
+  "Format a message into Claude API format.
+  Handles messages with keyword roles (e.g., :user) or string roles (e.g., \"user\")
+  and ensures proper content format for Claude API.
+
+  Key transformations:
+  - Converts tool_calls to content blocks with type \"tool_use\"
+  - Converts :tool messages to user messages with tool_result content
+  - Ensures all roles are strings in output"
   [msg]
-  (cond
-    ;; User message
-    (= (:role msg) :user)
-    {:role "user" :content (:content msg)}
+  (let [role (normalize-role (:role msg))
+        content (:content msg)]
+    (cond
+      ;; User message - check if content is already formatted (array vs string)
+      (= role :user)
+      {:role "user"
+       ;; If content is already an array (e.g., tool_result parts), keep it as-is
+       ;; Otherwise wrap the plain string content
+       :content (if (sequential? content) content content)}
 
-    ;; Assistant message
-    (= (:role msg) :assistant)
-    (cond-> {:role "assistant"}
-      (:content msg) (assoc :content (:content msg))
-      (:tool_calls msg) (assoc :tool_calls (:tool_calls msg)))
+      ;; Assistant message
+      (= role :assistant)
+      (let [;; Convert OpenAI-style tool_calls to Claude-style content blocks
+            tool-use-blocks (when-let [tool-calls (:tool_calls msg)]
+                              (mapv (fn [{:keys [id name arguments]}]
+                                      {:type "tool_use"
+                                       :id id
+                                       :name name
+                                       ;; Arguments may be JSON string or already parsed
+                                       :input (if (string? arguments)
+                                                (json/decode arguments)
+                                                arguments)})
+                                    tool-calls))
+            ;; Build content: text + tool_use blocks, or just tool_use blocks
+            final-content (cond
+                            ;; Already has array content (pre-formatted)
+                            (sequential? content) content
+                            ;; Has text content + tool calls -> combine them
+                            (and (some? content) (seq tool-use-blocks))
+                            (into [{:type "text" :text content}] tool-use-blocks)
+                            ;; Has only tool calls
+                            (seq tool-use-blocks) tool-use-blocks
+                            ;; Has only text content
+                            (some? content) content
+                            ;; Empty
+                            :else "")]
+        {:role "assistant"
+         :content final-content})
 
-    ;; Tool result message
-    (= (:role msg) :tool)
-    {:role "user"
-     :content [{:type "tool_result"
-                :tool_use_id (:tool_call_id msg)
-                :content (str (:content msg))}]}
+      ;; Tool result message (simple format from within agent loop)
+      (= role :tool)
+      {:role "user"
+       :content [{:type "tool_result"
+                  :tool_use_id (:tool_call_id msg)
+                  :content (str content)}]}
 
-    ;; System message
-    (= (:role msg) :system)
-    {:role "system" :content (:content msg)}
+      ;; System message
+      (= role :system)
+      {:role "system" :content content}
 
-    ;; Fallback
-    :else
-    msg))
+      ;; Fallback - pass through with string role
+      :else
+      (assoc msg :role (name role)))))
 
 (defn- part->message
   "Convert an AI SDK part to a message format.
@@ -172,6 +224,42 @@
        (keep part->message)
        (remove nil?)))
 
+(defn- merge-consecutive-assistant-messages
+  "Merge consecutive assistant messages into single messages with combined content.
+  Claude API doesn't allow consecutive messages with the same role.
+
+  Example: [{:role 'assistant' :content 'text'}
+            {:role 'assistant' :content [{:type 'tool_use' ...}]}]
+  Becomes: [{:role 'assistant' :content [{:type 'text' :text 'text'}
+                                          {:type 'tool_use' ...}]}]"
+  [messages]
+  (reduce
+   (fn [acc msg]
+     (let [prev (peek acc)]
+       (if (and prev
+                (= "assistant" (:role prev))
+                (= "assistant" (:role msg)))
+         ;; Merge with previous assistant message
+         (let [prev-content (:content prev)
+               curr-content (:content msg)
+               ;; Normalize to arrays
+               prev-blocks (if (sequential? prev-content)
+                             prev-content
+                             (if (and (string? prev-content) (seq prev-content))
+                               [{:type "text" :text prev-content}]
+                               []))
+               curr-blocks (if (sequential? curr-content)
+                             curr-content
+                             (if (and (string? curr-content) (seq curr-content))
+                               [{:type "text" :text curr-content}]
+                               []))
+               merged-content (into (vec prev-blocks) curr-blocks)]
+           (conj (pop acc) (assoc prev :content merged-content)))
+         ;; Different role or first message - add as-is
+         (conj acc msg))))
+   []
+   messages))
+
 (defn build-message-history
   "Build full message history for LLM from memory.
   Includes input messages and all steps taken so far."
@@ -180,7 +268,10 @@
         steps (memory/get-steps memory)
         step-messages (mapcat step->messages steps)
         formatted-input (map format-message input-messages)
-        result (concat formatted-input step-messages)]
+        ;; Merge consecutive assistant messages (Claude API requirement)
+        result (->> (concat formatted-input step-messages)
+                    (merge-consecutive-assistant-messages)
+                    vec)]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
                :input-messages input-messages
