@@ -177,6 +177,8 @@
     (is (contains? @#'agent-tools/state-dependent-tools "show_results_to_user"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_chart"))
     (is (contains? @#'agent-tools/state-dependent-tools "edit_chart"))
+    (is (contains? @#'agent-tools/state-dependent-tools "edit_sql_query"))
+    (is (contains? @#'agent-tools/state-dependent-tools "replace_sql_query"))
     ;; New state-dependent tools
     (is (contains? @#'agent-tools/state-dependent-tools "todo_write"))
     (is (contains? @#'agent-tools/state-dependent-tools "todo_read"))
@@ -275,4 +277,18 @@
           {:keys [schema]} (meta tool-var)
           [_:=> [_:cat params] _out] schema]
       ;; The schema should allow charts_state even though show_results_to_user doesn't use it
+      (is (some #(= :charts_state (first %)) (rest params)))))
+
+  (testing "edit_sql_query schema accepts queries_state and charts_state"
+    (let [tool-var #'agent-tools/edit-sql-query-tool
+          {:keys [schema]} (meta tool-var)
+          [_:=> [_:cat params] _out] schema]
+      (is (some #(= :queries_state (first %)) (rest params)))
+      (is (some #(= :charts_state (first %)) (rest params)))))
+
+  (testing "replace_sql_query schema accepts queries_state and charts_state"
+    (let [tool-var #'agent-tools/replace-sql-query-tool
+          {:keys [schema]} (meta tool-var)
+          [_:=> [_:cat params] _out] schema]
+      (is (some #(= :queries_state (first %)) (rest params)))
       (is (some #(= :charts_state (first %)) (rest params))))))
