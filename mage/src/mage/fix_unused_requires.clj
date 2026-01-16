@@ -8,6 +8,8 @@
    [mage.util :as u]
    [rewrite-clj.zip :as z]))
 
+;; NOTE: This is invoked via lint-staged which handles re-staging modified files automatically.
+
 (set! *warn-on-reflection* true)
 
 (defn- run-kondo
@@ -127,16 +129,12 @@
             true))))))
 
 (defn- fix-unused-requires!
-  "Main function to fix unused requires.
-   Takes a list of files to check.
-   Options:
-   - :restage? - if true, re-stage the files after fixing (for pre-commit hooks)"
-  [files {:keys [restage?]}]
+  "Main function to fix unused requires. Takes a list of files to check."
+  [files]
   (println (c/cyan "Running clj-kondo to find unused requires..."))
   (let [kondo-result (run-kondo files)]
     (if-let [findings (seq (unused-namespace-findings (:findings kondo-result)))]
-      (let [by-file (group-by-file findings)
-            fixed-files (atom [])]
+      (let [by-file (group-by-file findings)]
         (println (c/yellow (str "Found " (count findings) " unused require(s) in "
                                 (count by-file) " file(s)")))
         (doseq [[filename file-findings] by-file]
@@ -144,15 +142,9 @@
             (println (str "  " (c/white filename) ": removing "
                           (str/join ", " (map #(c/red (str %)) unused-ns))))
             (try
-              (when (fix-file! filename unused-ns)
-                (swap! fixed-files conj filename))
+              (fix-file! filename unused-ns)
               (catch Exception e
                 (println (c/red (str "  Error fixing " filename ": " (ex-message e))))))))
-        ;; Re-stage files if requested (for pre-commit hook)
-        (when (and restage? (seq @fixed-files))
-          (println (c/cyan "Re-staging fixed files..."))
-          (doseq [f @fixed-files]
-            (p/sh {:dir u/project-root-directory} "git" "add" f)))
         (println (c/green "Done!")))
       (println (c/green "No unused requires found.")))))
 
@@ -160,5 +152,5 @@
   "Fix unused requires in specified files."
   [{:keys [arguments]}]
   (if (seq arguments)
-    (fix-unused-requires! arguments {})
+    (fix-unused-requires! arguments)
     (println (c/red "No files specified."))))
