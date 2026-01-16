@@ -1,11 +1,15 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- create-native-query
   "Create a native (SQL) query structure."
@@ -13,6 +17,19 @@
   {:database database-id
    :type     :native
    :native   {:query sql-content}})
+
+(defn- query->url-hash
+  "Convert a query to a base64-encoded URL hash."
+  [query]
+  (-> {:dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
 
 (defn- validate-database-access
   "Check if the current user has access to the database."
@@ -63,15 +80,18 @@
 
     {:query-id      (:id new-card)
      :query-content sql
+     :query         dataset-query  ;; Include for memory storage
      :database      database-id}))
 
 (defn create-sql-query-tool
   "Tool handler for create_sql_query tool.
-  Returns structured output with query details."
+  Returns structured output with query details and a redirect reaction to auto-navigate the user."
   [args]
   (try
-    (let [result (create-sql-query args)]
-      {:structured-output result})
+    (let [result (create-sql-query args)
+          results-url (query->results-url (:query result))]
+      {:structured-output result
+       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (log/error e "Error creating SQL query")
       (if (:agent-error? (ex-data e))
