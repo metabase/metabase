@@ -912,8 +912,9 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types query archived include_personal_collections sort_column sort_direction]
-    :or {types (vec breaking-entity-types)
+   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
+    :or {types (vec deps.dependency-types/dependency-types)
+         card_types (vec lib.schema.metadata/card-types)
          include_personal_collections false
          sort_column :name
          sort_direction :asc}} :- dependency-items-args]
