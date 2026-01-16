@@ -16,50 +16,41 @@
       (mt/with-temp [:model/Database {db-id :id} {}]
         (testing "replace edit type"
           (let [original-sql "SELECT * FROM users WHERE id = 1"
-                card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Test Card"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query original-sql}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+                query-id "q1"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query original-sql}}}
                 result (edit-sql-query/edit-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :edit {:type :replace
                                 :old "id = 1"
                                 :new "id = 2"}})]
-            (is (= (:id card) (:query-id result)))
+            (is (= query-id (:query-id result)))
             (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
 
         (testing "append edit type"
           (let [original-sql "SELECT * FROM users"
-                card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Test Card"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query original-sql}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+                query-id "q2"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query original-sql}}}
                 result (edit-sql-query/edit-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :edit {:type :append
                                 :text "WHERE active = true"}})]
             (is (str/includes? (:query-content result) "WHERE active = true"))))
 
         (testing "replace-all edit type"
           (let [original-sql "SELECT id, id FROM users WHERE id = 1"
-                card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Test Card"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query original-sql}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+                query-id "q3"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query original-sql}}}
                 result (edit-sql-query/edit-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :edit {:type :replace-all
                                 :old "id"
                                 :new "user_id"}})]
@@ -68,16 +59,13 @@
 
         (testing "insert-after edit type"
           (let [original-sql "SELECT *\nFROM users"
-                card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Test Card"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query original-sql}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+                query-id "q4"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query original-sql}}}
                 result (edit-sql-query/edit-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :edit {:type :insert-after
                                 :marker "FROM users"
                                 :text "WHERE active = true"}})]
@@ -90,44 +78,30 @@
         (testing "replaces SQL content entirely"
           (let [original-sql "SELECT * FROM users"
                 new-sql "SELECT id, name FROM customers"
-                card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Original Query"
-                                                     :description "Original description"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query original-sql}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+                query-id "q5"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query original-sql}}}
                 result (replace-sql-query/replace-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :sql new-sql})]
             (is (= new-sql (:query-content result)))
-
-            ;; Verify metadata was preserved
-            (let [updated-card (t2/select-one :model/Card :id (:id card))]
-              (is (= "Original Query" (:name updated-card)))
-              (is (= "Original description" (:description updated-card))))))
+            (is (= db-id (:database result)))))
 
         (testing "replaces SQL and updates name/description"
-          (let [card (t2/insert-returning-instance! :model/Card
-                                                    {:name "Old Name"
-                                                     :dataset_query {:database db-id
-                                                                     :type :native
-                                                                     :native {:query "SELECT 1"}}
-                                                     :display :table
-                                                     :visualization_settings {}
-                                                     :creator_id (mt/user->id :crowberto)})
+          (let [query-id "q6"
+                queries-state {query-id {:database db-id
+                                         :type :native
+                                         :native {:query "SELECT 1"}}}
                 result (replace-sql-query/replace-sql-query
-                        {:query-id (:id card)
+                        {:query-id query-id
+                         :queries-state queries-state
                          :sql "SELECT 2"
                          :name "New Name"
                          :description "New Description"})]
-            (let [updated-card (t2/select-one :model/Card :id (:id card))]
-              (is (= "New Name" (:name updated-card)))
-              (is (= "New Description" (:description updated-card)))
-              ;; Check the result directly since dataset_query is transformed on read
-              (is (= "SELECT 2" (:query-content result))))))))))
+            (is (= "SELECT 2" (:query-content result)))
+            (is (= db-id (:database result)))))))))
 
 (deftest sql-search-test
   (mt/test-drivers #{:h2}
@@ -204,26 +178,21 @@
           (let [result (sql-search/sql-search {:query "common" :limit 10})]
             (is (<= (:total_count result) 10))))))))
 
-(deftest integration-create-edit-search-test
+(deftest integration-create-edit-in-memory-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}]
-        (testing "full workflow: create, edit, search"
-          ;; 1. Create a query
+        (testing "full workflow: create and edit in memory"
           (let [create-result (create-sql-query/create-sql-query
                                {:database-id db-id
                                 :sql "SELECT * FROM products WHERE category = 'electronics'"
                                 :name "Electronics Products"})
-                query-id (:query-id create-result)]
-
-            ;; 2. Edit the query
-            (let [edit-result (edit-sql-query/edit-sql-query
-                               {:query-id query-id
-                                :edit {:type :replace
-                                       :old "electronics"
-                                       :new "furniture"}})]
-              (is (str/includes? (:query-content edit-result) "furniture")))
-
-            ;; 3. Search for the query
-            (let [search-result (sql-search/sql-search {:query "furniture"})]
-              (is (some #(= query-id (:id %)) (:data search-result))))))))))
+                query-id (:query-id create-result)
+                queries-state {query-id (:query create-result)}
+                edit-result (edit-sql-query/edit-sql-query
+                             {:query-id query-id
+                              :queries-state queries-state
+                              :edit {:type :replace
+                                     :old "electronics"
+                                     :new "furniture"}})]
+            (is (str/includes? (:query-content edit-result) "furniture"))))))))
