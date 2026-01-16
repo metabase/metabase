@@ -50,7 +50,9 @@
     & {:keys [graph dependents include-native?]}]
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
-   (let [dependents (or dependents (transitive-dependents graph updated-entities))]
+   (let [dependents (or dependents (transitive-dependents :graph graph
+                                                          :updated-entities updated-entities
+                                                          :include-native? include-native?))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
 (mu/defn- check-query

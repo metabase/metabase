@@ -9,6 +9,8 @@
   Each graph defines an arbitrary **key**. This can be any hash map key, such as a number, a `[type id]` pair, etc."
   (:require
    #?@(:cljs ([flatland.ordered.set :as oset]))
+   [medley.core :as m]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p])
   #?@(:clj ((:import java.util.LinkedHashSet))))
@@ -41,6 +43,22 @@
   "Wraps a graph with an implementation that automatically caches results."
   [graph]
   (->CachedGraph graph (atom {})))
+
+(defn graph?
+  "Whether `x` is a valid `Graph`."
+  [x]
+  #?(:clj  (extends? Graph (class x))
+     :cljs (satisfies? Graph x)))
+
+(mr/def ::graph
+  "Schema for anything that satisfies the [[Graph]] protocol."
+  [:fn
+   {:error/message "Valid Graph instance"}
+   #'graph?])
+
+(mr/def ::node :any)
+
+(mr/def ::child-map [:map-of ::node [:set ::node]])
 
 (defn- stable-iteration-set []
   ;; Both of these sets explicitly have stable iteration order: values are returned in the order of (first) insertion.
@@ -156,18 +174,6 @@
                  :to_entity_type   parent-type
                  :to_entity_id     parent-id})]
     edges))
-
-(defn graph?
-  "Whether `x` is a valid `Graph`."
-  [x]
-  #?(:clj  (extends? Graph (class x))
-     :cljs (satisfies? Graph x)))
-
-(mr/def ::graph
-  "Schema for anything that satisfies the [[Graph]] protocol."
-  [:fn
-   {:error/message "Valid Graph instance"}
-   #'graph?])
 
 ;; ## In-memory Graphs
 (p/deftype+ InMemoryGraph [adjacency-map]
