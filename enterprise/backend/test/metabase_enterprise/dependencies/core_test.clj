@@ -142,9 +142,9 @@
                                     (lib/expression "Sales Taxes" (lib// (meta/field-metadata :orders :tax)
                                                                          (meta/field-metadata :orders :subtotal)))))
                          (dissoc :result-metadata))
-              errors (dependencies/errors-from-proposed-edits provider graph {:card [card']
-                                                                              :base-provider provider
-                                                                              :graph graph})]
+              errors (dependencies/errors-from-proposed-edits {:card [card']}
+                                                              :base-provider provider
+                                                              :graph graph)]
           (is (=? {:card {downstream-card-id  #{{:type              :validate/missing-column
                                                  :name              "Tax Rate"
                                                  :source-entity-type :card
