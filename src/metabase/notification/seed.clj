@@ -151,7 +151,7 @@
                        :template {:name "Transform Failed email template"
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
-                                            :subject "Transform job failed: {{payload.event_info.job_name}}"
+                                            :subject "The job \"{{payload.event_info.job_name}}\" had failures"
                                             :path "metabase/channel/email/transform_failed.hbs"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
