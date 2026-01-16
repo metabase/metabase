@@ -24,6 +24,7 @@ interface ScalarValueProps {
   gridSize?: VisualizationGridSize;
   totalNumGridCols?: number;
   fontFamily: string;
+  color?: string;
 }
 
 export const ScalarValue = ({
@@ -33,6 +34,7 @@ export const ScalarValue = ({
   gridSize,
   totalNumGridCols,
   fontFamily,
+  color = "inherit",
 }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
@@ -72,6 +74,7 @@ export const ScalarValue = ({
       fontSize={fontSize}
       lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
+      color={color}
     >
       {value ?? t`null`}
     </ScalarValueWrapper>
