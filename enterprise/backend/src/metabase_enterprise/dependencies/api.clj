@@ -184,11 +184,11 @@
 
 (mr/def ::base-entity
   [:map
-   [:id               pos-int?]
-   [:type             :keyword]
-   [:data             [:map]]
-   [:dependents_count [:maybe [:ref ::usages]]]
-   [:errors           {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
+   [:id                pos-int?]
+   [:type              :keyword]
+   [:data              [:map]]
+   [:dependents_count  [:maybe [:ref ::usages]]]
+   [:dependenet_errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
@@ -280,7 +280,7 @@
            :data (->> (select-keys entity (entity-keys entity-type))
                       (m/map-vals format-subentity))
            :dependents_count (usages [entity-type id])}
-    errors (assoc :errors (get errors [entity-type id]))))
+    errors (assoc :dependent_errors (get errors [entity-type id]))))
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -452,6 +452,44 @@
                                 {dependency-type 1})))
                        (apply merge-with +)))
                 children-map)))
+
+(defn- node-downstream-errors
+  "Fetches errors caused BY the given source entities (what downstream entities they're breaking).
+   Returns {[source-entity-type source-entity-id] #{error-maps...}}, or nil if none.
+
+   Unlike `node-errors` which fetches errors ON an entity, this fetches errors that
+   the entity is CAUSING in other entities that depend on it."
+  [nodes-by-type]
+  (letfn [(normalize-finding-error
+            [{:keys [error_type error_detail]}]
+            ;; Use the same normalization as node-errors for consistency
+            (case error_type
+              (:validate/missing-column
+               :validate/missing-table-alias
+               :validate/duplicate-column)
+              {:type error_type :name error_detail}
+
+              :validate/validation-exception-error
+              {:type error_type :message error_detail}
+
+              :validate/syntax-error
+              {:type error_type}
+
+              (cond-> {:type error_type}
+                error_detail (assoc :name error_detail))))
+          (normalize-source-errors [[[source-type source-id] errors]]
+            [[source-type source-id]
+             (into #{} (map normalize-finding-error) errors)])
+          (errors-by-source-type-and-id [[source-type ids]]
+            (let [finding-errors (t2/select :model/AnalysisFindingError
+                                            :source_entity_type source-type
+                                            :source_entity_id [:in ids])]
+              (->> finding-errors
+                   (group-by (juxt :source_entity_type :source_entity_id))
+                   (map normalize-source-errors))))]
+    (->> nodes-by-type
+         (into {} (mapcat errors-by-source-type-and-id))
+         not-empty)))
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
@@ -719,9 +757,106 @@
   "Valid sort columns for dependency item endpoints."
   #{:name :location :dependents-count})
 
+(defn- breaking-items-query
+  "Build a query to find entities that are causing errors in downstream dependencies.
+
+   Unlike `dependency-items-query` which queries entities with broken queries,
+   this queries entities that are the SOURCE of errors in other entities.
+
+   Joins analysis_finding_error on source_entity_type and source_entity_id
+   and returns DISTINCT source entities."
+  [{:keys [entity-type query include-archived-items include-personal-collections sort-column]}]
+  (let [table-name (case entity-type
+                     :card :report_card
+                     :table :metabase_table)
+        name-column (case entity-type
+                      :table :entity.display_name
+                      :entity.name)
+        root-collection (when (= entity-type :card)
+                          (collection.root/root-collection-with-ui-details nil))
+        location-column (case entity-type
+                          :card [:coalesce :collection.name [:inline (:name root-collection)]]
+                          :table :database.name)
+        dependents-count-column {:select [[:%count.*]]
+                                 :from [:dependency]
+                                 :where [:and
+                                         [:= :dependency.to_entity_id :entity.id]
+                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]
+                                         (visible-entities-filter-clause
+                                          :dependency.from_entity_type
+                                          :dependency.from_entity_id
+                                          {:include-archived-items include-archived-items})]}
+        ;; Join with analysis_finding_error to find entities that are SOURCE of errors
+        error-join [:analysis_finding_error [:and
+                                             [:= :analysis_finding_error.source_entity_id :entity.id]
+                                             [:= :analysis_finding_error.source_entity_type (name entity-type)]]]
+        query-filter (when query
+                       [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")])
+        database-filter (when (= entity-type :table)
+                          [:and [:not :database.is_sample] [:not :database.is_audit]])
+        archived-filter (when (= include-archived-items :exclude)
+                          (case entity-type
+                            :card [:= :entity.archived false]
+                            :table [:and
+                                    [:= :entity.active true]
+                                    [:= :entity.visibility_type nil]]))
+        personal-filter (when (and (not include-personal-collections)
+                                   (= entity-type :card))
+                          (let [personal-ids (t2/select-pks-vec :model/Collection
+                                                                :personal_owner_id [:not= nil]
+                                                                :location "/")]
+                            (when (seq personal-ids)
+                              [:or
+                               [:= :entity.collection_id nil]
+                               [:and
+                                [:= :collection.personal_owner_id nil]
+                                (into [:and]
+                                      (for [pid personal-ids]
+                                        [:not-like :collection.location (str "/" pid "/%")]))]])))
+        sort-key-column (case sort-column
+                          :location location-column
+                          :dependents-count dependents-count-column
+                          name-column)
+        sort-by-location? (= sort-column :location)
+        ;; Tables always need database join for filtering (is_sample, is_audit) and for location column
+        needs-database-join? (= entity-type :table)
+        needs-collection-join? (or (and (not include-personal-collections) (= entity-type :card))
+                                   (and sort-by-location? (= entity-type :card)))]
+    {:select-distinct [[[:inline (name entity-type)] :entity_type]
+                       [:entity.id :entity_id]
+                       [sort-key-column :sort_key]]
+     :from [[table-name :entity]]
+     :left-join (cond-> error-join
+                  needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
+                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id]))
+     :where (cond->> [:is-not :analysis_finding_error.id nil]
+              query-filter (conj [:and query-filter])
+              database-filter (conj [:and database-filter])
+              archived-filter (conj [:and archived-filter])
+              personal-filter (conj [:and personal-filter]))}))
+
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
   #{:asc :desc})
+
+(def ^:private breaking-entity-types
+  "Entity types that can be the source of validation errors (breaking other entities).
+   Only tables and cards can be sources of errors in analysis_finding_error."
+  #{:card :table})
+
+(def ^:private breaking-items-args
+  "Schema for /graph/broken endpoint parameters."
+  [:map
+   [:types {:optional true} [:or
+                             (ms/enum-decode-keyword breaking-entity-types)
+                             [:sequential (ms/enum-decode-keyword breaking-entity-types)]]]
+   ;; card_types is accepted but ignored for backwards compatibility
+   [:card_types {:optional true} :any]
+   [:query {:optional true} :string]
+   [:archived {:optional true} :boolean]
+   [:include_personal_collections {:optional true} :boolean]
+   [:sort_column {:optional true} (ms/enum-decode-keyword sort-columns)]
+   [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (def ^:private dependency-items-args
   [:map
@@ -805,12 +940,13 @@
      :total  total}))
 
 (api.macros/defendpoint :get "/graph/broken" :- dependency-items-response
-  "Returns a list of all items with broken queries.
+  "Returns a list of entities that are causing errors in downstream dependencies.
+   These are tables or cards that other entities depend on, where those dependencies
+   have validation errors traced back to this source entity.
 
    Accepts optional parameters for filtering:
-   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)
-   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
-   - `query`: Search string to filter by name or location
+   - `types`: List of source entity types - only `:card` or `:table` (default: both)
+   - `query`: Search string to filter by name
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
    - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)
@@ -819,32 +955,26 @@
    - `limit`: Default 50
 
    Returns a map with:
-   - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields
+   - `data`: List of breaking source entities, each with `:id`, `:type`, `:data`, and `:dependent_errors` fields
    - `total`: Total count of matched items
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
-    :or {types (vec deps.dependency-types/dependency-types)
-         card_types (vec lib.schema.metadata/card-types)
+   {:keys [types query archived include_personal_collections sort_column sort_direction]
+    :or {types [:card :table]
          include_personal_collections false
          sort_column :name
-         sort_direction :asc}} :- dependency-items-args]
+         sort_direction :asc}} :- breaking-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(dependency-items-query {:query-type :broken
-                                                     :entity-type %
-                                                     :card-types card-types
-                                                     :query query
-                                                     :include-archived-items include-archived-items
-                                                     :include-personal-collections include_personal_collections
-                                                     :sort-column sort_column})
+        selected-types (if (sequential? types) types [types])
+        union-queries (map #(breaking-items-query {:entity-type %
+                                                   :query query
+                                                   :include-archived-items include-archived-items
+                                                   :include-personal-collections include_personal_collections
+                                                   :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
@@ -854,11 +984,26 @@
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
+        ;; Fetch errors caused BY these source entities
+        nodes-by-type (->> (group-by first all-ids)
+                           (m/map-vals #(map second %)))
+        downstream-errors (node-downstream-errors nodes-by-type)
         total (-> (t2/query {:select [[:%count.* :total]]
                              :from [[union-query :subquery]]})
                   first
-                  :total)]
-    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true})
+                  :total)
+        ;; Build response with downstream errors attached
+        usages (node-usages downstream-graph all-ids)
+        data (into []
+                   (keep (fn [[entity-type entity-id]]
+                           (let [model (deps.dependency-types/dependency-type->model entity-type)
+                                 fields (entity-select-fields entity-type)
+                                 entity (first (t2/select (into [model] fields) :id entity-id))]
+                             (when entity
+                               (let [hydrated (first (hydrate-entities entity-type [entity]))]
+                                 (entity-value entity-type hydrated usages downstream-errors))))))
+                   all-ids)]
+    {:data   data
      :offset offset
      :limit  limit
      :total  total}))

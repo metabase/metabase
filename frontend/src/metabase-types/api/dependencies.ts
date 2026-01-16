@@ -269,9 +269,15 @@ export type DependencySortingOptions = {
   direction: DependencySortDirection;
 };
 
+/**
+ * Entity types that can be the source of validation errors (breaking other entities).
+ * Only tables and cards can be sources of errors in analysis_finding_error.
+ */
+export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
+export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
+
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
-  types?: DependencyType[];
-  card_types?: CardType[];
+  types?: BreakingEntityType[];
   query?: string;
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;
