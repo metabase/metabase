@@ -1,10 +1,27 @@
 (ns metabase-enterprise.metabot-v3.tools.replace-sql-query
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- query->url-hash
+  "Convert a query to a base64-encoded URL hash."
+  [query]
+  (-> {:dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
 
 (defn- get-query-card
   "Fetch a query card and validate access."
@@ -62,15 +79,18 @@
 
       {:query-id      query-id
        :query-content sql
+       :query         updated-query  ;; Include for memory storage
        :database      (:database_id card)})))
 
 (defn replace-sql-query-tool
   "Tool handler for replace_sql_query tool.
-  Returns structured output with updated query details."
+  Returns structured output with updated query details and a redirect reaction to auto-navigate the user."
   [args]
   (try
-    (let [result (replace-sql-query args)]
-      {:structured-output result})
+    (let [result (replace-sql-query args)
+          results-url (query->results-url (:query result))]
+      {:structured-output result
+       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (log/error e "Error replacing SQL query")
       (if (:agent-error? (ex-data e))
