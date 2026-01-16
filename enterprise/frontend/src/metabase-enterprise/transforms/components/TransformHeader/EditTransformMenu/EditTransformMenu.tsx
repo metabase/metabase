@@ -54,11 +54,15 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         ?.filter((item) => item.database_id === sourceDatabaseId)
         ?.map((item) => item.id) ?? [];
 
-    // Workspaces which already include this transform.
+    // Workspaces which already include this transform (have existing checkout).
     const checkedWorkspaceIds =
-      checkoutData?.workspaces?.map((item) => item?.id) ?? [];
+      checkoutData?.workspaces
+        ?.filter((item) => item?.existing != null)
+        ?.map((item) => item?.id) ?? [];
 
-    return [...checkedWorkspaceIds, ...allMatchingWorkspaceIds]
+    return Array.from(
+      new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
+    )
       .map((id) => {
         const workspace = workspaces.find((ws) => ws.id === id);
         if (!workspace) {
