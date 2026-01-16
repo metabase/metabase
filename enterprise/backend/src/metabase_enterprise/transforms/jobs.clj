@@ -131,22 +131,59 @@
   (:order (get-plan (job-transform-ids job-id))))
 
 (defn- compile-transform-failure-messages [failures]
-  (str/join "\n\n" (map #(format "%s %s:\n%s"
-                                 (:name (:transform %))
-                                 (urls/transform-run-url
-                                  (:id (:transform %)))
-                                 (:message %)) failures)))
+  (->> failures
+       (map (fn [failure]
+              (format "%s %s:\n%s"
+                      (:name (:transform failure))
+                      (urls/transform-run-url (:id (:transform failure)))
+                      (:message failure))))
+       (str/join "\n\n")))
 
-(defn- notify-transform-failures [job-id failures]
+(defn- active-users-to-edit-transform
+  "Return the users that edited the transform, in reverse chron.
+  Only returns active users.
+  And each user is unique.
+  Returns `nil` if there isn't one."
+  [transform-id]
+  (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
+    (let [user-ids (map :user_id revisions)
+          distinct-user-ids (distinct user-ids)
+          users (t2/select :model/User :id [:in distinct-user-ids] :is_active true)
+          by-id (u/index-by :id users)]
+      ;; maintain order
+      (map by-id distinct-user-ids))))
+
+(defn- active-admins
+  []
+  (t2/select :model/User :is_superuser true :is_active true))
+
+(defn- transform-creator
+  [transform]
+  (t2/select :model/User :id (:creator_id transform) :is_active true))
+
+(defn- users-to-notify-of-transform-failure [transform]
+  (or (seq (take 1 (active-users-to-edit-transform (:id transform))))
+      (seq (transform-creator transform))
+      (seq (active-admins))))
+
+(defn- notify-transform-failures
+  [job-id failures]
+  ;; We intend to notify users of failures during a cron run.
+  ;; The user to notify is the last person to modify the transform
+  ;; or the creator if it hasn't been modified.
+  ;; Or the admins if the creator is not active.
+  ;; We hope that this will be the most recent user.
   (let [job (t2/select-one :model/TransformJob job-id)
-        revisions (revisions/latest-revisions :model/Transform (map #(-> % :transform :id) failures))
-        transform-id->user-id (u/index-by :model_id :user_id revisions)
-        by-owner (group-by #(or (get transform-id->user-id (-> % :transform :id))
-                                (-> % :transform :creator_id)) failures)]
-    (doseq [[user-id failures] by-owner
-            :let [user (t2/select-one :model/User user-id)]]
+        failures (map (fn [failure]
+                        (let [transform (:transform failure)]
+                          (assoc failure :emails (->> transform
+                                                      users-to-notify-of-transform-failure
+                                                      (keep :email)))))
+                      failures)
+        by-user (group-by :emails failures)]
+    (doseq [[user-emails failures] by-user]
       (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
-                            :recipients [(:email user)]
+                            :recipients user-emails
                             :message-type :text
                             :message (i18n/trs "Hello,\n\nThe following {0} occurred when running the transform job called {1}:\n\n{2}\n\nVisit {3} for more information."
                                                (i18n/trun "failure" "failures" (count failures))
@@ -156,11 +193,11 @@
 
 (defn- notify-job-failure [job-id message]
   (let [job (t2/select-one :model/TransformJob job-id)
-        admin-emails (keep :email (t2/select :model/User :is_superuser true :is_active true))]
+        admin-emails (keep :email (active-admins))]
     (email/send-message! {:subject (i18n/trs "[Metabase] Failed transform job")
                           :recipients admin-emails
                           :message-type :text
-                          :message (i18n/trs "Hello,\n\nThe following errors occurred when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information."
+                          :message (i18n/trs "Hello,\n\nThe following error occurred when running the transform job called {0}:\n\n{1}\n\nVisit {2} for more information."
                                              (:name job)
                                              message
                                              (urls/transform-job-url job-id))})))
