@@ -893,6 +893,7 @@
 
    Accepts optional parameters for filtering:
    - `types`: List of source entity types - only `:card` or `:table` (default: both)
+   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
    - `query`: Search string to filter by name
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
