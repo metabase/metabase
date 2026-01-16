@@ -1,10 +1,22 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
-import { Badge, Box, Card, Group, Stack, Title } from "metabase/ui";
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Card,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getDependencyErrorTypeLabel } from "../../../../utils";
 
 import S from "./SidebarErrorInfo.module.css";
@@ -32,25 +44,34 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>
           {details.map((detail, detailIndex) => (
-            <Group
-              key={detailIndex}
-              className={S.item}
-              p="md"
-              justify="space-between"
-              wrap="nowrap"
-            >
-              <Box
-                className={cx(CS.textWrap, CS.textMonospace)}
-                fz="sm"
-                lh="h5"
-              >
-                {detail}
-              </Box>
-              <CopyButton value={detail} />
-            </Group>
+            <ErrorItem key={detailIndex} detail={detail} />
           ))}
         </Card>
       )}
     </Stack>
+  );
+}
+
+type ErrorItemProps = {
+  detail: string;
+};
+
+function ErrorItem({ detail }: ErrorItemProps) {
+  return (
+    <Group className={S.item} p="md" justify="space-between" wrap="nowrap">
+      <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="h5">
+        {detail}
+      </Box>
+      <CopyButton
+        value={detail}
+        target={
+          <Tooltip label={t`Copy`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+            <ActionIcon aria-label={t`Copy`}>
+              <FixedSizeIcon name="copy" />
+            </ActionIcon>
+          </Tooltip>
+        }
+      />
+    </Group>
   );
 }

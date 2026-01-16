@@ -5,6 +5,7 @@ import type { DependencyNode } from "metabase-types/api";
 
 import S from "./ListSidebar.module.css";
 import { SidebarCreationInfo } from "./SidebarCreationInfo";
+import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
 import { SidebarErrorInfo } from "./SidebarErrorInfo";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarLocationInfo } from "./SidebarLocationInfo";
@@ -42,6 +43,7 @@ export const ListSidebar = memo(function ListSidebar({
           errors={errorGroup.errors}
         />
       ))}
+      <SidebarDependentsInfo node={node} />
     </Stack>
   );
 });

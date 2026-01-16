@@ -33,7 +33,7 @@ export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
   }
 
   return (
-    <Card p={0} shadow="none" withBorder aria-label={title}>
+    <Card p={0} shadow="none" withBorder role="region" aria-label={title}>
       {createdBy != null && createdAt != null && (
         <UserSection
           label={t`Created by`}

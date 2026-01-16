@@ -47,24 +47,13 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
           <ActionIcon
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
-            w="1.5rem"
-            miw="1.5rem"
-            h="1.5rem"
-            mih="1.5rem"
             aria-label={t`Open in dependency graph`}
             target="_blank"
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon
-          w="1.5rem"
-          miw="1.5rem"
-          h="1.5rem"
-          mih="1.5rem"
-          aria-label={t`Close`}
-          onClick={onClose}
-        >
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
