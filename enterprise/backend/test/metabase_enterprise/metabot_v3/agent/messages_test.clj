@@ -45,9 +45,11 @@
       (is (= 2 (count history)))
       (is (= "user" (:role (first history))))
       (is (= "assistant" (:role (second history))))
-      (is (some? (:tool_calls (second history))))
-      (is (= "tool_1" (-> (second history) :tool_calls first :id)))
-      (is (= "search" (-> (second history) :tool_calls first :name)))))
+      ;; Tool calls are represented as content blocks with type "tool_use"
+      (is (vector? (:content (second history))))
+      (is (= "tool_use" (-> (second history) :content first :type)))
+      (is (= "tool_1" (-> (second history) :content first :id)))
+      (is (= "search" (-> (second history) :content first :name)))))
 
   (testing "includes tool results from steps"
     (let [input-messages [{:role :user :content "Search"}]
