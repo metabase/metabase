@@ -1,11 +1,28 @@
 (ns metabase-enterprise.metabot-v3.tools.edit-sql-query
   "Tool for editing existing SQL queries."
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- query->url-hash
+  "Convert a query to a base64-encoded URL hash."
+  [query]
+  (-> {:dataset_query query}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
 
 (defn- get-query-card
   "Fetch a query card and validate access."
@@ -124,15 +141,18 @@
 
       {:query-id      query-id
        :query-content new-sql
+       :query         updated-query  ;; Include for memory storage
        :database      (:database_id card)})))
 
 (defn edit-sql-query-tool
   "Tool handler for edit_sql_query tool.
-  Returns structured output with updated query details."
+  Returns structured output with updated query details and a redirect reaction to auto-navigate the user."
   [args]
   (try
-    (let [result (edit-sql-query args)]
-      {:structured-output result})
+    (let [result (edit-sql-query args)
+          results-url (query->results-url (:query result))]
+      {:structured-output result
+       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))
