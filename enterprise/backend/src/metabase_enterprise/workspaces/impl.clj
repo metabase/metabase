@@ -255,8 +255,8 @@
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
        (let [succeeded?        (= :succeeded (:status result))
-             ancestor-stale?   (and succeeded?
-                                    (any-transitive-ancestor-stale? (:id workspace) ref-id))]
+             ancestor-stale?   (boolean (and succeeded?
+                                             (any-transitive-ancestor-stale? (:id workspace) ref-id)))]
          ;; Update staleness flags
          (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
                      (cond-> {:last_run_at      (:end_time result)
