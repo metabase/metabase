@@ -244,4 +244,103 @@ describe("AllChangesView", () => {
       ).toBeInTheDocument();
     });
   });
+  
+  describe("table child models", () => {
+    it("should display measures nested under their parent table", async () => {
+      const tableEntity = createMockRemoteSyncEntity({
+        id: 100,
+        name: "Orders Table",
+        model: "table",
+        collection_id: 1,
+        sync_status: "update",
+      });
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Total Revenue",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+
+      setup({
+        entities: [tableEntity, measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Orders Table")).toBeInTheDocument();
+      expect(screen.getByText("Total Revenue")).toBeInTheDocument();
+    });
+
+    it("should display measures with table name when table is not dirty", async () => {
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Total Revenue",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+
+      setup({
+        entities: [measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Orders Table")).toBeInTheDocument();
+      expect(screen.getByText("Total Revenue")).toBeInTheDocument();
+    });
+
+    it("should display segments nested under their parent table", async () => {
+      const segmentEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Active Users",
+        model: "segment",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+
+      setup({
+        entities: [segmentEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Users Table")).toBeInTheDocument();
+      expect(screen.getByText("Active Users")).toBeInTheDocument();
+    });
+
+    it("should group multiple table children under the same table", async () => {
+      const fieldEntity = createMockRemoteSyncEntity({
+        id: 400,
+        name: "email",
+        model: "field",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "Total Users",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+
+      setup({
+        entities: [fieldEntity, measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Users Table")).toBeInTheDocument();
+      expect(screen.getByText("email")).toBeInTheDocument();
+      expect(screen.getByText("Total Users")).toBeInTheDocument();
+    });
+  });
 });
