@@ -606,7 +606,7 @@
      (if (contains? state-dependent-tools tool-name)
        ;; Wrap the tool - return a map with :doc, :schema, :fn
        ;; This format is accepted by claude.clj schema and tool->claude
-       (let [{:keys [doc schema]} (meta tool-var)
+       (let [{:keys [doc schema system-instructions]} (meta tool-var)
              wrapped-fn (fn [args]
                           (let [memory @memory-atom
                                 state (:state memory)
@@ -617,6 +617,7 @@
                             (tool-var augmented-args)))]
          (assoc acc tool-name {:doc doc
                                :schema schema
+                               :system-instructions system-instructions
                                :fn wrapped-fn}))
        ;; Keep non-state-dependent tools as-is
        (assoc acc tool-name tool-var)))
