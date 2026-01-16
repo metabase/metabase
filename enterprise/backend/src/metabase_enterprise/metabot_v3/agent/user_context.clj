@@ -16,13 +16,22 @@
 
 (defn format-current-time
   "Format user's current time from context.
-  Expects :current_time_with_timezone in context as ISO-8601 string."
+  Expects :current_user_time (preferred) or :current_time_with_timezone in context as ISO-8601 string."
   [context]
   (try
-    (if-let [time-str (:current_time_with_timezone context)]
-      (let [offset-time (OffsetDateTime/parse time-str)
+    (cond
+      (string? (:current_user_time context))
+      (:current_user_time context)
+
+      (string? (:current_time_with_timezone context))
+      (let [offset-time (OffsetDateTime/parse (:current_time_with_timezone context))
             formatter DateTimeFormatter/ISO_LOCAL_DATE_TIME]
         (.format formatter offset-time))
+
+      (string? (:current_time context))
+      (:current_time context)
+
+      :else
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))
     (catch Exception e
       (log/error e "Error formatting current time")
@@ -42,10 +51,23 @@
   [context]
   (when-let [viewing (:user_is_viewing context)]
     (or
-     ;; Check first viewing item for sql_engine
-     (some-> viewing first :sql_engine str/lower-case)
+     ;; Check for any viewing item that includes sql_engine
+     (some (fn [item]
+             (some-> (:sql_engine item) str/lower-case))
+           viewing)
      ;; Default to nil if not found
      nil)))
+
+;;; Context Normalization
+
+(defn- normalize-context-type
+  "Normalize context :type to lowercase string."
+  [type-val]
+  (cond
+    (keyword? type-val) (name type-val)
+    (string? type-val) type-val
+    (nil? type-val) nil
+    :else (str type-val)))
 
 ;;; Entity Formatting
 
@@ -197,32 +219,33 @@
     (str/join "\n\n"
               (for [item (:user_is_viewing context)]
                 (try
-                  (cond
+                  (let [item-type (normalize-context-type (:type item))]
+                    (cond
                     ;; Adhoc query (notebook editor)
-                    (= (:type item) "adhoc")
-                    (format-adhoc-query-context item)
+                      (= item-type "adhoc")
+                      (format-adhoc-query-context item)
 
                     ;; Native SQL query
-                    (= (:type item) "native")
-                    (format-native-query-context item)
+                      (= item-type "native")
+                      (format-native-query-context item)
 
                     ;; Transform
-                    (= (:type item) "transform")
-                    (format-transform-context item)
+                      (= item-type "transform")
+                      (format-transform-context item)
 
                     ;; Code editor
-                    (= (:type item) "code-editor")
-                    (format-code-editor-context item)
+                      (= item-type "code-editor")
+                      (format-code-editor-context item)
 
                     ;; Entity (table, model, question, metric, dashboard)
-                    (contains? #{"table" "model" "question" "metric" "dashboard"} (:type item))
-                    (format-entity-context item)
+                      (contains? #{"table" "model" "question" "metric" "dashboard"} item-type)
+                      (format-entity-context (assoc item :type item-type))
 
                     ;; Unknown type
-                    :else
-                    (do
-                      (log/warn "Unknown viewing context type:" (:type item))
-                      ""))
+                      :else
+                      (do
+                        (log/warn "Unknown viewing context type:" (:type item))
+                        "")))
                   (catch Exception e
                     (log/error e "Error formatting viewing context item:" (:type item))
                     ""))))))
