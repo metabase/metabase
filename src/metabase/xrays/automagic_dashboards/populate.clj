@@ -79,7 +79,7 @@
        ensure-distinct-colors))
 
 (defn- colorize
-  "Pick the chart colors acording to the following rules:
+  "Pick the chart colors according to the following rules:
   * If there is more than one breakout dimension let the frontend do it as presumably
     the second dimension will be used as color key and we can't know the values it
     will take at this stage.
@@ -87,7 +87,7 @@
     (ie. a frequency chart), use field IDs referenced in `:breakout` as color key.
   * Else use `:aggregation` as color key.
 
-  Colors are then determined by using the hashs of color keys to index into the vector
+  Colors are then determined by using the hashes of color keys to index into the vector
   of available colors."
   [{:keys [visualization dataset_query], :as _dashcard}]
   (let [display     (first visualization)
@@ -210,9 +210,9 @@
                 y (range y (+ y width))]
             [x y])))
 
-(mu/defn- accomodates?
+(mu/defn- accommodates?
   "Can we place card on grid starting at [x y] (top left corner)?
-   Since we are filling the grid top to bottom and the cards are rectangulard,
+   Since we are filling the grid top to bottom and the cards are rectangular,
    it suffices to check just the first (top) row."
   [grid                   :- ::grid
    [x y]                  :- [:tuple nat-int? nat-int?]
@@ -226,14 +226,14 @@
 (mu/defn- dashcard-position
   "Find position on the grid where to put the card.
    We use the dumbest possible algorithm (the grid size is relatively small, so
-   we should be fine): startting at top left move along the grid from left to
+   we should be fine): starting at top left move along the grid from left to
    right, row by row and try to place the card at each position until we find an
    unoccupied area. Mark the area as occupied."
   [grid :- ::grid
    start-row
    dashcard]
   (reduce (fn [grid xy]
-            (if (accomodates? grid xy dashcard)
+            (if (accommodates? grid xy dashcard)
               (reduced xy)
               grid))
           grid
@@ -288,7 +288,7 @@
   "Pick up to `max-cards` with the highest `:card-score`.
    Keep groups together if possible by pulling all the cards within together and
    using the same (highest) card-score for all.
-   Among cards with the same card-score those beloning to the largest group are
+   Among cards with the same card-score those belonging to the largest group are
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."

@@ -36,7 +36,7 @@ describe("scenarios > data studio > datamodel", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");

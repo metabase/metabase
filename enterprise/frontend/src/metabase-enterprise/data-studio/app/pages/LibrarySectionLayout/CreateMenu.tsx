@@ -12,14 +12,17 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 
 export const CreateMenu = ({
   metricCollectionId,
+  canWriteToMetricCollection,
 }: {
   metricCollectionId?: CollectionId;
+  canWriteToMetricCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
@@ -28,8 +31,14 @@ export const CreateMenu = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  const canCreateMetric = hasDataAccess && metricCollectionId;
+  if (remoteSyncReadOnly) {
+    return null;
+  }
+
+  const canCreateMetric =
+    hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
   const menuItems = [
     isAdmin && (

@@ -1,6 +1,5 @@
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
-import { memo } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -11,7 +10,7 @@ import { getColumnStyle } from "../utils";
 import { HeaderCell } from "./HeaderCell";
 import S from "./TreeTableHeader.module.css";
 
-function TreeTableHeaderInner<TData extends TreeNodeData>({
+export function TreeTableHeader<TData extends TreeNodeData>({
   table,
   columnWidths,
   showCheckboxes,
@@ -112,9 +111,3 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
     </Flex>
   );
 }
-
-export const TreeTableHeader = memo(TreeTableHeaderInner) as <
-  TData extends TreeNodeData,
->(
-  props: TreeTableHeaderProps<TData>,
-) => JSX.Element;

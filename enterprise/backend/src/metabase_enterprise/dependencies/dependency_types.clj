@@ -30,3 +30,5 @@
 
 (mr/def ::dependency-types
   (ms/enum-decode-keyword dependency-types))
+
+(mr/def ::entity-id pos-int?)
