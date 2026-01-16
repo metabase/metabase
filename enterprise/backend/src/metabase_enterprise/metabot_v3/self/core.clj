@@ -252,7 +252,9 @@
            (let [tool-name    (:toolName chunk)
                  tool-call-id (:toolCallId chunk)]
              (when-let [chunks (seq (get @active-tools tool-call-id))]
-               (let [tool-fn (get tools tool-name)
+               (let [tool-entry (get tools tool-name)
+                     ;; Support both vars and wrapped tool maps with :fn key
+                     tool-fn (if (map? tool-entry) (:fn tool-entry) tool-entry)
                      chan    (a/chan 10)]
                  (vswap! active-tools assoc tool-call-id {:chan chan})
                  (future

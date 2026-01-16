@@ -17,8 +17,12 @@
                        :filter [:=
                                 [:get-year [:field 13 {:base-type :type/DateTime, :temporal-unit :month}]]
                                 2024]}}
+        query-id "test-query-1"
+        queries-state {query-id query}
         query-hash (-> {:dataset_query query} json/encode .getBytes codecs/bytes->b64-str)
         results-url (str "/question#" query-hash)]
     (is (= {:output (str "Results can be seen at: " (system/site-url) results-url)
             :reactions [{:type :metabot.reaction/redirect, :url results-url}]}
-           (metabot-v3.tools.show-results-to-user/show-results-to-user {:query query})))))
+           (metabot-v3.tools.show-results-to-user/show-results-to-user
+            {:query-id query-id
+             :queries-state queries-state})))))

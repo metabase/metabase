@@ -143,10 +143,16 @@
 ;;; Visualization & Results Tools
 
 (mu/defn show-results-to-user-tool
-  "Show query results to the user."
-  [{:keys [query]} :- [:map {:closed true}
-                       [:query :map]]]
-  (show-results-tools/show-results-to-user {:query query}))
+  "Show query results to the user.
+
+  Takes a query_id from a previous query_model or query_metric result and displays
+  those results to the user. The query is looked up from the queries_state which
+  contains all queries created during the conversation."
+  [{:keys [query_id queries_state]} :- [:map {:closed true}
+                                        [:query_id :string]
+                                        [:queries_state {:optional true} [:maybe :map]]]]
+  (show-results-tools/show-results-to-user {:query-id query_id
+                                            :queries-state (or queries_state {})}))
 
 ;;; Analytics Tools
 
@@ -337,3 +343,42 @@
   (let [profile (profiles/get-profile profile-id)
         tool-names (or (:tools profile) [])]
     (select-keys all-tools (filter-by-capabilities tool-names capabilities))))
+
+;;; State-aware tool wrapping
+;;
+;; Some tools need access to agent state (queries, charts) to function properly.
+;; These tools are wrapped at runtime with access to the memory atom.
+
+(def ^:private state-dependent-tools
+  "Set of tool names that require access to agent state."
+  #{"show_results_to_user" "create_chart" "edit_chart"})
+
+(defn wrap-tools-with-state
+  "Wrap state-dependent tools with access to the memory atom.
+  Tools in `state-dependent-tools` will have their arguments augmented
+  with queries_state and charts_state from the current memory.
+
+  Returns a new tools map where state-dependent tools are wrapped.
+  Wrapped tools are returned as maps with :doc, :schema, and :fn keys
+  to satisfy the Claude API schema validation."
+  [tools memory-atom]
+  (reduce-kv
+   (fn [acc tool-name tool-var]
+     (if (contains? state-dependent-tools tool-name)
+       ;; Wrap the tool - return a map with :doc, :schema, :fn
+       ;; This format is accepted by claude.clj schema and tool->claude
+       (let [{:keys [doc schema]} (meta tool-var)
+             wrapped-fn (fn [args]
+                          (let [memory @memory-atom
+                                state (:state memory)
+                                augmented-args (assoc args
+                                                      :queries_state (get state :queries {})
+                                                      :charts_state (get state :charts {}))]
+                            (tool-var augmented-args)))]
+         (assoc acc tool-name {:doc doc
+                               :schema schema
+                               :fn wrapped-fn}))
+       ;; Keep non-state-dependent tools as-is
+       (assoc acc tool-name tool-var)))
+   {}
+   tools))
