@@ -1285,6 +1285,96 @@ describe("scenarios > data studio > workspaces", () => {
         });
       });
     });
+
+    it(
+      "should show ad-hoc results for Python transform",
+      { tags: ["@python"] },
+      () => {
+        createTransforms();
+        Workspaces.visitWorkspaces();
+        createWorkspace();
+
+        cy.log("Run ad-hoc Python query");
+        Workspaces.getMainlandTransforms()
+          .findByText("Python transform")
+          .click();
+
+        cy.findByTestId("run-button").click();
+
+        Workspaces.getWorkspaceContent().within((container) => {
+          H.tabsShouldBe(
+            "Preview (Python transform)",
+            [
+              "Setup",
+              "Agent Chat",
+              "Graph",
+              "Python transform",
+              "Preview (Python transform)",
+            ],
+            container,
+          );
+          cy.findByText("Preview (Python transform)").click();
+          H.assertTableData({
+            columns: ["foo"],
+            firstRows: [["42"]],
+          });
+        });
+      },
+    );
+
+    it("should show ad-hoc error for SQL transform", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Run invalid ad-hoc SQL query");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" INVALID SYNTAX");
+      cy.findByTestId("run-button").click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Preview (SQL transform)", [
+          "Setup",
+          "Agent Chat",
+          "Graph",
+          "SQL transform",
+          "Preview (SQL transform)",
+        ]);
+        cy.findByText("Preview (SQL transform)").click();
+        cy.findByText(/Error loading data/i).should("be.visible");
+      });
+    });
+
+    it(
+      "should show ad-hoc error for Python transform",
+      { tags: ["@python"] },
+      () => {
+        createTransforms();
+        Workspaces.visitWorkspaces();
+        createWorkspace();
+
+        cy.log("Run invalid ad-hoc Python query");
+        Workspaces.getMainlandTransforms()
+          .findByText("Python transform")
+          .click();
+
+        H.PythonEditor.clear().paste("invalid python syntax !!!");
+        cy.findByTestId("run-button").click();
+
+        Workspaces.getWorkspaceContent().within(() => {
+          H.tabsShouldBe("Preview (Python transform)", [
+            "Setup",
+            "Agent Chat",
+            "Graph",
+            "Python transform",
+            "Preview (Python transform)",
+          ]);
+          cy.findByText("Preview (Python transform)").click();
+          cy.findByText(/Python execution failure /i).should("be.visible");
+        });
+      },
+    );
   });
 
   describe("run all transforms", () => {
