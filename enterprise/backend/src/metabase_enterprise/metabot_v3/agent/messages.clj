@@ -1,10 +1,60 @@
 (ns metabase-enterprise.metabot-v3.agent.messages
   "Message formatting and history construction for the agent loop."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
    [metabase.util.log :as log]))
+
+(defn- format-query-result
+  "Format a query result (from query_model, query_metric, etc.) for the LLM.
+  Creates an XML-like structure similar to Python ai-service."
+  [{:keys [type query-id result-columns]}]
+  (str "<query type=\"" (name (or type :query)) "\" id=\"" query-id "\">\n"
+       (when (seq result-columns)
+         (str "Result columns:\n"
+              (str/join "\n" (map (fn [col]
+                                    (str "- " (:name col) " (id: " (:id col) ", type: " (:base-type col) ")"))
+                                  result-columns))
+              "\n"))
+       "</query>"))
+
+(defn- format-chart-result
+  "Format a chart result for the LLM."
+  [{:keys [chart-id query-id chart-type]}]
+  (str "<chart id=\"" chart-id "\" type=\"" (name chart-type) "\" query-id=\"" query-id "\">\n"
+       "Chart created successfully. Use metabase://chart/" chart-id " to reference this chart.\n"
+       "</chart>"))
+
+(defn- format-tool-result
+  "Format tool result for LLM consumption.
+  Handles both :output (plain string) and :structured-output (structured data)."
+  [result]
+  (cond
+    ;; Plain output string
+    (:output result)
+    (:output result)
+
+    ;; Structured output - format based on type
+    (:structured-output result)
+    (let [structured (:structured-output result)]
+      (cond
+        ;; Query results (from query_model, query_metric, etc.)
+        (and (:query-id structured) (:query structured))
+        (format-query-result structured)
+
+        ;; Chart results (from create_chart, edit_chart)
+        (and (:chart-id structured) (:query-id structured))
+        (format-chart-result structured)
+
+        ;; Generic structured output - just stringify it
+        :else
+        (pr-str structured)))
+
+    ;; Fallback - stringify the whole result
+    :else
+    (pr-str result)))
 
 (defn- format-message
   "Format a message into Claude/OpenAI format."
@@ -56,7 +106,7 @@
     {:role "user"
      :content [{:type "tool_result"
                 :tool_use_id (:id part)
-                :content (str (:result part))}]}
+                :content (format-tool-result (:result part))}]}
 
     ;; Ignore other part types (start, finish, usage, data, etc.)
     nil))
