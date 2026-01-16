@@ -1206,6 +1206,40 @@
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
 
+(deftest sync-schema-with-manage-table-metadata-permission-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "User with manage-table-metadata permission can sync table"
+      (let [sync-called? (promise)
+            timeout (* 10 60)]
+        (mt/with-premium-features #{:audit-app}
+          (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+            (mt/with-no-data-perms-for-all-users!
+              ;; Grant only manage-table-metadata permission for this table
+              (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
+              (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))))))
+        (testing "sync called?"
+          (is (true?
+               (deref sync-called? timeout :sync-never-called))))))))
+
+(deftest sync-schema-mirror-database-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "Mirror databases (with router_database_id set) return 404"
+      (mt/with-temp [:model/Database {source-db-id :id} {:engine "h2", :details (:details (mt/db))}
+                     :model/Database {mirror-db-id :id} {:engine "h2"
+                                                         :details (:details (mt/db))
+                                                         :router_database_id source-db-id}
+                     :model/Table    table              {:db_id mirror-db-id :schema "PUBLIC"}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" (u/the-id table)))))))))
+
+(deftest ^:parallel sync-schema-nonexistent-table-test
+  (testing "POST /api/table/:id/sync_schema"
+    (testing "Non-existent table returns 404"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" Integer/MAX_VALUE)))))))
+
 (deftest ^:parallel list-table-filtering-test
   (let [list-tables (fn [& params]
                       (->> (apply mt/user-http-request :crowberto :get 200 "table" params)
