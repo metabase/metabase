@@ -52,7 +52,7 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
             h="1.5rem"
             mih="1.5rem"
             aria-label={t`Open in dependency graph`}
-            onClick={onClose}
+            target="_blank"
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
