@@ -64,7 +64,7 @@ function ErrorItem({ detail }: ErrorItemProps) {
       justify="space-between"
       wrap="nowrap"
     >
-      <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="h5">
+      <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="1rem">
         {detail}
       </Box>
       <CopyButton

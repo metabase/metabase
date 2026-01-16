@@ -23,14 +23,15 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <Breadcrumbs lh="h5" aria-label={title}>
+    <Breadcrumbs lh="1rem" aria-label={title}>
       {locationInfo.links.map((link, linkIndex) => (
         <Anchor
           key={linkIndex}
           component={Link}
           className={cx(CS.textWrap, S.link)}
-          lh="h5"
+          lh="1rem"
           to={link.url}
+          target="_blank"
         >
           <Group gap="sm" wrap="nowrap">
             {linkIndex === 0 && <Icon name={locationInfo.icon} />}

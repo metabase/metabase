@@ -1,25 +1,28 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import {
-  ActionIcon,
   Badge,
   Box,
+  Breadcrumbs,
   Card,
   FixedSizeIcon,
   Group,
+  Menu,
   Stack,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
-import { getNodeIcon, getNodeLabel, getNodeLink } from "../../../../utils";
+import {
+  getNodeIcon,
+  getNodeLabel,
+  getNodeLink,
+  getNodeLocationInfo,
+} from "../../../../utils";
 
 import S from "./SidebarDependentsInfo.module.css";
 
@@ -28,14 +31,19 @@ type SidebarDependentsInfoProps = {
 };
 
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
-  const title = t`Broken dependents`;
-
   const { data: dependents = [] } = useListNodeDependentsQuery({
     id: node.id,
     type: node.type,
     dependent_type: "card",
     dependent_card_type: "question",
   });
+
+  const title =
+    dependents.length > 1 ? t`Broken dependents` : t`Broken dependent`;
+
+  if (dependents.length === 0) {
+    return null;
+  }
 
   return (
     <Stack role="region" aria-label={title}>
@@ -62,48 +70,56 @@ type DependentItemProps = {
 
 function DependentItem({ node }: DependentItemProps) {
   const label = getNodeLabel(node);
-  const icon = getNodeIcon(node);
   const link = getNodeLink(node);
+  const icon = getNodeIcon(node);
+  const location = getNodeLocationInfo(node);
 
   return (
-    <Group
-      className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
-      p="md"
-      justify="space-between"
-      wrap="nowrap"
-    >
-      <Group gap="sm">
-        <FixedSizeIcon name={icon} />
-        <Box className={CS.textWrap} lh="h5">
-          {label}
-        </Box>
-      </Group>
-      <Group className={CS.hoverChild} gap="sm" wrap="nowrap">
-        {link && (
-          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
-            <ActionIcon
-              component={ForwardRefLink}
-              to={link.url}
-              aria-label={link.label}
-              target="_blank"
+    <Menu>
+      <Menu.Target>
+        <Stack className={S.item} p="md" gap="sm" aria-label={label}>
+          <Group gap="sm">
+            <FixedSizeIcon name={icon} />
+            <Box className={CS.textWrap} lh="1rem">
+              {label}
+            </Box>
+          </Group>
+          {location != null && (
+            <Breadcrumbs
+              separator={<FixedSizeIcon name="chevronright" size={12} />}
+              c="text-secondary"
+              ml="1rem"
+              pl="sm"
             >
-              <FixedSizeIcon name="external" />
-            </ActionIcon>
-          </Tooltip>
-        )}
-        <Tooltip
-          label={t`Open in dependency graph`}
-          openDelay={TOOLTIP_OPEN_DELAY_MS}
-        >
-          <ActionIcon
+              {location.links.map((link, linkIndex) => (
+                <Box key={linkIndex} lh="1rem">
+                  {link.label}
+                </Box>
+              ))}
+            </Breadcrumbs>
+          )}
+        </Stack>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {link && (
+          <Menu.Item
             component={ForwardRefLink}
-            to={Urls.dependencyGraph({ entry: node })}
-            aria-label={t`Open in dependency graph`}
+            to={link.url}
+            target="_blank"
+            leftSection={<FixedSizeIcon name="external" />}
           >
-            <FixedSizeIcon name="dependencies" />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-    </Group>
+            {t`Go to this`}
+          </Menu.Item>
+        )}
+        <Menu.Item
+          component={ForwardRefLink}
+          to={Urls.dependencyGraph({ entry: node })}
+          target="_blank"
+          leftSection={<FixedSizeIcon name="dependencies" />}
+        >
+          {t`View in dependency graph`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }
