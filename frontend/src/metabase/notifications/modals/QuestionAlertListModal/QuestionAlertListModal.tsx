@@ -170,6 +170,6 @@ export const QuestionAlertListModal = ({
 
 function getDefaultActiveModal(
   questionNotifications: Notification[],
-): AlertModalMode | (() => AlertModalMode) {
+): AlertModalMode {
   return questionNotifications.length === 0 ? "create-modal" : "list-modal";
 }
