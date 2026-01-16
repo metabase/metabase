@@ -457,7 +457,7 @@ describe("StaticQuestion", () => {
   });
 
   describe("alert modal", () => {
-    it("should not show email selector on the SDK", async () => {
+    it("should not show email selector on the SDK and use current logged in user as the recipient", async () => {
       await setup({
         withAlerts: true,
         isEmailSetup: true,
