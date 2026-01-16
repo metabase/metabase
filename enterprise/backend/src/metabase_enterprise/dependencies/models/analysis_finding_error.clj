@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -60,7 +59,7 @@
                   (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
                           {:analyzed_entity_type (name entity-type)
                            :analyzed_entity_id entity-id
-                           :error_type (u/qualified-name error-type)
+                           :error_type (name error-type)
                            :error_detail error-detail
                            :source_entity_type (some-> source-entity-type name)
                            :source_entity_id source-entity-id})

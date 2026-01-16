@@ -19,7 +19,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
@@ -650,15 +649,21 @@
                                                       [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
                           :broken [:analysis_finding [:and
                                                       [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                                      [:= :analysis_finding.analyzed_entity_type (name entity-type)]]])
+                                                      [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+                          :breaking [:analysis_finding_error [:and
+                                                              [:= :analysis_finding_error.source_entity_id :entity.id]
+                                                              [:= :analysis_finding_error.source_entity_type (name entity-type)]]])
         dependency-filter (case query-type
                             :unreferenced [:= :dependency.id nil]
-                            :broken [:= :analysis_finding.result false])
+                            :broken [:= :analysis_finding.result false]
+                            :breaking [:is-not :analysis_finding_error.id nil])
         card-type-filter (when (and (= entity-type :card)
                                     (seq card-types))
                            [:in :entity.type (mapv name card-types)])
         query-filter (when (and query (not= entity-type :sandbox))
-                       [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")])
+                       [:or
+                        [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]
+                        [:like [:lower location-column] (str "%" (u/lower-case-en query) "%")]])
         database-filter (when (= entity-type :table)
                           [:and [:not :database.is_sample] [:not :database.is_audit]])
         archived-filter (when (= include-archived-items :exclude)
@@ -690,17 +695,20 @@
                           :dependents-count dependents-count-column
                           name-column)
         sort-by-location? (= sort-column :location)
+        ;; Need location joins when sorting by location OR when query filter uses location
+        needs-location-joins? (or sort-by-location? query)
         needs-database-join? (= entity-type :table)
         needs-collection-join? (or (and (not include-personal-collections)
                                         (#{:card :dashboard :document :snippet} entity-type))
-                                   (and sort-by-location?
+                                   (and needs-location-joins?
                                         (#{:card :transform :snippet :dashboard :document} entity-type)))
-        needs-dashboard-join? (and sort-by-location? (= entity-type :card))
-        needs-document-join? (and sort-by-location? (= entity-type :card))
-        needs-table-join? (and sort-by-location? (#{:segment :measure} entity-type))]
-    {:select [[[:inline (name entity-type)] :entity_type]
-              [:entity.id :entity_id]
-              [sort-key-column :sort_key]]
+        needs-dashboard-join? (and needs-location-joins? (= entity-type :card))
+        needs-document-join? (and needs-location-joins? (= entity-type :card))
+        needs-table-join? (and needs-location-joins? (#{:segment :measure} entity-type))
+        select-clause [[[:inline (name entity-type)] :entity_type]
+                       [:entity.id :entity_id]
+                       [sort-key-column :sort_key]]]
+    {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
      :left-join (cond-> dependency-join
                   needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
@@ -727,84 +735,6 @@
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
   #{:name :location :dependents-count})
-
-(defn- breaking-items-query
-  "Build a query to find entities that are causing errors in downstream dependencies.
-
-   Unlike `dependency-items-query` which queries entities with broken queries,
-   this queries entities that are the SOURCE of errors in other entities.
-
-   Joins analysis_finding_error on source_entity_type and source_entity_id
-   and returns DISTINCT source entities."
-  [{:keys [entity-type query include-archived-items include-personal-collections sort-column]}]
-  (let [table-name (case entity-type
-                     :card :report_card
-                     :table :metabase_table)
-        name-column (case entity-type
-                      :table :entity.display_name
-                      :entity.name)
-        root-collection (when (= entity-type :card)
-                          (collection.root/root-collection-with-ui-details nil))
-        location-column (case entity-type
-                          :card [:coalesce :collection.name [:inline (:name root-collection)]]
-                          :table :database.name)
-        dependents-count-column {:select [[:%count.*]]
-                                 :from [:dependency]
-                                 :where [:and
-                                         [:= :dependency.to_entity_id :entity.id]
-                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]
-                                         (visible-entities-filter-clause
-                                          :dependency.from_entity_type
-                                          :dependency.from_entity_id
-                                          {:include-archived-items include-archived-items})]}
-        ;; Join with analysis_finding_error to find entities that are SOURCE of errors
-        error-join [:analysis_finding_error [:and
-                                             [:= :analysis_finding_error.source_entity_id :entity.id]
-                                             [:= :analysis_finding_error.source_entity_type (name entity-type)]]]
-        query-filter (when query
-                       [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")])
-        database-filter (when (= entity-type :table)
-                          [:and [:not :database.is_sample] [:not :database.is_audit]])
-        archived-filter (when (= include-archived-items :exclude)
-                          (case entity-type
-                            :card [:= :entity.archived false]
-                            :table [:and
-                                    [:= :entity.active true]
-                                    [:= :entity.visibility_type nil]]))
-        personal-filter (when (and (not include-personal-collections)
-                                   (= entity-type :card))
-                          (let [personal-ids (t2/select-pks-vec :model/Collection
-                                                                :personal_owner_id [:not= nil]
-                                                                :location "/")]
-                            (when (seq personal-ids)
-                              [:or
-                               [:= :entity.collection_id nil]
-                               [:and
-                                [:= :collection.personal_owner_id nil]
-                                (into [:and]
-                                      (for [pid personal-ids]
-                                        [:not-like :collection.location (str "/" pid "/%")]))]])))
-        sort-key-column (case sort-column
-                          :location location-column
-                          :dependents-count dependents-count-column
-                          name-column)
-        sort-by-location? (= sort-column :location)
-        ;; Tables always need database join for filtering (is_sample, is_audit) and for location column
-        needs-database-join? (= entity-type :table)
-        needs-collection-join? (or (and (not include-personal-collections) (= entity-type :card))
-                                   (and sort-by-location? (= entity-type :card)))]
-    {:select-distinct [[[:inline (name entity-type)] :entity_type]
-                       [:entity.id :entity_id]
-                       [sort-key-column :sort_key]]
-     :from [[table-name :entity]]
-     :left-join (cond-> error-join
-                  needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
-                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id]))
-     :where (cond->> [:is-not :analysis_finding_error.id nil]
-              query-filter (conj [:and query-filter])
-              database-filter (conj [:and database-filter])
-              archived-filter (conj [:and archived-filter])
-              personal-filter (conj [:and personal-filter]))}))
 
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
@@ -927,11 +857,13 @@
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(breaking-items-query {:entity-type %
-                                                   :query query
-                                                   :include-archived-items include-archived-items
-                                                   :include-personal-collections include_personal_collections
-                                                   :sort-column sort_column})
+        union-queries (map #(dependency-items-query {:query-type :breaking
+                                                     :entity-type %
+                                                     :card-types card-types
+                                                     :query query
+                                                     :include-archived-items include-archived-items
+                                                     :include-personal-collections include_personal_collections
+                                                     :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
