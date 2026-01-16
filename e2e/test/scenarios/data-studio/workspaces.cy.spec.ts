@@ -689,51 +689,57 @@ describe("scenarios > data studio > workspaces", () => {
   });
 
   describe("graph tab", () => {
-    it("should display multiple transforms and their connections", () => {
-      createTransforms();
-      Workspaces.visitWorkspaces();
-      createWorkspace();
+    it(
+      "should display multiple transforms and their connections",
+      { tags: ["@python"] },
+      () => {
+        createTransforms();
+        Workspaces.visitWorkspaces();
+        createWorkspace();
 
-      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
-      Workspaces.getSaveTransformButton().click();
-      Workspaces.getMainlandTransforms().findByText("Python transform").click();
-      Workspaces.getSaveTransformButton().click();
+        Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+        Workspaces.getSaveTransformButton().click();
+        Workspaces.getMainlandTransforms()
+          .findByText("Python transform")
+          .click();
+        Workspaces.getSaveTransformButton().click();
 
-      Workspaces.getRunAllTransformsButton().click();
-      H.popover().findByText("Run all transforms").click();
-      verifyAndCloseToast("Transforms ran successfully");
+        Workspaces.getRunAllTransformsButton().click();
+        H.popover().findByText("Run all transforms").click();
+        verifyAndCloseToast("Transforms ran successfully");
 
-      Workspaces.openGraphTab();
+        Workspaces.openGraphTab();
 
-      // Verify nodes
-      H.DependencyGraph.graph().should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText("SQL transform")
-        .should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText("Python transform")
-        .should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText(TARGET_TABLE_SQL)
-        .should("be.visible");
-      H.DependencyGraph.graph()
-        .findByLabelText(TARGET_TABLE_PYTHON)
-        .should("be.visible");
+        // Verify nodes
+        H.DependencyGraph.graph().should("be.visible");
+        H.DependencyGraph.graph()
+          .findByLabelText("SQL transform")
+          .should("be.visible");
+        H.DependencyGraph.graph()
+          .findByLabelText("Python transform")
+          .should("be.visible");
+        H.DependencyGraph.graph()
+          .findByLabelText(TARGET_TABLE_SQL)
+          .should("be.visible");
+        H.DependencyGraph.graph()
+          .findByLabelText(TARGET_TABLE_PYTHON)
+          .should("be.visible");
 
-      // Verify edges: input tables -> transforms -> output tables
-      // To simplify test logic, we just check that all edges are present.
-      // In total there should be 4 edges:
-      // - Animals -> SQL transform
-      // - Animals -> Python transform
-      // - SQL transform -> target table
-      // - Python transform -> target table
-      H.DependencyGraph.graph()
-        .findAllByLabelText(/Edge from.*workspace-transform.*to.*Animals/)
-        .should("have.length", 2);
-      H.DependencyGraph.graph()
-        .findAllByLabelText(/Edge from.*target.*to.*workspace-transform/)
-        .should("have.length", 2);
-    });
+        // Verify edges: input tables -> transforms -> output tables
+        // To simplify test logic, we just check that all edges are present.
+        // In total there should be 4 edges:
+        // - Animals -> SQL transform
+        // - Animals -> Python transform
+        // - SQL transform -> target table
+        // - Python transform -> target table
+        H.DependencyGraph.graph()
+          .findAllByLabelText(/Edge from.*workspace-transform.*to.*Animals/)
+          .should("have.length", 2);
+        H.DependencyGraph.graph()
+          .findAllByLabelText(/Edge from.*target.*to.*workspace-transform/)
+          .should("have.length", 2);
+      },
+    );
 
     it("should allow clicking on graph nodes to see details", () => {
       createTransforms();
@@ -1275,7 +1281,7 @@ describe("scenarios > data studio > workspaces", () => {
   });
 
   describe("run all transforms", () => {
-    it("should run all transforms", () => {
+    it("should run all transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1337,7 +1343,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.tooltip().should("not.exist");
     });
 
-    it("should run all stale transforms", () => {
+    it("should run all stale transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
