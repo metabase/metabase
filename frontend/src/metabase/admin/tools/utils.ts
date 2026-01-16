@@ -49,7 +49,7 @@ export const getEntityUrl = (
 ): string =>
   match(entityType)
     .with("database", () => Urls.viewDatabase(entityId))
-    .with("card", () => Urls.viewCard(entityId, entityName))
+    .with("card", () => Urls.question({ id: entityId, name: entityName }))
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 

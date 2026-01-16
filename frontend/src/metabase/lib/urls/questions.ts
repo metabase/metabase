@@ -159,11 +159,6 @@ export function embedCard(token: EntityToken, type: string | null = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
-export function viewCard(cardId: CardId, questionSlug?: string) {
-  const questionId = questionSlug ? `${cardId}-${questionSlug}` : cardId;
-  return `/question/${questionId}`;
-}
-
 export function tableRowsQuery(
   databaseId: number | string,
   tableId: number | string,
