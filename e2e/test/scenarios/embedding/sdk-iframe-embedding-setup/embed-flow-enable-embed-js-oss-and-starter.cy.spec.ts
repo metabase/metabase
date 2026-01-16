@@ -4,13 +4,19 @@ import { getEmbedSidebar } from "./helpers";
 
 const { H } = cy;
 
-describe(
-  "scenarios > embedding > sdk iframe embed setup > enable embed js (OSS)",
-  { tags: "@OSS" },
-  () => {
+describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss and starter)", () => {
+  describe("OSS", { tags: "@OSS" }, () => runTests({ token: null }));
+
+  describe("Starter", () => runTests({ token: "starter" }));
+
+  function runTests({ token }: { token: "starter" | null }) {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
+      if (token) {
+        H.activateToken(token);
+      }
 
       H.mockEmbedJsToDevServer();
     });
@@ -27,6 +33,8 @@ describe(
           .within(() => {
             cy.findByText("New embed").click();
           });
+
+        cy.wait(50000);
 
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(
@@ -158,5 +166,5 @@ describe(
         cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
       });
     });
-  },
-);
+  }
+});

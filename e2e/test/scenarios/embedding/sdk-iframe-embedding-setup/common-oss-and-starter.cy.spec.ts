@@ -4,13 +4,20 @@ import { visitNewEmbedPage } from "./helpers";
 
 const { H } = cy;
 
-describe(
-  "scenarios > embedding > sdk iframe embed setup > common (oss)",
-  { tags: "@OSS" },
-  () => {
+describe("scenarios > embedding > sdk iframe embed setup > common (oss and starter)", () => {
+  describe("OSS", { tags: "@OSS" }, () => runTests({ token: null }));
+
+  describe("Starter", () => runTests({ token: "starter" }));
+
+  function runTests({ token }: { token: "starter" | null }) {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
+      if (token) {
+        H.activateToken(token);
+      }
+
       H.enableTracking();
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
@@ -37,5 +44,5 @@ describe(
 
       cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
     });
-  },
-);
+  }
+});
