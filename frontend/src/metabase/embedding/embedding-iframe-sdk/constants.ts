@@ -41,6 +41,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isSaveEnabled",
     "withTitle",
     "withDownloads",
+    "withAlerts",
     "initialSqlParameters",
     "hiddenParameters",
     "drills",

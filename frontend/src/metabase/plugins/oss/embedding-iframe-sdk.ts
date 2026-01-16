@@ -1,9 +1,15 @@
-import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
+import type {
+  DashboardSubscriptionsButtonProps,
+  QuestionAlertsButtonProps,
+} from "embedding-sdk-bundle/components/public/notifications";
 
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,
   DashboardSubscriptionsButton: (
     _props: DashboardSubscriptionsButtonProps,
+  ): JSX.Element | null => null,
+  QuestionAlertsButton: (
+    _props: QuestionAlertsButtonProps,
   ): JSX.Element | null => null,
 });
 
