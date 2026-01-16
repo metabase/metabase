@@ -41,7 +41,7 @@ export const NotificationSettingsPage = () => {
       <SettingsPageWrapper title={t`Notifications`}>
         <SettingsSection title={t`Slack`}>
           <UnstyledButton onClick={openSlackModal} variant="unstyled" w="100%">
-            <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
+            <Paper shadow="0" withBorder p="lg" mb="2.5rem">
               <Flex gap="0.5rem" align="center" mb="0.5rem">
                 <Icon name="slack_colorized" />
                 <Title order={3}>{t`Connect to Slack`}</Title>
