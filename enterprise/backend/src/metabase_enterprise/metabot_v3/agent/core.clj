@@ -18,19 +18,31 @@
   [parts]
   (some #(= (:type %) :tool-input) parts))
 
+(defn- has-final-response?
+  "Check if any tool result signals a final response.
+  Some tools (like ask_for_sql_clarification) return :final-response? true
+  to indicate the agent should stop and wait for user input."
+  [parts]
+  (some (fn [part]
+          (and (= (:type part) :tool-output)
+               (get-in part [:result :final-response?])))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating.
   Stops if:
   - Max iterations reached
   - No tool calls made (text-only response is final answer)
+  - A tool signals final response (e.g., ask_for_sql_clarification)
 
   Note: LLM may output text alongside tool calls (e.g., 'I'll search for that...').
-  We continue as long as there are tool calls to process."
+  We continue as long as there are tool calls to process and no final response."
   [iteration profile parts]
   (let [max-iterations (get profile :max-iterations 10)]
     (and
      (< iteration max-iterations)
-     (has-tool-calls? parts))))
+     (has-tool-calls? parts)
+     (not (has-final-response? parts)))))
 
 (defn- run-llm-with-tools
   "Run LLM with messages and tools, return channel with collected parts.
@@ -153,10 +165,22 @@
          (mapcat #(get-in % [:result :reactions])))
         parts))
 
+(defn- extract-data-parts-from-results
+  "Extract data parts from tool results.
+  Tools may return :data-parts in their result (e.g., todo_list, transform_suggestion).
+  Returns a vector of data part maps."
+  [parts]
+  (into []
+        (comp
+         (filter #(= (:type %) :tool-output))
+         (mapcat #(get-in % [:result :data-parts])))
+        parts))
+
 (defn- stream-parts-to-output!
-  "Stream parts to output channel with link resolution and reaction handling.
+  "Stream parts to output channel with link resolution, reaction handling, and data parts.
   - Resolves metabase:// links in text parts using memory state.
   - Extracts reactions from tool outputs and converts them to data parts.
+  - Extracts tool-generated data parts (e.g., todo_list, transform_suggestion).
   Must be called from within a go block.
   Returns a channel that completes when all parts are written."
   [out-chan parts memory]
@@ -171,28 +195,42 @@
       (let [processed-parts (links/process-parts-links parts queries-state charts-state)
             ;; Extract reactions and convert to data parts
             reactions (extract-reactions-from-parts parts)
-            reaction-data-parts (streaming/reactions->data-parts reactions)]
-        (log/debug "Extracted reactions" {:reaction-count (count reactions)
-                                          :data-part-count (count reaction-data-parts)})
+            reaction-data-parts (streaming/reactions->data-parts reactions)
+            ;; Extract tool-generated data parts (e.g., todo_list, transform_suggestion)
+            tool-data-parts (extract-data-parts-from-results parts)]
+        (log/debug "Extracted reactions and data parts"
+                   {:reaction-count (count reactions)
+                    :reaction-data-part-count (count reaction-data-parts)
+                    :tool-data-part-count (count tool-data-parts)})
         ;; Stream processed parts first
         (doseq [part processed-parts]
           (a/>! out-chan part))
         ;; Then stream reaction data parts (like navigate_to)
         (doseq [data-part reaction-data-parts]
+          (a/>! out-chan data-part))
+        ;; Then stream tool-generated data parts (like todo_list)
+        (doseq [data-part tool-data-parts]
           (a/>! out-chan data-part))))))
 
 (defn- finalize-stream!
   "Finalize the output stream with final state and close channel.
-  Must be called from within a go block. Returns a channel that completes when done."
-  [out-chan memory]
+  Must be called from within a go block. Returns a channel that completes when done.
+
+  Parameters:
+  - out-chan: Output channel to write to
+  - memory: Current memory state
+  - finish-reason: Why the agent stopped (\"stop\", \"error\", \"max_iterations\")"
+  [out-chan memory finish-reason]
   (a/go
     (let [state (memory/get-state memory)]
-      ;; Stream final state
+      ;; Stream final state using proper data part format
       (a/>! out-chan {:type :data
-                      :id (str "state-" (random-uuid))
+                      :data-type "state"
+                      :version 1
                       :data state})
-      ;; Stream finish message
-      (a/>! out-chan {:type :finish})
+      ;; Stream finish message with reason
+      (a/>! out-chan {:type :finish
+                      :finish-reason finish-reason})
       (a/close! out-chan))))
 
 (defn run-agent-loop
@@ -212,10 +250,12 @@
         capabilities (get context :capabilities #{})
         base-tools (agent-tools/get-tools-for-profile profile-id capabilities)
         out-chan (a/chan 100)
-        ;; Initialize memory and load any existing queries/charts from state
+        ;; Initialize memory and load any existing state (queries, charts, transforms, todos)
         initial-memory (-> (memory/initialize messages state)
                            (memory/load-queries-from-state state)
-                           (memory/load-charts-from-state state))
+                           (memory/load-charts-from-state state)
+                           (memory/load-transforms-from-state state)
+                           (memory/load-todos-from-state state))
         memory-atom (atom initial-memory)
         ;; Wrap state-dependent tools with access to memory
         tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
@@ -261,13 +301,14 @@
                 ;; Decide whether to continue
                 (if (should-continue? iteration profile result)
                   (recur (inc iteration))
-                  (do
+                  (let [finish-reason (cond
+                                        (>= (inc iteration) (:max-iterations profile)) "max_iterations"
+                                        (has-final-response? result) "final_response"
+                                        :else "stop")]
                     (log/info "Agent loop complete"
                               {:iterations (inc iteration)
-                               :reason (if (>= iteration (:max-iterations profile))
-                                         :max-iterations
-                                         :no-tool-calls)})
-                    (a/<! (finalize-stream! out-chan @memory-atom))))))))
+                               :finish-reason finish-reason})
+                    (a/<! (finalize-stream! out-chan @memory-atom finish-reason))))))))
         (catch Exception e
           (log/error e "Error in agent loop")
           (a/>! out-chan {:type :error
