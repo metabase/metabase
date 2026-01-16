@@ -4,15 +4,19 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
+   [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
+   [metabase-enterprise.metabot-v3.tools.filters :as metabot-filters]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.lib.core :as lib]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -251,6 +255,96 @@
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
+
+;;; ------------------------------------------------ Construct Query -------------------------------------------------
+
+;; Reuse schemas from the metabot tools API for query components
+(mr/def ::construct-query-table-request
+  "Request schema for constructing a query from a table.
+   Supports all query components: filters, fields, aggregations, group_by, order_by, limit."
+  [:map
+   [:table_id ms/PositiveInt]
+   [:filters      {:optional true} [:maybe [:sequential ::tools.api/filter]]]
+   [:fields       {:optional true} [:maybe [:sequential ::tools.api/field]]]
+   [:aggregations {:optional true} [:maybe [:sequential ::tools.api/aggregation]]]
+   [:group_by     {:optional true} [:maybe [:sequential ::tools.api/group-by]]]
+   [:order_by     {:optional true} [:maybe [:sequential [:map
+                                                         [:field ::tools.api/field]
+                                                         [:direction [:enum "asc" "desc"]]]]]]
+   [:limit        {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::construct-query-metric-request
+  "Request schema for constructing a query from a metric.
+   Only supports filters and group_by (aggregation is defined by the metric)."
+  [:map
+   [:metric_id ms/PositiveInt]
+   [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
+   [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]])
+
+(mr/def ::construct-query-request
+  "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
+  [:or ::construct-query-table-request ::construct-query-metric-request])
+
+(mr/def ::construct-query-response
+  [:map
+   [:query :string]])
+
+(defn- encode-base64-url-safe
+  "Encode a string to URL-safe base64 (RFC 4648).
+   Replaces + with - and / with _ to match frontend encoding."
+  [^String s]
+  (-> s
+      u/encode-base64
+      (str/replace "+" "-")
+      (str/replace "/" "_")))
+
+(defn- construct-table-query
+  "Build a query from a table using the provided query components."
+  [{:keys [table_id filters fields aggregations group_by order_by limit]}]
+  (let [result (metabot-filters/query-datasource
+                {:table-id     table_id
+                 :filters      filters
+                 :fields       fields
+                 :aggregations aggregations
+                 :group-by     group_by
+                 :order-by     (mapv (fn [{:keys [field direction]}]
+                                       {:field field :direction (keyword direction)})
+                                     order_by)
+                 :limit        limit})]
+    (if-let [data (:structured-output result)]
+      {:query (-> (:query data)
+                  lib/->legacy-MBQL
+                  json/encode
+                  encode-base64-url-safe)}
+      {:status 400, :body {:error (or (:output result) "Failed to construct query")}})))
+
+(defn- construct-metric-query
+  "Build a query from a metric using filters and group_by."
+  [{:keys [metric_id filters group_by]}]
+  (let [result (metabot-filters/query-metric
+                {:metric-id metric_id
+                 :filters   filters
+                 :group-by  group_by})]
+    (if-let [data (:structured-output result)]
+      {:query (-> (:query data)
+                  lib/->legacy-MBQL
+                  json/encode
+                  encode-base64-url-safe)}
+      {:status 404, :body {:error (or (:output result) "Metric not found")}})))
+
+(api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
+  "Construct an MBQL query from a table or metric.
+
+  Returns a base64-encoded MBQL query that can be used with the query API.
+
+  For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
+  For metrics, supports: filters, group_by (aggregation is defined by the metric)."
+  [_route-params
+   _query-params
+   body :- ::construct-query-request]
+  (if (:table_id body)
+    (construct-table-query body)
+    (construct-metric-query body)))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
