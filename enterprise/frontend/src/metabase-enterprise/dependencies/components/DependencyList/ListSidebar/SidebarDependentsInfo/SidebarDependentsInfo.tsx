@@ -19,7 +19,7 @@ import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
-import { getNodeLabel, getNodeLink } from "../../../../utils";
+import { getNodeIcon, getNodeLabel, getNodeLink } from "../../../../utils";
 
 import S from "./SidebarDependentsInfo.module.css";
 
@@ -62,6 +62,7 @@ type DependentItemProps = {
 
 function DependentItem({ node }: DependentItemProps) {
   const label = getNodeLabel(node);
+  const icon = getNodeIcon(node);
   const link = getNodeLink(node);
 
   return (
@@ -71,9 +72,12 @@ function DependentItem({ node }: DependentItemProps) {
       justify="space-between"
       wrap="nowrap"
     >
-      <Box className={CS.textWrap} lh="h5">
-        {label}
-      </Box>
+      <Group gap="sm">
+        <FixedSizeIcon name={icon} />
+        <Box className={CS.textWrap} lh="h5">
+          {label}
+        </Box>
+      </Group>
       <Group className={CS.hoverChild} gap="sm" wrap="nowrap">
         {link && (
           <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
@@ -95,7 +99,6 @@ function DependentItem({ node }: DependentItemProps) {
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
             aria-label={t`Open in dependency graph`}
-            target="_blank"
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>

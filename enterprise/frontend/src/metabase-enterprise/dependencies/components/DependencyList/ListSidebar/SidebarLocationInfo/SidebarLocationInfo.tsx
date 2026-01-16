@@ -31,7 +31,6 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
           className={cx(CS.textWrap, S.link)}
           lh="h5"
           to={link.url}
-          target="_blank"
         >
           <Group gap="sm" wrap="nowrap">
             {linkIndex === 0 && <Icon name={locationInfo.icon} />}

@@ -35,7 +35,6 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
         fw="bold"
         lh="h3"
         to={link?.url ?? ""}
-        target="_blank"
       >
         {getNodeLabel(node)}
       </Anchor>
@@ -48,7 +47,6 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
             aria-label={t`Open in dependency graph`}
-            target="_blank"
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
