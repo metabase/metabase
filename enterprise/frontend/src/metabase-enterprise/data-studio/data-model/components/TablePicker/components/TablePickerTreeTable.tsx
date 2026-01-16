@@ -182,8 +182,11 @@ export function TablePickerTreeTable({
         const nextSchemas = new Set(selectedSchemas);
         const nextDatabases = new Set(selectedDatabases);
 
-        const lastNonTableNodeIndex = rangeRows.findLastIndex(
-          (r) => r.original.type !== "table",
+        const lastExpandedDatabaseIndex = rangeRows.findLastIndex(
+          (r) => r.original.type === "database",
+        );
+        const lastExpandedSchemaIndex = rangeRows.findLastIndex(
+          (r) => r.original.type === "schema",
         );
         const lastRowIndex = rangeRows.length - 1;
         rangeRows.forEach((rangeRow, rowIndex) => {
@@ -197,9 +200,12 @@ export function TablePickerTreeTable({
 
           const originalNode = nodeKeyToOriginal.get(original.nodeKey);
 
-          const isLastNonTableNode = lastNonTableNodeIndex === rowIndex;
-
-          if (isLastNonTableNode && !(lastRowIndex === rowIndex)) {
+          if (
+            [lastExpandedDatabaseIndex, lastExpandedSchemaIndex].includes(
+              rowIndex,
+            ) &&
+            !(lastRowIndex === rowIndex)
+          ) {
             return;
           }
 
