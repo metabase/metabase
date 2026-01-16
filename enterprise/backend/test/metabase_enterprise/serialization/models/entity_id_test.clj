@@ -33,6 +33,7 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:model/AnalysisFinding
+    :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction

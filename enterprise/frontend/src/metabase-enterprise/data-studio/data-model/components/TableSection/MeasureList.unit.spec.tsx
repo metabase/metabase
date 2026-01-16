@@ -1,7 +1,8 @@
 import { Route } from "react-router";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Measure, Table } from "metabase-types/api";
+import type { EnterpriseSettings, Measure, Table } from "metabase-types/api";
 import { createMockMeasure, createMockTable } from "metabase-types/api/mocks";
 
 import { MeasureList } from "./MeasureList";
@@ -9,9 +10,10 @@ import { MeasureList } from "./MeasureList";
 type SetupOpts = {
   measures?: Measure[];
   table?: Partial<Table>;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
-function setup({ measures = [], table = {} }: SetupOpts = {}) {
+function setup({ measures = [], table = {}, remoteSyncType }: SetupOpts = {}) {
   const mockTable = createMockTable({
     id: 1,
     db_id: 1,
@@ -22,7 +24,15 @@ function setup({ measures = [], table = {} }: SetupOpts = {}) {
 
   renderWithProviders(
     <Route path="/" component={() => <MeasureList table={mockTable} />} />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        settings: mockSettings({
+          "remote-sync-type": remoteSyncType,
+          "remote-sync-enabled": !!remoteSyncType,
+        }),
+      },
+    },
   );
 }
 
@@ -62,5 +72,19 @@ describe("MeasureList", () => {
       "href",
       "/data-studio/data/database/1/schema/1:PUBLIC/table/1/measures/1",
     );
+  });
+
+  it("should render a 'New measure' button", () => {
+    setup();
+    expect(
+      screen.getByRole("link", { name: /New measure/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not render 'New measure' button when remote sync is set to read-only", () => {
+    setup({ remoteSyncType: "read-only" });
+    expect(
+      screen.queryByRole("link", { name: /New measure/i }),
+    ).not.toBeInTheDocument();
   });
 });

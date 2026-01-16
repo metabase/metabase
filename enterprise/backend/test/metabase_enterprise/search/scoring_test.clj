@@ -184,7 +184,7 @@
                 ["card" 2 "card verified"]]
                (appdb.scoring-test/search-results* "card")))))))
 
-(deftest ^:parallel transforms-user-recency-test
+(deftest transforms-user-recency-test
   (mt/with-premium-features #{:transforms}
     (let [user-id (mt/user->id :crowberto)
           now     (Instant/now)

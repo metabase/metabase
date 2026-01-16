@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Combobox, Group, Icon, Text, Tooltip } from "metabase/ui";
 
 export interface GitSyncOptionsDropdownProps {
+  isPullDisabled: boolean;
   isPushDisabled: boolean;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
@@ -10,10 +11,11 @@ export interface GitSyncOptionsDropdownProps {
 }
 
 export const GitSyncOptionsDropdown = ({
+  isPullDisabled,
+  isPushDisabled,
   onPullClick,
   onPushClick,
   onSwitchBranchClick,
-  isPushDisabled,
 }: GitSyncOptionsDropdownProps) => {
   return (
     <Combobox.Dropdown p={0}>
@@ -34,12 +36,21 @@ export const GitSyncOptionsDropdown = ({
           </Combobox.Option>
         </Tooltip>
 
-        <Combobox.Option onClick={onPullClick} py="sm" value="pull">
-          <Group gap="md" wrap="nowrap">
-            <Icon name="arrow_down" size={12} />
-            <Text>{t`Pull changes`}</Text>
-          </Group>
-        </Combobox.Option>
+        <Tooltip
+          label={isPullDisabled ? t`No changes to pull` : t`Pull from remote`}
+        >
+          <Combobox.Option
+            disabled={isPullDisabled}
+            onClick={onPullClick}
+            py="sm"
+            value="pull"
+          >
+            <Group gap="md" wrap="nowrap">
+              <Icon name="arrow_down" size={12} />
+              <Text>{t`Pull changes`}</Text>
+            </Group>
+          </Combobox.Option>
+        </Tooltip>
 
         <Combobox.Option
           onClick={onSwitchBranchClick}
