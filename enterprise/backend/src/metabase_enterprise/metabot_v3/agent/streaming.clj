@@ -14,6 +14,9 @@
 
 (def navigate-to-type "navigate_to")
 (def state-type "state")
+(def todo-list-type "todo_list")
+(def code-edit-type "code_edit")
+(def transform-suggestion-type "transform_suggestion")
 
 ;;; Query URL Encoding
 
@@ -54,6 +57,42 @@
   {:type :data
    :data-type state-type
    :data state-map})
+
+(defn todo-list-part
+  "Create a TODO_LIST data part for streaming.
+  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
+  [todos]
+  {:type :data
+   :data-type todo-list-type
+   :version 1
+   :data todos})
+
+(defn code-edit-part
+  "Create a CODE_EDIT data part for streaming.
+  Edit-data should be a map describing the code edit operation.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.CODE_EDIT, version=1, value=edit_data)"
+  [edit-data]
+  {:type :data
+   :data-type code-edit-type
+   :version 1
+   :data edit-data})
+
+(defn transform-suggestion-part
+  "Create a TRANSFORM_SUGGESTION data part for streaming.
+  Suggestion should be a map containing the suggested transform definition.
+
+  This matches Python AI Service's:
+  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
+  [suggestion]
+  {:type :data
+   :data-type transform-suggestion-type
+   :version 1
+   :data suggestion})
 
 ;;; Reaction Conversion
 
