@@ -22,13 +22,13 @@ const mockPythonSource: PythonTransformSourceDraft = {
 
 type SetupOpts = {
   source?: PythonTransformSourceDraft;
-  readOnly?: boolean;
+  isEditMode?: boolean;
   transformId?: number;
 };
 
 function setup({
   source = mockPythonSource,
-  readOnly = false,
+  isEditMode = true,
   transformId = 1,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([mockDatabase]);
@@ -38,7 +38,7 @@ function setup({
   renderWithProviders(
     <PythonTransformEditor
       source={source}
-      readOnly={readOnly}
+      isEditMode={isEditMode}
       transformId={transformId}
       onChangeSource={jest.fn()}
       onAcceptProposed={jest.fn()}
@@ -51,62 +51,54 @@ function setup({
 }
 
 describe("PythonTransformEditor", () => {
-  beforeEach(() => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  describe("read-only mode", () => {
-    it("should not render the data picker sidebar when readOnly is true", () => {
-      setup({ readOnly: true });
+  describe("view mode (not editing)", () => {
+    it("should not render the data picker sidebar when not in edit mode", () => {
+      setup({ isEditMode: false });
       expect(
         screen.queryByTestId("python-data-picker"),
       ).not.toBeInTheDocument();
     });
 
-    it("should not render the results panel when readOnly is true", () => {
-      setup({ readOnly: true });
+    it("should not render the results panel when not in edit mode", () => {
+      setup({ isEditMode: false });
       expect(screen.queryByTestId("python-results")).not.toBeInTheDocument();
     });
 
     it("should render the top bar", () => {
-      setup({ readOnly: true });
+      setup({ isEditMode: false });
       expect(
         screen.getByTestId("python-transform-top-bar"),
       ).toBeInTheDocument();
     });
 
-    it("should render EditDefinitionButton in read-only mode", () => {
-      setup({ readOnly: true, transformId: 1 });
+    it("should render EditDefinitionButton when not in edit mode", () => {
+      setup({ isEditMode: false, transformId: 1 });
       expect(screen.getByText(/edit definition/i)).toBeInTheDocument();
     });
   });
 
   describe("edit mode", () => {
-    it("should render the data picker sidebar when readOnly is false", async () => {
-      setup({ readOnly: false });
+    it("should render the data picker sidebar in edit mode", async () => {
+      setup({ isEditMode: true });
       expect(
         await screen.findByTestId("python-data-picker"),
       ).toBeInTheDocument();
     });
 
-    it("should render the results panel when readOnly is false", () => {
-      setup({ readOnly: false });
+    it("should render the results panel in edit mode", () => {
+      setup({ isEditMode: true });
       expect(screen.getByTestId("python-results")).toBeInTheDocument();
     });
 
     it("should render the top bar", () => {
-      setup({ readOnly: false });
+      setup({ isEditMode: true });
       expect(
         screen.getByTestId("python-transform-top-bar"),
       ).toBeInTheDocument();
     });
 
     it("should not render EditDefinitionButton in edit mode", () => {
-      setup({ readOnly: false });
+      setup({ isEditMode: true });
       expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
     });
   });

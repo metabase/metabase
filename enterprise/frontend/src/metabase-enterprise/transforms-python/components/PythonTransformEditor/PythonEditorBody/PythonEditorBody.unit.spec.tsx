@@ -7,7 +7,7 @@ import { PythonEditorBody } from "./PythonEditorBody";
 type SetupOpts = {
   source?: string;
   proposedSource?: string;
-  readOnly?: boolean;
+  isEditMode?: boolean;
   isRunnable?: boolean;
   isRunning?: boolean;
   isDirty?: boolean;
@@ -19,7 +19,7 @@ type SetupOpts = {
 function setup({
   source = "# test script",
   proposedSource,
-  readOnly = false,
+  isEditMode = true,
   isRunnable = true,
   isRunning = false,
   isDirty = false,
@@ -31,7 +31,7 @@ function setup({
     <PythonEditorBody
       source={source}
       proposedSource={proposedSource}
-      readOnly={readOnly}
+      isEditMode={isEditMode}
       isRunnable={isRunnable}
       isRunning={isRunning}
       isDirty={isDirty}
@@ -46,15 +46,15 @@ function setup({
 }
 
 describe("PythonEditorBody", () => {
-  describe("read-only mode", () => {
-    it("should not render run button when readOnly is true", () => {
-      setup({ readOnly: true });
+  describe("view mode (not editing)", () => {
+    it("should not render run button when not in edit mode", () => {
+      setup({ isEditMode: false });
       expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
 
-    it("should not render proposed changes buttons when readOnly is true", () => {
+    it("should not render proposed changes buttons when not in edit mode", () => {
       setup({
-        readOnly: true,
+        isEditMode: false,
         proposedSource: "# proposed",
         onAcceptProposed: jest.fn(),
         onRejectProposed: jest.fn(),
@@ -69,20 +69,20 @@ describe("PythonEditorBody", () => {
     });
 
     it("should render the python editor", () => {
-      setup({ readOnly: true });
+      setup({ isEditMode: false });
       expect(screen.getByTestId("python-editor")).toBeInTheDocument();
     });
   });
 
   describe("edit mode", () => {
-    it("should render run button when readOnly is false", () => {
-      setup({ readOnly: false });
+    it("should render run button in edit mode", () => {
+      setup({ isEditMode: true });
       expect(screen.getByTestId("run-button")).toBeInTheDocument();
     });
 
     it("should render proposed changes buttons when proposedSource and callbacks are provided", () => {
       setup({
-        readOnly: false,
+        isEditMode: true,
         proposedSource: "# proposed changes",
         onAcceptProposed: jest.fn(),
         onRejectProposed: jest.fn(),
@@ -97,7 +97,7 @@ describe("PythonEditorBody", () => {
     });
 
     it("should not render proposed changes buttons when proposedSource is not provided", () => {
-      setup({ readOnly: false });
+      setup({ isEditMode: true });
 
       expect(
         screen.queryByTestId("accept-proposed-changes-button"),
@@ -108,7 +108,7 @@ describe("PythonEditorBody", () => {
     });
 
     it("should render the python editor", () => {
-      setup({ readOnly: false });
+      setup({ isEditMode: true });
       expect(screen.getByTestId("python-editor")).toBeInTheDocument();
     });
   });

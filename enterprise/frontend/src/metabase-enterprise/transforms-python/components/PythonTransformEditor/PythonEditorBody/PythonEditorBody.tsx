@@ -14,7 +14,7 @@ type PythonEditorBodyProps = {
   source: string;
   proposedSource?: string;
   isRunnable: boolean;
-  readOnly?: boolean;
+  isEditMode?: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
   onCancel?: () => void;
@@ -35,7 +35,7 @@ export function PythonEditorBody({
   proposedSource,
   onChange,
   isRunnable,
-  readOnly,
+  isEditMode,
   onRun,
   onCancel,
   isRunning,
@@ -45,14 +45,14 @@ export function PythonEditorBody({
   onRejectProposed,
 }: PythonEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
-  const editorHeight = useInitialEditorHeight(readOnly);
+  const editorHeight = useInitialEditorHeight(isEditMode);
 
   return (
     <ResizableBox
       axis="y"
       height={editorHeight}
       handle={<ResizableBoxHandle />}
-      resizeHandles={readOnly || !withDebugger ? [] : ["s"]}
+      resizeHandles={!isEditMode || !withDebugger ? [] : ["s"]}
       style={isResizing ? undefined : { transition: "height 0.25s" }}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
@@ -63,11 +63,11 @@ export function PythonEditorBody({
           proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
-          readOnly={readOnly}
+          readOnly={!isEditMode}
           data-testid="python-editor"
         />
 
-        {!readOnly && (
+        {isEditMode && (
           <Stack m="1rem" gap="md" mt="auto">
             {proposedSource && onRejectProposed && onAcceptProposed && (
               <>
@@ -112,12 +112,12 @@ export function PythonEditorBody({
   );
 }
 
-function useInitialEditorHeight(readOnly?: boolean) {
+function useInitialEditorHeight(isEditMode?: boolean) {
   const { height: windowHeight } = useWindowSize();
   const availableHeight = windowHeight - HEADER_HEIGHT;
 
-  if (readOnly) {
-    // When read-only, we don't need to split the container to show the results panel on the bottom
+  if (!isEditMode) {
+    // When not in edit mode, we don't need to split the container to show the results panel on the bottom
     return availableHeight;
   }
 

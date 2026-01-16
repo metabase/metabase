@@ -14,13 +14,13 @@ const mockDatabase = createMockDatabase({ id: 1, name: "Test Database" });
 
 type SetupOpts = {
   databaseId?: number;
-  readOnly?: boolean;
+  isEditMode?: boolean;
   transformId?: number;
 };
 
 function setup({
   databaseId = 1,
-  readOnly = false,
+  isEditMode = true,
   transformId = 1,
 }: SetupOpts = {}) {
   const onDatabaseChange = jest.fn();
@@ -33,7 +33,7 @@ function setup({
       component={() => (
         <PythonTransformTopBar
           databaseId={databaseId}
-          readOnly={readOnly}
+          isEditMode={isEditMode}
           transformId={transformId}
           onDatabaseChange={onDatabaseChange}
         />
@@ -51,39 +51,31 @@ function setup({
 }
 
 describe("PythonTransformTopBar", () => {
-  beforeEach(() => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  describe("read-only mode", () => {
-    it("should render EditDefinitionButton when readOnly is true", () => {
-      setup({ readOnly: true, transformId: 1 });
+  describe("view mode (not editing)", () => {
+    it("should render EditDefinitionButton when not in edit mode", () => {
+      setup({ isEditMode: false, transformId: 1 });
       expect(
         screen.getByRole("link", { name: /edit definition/i }),
       ).toBeInTheDocument();
     });
 
-    it("should display database name as static text when readOnly is true", async () => {
-      setup({ readOnly: true, databaseId: 1 });
-      // In read-only mode, database name is displayed as text, not a dropdown
+    it("should display database name as static text when not in edit mode", async () => {
+      setup({ isEditMode: false, databaseId: 1 });
+      // When not in edit mode, database name is displayed as text, not a dropdown
       expect(await screen.findByText("Test Database")).toBeInTheDocument();
     });
   });
 
   describe("edit mode", () => {
-    it("should not render EditDefinitionButton when readOnly is false", () => {
-      setup({ readOnly: false });
+    it("should not render EditDefinitionButton in edit mode", () => {
+      setup({ isEditMode: true });
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),
       ).not.toBeInTheDocument();
     });
 
-    it("should render database selector when readOnly is false", () => {
-      setup({ readOnly: false });
+    it("should render database selector in edit mode", () => {
+      setup({ isEditMode: true });
       expect(screen.getByTestId("selected-database")).toBeInTheDocument();
     });
   });

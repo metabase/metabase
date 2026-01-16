@@ -20,7 +20,7 @@ import { updateTransformSignature } from "./utils";
 export function PythonTransformEditor({
   source,
   proposedSource,
-  readOnly,
+  isEditMode,
   transformId,
   onChangeSource,
   onAcceptProposed,
@@ -68,7 +68,7 @@ export function PythonTransformEditor({
   };
 
   const handleCmdEnter = () => {
-    if (readOnly) {
+    if (!isEditMode) {
       return;
     }
     if (isRunning) {
@@ -84,17 +84,16 @@ export function PythonTransformEditor({
     <Flex h="100%" w="100%" direction="column">
       <PythonTransformTopBar
         databaseId={source["source-database"]}
-        readOnly={readOnly}
+        isEditMode={isEditMode}
         transformId={transformId}
         onDatabaseChange={handleDatabaseChange}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
-        {!readOnly && (
+        {isEditMode && (
           <PythonDataPicker
             database={source["source-database"]}
             tables={source["source-tables"]}
             onChange={handleDataChange}
-            readOnly={readOnly}
           />
         )}
         <Stack w="100%" h="100%" gap={0}>
@@ -102,17 +101,17 @@ export function PythonTransformEditor({
             isRunnable={isPythonTransformSource(source)}
             isRunning={isRunning}
             isDirty={isDirty}
-            readOnly={readOnly}
+            isEditMode={isEditMode}
             onRun={run}
             onCancel={cancel}
             source={source.body}
             proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
-            withDebugger={!readOnly}
+            withDebugger={isEditMode}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          {!readOnly && (
+          {isEditMode && (
             <PythonEditorResults
               isRunning={isRunning}
               executionResult={executionResult}

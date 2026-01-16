@@ -14,18 +14,18 @@ import S from "./PythonTransformTopBar.module.css";
 
 type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
-  readOnly?: boolean;
+  isEditMode?: boolean;
   transformId?: TransformId;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
 };
 
 export function PythonTransformTopBar({
   databaseId,
-  readOnly,
+  isEditMode,
   transformId,
   onDatabaseChange,
 }: PythonTransformTopBarProps) {
-  const showReadonlyControls = readOnly && transformId;
+  const showEditDefinitionButton = !isEditMode && transformId;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -46,7 +46,21 @@ export function PythonTransformTopBar({
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
-      {readOnly ? (
+      {isEditMode ? (
+        <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
+          <DatabaseDataSelector
+            className={S.databaseSelector}
+            selectedDatabaseId={databaseId}
+            setDatabaseFn={handleDatabaseChange}
+            databases={databases?.data ?? []}
+            readOnly={!isEditMode}
+            databaseIsDisabled={(database: Database) =>
+              !doesDatabaseSupportTransforms(database) ||
+              !hasFeature(database, "transforms/python")
+            }
+          />
+        </Flex>
+      ) : (
         <Flex
           h="3rem"
           p="md"
@@ -56,22 +70,8 @@ export function PythonTransformTopBar({
         >
           {database?.name}
         </Flex>
-      ) : (
-        <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
-          <DatabaseDataSelector
-            className={S.databaseSelector}
-            selectedDatabaseId={databaseId}
-            setDatabaseFn={handleDatabaseChange}
-            databases={databases?.data ?? []}
-            readOnly={readOnly}
-            databaseIsDisabled={(database: Database) =>
-              !doesDatabaseSupportTransforms(database) ||
-              !hasFeature(database, "transforms/python")
-            }
-          />
-        </Flex>
       )}
-      {showReadonlyControls && (
+      {showEditDefinitionButton && (
         <Flex ml="auto" mr="lg" align="center" h="3rem">
           <EditDefinitionButton
             bg="transparent"
