@@ -17,6 +17,7 @@ import {
 } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -194,7 +195,7 @@ export class Scalar extends Component<
       jsx: true,
     };
 
-    const segments = settings["scalar.segments"];
+    const segments = settings["scalar.segments"]?.filter(segmentIsValid);
 
     const color = getColor(value, segments);
     const tooltipContent = getTooltipContent(segments);

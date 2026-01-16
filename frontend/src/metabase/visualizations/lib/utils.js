@@ -521,3 +521,6 @@ export function findSensibleSankeyColumns(data) {
     metric: metricColumn.name,
   };
 }
+
+export const segmentIsValid = ({ min, max }) =>
+  !isNaN(min) && !isNaN(max) && min !== null && max !== null;
