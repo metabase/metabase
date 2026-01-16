@@ -3,12 +3,10 @@ import type { DependencyGroupType } from "metabase-types/api";
 import type { DependencyListMode } from "./types";
 
 const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
+  "table",
   "question",
   "model",
   "metric",
-  "segment",
-  "measure",
-  "transform",
 ];
 
 const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
