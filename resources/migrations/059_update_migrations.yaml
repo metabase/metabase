@@ -622,6 +622,28 @@ databaseChangeLog:
             tableName: task_run
             columnName: updated_at
 
+  - changeSet:
+      id: v59.2026-01-16T11:00:00
+      author: bronsa
+      comment: Usage analytics; Create v_task_runs view for task run analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/task_runs/v1/postgres-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/task_runs/v1/mysql-task_runs.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/task_runs/v1/h2-task_runs.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql,mysql,mariadb,h2
+            sql: drop view if exists v_task_runs;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
