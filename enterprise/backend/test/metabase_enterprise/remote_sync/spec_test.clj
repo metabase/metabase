@@ -81,7 +81,7 @@
 (deftest all-specs-have-valid-export-path-test
   (testing "Every spec has valid export-path configuration"
     (let [valid-path-types #{:collection-entity :table-path :field-path
-                             :segment-path :transform-path :transform-tag-path}]
+                             :segment-path :measure-path :transform-path :transform-tag-path}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-path-types (get-in spec [:export-path :type]))
@@ -94,12 +94,14 @@
     (is (= :model/Card (:model-key (spec/spec-for-model-type "Card"))))
     (is (= :model/Dashboard (:model-key (spec/spec-for-model-type "Dashboard"))))
     (is (= :model/Table (:model-key (spec/spec-for-model-type "Table"))))
+    (is (= :model/Measure (:model-key (spec/spec-for-model-type "Measure"))))
     (is (nil? (spec/spec-for-model-type "NonExistent")))))
 
 (deftest spec-for-model-key-test
   (testing "spec-for-model-key returns correct spec"
     (is (= "Card" (:model-type (spec/spec-for-model-key :model/Card))))
     (is (= "Dashboard" (:model-type (spec/spec-for-model-key :model/Dashboard))))
+    (is (= "Measure" (:model-type (spec/spec-for-model-key :model/Measure))))
     (is (nil? (spec/spec-for-model-key :model/NonExistent)))))
 
 (deftest all-model-types-test
@@ -111,9 +113,10 @@
       (is (contains? types "Table"))
       (is (contains? types "Field"))
       (is (contains? types "Segment"))
+      (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 11 (count types))))))
+      (is (= 12 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -133,6 +136,7 @@
           (is (not (contains? path-specs :model/Card))))
         (testing "hybrid specs"
           (is (contains? hybrid-specs :model/Segment))
+          (is (contains? hybrid-specs :model/Measure))
           (is (not (contains? hybrid-specs :model/Card))))))))
 
 (deftest excluded-model-types-test
@@ -300,6 +304,8 @@
 
   (testing "query-export-roots with :parent-table eligibility returns nil (derived)"
     (let [field-spec (spec/spec-for-model-key :model/Field)
-          segment-spec (spec/spec-for-model-key :model/Segment)]
+          segment-spec (spec/spec-for-model-key :model/Segment)
+          measure-spec (spec/spec-for-model-key :model/Measure)]
       (is (nil? (spec/query-export-roots field-spec)))
-      (is (nil? (spec/query-export-roots segment-spec))))))
+      (is (nil? (spec/query-export-roots segment-spec)))
+      (is (nil? (spec/query-export-roots measure-spec))))))

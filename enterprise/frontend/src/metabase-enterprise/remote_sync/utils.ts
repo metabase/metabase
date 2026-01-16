@@ -184,10 +184,11 @@ export const getCollectionPathSegments = (
 const TABLE_CHILD_MODELS: Set<RemoteSyncEntityModel> = new Set([
   "field",
   "segment",
+  "measure",
 ]);
 
 /**
- * Check if a model type is a child of a table (field or segment)
+ * Check if a model type is a child of a table (field, segment, or measure)
  */
 export const isTableChildModel = (model: RemoteSyncEntityModel): boolean => {
   return TABLE_CHILD_MODELS.has(model);

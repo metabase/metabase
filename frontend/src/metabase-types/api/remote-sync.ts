@@ -13,6 +13,7 @@ export type RemoteSyncEntityModel =
   | "table"
   | "field"
   | "segment"
+  | "measure"
   | "transform"
   | "transformtag"
   | "transformjob";

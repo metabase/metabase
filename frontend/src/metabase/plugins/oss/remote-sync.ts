@@ -54,7 +54,7 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
-  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
     taskType: any;

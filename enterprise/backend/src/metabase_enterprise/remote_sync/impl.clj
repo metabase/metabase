@@ -92,6 +92,9 @@
     (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
     "This repository contains tenant collections, but the tenants feature is disabled on your instance."
 
+    (str/includes? (ex-message e) "Missing commit")
+    "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 
@@ -343,7 +346,14 @@
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result! (sync-fn task-id) task-id branch)))
+       (handle-task-result!
+        (try
+          (sync-fn task-id)
+          (catch Exception e
+            (log/error e "Remote sync task failed")
+            {:status :error
+             :message (source-error-message e)}))
+        task-id branch)))
     task))
 
 (defn async-import!

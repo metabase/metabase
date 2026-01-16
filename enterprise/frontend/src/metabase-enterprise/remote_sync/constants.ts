@@ -1,6 +1,7 @@
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import * as Yup from "yup";
 
-import { tag } from "../api/tags";
+import { type EnterpriseTagType, tag } from "../api/tags";
 
 export const URL_KEY = "remote-sync-url";
 export const TOKEN_KEY = "remote-sync-token";
@@ -25,9 +26,10 @@ export const REMOTE_SYNC_SCHEMA = Yup.object({
   [COLLECTIONS_KEY]: Yup.object().nullable().default({}),
 });
 
-export const REMOTE_SYNC_INVALIDATION_TAGS = [
-  tag("collection-dirty-entities"),
-  tag("collection-is-dirty"),
-  tag("remote-sync-current-task"),
-  tag("remote-sync-has-remote-changes"),
-];
+export const REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<EnterpriseTagType>[] =
+  [
+    tag("collection-dirty-entities"),
+    tag("collection-is-dirty"),
+    tag("remote-sync-current-task"),
+    tag("remote-sync-has-remote-changes"),
+  ];
