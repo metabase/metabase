@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -13,6 +14,7 @@ import { useEditTablesMutation } from "metabase-enterprise/api";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -36,6 +38,7 @@ export function TableAttributesEditBulk({
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const {
     selectedDatabases,
     selectedSchemas,
@@ -155,15 +158,17 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            <Button
-              flex={1}
-              p="sm"
-              leftSection={<Icon name="publish" />}
-              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
-            >
-              {t`Publish`}
-            </Button>
-            {hasLibrary && (
+            {!remoteSyncReadOnly && (
+              <Button
+                flex={1}
+                p="sm"
+                leftSection={<Icon name="publish" />}
+                onClick={() => setModalType(hasLibrary ? "publish" : "library")}
+              >
+                {t`Publish`}
+              </Button>
+            )}
+            {!remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"

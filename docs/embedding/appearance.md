@@ -272,10 +272,6 @@ For advanced theme configuration options, you can configure the `theme` object i
 }
 ```
 
-## Example app with theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a question or dashboard, and play around with changing colors.
-
 ## Limitations
 
 - CSS variables aren't yet supported. If you'd like Metabase to support CSS variables, please upvote this [feature request](https://github.com/metabase/metabase/issues/59237).

@@ -6,10 +6,11 @@ import {
   setupSchemaEndpoints,
   setupSegmentEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type { Segment, Table } from "metabase-types/api";
+import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
@@ -73,12 +74,14 @@ type SetupOpts = {
   segment?: Segment;
   table?: Table;
   isAdmin?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 function setup({
   segment = TEST_SEGMENT,
   table = TEST_TABLE,
   isAdmin = true,
+  remoteSyncType,
 }: SetupOpts = {}) {
   setupSegmentEndpoint(segment);
   setupSchemaEndpoints(checkNotNull(table.db));
@@ -115,6 +118,10 @@ function setup({
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE],
           tables: [table],
+        }),
+        settings: mockSettings({
+          "remote-sync-type": remoteSyncType,
+          "remote-sync-enabled": !!remoteSyncType,
         }),
       },
     },
@@ -281,6 +288,43 @@ describe("SegmentDetailPage", () => {
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("readonly state for read-only remote sync", () => {
+    it("has readonly segment name input", async () => {
+      setup({ remoteSyncType: "read-only" });
+
+      const nameInput = screen.getByDisplayValue("High Value Orders");
+      expect(nameInput).toBeDisabled();
+    });
+
+    it("shows description as plain text", async () => {
+      setup({ remoteSyncType: "read-only" });
+
+      expect(screen.getByText("Description")).toBeInTheDocument();
+      expect(screen.getByText("Orders with total > 100")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Give it a description"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides description section when there is no description", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        segment: createMockSegment({ ...TEST_SEGMENT, description: "" }),
+      });
+
+      expect(screen.queryByText("Description")).not.toBeInTheDocument();
+    });
+
+    it("does not show Remove segment option in actions menu", async () => {
+      setup({ remoteSyncType: "read-only" });
+
+      await userEvent.click(screen.getByLabelText("Segment actions"));
+
+      expect(screen.getByText("Preview")).toBeInTheDocument();
+      expect(screen.queryByText("Remove segment")).not.toBeInTheDocument();
     });
   });
 });

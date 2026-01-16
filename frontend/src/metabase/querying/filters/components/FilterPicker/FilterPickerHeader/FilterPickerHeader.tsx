@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
@@ -15,6 +16,7 @@ export function FilterPickerHeader({
   readOnly,
   onBack,
 }: FilterPickerHeaderProps) {
+  const tc = useTranslateContent();
   return (
     <Flex px="md" pt="md" justify="space-between">
       {onBack && (
@@ -24,7 +26,7 @@ export function FilterPickerHeader({
           disabled={readOnly}
           withArrow={!readOnly}
         >
-          {columnName}
+          {tc(columnName)}
         </PopoverBackButton>
       )}
       {children}

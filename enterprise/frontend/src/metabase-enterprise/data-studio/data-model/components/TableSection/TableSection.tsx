@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -34,6 +34,7 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
@@ -70,6 +71,7 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -213,16 +215,18 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        <Button
-          flex="1"
-          p="sm"
-          leftSection={
-            <Icon name={table.is_published ? "unpublish" : "publish"} />
-          }
-          onClick={handlePublishToggle}
-        >
-          {table.is_published ? t`Unpublish` : t`Publish`}
-        </Button>
+        {!remoteSyncReadOnly && (
+          <Button
+            flex="1"
+            p="sm"
+            leftSection={
+              <Icon name={table.is_published ? "unpublish" : "publish"} />
+            }
+            onClick={handlePublishToggle}
+          >
+            {table.is_published ? t`Unpublish` : t`Publish`}
+          </Button>
+        )}
         <Button
           flex="1"
           leftSection={<Icon name="settings" />}
