@@ -9,6 +9,8 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -249,3 +251,16 @@
         (is (= "Not found."
                (client/client :get 404 "agent/v1/table/999999/field/t999999-0/values"
                               {:request-options {:headers admin-headers}})))))))
+
+(deftest search-test
+  (with-agent-api-setup!
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
+          (testing "Returns search results for term queries"
+            (is (=? {:data       [{:type "table" :name "AgentSearchTestTable"}]
+                     :total_count 1}
+                    (client/client :post 200 "agent/v1/search"
+                                   {:request-options {:headers (auth-headers)}}
+                                   {:term_queries ["AgentSearchTestTable"]})))))))))
+

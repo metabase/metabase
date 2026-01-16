@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
+   [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
@@ -131,6 +132,25 @@
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
+(mr/def ::search-result-item
+  "Schema for search result items (tables and metrics only, no collection info)."
+  [:map {:encode/api ->snake_case-keys}
+   [:id :int]
+   [:type [:enum "table" "metric"]]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:verified {:optional true} [:maybe :boolean]]
+   [:updated_at {:optional true} [:maybe :any]]
+   [:created_at {:optional true} [:maybe :any]]])
+
+(mr/def ::search-response
+  [:map {:encode/api ->snake_case-keys}
+   [:data [:sequential ::search-result-item]]
+   [:total_count :int]])
+
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
@@ -211,6 +231,26 @@
     (if-let [data (:structured-output result)]
       data
       {:status 404, :body {:error (or (:output result) "Field not found")}})))
+
+(api.macros/defendpoint :post "/v1/search" :- ::search-response
+  "Search for tables and metrics.
+
+  Supports both term-based and semantic search queries. Results are ranked using
+  Reciprocal Rank Fusion when both query types are provided."
+  [_route-params
+   _query-params
+   {term-queries     :term_queries
+    semantic-queries :semantic_queries}
+   :- [:map
+       [:term_queries     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+       [:semantic_queries {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+  (let [results (metabot-search/search
+                 {:term-queries     (or term-queries [])
+                  :semantic-queries (or semantic-queries [])
+                  :entity-types     ["table" "metric"]
+                  :limit            (or (request/limit) 50)})]
+    {:data        results
+     :total_count (count results)}))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
