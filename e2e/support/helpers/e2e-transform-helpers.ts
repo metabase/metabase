@@ -14,6 +14,10 @@ export function visitTransform(transformId: TransformId) {
   cy.visit(`/data-studio/transforms/${transformId}`);
 }
 
+export function runTransform(transformId: TransformId) {
+  cy.request("POST", `/api/ee/transform/${transformId}/run`);
+}
+
 const WAIT_TIMEOUT = 10000;
 const WAIT_INTERVAL = 100;
 

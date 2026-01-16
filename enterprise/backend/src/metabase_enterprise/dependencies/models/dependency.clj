@@ -1,9 +1,12 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.graph.core :as graph]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -116,8 +119,21 @@
   [destination-filter-fn]
   (filtered-graph key-dependents destination-filter-fn))
 
+(defn entities->nodes
+  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` into a list of nodes `[[entity-type entity-id]]`."
+  [entities-map]
+  (for [[entity-type entities] entities-map
+        entity entities
+        :when (:id entity)]
+    [entity-type (:id entity)]))
+
+(defn group-nodes
+  "Groups a list of nodes `[[entity-type entity-id]]` by their type."
+  [nodes]
+  (u/group-by first second conj #{} nodes))
+
 (defn transitive-dependents
-  "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
+  "Given a map of entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
   as `{entity-type #{4 5 6}}` - that is, a map from downstream entity type to a set of IDs.
 
   Uses the provided `graph`, or defaults to the `:model/Dependency` table in AppDB.
@@ -126,15 +142,61 @@
   `MetadataProvider` entities, user input, etc.
 
   **Excludes** the input entities from the list of dependents!"
-  ([updated-entities] (transitive-dependents nil updated-entities))
-  ([graph updated-entities]
+  ([entities-map] (transitive-dependents nil entities-map))
+  ([graph entities-map]
    (let [graph (or graph (graph-dependents))
-         starters (for [[entity-type updates] updated-entities
-                        entity updates
-                        :when (:id entity)]
-                    [entity-type (:id entity)])]
+         starters (entities->nodes entities-map)]
      (->> (graph/transitive graph starters) ; This returns a flat list.
-          (u/group-by first second conj #{})))))
+          group-nodes))))
+
+(mu/defn is-native-entity? :- :boolean
+  "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity]
+  (boolean
+   (case entity-type
+     :card (some-> entity
+                   ((some-fn :dataset-query :dataset_query))
+                   lib/any-native-stage?)
+     :transform (some-> entity
+                        :source
+                        :query
+                        lib/any-native-stage?)
+     :snippet true
+     false)))
+
+(defn- native-lookup-map [children]
+  (let [grouped (-> (graph/all-map-nodes children)
+                    group-nodes)]
+    (into {}
+          (mapcat (fn [[node-type ids]]
+                    (let [model (deps.dependency-types/dependency-type->model node-type)]
+                      (t2/select-fn-vec (fn [entity]
+                                          [[node-type (:id entity)]
+                                           (is-native-entity? node-type entity)])
+                                        model :id [:in ids]))))
+          grouped)))
+
+(defn transitive-mbql-dependents
+  "Equivalent to `transitive-dependents`, except it excludes any native cards/transforms/segments and their children.
+
+  Also, the order is more flexible (though consistent between runs).
+
+  Note that this does not check the passed in entities for native-ness -- the filter is only applied to their
+  transitive children."
+  ([entities-map]
+   (transitive-mbql-dependents nil entities-map))
+  ([graph entities-map]
+   (let [start-nodes (set (entities->nodes entities-map))
+         children (graph/transitive-children-of (or graph (graph-dependents)) (seq start-nodes))
+         native-lookup (native-lookup-map children)]
+     (group-nodes
+      (graph/keep-children (fn [node]
+                             (cond
+                               (start-nodes node) nil
+                               (native-lookup node) ::graph/stop
+                               :else node))
+                           children)))))
 
 (defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
