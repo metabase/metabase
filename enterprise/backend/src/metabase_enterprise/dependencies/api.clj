@@ -280,7 +280,7 @@
            :data (->> (select-keys entity (entity-keys entity-type))
                       (m/map-vals format-subentity))
            :dependents_count (usages [entity-type id])}
-    errors (assoc :dependent_errors (get errors [entity-type id]))))
+    errors (assoc :dependents_errors (get errors [entity-type id]))))
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -464,15 +464,15 @@
             [{:keys [error_type error_detail]}]
             ;; Use the same normalization as node-errors for consistency
             (case error_type
-              (:validate/missing-column
-               :validate/missing-table-alias
-               :validate/duplicate-column)
+              (:missing-column
+               :missing-table-alias
+               :duplicate-column)
               {:type error_type :name error_detail}
 
-              :validate/validation-exception-error
+              :validation-exception-error
               {:type error_type :message error_detail}
 
-              :validate/syntax-error
+              :syntax-error
               {:type error_type}
 
               (cond-> {:type error_type}
@@ -497,19 +497,17 @@
   [nodes-by-type]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
-            ;; error_type is stored without namespace (e.g. :missing-column)
-            ;; but API schema expects :validate/missing-column
             (case error_type
                 ;; These error types use :name
-              (:validate/missing-column
-               :validate/missing-table-alias
-               :validate/duplicate-column)
+              (:missing-column
+               :missing-table-alias
+               :duplicate-column)
               {:type error_type :name error_detail}
                 ;; validation-exception-error uses :message
-              :validate/validation-exception-error
+              :validation-exception-error
               {:type error_type :message error_detail}
                 ;; syntax-error has no additional fields
-              :validate/syntax-error
+              :syntax-error
               {:type error_type}
                 ;; Default: use :name if detail exists
               (cond-> {:type error_type}
@@ -955,7 +953,7 @@
    - `limit`: Default 50
 
    Returns a map with:
-   - `data`: List of breaking source entities, each with `:id`, `:type`, `:data`, and `:dependent_errors` fields
+   - `data`: List of breaking source entities, each with `:id`, `:type`, `:data`, and `:dependents_errors` fields
    - `total`: Total count of matched items
    - `offset`: Applied offset
    - `limit`: Applied limit"

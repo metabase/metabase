@@ -44,7 +44,7 @@
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
    `errors` is a sequence of maps with keys:
-   - `:error-type` - keyword like `:validate/missing-column`
+   - `:error-type` - keyword like `:missing-column`
    - `:error-detail` - string (column name, alias, message, etc.) or nil
    - `:source-entity-type` - keyword like `:table`, `:card`, or nil
    - `:source-entity-id` - int or nil"
