@@ -1,12 +1,13 @@
 (ns metabase.lib.js.metadata
   (:refer-clojure :exclude [keywordize-keys])
   (:require
+   #?@(:cljs ([goog]
+              [goog.object :as gobject]
+              [metabase.lib.cache :as lib.cache]))
    [clojure.core.protocols]
    [clojure.string :as str]
-   [goog]
-   [goog.object :as gobject]
    [medley.core :as m]
-   [metabase.lib.cache :as lib.cache]
+   [metabase.legacy-mbql.normalize :as legacy-mbql.normalize]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
@@ -29,8 +30,10 @@
 ;;; where keys are a map of String ID => metadata
 
 (defn- object-get [obj k]
-  (when (and obj (js-in k obj))
-    (gobject/get obj k)))
+  #?(:cljs (when (and obj (js-in k obj))
+             (gobject/get obj k))
+     :clj  (when (and obj (contains? obj k))
+             (get obj k))))
 
 (defn- obj->clj
   "Convert a JS object of *any* class to a ClojureScript object."
@@ -43,23 +46,26 @@
      ;; already a ClojureScript object.
      (into {} xform (m/remove-keys skip-keys obj))
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
-     (if-let [plain-object (when use-plain-object?
-                             (some-> (object-get obj "_plainObject")
-                                     js->clj
-                                     not-empty))]
-       (into {} xform (m/remove-keys skip-keys plain-object))
-       ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
-       ;; arbitrary classes other than `Object`)
-       (into {}
-             (comp
-              (remove (set skip-keys))
-              (map (fn [k]
-                     [k (object-get obj k)]))
-              ;; ignore values that are functions
-              (remove (fn [[_k v]]
-                        (js-fn? v)))
-              xform)
-             (js-keys obj))))))
+     #?(:cljs (if-let [plain-object (when use-plain-object?
+                                      (some-> (object-get obj "_plainObject")
+                                              js->clj
+                                              not-empty))]
+                (into {} xform (m/remove-keys skip-keys plain-object))
+                ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+                ;; arbitrary classes other than `Object`)
+                (into {}
+                      (comp
+                       (remove (set skip-keys))
+                       (map (fn [k]
+                              [k (object-get obj k)]))
+                        ;; ignore values that are functions
+                       (remove (fn [[_k v]]
+                                 (js-fn? v)))
+                       xform)
+                      (js-keys obj)))
+        :clj (when obj
+               (do (prn obj)
+                   (throw (ex-info "_plainObject classy nesting not supported in CLJ" {:obj obj}))))))))
 
 ;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
 (defmulti ^:private excluded-keys
@@ -141,7 +147,7 @@
         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
           (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
           parsed)
-        (catch js/Error e
+        (catch #?(:cljs js/Error :clj Exception) e
           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
           nil)))))
 
@@ -175,7 +181,9 @@
   [_object-type]
   (fn [k v]
     (case k
-      :dbms-version       (js->clj v :keywordize-keys true)
+      :dbms-version       #?(:cljs (js->clj v :keywordize-keys true)
+                             :clj  (perf/keywordize-keys v))
+      :engine             (keyword v)
       :features           (into #{} (map keyword) v)
       :native-permissions (keyword v)
       v)))
@@ -254,8 +262,8 @@
 
 (defn- parse-field-values [field-values]
   (when (= (object-get field-values "type") "full")
-    {:values                (js->clj (object-get field-values "values"))
-     :human-readable-values (js->clj (object-get field-values "human_readable_values"))}))
+    {:values                (#?(:cljs js->clj :clj identity) (object-get field-values "values"))
+     :human-readable-values (#?(:cljs js->clj :clj identity) (object-get field-values "human_readable_values"))}))
 
 (defn- parse-dimension
   "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
@@ -288,7 +296,8 @@
       :effective-type                   (keyword v)
       :fingerprint                      (if (map? v)
                                           (perf/keywordize-keys v)
-                                          (js->clj v :keywordize-keys true))
+                                          #?(:cljs (js->clj v :keywordize-keys true)
+                                             :clj  v))
       :has-field-values                 (keyword v)
 
       ;; Field refs are JS arrays, which we do not alter but do need to clone.
@@ -300,7 +309,7 @@
       ;; a key like `closure_uid_123456789` (the number is randomized at load time).
       ;; If the array has been frozen, that mutation will throw. So we clone the `:field-ref` array on its way into CLJS
       ;; land, and avoid the issue.
-      :field-ref                        (to-array v)
+      :field-ref                        #?(:cljs (to-array v) :clj (legacy-mbql.normalize/normalize v))
       :lib/source                       (case v
                                           ;; These are the legacy values from the "source" key
                                           "aggregation" :source/aggregations
@@ -323,6 +332,8 @@
       :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
+      :settings                         #?(:cljs (js->clj v :keywordize-keys true)
+                                           :clj  (perf/keywordize-keys v))
       v)))
 
 (defmethod parse-object-fn* :field
@@ -372,16 +383,17 @@
 
 (defmethod excluded-keys :card
   [_object-type]
-  #{:database
-    :db
-    :fks
-    :metadata
-    :metrics
-    :plain-object
-    :segments
-    :schema
-    :schema-name
-    :table})
+  (-> #{:database
+        :db
+        :fks
+        :metadata
+        :metrics
+        :plain-object
+        :segments
+        :schema
+        :schema-name
+        :table}
+      #?(:cljs identity :clj (conj :fields))))
 
 (defn- parse-fields [fields]
   (mapv (parse-object-fn :field) fields))
@@ -390,12 +402,16 @@
   [_object-type]
   (fn [k v]
     (case k
-      :result-metadata (if ((some-fn sequential? array?) v)
+      :result-metadata (if (#?(:cljs (some-fn sequential? array?)
+                               :clj  sequential?) v)
                          (parse-fields v)
-                         (js->clj v :keywordize-keys true))
-      :fields          (parse-fields v)
+                         #?(:cljs (js->clj v :keywordize-keys true)
+                            :clj  (perf/keywordize-keys v)))
+      :fields          #?(:cljs (parse-fields v)
+                          :clj  (throw (ex-info ":fields" {})))
       :visibility-type (keyword v)
-      :dataset-query   (js->clj v :keywordize-keys true)
+      :dataset-query   #?(:cljs (js->clj v :keywordize-keys true)
+                          :clj  (perf/keywordize-keys v))
       :type            (keyword v)
       ;; this is not complete, add more stuff as needed.
       v)))
@@ -435,9 +451,9 @@
                [id (delay (assemble-card metadata id))]))
         (-> #{}
             (into (keep lib.util/legacy-string-table-id->card-id)
-                  (js-keys (object-get metadata "tables")))
+                  (#?(:cljs js-keys :clj keys) (object-get metadata "tables")))
             (into (map parse-long)
-                  (js-keys (object-get metadata "questions"))))))
+                  (#?(:cljs js-keys :clj keys) (object-get metadata "questions"))))))
 
 (defmethod lib-type :metric
   [_object-type]
@@ -502,21 +518,23 @@
   [_object-type]
   (fn [k v]
     (case k
-      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map (js->clj v))
+      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
+                                              #?(:cljs (js->clj v)
+                                                 :clj  v))
       v)))
 
 (defn- parse-objects-delay [object-type metadata]
   (delay
     (try
       (parse-objects object-type metadata)
-      (catch js/Error e
+      (catch #?(:cljs js/Error :clj Exception) e
         (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
 (defn- card->metric-card
   [card]
   (-> card
-      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id :type])
+      (perf/select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id :type])
       (assoc :lib/type :metadata/metric)))
 
 (defn- metric-cards
@@ -568,7 +586,7 @@
                 (distinct))
           delays)))
 
-(defn- setting [^js unparsed-metadata setting-key]
+(defn- setting [#?(:cljs ^js unparsed-metadata :clj unparsed-metadata) setting-key]
   (-> unparsed-metadata
       (object-get "settings")
       (object-get (name setting-key))))
@@ -605,9 +623,58 @@
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
-  (lib.cache/side-channel-cache (str database-id) unparsed-metadata
-                                (partial metadata-provider* database-id)
-                                true #_force?))
+  #?(:cljs (lib.cache/side-channel-cache (str database-id) unparsed-metadata
+                                         (partial metadata-provider* database-id)
+                                         true #_force?)
+     :clj  (metadata-provider* database-id unparsed-metadata)))
+
+(comment
+  (require '[metabase.lib.core :as lib])
+  (def qm (js/JSON.parse lib/query-metadata-15002-json))
+
+  (def qm-fields (for [table (aget qm "tables")
+                       field (aget table "fields")]
+                   field))
+
+  (def qm' (doto (gobject/clone qm)
+             (gobject/set "fields" (to-array qm-fields))))
+  (js-keys qm')
+  (type (aget qm' "fields"))
+
+  (defn- js-index [arr]
+    (let [obj (js-obj)]
+      (doseq [x arr]
+        (gobject/set obj (str (aget x "id")) x))
+      obj))
+
+  (def qm'-indexed (doto (gobject/clone qm')
+                     (gobject/set "databases" (js-index (gobject/get qm' "databases")))
+                     (gobject/set "tables" (js-index (gobject/get qm' "tables")))
+                     (gobject/set "fields" (js-index (gobject/get qm' "fields")))))
+
+  (def mp (metadata-provider* 179 qm'-indexed))
+  (require '[metabase.lib.metadata :as lib.metadata])
+  (lib.metadata/fields mp 5849)
+  (js/console.log mp)
+  (def inner (.-metadata_provider mp))
+  (js/console.log inner)
+
+  (-> qm'
+      (aget "tables")
+      type)
+
+  (lib.metadata/table mp 4529)
+  (lib/returned-columns (lib/query mp (lib.metadata/table mp 4529)))
+  (lib.metadata/database mp)
+
+  (def dump-edn {:database (lib.metadata/database mp)
+                 :tables   (for [table (lib.metadata/tables mp)]
+                             (assoc table :fields (vec (for [field (lib.metadata/fields mp (:id table))]
+                                                         (medley.core/filter-vals
+                                                          (complement #(or (array? %)
+                                                                           (object? %)))
+                                                          field)))))})
+  #_(js/console.log (pr-str dump-edn)))
 
 (def parse-column
   "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
