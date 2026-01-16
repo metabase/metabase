@@ -19,10 +19,12 @@ import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
 
-function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
+function getNodeNameColumn(
+  mode: DependencyListMode,
+): TreeTableColumnDef<DependencyNode> {
   return {
     id: "name",
-    header: t`Name`,
+    header: mode === "broken" ? t`Dependency` : t`Name`,
     minWidth: 100,
     enableSorting: true,
     accessorFn: (node) => getNodeLabel(node),
@@ -53,14 +55,14 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
 
 function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "error",
-    header: t`Errors`,
+    id: "dependents-errors",
+    header: t`Problems`,
     minWidth: 100,
     enableSorting: false,
-    accessorFn: (node) => node.errors?.length ?? 0,
+    accessorFn: (node) => node.dependents_errors?.length ?? 0,
     cell: ({ row }) => {
       const node = row.original;
-      const errors = node.errors ?? [];
+      const errors = node.dependents_errors ?? [];
       if (errors.length === 0) {
         return null;
       }
@@ -72,7 +74,7 @@ function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
 function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
-    header: t`Downstream dependents`,
+    header: t`Dependents`,
     minWidth: 100,
     enableSorting: true,
     accessorFn: (node) => getNodeDependentsCount(node),
@@ -87,7 +89,7 @@ export function getColumns(
   mode: DependencyListMode,
 ): TreeTableColumnDef<DependencyNode>[] {
   return [
-    getNodeNameColumn(),
+    getNodeNameColumn(mode),
     getNodeLocationColumn(),
     ...(mode === "broken" ? [getNodeErrorsColumn()] : []),
     ...(mode === "broken" ? [getNodeDependentsCountColumn()] : []),

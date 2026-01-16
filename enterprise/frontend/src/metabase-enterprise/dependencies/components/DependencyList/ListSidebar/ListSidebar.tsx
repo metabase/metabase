@@ -20,7 +20,7 @@ export const ListSidebar = memo(function ListSidebar({
   node,
   onClose,
 }: ListSidebarProps) {
-  const errorGroups = getDependencyErrorGroups(node.errors ?? []);
+  const errorGroups = getDependencyErrorGroups(node.dependents_errors ?? []);
 
   return (
     <Stack

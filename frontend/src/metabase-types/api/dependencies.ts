@@ -54,8 +54,8 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  errors?: DependencyError[] | null;
   dependents_count?: DependentsCount | null;
+  dependents_errors?: DependencyError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
@@ -200,45 +200,18 @@ export type DependencyNode =
   | MeasureDependencyNode;
 
 export const DEPENDENCY_ERROR_TYPES = [
-  "validate/missing-column",
-  "validate/missing-table-alias",
-  "validate/duplicate-column",
-  "validate/syntax-error",
-  "validate/validation-error",
+  "missing-column",
+  "missing-table-alias",
+  "duplicate-column",
+  "syntax-error",
+  "validation-error",
 ] as const;
 export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
 
-type BaseDependencyError<TType extends DependencyErrorType> = {
-  type: TType;
+export type DependencyError = {
+  type: DependencyErrorType;
+  detail?: string | null;
 };
-
-export type MissingColumnDependencyError =
-  BaseDependencyError<"validate/missing-column"> & {
-    name: string;
-  };
-
-export type MissingTableAliasDependencyError =
-  BaseDependencyError<"validate/missing-table-alias"> & {
-    name: string;
-  };
-
-export type DuplicateColumnDependencyError =
-  BaseDependencyError<"validate/duplicate-column"> & {
-    name: string;
-  };
-
-export type SyntaxErrorDependencyError =
-  BaseDependencyError<"validate/syntax-error">;
-
-export type ValidationErrorDependencyError =
-  BaseDependencyError<"validate/validation-error">;
-
-export type DependencyError =
-  | MissingColumnDependencyError
-  | MissingTableAliasDependencyError
-  | DuplicateColumnDependencyError
-  | SyntaxErrorDependencyError
-  | ValidationErrorDependencyError;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

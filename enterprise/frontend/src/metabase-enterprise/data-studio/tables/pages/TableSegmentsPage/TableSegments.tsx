@@ -4,6 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 
 import {
@@ -17,7 +18,15 @@ type TableSegmentsProps = {
 
 export function TableSegments({ table }: TableSegmentsProps) {
   const canWriteSegments = useSelector(getUserCanWriteSegments);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const segments = table.segments ?? [];
+  let newButtonLabel: string | undefined;
+  let newButtonUrl: string | undefined;
+
+  if (!remoteSyncReadOnly && canWriteSegments) {
+    newButtonLabel = t`New segment`;
+    newButtonUrl = Urls.dataStudioPublishedTableSegmentNew(table.id);
+  }
 
   return (
     <Flex direction="column" flex={1}>
@@ -29,12 +38,8 @@ export function TableSegments({ table }: TableSegmentsProps) {
           title: t`No segments yet`,
           message: t`Create a segment to filter rows in this table.`,
         }}
-        newButtonLabel={canWriteSegments ? t`New segment` : undefined}
-        newButtonUrl={
-          canWriteSegments
-            ? Urls.dataStudioPublishedTableSegmentNew(table.id)
-            : undefined
-        }
+        newButtonLabel={newButtonLabel}
+        newButtonUrl={newButtonUrl}
         renderItem={(segment) => (
           <EntityListItem
             key={segment.id}
