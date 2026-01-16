@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.collections.models.collection :as collection]
    [metabase.core.core :as mbc]
