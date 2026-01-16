@@ -29,7 +29,27 @@
 
   (testing "returns nil for non-metabase URIs"
     (is (nil? (links/resolve-metabase-uri "https://example.com" {} {})))
-    (is (nil? (links/resolve-metabase-uri "/question/123" {} {})))))
+    (is (nil? (links/resolve-metabase-uri "/question/123" {} {}))))
+
+  (testing "resolves chart links using chart state"
+    (let [query-id "query-abc"
+          chart-id "chart-123"
+          query {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          charts-state {chart-id {:query-id query-id :chart-type :bar}}]
+      (let [result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
+        (is (string? result))
+        (is (clojure.string/starts-with? result "/question#")))))
+
+  (testing "falls back to query when chart link uses query ID"
+    ;; LLM sometimes uses metabase://chart/ when it should use metabase://query/
+    (let [query-id "qp_6a8c1d99-6f46-4ebb-9b7e-2fcad97a7f1c"
+          query {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          charts-state {}]
+      (let [result (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
+        (is (string? result))
+        (is (clojure.string/starts-with? result "/question#"))))))
 
 (deftest process-text-links-test
   (testing "processes metabase:// links in markdown"
