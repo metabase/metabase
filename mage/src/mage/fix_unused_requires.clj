@@ -8,8 +8,6 @@
    [mage.util :as u]
    [rewrite-clj.zip :as z]))
 
-;; NOTE: This is invoked via lint-staged which handles re-staging modified files automatically.
-
 (set! *warn-on-reflection* true)
 
 (defn- run-kondo
