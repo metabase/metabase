@@ -648,55 +648,60 @@
              (#'stats/library-stats))))
 
     (testing "with library collections and data"
-      (let [user          (t2/insert-returning-instance! :model/User {:email "test@example.com" :first_name "Test" :last_name "User"})
-            library       (t2/insert-returning-instance! :model/Collection {:name "Library" :type "library" :location "/"})
-            data-coll     (t2/insert-returning-instance! :model/Collection {:name "Data"
-                                                                            :type "library-data"
-                                                                            :location (str "/" (:id library) "/")})
-            metrics-coll  (t2/insert-returning-instance! :model/Collection {:name "Metrics"
-                                                                            :type "library-metrics"
-                                                                            :location (str "/" (:id library) "/")})
-            sub-coll      (t2/insert-returning-instance! :model/Collection {:name "Sub folder"
-                                                                            :location (str "/" (:id library) "/" (:id metrics-coll) "/")})
-            db            (t2/insert-returning-instance! :model/Database {:name "Test DB" :engine :h2})]
-        ;; Published table in library-data collection
-        (t2/insert! :model/Table {:db_id (:id db)
-                                  :name "published_table"
-                                  :active true
-                                  :is_published true
-                                  :collection_id (:id data-coll)})
-        ;; Unpublished table (should not count)
-        (t2/insert! :model/Table {:db_id (:id db)
-                                  :name "unpublished_table"
-                                  :active true
-                                  :is_published false})
-        ;; Metric in library-metrics collection
-        (t2/insert! :model/Card {:name "Metric 1"
-                                 :type :metric
-                                 :collection_id (:id metrics-coll)
-                                 :creator_id (:id user)
-                                 :database_id (:id db)
-                                 :dataset_query {}
-                                 :display :table
-                                 :visualization_settings {}})
-        ;; Metric in sub-collection of library-metrics (should count)
-        (t2/insert! :model/Card {:name "Metric 2"
-                                 :type :metric
-                                 :collection_id (:id sub-coll)
-                                 :creator_id (:id user)
-                                 :database_id (:id db)
-                                 :dataset_query {}
-                                 :display :table
-                                 :visualization_settings {}})
-        ;; Metric outside library (should not count)
-        (t2/insert! :model/Card {:name "Metric 3"
-                                 :type :metric
-                                 :collection_id nil
-                                 :creator_id (:id user)
-                                 :database_id (:id db)
-                                 :dataset_query {}
-                                 :display :table
-                                 :visualization_settings {}})
+      (mt/with-temp [:model/User       {user-id :id}         {:email      "test@example.com"
+                                                              :first_name "Test"
+                                                              :last_name  "User"}
+                     :model/Database   {db-id :id}           {:name   "Test DB"
+                                                              :engine :h2}
+                     :model/Collection {library-id :id}      {:name     "Library"
+                                                              :type     "library"
+                                                              :location "/"}
+                     :model/Collection {data-coll-id :id}    {:name     "Data"
+                                                              :type     "library-data"
+                                                              :location (format "/%d/" library-id)}
+                     :model/Collection {metrics-coll-id :id} {:name     "Metrics"
+                                                              :type     "library-metrics"
+                                                              :location (format "/%d/" library-id)}
+                     :model/Collection {sub-coll-id :id}     {:name     "Sub folder"
+                                                              :location (format "/%d/%d/" library-id metrics-coll-id)}
+                     ;; Published table in library-data collection
+                     :model/Table      _                     {:db_id         db-id
+                                                              :name          "published_table"
+                                                              :active        true
+                                                              :is_published  true
+                                                              :collection_id data-coll-id}
+                     ;; Unpublished table (should not count)
+                     :model/Table      _                     {:db_id        db-id
+                                                              :name         "unpublished_table"
+                                                              :active       true
+                                                              :is_published false}
+                     ;; Metric in library-metrics collection
+                     :model/Card       _                     {:name                   "Metric 1"
+                                                              :type                   :metric
+                                                              :collection_id          metrics-coll-id
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}
+                     ;; Metric in sub-collection of library-metrics (should count)
+                     :model/Card       _                     {:name                   "Metric 2"
+                                                              :type                   :metric
+                                                              :collection_id          sub-coll-id
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}
+                     ;; Metric outside library (should not count)
+                     :model/Card       _                     {:name                   "Metric 3"
+                                                              :type                   :metric
+                                                              :collection_id          nil
+                                                              :creator_id             user-id
+                                                              :database_id            db-id
+                                                              :dataset_query          {}
+                                                              :display                :table
+                                                              :visualization_settings {}}]
         (is (= {:library_data 1
                 :library_metrics 2}
                (#'stats/library-stats)))))))
