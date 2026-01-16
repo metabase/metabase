@@ -361,7 +361,8 @@
 
       (catch Exception e
         (let [data (ex-data e)
-              logs (message-log->string message-log)]
+              logs (message-log->string message-log)
+              error-message (or (:transform-message data) (ex-message e))]
           (cond
             (= :cancelled (:status data))
             {:status :cancelled
@@ -380,7 +381,7 @@
               (log/error e "Error executing Python transform")
               {:status :failed
                :error e
-               :logs logs})))))))
+               :logs (str logs "\n" error-message)})))))))
 
 ;;; ------------------------------------------------- Interface Implementation -------------------------------------------------
 
