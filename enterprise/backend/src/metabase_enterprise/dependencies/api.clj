@@ -414,6 +414,27 @@
                                                         :all nil)]}]])))))
          deps.dependency-types/dependency-type->model)))
 
+(defn- broken-entities-filter-clause
+  "Returns a HoneySQL WHERE clause for filtering to only broken entities.
+
+   Accepts two arguments:
+   - `entity-type-field`: Database column name for entity type (e.g., :from_entity_type)
+   - `entity-id-field`: Database column name for entity ID (e.g., :from_entity_id)
+
+   Returns a clause that joins with the analysis_finding table to filter to entities
+   that have failed analysis (analysis_finding.result = false)."
+  [entity-type-field entity-id-field]
+  (into [:or]
+        (keep (fn [[entity-type _model]]
+                [:and
+                 [:= entity-type-field (name entity-type)]
+                 [:in entity-id-field {:select [:analyzed_entity_id]
+                                       :from [:analysis_finding]
+                                       :where [:and
+                                               [:= :analysis_finding.analyzed_entity_type (name entity-type)]
+                                               [:= :analysis_finding.result false]]}]])
+              deps.dependency-types/dependency-type->model)))
+
 (defn- readable-graph-dependencies
   ([]
    (readable-graph-dependencies nil))
@@ -425,10 +446,14 @@
 (defn- readable-graph-dependents
   ([]
    (readable-graph-dependents nil))
-  ([opts]
+  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude} :as _opts}]
    (dependency/filtered-graph-dependents
     (fn [entity-type-field entity-id-field]
-      (visible-entities-filter-clause entity-type-field entity-id-field opts)))))
+      (let [visibility-clause (visible-entities-filter-clause entity-type-field entity-id-field
+                                                              {:include-archived-items include-archived-items})]
+        (if broken
+          [:and visibility-clause (broken-entities-filter-clause entity-type-field entity-id-field)]
+          visibility-clause))))))
 
 (defn- node-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
@@ -582,7 +607,8 @@
    [:type                ::deps.dependency-types/dependency-types]
    [:dependent_type      ::deps.dependency-types/dependency-types]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword lib.schema.metadata/card-types)]
-   [:archived            {:optional true} :boolean]])
+   [:archived            {:optional true} :boolean]
+   [:broken              {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
   "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
@@ -591,12 +617,17 @@
 
    Optional :archived parameter controls whether entities in archived collections are included:
    - false (default): Excludes entities in archived collections
-   - true: Includes entities in archived collections"
+   - true: Includes entities in archived collections
+
+   Optional :broken parameter controls whether only broken entities are returned:
+   - false (default): Returns all dependents
+   - true: Returns only dependents that have failed analysis (analysis_finding.result = false)"
   [_route-params
-   {:keys [id type dependent_type dependent_card_type archived]} :- dependents-args]
+   {:keys [id type dependent_type dependent_card_type archived broken]} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
-    (let [graph-opts {:include-archived-items (if archived :all :exclude)}
+    (let [graph-opts {:include-archived-items (if archived :all :exclude)
+                      :broken broken}
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (-> (graph/children-of downstream-graph [[type id]])
                     (get [type id]))]
