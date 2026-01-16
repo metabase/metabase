@@ -6,6 +6,7 @@
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase.util.log :as log]))
@@ -69,6 +70,9 @@
                              acc))]
           ;; Apply transducers synchronously in this thread context
           ;; where blocking operations are safe
+          (log/debug "Raw chunks from Claude API"
+                     {:count (count raw-chunks)
+                      :types (mapv :type raw-chunks)})
           (into [] (comp self/claude->aisdk-xf
                          (self/tool-executor-rff tools)
                          self/aisdk-xf)
@@ -92,6 +96,14 @@
                 :messages-preview (mapv #(select-keys % [:role :content]) result)})
     result))
 
+(defn- get-structured-output
+  "Extract structured output from result, handling both key formats.
+  Tools may use :structured-output (hyphen, Clojure idiomatic) or
+  :structured_output (underscore, from JSON/API responses)."
+  [result]
+  (or (:structured-output result)
+      (:structured_output result)))
+
 (defn- extract-queries-from-parts
   "Extract queries from tool output parts and store them in memory.
   Tool results with :structured-output containing :query-id and :query are stored.
@@ -99,7 +111,7 @@
   [memory parts]
   (reduce
    (fn [mem part]
-     (if-let [structured (:structured-output (:result part))]
+     (if-let [structured (get-structured-output (:result part))]
        (if (and (:query-id structured) (:query structured))
          (do
            (log/debug "Storing query in memory" {:query-id (:query-id structured)})
@@ -117,35 +129,57 @@
   [memory parts]
   (reduce
    (fn [mem part]
-     (when (= (:type part) :tool-output)
-       (log/debug "Processing tool output for chart extraction" {:part part}))
-     (if-let [structured (:structured-output (:result part))]
+     (if-let [structured (get-structured-output (:result part))]
        ;; Chart results have :chart-id and :query-id (from create-chart-tool)
        ;; Distinguish from queries which have :query-id and :query
        (if (and (:chart-id structured) (:query-id structured) (not (:query structured)))
          (do
-           (log/info "Storing chart in memory" {:chart-id (:chart-id structured)
-                                                :query-id (:query-id structured)})
+           (log/debug "Storing chart in memory" {:chart-id (:chart-id structured)
+                                                 :query-id (:query-id structured)})
            (memory/store-chart mem (:chart-id structured) structured))
          mem)
        mem))
    memory
    parts))
 
+(defn- extract-reactions-from-parts
+  "Extract reactions from tool output parts.
+  Tool results may contain :reactions key with actions like :metabot.reaction/redirect.
+  Returns a vector of reaction maps."
+  [parts]
+  (into []
+        (comp
+         (filter #(= (:type %) :tool-output))
+         (mapcat #(get-in % [:result :reactions])))
+        parts))
+
 (defn- stream-parts-to-output!
-  "Stream parts to output channel with link resolution.
-  Resolves metabase:// links in text parts using memory state.
+  "Stream parts to output channel with link resolution and reaction handling.
+  - Resolves metabase:// links in text parts using memory state.
+  - Extracts reactions from tool outputs and converts them to data parts.
   Must be called from within a go block.
   Returns a channel that completes when all parts are written."
   [out-chan parts memory]
   (a/go
     (let [state (memory/get-state memory)
           queries-state (get state :queries {})
-          charts-state (get state :charts {})
-          ;; Process links in all parts before streaming
-          processed-parts (links/process-parts-links parts queries-state charts-state)]
-      (doseq [part processed-parts]
-        (a/>! out-chan part)))))
+          charts-state (get state :charts {})]
+      (log/debug "Processing links with state"
+                 {:query-count (count queries-state)
+                  :chart-count (count charts-state)})
+      ;; Process links in all parts before streaming
+      (let [processed-parts (links/process-parts-links parts queries-state charts-state)
+            ;; Extract reactions and convert to data parts
+            reactions (extract-reactions-from-parts parts)
+            reaction-data-parts (streaming/reactions->data-parts reactions)]
+        (log/debug "Extracted reactions" {:reaction-count (count reactions)
+                                          :data-part-count (count reaction-data-parts)})
+        ;; Stream processed parts first
+        (doseq [part processed-parts]
+          (a/>! out-chan part))
+        ;; Then stream reaction data parts (like navigate_to)
+        (doseq [data-part reaction-data-parts]
+          (a/>! out-chan data-part))))))
 
 (defn- finalize-stream!
   "Finalize the output stream with final state and close channel.
@@ -211,6 +245,9 @@
               (throw result)
               (when result
                 ;; Update memory with this step and extract queries/charts from tool results
+                (log/debug "Parts from LLM iteration"
+                           {:part-count (count result)
+                            :part-types (mapv :type result)})
                 (swap! memory-atom (fn [mem]
                                      (-> mem
                                          (memory/add-step result)
