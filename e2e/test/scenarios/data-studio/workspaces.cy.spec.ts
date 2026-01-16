@@ -1381,18 +1381,17 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByText("Run stale transforms").should("be.visible").click();
       });
 
+      Workspaces.getRunAllTransformsButton().should(
+        "have.attr",
+        "data-loading",
+        "true",
+      );
       cy.wait<WorkspaceRunResponse, WorkspaceRunResponse>(
         "@runTransforms",
       ).then(({ response }) => {
         cy.log("only 1 stale transform has been executed");
         expect(response?.body.succeeded).to.be.an("array").with.length(1);
       });
-
-      Workspaces.getRunAllTransformsButton().should(
-        "have.attr",
-        "data-loading",
-        "true",
-      );
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
