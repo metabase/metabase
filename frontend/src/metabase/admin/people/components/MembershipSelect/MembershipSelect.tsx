@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   getGroupNameLocalized,
   isAdminGroup,
+  isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
@@ -20,10 +21,14 @@ const getGroupSections = (groups: GroupInfo[]) => {
     (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
   );
   const adminGroup = groups.find(isAdminGroup);
-  const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
+  const dataAnalystGroup = groups.find(isDataAnalystGroup);
+  const pinnedGroups = [defaultGroup, adminGroup, dataAnalystGroup].filter(
+    isNotNull,
+  );
   const regularGroups = groups.filter(
     (group) =>
       !isAdminGroup(group) &&
+      !isDataAnalystGroup(group) &&
       !isDefaultGroup(group) &&
       !PLUGIN_TENANTS.isExternalUsersGroup(group),
   );
