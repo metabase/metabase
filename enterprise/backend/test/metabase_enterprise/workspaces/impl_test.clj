@@ -89,198 +89,10 @@
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
             (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
 
-;;;; Helpers for mark-execution-stale tests
-
-(defn- workspace-transform
-  ([] (workspace-transform (str (random-uuid))))
-  ([id] {:node-type :workspace-transform :id id}))
-
-(defn- global-transform
-  ([] (global-transform (rand-int 10000)))
-  ([id] {:node-type :external-transform :id id}))
-
-(defn- stale->id
-  "Group entity IDs by stale status: {true #{stale-ids} false #{non-stale-ids}}"
-  [entities]
-  (reduce (fn [m e]
-            (let [stale? (boolean (:execution_stale e))]
-              (update m stale? (fnil conj #{}) (select-keys e [:node-type :id]))))
-          {}
-          entities))
-
-;;;; Workspace-only transform tests
-;; These test staleness propagation through workspace transforms, which is the
-;; primary use case. The graph only contains workspace transforms and tables.
-
-(deftest mark-execution-stale-linear-chain-test
-  (testing "linear chain: stale root propagates to all descendants"
-    ;; t1* -> t2 -> t3 (root stale)
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          graph {:entities [t1 t2 t3]
-                 :dependencies {t2 [t1] t3 [t2]}}]
-      (is (= {true #{t1 t2 t3}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1})))))))
-
-  (testing "linear chain: stale middle propagates only to descendants"
-    ;; t1 -> t2* -> t3 -> t4 (middle stale)
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          t4 (workspace-transform)
-          graph {:entities [t1 t2 t3 t4]
-                 :dependencies {t2 [t1] t3 [t2] t4 [t3]}}]
-      (is (= {true #{t2 t3 t4} false #{t1}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2})))))))
-
-  (testing "linear chain: stale leaf marks only itself"
-    ;; t1 -> t2* (leaf stale)
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          graph {:entities [t1 t2]
-                 :dependencies {t2 [t1]}}]
-      (is (= {true #{t2} false #{t1}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2}))))))))
-
-(deftest mark-execution-stale-diamond-test
-  (testing "diamond: stale root propagates through all paths"
-    ;;     t1*
-    ;;    /    \
-    ;;   t2    t3
-    ;;    \    /
-    ;;      t4
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          t4 (workspace-transform)
-          graph {:entities [t1 t2 t3 t4]
-                 :dependencies {t2 [t1] t3 [t1] t4 [t2 t3]}}]
-      (is (= {true #{t1 t2 t3 t4}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1})))))))
-
-  (testing "diamond: stale on one branch propagates only through that path"
-    ;;     t1
-    ;;    /    \
-    ;;   t2*   t3
-    ;;    \    /
-    ;;      t4
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          t4 (workspace-transform)
-          graph {:entities [t1 t2 t3 t4]
-                 :dependencies {t2 [t1] t3 [t1] t4 [t2 t3]}}]
-      (is (= {true #{t2 t4} false #{t1 t3}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t2}))))))))
-
-(deftest mark-execution-stale-independent-subgraphs-test
-  (testing "independent subgraphs: staleness doesn't cross between them"
-    ;; r1* -> c1    r2 -> c2 (only first subgraph stale)
-    (let [r1 (workspace-transform)
-          c1 (workspace-transform)
-          r2 (workspace-transform)
-          c2 (workspace-transform)
-          graph {:entities [r1 c1 r2 c2]
-                 :dependencies {c1 [r1] c2 [r2]}}]
-      (is (= {true #{r1 c1} false #{r2 c2}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{r1})))))))
-
-  (testing "independent subgraphs: multiple stale roots in different subgraphs"
-    ;; r1* -> c1    r2* -> c2 (both subgraphs stale)
-    (let [r1 (workspace-transform)
-          c1 (workspace-transform)
-          r2 (workspace-transform)
-          c2 (workspace-transform)
-          graph {:entities [r1 c1 r2 c2]
-                 :dependencies {c1 [r1] c2 [r2]}}]
-      (is (= {true #{r1 c1 r2 c2}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{r1 r2}))))))))
-
-(deftest mark-execution-stale-wide-graph-test
-  (testing "wide graph: stale root propagates to all direct children"
-    ;;        t1*
-    ;;    / | | | \
-    ;;   t2 t3 t4 t5 t6
-    (let [t1 (workspace-transform)
-          children (repeatedly 5 workspace-transform)
-          graph {:entities (into [t1] children)
-                 :dependencies (zipmap children (repeat [t1]))}]
-      (is (= {true (into #{t1} children)}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1}))))))))
-
-(deftest mark-execution-stale-multiple-stale-in-chain-test
-  (testing "multiple stale nodes in same chain"
-    ;; t1* -> t2* -> t3 -> t4 (both root and middle stale)
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t3 (workspace-transform)
-          t4 (workspace-transform)
-          graph {:entities [t1 t2 t3 t4]
-                 :dependencies {t2 [t1] t3 [t2] t4 [t3]}}]
-      (is (= {true #{t1 t2 t3 t4}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{t1 t2}))))))))
-
-(deftest mark-execution-stale-edge-cases-test
-  (testing "empty stale set marks nothing"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          graph {:entities [t1 t2]
-                 :dependencies {t2 [t1]}}]
-      (is (= {false #{t1 t2}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{})))))))
-
-  (testing "preserves other entity fields"
-    (let [t1 (workspace-transform)
-          t2 (workspace-transform)
-          t1-with-meta (assoc t1 :name "Transform 1" :extra :data)
-          t2-with-meta (assoc t2 :name "Transform 2")
-          graph {:entities [t1-with-meta t2-with-meta]
-                 :dependencies {t2-with-meta [t1-with-meta]}}
-          result (#'ws.impl/mark-execution-stale graph #{t1})
-          entity-map (into {} (map (juxt #(select-keys % [:node-type :id]) identity)) (:entities result))]
-      (is (= "Transform 1" (:name (entity-map t1))))
-      (is (= :data (:extra (entity-map t1))))
-      (is (= "Transform 2" (:name (entity-map t2)))))))
-
-;;;; External (global) transform tests
-;; NOTE: Currently, external transforms only appear in the graph if they are
-;; "enclosed" - i.e., they sit between workspace transforms in the dependency chain.
-;; External transforms that produce input tables (direct ancestors) are NOT included
-;; in the graph - only the table itself appears as an input.
-;;
-;; These tests verify that IF external transforms are in the graph (enclosed case),
-;; staleness propagates correctly. They also future-proof for when we might include
-;; direct ancestor transforms in the graph.
-;;
-;; See: https://github.com/metabase/metabase/pull/67974 for staleness discussion.
-
-(deftest mark-execution-stale-with-external-transforms-test
-  (testing "enclosed external transform: staleness propagates through to workspace transforms"
-    ;; (ws1) -> ext* -> (ws2)  where ext is enclosed and stale
-    ;; This is Case 1 from the staleness discussion
-    (let [ws1 (workspace-transform)
-          ext (global-transform)
-          ws2 (workspace-transform)
-          graph {:entities [ws1 ext ws2]
-                 :dependencies {ext [ws1] ws2 [ext]}}]
-      ;; ws2 should be marked stale (downstream of stale ext)
-      ;; ext itself is not marked (only workspace-transforms get marked)
-      (is (= {true #{ws2} false #{ws1 ext}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{ext})))))))
-
-  (testing "workspace transform with mixed parents: stale if any parent is stale"
-    ;; ws1 depends on both ext* (stale) and ws2 (not stale)
-    (let [ext (global-transform)
-          ws1 (workspace-transform)
-          ws2 (workspace-transform)
-          graph {:entities [ext ws1 ws2]
-                 :dependencies {ws1 [ext ws2]}}]
-      (is (= {true #{ws1} false #{ext ws2}}
-             (stale->id (:entities (#'ws.impl/mark-execution-stale graph #{ext}))))))))
+;;;; Two-flag staleness tests
 
 (deftest staleness-recomputed-on-graph-read
-  (testing "Graph staleness reflects current DB state, not cached state"
+  (testing "Graph staleness reflects current DB state with two flags"
     (let [t1-ref (str (random-uuid))]
       (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
@@ -288,27 +100,32 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query {}}
                                                             :target          {:database 1 :schema "public" :name "t1"}
-                                                            :execution_stale true}
+                                                            :definition_stale true
+                                                            :input_data_stale false}
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}]
                                                                            :dependencies {}
                                                                            :inputs       []
                                                                            :outputs      []}}]
-        (testing "initial read shows transform as stale"
-          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
-            (is (true? (:execution_stale (first (:entities graph)))))))
+        (testing "initial read shows transform as definition_stale"
+          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))
+                entity (first (:entities graph))]
+            (is (true? (:definition_stale entity)))
+            (is (false? (:input_data_stale entity)))))
 
-        (t2/update! :model/WorkspaceTransform t1-ref {:execution_stale false})
+        (t2/update! :model/WorkspaceTransform t1-ref {:definition_stale false :input_data_stale true})
 
-        (testing "after marking not stale in DB, graph read reflects the change"
-          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
-            (is (nil? (:execution_stale (first (:entities graph)))))))))))
+        (testing "after updating flags in DB, graph read reflects the change"
+          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))
+                entity (first (:entities graph))]
+            (is (false? (:definition_stale entity)))
+            (is (true? (:input_data_stale entity)))))))))
 
-(deftest run-transform-stays-stale-when-ancestor-is-stale-test
-  (testing "Workspace transform stays stale after run if ancestor is stale"
-    ;; t1 queries from orders, outputs to t1
-    ;; t2 queries from t1 (t1's output), outputs to t2
-    ;; Dependency: t2 -> t1 (t2 depends on t1's output)
+(deftest run-transform-with-stale-ancestor-sets-input-data-stale-test
+  (testing "Running a transform with stale ancestor sets input_data_stale"
+    ;; t1 queries from orders, outputs to t1 (definition_stale)
+    ;; t2 queries from t1 (t1's output), outputs to t2 (fresh)
+    ;; When t2 runs while t1 is still stale, t2 should have input_data_stale=true
     (let [t1-ref (str (random-uuid))
           t2-ref (str (random-uuid))
           mp     (mt/metadata-provider)
@@ -320,13 +137,15 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :execution_stale true}
+                                                            :definition_stale true
+                                                            :input_data_stale false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t2-ref
                                                             :name            "Transform 2"
                                                             :source          {:type "query" :query query2}
                                                             :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :execution_stale true}
+                                                            :definition_stale false
+                                                            :input_data_stale false}
                      ;; Graph showing t2 depends on t1
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
@@ -335,9 +154,10 @@
                                                                                           [{:node-type :workspace-transform :id t1-ref}]}
                                                                            :inputs       []
                                                                            :outputs      []}}]
-        (testing "sanity check: both transforms start as stale"
-          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))
+        (testing "initial state: t1 is definition_stale, t2 is fresh"
+          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
 
         (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
                                     (fn [_transform _remapping]
@@ -349,13 +169,149 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (ws.impl/run-transform! workspace ws-transform))))
 
-        (testing "t1 is still stale (never ran)"
-          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t1-ref))))
+        (testing "after running t2: t2 has input_data_stale because t1 is still stale"
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
 
-        (testing "t2 stays stale because its ancestor (t1) is stale"
-          (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))
+(deftest run-transform-marks-downstream-stale-test
+  (testing "Running a transform marks all transitive downstream as input_data_stale"
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          mp     (mt/metadata-provider)
+          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
+      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t1-ref
+                                                            :name            "Transform 1"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
+                                                            :definition_stale true
+                                                            :input_data_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t2-ref
+                                                            :name            "Transform 2"
+                                                            :source          {:type "query" :query query2}
+                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
+                                                            :definition_stale false
+                                                            :input_data_stale false}
+                     :model/WorkspaceGraph     _           {:workspace_id ws-id
+                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
+                                                                                          {:node-type :workspace-transform :id t2-ref}]
+                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
+                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
+                                                                           :inputs       []
+                                                                           :outputs      []}}]
+        (testing "initial state: t1 is definition_stale, t2 is fresh"
+          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
 
-        (t2/update! :model/WorkspaceTransform t1-ref {:execution_stale false})
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :end_time (java.time.Instant/now)
+                                       :message "Mocked execution"})]
+          (let [workspace    (t2/select-one :model/Workspace ws-id)
+                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t1-ref)]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (ws.impl/run-transform! workspace ws-transform))))
+
+        (testing "after running t1: t1 is fresh, t2 is input_data_stale"
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
+
+(deftest run-transform-marks-transitive-downstream-test
+  (testing "Running a transform marks all transitive downstream, not just direct"
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          t3-ref (str (random-uuid))
+          mp     (mt/metadata-provider)
+          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t1-ref
+                                                            :name            "Transform 1"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
+                                                            :definition_stale true
+                                                            :input_data_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t2-ref
+                                                            :name            "Transform 2"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
+                                                            :definition_stale false
+                                                            :input_data_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t3-ref
+                                                            :name            "Transform 3"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t3"}
+                                                            :definition_stale false
+                                                            :input_data_stale false}
+                     ;; t1 -> t2 -> t3
+                     :model/WorkspaceGraph     _           {:workspace_id ws-id
+                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
+                                                                                          {:node-type :workspace-transform :id t2-ref}
+                                                                                          {:node-type :workspace-transform :id t3-ref}]
+                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
+                                                                                          [{:node-type :workspace-transform :id t1-ref}]
+                                                                                          {:node-type :workspace-transform :id t3-ref}
+                                                                                          [{:node-type :workspace-transform :id t2-ref}]}
+                                                                           :inputs       []
+                                                                           :outputs      []}}]
+        (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                    (fn [_transform _remapping]
+                                      {:status :succeeded
+                                       :end_time (java.time.Instant/now)
+                                       :message "Mocked execution"})]
+          (let [workspace    (t2/select-one :model/Workspace ws-id)
+                ws-transform (t2/select-one :model/WorkspaceTransform :ref_id t1-ref)]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (ws.impl/run-transform! workspace ws-transform))))
+
+        (testing "after running t1: both t2 and t3 are input_data_stale"
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t3-ref))))))))
+
+(deftest run-transform-clears-both-flags-when-fresh-test
+  (testing "Running a transform with fresh ancestor clears both flags"
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          mp     (mt/metadata-provider)
+          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
+      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t1-ref
+                                                            :name            "Transform 1"
+                                                            :source          {:type "query" :query query1}
+                                                            :target          {:database (mt/id) :schema "public" :name "t1"}
+                                                            :definition_stale false
+                                                            :input_data_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t2-ref
+                                                            :name            "Transform 2"
+                                                            :source          {:type "query" :query query2}
+                                                            :target          {:database (mt/id) :schema "public" :name "t2"}
+                                                            :definition_stale true
+                                                            :input_data_stale true}
+                     :model/WorkspaceGraph     _           {:workspace_id ws-id
+                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
+                                                                                          {:node-type :workspace-transform :id t2-ref}]
+                                                                           :dependencies {{:node-type :workspace-transform :id t2-ref}
+                                                                                          [{:node-type :workspace-transform :id t1-ref}]}
+                                                                           :inputs       []
+                                                                           :outputs      []}}]
+        (testing "initial state: t1 is fresh, t2 has both flags set"
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
 
         (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
                                     (fn [_transform _remapping]
@@ -367,5 +323,6 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (ws.impl/run-transform! workspace ws-transform))))
 
-        (testing "t2 becomes not stale after run when ancestor is also not stale"
-          (is (false? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
+        (testing "after running t2 with fresh ancestor: both flags are cleared"
+          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))

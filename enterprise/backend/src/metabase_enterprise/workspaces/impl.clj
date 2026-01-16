@@ -140,33 +140,96 @@
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
 (defn- has-stale-transform-dependencies?
-  "Check if a workspace transform has any stale transform dependencies.
-   Returns true if any parent transform (workspace or external) is stale.
-   This is used to determine whether we should clear execution_stale after running.
-
-   Uses the cached graph to find dependencies, then queries DB directly for staleness
-   to avoid circular dependencies with graph hydration."
+  "Check if a workspace transform has any stale direct parent workspace transforms.
+   Returns true if any direct parent workspace transform is stale.
+   Note: External transform staleness is out of scope."
   [ws-id ref-id]
   (when-let [cached-graph (:graph (t2/select-one :model/WorkspaceGraph :workspace_id ws-id))]
     (let [transform-id {:node-type :workspace-transform :id ref-id}
           deps         (get (:dependencies cached-graph) transform-id)
-          ;; Separate workspace and external transform dependencies
           ws-tx-deps   (into [] (comp (filter #(= :workspace-transform (:node-type %)))
                                       (map :id))
-                             deps)
-          ext-tx-deps  (into [] (comp (filter #(= :external-transform (:node-type %)))
-                                      (map :id))
                              deps)]
-      ;; Check if any parent transform is stale in the DB
-      (or (and (seq ws-tx-deps)
-               (t2/exists? :model/WorkspaceTransform
-                           :workspace_id ws-id
-                           :ref_id [:in ws-tx-deps]
-                           :execution_stale true))
-          (and (seq ext-tx-deps)
-               (t2/exists? :model/Transform
-                           :id [:in ext-tx-deps]
-                           :execution_stale true))))))
+      (and (seq ws-tx-deps)
+           (t2/exists? :model/WorkspaceTransform
+                       :workspace_id ws-id
+                       :ref_id [:in ws-tx-deps]
+                       {:where [:or
+                                [:= :definition_stale true]
+                                [:= :input_data_stale true]]})))))
+
+(defn- any-transitive-ancestor-stale?
+  "Check if any transitive workspace transform ancestor is stale.
+   Uses BFS to traverse the dependency graph upward.
+   Returns true if any workspace transform ancestor has definition_stale or input_data_stale set.
+   Note: External transform staleness is out of scope - only workspace transforms are checked."
+  [ws-id ref-id]
+  (when-let [cached-graph (:graph (t2/select-one :model/WorkspaceGraph :workspace_id ws-id))]
+    (let [deps-map     (:dependencies cached-graph)
+          transform-id {:node-type :workspace-transform :id ref-id}
+          ;; BFS to collect all transitive ancestors
+          ancestors    (loop [queue (vec (get deps-map transform-id))
+                              visited #{}
+                              result []]
+                         (if (empty? queue)
+                           result
+                           (let [current (first queue)
+                                 rest-q  (subvec queue 1)]
+                             (if (contains? visited current)
+                               (recur rest-q visited result)
+                               (let [parents (get deps-map current [])]
+                                 (recur (into rest-q parents)
+                                        (conj visited current)
+                                        (conj result current)))))))
+          ;; Only check workspace transforms
+          ws-ancestors (into [] (comp (filter #(= :workspace-transform (:node-type %)))
+                                      (map :id))
+                             ancestors)]
+      (and (seq ws-ancestors)
+           (t2/exists? :model/WorkspaceTransform
+                       :workspace_id ws-id
+                       :ref_id [:in ws-ancestors]
+                       {:where [:or
+                                [:= :definition_stale true]
+                                [:= :input_data_stale true]]})))))
+
+(defn- mark-transitive-downstream-stale!
+  "Mark all transitive downstream workspace transforms as input_data_stale.
+   Uses BFS to traverse the dependency graph downward."
+  [ws-id ref-id]
+  (when-let [cached-graph (:graph (t2/select-one :model/WorkspaceGraph :workspace_id ws-id))]
+    (let [deps-map      (:dependencies cached-graph)
+          ;; Build forward edges (parent -> children)
+          forward-edges (reduce (fn [m [child parents]]
+                                  (reduce (fn [acc parent]
+                                            (update acc parent (fnil conj []) child))
+                                          m
+                                          parents))
+                                {}
+                                deps-map)
+          transform-id  {:node-type :workspace-transform :id ref-id}
+          ;; BFS to collect all transitive descendants
+          descendants   (loop [queue (vec (get forward-edges transform-id))
+                               visited #{}
+                               result []]
+                          (if (empty? queue)
+                            result
+                            (let [current (first queue)
+                                  rest-q  (subvec queue 1)]
+                              (if (contains? visited current)
+                                (recur rest-q visited result)
+                                (let [children (get forward-edges current [])]
+                                  (recur (into rest-q children)
+                                         (conj visited current)
+                                         (if (= :workspace-transform (:node-type current))
+                                           (conj result (:id current))
+                                           result)))))))]
+      ;; Mark all descendant workspace transforms as input_data_stale
+      (when (seq descendants)
+        (t2/update! :model/WorkspaceTransform
+                    {:workspace_id ws-id
+                     :ref_id [:in descendants]}
+                    {:input_data_stale true})))))
 
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
@@ -191,16 +254,21 @@
                           :table      (select-keys (ws.execute/remapped-target transform remapping) [:schema :name])}))]
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
-       ;; Only clear execution_stale if no upstream dependencies are stale.
-       ;; This prevents incorrectly marking a transform as not stale when its inputs
-       ;; haven't been refreshed yet. See: https://github.com/metabase/metabase/pull/67974
-       (let [clear-stale? (and (= :succeeded (:status result))
-                               (not (has-stale-transform-dependencies? (:id workspace) ref-id)))]
+       (let [succeeded?        (= :succeeded (:status result))
+             ancestor-stale?   (and succeeded?
+                                    (any-transitive-ancestor-stale? (:id workspace) ref-id))]
+         ;; Update staleness flags
          (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
                      (cond-> {:last_run_at      (:end_time result)
                               :last_run_status  (name (:status result))
                               :last_run_message (:message result)}
-                       clear-stale? (assoc :execution_stale false)))))
+                       ;; On success, always clear definition_stale
+                       succeeded? (assoc :definition_stale false)
+                       ;; Set input_data_stale based on whether ancestors are stale
+                       succeeded? (assoc :input_data_stale ancestor-stale?)))
+         ;; Mark transitive downstream as stale (their input just changed)
+         (when succeeded?
+           (mark-transitive-downstream-stale! (:id workspace) ref-id))))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform
@@ -400,72 +468,24 @@
   (app-db/update-or-insert! :model/WorkspaceGraph {:workspace_id ws-id} (fn [_] {:workspace_id ws-id, :graph graph})))
 
 (defn- collect-stale-entities
-  "Collect all stale entities (workspace and global transforms) in a workspace.
-   Returns a set of {:node-type node-type :id id} maps."
+  "Collect all stale workspace transforms in a workspace.
+   Returns a set of {:node-type :workspace-transform :id id} maps.
+   A workspace transform is stale if definition_stale OR input_data_stale is true.
+   Note: External transform staleness is out of scope."
   [ws-id entities]
-  (let [ws-transform-ids        (into [] (comp (filter #(= :workspace-transform (:node-type %)))
-                                               (map :id))
-                                      entities)
-        external-transform-ids  (into [] (comp (filter #(= :external-transform (:node-type %)))
-                                               (map :id))
-                                      entities)
-        stale-ws-transforms     (when (seq ws-transform-ids)
-                                  (t2/select-fn-set :ref_id :model/WorkspaceTransform
-                                                    :workspace_id ws-id
-                                                    :ref_id [:in ws-transform-ids]
-                                                    :execution_stale true))
-        stale-global-transforms (when (seq external-transform-ids)
-                                  (t2/select-fn-set :id :model/Transform
-                                                    :id [:in external-transform-ids]
-                                                    :execution_stale true))]
+  (let [ws-transform-ids    (into [] (comp (filter #(= :workspace-transform (:node-type %)))
+                                           (map :id))
+                                  entities)
+        stale-ws-transforms (when (seq ws-transform-ids)
+                              (t2/select-fn-set :ref_id :model/WorkspaceTransform
+                                                :workspace_id ws-id
+                                                :ref_id [:in ws-transform-ids]
+                                                {:where [:or
+                                                         [:= :definition_stale true]
+                                                         [:= :input_data_stale true]]}))]
     (into #{}
-          (concat (map (fn [id] {:node-type :workspace-transform :id id}) stale-ws-transforms)
-                  (map (fn [id] {:node-type :external-transform :id id}) stale-global-transforms)))))
-
-(defn- mark-execution-stale
-  "Mark workspace-transform entities as execution_stale if they depend on stale inputs.
-   A workspace-transform is stale if any of its parents (workspace or global transforms) are stale.
-   Stale status propagates transitively through workspace-transforms.
-
-   Uses breadth-first search (BFS) to efficiently find all reachable workspace-transforms.
-   Time complexity: O(V + E) where V is number of entities and E is number of dependencies.
-
-   stale-entities: Set of {:node-type node-type :id id} maps representing all stale entities"
-  [{:keys [entities dependencies] :as graph} stale-entities]
-  (let [entity->id         #(select-keys % [:node-type :id])
-        forward-edges      (reduce (fn [m [child parents]]
-                                     (reduce (fn [acc parent]
-                                               (update acc (entity->id parent) (fnil conj []) child))
-                                             m
-                                             parents))
-                                   {}
-                                   dependencies)
-        ;; BFS from all stale entities to find reachable workspace-transforms
-        initial-marked     (into #{}
-                                 (comp (filter #(= :workspace-transform (:node-type %)))
-                                       (map entity->id))
-                                 stale-entities)
-        marked-stale-ws-tx (loop [queue (vec stale-entities)
-                                  marked initial-marked
-                                  visited #{}]
-                             (if (empty? queue)
-                               marked
-                               (let [current     (first queue)
-                                     rest-queue  (subvec queue 1)
-                                     current-key (entity->id current)]
-                                 (if (contains? visited current-key)
-                                   (recur rest-queue marked visited)
-                                   (let [children    (get forward-edges current-key [])
-                                         ws-children (filter #(= :workspace-transform (:node-type %)) children)
-                                         new-marked  (into marked (map entity->id) ws-children)]
-                                     (recur (into rest-queue children) new-marked (conj visited current-key)))))))
-        updated-entities   (mapv (fn [entity]
-                                   (if (and (= :workspace-transform (:node-type entity))
-                                            (contains? marked-stale-ws-tx (entity->id entity)))
-                                     (assoc entity :execution_stale true)
-                                     entity))
-                                 entities)]
-    (assoc graph :entities updated-entities)))
+          (map (fn [id] {:node-type :workspace-transform :id id}))
+          stale-ws-transforms)))
 
 (defn- calculate-and-cache-graph!
   "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
@@ -482,12 +502,28 @@
       graph)))
 
 (defn- hydrate-staleness
-  "Hydrate execution_stale on graph entities by querying current DB state.
-   Computes transitive staleness - workspace-transforms are stale if they
-   or any ancestor is stale."
+  "Hydrate staleness on graph entities by querying current DB state.
+   Adds :definition_stale and :input_data_stale to workspace transform entities.
+   External transforms are not hydrated (out of scope)."
   [ws-id graph]
-  (let [stale-entities (collect-stale-entities ws-id (:entities graph))]
-    (mark-execution-stale graph stale-entities)))
+  (let [ws-transform-ids (into [] (comp (filter #(= :workspace-transform (:node-type %)))
+                                        (map :id))
+                               (:entities graph))
+        ;; Fetch both flags for all workspace transforms
+        staleness-map   (when (seq ws-transform-ids)
+                          (into {}
+                                (map (fn [t] [(:ref_id t) (select-keys t [:definition_stale :input_data_stale])]))
+                                (t2/select :model/WorkspaceTransform
+                                           :workspace_id ws-id
+                                           :ref_id [:in ws-transform-ids])))
+        updated-entities (mapv (fn [entity]
+                                 (if (= :workspace-transform (:node-type entity))
+                                   (merge entity (get staleness-map (:id entity)
+                                                      {:definition_stale false
+                                                       :input_data_stale false}))
+                                   entity))
+                               (:entities graph))]
+    (assoc graph :entities updated-entities)))
 
 (defn get-or-calculate-graph
   "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
@@ -513,9 +549,9 @@
   [{ws-id :id :as workspace} & {:keys [stale-only?]}]
   (let [entities     (:entities (get-or-calculate-graph workspace))
         ;; Filter entities to only stale if stale-only? is true
-        ;; An entity is "stale for execution" if it's locally stale or has stale ancestors
+        ;; A workspace transform is stale if definition_stale OR input_data_stale is true
         entities     (if stale-only?
-                       (filter :execution_stale entities)
+                       (filter #(or (:definition_stale %) (:input_data_stale %)) entities)
                        entities)
         type->ids    (u/group-by :node-type :id entities)
         id->tx       (merge

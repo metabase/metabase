@@ -4898,15 +4898,15 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v58.2026-01-09T10:00:01
+      id: v58.2026-01-09T10:00:02
       author: qnkhuat
-      comment: Add execution_stale column to transform table
+      comment: Add definition_stale column to workspace_transform table
       changes:
         - addColumn:
-            tableName: transform
+            tableName: workspace_transform
             columns:
               - column:
-                  name: execution_stale
+                  name: definition_stale
                   type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Indicates if the transform definition has changed and needs re-execution
@@ -4914,24 +4914,29 @@ databaseChangeLog:
                     nullable: false
       rollback:
         - dropColumn:
-            tableName: transform
-            columnName: execution_stale
+            tableName: workspace_transform
+            columnName: definition_stale
 
   - changeSet:
-      id: v58.2026-01-09T10:00:02
+      id: v58.2026-01-16T10:00:00
       author: qnkhuat
-      comment: Add execution_stale column to workspace_transform table
+      comment: Add input_data_stale column to workspace_transform table
       changes:
         - addColumn:
             tableName: workspace_transform
             columns:
               - column:
-                  name: execution_stale
+                  name: input_data_stale
                   type: ${boolean.type}
-                  defaultValueBoolean: true
-                  remarks: Indicates if the transform definition has changed and needs re-execution
+                  defaultValueBoolean: false
+                  remarks: Indicates if upstream data has changed and transform needs re-execution
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: input_data_stale
+
   - changeSet:
       id: v58.2026-01-12T10:47:48
       author: christruter

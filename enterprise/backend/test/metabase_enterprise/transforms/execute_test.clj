@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
@@ -269,51 +268,3 @@
                  (mt/with-current-user (mt/user->id :crowberto)
                    (transforms.execute/execute! transform {:run-method :manual}))))))))))
 
-(deftest global-transform-stays-stale-when-ancestor-is-stale-test
-  (testing "Global transform stays stale after run if ancestor transform is stale"
-    (let [mp     (mt/metadata-provider)
-          query1 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          query2 (mt/native-query {:query "SELECT * FROM public.t1"})]
-      (mt/with-temp [:model/Transform {t1-id :id} {:name            "Transform 1"
-                                                   :source          {:type :query :query query1}
-                                                   :target          {:type   "table"
-                                                                     :schema "public"
-                                                                     :name   "t1"}
-                                                   :execution_stale true}
-                     :model/Transform {t2-id :id} {:name            "Transform 2"
-                                                   :source          {:type :query :query query2}
-                                                   :target          {:type   "table"
-                                                                     :schema "public"
-                                                                     :name   "t2"}
-                                                   :execution_stale true}
-                     ;; Dependency: t2 depends on t1 (transform-to-transform dependency)
-                     :model/Dependency _ {:from_entity_type "transform"
-                                          :from_entity_id   t2-id
-                                          :to_entity_type   "transform"
-                                          :to_entity_id     t1-id}]
-        (testing "sanity check: both transforms start as stale"
-          (is (true? (t2/select-one-fn :execution_stale :model/Transform :id t1-id)))
-          (is (true? (t2/select-one-fn :execution_stale :model/Transform :id t2-id))))
-
-        (mt/with-dynamic-fn-redefs [transforms.i/execute!
-                                    (fn [_transform _opts]
-                                      {:status :succeeded})]
-          (let [transform (t2/select-one :model/Transform :id t2-id)]
-            (transforms.execute/execute! transform {:run-method :manual})))
-
-        (testing "t1 is still stale (never ran)"
-          (is (true? (t2/select-one-fn :execution_stale :model/Transform :id t1-id))))
-
-        (testing "t2 stays stale because its ancestor (t1) is stale"
-          (is (true? (t2/select-one-fn :execution_stale :model/Transform :id t2-id))))
-
-        (t2/update! :model/Transform t1-id {:execution_stale false})
-
-        (mt/with-dynamic-fn-redefs [transforms.i/execute!
-                                    (fn [_transform _opts]
-                                      {:status :succeeded})]
-          (let [transform (t2/select-one :model/Transform :id t2-id)]
-            (transforms.execute/execute! transform {:run-method :manual})))
-
-        (testing "t2 becomes not stale after run when ancestor is also not stale"
-          (is (false? (t2/select-one-fn :execution_stale :model/Transform :id t2-id))))))))
