@@ -24,6 +24,9 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
   }
 
   try {
+    // DELETE requests with body need hasBody: true to send JSON body instead of query params
+    const deleteWithBody = method === "DELETE" && args?.body != null;
+
     const response = await api[method](url)(
       // this will transform arrays to objects with numeric keys
       // we shouldn't be using top level-arrays in the API
@@ -34,8 +37,7 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
         noEvent,
         formData,
         fetch,
-        // DELETE requests with body need hasBody: true to send JSON body instead of query params
-        hasBody: method === "DELETE" && args?.body != null,
+        ...(deleteWithBody && { hasBody: true }),
       },
     );
     return { data: response };
