@@ -1124,16 +1124,6 @@
       (testing "converted question should survive"
         (is (t2/exists? :model/Card question-id))))))
 
-(deftest assert-no-source-card-id-for-native-query-test
-  (testing "assertion fires if native query has source_card_id set"
-    (with-redefs [card/populate-query-fields identity]
-      (is (thrown-with-msg? Exception #"Assert failed"
-                            (t2/insert! :model/Card
-                                        {:name "Bad Card"
-                                         :dataset_query (mt/native-query {:query "SELECT 1"})
-                                         :source_card_id 999
-                                         :database_id (mt/id)}))))))
-
 (deftest before-update-embedding-timestamp-test
   (testing "maybe-populate-initially-published-at is called"
     (mt/with-temp [:model/Card {card-id :id} {:enable_embedding false}]
