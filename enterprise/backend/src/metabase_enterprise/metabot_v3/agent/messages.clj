@@ -18,11 +18,13 @@
 
 (defn- format-query-result
   "Format a query result (from query_model, query_metric, etc.) for the LLM.
-  Creates an XML-like structure similar to Python ai-service."
-  [{:keys [type query-id result-columns]}]
-  (let [query-xml (llm-rep/query->xml {:type type
+  Creates an XML-like structure matching Python ai-service exactly."
+  [{:keys [type query-id database_id query-content result]}]
+  (let [query-xml (llm-rep/query->xml {:query-type type
                                        :query-id query-id
-                                       :result-columns result-columns})]
+                                       :database_id database_id
+                                       :query-content query-content
+                                       :result result})]
     (format-with-instructions query-xml instructions/query-created-instructions)))
 
 (defn- format-chart-result
@@ -48,16 +50,17 @@
     (format-with-instructions entity-xml instructions/entity-metadata-instructions)))
 
 (defn- format-answer-sources-result
-  "Format answer sources (metrics and models list) for the LLM."
+  "Format answer sources (metrics and models list) for the LLM.
+  Uses <metabase-models> tag to match Python AI Service exactly."
   [{:keys [metrics models]}]
   (let [content (str (when (seq metrics)
                        (str "<metrics>\n"
                             (str/join "\n" (map llm-rep/metric->xml metrics))
                             "\n</metrics>\n"))
                      (when (seq models)
-                       (str "<models>\n"
+                       (str "<metabase-models>\n"
                             (str/join "\n" (map llm-rep/model->xml models))
-                            "\n</models>")))]
+                            "\n</metabase-models>")))]
     (format-with-instructions content instructions/answer-sources-instructions)))
 
 (defn- format-tool-result
