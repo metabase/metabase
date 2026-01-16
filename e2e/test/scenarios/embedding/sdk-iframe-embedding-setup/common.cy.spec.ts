@@ -118,7 +118,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
     });
 
-    it("should not reset experience when changing auth type on `options` step", () => {
+    it("should not reset experience when changing auth type for Embed JS wizard opened from an entity page", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       H.openSharingMenu("Embed");
