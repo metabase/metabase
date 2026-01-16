@@ -781,6 +781,7 @@ describe("scenarios > admin > tools > task runs pagination", () => {
     cy.location("search").should("eq", "?page=1");
 
     cy.findByLabelText("pagination")
+      .scrollIntoView()
       .findByText(`51 - ${total}`)
       .should("be.visible");
     cy.findByTestId("task-runs-table").should("contain.text", "Fingerprint");
