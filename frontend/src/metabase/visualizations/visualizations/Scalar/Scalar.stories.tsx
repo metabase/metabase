@@ -1,11 +1,10 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryFn } from "@storybook/react/*";
 import { expect, userEvent, within } from "@storybook/test";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn } from "__support__/visualizations";
-import { Box } from "metabase/ui";
+import { Box, SimpleGrid } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { Series } from "metabase-types/api";
@@ -34,14 +33,6 @@ const MOCK_SERIES = [
   },
 ] as Series;
 
-export const Default: StoryFn = () => (
-  <VisualizationWrapper>
-    <Box h={500}>
-      <Visualization rawSeries={MOCK_SERIES} width={500} />
-    </Box>
-  </VisualizationWrapper>
-);
-
 const SETTINGS = {
   "scalar.segments": [
     createMockSegmentFormatting({
@@ -59,42 +50,40 @@ const SETTINGS = {
   ],
 };
 
-export const WithFormatting = () => {
+export const WithFormattingAndHover = () => {
   return (
     <VisualizationWrapper>
-      <Box h={500}>
-        <Visualization
-          rawSeries={MOCK_SERIES}
-          width={500}
-          settings={SETTINGS}
-        />
-      </Box>
+      <SimpleGrid cols={2} w={500}>
+        <Box h={250}>
+          <Visualization rawSeries={MOCK_SERIES} width={500} />
+        </Box>
+        <Box h={250}>
+          <Visualization
+            rawSeries={MOCK_SERIES}
+            width={250}
+            settings={SETTINGS}
+          />
+        </Box>
+        <Box h={250}>
+          <Visualization
+            rawSeries={MOCK_SERIES}
+            width={250}
+            settings={SETTINGS}
+          />
+        </Box>
+      </SimpleGrid>
     </VisualizationWrapper>
   );
 };
 
-export const WithFormattingHover = () => {
-  return (
-    <VisualizationWrapper>
-      <Box h={500}>
-        <Visualization
-          rawSeries={MOCK_SERIES}
-          width={500}
-          settings={SETTINGS}
-        />
-      </Box>
-    </VisualizationWrapper>
-  );
-};
-
-WithFormattingHover.play = async ({
+WithFormattingAndHover.play = async ({
   canvasElement,
 }: {
   canvasElement: HTMLCanvasElement;
 }) => {
   const asyncCallback = createAsyncCallback();
   const canvas = within(canvasElement.parentElement as HTMLElement);
-  const value = await canvas.findByTestId("scalar-value");
+  const value = (await canvas.findAllByTestId("scalar-value"))[2];
 
   await userEvent.hover(value);
   value.classList.add("pseudo-hover");
