@@ -189,6 +189,16 @@ export function TablePickerTreeTable({
           (r) => r.original.type === "schema",
         );
         const lastRowIndex = rangeRows.length - 1;
+
+        // We want to allow selecting partial ranges.
+        // In case of the last db/schema, if it's expanded
+        //  and we have something selected after it (it's not last row)
+        //  then let's don't mark this parent element, and mark it's selected children
+        const indexesToSkip = [
+          lastExpandedDatabaseIndex,
+          lastExpandedSchemaIndex,
+        ].filter((index) => index !== lastRowIndex);
+
         rangeRows.forEach((rangeRow, rowIndex) => {
           const { original } = rangeRow;
           if (original.type === "table") {
@@ -200,12 +210,7 @@ export function TablePickerTreeTable({
 
           const originalNode = nodeKeyToOriginal.get(original.nodeKey);
 
-          if (
-            [lastExpandedDatabaseIndex, lastExpandedSchemaIndex].includes(
-              rowIndex,
-            ) &&
-            !(lastRowIndex === rowIndex)
-          ) {
+          if (indexesToSkip.includes(rowIndex)) {
             return;
           }
 
