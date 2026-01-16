@@ -152,7 +152,7 @@
     :tracking       {:select-fields  [:name :id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :id}}  ; collection_id is self
-    :removal        {:statuses  #{"removed"}
+    :removal        {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
                      :scope-key :id}  ; collections are scoped by their own id
     :export-path    {:type :collection-entity}
     :export-scope   :root-collections  ; query for root-level remote-synced + transforms-namespace collections
@@ -703,12 +703,21 @@
   (case (or export-scope :derived)
     :root-collections
     ;; Collection model: query for root-level remote-synced + transforms-namespace collections
+    ;; Excludes archived collections - their files are handled by the removal logic
     (concat
      (t2/select-fn-set (juxt (constantly "Collection") :id)
-                       :model/Collection :is_remote_synced true :location "/")
+                       :model/Collection
+                       {:where [:and
+                                [:= :is_remote_synced true]
+                                [:= :location "/"]
+                                [:not :archived]]})
      (when (rs-settings/remote-sync-transforms)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection :namespace collections/transforms-ns :location "/")))
+                         :model/Collection
+                         {:where [:and
+                                  [:= :namespace (name collections/transforms-ns)]
+                                  [:= :location "/"]
+                                  [:not :archived]]})))
     :derived
     ;; Other collection-based models: no root query, derived from collection expansion
     nil))

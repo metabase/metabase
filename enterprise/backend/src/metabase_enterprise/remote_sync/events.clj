@@ -236,7 +236,14 @@
         ;; If collection just became remote-synced, track all published tables in it
         ;; (only for actual remote-synced collections, not transforms-namespace)
         (when (and is-remote-synced? (not was-synced?))
-          (track-published-tables-in-collection! (:id object))))
+          (track-published-tables-in-collection! (:id object)))
+        ;; When a transforms-namespace collection is archived, also mark child transforms for deletion
+        (when (and (:archived object) (transforms-namespace-collection? object))
+          (let [transform-ids (t2/select-pks-set :model/Transform :collection_id (:id object))]
+            (doseq [transform-id transform-ids]
+              (log/infof "Marking transform %s for deletion (parent collection archived)" transform-id)
+              (create-or-update-remote-sync-object-entry! "Transform" transform-id "delete"
+                                                          (fn [id] (t2/select-one [:model/Transform :name [:collection_id :model_collection_id]] :id id)))))))
 
       ;; Collection was synced but no longer should be - mark as removed
       (and existing-entry (not should-sync?))
