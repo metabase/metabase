@@ -19,35 +19,38 @@ export const QuestionAlertsButton = (props: QuestionAlertsButtonProps) => {
   const { toggle: toggleModal, close: closeModal } =
     useQuestionAlertModalContext();
 
-  useEffect(() => {
-    return closeModal;
-  }, [closeModal]);
-
   const isSaved = question?.isSaved();
   const isModel = question?.type() === "model";
   const isAnalytics = isInstanceAnalyticsCollection(question?.collection());
   const hasEmailSetup = useHasEmailSetup();
+
+  const shouldRenderAlertsButton =
+    hasEmailSetup &&
+    withAlerts &&
+    isSaved &&
+    canManageSubscriptions &&
+    !isModel &&
+    !isAnalytics;
+
+  useEffect(() => {
+    if (!shouldRenderAlertsButton) {
+      closeModal();
+    }
+
+    return closeModal;
+  }, [closeModal, shouldRenderAlertsButton]);
   /**
    * Use the same logic as in the core app. But we don't need `isAdmin` because it's already included in `canManageSubscriptions`.
    * @see {@link https://github.com/metabase/metabase/blob/363baef1d937078ecc1efe9710cbe883f830c819/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx#L131}
    */
-  if (
-    !hasEmailSetup ||
-    !withAlerts ||
-    !isSaved ||
-    !canManageSubscriptions ||
-    isModel ||
-    isAnalytics
-  ) {
-    return null;
+  if (shouldRenderAlertsButton) {
+    return (
+      <SdkActionIcon
+        tooltip={t`Alerts`}
+        icon="alert"
+        onClick={toggleModal}
+        {...props}
+      />
+    );
   }
-
-  return (
-    <SdkActionIcon
-      tooltip={t`Alerts`}
-      icon="alert"
-      onClick={toggleModal}
-      {...props}
-    />
-  );
 };
