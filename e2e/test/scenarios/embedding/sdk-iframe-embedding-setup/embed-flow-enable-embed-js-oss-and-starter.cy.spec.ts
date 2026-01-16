@@ -34,8 +34,6 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             cy.findByText("New embed").click();
           });
 
-        cy.wait(50000);
-
         embedModalEnableEmbeddingCard().within(() => {
           cy.findByText(
             "To continue, enable guest embeds and agree to the usage conditions.",

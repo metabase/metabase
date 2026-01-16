@@ -1,4 +1,7 @@
-import { ORDERS_COUNT_QUESTION_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {

@@ -31,7 +31,9 @@
   :default true
   :export? true
   :getter  (fn []
-             (if-not (and config/ee-available? (:valid (premium-features/token-status)))
+             (if (or (not config/ee-available?)
+                     (not (:valid (premium-features/token-status)))
+                     (= "starter" (premium-features/plan-alias)))
                (setting/get-value-of-type :boolean :show-static-embed-terms)
                false)))
 

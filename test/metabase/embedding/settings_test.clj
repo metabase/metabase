@@ -5,30 +5,41 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
   (mt/with-test-user :crowberto
-    (mt/with-temporary-setting-values [show-static-embed-terms nil]
-      (testing "Check if the user needs to accept the embedding licensing terms before static embedding"
-        (when-not config/ee-available?
+    (testing "Check if the user needs to accept the embedding licensing terms before static embedding"
+      (when-not config/ee-available?
+        (mt/with-temporary-setting-values [show-static-embed-terms nil]
           (testing "should return true when user is OSS and has not accepted licensing terms"
             (is (embed.settings/show-static-embed-terms)))
           (testing "should return false when user is OSS and has already accepted licensing terms"
             (embed.settings/show-static-embed-terms! false)
-            (is (not (embed.settings/show-static-embed-terms)))))
-        (when config/ee-available?
-          (testing "should return false when an EE user has a valid token"
+            (is (not (embed.settings/show-static-embed-terms))))))
+      (when config/ee-available?
+        (testing "should return false when a self-hosted EE user has a valid token"
+          (mt/with-premium-features #{}
             (mt/with-random-premium-token! [_token]
               (is (not (embed.settings/show-static-embed-terms)))
+              (mt/with-temporary-setting-values [show-static-embed-terms nil]
+                (embed.settings/show-static-embed-terms! false)
+                (is (not (embed.settings/show-static-embed-terms)))))))
+        (testing "when an EE user doesn't have a valid token"
+          (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
+            (testing "should return true when the user has not accepted licensing terms"
+              (is (embed.settings/show-static-embed-terms)))
+            (testing "should return false when the user has already accepted licensing terms"
               (embed.settings/show-static-embed-terms! false)
-              (is (not (embed.settings/show-static-embed-terms)))))
-          (testing "when an EE user doesn't have a valid token"
-            (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
-              (testing "should return true when the user has not accepted licensing terms"
+              (is (not (embed.settings/show-static-embed-terms))))))
+        (testing "Starter should respect the setting value"
+          (with-redefs [premium-features/plan-alias (constantly "starter")]
+            (mt/with-temporary-setting-values [show-static-embed-terms nil]
+              (testing "should return true when user has not accepted licensing terms"
                 (is (embed.settings/show-static-embed-terms)))
-              (testing "should return false when the user has already accepted licensing terms"
+              (testing "should return false when user has already accepted licensing terms"
                 (embed.settings/show-static-embed-terms! false)
                 (is (not (embed.settings/show-static-embed-terms)))))))))))
 
