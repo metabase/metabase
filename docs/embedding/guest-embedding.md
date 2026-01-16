@@ -309,6 +309,7 @@ Because guest embeds don't require you to create a Metabase account for each per
 Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
+- [Database routing](../permissions/database-routing.md)
 - [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
