@@ -41,9 +41,16 @@ export const DataPointsVisiblePopover = ({
   }
 
   return (
-    <Center pos="absolute" right={0} left={0} pt="xl">
+    <Center
+      pos="absolute"
+      right={0}
+      left={0}
+      py="xl"
+      top={isDashboard ? 0 : undefined}
+      bottom={isDashboard ? 0 : undefined}
+    >
       {isDashboard ? (
-        <HoverCard initiallyOpened defaultOpened closeDelay={100000}>
+        <HoverCard>
           <HoverCard.Target>
             <Card withBorder py="sm" maw="9rem">
               <Text ta="center">{t`Every data point is out of range`}</Text>
