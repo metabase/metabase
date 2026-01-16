@@ -212,9 +212,7 @@
                               :job_name (:name job)
                               :job_href (urls/transform-job-url job-id)
                               :failure_count 1
-                              :failures [{:transform_name (:name job)
-                                          :transform_href (urls/transform-job-url job-id)
-                                          :message (structure-message message)}]}))))
+                              :failures [{:message (structure-message message)}]}))))
 
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."

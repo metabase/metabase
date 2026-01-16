@@ -22,9 +22,11 @@
             {{!-- Failures block --}}
             {{#each payload.event_info.failures}}
             <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 24px auto 24px auto;">
+              {{#if this.transform_name}}
               <a href="{{this.transform_href}}" style="font-weight: 700; font-size: 0.875rem; color: {{../context.application_color}}; text-decoration: none;">
                 {{this.transform_name}}
               </a>
+              {{/if}}
               <div style="line-height: 20px; color: #2F3C45; font-weight: 400; margin-top: 8px;">
                 {{this.message.first_line}}
                 {{#if this.message.details}}

@@ -196,7 +196,7 @@
                                :message string?}
                               (t2/select-one :model/TransformJobRun :id @run-id-atom)))
                         ;; crowberto is a superuser/admin, so they receive the notification
-                      (is (mt/received-email-subject? :crowberto #"Transform job failed: test-job"))
+                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                       (is (mt/received-email-body? :crowberto #"Uncaught error")))))))))))))
 
 (deftest job-run-boom-manual-no-email-test
@@ -335,6 +335,6 @@
                               (t2/select :model/TransformRun :transform_id (:id t3))))
                       (is (= 1 ;; we want to make sure 2 failures send 1 email
                              (count @mt/inbox)))
-                      (is (mt/received-email-subject? :crowberto #"Transform job failed: test-job"))
+                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                       (is (mt/received-email-body? :crowberto #"transform1"))
                       (is (mt/received-email-body? :crowberto #"transform2")))))))))))))
