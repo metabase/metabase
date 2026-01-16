@@ -42,9 +42,9 @@ export interface TableColumnDialogProps {
   onUpdateTableContext: (context: string) => void;
   onResetTableContext: () => void;
   // Save to database functionality (optional)
-  onSaveTableDescription?: (description: string) => Promise<void>;
+  onSaveTableDescription?: (description: string | null) => Promise<void>;
   onSaveColumnDescriptions?: (
-    descriptions: Record<FieldId, string>,
+    descriptions: Record<FieldId, string | null>,
   ) => Promise<void>;
 }
 
@@ -84,12 +84,12 @@ export function TableColumnDialog({
   const [savedColumnIds, setSavedColumnIds] = useState<Set<FieldId>>(new Set());
 
   const handleSaveTableDescription = useCallback(async () => {
-    if (!onSaveTableDescription || !isTableContextEdited || !tableContext) {
+    if (!onSaveTableDescription || !isTableContextEdited) {
       return;
     }
     setSavingTableDescription(true);
     try {
-      await onSaveTableDescription(tableContext);
+      await onSaveTableDescription(tableContext || null);
       setSavedTableDescription(true);
     } finally {
       setSavingTableDescription(false);
@@ -101,10 +101,7 @@ export function TableColumnDialog({
       if (!onSaveColumnDescriptions || !isColumnContextEdited(columnId)) {
         return;
       }
-      const context = getColumnContext(columnId);
-      if (!context) {
-        return;
-      }
+      const context = getColumnContext(columnId) || null;
       setSavingColumnIds((prev) => new Set(prev).add(columnId));
       try {
         await onSaveColumnDescriptions({ [columnId]: context });
@@ -446,9 +443,6 @@ function ColumnRow({
       <Box mt="xs" ml={36}>
         <Group gap="xs" mb={4} justify="space-between">
           <Group gap="xs">
-            <Text size="sm" c="text-tertiary">
-              {t`Description`}
-            </Text>
             {isContextEdited && enabled && (
               <Tooltip label={t`Reset to original`}>
                 <ActionIcon
@@ -496,7 +490,7 @@ function ColumnRow({
         </Group>
         <Textarea
           size="sm"
-          placeholder={t`Describe what this column contains...`}
+          placeholder={t`Describe this column...`}
           value={context ?? ""}
           onChange={(e) => onUpdateContext(e.currentTarget.value)}
           disabled={!enabled}
@@ -514,9 +508,6 @@ function ColumnRow({
       {/* Metadata field (read-only, auto-generated) */}
       {column.metadata && (
         <Box mt="xs" ml={36}>
-          <Text size="sm" c="text-tertiary" mb={4}>
-            {t`Auto-generated metadata`}
-          </Text>
           <Text
             size="sm"
             c="text-secondary"

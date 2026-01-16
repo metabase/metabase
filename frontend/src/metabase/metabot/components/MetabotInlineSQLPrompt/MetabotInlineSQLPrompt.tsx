@@ -105,7 +105,7 @@ export const MetabotInlineSQLPrompt = ({
   const [updateField] = useUpdateFieldMutation();
 
   const handleSaveTableDescription = useCallback(
-    async (description: string) => {
+    async (description: string | null) => {
       if (!selectedTable) {
         return;
       }
@@ -115,7 +115,7 @@ export const MetabotInlineSQLPrompt = ({
   );
 
   const handleSaveColumnDescriptions = useCallback(
-    async (descriptions: Record<number, string>) => {
+    async (descriptions: Record<number, string | null>) => {
       const promises = Object.entries(descriptions).map(
         ([fieldId, description]) =>
           updateField({ id: Number(fieldId), description }).unwrap(),
