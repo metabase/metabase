@@ -1429,7 +1429,7 @@
           (t2/insert! :model/AnalysisFindingError
                       {:analyzed_entity_type "card"
                        :analyzed_entity_id card-id
-                       :error_type "validate/missing-column"
+                       :error_type "missing-column"
                        :error_detail "removed_column"
                        :source_entity_type "table"
                        :source_entity_id products-id})
@@ -1452,7 +1452,7 @@
           (t2/insert! :model/AnalysisFindingError
                       {:analyzed_entity_type "card"
                        :analyzed_entity_id question-card-id
-                       :error_type "validate/missing-column"
+                       :error_type "missing-column"
                        :error_detail "removed_column"
                        :source_entity_type "card"
                        :source_entity_id model-card-id})
@@ -1476,13 +1476,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "table"
                         :source_entity_id products-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col2"
                         :source_entity_type "card"
                         :source_entity_id model-card-id}])
@@ -1521,13 +1521,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id active-source-card-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col2"
                         :source_entity_type "card"
                         :source_entity_id archived-source-card-id}])
@@ -1555,7 +1555,7 @@
           (t2/insert! :model/AnalysisFindingError
                       {:analyzed_entity_type "card"
                        :analyzed_entity_id downstream-card-id
-                       :error_type "validate/missing-column"
+                       :error_type "missing-column"
                        :error_detail "removed_column"
                        :source_entity_type "table"
                        :source_entity_id products-id})
@@ -1675,13 +1675,13 @@
             (t2/insert! :model/AnalysisFindingError
                         [{:analyzed_entity_type "card"
                           :analyzed_entity_id downstream-card-id
-                          :error_type "validate/missing-column"
+                          :error_type "missing-column"
                           :error_detail "col1"
                           :source_entity_type "card"
                           :source_entity_id source-in-personal}
                          {:analyzed_entity_type "card"
                           :analyzed_entity_id downstream-card-id
-                          :error_type "validate/missing-column"
+                          :error_type "missing-column"
                           :error_detail "col2"
                           :source_entity_type "card"
                           :source_entity_id source-regular}])
@@ -1714,13 +1714,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id card1-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col2"
                         :source_entity_type "card"
                         :source_entity_id card2-id}])
@@ -1875,13 +1875,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id card-a-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col2"
                         :source_entity_type "card"
                         :source_entity_id card-b-id}])
@@ -1920,13 +1920,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id card-in-coll1-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id downstream-card-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col2"
                         :source_entity_type "card"
                         :source_entity_id card-in-coll2-id}])
@@ -1970,13 +1970,13 @@
           (t2/insert! :model/AnalysisFindingError
                       [{:analyzed_entity_type "card"
                         :analyzed_entity_id card1-1-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id card1-id}
                        {:analyzed_entity_type "card"
                         :analyzed_entity_id card2-1-id
-                        :error_type "validate/missing-column"
+                        :error_type "missing-column"
                         :error_detail "col1"
                         :source_entity_type "card"
                         :source_entity_id card2-id}])
