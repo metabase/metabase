@@ -180,38 +180,48 @@ export function TablePickerTreeTable({
         const nextSchemas = new Set(selectedSchemas);
         const nextDatabases = new Set(selectedDatabases);
 
-        for (const rangeRow of rangeRows) {
+        const lastNonTableNodeIndex = rangeRows.findLastIndex(
+          (r) => r.original.type !== "table",
+        );
+        const lastRowIndex = rangeRows.length - 1;
+        rangeRows.forEach((rangeRow, rowIndex) => {
           const { original } = rangeRow;
           if (original.type === "table") {
             if (original.tableId != null) {
               nextTables.add(original.tableId);
             }
-            continue;
+            return;
           }
 
           const originalNode = nodeKeyToOriginal.get(original.nodeKey);
 
+          const isLastNonTableNode = lastNonTableNodeIndex === rowIndex;
+
+          if (isLastNonTableNode && !(lastRowIndex === rowIndex)) {
+            return;
+          }
+
           if (original.type === "schema") {
             if (!originalNode || originalNode.type !== "schema") {
-              continue;
+              return;
             }
 
-            if (isExpanded(original.nodeKey)) {
+            if (originalNode.children.length > 0) {
               for (const tableId of getSchemaChildrenTableIds(originalNode)) {
                 nextTables.add(tableId);
               }
             } else {
               nextSchemas.add(getSchemaId(originalNode));
             }
-            continue;
+            return;
           }
 
           if (original.type === "database") {
             if (!originalNode || originalNode.type !== "database") {
-              continue;
+              return;
             }
 
-            if (isExpanded(original.nodeKey)) {
+            if (originalNode.children.length > 0) {
               for (const schema of originalNode.children) {
                 for (const table of schema.children) {
                   nextTables.add(table.value.tableId);
@@ -221,7 +231,7 @@ export function TablePickerTreeTable({
               nextDatabases.add(original.databaseId);
             }
           }
-        }
+        });
 
         setSelectedTables(nextTables);
         setSelectedSchemas(nextSchemas);
@@ -299,7 +309,6 @@ export function TablePickerTreeTable({
     },
     [
       nodeKeyToOriginal,
-      isExpanded,
       selectedTables,
       selectedSchemas,
       selectedDatabases,
