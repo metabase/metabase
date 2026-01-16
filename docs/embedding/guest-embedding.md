@@ -302,6 +302,10 @@ The signed JWT is generated using your [Metabase secret key](#regenerating-the-e
 
 If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
+## Using guest embeds with the SDK
+
+If you're using the [Modular Embedding SDK](./sdk/introduction.md), and you also want to embed a question or dashboard using the guest authentication, you'll still need to visit the item in your Metabases and publish the item. You can ignore the code the wizard generates, but in order for Metabase to know it's okay to serve the item, you need to publish it.
+
 ## Guest embed limitations
 
 Because guest embeds don't require you to create a Metabase account for each person via SSO, Metabase can't know who is viewing the embed, and therefore can't give them access to all their data and all the cool stuff Metabase can do.
