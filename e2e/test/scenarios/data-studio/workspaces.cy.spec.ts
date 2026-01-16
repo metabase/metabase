@@ -1584,7 +1584,7 @@ describe("scenarios > data studio > workspaces", () => {
           cy.findAllByText("Animals")
             .should("have.length", 3)
             .eq(0)
-            .should("have.css", "text-decoration", "none")
+            .should("have.css", "text-decoration-line", "none")
             .and("have.css", "color", COLOR_TEXT);
 
           cy.log("2nd table");
@@ -1594,7 +1594,7 @@ describe("scenarios > data studio > workspaces", () => {
           cy.findAllByText("Animals")
             .should("have.length", 3)
             .eq(1)
-            .should("have.css", "text-decoration", "none")
+            .should("have.css", "text-decoration-line", "none")
             .and("have.css", "color", COLOR_TEXT);
 
           cy.log("3rd table");
@@ -1603,7 +1603,7 @@ describe("scenarios > data studio > workspaces", () => {
           cy.findAllByText("Animals")
             .should("have.length", 3)
             .eq(2)
-            .should("have.css", "text-decoration", "none")
+            .should("have.css", "text-decoration-line", "none")
             .and("have.css", "color", COLOR_SUCCESS);
         });
       });
@@ -1633,7 +1633,7 @@ describe("scenarios > data studio > workspaces", () => {
           cy.findAllByText("Animals")
             .should("have.length", 2)
             .eq(1)
-            .should("have.css", "text-decoration", "line-through")
+            .should("have.css", "text-decoration-line", "line-through")
             .and("have.css", "color", COLOR_DANGER);
         });
       });
@@ -1815,18 +1815,18 @@ function registerWorkspaceAliasName(name: string) {
 
 function verifyNormalText(text: string) {
   cy.findByText(text)
-    .should("have.css", "text-decoration", "none")
+    .should("have.css", "text-decoration-line", "none")
     .and("have.css", "color", COLOR_TEXT);
 }
 
 function verifyAddedText(text: string) {
   cy.findByText(text)
-    .should("have.css", "text-decoration", "none")
+    .should("have.css", "text-decoration-line", "none")
     .and("have.css", "color", COLOR_SUCCESS);
 }
 
 function verifyRemovedText(text: string) {
   cy.findByText(text)
-    .should("have.css", "text-decoration", "line-through")
+    .should("have.css", "text-decoration-line", "line-through")
     .and("have.css", "color", COLOR_DANGER);
 }
