@@ -23,16 +23,18 @@ export const ListSidebar = memo(function ListSidebar({
 
   return (
     <Stack
-      className={S.panel}
+      className={S.sidebar}
       p="lg"
       w="25rem"
-      gap="lg"
+      gap="xl"
       bg="background-primary"
       data-testid="dependency-list-sidebar"
     >
-      <SidebarHeader node={node} onClose={onClose} />
-      <SidebarCreationInfo node={node} />
-      <SidebarLocationInfo node={node} />
+      <Stack gap="lg">
+        <SidebarHeader node={node} onClose={onClose} />
+        <SidebarLocationInfo node={node} />
+        <SidebarCreationInfo node={node} />
+      </Stack>
       {errorGroups.map((errorGroup) => (
         <SidebarErrorInfo
           key={errorGroup.type}

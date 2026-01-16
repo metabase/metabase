@@ -1,5 +1,5 @@
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import { Card, Group, Stack, Title } from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
@@ -20,7 +20,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
 
   return (
     <Stack gap="sm" role="region" aria-label={title}>
-      <Title order={4}>{title}</Title>
+      <Title order={5}>{title}</Title>
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>
           {details.map((detail, detailIndex) => (
@@ -31,7 +31,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
               justify="space-between"
               wrap="nowrap"
             >
-              <Ellipsified>{detail}</Ellipsified>
+              <span className={CS.textWrap}>{detail}</span>
               <CopyButton value={detail} />
             </Group>
           ))}

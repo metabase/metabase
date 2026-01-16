@@ -1,4 +1,4 @@
-.panel {
+.sidebar {
   overflow: auto;
   border-left: 1px solid var(--mb-color-border);
 }

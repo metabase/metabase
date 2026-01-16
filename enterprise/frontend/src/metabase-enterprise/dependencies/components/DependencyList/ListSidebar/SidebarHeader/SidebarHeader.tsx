@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -25,16 +26,17 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       data-testid="dependency-list-sidebar-header"
     >
       <Anchor
+        className={CS.textWrap}
         component={ForwardRefLink}
         fz="h3"
         fw="bold"
-        lh="1.5rem"
+        lh="h3"
         to={link?.url ?? ""}
         target="_blank"
       >
         {getNodeLabel(node)}
       </Anchor>
-      <Group gap={0}>
+      <Group gap="sm">
         <Tooltip
           label={t`Open in dependency graph`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}
@@ -42,13 +44,24 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
           <ActionIcon
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
+            w="1.5rem"
+            miw="1.5rem"
+            h="1.5rem"
+            mih="1.5rem"
             aria-label={t`Open in dependency graph`}
             onClick={onClose}
           >
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon
+          w="1.5rem"
+          miw="1.5rem"
+          h="1.5rem"
+          mih="1.5rem"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

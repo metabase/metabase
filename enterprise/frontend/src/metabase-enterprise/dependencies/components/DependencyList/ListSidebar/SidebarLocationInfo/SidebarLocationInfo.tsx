@@ -1,8 +1,8 @@
-import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Anchor, Card, Group, Icon, Stack, Title } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Anchor, Breadcrumbs, Group, Icon } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
@@ -20,21 +20,21 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <Stack gap="sm" role="region" aria-label={title}>
-      <Title order={4}>{title}</Title>
-      <Card p="md" shadow="none" withBorder>
-        {locationInfo.links.map((link, linkIndex) => (
-          <Fragment key={linkIndex}>
-            {linkIndex > 0 && <span>/</span>}
-            <Anchor component={Link} to={link.url}>
-              <Group gap="sm" wrap="nowrap">
-                {linkIndex === 0 && <Icon name={locationInfo.icon} />}
-                {link.label}
-              </Group>
-            </Anchor>
-          </Fragment>
-        ))}
-      </Card>
-    </Stack>
+    <Breadcrumbs fw="bold" lh="h5" aria-label={title}>
+      {locationInfo.links.map((link, linkIndex) => (
+        <Anchor
+          key={linkIndex}
+          component={Link}
+          className={CS.textWrap}
+          lh="h5"
+          to={link.url}
+        >
+          <Group gap="sm" wrap="nowrap">
+            {linkIndex === 0 && <Icon name={locationInfo.icon} />}
+            {link.label}
+          </Group>
+        </Anchor>
+      ))}
+    </Breadcrumbs>
   );
 }
