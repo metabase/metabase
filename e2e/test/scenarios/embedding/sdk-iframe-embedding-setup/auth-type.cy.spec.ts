@@ -19,7 +19,7 @@ describe("scenarios > embedding > sdk iframe embed setup > auth type", () => {
     H.mockEmbedJsToDevServer();
   });
 
-  it("should reset experience to a default when switching from SSO to Guest auth type and the current experience does not support guest embeds", () => {
+  it("should reset experience to a default only when switching from SSO to Guest auth type and the current experience does not support guest embeds", () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
@@ -31,16 +31,12 @@ describe("scenarios > embedding > sdk iframe embed setup > auth type", () => {
       cy.findByLabelText("Guest").click();
 
       cy.findByLabelText("Dashboard").should("be.checked");
-    });
-  });
-
-  it("should not reset experience to a default when switching from SSO to Guest auth type and the current experience supports guest embeds", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").click();
 
       cy.findByLabelText("Chart").click();
+      cy.findByLabelText("Chart").should("be.checked");
+
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByLabelText("Chart").should("be.checked");
 
       cy.findByLabelText("Guest").click();
