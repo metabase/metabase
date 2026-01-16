@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGenerateSqlMutation } from "metabase/api";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 export function useMetabotSQLSuggestion(
   databaseId: DatabaseId | null,
@@ -15,7 +15,7 @@ export function useMetabotSQLSuggestion(
   const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
 
   const generate = useCallback(
-    async (prompt: string, sourceSql?: string) => {
+    async (prompt: string, sourceSql?: string, tableIds?: TableId[]) => {
       if (!databaseId) {
         setError(t`No database selected.`);
         return;
@@ -26,6 +26,7 @@ export function useMetabotSQLSuggestion(
           prompt,
           database_id: databaseId,
           source_sql: sourceSql,
+          table_ids: tableIds,
         });
         requestRef.current = request;
         const result = await request.unwrap();

@@ -399,6 +399,20 @@
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------
 
+(defn get-tables-metadata
+  "Fetch metadata for a collection of table IDs.
+   Returns a sequence of maps with :id, :name, :schema, and :display_name.
+   Only returns tables the current user can access."
+  [table-ids]
+  (when (seq table-ids)
+    (let [tables (fetch-accessible-tables table-ids)]
+      (mapv (fn [[id table]]
+              {:id           id
+               :name         (:name table)
+               :schema       (:schema table)
+               :display_name (:display_name table)})
+            tables))))
+
 (defn- enrich-columns-with-comments
   "Add :comment to each column based on available metadata."
   [columns field-values-map fk-targets-map]

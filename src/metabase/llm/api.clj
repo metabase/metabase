@@ -190,13 +190,45 @@
              :dialect       dialect
              :table_ids     (vec table-ids)}})
 
+(api.macros/defendpoint :post "/extract-tables"
+  :- [:map
+      [:tables [:sequential
+                [:map
+                 [:id pos-int?]
+                 [:name :string]
+                 [:schema {:optional true} [:maybe :string]]
+                 [:display_name {:optional true} [:maybe :string]]]]]]
+  "Extract table references from SQL and return metadata for UI display.
+
+   Parses the SQL to identify referenced tables and returns metadata
+   including id, name, schema, and display_name for each table.
+
+   Only returns tables the current user has permission to access."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:database_id pos-int?]
+            [:sql :string]]]
+  (let [{:keys [database_id sql]} body
+        table-ids (llm.context/extract-tables-from-sql database_id sql)
+        tables    (llm.context/get-tables-metadata table-ids)]
+    {:tables (or tables [])}))
+
 (api.macros/defendpoint :post "/generate-sql"
+  :- [:map
+      [:parts [:sequential [:map
+                            [:type :string]
+                            [:version pos-int?]
+                            [:value :map]]]]]
   "Generate SQL from a natural language prompt.
 
    Requires:
    - LLM to be configured (Anthropic API key set in admin settings)
-   - At least one table reference (explicit @mention or implicit from source_sql)
+   - At least one table reference (explicit @mention, implicit from source_sql, or table_ids)
    - A database_id parameter
+
+   When table_ids is provided, it is used as the authoritative source of tables
+   for schema context, bypassing mention parsing and SQL extraction.
 
    Returns AI SDK v5 data part format for frontend compatibility.
    If include_context is true, includes a context part with the system prompt."
@@ -207,25 +239,25 @@
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
-  :- [:map
-      [:parts [:sequential [:map
-                            [:type :string]
-                            [:version pos-int?]
-                            [:value :map]]]]]
+            [:include_context {:optional true} :boolean]
+            [:table_ids {:optional true} [:sequential pos-int?]]]]
   ;; 1. Validate LLM is configured
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id source_sql buffer_id include_context]} body
+  (let [{:keys [prompt database_id source_sql buffer_id include_context table_ids]} body
         buffer-id (or buffer_id "qb")
-        ;; 2. Parse table mentions from prompt (explicit) and source SQL (implicit)
-        explicit-table-ids (llm.context/parse-table-mentions prompt)
-        implicit-table-ids (when source_sql
-                             (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
-                                      (or implicit-table-ids #{}))]
+        ;; 2. Determine table IDs - use explicit table_ids if provided, otherwise parse from prompt/SQL
+        table-ids (if (seq table_ids)
+                    ;; Authoritative: frontend explicitly passed table IDs
+                    (set table_ids)
+                    ;; Fallback: parse from prompt mentions and source SQL
+                    (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
+                          implicit-table-ids (when source_sql
+                                               (llm.context/extract-tables-from-sql database_id source_sql))]
+                      (set/union (or explicit-table-ids #{})
+                                 (or implicit-table-ids #{}))))]
 
     ;; 3. Validate at least one table is referenced
     (when (empty? table-ids)
@@ -281,15 +313,19 @@
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
    Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id source_sql buffer_id]}]
+  [{:keys [prompt database_id source_sql buffer_id table_ids]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-  (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
-        implicit-table-ids (when source_sql
-                             (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
-                                      (or implicit-table-ids #{}))]
+  (let [table-ids (if (seq table_ids)
+                    ;; Authoritative: frontend explicitly passed table IDs
+                    (set table_ids)
+                    ;; Fallback: parse from prompt mentions and source SQL
+                    (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
+                          implicit-table-ids (when source_sql
+                                               (llm.context/extract-tables-from-sql database_id source_sql))]
+                      (set/union (or explicit-table-ids #{})
+                                 (or implicit-table-ids #{}))))]
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
@@ -310,12 +346,16 @@
          :table-ids     table-ids}))))
 
 (api.macros/defendpoint :post "/generate-sql-streaming"
+  :- :any ; SSE streaming response
   "Generate SQL from a natural language prompt with streaming response.
 
    Requires:
    - LLM to be configured (Anthropic API key set in admin settings)
-   - At least one table reference (explicit @mention or implicit from source_sql)
+   - At least one table reference (explicit @mention, implicit from source_sql, or table_ids)
    - A database_id parameter
+
+   When table_ids is provided, it is used as the authoritative source of tables
+   for schema context, bypassing mention parsing and SQL extraction.
 
    Returns SSE stream in AI SDK v5 format:
    - 0:\"text\" - Text delta chunks as SQL is generated
@@ -329,7 +369,8 @@
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
+            [:include_context {:optional true} :boolean]
+            [:table_ids {:optional true} [:sequential pos-int?]]]]
   (let [{:keys [prompt include_context]} body
         {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]

@@ -91,7 +91,11 @@ type PluginMetabotType = {
   ) => {
     source: string | undefined;
     isLoading: boolean;
-    generate: (value: string, sourceSql?: string) => Promise<void>;
+    generate: (
+      value: string,
+      sourceSql?: string,
+      tableIds?: number[],
+    ) => Promise<void>;
     error: string | undefined;
     cancelRequest: () => void;
     clear: () => void;

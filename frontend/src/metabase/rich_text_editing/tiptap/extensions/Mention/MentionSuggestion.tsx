@@ -122,16 +122,46 @@ const MentionSuggestionComponent = forwardRef<
 
 export const MentionSuggestion = MentionSuggestionComponent;
 
-export const createMentionSuggestion = (
-  outerProps: Pick<
+interface CreateMentionSuggestionProps
+  extends Pick<
     MentionSuggestionProps,
     "searchModels" | "searchOptions" | "canFilterSearchModels" | "canBrowseAll"
-  >,
+  > {
+  onSelect?: (item: {
+    id: number | string;
+    model: string;
+    name?: string;
+  }) => void;
+}
+
+export const createMentionSuggestion = (
+  outerProps: CreateMentionSuggestionProps,
 ) => {
+  const { onSelect, ...mentionProps } = outerProps;
   return forwardRef<
     SuggestionRef,
     Omit<MentionSuggestionProps, "searchModels">
   >(function MentionSuggestionWrapper(props, ref) {
-    return <MentionSuggestion {...props} ref={ref} {...outerProps} />;
+    const wrappedCommand = useCallback(
+      (item: MentionCommandProps) => {
+        if (onSelect && item.id !== undefined && item.model) {
+          onSelect({
+            id: item.id,
+            model: item.model,
+            name: item.label,
+          });
+        }
+        props.command(item);
+      },
+      [props],
+    );
+    return (
+      <MentionSuggestion
+        {...props}
+        command={wrappedCommand}
+        ref={ref}
+        {...mentionProps}
+      />
+    );
   });
 };

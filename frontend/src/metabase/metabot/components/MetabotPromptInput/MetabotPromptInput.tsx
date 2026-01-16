@@ -29,6 +29,12 @@ import {
   serializeTiptapToMetabotMessage,
 } from "./utils";
 
+export interface MentionSelectedPayload {
+  id: number | string;
+  model: string;
+  label?: string;
+}
+
 export interface MetabotPromptInputProps {
   value: string;
   placeholder?: string;
@@ -37,6 +43,7 @@ export interface MetabotPromptInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
+  onMentionSelected?: (mention: MentionSelectedPayload) => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
     searchOptions?: EntitySearchOptions;
@@ -56,12 +63,15 @@ export const MetabotPromptInput = forwardRef<
       onChange,
       onSubmit,
       onStop,
+      onMentionSelected,
       ...props
     },
     ref,
   ) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const serializedRef = useRef(value);
+    const onMentionSelectedRef = useRef(onMentionSelected);
+    onMentionSelectedRef.current = onMentionSelected;
 
     const extensions = [
       Document,
@@ -81,6 +91,17 @@ export const MetabotPromptInput = forwardRef<
               searchOptions: suggestionConfig.searchOptions,
               canFilterSearchModels: true,
               canBrowseAll: false,
+              onSelect: (item: {
+                id: number | string;
+                model: string;
+                name?: string;
+              }) => {
+                onMentionSelectedRef.current?.({
+                  id: item.id,
+                  model: item.model,
+                  label: item.name,
+                });
+              },
             }),
           ),
         },
