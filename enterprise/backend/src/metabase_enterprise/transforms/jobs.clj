@@ -103,15 +103,15 @@
           (run-transform! run-id run-method transform)
           (vswap! successful conj (:id transform))
           (catch Exception e
-            (vswap! failures conj {:transform transform
-                                   :message (.getMessage e)})))
-        (vswap! failures conj {:transform transform
-                               :message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
+            (vswap! failures conj {::transform transform
+                                   ::message (.getMessage e)})))
+        (vswap! failures conj {::transform transform
+                               ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
 
     (if (seq @failures)
-      {:status :failed
-       :failures @failures}
-      {:status :succeeded})))
+      {::status :failed
+       ::failures @failures}
+      {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
   (t2/select-fn-set :transform_id
@@ -134,9 +134,9 @@
   (->> failures
        (map (fn [failure]
               (format "%s %s:\n%s"
-                      (:name (:transform failure))
-                      (urls/transform-run-url (:id (:transform failure)))
-                      (:message failure))))
+                      (:name (::transform failure))
+                      (urls/transform-run-url (:id (::transform failure)))
+                      (::message failure))))
        (str/join "\n\n")))
 
 (defn- active-users-to-edit-transform
@@ -175,12 +175,12 @@
   ;; We hope that this will be the most recent user.
   (let [job (t2/select-one :model/TransformJob job-id)
         failures (map (fn [failure]
-                        (let [transform (:transform failure)]
-                          (assoc failure :emails (->> transform
-                                                      users-to-notify-of-transform-failure
-                                                      (keep :email)))))
+                        (let [transform (::transform failure)]
+                          (assoc failure ::emails (->> transform
+                                                       users-to-notify-of-transform-failure
+                                                       (keep :email)))))
                       failures)
-        by-user (group-by :emails failures)]
+        by-user (group-by ::emails failures)]
     (doseq [[user-emails failures] by-user]
       (email/send-message! {:subject (i18n/trun "[Metabase] Failed transform run" "Failed transform runs" (count failures))
                             :recipients user-emails
@@ -211,22 +211,25 @@
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
         (transforms.instrumentation/with-job-timing [job-id run-method]
-          (try
+          (try ;; catch any catastrophic problems
             (let [result (run-transforms! run-id transforms opts)]
-              (case (:status result)
+              (case (::status result)
                 :succeeded (transforms.job-run/succeed-started-run! run-id)
                 :failed (try
-                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (:failures result))})
+                          (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
                           (when (= :cron run-method)
-                            (notify-transform-failures job-id (:failures result)))
+                            (notify-transform-failures job-id (::failures result)))
                           (catch Exception e
-                            (log/error e "Error when failing a transform job.")))))
+                            (log/error e "Error when failing a transform run.")))))
             (catch Throwable t
               ;; We don't expect a catastrophic failure, but neither did the Titanic.
               ;; We should clean up in this case and notify the admin users.
-              (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-              (when (= :cron run-method)
-                (notify-job-failure job-id (.getMessage t)))
+              (try
+                (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+                (when (= :cron run-method)
+                  (notify-job-failure job-id (.getMessage t)))
+                (catch Exception e
+                  (log/error e "Error when failing a transform job run.")))
               (throw t))))
         run-id))))
 
