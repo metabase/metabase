@@ -601,7 +601,9 @@
 
   Format is `{entity-type {entity-id analysis-version}}`.
 
-  Use -1 for analysis-version if you want to check that an analysis exists without asserting a specific version."
+  Use -1 for analysis-version if you want to check that an analysis exists without asserting a specific version.
+
+  Use nil for analysis-version if you want to check that no analysis exists."
   [spec]
   (doseq [[entity-type ids-and-versions] spec]
     (let [analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version])
@@ -661,6 +663,21 @@
               {:card {parent-card-id new-version
                       child-card-id new-version
                       other-card-id old-version}}))))))))
+
+(deftest ^:sequential card-update-ignores-native-cards-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "Native card updates should not trigger analysis"
+       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
+                      :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                      :model/Dependency _ {:from_entity_type :card
+                                           :from_entity_id child-card-id
+                                           :to_entity_type :card
+                                           :to_entity_id parent-card-id}]
+         (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+         (assert-has-analyses
+          {:card {parent-card-id nil
+                  child-card-id nil}}))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup
@@ -767,6 +784,20 @@
                         other-card-id old-version}
                  :transform {transform-id new-version}})))))))))
 
+(deftest ^:sequential transform-update-ignores-native-transforms-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "Native transform updates should not trigger analysis"
+       (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                  :query (lib/native-query mp "select * from products")}
+                                                                         :name "transform_sample"
+                                                                         :target {:schema "public"
+                                                                                  :name "sample"
+                                                                                  :type :table}}]
+         (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+         (assert-has-analyses
+          {:transform {transform-id nil}}))))))
+
 (deftest ^:sequential transform-run-works-with-no-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
@@ -835,6 +866,32 @@
               {:card {card-id new-version
                       other-card-id old-version}
                :transform {transform-id old-version}}))))))))
+
+(deftest ^:sequential transform-run-triggers-analysis-for-native-transforms-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "Native transform runs should still trigger analysis"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id} {:source {:type :query
+                                                                      :query (lib/native-query mp "select * from products")}
+                                                             :name "transform_sample"
+                                                             :target {:schema "public"
+                                                                      :name "sample"
+                                                                      :type :table}}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :transform
+                                             :to_entity_id transform-id}]
+           (events/publish-event! :event/transform-run-complete
+                                  {:object {:db-id (mt/id)
+                                            :output-schema "public"
+                                            :output-table "sample"
+                                            :transform-id transform-id}
+                                   :user-id api/*current-user-id*})
+           (assert-has-analyses
+            {:card {card-id -1}})))))))
 
 (deftest ^:sequential segment-update-works-with-no-analyses-test
   (run-with-dependencies-setup
