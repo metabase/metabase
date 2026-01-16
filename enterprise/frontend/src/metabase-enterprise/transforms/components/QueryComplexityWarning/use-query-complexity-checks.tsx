@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks";
@@ -34,38 +35,44 @@ export const useQueryComplexityChecks = () => {
   const metadata = useSelector(getMetadata);
   const { modalContent: modal, show } = useConfirmation();
 
-  const checkComplexity = async (source: DraftTransformSource) => {
-    const query = getQueryForComplexityCheck(source, metadata);
-    if (!query) {
-      return;
-    }
-    const rawQuery = Lib.rawNativeQuery(query);
-    const complexity = await checkQueryComplexity(rawQuery, true).unwrap();
-    if (complexity.isSimple) {
-      return;
-    }
-    return complexity;
-  };
+  const checkComplexity = useCallback(
+    async (source: DraftTransformSource) => {
+      const query = getQueryForComplexityCheck(source, metadata);
+      if (!query) {
+        return;
+      }
+      const rawQuery = Lib.rawNativeQuery(query);
+      const complexity = await checkQueryComplexity(rawQuery, true).unwrap();
+      if (complexity.is_simple) {
+        return;
+      }
+      return complexity;
+    },
+    [metadata, checkQueryComplexity],
+  );
 
-  const confirmIfQueryIsComplex = async (
-    source: DraftTransformSource,
-    confirmButtonText: string = t`Save anyway`,
-  ) => {
-    const complexity = await checkComplexity(source);
-    if (!complexity) {
-      return true;
-    }
-    return new Promise<boolean>((resolve) => {
-      show({
-        title: t`Can't automatically run this transform incrementally`,
-        message: <QueryComplexityWarning complexity={complexity} />,
-        onConfirm: () => resolve(true),
-        onCancel: () => resolve(false),
-        confirmButtonText,
-        confirmButtonProps: { color: "saturated-red", variant: "filled" },
+  const confirmIfQueryIsComplex = useCallback(
+    async (
+      source: DraftTransformSource,
+      confirmButtonText: string = t`Save anyway`,
+    ) => {
+      const complexity = await checkComplexity(source);
+      if (!complexity) {
+        return true;
+      }
+      return new Promise<boolean>((resolve) => {
+        show({
+          title: t`Can't automatically run this transform incrementally`,
+          message: <QueryComplexityWarning complexity={complexity} />,
+          onConfirm: () => resolve(true),
+          onCancel: () => resolve(false),
+          confirmButtonText,
+          confirmButtonProps: { color: "saturated-red", variant: "filled" },
+        });
       });
-    });
-  };
+    },
+    [checkComplexity, show],
+  );
 
   return { confirmIfQueryIsComplex, checkComplexity, modal };
 };

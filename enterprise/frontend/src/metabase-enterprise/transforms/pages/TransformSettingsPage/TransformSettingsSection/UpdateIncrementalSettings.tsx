@@ -4,14 +4,13 @@ import _ from "underscore";
 
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { Transform } from "metabase-types/api";
-
+import type { IncrementalSettingsFormValues } from "metabase-enterprise/transforms/components/IncrementalTransform";
 import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
-} from "../../../components/IncrementalTransform";
-import type { IncrementalSettingsFormValues } from "../../../components/IncrementalTransform/form";
-import { useQueryComplexityChecks } from "../../../components/QueryComplexityWarning";
+} from "metabase-enterprise/transforms/components/IncrementalTransform";
+import { useQueryComplexityChecks } from "metabase-enterprise/transforms/components/QueryComplexityWarning";
+import type { Transform } from "metabase-types/api";
 
 type UpdateIncrementalSettingsProps = {
   transform: Transform;

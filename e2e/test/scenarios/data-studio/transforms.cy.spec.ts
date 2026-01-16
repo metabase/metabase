@@ -1553,7 +1553,7 @@ LIMIT
         H.NativeEditor.type(" LIMIT 10");
         getQueryEditor().button("Save").click();
 
-        queryComplexityWarningModal("cancel");
+        handleQueryComplexityWarningModal("cancel");
         cy.log("verify modal is closed and still in edit mode");
         H.modal().should("not.exist");
         cy.url().should("include", "/edit");
@@ -1561,7 +1561,7 @@ LIMIT
 
         cy.log("Save anyway");
         getQueryEditor().button("Save").click();
-        queryComplexityWarningModal("save");
+        handleQueryComplexityWarningModal("save");
 
         cy.wait("@updateTransform");
         cy.url().should("not.include", "/edit");
@@ -1579,14 +1579,14 @@ LIMIT
         isIncrementalSwitchDisabled();
         getIncrementalSwitch().click();
 
-        queryComplexityWarningModal("cancel");
+        handleQueryComplexityWarningModal("cancel");
 
         cy.log("Verify that the switch is still off");
         isIncrementalSwitchDisabled();
 
         cy.log("Toggle incremental on");
         getIncrementalSwitch().click();
-        queryComplexityWarningModal("save");
+        handleQueryComplexityWarningModal("save");
 
         cy.wait("@updateTransform");
         isIncrementalSwitchEnabled();
@@ -3352,7 +3352,7 @@ function isIncrementalSwitchDisabled() {
   return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
 }
 
-function queryComplexityWarningModal(action: "cancel" | "save") {
+function handleQueryComplexityWarningModal(action: "cancel" | "save") {
   cy.log(`Verify complexity warning modal appears and ${action} it`);
   return H.modal().within(() => {
     cy.findByTestId("query-complexity-warning").should("be.visible");
