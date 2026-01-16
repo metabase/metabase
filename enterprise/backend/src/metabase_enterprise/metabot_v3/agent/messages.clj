@@ -72,6 +72,14 @@
   (or (:structured-output result)
       (:structured_output result)))
 
+(defn- normalize-entity-type
+  "Normalize entity type to keyword."
+  [type-val]
+  (cond
+    (keyword? type-val) type-val
+    (string? type-val) (keyword type-val)
+    :else nil))
+
 (defn- format-tool-result
   "Format tool result for LLM consumption.
   Handles both :output (plain string) and :structured-output (structured data).
@@ -103,8 +111,8 @@
         (format-chart-result structured)
 
         ;; Entity details (table, model, metric) - has :type
-        (#{:table :model :metric :question :user :dashboard} (:type structured))
-        (format-entity-result structured)
+        (#{:table :model :metric :question :user :dashboard} (normalize-entity-type (:type structured)))
+        (format-entity-result (assoc structured :type (normalize-entity-type (:type structured))))
 
         ;; Fallback with instructions if present in the result
         (:instructions structured)
@@ -126,6 +134,18 @@
   (if (keyword? role)
     role
     (keyword role)))
+
+(defn- decode-tool-arguments
+  "Decode tool call arguments from JSON when provided as a string.
+  Falls back to the raw string if decoding fails."
+  [arguments]
+  (if (string? arguments)
+    (try
+      (json/decode arguments)
+      (catch Exception e
+        (log/warn e "Failed to decode tool call arguments" {:arguments arguments})
+        arguments))
+    arguments))
 
 (defn- format-message
   "Format a message into Claude API format.
@@ -156,13 +176,13 @@
                                        :id id
                                        :name name
                                        ;; Arguments may be JSON string or already parsed
-                                       :input (if (string? arguments)
-                                                (json/decode arguments)
-                                                arguments)})
+                                       :input (decode-tool-arguments arguments)})
                                     tool-calls))
             ;; Build content: text + tool_use blocks, or just tool_use blocks
             final-content (cond
                             ;; Already has array content (pre-formatted)
+                            (and (sequential? content) (seq tool-use-blocks))
+                            (into (vec content) tool-use-blocks)
                             (sequential? content) content
                             ;; Has text content + tool calls -> combine them
                             (and (some? content) (seq tool-use-blocks))
@@ -274,12 +294,9 @@
                     vec)]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
-               :input-messages input-messages
-               :formatted-input (vec formatted-input)
                :step-count (count steps)
-               :steps steps
-               :step-messages (vec step-messages)
-               :total-messages (count result)})
+               :total-messages (count result)
+               :message-roles (mapv :role result)})
     result))
 
 (defn build-system-message

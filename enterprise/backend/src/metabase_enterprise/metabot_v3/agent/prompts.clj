@@ -162,7 +162,7 @@
                tool-meta (meta tool-var)
                ;; Try to get instructions from metadata or direct key
                instructions (or (:system-instructions tool-meta)
-                               (when (map? tool-var) (:system-instructions tool-var)))]
+                                (when (map? tool-var) (:system-instructions tool-var)))]
          :when instructions]
      {:tool-name tool-name
       :instructions instructions})))
@@ -182,17 +182,26 @@
   (let [template-name (or prompt-template "internal.selmer")
         template (get-cached-system-prompt template-name)]
     (if template
-      (let [sql-dialect (get context :sql-dialect)
+      (let [sql-dialect (or (get context :sql_dialect)
+                            (get context :sql-dialect))
             dialect-instructions (when sql-dialect
-                                  (get-cached-dialect-instructions sql-dialect))
+                                   (get-cached-dialect-instructions sql-dialect))
             tool-instructions (extract-tool-instructions tools)
-            template-context {:current_time (get context :current-time)
-                             :first_day_of_week (get context :first-day-of-week "Sunday")
-                             :sql_dialect sql-dialect
-                             :sql_dialect_instructions dialect-instructions
-                             :tool_instructions tool-instructions
-                             :viewing_context (get context :viewing-context)
-                             :recent_views (get context :recent-views)}]
+            current-time (or (get context :current_time)
+                             (get context :current-time))
+            first-day-of-week (or (get context :first_day_of_week)
+                                  (get context :first-day-of-week "Sunday"))
+            viewing-context (or (get context :viewing_context)
+                                (get context :viewing-context))
+            recent-views (or (get context :recent_views)
+                             (get context :recent-views))
+            template-context {:current_time current-time
+                              :first_day_of_week first-day-of-week
+                              :sql_dialect sql-dialect
+                              :sql_dialect_instructions dialect-instructions
+                              :tool_instructions tool-instructions
+                              :viewing_context viewing-context
+                              :recent_views recent-views}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do
@@ -214,5 +223,4 @@
   (clear-cache!)
 
   ;; Extract tool instructions
-  (extract-tool-instructions {"search" #'some-tool-var})
-  )
+  (extract-tool-instructions {"search" #'some-tool-var}))
