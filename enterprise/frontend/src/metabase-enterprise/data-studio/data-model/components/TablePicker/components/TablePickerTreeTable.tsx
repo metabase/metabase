@@ -40,9 +40,7 @@ import type {
   TreePath,
 } from "../types";
 import {
-  getDatabases,
-  getSchemas,
-  getTables,
+  getTreeMap,
   nodeToTreePath,
   transformToTreeTableFormat,
 } from "../utils";
@@ -106,13 +104,7 @@ export function TablePickerTreeTable({
     return map;
   }, [treeData]);
 
-  const nodeKeyToOriginal = useMemo(() => {
-    return new Map(
-      [...getDatabases(tree), ...getSchemas(tree), ...getTables(tree)].map(
-        (n) => [n.key, n],
-      ),
-    );
-  }, [tree]);
+  const nodeKeyToOriginal = useMemo(() => getTreeMap(tree), [tree]);
 
   const expandedIds = useMemo(() => {
     const ids = new Set<string>();

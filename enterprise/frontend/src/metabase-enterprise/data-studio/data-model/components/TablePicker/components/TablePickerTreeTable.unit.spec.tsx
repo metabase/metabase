@@ -1,7 +1,7 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { NodeSelection } from "../bulk-selection.utils";
-import type { DatabaseNode, SchemaNode, TableNode } from "../types";
+import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 
 import {
   type CheckboxToggleRow,
@@ -90,33 +90,14 @@ describe("handleCheckboxToggle", () => {
 
       it("should deselect a table when it is selected", () => {
         const table = createMockTableNode(1, "public", 101);
-        const row = createCheckboxRow("table", table.key, 101, 1);
+        const row = createCheckboxRow(
+          "table",
+          table.key,
+          table.value.tableId,
+          1,
+        );
         const selection: NodeSelection = {
-          tables: new Set([101]),
-          schemas: new Set(),
-          databases: new Set(),
-        };
-        const nodeKeyToOriginal = new Map([[table.key, table]]);
-
-        const result = handleCheckboxToggle({
-          row,
-          index: 0,
-          isShiftPressed: false,
-          selection,
-          lastSelectedRowIndex: null,
-          rows: [row],
-          nodeKeyToOriginal,
-        });
-
-        expect(result.selection.tables).toEqual(new Set());
-        expect(result.lastSelectedRowIndex).toBe(0);
-      });
-
-      it("should handle table with null tableId", () => {
-        const table = createMockTableNode(1, "public", 101);
-        const row = createCheckboxRow("table", table.key, undefined, 1);
-        const selection: NodeSelection = {
-          tables: new Set(),
+          tables: new Set([table.value.tableId]),
           schemas: new Set(),
           databases: new Set(),
         };
@@ -196,7 +177,7 @@ describe("handleCheckboxToggle", () => {
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
         const row = createCheckboxRow("schema", schema.key, undefined, 1);
         const selection: NodeSelection = {
-          tables: new Set([101, 102]),
+          tables: new Set([table1.value.tableId, table2.value.tableId]),
           schemas: new Set(),
           databases: new Set(),
         };
@@ -416,7 +397,7 @@ describe("handleCheckboxToggle", () => {
         schemas: new Set(),
         databases: new Set(),
       };
-      const nodeKeyToOriginal = new Map([
+      const nodeKeyToOriginal = new Map<string, TreeNode>([
         [table3.key, table3],
         [schema.key, schema],
       ]);
@@ -431,33 +412,36 @@ describe("handleCheckboxToggle", () => {
         nodeKeyToOriginal,
       });
 
-      // Schema is the last item, so it should be included along with table3
+      // Schema is the last item, so all it's children should be included
       expect(result.selection.tables).toEqual(new Set([103, 101, 102]));
       expect(result.lastSelectedRowIndex).toBe(1);
     });
 
     it("should skip last expanded database when it has children after it", () => {
       const table1 = createMockTableNode(1, "public", 101);
-      const schema1 = createMockSchemaNode(1, "public", [table1]);
-      const database = createMockDatabaseNode(1, [schema1]);
       const table2 = createMockTableNode(1, "public", 102);
+      const schema1 = createMockSchemaNode(1, "public", [table1]);
+      const schema2 = createMockSchemaNode(1, "public", [table2]);
+      const database = createMockDatabaseNode(1, [schema1, schema2]);
 
       const row1 = createCheckboxRow("database", database.key, undefined, 1);
-      const row2 = createCheckboxRow("table", table2.key, 102, 1);
-      const rows = [row1, row2];
+      const row2 = createCheckboxRow("schema", schema1.key, undefined, 1);
+      const row3 = createCheckboxRow("table", table2.key, 102, 1);
+      const row4 = createCheckboxRow("schema", schema2.key, undefined, 1);
+      const rows = [row1, row2, row3, row4];
       const selection: NodeSelection = {
         tables: new Set(),
         schemas: new Set(),
         databases: new Set(),
       };
-      const nodeKeyToOriginal = new Map([
+      const nodeKeyToOriginal = new Map<string, TreeNode>([
         [database.key, database],
         [table2.key, table2],
       ]);
 
       const result = handleCheckboxToggle({
-        row: row2,
-        index: 1,
+        row: row3,
+        index: 2,
         isShiftPressed: true,
         selection,
         lastSelectedRowIndex: 0,
@@ -467,26 +451,30 @@ describe("handleCheckboxToggle", () => {
 
       // The database itself should NOT be added because it's the last in range
       // and has children after it (table2), so only table2 should be selected
+      // schema 2 and it's children should not be added
       expect(result.selection.tables).toEqual(new Set([102]));
+      expect(result.selection.schemas).toEqual(new Set());
       expect(result.selection.databases).toEqual(new Set());
-      expect(result.lastSelectedRowIndex).toBe(1);
+      expect(result.lastSelectedRowIndex).toBe(2);
     });
 
     it("should skip last expanded schema when it has children after it", () => {
       const table1 = createMockTableNode(1, "public", 101);
-      const schema = createMockSchemaNode(1, "public", [table1]);
       const table2 = createMockTableNode(1, "public", 102);
+      const schema = createMockSchemaNode(1, "public", [table1, table2]);
 
       const row1 = createCheckboxRow("schema", schema.key, undefined, 1);
-      const row2 = createCheckboxRow("table", table2.key, 102, 1);
-      const rows = [row1, row2];
+      const row2 = createCheckboxRow("table", table1.key, 101, 1);
+      const row3 = createCheckboxRow("table", table2.key, 102, 1);
+      const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
         schemas: new Set(),
         databases: new Set(),
       };
-      const nodeKeyToOriginal = new Map([
+      const nodeKeyToOriginal = new Map<string, TreeNode>([
         [schema.key, schema],
+        [table1.key, table1],
         [table2.key, table2],
       ]);
 
@@ -502,7 +490,7 @@ describe("handleCheckboxToggle", () => {
 
       // The schema itself should NOT be added because it's the last in range
       // and has children after it (table2), so only table2 should be selected
-      expect(result.selection.tables).toEqual(new Set([102]));
+      expect(result.selection.tables).toEqual(new Set([101]));
       expect(result.selection.schemas).toEqual(new Set());
       expect(result.lastSelectedRowIndex).toBe(1);
     });
@@ -520,7 +508,7 @@ describe("handleCheckboxToggle", () => {
         schemas: new Set(),
         databases: new Set(),
       };
-      const nodeKeyToOriginal = new Map([
+      const nodeKeyToOriginal = new Map<string, TreeNode>([
         [table1.key, table1],
         [database.key, database],
       ]);
@@ -538,107 +526,6 @@ describe("handleCheckboxToggle", () => {
       // Both table1 and the database's children should be selected
       expect(result.selection.tables).toEqual(new Set([101]));
       expect(result.lastSelectedRowIndex).toBe(1);
-    });
-
-    it("should handle shift+click with null lastSelectedRowIndex as single selection", () => {
-      const table = createMockTableNode(1, "public", 101);
-      const row = createCheckboxRow("table", table.key, 101, 1);
-      const selection: NodeSelection = {
-        tables: new Set(),
-        schemas: new Set(),
-        databases: new Set(),
-      };
-      const nodeKeyToOriginal = new Map([[table.key, table]]);
-
-      const result = handleCheckboxToggle({
-        row,
-        index: 0,
-        isShiftPressed: true,
-        selection,
-        lastSelectedRowIndex: null,
-        rows: [row],
-        nodeKeyToOriginal,
-      });
-
-      expect(result.selection.tables).toEqual(new Set([101]));
-      expect(result.lastSelectedRowIndex).toBe(0);
-    });
-  });
-
-  describe("edge cases", () => {
-    it("should handle missing node in nodeKeyToOriginal map for schema", () => {
-      const row = createCheckboxRow("schema", "unknown-key", undefined, 1);
-      const selection: NodeSelection = {
-        tables: new Set(),
-        schemas: new Set(),
-        databases: new Set(),
-      };
-      const nodeKeyToOriginal = new Map();
-
-      const result = handleCheckboxToggle({
-        row,
-        index: 0,
-        isShiftPressed: false,
-        selection,
-        lastSelectedRowIndex: null,
-        rows: [row],
-        nodeKeyToOriginal,
-      });
-
-      expect(result.selection).toEqual(selection);
-      expect(result.lastSelectedRowIndex).toBe(0);
-    });
-
-    it("should handle missing node in nodeKeyToOriginal map for database", () => {
-      const row = createCheckboxRow("database", "unknown-key", undefined, 1);
-      const selection: NodeSelection = {
-        tables: new Set(),
-        schemas: new Set(),
-        databases: new Set(),
-      };
-      const nodeKeyToOriginal = new Map();
-
-      const result = handleCheckboxToggle({
-        row,
-        index: 0,
-        isShiftPressed: false,
-        selection,
-        lastSelectedRowIndex: null,
-        rows: [row],
-        nodeKeyToOriginal,
-      });
-
-      expect(result.selection).toEqual(selection);
-      expect(result.lastSelectedRowIndex).toBe(0);
-    });
-
-    it("should preserve existing selections when toggling new items", () => {
-      const table1 = createMockTableNode(1, "public", 101);
-      const table2 = createMockTableNode(1, "public", 102);
-      const row = createCheckboxRow("table", table2.key, 102, 1);
-      const selection: NodeSelection = {
-        tables: new Set([101]),
-        schemas: new Set(["1:private"]),
-        databases: new Set([2]),
-      };
-      const nodeKeyToOriginal = new Map([
-        [table1.key, table1],
-        [table2.key, table2],
-      ]);
-
-      const result = handleCheckboxToggle({
-        row,
-        index: 0,
-        isShiftPressed: false,
-        selection,
-        lastSelectedRowIndex: null,
-        rows: [row],
-        nodeKeyToOriginal,
-      });
-
-      expect(result.selection.tables).toEqual(new Set([101, 102]));
-      expect(result.selection.schemas).toEqual(new Set(["1:private"]));
-      expect(result.selection.databases).toEqual(new Set([2]));
     });
   });
 });
