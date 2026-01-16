@@ -182,7 +182,7 @@
    [:type              :keyword]
    [:data              [:map]]
    [:dependents_count  [:maybe [:ref ::usages]]]
-   [:dependenet_errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
+   [:dependents_errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
