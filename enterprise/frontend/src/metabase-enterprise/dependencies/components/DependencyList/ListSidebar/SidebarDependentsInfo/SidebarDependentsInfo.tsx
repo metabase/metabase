@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -27,7 +28,7 @@ type SidebarDependentsInfoProps = {
 };
 
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
-  const title = t`Dependents`;
+  const title = t`Broken dependents`;
 
   const { data: dependents = [] } = useListNodeDependentsQuery({
     id: node.id,
@@ -64,11 +65,16 @@ function DependentItem({ node }: DependentItemProps) {
   const link = getNodeLink(node);
 
   return (
-    <Group className={S.item} p="md" justify="space-between" wrap="nowrap">
+    <Group
+      className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
+      p="md"
+      justify="space-between"
+      wrap="nowrap"
+    >
       <Box className={CS.textWrap} lh="h5">
         {label}
       </Box>
-      <Group gap="sm" wrap="nowrap">
+      <Group className={CS.hoverChild} gap="sm" wrap="nowrap">
         {link && (
           <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
             <ActionIcon

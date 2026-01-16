@@ -74,7 +74,7 @@ function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
 function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
-    header: t`Dependents`,
+    header: t`Broken dependents`,
     minWidth: 100,
     enableSorting: true,
     accessorFn: (node) => getNodeDependentsCount(node),

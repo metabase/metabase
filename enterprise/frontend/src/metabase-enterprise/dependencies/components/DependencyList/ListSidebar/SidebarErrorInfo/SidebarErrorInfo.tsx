@@ -58,11 +58,17 @@ type ErrorItemProps = {
 
 function ErrorItem({ detail }: ErrorItemProps) {
   return (
-    <Group className={S.item} p="md" justify="space-between" wrap="nowrap">
+    <Group
+      className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
+      p="md"
+      justify="space-between"
+      wrap="nowrap"
+    >
       <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="h5">
         {detail}
       </Box>
       <CopyButton
+        className={CS.hoverChild}
         value={detail}
         target={
           <Tooltip label={t`Copy`} openDelay={TOOLTIP_OPEN_DELAY_MS}>

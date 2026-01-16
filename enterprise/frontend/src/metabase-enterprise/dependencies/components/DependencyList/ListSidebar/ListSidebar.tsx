@@ -26,7 +26,7 @@ export const ListSidebar = memo(function ListSidebar({
     <Stack
       className={S.sidebar}
       p="lg"
-      w="25rem"
+      w="32rem"
       gap="xl"
       bg="background-primary"
       data-testid="dependency-list-sidebar"
