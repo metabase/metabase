@@ -146,9 +146,7 @@
                  (get id->owner (:owner_user_id transform))
 
                  (:owner_email transform)
-                 {:email (:owner_email transform)}
-
-                 :else nil))))))
+                 {:email (:owner_email transform)}))))))
 
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})

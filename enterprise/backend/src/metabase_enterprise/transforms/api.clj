@@ -150,7 +150,8 @@
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
                           ;; Set owner_user_id to current user if not explicitly provided
-                          owner-user-id (or (:owner_user_id body) api/*current-user-id*)
+                          owner-user-id (when-not (:owner_email body)
+                                          (or (:owner_user_id body) api/*current-user-id*))
                           transform (t2/insert-returning-instance!
                                      :model/Transform
                                      (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id :owner_email])
