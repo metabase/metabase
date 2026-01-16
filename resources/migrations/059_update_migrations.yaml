@@ -368,7 +368,7 @@ databaseChangeLog:
             indexName: idx_task_run_type_entity
 
   - changeSet:
-      id: v59.2026-01-16T15:30:02
+      id: v59.2026-01-16T09:30:02
       author: bronsa
       comment: Add index on task_run.started_at for ordering
       changes:
@@ -385,7 +385,7 @@ databaseChangeLog:
             indexName: idx_task_run_started_at
 
   - changeSet:
-      id: v59.2026-01-16T15:30:03
+      id: v59.2026-01-16T09:30:03
       author: bronsa
       comment: Add run_id column to task_history
       changes:
@@ -404,7 +404,7 @@ databaseChangeLog:
             columnName: run_id
 
   - changeSet:
-      id: v59.2026-01-16T15:30:04
+      id: v59.2026-01-16T09:30:04
       author: bronsa
       comment: Add index on task_history.run_id
       changes:
@@ -420,7 +420,7 @@ databaseChangeLog:
             indexName: idx_task_history_run_id
 
   - changeSet:
-      id: v59.2026-01-16T15:30:05
+      id: v59.2026-01-16T09:30:05
       author: bronsa
       comment: Add foreign key from task_history.run_id to task_run
       changes:
@@ -437,7 +437,7 @@ databaseChangeLog:
             constraintName: fk_task_history_run_id
 
   - changeSet:
-      id: v59.2026-01-16T15:30:06
+      id: v59.2026-01-16T09:30:06
       author: bronsa
       comment: Add logs column to task_history for captured execution logs
       changes:
