@@ -31,6 +31,8 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
+    setPythonRunnerSettings();
+
     // TODO: Is this correct way to grant querying permissions?
     cy.request("PUT", "/api/permissions/graph", {
       groups: {
@@ -1476,7 +1478,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Model Reference Transform");
-        cy.findByLabelText("Table name").type("model_ref_transform");
+        cy.findByLabelText("Table name").clear().type("model_ref_transform");
         cy.button("Save").click();
       });
 
@@ -1829,4 +1831,26 @@ function verifyRemovedText(text: string) {
   cy.findByText(text)
     .should("have.css", "text-decoration-line", "line-through")
     .and("have.css", "color", COLOR_DANGER);
+}
+
+function setPythonRunnerSettings() {
+  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
+  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-endpoint",
+    "http://localhost:4566",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-bucket",
+    "metabase-python-runner",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
+  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
+  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-container-endpoint",
+    "http://localstack:4566",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }
