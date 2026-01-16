@@ -118,8 +118,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           disabled={!checkoutData?.checkout_disabled}
         >
           <Button
-            size="sm"
-            variant="filled"
             leftSection={<Icon name="pencil" />}
             rightSection={<Icon name="chevrondown" />}
             loading={isBusy}
