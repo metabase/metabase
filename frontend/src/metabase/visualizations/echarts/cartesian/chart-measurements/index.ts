@@ -643,11 +643,11 @@ const areHorizontalXAxisTicksOverlapping = (
     }
     const prevDatum = dataset[index - 1];
     const rightTickWidth = measureText(
-      getPaddedAxisLabel(formatter(datum[X_AXIS_DATA_KEY])),
+      getPaddedAxisLabel(formatter(datum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
     const leftTickWidth = measureText(
-      getPaddedAxisLabel(formatter(prevDatum[X_AXIS_DATA_KEY])),
+      getPaddedAxisLabel(formatter(prevDatum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
 
