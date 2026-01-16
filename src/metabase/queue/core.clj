@@ -38,19 +38,24 @@
   (count [_this]
     (count @buffer)))
 
-(defn publish! [queue-name message]
+(defn publish!
   "Publishes message to the given queue."
+  [queue-name message]
   (q.backend/publish! q.backend/*backend* queue-name message))
 
 (defmacro with-queue
-  "Runs the body with the ability to add messages to the given queue"
+  "Runs the body with the ability to add messages to the given queue.
+  Messages are buffered and only published if the body completes successfully.
+  If an exception occurs, no messages are published and the exception is rethrown."
   [queue-name [queue-binding] & body]
   `(let [~queue-binding (->ListQueueBuffer (atom []))]
      (try
-       (do ~@body)
-       (q.backend/publish! q.backend/*backend* ~queue-name @(.buffer ~queue-binding))
+       (let [result# (do ~@body)]
+         (q.backend/publish! q.backend/*backend* ~queue-name @(.buffer ~queue-binding))
+         result#)
        (catch Exception e#
-         (log/error e# "Error in queue processing, no messages will be persisted to the queue")))))
+         (log/error e# "Error in queue processing, no messages will be persisted to the queue")
+         (throw e#)))))
 
 (defn clear-queue!
   "Deletes all persisted messages from the given queue.
@@ -63,11 +68,7 @@
   [queue-name]
   (q.backend/queue-length q.backend/*backend* queue-name))
 
-(defn- response-handler [{:keys [success error]} [status response]]
-  (case status
-    :success (success response {})
-    :error (error response {})))
-
 (defn stop-listening!
+  "Stops listening to the given queue and closes it."
   [queue-name]
   (q.backend/close-queue! q.backend/*backend* queue-name))

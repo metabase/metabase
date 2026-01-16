@@ -301,6 +301,20 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v59.2026-01-10T21:49:49
+      author: nvoxland
+      comment: Index queue_message name and status
+      changes:
+        - createIndex:
+            tableName: queue_message
+            indexName: idx_queue_message_queue_status
+            columns:
+              - column:
+                  name: queue_name
+              - column:
+                  name: status
+
 
   - changeSet:
       id: v59.2026-01-12T22:43:43

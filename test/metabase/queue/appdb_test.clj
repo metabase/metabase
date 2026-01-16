@@ -5,10 +5,12 @@
    [metabase.queue.backend :as q.backend]
    [toucan2.core :as t2]))
 
-(deftest define-queue
+(set! *warn-on-reflection* true)
+
+(deftest define-queue-test
   (is (nil? (q.backend/define-queue! :queue.backend/appdb :queue/test))))
 
-(deftest create-and-remove-listener
+(deftest create-and-remove-listener-test
   (let [queue-name (keyword "queue" (str (gensym "listener-test-")))]
     (testing "Create listener"
       (q.backend/listen! :queue.backend/appdb queue-name)
@@ -17,7 +19,7 @@
       (q.backend/close-queue! :queue.backend/appdb queue-name)
       (is (not (contains? @@#'q.appdb/listening-queues queue-name))))))
 
-(deftest publish
+(deftest publish-test
   (let [queue-name (keyword "queue" (str (gensym "publish-test-")))]
     (q.backend/publish! :queue.backend/appdb queue-name "test message")
     (testing "Messages are persisted in the queue"
@@ -30,27 +32,27 @@
         (is (= 0 (:failures row)))
         (is (nil? (:owner row)))))))
 
-(deftest fetch
-  (let [queue1 (keyword (gensym "queue/queue1-"))
-        queue2 (keyword (gensym "queue/queue2-"))
-        invalid-queue (keyword (gensym "queue/queue-invalid-"))]
+(deftest fetch-test
+  (let [queue1 (keyword "queue" (str "queue1-" (gensym)))
+        queue2 (keyword "queue" (str "queue2-" (gensym)))
+        invalid-queue (keyword "queue" (str "queue-invalid-" (gensym)))]
     (with-redefs [q.appdb/listening-queues (atom #{queue1 queue2})]
-      (t2/with-connection [conn]
+      (t2/with-connection [_conn]
         (testing "Returns nil if no rows are found"
           (is (nil? (#'q.appdb/fetch!))))
 
         (t2/insert! :model/QueueMessage
-                    {:queue_name   (name invalid-queue)
-                     :payload      "invalid"})
+                    {:queue_name (name invalid-queue)
+                     :payload    "invalid"})
         (t2/insert! :model/QueueMessage
-                    {:queue_name   (name queue1)
-                     :payload      "data1"})
+                    {:queue_name (name queue1)
+                     :payload    "data1"})
         (t2/insert! :model/QueueMessage
-                    {:queue_name   (name queue2)
-                     :payload      "data2"})
+                    {:queue_name (name queue2)
+                     :payload    "data2"})
 
         (testing "Returns nil if no queues are defined"
-          (with-redefs [q.appdb/listening-queues (atom {})]
+          (with-redefs [q.appdb/listening-queues (atom #{})]
             (is (nil? (#'q.appdb/fetch!)))))
         (testing "Returns finds a row for a valid queue"
           (let [{:keys [id queue payload]} (#'q.appdb/fetch!)]
