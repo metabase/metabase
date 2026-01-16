@@ -117,6 +117,7 @@ type OwnProps = {
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   topBarInnerContent?: ReactNode;
+  onBlur?: () => void;
 };
 
 interface ExplicitSizeProps {
@@ -261,6 +262,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       highlightedLineNumbers,
       placeholder,
       extensions,
+      onBlur,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -363,6 +365,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 onFormatQuery={
                   canFormatQuery ? this.handleFormatQuery : undefined
                 }
+                onBlur={onBlur}
               />
 
               <Stack m="1rem" gap="md" mt="auto">

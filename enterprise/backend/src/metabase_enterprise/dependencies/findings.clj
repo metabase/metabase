@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.util.log :as log]
@@ -39,10 +40,13 @@
   (when-let [db-id (instance-db-id toucan-instance)]
     (let [mp (lib-be/application-database-metadata-provider db-id)
           model (t2/model toucan-instance)
-          results (try (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
-                       (catch Exception e
-                         (log/error e "Error analyzing entity")
-                         [(lib/validation-exception-error (.getMessage e))]))
+          results (if (models.dependency/is-native-entity? (deps.dependency-types/model->dependency-type model)
+                                                           toucan-instance)
+                    []
+                    (try (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
+                         (catch Exception e
+                           (log/error e "Error analyzing entity")
+                           [(lib/validation-exception-error (.getMessage e))])))
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (deps.dependency-types/model->dependency-type model) (:id toucan-instance) success results))))
 

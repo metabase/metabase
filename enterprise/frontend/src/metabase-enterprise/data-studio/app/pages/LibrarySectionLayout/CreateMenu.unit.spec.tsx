@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -15,17 +16,29 @@ import { CreateMenu } from "./CreateMenu";
 interface SetupOptions {
   user?: Partial<User>;
   canWriteToMetricCollection?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
+
+const fullPermissionsUser: Partial<User> = {
+  is_superuser: true,
+  permissions: {
+    can_create_queries: true,
+    can_create_native_queries: true,
+  },
+};
 
 const setup = ({
   user,
   canWriteToMetricCollection = true,
+  remoteSyncType,
 }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         snippet_collections: true,
       }),
+      "remote-sync-type": remoteSyncType,
+      "remote-sync-enabled": !!remoteSyncType,
     }),
     currentUser: createMockUser(user),
   });
@@ -79,15 +92,7 @@ describe("CreateMenu", () => {
   });
 
   it("renders all options when user has full permissions", async () => {
-    setup({
-      user: {
-        is_superuser: true,
-        permissions: {
-          can_create_queries: true,
-          can_create_native_queries: true,
-        },
-      },
-    });
+    setup({ user: fullPermissionsUser });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
@@ -99,5 +104,12 @@ describe("CreateMenu", () => {
       "New snippet",
       "New snippet folder",
     ]);
+  });
+
+  it("renders nothing if remote sync is set to read-only", () => {
+    setup({ user: fullPermissionsUser, remoteSyncType: "read-only" });
+    expect(
+      screen.queryByRole("button", { name: /New/ }),
+    ).not.toBeInTheDocument();
   });
 });
