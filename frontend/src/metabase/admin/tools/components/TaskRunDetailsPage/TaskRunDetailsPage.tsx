@@ -69,7 +69,11 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
               <Text fw="bold" w={120}>{t`Entity`}</Text>
               <Anchor
                 component={Link}
-                to={getEntityUrl(taskRun.entity_type, taskRun.entity_id)}
+                to={getEntityUrl(
+                  taskRun.entity_type,
+                  taskRun.entity_id,
+                  taskRun.entity_name,
+                )}
               >
                 {taskRun.entity_name ?? taskRun.entity_id}
               </Anchor>

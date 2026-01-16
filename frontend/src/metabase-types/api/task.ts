@@ -17,7 +17,7 @@ export interface Task {
   task_details: Record<string, unknown> | null;
   status: TaskStatus;
   logs: Log[] | null;
-  run_id: number;
+  run_id: number | null;
 }
 
 export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";

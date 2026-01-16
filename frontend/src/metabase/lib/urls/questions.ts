@@ -159,7 +159,8 @@ export function embedCard(token: EntityToken, type: string | null = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
-export function viewCard(questionId: number) {
+export function viewCard(cardId: CardId, questionSlug?: string) {
+  const questionId = questionSlug ? `${cardId}-${questionSlug}` : cardId;
   return `/question/${questionId}`;
 }
 

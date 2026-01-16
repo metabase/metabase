@@ -43,7 +43,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   if (!task || error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
-  const hasLogs = task.logs?.length !== 0;
+  const hasLogs = Boolean(task.logs?.length);
   const databases = databasesData?.data ?? [];
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const db = task.db_id ? databaseByID[task.db_id] : null;

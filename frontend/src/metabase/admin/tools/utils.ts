@@ -6,13 +6,12 @@ import type {
   Task,
   TaskRun,
   TaskRunEntityType,
-  TaskRunExtended,
   TaskRunStatus,
   TaskRunType,
   TaskStatus,
 } from "metabase-types/api";
 
-export const formatTaskRunType = (runType: TaskRunExtended["run_type"]) =>
+export const formatTaskRunType = (runType: TaskRunType) =>
   match(runType)
     .with("subscription", () => t`Subscription`)
     .with("alert", () => t`Alert`)
@@ -20,16 +19,14 @@ export const formatTaskRunType = (runType: TaskRunExtended["run_type"]) =>
     .with("fingerprint", () => t`Fingerprint`)
     .exhaustive();
 
-export const formatTaskRunEntityType = (
-  entityType: TaskRunExtended["entity_type"],
-) =>
+export const formatTaskRunEntityType = (entityType: TaskRunEntityType) =>
   match(entityType)
     .with("database", () => t`Database`)
     .with("card", () => t`Card`)
     .with("dashboard", () => t`Dashboard`)
     .exhaustive();
 
-export const formatTaskRunStatus = (status: TaskRunExtended["status"]) =>
+export const formatTaskRunStatus = (status: TaskRunStatus) =>
   match(status)
     .with("started", () => t`Started`)
     .with("success", () => t`Success`)
@@ -37,7 +34,7 @@ export const formatTaskRunStatus = (status: TaskRunExtended["status"]) =>
     .with("abandoned", () => t`Abandoned`)
     .exhaustive();
 
-export const formatTaskStatus = (status: Task["status"]) =>
+export const formatTaskStatus = (status: TaskStatus) =>
   match(status)
     .with("failed", () => t`Failed`)
     .with("started", () => t`Started`)
@@ -46,12 +43,13 @@ export const formatTaskStatus = (status: Task["status"]) =>
     .exhaustive();
 
 export const getEntityUrl = (
-  entityType: TaskRunExtended["entity_type"],
+  entityType: TaskRunEntityType,
   entityId: number,
+  entityName?: string,
 ): string =>
   match(entityType)
     .with("database", () => Urls.viewDatabase(entityId))
-    .with("card", () => Urls.viewCard(entityId))
+    .with("card", () => Urls.viewCard(entityId, entityName))
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 

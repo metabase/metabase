@@ -76,7 +76,7 @@ export const TasksTable = ({
       <tbody>
         {showLoadingAndErrorWrapper && (
           <tr>
-            <td colSpan={8}>
+            <td colSpan={7}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
