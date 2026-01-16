@@ -236,6 +236,34 @@
                        :bad_transforms []}
                       (update response :bad_cards #(into #{} (map :id) %)))))))))))
 
+(deftest check-card-skips-native-cards-test
+  (testing "POST /api/ee/dependencies/check_card does not validate native cards"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [mp (mt/metadata-provider)
+                  ;; Create base card querying real orders table
+                  base-card (card/create-card! (basic-card) user)
+                  ;; Create dependent card that filters on TOTAL
+                  dependent-query (lib/native-query mp (str "select * from {{#"
+                                                            (:id base-card)
+                                                            "}} orders where total > 100"))
+                  _dependent-card (card/create-card!
+                                   (card-with-query "Dependent Card filtering on Total" dependent-query)
+                                   user)
+                  ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
+                  proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                  proposed-card {:id (:id base-card)
+                                 :type :question
+                                 :dataset_query proposed-query
+                                 :result_metadata nil}
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+              (is (=? {:success true
+                       :bad_cards []
+                       :bad_transforms []}
+                      response)))))))))
+
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
     (mt/with-premium-features #{:dependencies}
@@ -253,8 +281,8 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
-(deftest check-snippet-content-change-breaks-cards-test
-  (testing "POST /api/ee/dependencies/check_snippet detects when snippet content changes break dependent cards"
+(deftest check-snippet-content-change-doest-not-break-cards-test
+  (testing "POST /api/ee/dependencies/check_snippet doesn't catch when a change would break a card, because native query validation is disabled"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -269,17 +297,17 @@
                                                                       :type :snippet
                                                                       :snippet-name snippet-name
                                                                       :snippet-id snippet-id}}))
-                  card (card/create-card! {:name "Card using snippet"
-                                           :dataset_query native-query
-                                           :display :table
-                                           :visualization_settings {}}
-                                          user)
+                  _card (card/create-card! {:name "Card using snippet"
+                                            :dataset_query native-query
+                                            :display :table
+                                            :visualization_settings {}}
+                                           user)
                   proposed-content "WHERE NONEXISTENT_COLUMN > 100"
                   response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
                                                  {:id snippet-id
                                                   :content proposed-content})]
-              (is (=? {:success false
-                       :bad_cards [{:id (:id card)}]
+              (is (=? {:success true
+                       :bad_cards []
                        :bad_transforms []}
                       response)))))))))
 
@@ -1398,7 +1426,7 @@
                                       :dataset_query (lib/query mp products)}
                        :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
                                                          :type :question
-                                                         :dataset_query (lib/native-query mp "not a query")}]
+                                                         :dataset_query (broken-mbql-query)}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
             (is (=? {:data [{:id broken-card-id
@@ -1413,7 +1441,7 @@
             products (lib.metadata/table mp (mt/id :products))]
         (mt/with-temp [:model/Transform {broken-transform-id :id} {:name "Broken Transform - brokentest"
                                                                    :source {:type :query
-                                                                            :query (lib/native-query mp "not a query")}
+                                                                            :query (broken-mbql-query)}
                                                                    :target {:schema "PUBLIC"
                                                                             :name "broken_transform_table"}}
                        :model/Transform _ {:name "Good Transform - brokentest"
@@ -1431,62 +1459,60 @@
 (deftest ^:sequential broken-card-types-test
   (testing "GET /api/ee/dependencies/broken - broken models and metrics are filtered by card_types and pagination"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
-                                                          :type :model
-                                                          :dataset_query (lib/native-query mp "not a query")}
-                       :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
-                                                           :type :metric
-                                                           :dataset_query (lib/native-query mp "not a query")}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (testing "filtering by model only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
-              (is (=? {:data [{:id broken-model-id
-                               :type "card"
-                               :data {:name "A - Broken Model - cardtype"
-                                      :type "model"}}]}
-                      response))))
-          (testing "filtering by metric only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
-              (is (=? {:data [{:id broken-metric-id
-                               :type "card"
-                               :data {:name "B - Broken Metric - cardtype"
-                                      :type "metric"}}]}
-                      response))))
-          (testing "filtering by model and metric as the default card types"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
-              (is (=? {:data [{:id broken-model-id
-                               :type "card"
-                               :data {:name "A - Broken Model - cardtype"
-                                      :type "model"}}
-                              {:id broken-metric-id
-                               :type "card"
-                               :data {:name "B - Broken Metric - cardtype"
-                                      :type "metric"}}]}
-                      response)))))))))
+      (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
+                                                        :type :model
+                                                        :dataset_query (broken-mbql-query)}
+                     :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
+                                                         :type :metric
+                                                         :dataset_query (broken-mbql-query)}]
+        (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+        (testing "filtering by model only"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
+            (is (=? {:data [{:id broken-model-id
+                             :type "card"
+                             :data {:name "A - Broken Model - cardtype"
+                                    :type "model"}}]}
+                    response))))
+        (testing "filtering by metric only"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
+            (is (=? {:data [{:id broken-metric-id
+                             :type "card"
+                             :data {:name "B - Broken Metric - cardtype"
+                                    :type "metric"}}]}
+                    response))))
+        (testing "filtering by model and metric as the default card types"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
+            (is (=? {:data [{:id broken-model-id
+                             :type "card"
+                             :data {:name "A - Broken Model - cardtype"
+                                    :type "model"}}
+                            {:id broken-metric-id
+                             :type "card"
+                             :data {:name "B - Broken Metric - cardtype"
+                                    :type "metric"}}]}
+                    response))))))))
 
 (deftest ^:sequential broken-archived-card-test
   (testing "GET /api/ee/dependencies/graph/broken with archived parameter"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
-                                                         :type :question
-                                                         :dataset_query (lib/native-query mp "not a query")}
-                       :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
-                                                                  :type :question
-                                                                  :archived true
-                                                                  :dataset_query (lib/native-query mp "not a query")}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (testing "archived=false (default) excludes archived broken card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
-                  card-ids (set (map :id (:data response)))]
-              (is (contains? card-ids broken-card-id))
-              (is (not (contains? card-ids archived-broken-card-id)))))
-          (testing "archived=true includes archived broken card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
-                  card-ids (set (map :id (:data response)))]
-              (is (contains? card-ids broken-card-id))
-              (is (contains? card-ids archived-broken-card-id)))))))))
+      (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
+                                                       :type :question
+                                                       :dataset_query (broken-mbql-query)}
+                     :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
+                                                                :type :question
+                                                                :archived true
+                                                                :dataset_query (broken-mbql-query)}]
+        (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+        (testing "archived=false (default) excludes archived broken card"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
+                card-ids (set (map :id (:data response)))]
+            (is (contains? card-ids broken-card-id))
+            (is (not (contains? card-ids archived-broken-card-id)))))
+        (testing "archived=true includes archived broken card"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
+                card-ids (set (map :id (:data response)))]
+            (is (contains? card-ids broken-card-id))
+            (is (contains? card-ids archived-broken-card-id))))))))
 
 (deftest ^:sequential broken-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
@@ -1603,50 +1629,48 @@
   (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/User {user-id :id} {}
-                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                   :name "Test Personal Collection"}
-                         :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
-                                                               :type :question
-                                                               :collection_id personal-coll-id
-                                                               :dataset_query (lib/native-query mp "not a query")}
-                         :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
-                                                           :type :question
-                                                           :dataset_query (lib/native-query mp "not a query")}]
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
-                    card-ids (set (map :id (:data response)))]
-                (is (not (contains? card-ids broken-in-personal)))
-                (is (contains? card-ids broken-regular))))
-            (testing "include_personal_collections=true includes broken cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
-                    card-ids (set (map :id (:data response)))]
-                (is (contains? card-ids broken-in-personal))
-                (is (contains? card-ids broken-regular))))))))))
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}
+                       :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
+                                                             :type :question
+                                                             :collection_id personal-coll-id
+                                                             :dataset_query (broken-mbql-query)}
+                       :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
+                                                         :type :question
+                                                         :dataset_query (broken-mbql-query)}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
+                  card-ids (set (map :id (:data response)))]
+              (is (not (contains? card-ids broken-in-personal)))
+              (is (contains? card-ids broken-regular))))
+          (testing "include_personal_collections=true includes broken cards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids broken-in-personal))
+              (is (contains? card-ids broken-regular)))))))))
 
 (deftest ^:sequential broken-pagination-test
   (testing "GET /api/ee/dependencies/broken - should paginate results"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card1-id :id} {:name "Card 1 - brokentest"
-                                                   :type :question
-                                                   :dataset_query (lib/native-query mp "not a query")}
-                       :model/Card {card2-id :id} {:name "Card 2 - brokentest"
-                                                   :type :question
-                                                   :dataset_query (lib/native-query mp "not a query")}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (is (=? {:data   [{:id card1-id}]
-                   :total  2
-                   :offset 0
-                   :limit  1}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=0&limit=1")))
-          (is (=? {:data   [{:id card2-id}]
-                   :total  2
-                   :offset 1
-                   :limit  1}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1"))))))))
+      (mt/with-temp [:model/Card {card1-id :id} {:name "Card 1 - brokentest"
+                                                 :type :question
+                                                 :dataset_query (broken-mbql-query)}
+                     :model/Card {card2-id :id} {:name "Card 2 - brokentest"
+                                                 :type :question
+                                                 :dataset_query (broken-mbql-query)}]
+        (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+        (is (=? {:data   [{:id card1-id}]
+                 :total  2
+                 :offset 0
+                 :limit  1}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=0&limit=1")))
+        (is (=? {:data   [{:id card2-id}]
+                 :total  2
+                 :offset 1
+                 :limit  1}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1")))))))
 
 (deftest ^:sequential unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"

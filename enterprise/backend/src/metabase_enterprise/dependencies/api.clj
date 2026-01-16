@@ -88,7 +88,7 @@
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}
-        breakages (dependencies/errors-from-proposed-edits base-provider edits)]
+        breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
@@ -119,7 +119,7 @@
                         (cond-> #_transform source (assoc :source source))
                         (cond-> #_transform target (assoc :target target)))
           edits {:transform [transform]}
-          breakages (dependencies/errors-from-proposed-edits base-provider edits)]
+          breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
@@ -131,7 +131,7 @@
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   {:keys [id content], snippet-name :name}
+   {:keys [id], snippet-name :name}
    :- [:map
        [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
@@ -142,14 +142,8 @@
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))
             (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))
-        snippet (cond-> (m/assoc-some original
-                                      :lib/type :metadata/native-query-snippet
-                                      :name snippet-name
-                                      :content content)
-                  content native-query-snippets/add-template-tags)
-        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
-    (broken-cards-response breakages)))
+                            {:status-code 400})))]
+    (broken-cards-response {})))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields]
@@ -453,16 +447,42 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- node-errors [nodes-by-type]
-  (-> (into {}
-            (mapcat (fn [[type ids]]
-                      (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
-                                      :analyzed_entity_type type
-                                      :analyzed_entity_id [:in ids])
-                           (map (fn [{:keys [analyzed_entity_id finding_details]}]
-                                  [[type analyzed_entity_id] finding_details])))))
-            nodes-by-type)
-      not-empty))
+(defn- node-errors
+  "Fetches and normalizes AnalysisFindingErrors for the given entities.
+   Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
+  [nodes-by-type]
+  (letfn [(normalize-finding-error
+            [{:keys [error_type error_detail]}]
+            ;; error_type is stored without namespace (e.g. :missing-column)
+            ;; but API schema expects :validate/missing-column
+            (case error_type
+                ;; These error types use :name
+              (:validate/missing-column
+               :validate/missing-table-alias
+               :validate/duplicate-column)
+              {:type error_type :name error_detail}
+                ;; validation-exception-error uses :message
+              :validate/validation-exception-error
+              {:type error_type :message error_detail}
+                ;; syntax-error has no additional fields
+              :validate/syntax-error
+              {:type error_type}
+                ;; Default: use :name if detail exists
+              (cond-> {:type error_type}
+                error_detail (assoc :name error_detail))))
+          (normalize-entity-errors [[[entity-type entity-id] errors]]
+            (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
+              [[entity-type entity-id] normalized-errors]))
+          (errors-by-entity-type-and-id [[type ids]]
+            (let [finding-errors (t2/select :model/AnalysisFindingError
+                                            :analyzed_entity_type type
+                                            :analyzed_entity_id [:in ids])]
+              (->> finding-errors
+                   (group-by (juxt :analyzed_entity_type :analyzed_entity_id))
+                   (map normalize-entity-errors))))]
+    (->> nodes-by-type
+         (into {} (mapcat errors-by-entity-type-and-id))
+         not-empty)))
 
 (defn- hydrate-entities [entity-type entities]
   (case entity-type

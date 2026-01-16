@@ -42,6 +42,7 @@ export type CodeMirrorEditorProps = {
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange[]) => void;
+  onBlur?: () => void;
 };
 
 export interface CodeMirrorEditorRef {
@@ -66,6 +67,7 @@ export const CodeMirrorEditor = forwardRef<
     onRightClickSelection,
     onCursorMoveOverCardTag,
     onFormatQuery,
+    onBlur,
   },
   ref,
 ) {
@@ -170,6 +172,7 @@ export const CodeMirrorEditor = forwardRef<
       placeholder={placeholder}
       highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
+      onBlur={onBlur}
     />
   );
 });
