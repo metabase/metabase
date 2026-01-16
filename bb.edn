@@ -274,6 +274,12 @@
    :requires [[mage.doctor :as doctor]]
    :task (task! (doctor/doctor!))}
 
+  ci-report
+  {:doc "Generate a CI report for the last run"
+   :examples [["./bin/mage ci-report <pr-number or url>" "Generate a CI report for the last run of that PR"]]
+   :requires [[mage.ci-report :as ci-report]]
+   :task (task! (ci-report/generate-report! parsed))}
+  
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
