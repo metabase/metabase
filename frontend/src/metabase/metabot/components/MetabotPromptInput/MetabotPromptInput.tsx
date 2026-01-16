@@ -33,6 +33,7 @@ export interface MentionSelectedPayload {
   id: number | string;
   model: string;
   label?: string;
+  schema?: string | null;
 }
 
 export interface MetabotPromptInputProps {
@@ -95,11 +96,13 @@ export const MetabotPromptInput = forwardRef<
                 id: number | string;
                 model: string;
                 name?: string;
+                table_schema?: string | null;
               }) => {
                 onMentionSelectedRef.current?.({
                   id: item.id,
                   model: item.model,
                   label: item.name,
+                  schema: item.table_schema,
                 });
               },
             }),
@@ -149,6 +152,21 @@ export const MetabotPromptInput = forwardRef<
             view.dispatch(tr);
 
             return true;
+          },
+          paste: (_view: EditorView, e: ClipboardEvent) => {
+            // Extract table mentions from pasted text and add them to pinned tables
+            const text = e.clipboardData?.getData("text/plain") ?? "";
+            const tableRegex = /\[[^\]]+\]\(metabase:\/\/table\/(\d+)\)/g;
+            let match;
+            while ((match = tableRegex.exec(text)) !== null) {
+              const tableId = parseInt(match[1], 10);
+              onMentionSelectedRef.current?.({
+                id: tableId,
+                model: "table",
+                label: undefined,
+              });
+            }
+            return false; // Allow default paste behavior to continue
           },
         },
         handleKeyDown: (view, event) => {

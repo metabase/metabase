@@ -3,6 +3,8 @@ import type {
   ExtractTablesResponse,
   GenerateSqlRequest,
   GenerateSqlResponse,
+  GetTableColumnsWithContextRequest,
+  GetTableColumnsWithContextResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -26,7 +28,22 @@ export const llmApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getTableColumnsWithContext: builder.query<
+      GetTableColumnsWithContextResponse,
+      GetTableColumnsWithContextRequest
+    >({
+      query: ({ table_id, database_id }) => ({
+        method: "GET",
+        url: `/api/llm/table/${table_id}/columns-with-context`,
+        params: { database_id },
+      }),
+    }),
   }),
 });
 
-export const { useExtractTablesMutation, useGenerateSqlMutation } = llmApi;
+export const {
+  useExtractTablesMutation,
+  useGenerateSqlMutation,
+  useGetTableColumnsWithContextQuery,
+  useLazyGetTableColumnsWithContextQuery,
+} = llmApi;

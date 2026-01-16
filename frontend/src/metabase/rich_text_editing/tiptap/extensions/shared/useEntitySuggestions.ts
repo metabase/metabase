@@ -27,6 +27,7 @@ interface UseEntitySuggestionsOptions {
     model: string;
     label?: string;
     href: string | null;
+    table_schema?: string | null;
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
@@ -111,6 +112,7 @@ export function useEntitySuggestions({
         model: item.model,
         label: item.name,
         href: modelToUrl(entityToUrlableModel(item, item.model)),
+        table_schema: item.table_schema,
       });
     },
     [onSelectEntity],

@@ -95,6 +95,9 @@ type PluginMetabotType = {
       value: string,
       sourceSql?: string,
       tableIds?: number[],
+      columnFilters?: Record<number, number[]>,
+      columnContexts?: Record<number, Record<number, string>>,
+      tableContexts?: Record<number, string>,
     ) => Promise<void>;
     error: string | undefined;
     cancelRequest: () => void;

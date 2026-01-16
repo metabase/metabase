@@ -30,9 +30,16 @@ export function buildSearchMenuItems(
     });
     const urlableModel = entityToUrlableModel(result, result.model);
     const href = modelToUrl(urlableModel);
+
+    // For tables, show schema-qualified name to disambiguate same-named tables
+    const label =
+      result.model === "table" && result.table_schema
+        ? `${result.table_schema}.${result.name}`
+        : result.name;
+
     return {
       icon: iconData.name,
-      label: result.name,
+      label,
       id: result.id,
       model: result.model,
       href: href || undefined,

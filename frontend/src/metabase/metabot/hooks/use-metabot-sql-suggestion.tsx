@@ -15,7 +15,14 @@ export function useMetabotSQLSuggestion(
   const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
 
   const generate = useCallback(
-    async (prompt: string, sourceSql?: string, tableIds?: TableId[]) => {
+    async (
+      prompt: string,
+      sourceSql?: string,
+      tableIds?: TableId[],
+      columnFilters?: Record<number, number[]>,
+      columnContexts?: Record<number, Record<number, string>>,
+      tableContexts?: Record<number, string>,
+    ) => {
       if (!databaseId) {
         setError(t`No database selected.`);
         return;
@@ -27,6 +34,9 @@ export function useMetabotSQLSuggestion(
           database_id: databaseId,
           source_sql: sourceSql,
           table_ids: tableIds,
+          column_filters: columnFilters,
+          column_contexts: columnContexts,
+          table_contexts: tableContexts,
         });
         requestRef.current = request;
         const result = await request.unwrap();

@@ -91,11 +91,15 @@
 
 (defn- fetch-table-columns
   "Use metadata provider to get visible columns for a table.
-   Returns sequence of column maps with metadata for DDL generation."
+   Returns sequence of column maps with metadata for DDL generation.
+
+   Note: We explicitly disable implicitly-joinable columns to only return
+   columns that directly belong to this table, not FK-reachable columns."
   [mp table-id]
   (when-let [table-meta (lib.metadata/table mp table-id)]
     (let [table-query (lib/query mp table-meta)
-          columns (lib/visible-columns table-query)]
+          columns     (lib/visible-columns table-query -1
+                                           {:include-implicitly-joinable? false})]
       (mapv (fn [col]
               {:id                  (:id col)
                :name                (:name col)
@@ -399,6 +403,41 @@
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------
 
+(defn- format-column-for-api
+  "Format a column map for API response with relevant metadata.
+   Resolves FK target to table.field names if present.
+   When include-context? is true, also includes the :context field with
+   the enhanced metadata string used in LLM DDL."
+  ([column fk-targets-map]
+   (format-column-for-api column fk-targets-map nil nil))
+  ([column fk-targets-map field-values-map include-context?]
+   (let [fk-info (when-let [fk-id (:fk_target_field_id column)]
+                   (get fk-targets-map fk-id))
+         base    (cond-> {:id            (:id column)
+                          :name          (:name column)
+                          :database_type (:database_type column)
+                          :description   (:description column)
+                          :semantic_type (some-> (:semantic_type column) name)}
+                   fk-info (assoc :fk_target {:table_name  (:table fk-info)
+                                              :field_name  (:field fk-info)}))]
+     (if include-context?
+       (let [field-values (get field-values-map (:id column))
+             context      (build-column-comment column field-values fk-info)]
+         (cond-> base
+           context (assoc :context context)))
+       base))))
+
+(defn get-table-columns
+  "Fetch columns for a table, formatted for API response.
+   Uses metadata provider for column visibility and resolves FK targets."
+  [database-id table-id]
+  (lib-be/with-metadata-provider-cache
+    (let [mp      (lib-be/application-database-metadata-provider database-id)
+          columns (fetch-table-columns mp table-id)]
+      (when (seq columns)
+        (let [fk-targets (fetch-fk-targets columns)]
+          (mapv #(format-column-for-api % fk-targets) columns))))))
+
 (defn get-tables-metadata
   "Fetch metadata for a collection of table IDs.
    Returns a sequence of maps with :id, :name, :schema, and :display_name.
@@ -413,13 +452,73 @@
                :display_name (:display_name table)})
             tables))))
 
+(defn get-tables-with-columns
+  "Fetch metadata for a collection of table IDs, including columns.
+   Returns a sequence of maps with :id, :name, :schema, :display_name, :description, and :columns.
+   Only returns tables the current user can access."
+  [database-id table-ids]
+  (when (seq table-ids)
+    (let [tables (fetch-accessible-tables table-ids)]
+      (lib-be/with-metadata-provider-cache
+        (let [mp (lib-be/application-database-metadata-provider database-id)]
+          (mapv (fn [[id table]]
+                  (let [columns    (fetch-table-columns mp id)
+                        fk-targets (fetch-fk-targets columns)]
+                    {:id           id
+                     :name         (:name table)
+                     :schema       (:schema table)
+                     :display_name (:display_name table)
+                     :description  (:description table)
+                     :columns      (mapv #(format-column-for-api % fk-targets) columns)}))
+                tables))))))
+
+;; Forward declaration for function defined later in file
+(declare merge-enriched-fingerprints)
+
+(defn get-table-columns-with-context
+  "Fetch columns for a single table with enhanced context strings.
+   Returns a map with :id, :name, :schema, :display_name, and :columns.
+   Each column includes a :context field with the enhanced metadata string
+   used in LLM DDL (ranges, sample values, FK references, etc.).
+
+   This function triggers on-demand fingerprinting and field value fetching
+   to generate rich context strings."
+  [database-id table-id]
+  (when (and database-id table-id)
+    (when-let [tables (fetch-accessible-tables #{table-id})]
+      (when-let [[_ table] (first tables)]
+        (lib-be/with-metadata-provider-cache
+          (let [mp      (lib-be/application-database-metadata-provider database-id)
+                columns (fetch-table-columns mp table-id)]
+            (when (seq columns)
+              ;; Enrich fingerprints on-demand for columns missing them
+              (let [enriched-fp-map (enrich-fingerprints-on-demand! columns)
+                    columns         (merge-enriched-fingerprints columns enriched-fp-map)
+                    ;; Fetch field values and FK targets
+                    field-values-map (fetch-field-values columns)
+                    fk-targets-map   (fetch-fk-targets columns)]
+                {:id           table-id
+                 :name         (:name table)
+                 :schema       (:schema table)
+                 :display_name (:display_name table)
+                 :description  (:description table)
+                 :columns      (mapv #(format-column-for-api % fk-targets-map field-values-map true)
+                                     columns)}))))))))
+
 (defn- enrich-columns-with-comments
-  "Add :comment to each column based on available metadata."
-  [columns field-values-map fk-targets-map]
+  "Add :comment to each column based on available metadata.
+   When column-contexts is provided, uses custom context strings for columns
+   that have user-provided overrides."
+  [columns field-values-map fk-targets-map column-contexts]
   (mapv (fn [col]
-          (let [fv      (get field-values-map (:id col))
-                fk-info (get fk-targets-map (:fk_target_field_id col))
-                comment (build-column-comment col fv fk-info)]
+          (let [custom-context (get column-contexts (:id col))
+                comment (if (some? custom-context)
+                          ;; Use user-provided context (even if empty string to suppress)
+                          (when (seq custom-context) custom-context)
+                          ;; Generate context from metadata
+                          (let [fv      (get field-values-map (:id col))
+                                fk-info (get fk-targets-map (:fk_target_field_id col))]
+                            (build-column-comment col fv fk-info)))]
             (cond-> col
               comment (assoc :comment comment))))
         columns))
@@ -436,6 +535,14 @@
           columns)
     columns))
 
+(defn- filter-columns-by-ids
+  "Filter columns to only include those with IDs in the allowed set.
+   If allowed-ids is nil, all columns are included."
+  [columns allowed-ids]
+  (if (nil? allowed-ids)
+    columns
+    (filterv #(contains? allowed-ids (:id %)) columns)))
+
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
@@ -450,8 +557,18 @@
    - database-id: Database containing the tables
    - table-ids: Set of table IDs to include
 
+   Options:
+   - :column-filters - Map of {table-id -> #{column-ids}} to include.
+                       nil or missing entry = include all columns for that table.
+   - :column-contexts - Map of {column-id -> context-string} for user-edited contexts.
+                        When a column has an entry, its context string is used instead
+                        of the auto-generated one. Empty string suppresses the comment.
+   - :table-contexts - Map of {table-id -> description-string} for user-edited table descriptions.
+                       When a table has an entry, its description is used instead of the
+                       original table description. Empty string suppresses the table comment.
+
    Returns a string containing CREATE TABLE statements, or nil."
-  [database-id table-ids]
+  [database-id table-ids & {:keys [column-filters column-contexts table-contexts]}]
   (when (and database-id (seq table-ids))
     (let [accessible-tables (fetch-accessible-tables table-ids)]
       (when (seq accessible-tables)
@@ -462,10 +579,19 @@
                 tables-with-columns
                 (keep (fn [[table-id table]]
                         (when-let [columns (seq (fetch-table-columns mp table-id))]
-                          {:name        (:name table)
-                           :schema      (:schema table)
-                           :description (:description table)
-                           :columns     columns}))
+                          ;; Apply column filter if present for this table
+                          (let [allowed-ids (get column-filters table-id)
+                                filtered    (filter-columns-by-ids columns allowed-ids)
+                                ;; Use custom table description if provided, otherwise original
+                                custom-desc (get table-contexts table-id)
+                                description (if (some? custom-desc)
+                                              (when (seq custom-desc) custom-desc)
+                                              (:description table))]
+                            (when (seq filtered)
+                              {:name        (:name table)
+                               :schema      (:schema table)
+                               :description description
+                               :columns     filtered}))))
                       accessible-tables)
 
                 ;; Gather all columns for batch operations
@@ -487,13 +613,14 @@
                 field-values-map (fetch-field-values all-enriched-columns)
                 fk-targets-map   (fetch-fk-targets all-enriched-columns)
 
-                ;; Enrich columns with comments
+                ;; Enrich columns with comments (using custom contexts where provided)
                 enriched-tables
                 (mapv (fn [table]
                         (update table :columns
                                 enrich-columns-with-comments
                                 field-values-map
-                                fk-targets-map))
+                                fk-targets-map
+                                column-contexts))
                       tables-with-enriched-fps)]
 
             (when (seq enriched-tables)

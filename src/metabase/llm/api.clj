@@ -190,18 +190,38 @@
              :dialect       dialect
              :table_ids     (vec table-ids)}})
 
+(def ^:private column-schema
+  "Schema for column metadata in API responses."
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:database_type {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:fk_target {:optional true}
+    [:maybe [:map
+             [:table_name :string]
+             [:field_name :string]]]]
+   [:context {:optional true} [:maybe :string]]])
+
+(def ^:private table-with-columns-schema
+  "Schema for table metadata with columns in API responses."
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:columns {:optional true} [:sequential column-schema]]])
+
 (api.macros/defendpoint :post "/extract-tables"
-  :- [:map
-      [:tables [:sequential
-                [:map
-                 [:id pos-int?]
-                 [:name :string]
-                 [:schema {:optional true} [:maybe :string]]
-                 [:display_name {:optional true} [:maybe :string]]]]]]
+  :- [:map [:tables [:sequential table-with-columns-schema]]]
   "Extract table references from SQL and return metadata for UI display.
 
    Parses the SQL to identify referenced tables and returns metadata
-   including id, name, schema, and display_name for each table.
+   including id, name, schema, display_name, and columns for each table.
+   Column metadata includes database type, description, semantic type,
+   and FK target information.
 
    Only returns tables the current user has permission to access."
   [_route-params
@@ -211,8 +231,50 @@
             [:sql :string]]]
   (let [{:keys [database_id sql]} body
         table-ids (llm.context/extract-tables-from-sql database_id sql)
-        tables    (llm.context/get-tables-metadata table-ids)]
+        tables    (llm.context/get-tables-with-columns database_id table-ids)]
     {:tables (or tables [])}))
+
+(api.macros/defendpoint :get "/table/:table-id/columns-with-context"
+  :- table-with-columns-schema
+  "Fetch columns for a single table with enhanced context strings.
+
+   Returns table metadata including columns with a :context field containing
+   the enhanced metadata string used in LLM DDL (ranges, sample values,
+   FK references, semantic types, etc.).
+
+   This endpoint triggers on-demand fingerprinting and field value fetching
+   to generate rich context strings. Use this when you need column metadata
+   for display in the UI (e.g., when a user @mentions a table).
+
+   Only returns data if the current user has permission to access the table."
+  [{:keys [table-id]} :- [:map [:table-id pos-int?]]
+   {:keys [database_id]} :- [:map [:database_id pos-int?]]
+   _body]
+  (let [result (llm.context/get-table-columns-with-context database_id table-id)]
+    (if result
+      result
+      (throw (ex-info (tru "Table not found or not accessible.")
+                      {:status-code 404})))))
+
+(defn- convert-column-filters
+  "Convert column_filters from API format {table-id -> [col-ids]} to internal format {table-id -> #{col-ids}}.
+   Returns nil if input is nil or empty."
+  [column-filters]
+  (when (seq column-filters)
+    (reduce-kv (fn [m k v]
+                 (assoc m k (set v)))
+               {}
+               column-filters)))
+
+(defn- convert-column-contexts
+  "Convert column_contexts from API format {table-id -> {col-id -> context}} to flat format {col-id -> context}.
+   Returns nil if input is nil or empty."
+  [column-contexts]
+  (when (seq column-contexts)
+    (reduce-kv (fn [m _table-id col-map]
+                 (merge m col-map))
+               {}
+               column-contexts)))
 
 (api.macros/defendpoint :post "/generate-sql"
   :- [:map
@@ -230,6 +292,13 @@
    When table_ids is provided, it is used as the authoritative source of tables
    for schema context, bypassing mention parsing and SQL extraction.
 
+   When column_filters is provided, only the specified columns are included in the
+   schema context for each table. Format: {table_id: [column_id, ...]}.
+   Tables not in column_filters include all columns.
+
+   When column_contexts is provided, user-edited context strings override the
+   auto-generated ones. Format: {table_id: {column_id: \"context string\", ...}}.
+
    Returns AI SDK v5 data part format for frontend compatibility.
    If include_context is true, includes a context part with the system prompt."
   [_route-params
@@ -240,13 +309,16 @@
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
             [:include_context {:optional true} :boolean]
-            [:table_ids {:optional true} [:sequential pos-int?]]]]
+            [:table_ids {:optional true} [:sequential pos-int?]]
+            [:column_filters {:optional true} [:map-of pos-int? [:sequential pos-int?]]]
+            [:column_contexts {:optional true} [:map-of pos-int? [:map-of pos-int? :string]]]
+            [:table_contexts {:optional true} [:map-of pos-int? :string]]]]
   ;; 1. Validate LLM is configured
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id source_sql buffer_id include_context table_ids]} body
+  (let [{:keys [prompt database_id source_sql buffer_id include_context table_ids column_filters column_contexts table_contexts]} body
         buffer-id (or buffer_id "qb")
         ;; 2. Determine table IDs - use explicit table_ids if provided, otherwise parse from prompt/SQL
         table-ids (if (seq table_ids)
@@ -257,20 +329,28 @@
                           implicit-table-ids (when source_sql
                                                (llm.context/extract-tables-from-sql database_id source_sql))]
                       (set/union (or explicit-table-ids #{})
-                                 (or implicit-table-ids #{}))))]
+                                 (or implicit-table-ids #{}))))
+        ;; 3. Convert column filters and contexts to internal format
+        column-filters (convert-column-filters column_filters)
+        column-contexts (convert-column-contexts column_contexts)
+        ;; table_contexts is already in the right format: {table-id -> description}
+        table-contexts (when (seq table_contexts) table_contexts)]
 
-    ;; 3. Validate at least one table is referenced
+    ;; 4. Validate at least one table is referenced
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
 
-    ;; 4. Fetch schema context for mentioned tables
-    (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
+    ;; 5. Fetch schema context for mentioned tables (with optional column filtering and custom contexts)
+    (let [schema-ddl (llm.context/build-schema-context database_id table-ids
+                                                       :column-filters column-filters
+                                                       :column-contexts column-contexts
+                                                       :table-contexts table-contexts)]
       (when-not schema-ddl
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
 
-      ;; 5. Get database dialect, instructions, and build system prompt
+      ;; 6. Get database dialect, instructions, and build system prompt
       (let [engine              (database-engine database_id)
             dialect             (database-dialect database_id)
             dialect-instructions (load-dialect-instructions engine)
@@ -280,20 +360,20 @@
                                                       :source-sql           source_sql})
             timestamp           (current-timestamp)]
 
-        ;; 6. Log the system prompt (if debug logging enabled)
+        ;; 7. Log the system prompt (if debug logging enabled)
         (when (debug-logging-enabled?)
           (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
-        ;; 7. Call LLM (returns map with :sql and :explanation from tool response)
+        ;; 8. Call LLM (returns map with :sql and :explanation from tool response)
         (let [response (llm.anthropic/chat-completion
                         {:system   system-prompt
                          :messages [{:role "user" :content prompt}]})]
 
-          ;; 8. Log the response (if debug logging enabled)
+          ;; 9. Log the response (if debug logging enabled)
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_response.txt") (pr-str response)))
 
-          ;; 9. Parse and return AI SDK formatted result
+          ;; 10. Parse and return AI SDK formatted result
           (let [sql   (parse-sql-response response)
                 parts (cond-> [(make-code-edit-part buffer-id sql)]
                         include_context
@@ -313,7 +393,7 @@
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
    Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id source_sql buffer_id table_ids]}]
+  [{:keys [prompt database_id source_sql buffer_id table_ids column_filters column_contexts table_contexts]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
@@ -325,11 +405,17 @@
                           implicit-table-ids (when source_sql
                                                (llm.context/extract-tables-from-sql database_id source_sql))]
                       (set/union (or explicit-table-ids #{})
-                                 (or implicit-table-ids #{}))))]
+                                 (or implicit-table-ids #{}))))
+        column-filters (convert-column-filters column_filters)
+        column-contexts (convert-column-contexts column_contexts)
+        table-contexts (when (seq table_contexts) table_contexts)]
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
-    (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
+    (let [schema-ddl (llm.context/build-schema-context database_id table-ids
+                                                       :column-filters column-filters
+                                                       :column-contexts column-contexts
+                                                       :table-contexts table-contexts)]
       (when-not schema-ddl
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
@@ -357,6 +443,13 @@
    When table_ids is provided, it is used as the authoritative source of tables
    for schema context, bypassing mention parsing and SQL extraction.
 
+   When column_filters is provided, only the specified columns are included in the
+   schema context for each table. Format: {table_id: [column_id, ...]}.
+   Tables not in column_filters include all columns.
+
+   When column_contexts is provided, user-edited context strings override the
+   auto-generated ones. Format: {table_id: {column_id: \"context string\", ...}}.
+
    Returns SSE stream in AI SDK v5 format:
    - 0:\"text\" - Text delta chunks as SQL is generated
    - 2:{...}   - Final code_edit data part with complete SQL
@@ -370,7 +463,10 @@
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
             [:include_context {:optional true} :boolean]
-            [:table_ids {:optional true} [:sequential pos-int?]]]]
+            [:table_ids {:optional true} [:sequential pos-int?]]
+            [:column_filters {:optional true} [:map-of pos-int? [:sequential pos-int?]]]
+            [:column_contexts {:optional true} [:map-of pos-int? [:map-of pos-int? :string]]]
+            [:table_contexts {:optional true} [:map-of pos-int? :string]]]]
   (let [{:keys [prompt include_context]} body
         {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]

@@ -22,6 +22,7 @@ export interface MentionCommandProps {
   document?: Document | null;
   label?: string;
   href?: string | null;
+  table_schema?: string | null;
 }
 
 export const MentionPluginKey = new PluginKey("mention");

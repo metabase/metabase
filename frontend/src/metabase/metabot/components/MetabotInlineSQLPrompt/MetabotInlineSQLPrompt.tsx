@@ -17,8 +17,13 @@ import type {
 
 import { EntityReferenceList } from "./EntityReferenceList";
 import S from "./MetabotInlineSQLPrompt.module.css";
+import { TableColumnDialog } from "./TableColumnDialog";
 
-interface MetabotInlineSQLPromptProps {
+// Column filter state type: table_id -> Set of enabled column IDs
+// null/undefined = all columns enabled
+type ColumnFilterState = Record<number, Set<number> | null>;
+
+export interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
   onClose: () => void;
   isLoading: boolean;
@@ -27,6 +32,9 @@ interface MetabotInlineSQLPromptProps {
     value: string,
     sourceSql?: string,
     tableIds?: number[],
+    columnFilters?: Record<number, number[]>,
+    columnContexts?: Record<number, Record<number, string>>,
+    tableContexts?: Record<number, string>,
   ) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
@@ -35,6 +43,27 @@ interface MetabotInlineSQLPromptProps {
   onAddTable: (table: TableReference) => void;
   onRemoveTable: (tableId: ConcreteTableId) => void;
   onRefreshTables: (sql: string) => Promise<void>;
+  columnFilters: ColumnFilterState;
+  onToggleColumn: (tableId: number, columnId: number) => void;
+  onSetAllColumns: (tableId: number, enabled: boolean) => void;
+  getEnabledColumnCount: (
+    tableId: number,
+  ) => { enabled: number; total: number } | null;
+  buildColumnFiltersForRequest: () => Record<number, number[]> | undefined;
+  // Column context editing
+  getColumnContext: (columnId: number) => string | null;
+  isColumnContextEdited: (columnId: number) => boolean;
+  onUpdateColumnContext: (columnId: number, context: string) => void;
+  onResetColumnContext: (columnId: number) => void;
+  buildColumnContextsForRequest: () =>
+    | Record<number, Record<number, string>>
+    | undefined;
+  // Table context editing
+  getTableContext: (tableId: number) => string | null;
+  isTableContextEdited: (tableId: number) => boolean;
+  onUpdateTableContext: (tableId: number, context: string) => void;
+  onResetTableContext: (tableId: number) => void;
+  buildTableContextsForRequest: () => Record<number, string> | undefined;
 }
 
 export const MetabotInlineSQLPrompt = ({
@@ -50,9 +79,27 @@ export const MetabotInlineSQLPrompt = ({
   onAddTable,
   onRemoveTable,
   onRefreshTables,
+  columnFilters,
+  onToggleColumn,
+  onSetAllColumns,
+  getEnabledColumnCount,
+  buildColumnFiltersForRequest,
+  getColumnContext,
+  isColumnContextEdited,
+  onUpdateColumnContext,
+  onResetColumnContext,
+  buildColumnContextsForRequest,
+  getTableContext,
+  isTableContextEdited,
+  onUpdateTableContext,
+  onResetTableContext,
+  buildTableContextsForRequest,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
+  const [selectedTable, setSelectedTable] = useState<TableReference | null>(
+    null,
+  );
 
   // Refresh tables when prompt opens (catches any SQL changes since last extraction)
   useEffect(() => {
@@ -74,6 +121,7 @@ export const MetabotInlineSQLPrompt = ({
           id: mention.id,
           name: mention.label ?? `Table ${mention.id}`,
           display_name: mention.label,
+          schema: mention.schema,
         });
       }
     },
@@ -84,8 +132,25 @@ export const MetabotInlineSQLPrompt = ({
     const prompt = inputRef.current?.getValue?.().trim() ?? "";
     const sourceSql = getSourceSql?.();
     const tableIds = pinnedTables.map((t) => t.id);
-    generate(prompt, sourceSql, tableIds.length > 0 ? tableIds : undefined);
-  }, [generate, getSourceSql, pinnedTables]);
+    const columnFiltersForRequest = buildColumnFiltersForRequest();
+    const columnContextsForRequest = buildColumnContextsForRequest();
+    const tableContextsForRequest = buildTableContextsForRequest();
+    generate(
+      prompt,
+      sourceSql,
+      tableIds.length > 0 ? tableIds : undefined,
+      columnFiltersForRequest,
+      columnContextsForRequest,
+      tableContextsForRequest,
+    );
+  }, [
+    generate,
+    getSourceSql,
+    pinnedTables,
+    buildColumnFiltersForRequest,
+    buildColumnContextsForRequest,
+    buildTableContextsForRequest,
+  ]);
 
   const handleClose = useCallback(() => {
     cancelRequest();
@@ -112,58 +177,95 @@ export const MetabotInlineSQLPrompt = ({
   }, [disabled, handleSubmit, handleClose]);
 
   return (
-    <Box className={S.container} data-testid="metabot-inline-sql-prompt">
-      {pinnedTables.length > 0 && (
-        <EntityReferenceList tables={pinnedTables} onRemove={onRemoveTable} />
-      )}
-      <Box className={S.inputContainer}>
-        <MetabotPromptInput
-          ref={inputRef}
-          value={value}
-          placeholder={t`Describe what SQL you want...`}
-          autoFocus
-          disabled={isLoading}
-          onChange={setValue}
-          onStop={handleClose}
-          suggestionConfig={{
-            suggestionModels,
-            searchOptions: databaseId ? { table_db_id: databaseId } : undefined,
-          }}
-          onMentionSelected={handleMentionSelected}
-        />
-      </Box>
-      <Flex justify="flex-start" align="center" gap="xs" mt="xs">
-        <Button
-          data-testid="metabot-inline-sql-generate"
-          size="xs"
-          px="sm"
-          variant="filled"
-          onClick={handleSubmit}
-          disabled={disabled}
-          leftSection={
-            isLoading ? (
-              <Loader size="xs" color="text-tertiary" />
-            ) : (
-              <Icon name="insight" />
-            )
-          }
-        >
-          {isLoading ? t`Generating...` : t`Generate`}
-        </Button>
-        <Button
-          data-testid="metabot-inline-sql-cancel"
-          size="xs"
-          variant="subtle"
-          onClick={handleClose}
-        >
-          {t`Cancel`}
-        </Button>
-        {error && (
-          <Box data-testid="metabot-inline-sql-error" fz="sm" c="error" ml="sm">
-            {error}
-          </Box>
+    <>
+      <Box className={S.container} data-testid="metabot-inline-sql-prompt">
+        {pinnedTables.length > 0 && (
+          <EntityReferenceList
+            tables={pinnedTables}
+            onRemove={onRemoveTable}
+            onTableClick={setSelectedTable}
+            getEnabledColumnCount={getEnabledColumnCount}
+          />
         )}
-      </Flex>
-    </Box>
+        <Box className={S.inputContainer}>
+          <MetabotPromptInput
+            ref={inputRef}
+            value={value}
+            placeholder={t`Describe what SQL you want...`}
+            autoFocus
+            disabled={isLoading}
+            onChange={setValue}
+            onStop={handleClose}
+            suggestionConfig={{
+              suggestionModels,
+              searchOptions: databaseId
+                ? { table_db_id: databaseId }
+                : undefined,
+            }}
+            onMentionSelected={handleMentionSelected}
+          />
+        </Box>
+        <Flex justify="flex-start" align="center" gap="xs" mt="xs">
+          <Button
+            data-testid="metabot-inline-sql-generate"
+            size="xs"
+            px="sm"
+            variant="filled"
+            onClick={handleSubmit}
+            disabled={disabled}
+            leftSection={
+              isLoading ? (
+                <Loader size="xs" color="text-tertiary" />
+              ) : (
+                <Icon name="insight" />
+              )
+            }
+          >
+            {isLoading ? t`Generating...` : t`Generate`}
+          </Button>
+          <Button
+            data-testid="metabot-inline-sql-cancel"
+            size="xs"
+            variant="subtle"
+            onClick={handleClose}
+          >
+            {t`Cancel`}
+          </Button>
+          {error && (
+            <Box
+              data-testid="metabot-inline-sql-error"
+              fz="sm"
+              c="error"
+              ml="sm"
+            >
+              {error}
+            </Box>
+          )}
+        </Flex>
+      </Box>
+
+      {selectedTable && (
+        <TableColumnDialog
+          table={selectedTable}
+          enabledColumns={columnFilters[selectedTable.id] ?? null}
+          onToggleColumn={(columnId: number) =>
+            onToggleColumn(selectedTable.id, columnId)
+          }
+          onEnableAll={() => onSetAllColumns(selectedTable.id, true)}
+          onDisableAll={() => onSetAllColumns(selectedTable.id, false)}
+          onClose={() => setSelectedTable(null)}
+          getColumnContext={getColumnContext}
+          isColumnContextEdited={isColumnContextEdited}
+          onUpdateColumnContext={onUpdateColumnContext}
+          onResetColumnContext={onResetColumnContext}
+          tableContext={getTableContext(selectedTable.id)}
+          isTableContextEdited={isTableContextEdited(selectedTable.id)}
+          onUpdateTableContext={(context: string) =>
+            onUpdateTableContext(selectedTable.id, context)
+          }
+          onResetTableContext={() => onResetTableContext(selectedTable.id)}
+        />
+      )}
+    </>
   );
 };

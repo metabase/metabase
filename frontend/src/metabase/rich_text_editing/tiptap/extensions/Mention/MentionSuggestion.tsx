@@ -57,12 +57,14 @@ const MentionSuggestionComponent = forwardRef<
       model: string;
       label?: string;
       href?: string | null;
+      table_schema?: string | null;
     }) => {
       command({
         id: item.id,
         model: item.model,
         label: item.label,
         href: item.href,
+        table_schema: item.table_schema,
         document, // currently only used for analytics tracking purposes
       });
     },
@@ -131,6 +133,7 @@ interface CreateMentionSuggestionProps
     id: number | string;
     model: string;
     name?: string;
+    table_schema?: string | null;
   }) => void;
 }
 
@@ -149,6 +152,7 @@ export const createMentionSuggestion = (
             id: item.id,
             model: item.model,
             name: item.label,
+            table_schema: item.table_schema,
           });
         }
         props.command(item);
