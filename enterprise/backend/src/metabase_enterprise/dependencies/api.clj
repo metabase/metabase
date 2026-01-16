@@ -894,7 +894,7 @@
    Accepts optional parameters for filtering:
    - `types`: List of source entity types - only `:card` or `:table` (default: both)
    - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
-   - `query`: Search string to filter by name
+   - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
    - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)
@@ -909,7 +909,7 @@
    - `limit`: Applied limit"
   [_route-params
    {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
-    :or {types (vec deps.dependency-types/dependency-types)
+    :or {types [:card :table]
          card_types (vec lib.schema.metadata/card-types)
          include_personal_collections false
          sort_column :name
@@ -921,6 +921,7 @@
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
+        card-types (if (sequential? card_types) card_types [card_types])
         union-queries (map #(breaking-items-query {:entity-type %
                                                    :query query
                                                    :include-archived-items include-archived-items
