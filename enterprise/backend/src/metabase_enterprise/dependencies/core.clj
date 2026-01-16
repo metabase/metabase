@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
-   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
