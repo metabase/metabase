@@ -291,7 +291,7 @@ databaseChangeLog:
             constraintName: fk_report_card_source_card_id_ref_report_card_id
 
   - changeSet:
-      id: v59.2026-01-16T15:30:00
+      id: v59.2026-01-16T09:30:00
       author: bronsa
       comment: Create task_run table for grouping related tasks
       changes:
@@ -348,7 +348,7 @@ databaseChangeLog:
             tableName: task_run
 
   - changeSet:
-      id: v59.2026-01-16T15:30:01
+      id: v59.2026-01-16T09:30:01
       author: bronsa
       comment: Add composite index on task_run for type/entity queries
       changes:
