@@ -68,7 +68,7 @@ it("Should allow you to remove a segment", async () => {
   ]);
 });
 
-it("Should allow you to add a new segment with apropriate defaults", async () => {
+it("Should allow you to add a new segment with appropriate defaults", async () => {
   const { onChange } = setup();
 
   await userEvent.click(

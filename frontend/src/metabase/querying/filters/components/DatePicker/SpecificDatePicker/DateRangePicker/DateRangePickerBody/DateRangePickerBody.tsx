@@ -58,7 +58,7 @@ export function DateRangePickerBody({
     const newEndDate = setDatePart(endDate, newDate);
     onChange([startDate, newEndDate]);
     setInProgressDateRange(null);
-    // substract 1 month because we want the end date to be shown in the 2nd column
+    // subtract 1 month because we want the end date to be shown in the 2nd column
     setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
   };
 
@@ -76,7 +76,7 @@ export function DateRangePickerBody({
       const newEndDate = setTimePart(endDate, newTime);
       onChange([startDate, newEndDate]);
       setInProgressDateRange(null);
-      // substract 1 month because we want the end date to be shown in the 2nd column
+      // subtract 1 month because we want the end date to be shown in the 2nd column
       setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
     }
   };

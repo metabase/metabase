@@ -1,6 +1,5 @@
 const { H } = cy;
 
-// These tests will run on both OSS and EE instances, both without a token.
 describe(
   "scenarios > embedding > admin settings > oss",
   { tags: "@OSS" },
@@ -8,6 +7,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+
       H.updateSetting("show-sdk-embed-terms", false);
     });
 

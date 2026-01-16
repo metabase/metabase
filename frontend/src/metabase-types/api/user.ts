@@ -139,6 +139,7 @@ export type ListUsersRequest = {
   group_id?: number;
   include_deactivated?: boolean;
   tenancy?: UserTenancy;
+  tenant_id?: number;
 } & PaginationRequest;
 
 export type ListUsersResponse = {

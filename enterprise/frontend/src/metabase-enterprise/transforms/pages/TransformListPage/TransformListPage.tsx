@@ -159,6 +159,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         accessorKey: "name",
         header: t`Name`,
         minWidth: 280,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) => (
           <EntityNameCell
@@ -239,6 +240,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         accessorFn: (node) => node.target?.name ?? "",
         header: t`Output table`,
         minWidth: 200,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) =>
           row.original.target?.name ? (

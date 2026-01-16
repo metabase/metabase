@@ -717,7 +717,7 @@
                               (get-in response [:headers "Location"])))))))))))))))
 
 (deftest sso-subpath-e2e-test
-  (testing "Redirect URL should correcly append the site-url when the redirect is a relative path (#28650)"
+  (testing "Redirect URL should correctly append the site-url when the redirect is a relative path (#28650)"
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (doseq [redirect-url ["/collection/root"

@@ -1235,8 +1235,6 @@ databaseChangeLog:
             path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
   - changeSet:
       id: v58.2025-12-18T16:14:03
       author: winlost
@@ -1257,6 +1255,35 @@ databaseChangeLog:
             tableName: pulse
             columnName: disable_links
 
+  - changeSet:
+      id: v58.2025-12-30T22:48:02
+      author: edpaget
+      comment: Add remote_sync_object.model_table_id for parent table reference
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_id
+                  type: int
+                  remarks: Parent table ID for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-12-30T22:48:03
+      author: edpaget
+      comment: Add remote_sync_object.model_table_name for parent table name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+                  remarks: Parent table name for Field/Segment/Table models
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

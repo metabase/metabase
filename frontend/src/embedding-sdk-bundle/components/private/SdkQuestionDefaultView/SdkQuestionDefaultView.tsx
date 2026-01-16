@@ -235,7 +235,9 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          color="var(--mb-color-border) !important"
+                          style={{
+                            color: "var(--mb-color-border) !important",
+                          }}
                         />
                       )}
                     </>

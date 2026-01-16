@@ -345,6 +345,184 @@ databaseChangeLog:
               - column:
                   name: result
 
+  - changeSet:
+      id: v59.2026-01-12T22:43:43
+      author: galdre
+      comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
+      changes:
+        - update:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  value: null
+            where: query_type = 'native' AND source_card_id IS NOT NULL
+      rollback:
+        # No rollback - we can't know what the original source_card_id values were
+
+  - changeSet:
+      id: v59.2026-01-13T12:00:00
+      author: galdre
+      comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v59.2026-01-13T12:00:01
+      author: galdre
+      comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:00
+      author: rileythomp
+      comment: Create analysis_finding_error table for storing individual errors with source info
+      changes:
+        - createTable:
+            tableName: analysis_finding_error
+            remarks: Individual validation errors from analysis with source entity information
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: analyzed_entity_type
+                  type: varchar(254)
+                  remarks: The type of the analyzed entity (card, transform, segment, etc.)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analyzed_entity_id
+                  type: int
+                  remarks: The ID of the analyzed entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_type
+                  type: varchar(254)
+                  remarks: The type of error (missing-column, missing-table-alias, duplicate-column, syntax-error, validation-exception-error)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_detail
+                  type: varchar(254)
+                  remarks: Additional error details (e.g., column name, alias name, error message)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_entity_type
+                  type: varchar(254)
+                  remarks: The type of the source entity causing the error (table, card, etc.)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_entity_id
+                  type: int
+                  remarks: The ID of the source entity causing the error
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: analysis_finding_error
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:01
+      author: rileythomp
+      comment: Index for querying errors by source entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_source
+            columns:
+              - column:
+                  name: source_entity_type
+              - column:
+                  name: source_entity_id
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_source
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:02
+      author: rileythomp
+      comment: Index for querying/deleting errors by analyzed entity
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_analyzed
+            columns:
+              - column:
+                  name: analyzed_entity_type
+              - column:
+                  name: analyzed_entity_id
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_analyzed
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:03
+      author: rileythomp
+      comment: Index for filtering by error type
+      changes:
+        - createIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_type
+            columns:
+              - column:
+                  name: error_type
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding_error
+            indexName: idx_analysis_finding_error_type
+
+  - changeSet:
+      id: v59.2026-01-16T00:00:04
+      author: rileythomp
+      comment: Drop redundant finding_details column from analysis_finding table
+      changes:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: finding_details
+      rollback:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: finding_details
+                  type: ${text.type}
+                  remarks: Arbitrary EDN text of the findings
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

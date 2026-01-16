@@ -214,7 +214,7 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
+;; almost exactly the same as `absolute-datetime`, but generated in some situations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause time
@@ -1962,7 +1962,7 @@
     {:type         "A join should not include :type"
      :filter       "A join should not have top-level 'inner' query keys like :filter"
      :breakout     "A join should not have top-level 'inner' query keys like :breakout"
-     :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
+     :aggregation "A join should not have top-level 'inner' query keys like :aggregation"
      :expressions  "A join should not have top-level 'inner' query keys like :expressions"
      :joins        "A join should not have top-level 'inner' query keys like :joins"
      :ident        ":ident is deprecated and should not be included in joins"})])

@@ -1,11 +1,9 @@
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { Box, Card, Group, Stack, Title } from "metabase/ui";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Card, Group, Stack, Title } from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
-import {
-  getDependencyErrorDetail,
-  getDependencyErrorTypeCountMessage,
-} from "../../../../utils";
+import { getDependencyErrorTypeCountMessage } from "../../../../utils";
 
 import S from "./SidebarErrorInfo.module.css";
 
@@ -17,7 +15,7 @@ type SidebarErrorInfoProps = {
 export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
   const title = getDependencyErrorTypeCountMessage(type, errors.length);
   const details = errors
-    .map((error) => getDependencyErrorDetail(error))
+    .map((error) => error.detail)
     .filter((detail) => detail != null);
 
   return (
@@ -33,7 +31,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
               justify="space-between"
               wrap="nowrap"
             >
-              <Box>{detail}</Box>
+              <Ellipsified>{detail}</Ellipsified>
               <CopyButton value={detail} />
             </Group>
           ))}

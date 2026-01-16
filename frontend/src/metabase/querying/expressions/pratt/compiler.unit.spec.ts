@@ -949,7 +949,7 @@ describe("resolve", () => {
         expect(() => expression(`year("a")`)).not.toThrow();
       });
 
-      it("should resolve chained commmands", () => {
+      it("should resolve chained commands", () => {
         expect(() =>
           expression(
             `datetimeSubtract(datetimeAdd("2022-01-01", 1, "month"), 2,"minute")`,

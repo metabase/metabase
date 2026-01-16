@@ -1,25 +1,32 @@
+import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import type { TreeTableColumnDef } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
+import type {
+  DependencyNode,
+  DependencySortColumn,
+  DependencySortingOptions,
+} from "metabase-types/api";
 
 import {
   getNodeDependentsCount,
   getNodeLabel,
   getNodeLocationInfo,
 } from "../../../utils";
+import type { DependencyListMode } from "../types";
 
 import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
 
-function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
+function getNodeNameColumn(
+  mode: DependencyListMode,
+): TreeTableColumnDef<DependencyNode> {
   return {
     id: "name",
-    header: t`Name`,
-    meta: {
-      width: "auto",
-    },
+    header: mode === "broken" ? t`Dependency` : t`Name`,
+    minWidth: 100,
+    enableSorting: true,
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -32,9 +39,8 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "location",
     header: t`Location`,
-    meta: {
-      width: "auto",
-    },
+    minWidth: 100,
+    enableSorting: true,
     accessorFn: (node) => {
       const location = getNodeLocationInfo(node);
       const links = location?.links ?? [];
@@ -49,15 +55,14 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
 
 function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "error",
-    header: t`Errors`,
-    meta: {
-      width: "auto",
-    },
-    accessorFn: (node) => node.errors?.length ?? 0,
+    id: "dependents-errors",
+    header: t`Problems`,
+    minWidth: 100,
+    enableSorting: false,
+    accessorFn: (node) => node.dependents_errors?.length ?? 0,
     cell: ({ row }) => {
       const node = row.original;
-      const errors = node.errors ?? [];
+      const errors = node.dependents_errors ?? [];
       if (errors.length === 0) {
         return null;
       }
@@ -70,6 +75,8 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
     header: t`Dependents`,
+    minWidth: 100,
+    enableSorting: true,
     accessorFn: (node) => getNodeDependentsCount(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -78,19 +85,48 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-type ColumnOptions = {
-  withErrorsColumn: boolean;
-  withDependentsCountColumn: boolean;
-};
-
-export function getColumns({
-  withErrorsColumn,
-  withDependentsCountColumn,
-}: ColumnOptions): TreeTableColumnDef<DependencyNode>[] {
+export function getColumns(
+  mode: DependencyListMode,
+): TreeTableColumnDef<DependencyNode>[] {
   return [
-    getNodeNameColumn(),
+    getNodeNameColumn(mode),
     getNodeLocationColumn(),
-    ...(withErrorsColumn ? [getNodeErrorsColumn()] : []),
-    ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
+    ...(mode === "broken" ? [getNodeErrorsColumn()] : []),
+    ...(mode === "broken" ? [getNodeDependentsCountColumn()] : []),
   ];
+}
+
+export function getColumnWidths(mode: DependencyListMode): number[] {
+  if (mode === "broken") {
+    return [0.3, 0.3, 0.3, 0.1];
+  } else {
+    return [0.5, 0.5];
+  }
+}
+
+export function getSortingState(
+  sorting: DependencySortingOptions | undefined,
+): SortingState {
+  return sorting != null
+    ? [{ id: sorting.column, desc: sorting.direction === "desc" }]
+    : [];
+}
+
+export function getSortingOptions(
+  sortingState: SortingState,
+): DependencySortingOptions | undefined {
+  if (sortingState.length === 0) {
+    return undefined;
+  }
+  const { id, desc } = sortingState[0];
+  return {
+    column: id as DependencySortColumn,
+    direction: desc ? "desc" : "asc",
+  };
+}
+
+export function getNotFoundMessage(mode: DependencyListMode) {
+  return mode === "broken"
+    ? t`No broken dependencies found`
+    : t`No unreferenced entities found`;
 }
