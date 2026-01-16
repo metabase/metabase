@@ -304,9 +304,9 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Using guest embeds with the SDK
 
-If you're using the [Modular Embedding SDK](./sdk/introduction.md), and you also want to embed a question or dashboard using guest authentication, you'll still need to visit the item in your Metabases and publish the item. You can ignore the code the wizard generates, but in order for Metabase to know it's okay to serve the item, you need to publish it.
+If you're using the [Modular Embedding SDK](./sdk/introduction.md), and you also want to embed a question or dashboard using guest authentication, you'll still need to visit the item in your Metabase and publish the item. You can ignore the code the wizard generates, but in order for Metabase to know it's okay to serve the item, you need to publish it.
 
-One limitation, however, is that you can only have one type of authentication per page of your app. You can't have, for example, one question using guest authentication and another using SSO on the same page.
+One limitation, however, is that you can only have one type of authentication per page of your app. For example, on a single page in your app, you can't have both one question using guest authentication and another question using SSO.
 
 ## Guest embed limitations
 
