@@ -98,7 +98,7 @@
     (parse-field-id nil) => nil
     (parse-field-id \"invalid\") => nil"
   [field-id]
-  (when (string? field-id)
+  (when (and field-id (string? field-id))
     (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
       {:model-tag   model-tag
        ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
