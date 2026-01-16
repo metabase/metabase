@@ -156,17 +156,6 @@
         (println (c/green "Done!")))
       (println (c/green "No unused requires found.")))))
 
-(defn fix-staged
-  "Fix unused requires in staged Clojure files.
-   Re-stages files after fixing them so the commit includes the fix."
-  [_parsed]
-  (let [staged-files (u/staged-files)]
-    (if (seq staged-files)
-      (do
-        (println (c/cyan (str "Checking " (count staged-files) " staged file(s)...")))
-        (fix-unused-requires! staged-files {:restage? true}))
-      (println "No staged Clojure files."))))
-
 (defn fix-files
   "Fix unused requires in specified files."
   [{:keys [arguments]}]
