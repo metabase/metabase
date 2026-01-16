@@ -7,20 +7,16 @@ import type {
 
 let canvas: HTMLCanvasElement | null = null;
 
-const convertRemToPx = (fontSize: string): string => {
-  const remMatch = fontSize.match(/^([\d.]+)rem$/);
-  if (remMatch) {
-    const remValue = parseFloat(remMatch[1]);
-    const rootFontSize = parseFloat(
-      window.getComputedStyle(document.documentElement).fontSize,
-    );
-    return `${remValue * rootFontSize}px`;
-  }
-  return fontSize;
-};
-
 export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
-  canvas ??= document.createElement("canvas");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    document.body.appendChild(canvas);
+    canvas.style.display = "none";
+    canvas.style.fontSize = window.getComputedStyle(
+      document.documentElement,
+    ).fontSize;
+  }
+
   const context = canvas.getContext("2d");
 
   if (!context) {
@@ -28,9 +24,7 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
   }
 
   const fontSize =
-    typeof style.size === "number"
-      ? `${style.size}px`
-      : convertRemToPx(style.size);
+    typeof style.size === "number" ? `${style.size}px` : style.size;
 
   context.font = `${style.weight} ${fontSize} ${style.family}`;
   const textMetrics = context.measureText(text);
