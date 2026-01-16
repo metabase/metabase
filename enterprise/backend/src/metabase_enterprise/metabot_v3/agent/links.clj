@@ -79,6 +79,22 @@
       (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
       nil)))
 
+(defn- resolve-table-link
+  "Resolve a metabase://table/{id} link to a table page URL.
+  Note: This differs from ai-service (which links to /question#... by fetching database_id).
+  We avoid a DB lookup during streaming by linking directly to the table."
+  [table-id]
+  (let [parsed-id (cond
+                    (int? table-id) table-id
+                    (string? table-id) (when (re-matches #"\d+" table-id)
+                                         (parse-long table-id))
+                    :else nil)]
+    (if-not parsed-id
+      (do
+        (log/warn "Invalid table id for link resolution" {:table-id table-id})
+        nil)
+      (str "/table/" parsed-id))))
+
 ;;; Main Link Resolution
 
 (defn resolve-metabase-uri
@@ -99,12 +115,14 @@
   (when (and uri (str/starts-with? uri "metabase://"))
     (let [path (subs uri 11) ; Remove "metabase://"
           [entity-type entity-id] (str/split path #"/" 2)]
-      (case entity-type
-        "query"    (resolve-query-link entity-id queries-state)
-        "chart"    (resolve-chart-link entity-id charts-state queries-state)
-        "question" (resolve-entity-link "question" entity-id)
-        ;; For other types, use simple path mapping
-        (resolve-entity-link entity-type entity-id)))))
+      (when-not (or (str/blank? entity-type) (str/blank? entity-id))
+        (case entity-type
+          "query"    (resolve-query-link entity-id queries-state)
+          "chart"    (resolve-chart-link entity-id charts-state queries-state)
+          "question" (resolve-entity-link "question" entity-id)
+          "table"    (resolve-table-link entity-id)
+          ;; For other types, use simple path mapping
+          (resolve-entity-link entity-type entity-id))))))
 
 ;;; Markdown Link Processing
 
