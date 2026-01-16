@@ -198,7 +198,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
       H.entityPickerModalItem(3, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 

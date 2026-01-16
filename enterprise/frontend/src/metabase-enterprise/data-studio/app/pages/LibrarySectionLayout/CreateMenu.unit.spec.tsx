@@ -98,12 +98,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual([
-      "Published table",
-      "Metric",
-      "Snippet",
-      "Snippet folder",
-    ]);
+    ).toEqual(["Published table", "Metric", "Snippet", "Snippet folder"]);
   });
 
   it("renders nothing if remote sync is set to read-only", () => {
