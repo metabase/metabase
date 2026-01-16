@@ -12,6 +12,7 @@ import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
 
@@ -35,8 +36,9 @@ export function SegmentDetailPage({
   breadcrumbs,
   onRemove,
 }: SegmentDetailPageProps) {
-  const canEditSegments = useSelector(getUserCanWriteSegments);
+  const canWriteSegments = useSelector(getUserCanWriteSegments);
   const metadata = useSelector(getMetadata);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [description, setDescription] = useState(segment.description ?? "");
@@ -44,6 +46,7 @@ export function SegmentDetailPage({
   const [savedSegment, setSavedSegment] = useState(segment);
 
   const { query, filters } = useSegmentQuery(definition, metadata);
+  const canEditSegments = canWriteSegments && !remoteSyncReadOnly;
 
   const isDirty = useMemo(
     () =>
