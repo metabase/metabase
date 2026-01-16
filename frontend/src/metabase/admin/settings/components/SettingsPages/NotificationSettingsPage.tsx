@@ -21,8 +21,9 @@ import {
 } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
-import { SlackBadge } from "../../slack/SlackBadge";
 import { SlackSettingsModal } from "../../slack/SlackSettingsModal";
+import { SlackSetup } from "../../slack/SlackSetup";
+import { SlackStatus } from "../../slack/SlackStatus";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 
@@ -33,8 +34,8 @@ export const NotificationSettingsPage = () => {
     useDisclosure(false);
   const [webhookModal, setWebhookModal] = useState<NotificationModals>(null);
   const [currentChannel, setCurrentChannel] = useState<NotificationChannel>();
+  const slackAppToken = useSetting("slack-app-token");
   const slackBotToken = useSetting("slack-token");
-  const isSlackTokenValid = useSetting("slack-token-valid?");
 
   const { data: channels } = useListChannelsQuery();
 
@@ -44,27 +45,32 @@ export const NotificationSettingsPage = () => {
     <>
       <SettingsPageWrapper title={t`Notifications`}>
         <SettingsSection title={t`Slack`}>
-          <UnstyledButton onClick={openSlackModal} variant="unstyled" w="100%">
+          {slackAppToken || slackBotToken ? (
             <Paper shadow="0" withBorder p="lg">
-              <Flex gap="0.5rem" align="center" mb="0.5rem">
+              <Flex gap="0.5rem" align="center" mb="1rem">
                 <Icon name="slack_colorized" />
-                <Title order={3}>
-                  {isSlackTokenValid
-                    ? t`Connected to Slack`
-                    : t`Connect to Slack`}
-                </Title>
-                <SlackBadge
-                  ml="auto"
-                  isBot={!!slackBotToken}
-                  isValid={isSlackTokenValid}
-                />
+                <Title order={3}>{t`Slack`}</Title>
               </Flex>
-              <Text>
-                {t`If your team uses Slack, you can send dashboard subscriptions and
-              alerts there`}
-              </Text>
+              {slackAppToken ? <SlackStatus /> : <SlackSetup />}
             </Paper>
-          </UnstyledButton>
+          ) : (
+            <UnstyledButton
+              onClick={openSlackModal}
+              variant="unstyled"
+              w="100%"
+            >
+              <Paper shadow="0" withBorder p="lg">
+                <Flex gap="0.5rem" align="center" mb="0.5rem">
+                  <Icon name="slack_colorized" />
+                  <Title order={3}>{t`Connect to Slack`}</Title>
+                </Flex>
+                <Text>
+                  {t`If your team uses Slack, you can send dashboard subscriptions and
+              alerts there`}
+                </Text>
+              </Paper>
+            </UnstyledButton>
+          )}
         </SettingsSection>
 
         <SettingsSection>

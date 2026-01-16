@@ -16,13 +16,14 @@ import { NotificationSettingsPage } from "./NotificationSettingsPage";
 
 const setup = async ({
   isSlackTokenValid = true,
+  slackAppToken = "xoxb-test-token",
 }: {
   isSlackTokenValid?: boolean;
+  slackAppToken?: string | null;
 } = {}) => {
   const settings = createMockSettings({
-    "slack-token": "xoxb-test-token",
     "slack-token-valid?": isSlackTokenValid,
-    "slack-app-token": "",
+    "slack-app-token": slackAppToken,
   });
 
   setupPropertiesEndpoints(settings);
@@ -44,17 +45,21 @@ const setup = async ({
 };
 
 describe("NotificationSettingsPage", () => {
-  it("shows connected Slack status with a badge when connected", async () => {
+  it("shows Slack status inside the card when connected", async () => {
     await setup();
 
-    expect(screen.getByText("Connected to Slack")).toBeInTheDocument();
-    expect(screen.getByText("Slack bot is working.")).toBeInTheDocument();
+    expect(screen.getByText("Slack app is working")).toBeInTheDocument();
   });
 
-  it("shows not connected Slack status with a badge when token is invalid", async () => {
+  it("shows Slack error status when the token is invalid", async () => {
     await setup({ isSlackTokenValid: false });
 
+    expect(screen.getByText("Slack app is not working.")).toBeInTheDocument();
+  });
+
+  it("shows connect CTA when the Slack app is not configured", async () => {
+    await setup({ slackAppToken: null });
+
     expect(screen.getByText("Connect to Slack")).toBeInTheDocument();
-    expect(screen.getByText("Slack bot is not working.")).toBeInTheDocument();
   });
 });
