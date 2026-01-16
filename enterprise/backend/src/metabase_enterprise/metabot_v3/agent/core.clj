@@ -99,12 +99,10 @@
   [memory parts]
   (reduce
    (fn [mem part]
-     (when (= (:type part) :tool-output)
-       (log/debug "Processing tool output for query extraction" {:part part}))
      (if-let [structured (:structured-output (:result part))]
        (if (and (:query-id structured) (:query structured))
          (do
-           (log/info "Storing query in memory" {:query-id (:query-id structured)})
+           (log/debug "Storing query in memory" {:query-id (:query-id structured)})
            (memory/remember-query mem (:query-id structured) (:query structured)))
          mem)
        mem))
@@ -114,14 +112,20 @@
 (defn- extract-charts-from-parts
   "Extract charts from tool output parts and store them in memory.
   Tool results with :structured-output containing :chart-id are stored.
+  Charts are identified by having both :chart-id and :query-id (from create-chart-tool).
   Returns updated memory."
   [memory parts]
   (reduce
    (fn [mem part]
+     (when (= (:type part) :tool-output)
+       (log/debug "Processing tool output for chart extraction" {:part part}))
      (if-let [structured (:structured-output (:result part))]
-       (if (and (:chart-id structured) (:type structured) (= (:type structured) :chart))
+       ;; Chart results have :chart-id and :query-id (from create-chart-tool)
+       ;; Distinguish from queries which have :query-id and :query
+       (if (and (:chart-id structured) (:query-id structured) (not (:query structured)))
          (do
-           (log/info "Storing chart in memory" {:chart-id (:chart-id structured)})
+           (log/info "Storing chart in memory" {:chart-id (:chart-id structured)
+                                                :query-id (:query-id structured)})
            (memory/store-chart mem (:chart-id structured) structured))
          mem)
        mem))

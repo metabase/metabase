@@ -45,7 +45,9 @@
 
 (defn- resolve-chart-link
   "Resolve a metabase://chart/{id} link to a proper URL.
-  Charts contain visualization settings and reference queries."
+  Charts contain visualization settings and reference queries.
+  Falls back to treating the ID as a query ID if no chart is found
+  (handles LLM mistakes where it uses chart/ instead of query/)."
   [chart-id charts-state queries-state]
   (if-let [chart (get charts-state chart-id)]
     ;; Chart has a query-id that points to the actual query
@@ -56,10 +58,17 @@
           (log/warn "Query not found for chart" {:chart-id chart-id
                                                  :query-id query-id})
           nil)))
-    (do
-      (log/warn "Chart not found for link resolution" {:chart-id chart-id
-                                                       :available (keys charts-state)})
-      nil)))
+    ;; Chart not found - fall back to checking if it's actually a query ID
+    ;; (LLM sometimes uses metabase://chart/ when it should use metabase://query/)
+    (if-let [query (get queries-state chart-id)]
+      (do
+        (log/debug "Treating chart link as query link" {:id chart-id})
+        (str "/question#" (query->url-hash query)))
+      (do
+        (log/warn "Chart not found for link resolution" {:chart-id chart-id
+                                                         :available-charts (keys charts-state)
+                                                         :available-queries (keys queries-state)})
+        nil))))
 
 (defn- resolve-entity-link
   "Resolve a metabase://{type}/{id} link to a proper URL."
