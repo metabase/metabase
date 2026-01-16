@@ -980,7 +980,7 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overriden in the PUT with the original values"
+  "Replace any sensitive values not overridden in the PUT with the original values"
   [database details]
   (when details
     (merge (:details database)

@@ -19,7 +19,7 @@
   `:id` and `:name` are mutually exclusive.
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed."
+  unless `:id` or `:name` is specified."
   [:and
    [:map
     {:closed true}
@@ -129,7 +129,7 @@
   side-effects (to warm the cache).
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed.")
+  unless `:id` or `:name` is specified.")
 
   (setting [metadata-provider setting-key]
     "Return the value of the given Metabase setting with keyword `setting-name`."))
@@ -374,7 +374,7 @@
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) InvocationTracker
   "Optional. A protocol for a MetadataProvider that records the arguments of method invocations during query execution.
-  This is useful for tracking which metdata ids were used during a query execution. The main purpose of this is to power
+  This is useful for tracking which metadata ids were used during a query execution. The main purpose of this is to power
   updating card.last_used_at during query execution. see [[metabase.query-processor.middleware.update-used-cards/update-used-cards!]]"
   (invoked-ids [this metadata-type]
     "Get all invoked ids of a metadata type thus far."))

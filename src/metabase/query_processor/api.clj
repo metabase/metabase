@@ -137,7 +137,7 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     visualization-settings        :visualization_settings}
-   ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
+   ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map
