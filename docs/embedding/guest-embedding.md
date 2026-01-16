@@ -193,7 +193,7 @@ Here's an example of the server and client code that Metabase will generate if y
 
 **Server code (Node.js)**
 
-You set the locker parameter on the server, passing it in the token.
+You set the locked parameter on the server, passing it in the token.
 
 ```javascript
 // Install via 'npm install jsonwebtoken'
