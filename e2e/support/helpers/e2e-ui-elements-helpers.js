@@ -94,9 +94,7 @@ export function shouldDisplayTabs(tabs) {
 
 export function tabsShouldBe(selected, tabs) {
   cy.log(tabs);
-  cy.findByTestId("workspace-tabs")
-    .findAllByRole("tab")
-    .should("have.length", tabs.length);
+  cy.findAllByRole("tab").should("have.length", tabs.length);
   tabs.forEach((tab) => {
     if (tab === selected) {
       entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");

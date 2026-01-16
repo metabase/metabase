@@ -1301,18 +1301,14 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByTestId("run-button").click();
 
-        Workspaces.getWorkspaceContent().within((container) => {
-          H.tabsShouldBe(
+        Workspaces.getWorkspaceContent().within(() => {
+          H.tabsShouldBe("Preview (Python transform)", [
+            "Setup",
+            "Agent Chat",
+            "Graph",
+            "Python transform",
             "Preview (Python transform)",
-            [
-              "Setup",
-              "Agent Chat",
-              "Graph",
-              "Python transform",
-              "Preview (Python transform)",
-            ],
-            container,
-          );
+          ]);
           cy.findByText("Preview (Python transform)").click();
           H.assertTableData({
             columns: ["foo"],
