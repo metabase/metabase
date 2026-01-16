@@ -16,13 +16,10 @@ interface ConfirmModal extends ModalProps {
   content?: string;
   message?: string | ReactNode;
   onConfirm?: () => void | Promise<void>;
-  onDiscard?: () => void | Promise<void>;
   confirmButtonText?: string;
   confirmButtonProps?: Omit<ButtonProps, "onClick" | "children">;
   closeButtonText?: string | null;
   closeButtonProps?: Omit<ButtonProps, "onClick" | "children">;
-  discardButtonText?: string;
-  discardButtonProps?: Omit<ButtonProps, "onClick" | "children">;
   errorMessage?: string;
 }
 
@@ -32,14 +29,11 @@ export const ConfirmModal = ({
   message = t`Are you sure you want to do this?`,
   onClose,
   onConfirm = _.noop,
-  onDiscard = _.noop,
   confirmButtonText = t`Yes`,
   confirmButtonProps = {},
   closeButtonText = t`Cancel`,
   closeButtonProps = {},
   errorMessage,
-  discardButtonText,
-  discardButtonProps = {},
   ...props
 }: ConfirmModal) => {
   const [confirming, setConfirming] = useState(false);
@@ -68,19 +62,8 @@ export const ConfirmModal = ({
                 {closeButtonText}
               </Button>
             )}
-            {discardButtonText && (
-              <Button
-                color="danger"
-                variant="filled"
-                {...discardButtonProps}
-                disabled={discardButtonProps.disabled || confirming}
-                onClick={onDiscard}
-              >
-                {discardButtonText}
-              </Button>
-            )}
             <Button
-              color={discardButtonText ? "brand" : "danger"}
+              color="danger"
               variant="filled"
               {...confirmButtonProps}
               disabled={confirmButtonProps.disabled || confirming}

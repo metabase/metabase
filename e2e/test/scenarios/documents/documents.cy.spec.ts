@@ -66,55 +66,6 @@ describe("documents", () => {
       H.documentSaveButton().should("be.visible");
     });
 
-    it("should discard unsaved changes when duplicating and then open the duplicate modal", () => {
-      H.createDocument({
-        name: "Discard Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.findByRole("textbox", { name: "Document Title" })
-        .should("have.value", "Discard Duplicate Doc")
-        .clear()
-        .type("Unsaved title");
-
-      H.documentContent().click();
-      H.addToDocument(" changed", false);
-
-      H.documentSaveButton().should("be.visible");
-
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByTestId("save-confirmation").should("be.visible");
-      cy.findByRole("button", { name: "Discard changes" }).click();
-
-      // reverted
-      cy.findByRole("textbox", { name: "Document Title" }).should(
-        "have.value",
-        "Discard Duplicate Doc",
-      );
-      H.documentContent().should("contain.text", "Original content");
-      H.documentSaveButton().should("not.exist");
-
-      // duplicate modal is open
-      cy.findByRole("heading", { name: /Duplicate "/ }).should("be.visible");
-      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
-    });
-
     it("should save changes when duplicating, then copy and redirect to the new document", () => {
       cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
 

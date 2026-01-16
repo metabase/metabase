@@ -27,14 +27,6 @@ export function useDocumentState(documentData?: {
     }
   }, [documentData]);
 
-  const revertToOriginalDocument = useCallback(() => {
-    if (documentData) {
-      setDocumentTitle(documentData.name);
-      // Force update to ensure the editor updates with the original content.
-      setDocumentContent(Object.assign({}, documentData.document));
-    }
-  }, [documentData]);
-
   const updateCardEmbeds = useCallback(
     (newEmbeds: CardEmbedRef[]) => {
       const prevEmbeds = previousEmbedsRef.current;
@@ -68,7 +60,6 @@ export function useDocumentState(documentData?: {
     setDocumentTitle,
     documentContent,
     setDocumentContent,
-    revertToOriginalDocument,
     updateCardEmbeds,
     openCommentSidebar,
     closeCommentSidebar,

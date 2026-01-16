@@ -174,7 +174,6 @@ export const DocumentPage = ({
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
-    revertToOriginalDocument,
   } = useDocumentState(documentData);
 
   // This is important as it will affect collection breadcrumbs in the appbar
@@ -610,18 +609,14 @@ export const DocumentPage = ({
           // only applies when trying to duplicate a document that has unsaved changes
           opened={duplicateModalMode === "leave"}
           confirmButtonText={t`Save changes`}
-          discardButtonText={t`Discard changes`}
+          confirmButtonProps={{ color: "brand" }}
           data-testid="save-confirmation"
-          message={t`Your changes haven't been saved, you'll lose them if you navigate away.`}
-          title={t`Save your changes?`}
+          message={t`You need to save before you can duplicate this document.`}
+          title={t`Save your changes first`}
           onConfirm={async () => {
             if ((await handleSave())?.error) {
               throw new Error("Failed to save document");
             }
-            setDuplicateModalMode("duplicate");
-          }}
-          onDiscard={() => {
-            revertToOriginalDocument();
             setDuplicateModalMode("duplicate");
           }}
           onClose={() => setDuplicateModalMode(null)}
