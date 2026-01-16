@@ -224,11 +224,12 @@
     (let [out-chan (a/chan 10)
           memory {:state {:queries {} :charts {}}}]
       ;; Wait for the go block to complete
-      (a/<!! (#'agent/finalize-stream! out-chan memory))
+      (a/<!! (#'agent/finalize-stream! out-chan memory "stop"))
       (let [result (chan->seq out-chan)]
         (is (= 2 (count result)))
         (is (= :data (:type (first result))))
-        (is (= :finish (:type (second result))))))))
+        (is (= :finish (:type (second result))))
+        (is (= "stop" (:finish-reason (second result))))))))
 
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
@@ -253,3 +254,223 @@
         (is (some #(and (= :data (:type %))
                         (map? (:data %)))
                   result))))))
+
+;;; Query and Chart extraction tests
+
+(deftest extract-queries-from-parts-test
+  (testing "extracts queries from tool output parts"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "query_model"
+                  :result {:structured-output {:query-id "q-123"
+                                               :query query
+                                               :result-columns []}}}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-queries-from-parts memory parts)]
+      (is (= query (get-in updated-memory [:state :queries "q-123"])))))
+
+  (testing "ignores parts without structured-output"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "search"
+                  :result {:output "no results"}}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-queries-from-parts memory parts)]
+      (is (empty? (get-in updated-memory [:state :queries])))))
+
+  (testing "ignores non-tool-output parts"
+    (let [parts [{:type :text :text "hello"}
+                 {:type :tool-input :id "t1" :function "search"}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-queries-from-parts memory parts)]
+      (is (empty? (get-in updated-memory [:state :queries]))))))
+
+(deftest extract-charts-from-parts-test
+  (testing "extracts charts from tool output parts"
+    (let [chart-data {:chart-id "c-456"
+                      :query-id "q-123"
+                      :chart-type :bar}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "create_chart"
+                  :result {:structured-output chart-data}}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-charts-from-parts memory parts)]
+      (is (= chart-data (get-in updated-memory [:state :charts "c-456"])))))
+
+  (testing "distinguishes charts from queries (charts have chart-id, queries have query)"
+    (let [query-data {:query-id "q-789"
+                      :query {:database 1}
+                      :result-columns []}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "query_model"
+                  :result {:structured-output query-data}}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-charts-from-parts memory parts)]
+      ;; Should NOT be extracted as a chart since it has :query
+      (is (empty? (get-in updated-memory [:state :charts])))))
+
+  (testing "ignores parts without chart-id"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "search"
+                  :result {:structured-output {:data []}}}]
+          memory {:state {:queries {} :charts {}}}
+          updated-memory (#'agent/extract-charts-from-parts memory parts)]
+      (is (empty? (get-in updated-memory [:state :charts]))))))
+
+;;; Link resolution during streaming tests
+
+(deftest stream-parts-link-resolution-test
+  (testing "resolves query links in streamed text"
+    (let [out-chan (a/chan 10)
+          query-id "stream-test-query"
+          query {:database 1 :type :query :query {:source-table 1}}
+          text-with-link (str "Check [Results](metabase://query/" query-id ")")
+          parts [{:type :text :text text-with-link}]
+          memory {:state {:queries {query-id query} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            output-text (-> result first :text)]
+        ;; metabase:// should be replaced with /question#
+        (is (not (re-find #"metabase://" output-text)))
+        (is (re-find #"/question#" output-text)))))
+
+  (testing "resolves chart links using chart state"
+    (let [out-chan (a/chan 10)
+          query-id "q-for-chart"
+          chart-id "c-test-chart"
+          query {:database 1 :type :query :query {:source-table 1}}
+          text-with-link (str "See [My Chart](metabase://chart/" chart-id ")")
+          parts [{:type :text :text text-with-link}]
+          memory {:state {:queries {query-id query}
+                          :charts {chart-id {:query-id query-id :chart-type :bar}}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            output-text (-> result first :text)]
+        ;; Chart link should be resolved to /question#
+        (is (not (re-find #"metabase://chart" output-text)))
+        (is (re-find #"/question#" output-text)))))
+
+  (testing "resolves model/metric/dashboard links without state"
+    (let [out-chan (a/chan 10)
+          text-with-links "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
+          parts [{:type :text :text text-with-links}]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            output-text (-> result first :text)]
+        (is (re-find #"\[Model\]\(/model/123\)" output-text))
+        (is (re-find #"\[Metric\]\(/metric/456\)" output-text)))))
+
+  (testing "preserves unresolvable links unchanged"
+    (let [out-chan (a/chan 10)
+          ;; Reference a query that doesn't exist in state
+          text-with-link "See [Missing](metabase://query/nonexistent)"
+          parts [{:type :text :text text-with-link}]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            output-text (-> result first :text)]
+        ;; Link should remain unchanged since query doesn't exist
+        (is (= text-with-link output-text)))))
+
+  (testing "handles text parts with nil text gracefully"
+    (let [out-chan (a/chan 10)
+          parts [{:type :text :text nil}]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)]
+        (is (= 1 (count result)))
+        (is (nil? (-> result first :text))))))
+
+  (testing "streams non-text parts unchanged"
+    (let [out-chan (a/chan 10)
+          tool-part {:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}
+          parts [tool-part]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)]
+        (is (= [tool-part] result))))))
+
+;;; Reaction extraction and streaming tests
+
+(deftest extract-reactions-from-parts-test
+  (testing "extracts reactions from tool-output parts"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "show_results_to_user"
+                  :result {:output "Results shown"
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
+          reactions (#'agent/extract-reactions-from-parts parts)]
+      (is (= 1 (count reactions)))
+      (is (= :metabot.reaction/redirect (:type (first reactions))))
+      (is (= "/question#abc" (:url (first reactions))))))
+
+  (testing "extracts reactions from multiple tool outputs"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "query_model"
+                  :result {:structured-output {:query-id "q1"}
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#q1"}]}}
+                 {:type :tool-output
+                  :id "t2"
+                  :function "create_chart"
+                  :result {:structured-output {:chart-id "c1"}
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#c1"}]}}]
+          reactions (#'agent/extract-reactions-from-parts parts)]
+      (is (= 2 (count reactions)))))
+
+  (testing "ignores non-tool-output parts"
+    (let [parts [{:type :text :text "hello"}
+                 {:type :tool-input :id "t1" :function "search"}]
+          reactions (#'agent/extract-reactions-from-parts parts)]
+      (is (empty? reactions))))
+
+  (testing "handles parts without reactions"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "search"
+                  :result {:output "No results"}}]
+          reactions (#'agent/extract-reactions-from-parts parts)]
+      (is (empty? reactions)))))
+
+(deftest stream-reactions-as-data-parts-test
+  (testing "streams redirect reactions as navigate_to data parts"
+    (let [out-chan (a/chan 10)
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "show_results_to_user"
+                  :result {:output "Results shown"
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc123"}]}}]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            data-parts (filter #(= :data (:type %)) result)]
+        ;; Should have the tool-output part AND a data part for navigation
+        (is (some #(= :tool-output (:type %)) result))
+        (is (= 1 (count data-parts)))
+        (is (= "navigate_to" (:data-type (first data-parts))))
+        (is (= "/question#abc123" (:data (first data-parts)))))))
+
+  (testing "does not emit data parts when no reactions"
+    (let [out-chan (a/chan 10)
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "search"
+                  :result {:output "results"}}]
+          memory {:state {:queries {} :charts {}}}]
+      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+      (a/close! out-chan)
+      (let [result (chan->seq out-chan)
+            data-parts (filter #(= :data (:type %)) result)]
+        (is (empty? data-parts))))))

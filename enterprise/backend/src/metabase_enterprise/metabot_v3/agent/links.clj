@@ -96,7 +96,7 @@
 
   Returns the resolved URL or nil if resolution fails."
   [uri queries-state charts-state]
-  (when (str/starts-with? uri "metabase://")
+  (when (and uri (str/starts-with? uri "metabase://"))
     (let [path (subs uri 11) ; Remove "metabase://"
           [entity-type entity-id] (str/split path #"/" 2)]
       (case entity-type
@@ -111,7 +111,8 @@
 (defn- find-markdown-links
   "Find all markdown links in text. Returns seq of [full-match link-text url]."
   [text]
-  (re-seq #"\[([^\]]*)\]\(([^)]+)\)" text))
+  (when (string? text)
+    (re-seq #"\[([^\]]*)\]\(([^)]+)\)" text)))
 
 (defn process-text-links
   "Process all metabase:// links in text, replacing them with resolved URLs.
@@ -124,7 +125,7 @@
   (if-let [links (find-markdown-links text)]
     (reduce
      (fn [txt [full-match link-text url]]
-       (if (str/starts-with? url "metabase://")
+       (if (and url (str/starts-with? url "metabase://"))
          (if-let [resolved-url (resolve-metabase-uri url queries-state charts-state)]
            (str/replace txt full-match (str "[" link-text "](" resolved-url ")"))
            ;; If resolution fails, keep original (or just show link text)
