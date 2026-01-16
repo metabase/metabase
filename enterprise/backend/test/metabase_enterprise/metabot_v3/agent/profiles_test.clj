@@ -4,8 +4,8 @@
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]))
 
 (deftest get-profile-test
-  (testing "retrieves metabot-embedding profile"
-    (let [profile (profiles/get-profile :metabot-embedding)]
+  (testing "retrieves embedding profile"
+    (let [profile (profiles/get-profile :embedding)]
       (is (some? profile))
       (is (= "claude-sonnet-4-5-20250929" (:model profile)))
       (is (= 6 (:max-iterations profile)))
@@ -14,8 +14,8 @@
       (is (contains? (set (:tools profile)) "search"))
       (is (contains? (set (:tools profile)) "query_metric"))))
 
-  (testing "retrieves metabot-internal profile"
-    (let [profile (profiles/get-profile :metabot-internal)]
+  (testing "retrieves internal profile"
+    (let [profile (profiles/get-profile :internal)]
       (is (some? profile))
       (is (= "claude-sonnet-4-5-20250929" (:model profile)))
       (is (= 10 (:max-iterations profile)))
@@ -27,8 +27,8 @@
       (is (contains? (set (:tools profile)) "find_outliers"))
       (is (contains? (set (:tools profile)) "generate_insights"))))
 
-  (testing "retrieves metabot-transforms-codegen profile"
-    (let [profile (profiles/get-profile :metabot-transforms-codegen)]
+  (testing "retrieves transforms-codegen profile"
+    (let [profile (profiles/get-profile :transforms-codegen)]
       (is (some? profile))
       (is (= "claude-sonnet-4-5-20250929" (:model profile)))
       (is (= 30 (:max-iterations profile)))
@@ -41,7 +41,7 @@
     (is (nil? (profiles/get-profile :unknown-profile))))
 
   (testing "all profiles have required keys"
-    (doseq [profile-id [:metabot-embedding :metabot-internal :metabot-transforms-codegen]]
+    (doseq [profile-id [:embedding :internal :transforms-codegen :sql-only :nlq-only :next :beta-customer]]
       (let [profile (profiles/get-profile profile-id)]
         (is (contains? profile :model))
         (is (contains? profile :max-iterations))
