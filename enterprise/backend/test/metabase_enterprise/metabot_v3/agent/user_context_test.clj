@@ -13,6 +13,11 @@
       (is (re-find #"2024" result))
       (is (re-find #"14:30" result))))
 
+  (testing "uses current_user_time when provided"
+    (let [context {:current_user_time "2024-02-01T09:15:00"}
+          result (user-context/format-current-time context)]
+      (is (= "2024-02-01T09:15:00" result))))
+
   (testing "handles missing timezone by using current time"
     (let [context {}
           result (user-context/format-current-time context)]
@@ -94,9 +99,9 @@
   (testing "formats code editor context"
     (let [context {:user_is_viewing [{:type "code-editor"
                                       :buffers [{:id "buffer1"
-                                                :source {:language "python"
-                                                        :database_id 42}
-                                                :cursor {:line 10 :column 5}}]}]}
+                                                 :source {:language "python"
+                                                          :database_id 42}
+                                                 :cursor {:line 10 :column 5}}]}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"code editor" result))
@@ -106,12 +111,12 @@
   (testing "formats code editor with selection"
     (let [context {:user_is_viewing [{:type "code-editor"
                                       :buffers [{:id "buffer1"
-                                                :source {:language "sql"
-                                                        :database_id 42}
-                                                :cursor {:line 5 :column 0}
-                                                :selection {:start {:line 5 :column 0}
-                                                           :end {:line 10 :column 20}
-                                                           :text "SELECT * FROM foo"}}]}]}
+                                                 :source {:language "sql"
+                                                          :database_id 42}
+                                                 :cursor {:line 5 :column 0}
+                                                 :selection {:start {:line 5 :column 0}
+                                                             :end {:line 10 :column 20}
+                                                             :text "SELECT * FROM foo"}}]}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"Selection" result))
@@ -172,6 +177,15 @@
       (is (re-find #"dashboard" result))
       (is (re-find #"Executive Dashboard" result))))
 
+  (testing "handles keyword types in viewing context"
+    (let [context {:user_is_viewing [{:type :table
+                                      :id 321
+                                      :name "orders"}]}
+          result (user-context/format-viewing-context context)]
+      (is (some? result))
+      (is (re-find #"table" result))
+      (is (re-find #"orders" result))))
+
   (testing "handles empty viewing context"
     (let [context {}
           result (user-context/format-viewing-context context)]
@@ -217,11 +231,11 @@
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                    :first_day_of_week "Monday"
                    :user_is_viewing [{:type "native"
-                                     :sql_engine "PostgreSQL"
-                                     :query "SELECT * FROM users"}]
+                                      :sql_engine "PostgreSQL"
+                                      :query "SELECT * FROM users"}]
                    :user_recently_viewed [{:type "table"
-                                          :id 123
-                                          :name "users"}]}
+                                           :id 123
+                                           :name "users"}]}
           result (user-context/enrich-context-for-template context)]
       ;; Check all required keys are present
       (is (contains? result :current_time))

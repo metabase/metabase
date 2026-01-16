@@ -23,7 +23,8 @@
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" {} {})))
     (is (= "/dashboard/789" (links/resolve-metabase-uri "metabase://dashboard/789" {} {})))
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
-    (is (= "/admin/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {}))))
+    (is (= "/admin/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))
+    (is (= "/table/123" (links/resolve-metabase-uri "metabase://table/123" {} {}))))
 
   (testing "returns nil for unknown entity types"
     (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {}))))
@@ -31,6 +32,11 @@
   (testing "returns nil for non-metabase URIs"
     (is (nil? (links/resolve-metabase-uri "https://example.com" {} {})))
     (is (nil? (links/resolve-metabase-uri "/question/123" {} {}))))
+
+  (testing "returns nil for missing entity IDs"
+    (is (nil? (links/resolve-metabase-uri "metabase://model/" {} {})))
+    (is (nil? (links/resolve-metabase-uri "metabase://metric/" {} {})))
+    (is (nil? (links/resolve-metabase-uri "metabase://query/" {} {}))))
 
   (testing "resolves chart links using chart state"
     (let [query-id "query-abc"
