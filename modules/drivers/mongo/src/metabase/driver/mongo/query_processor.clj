@@ -450,7 +450,8 @@ function(bin) {
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
                                  ::join-field   join-field
-                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
+                                 ::inherited?   (not (or (pos-int? (driver-api/qp.add.source-table opts))
+                                                         (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
