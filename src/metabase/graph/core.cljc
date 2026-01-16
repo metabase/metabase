@@ -75,6 +75,74 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
+(mu/defn transitive-children-of :- ::child-map
+  "Given a graph and `key-seq`, finds all transitive children and returns a map of `{parent #{child}}`.
+
+  Also takes in an optional filter for those children.
+
+  Effectively, this is just `children-of` except transitive children are included and the potential filter."
+  [graph :- ::graph
+   key-seq :- [:sequential ::node]]
+  (loop [to-traverse (into #{} key-seq)
+         child-map {}]
+    (let [new-children (children-of graph to-traverse)
+          new-traverse (into #{}
+                             (comp (remove child-map) cat)
+                             (vals new-children))
+          new-child-map (into child-map new-children)]
+      (if (seq new-traverse)
+        (recur new-traverse new-child-map)
+        new-child-map))))
+
+(mu/defn all-map-nodes :- [:sequential :any]
+  "Returns every node mentioned in `children`."
+  [children :- ::child-map]
+  (-> (into (set (keys children))
+            cat
+            (vals children))
+      sort))
+
+(mu/defn keep-children :- [:sequential :any]
+  "Iterates through a child map, calls `f` for each node, and returns the non-nil results as a list.
+
+  Nodes are guaranteed to be in a consistent order, and parents are guaranteed to be before their children.
+
+  If `f` ever returns `:metabase.graph.core/stop`, `keep-children` does not include that in the results and does not
+  recurse down the current node's children."
+  [f :- [:-> ::node :any]
+   children :- ::child-map]
+  (let [all-nodes (all-map-nodes children)
+        full-parent-map (->> children
+                             (mapcat (fn [[parent current-children]]
+                                       (map (fn [child]
+                                              {child #{parent}})
+                                            current-children)))
+                             (apply merge-with into))]
+    (loop [nodes-remaining all-nodes
+           parent-map full-parent-map
+           ignored #{}
+           result []]
+      (if-let [next-node (some #(when-not (or (seq (parent-map %))
+                                              (ignored %))
+                                  %)
+                               nodes-remaining)]
+        (let [new-value (f next-node)
+              new-nodes-remaining (remove #(= % next-node) nodes-remaining)]
+          (case new-value
+            nil (recur new-nodes-remaining
+                       (m/map-vals #(disj % next-node) parent-map)
+                       ignored
+                       result)
+            ::stop (recur new-nodes-remaining
+                          parent-map
+                          (conj ignored next-node)
+                          result)
+            (recur new-nodes-remaining
+                   (m/map-vals #(disj % next-node) parent-map)
+                   ignored
+                   (conj result new-value))))
+        result))))
+
 (defn calc-edges-between
   "Calculates the edges within `nodes`, based on `graph`."
   [graph nodes]
