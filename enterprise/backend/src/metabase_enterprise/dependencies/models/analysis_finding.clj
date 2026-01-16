@@ -25,7 +25,7 @@
   The background task will re-analyze anything with out-of-date analyses.
 
   This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing"
-  3)
+  4)
 
 (defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db."
