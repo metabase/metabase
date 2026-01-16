@@ -6,15 +6,15 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
-import type { CardSegment } from "metabase-types/api";
+import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
 
 export interface ChartSettingSegmentsEditorProps {
-  value: CardSegment[];
-  onChange: (value: CardSegment[]) => void;
+  value: ScalarSegment[];
+  onChange: (value: ScalarSegment[]) => void;
   canRemoveAll?: boolean;
 }
 
@@ -25,7 +25,7 @@ export const ChartSettingSegmentsEditor = ({
 }: ChartSettingSegmentsEditorProps) => {
   const onChangeProperty = (
     index: number,
-    property: keyof CardSegment,
+    property: keyof ScalarSegment,
     value: number | string,
   ) =>
     onChange([
@@ -140,7 +140,7 @@ function getColorPalette() {
   ];
 }
 
-function newSegment(segments: CardSegment[]) {
+function newSegment(segments: ScalarSegment[]) {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastColorIndex = lastSegment

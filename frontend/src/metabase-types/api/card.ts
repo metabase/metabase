@@ -313,7 +313,7 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
-  "scalar.segments"?: CardSegment[];
+  "scalar.segments"?: ScalarSegment[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];
@@ -494,7 +494,7 @@ export type ListViewColumns = {
   image?: string;
 };
 
-export type CardSegment = {
+export type ScalarSegment = {
   min: number;
   max: number;
   color: string;

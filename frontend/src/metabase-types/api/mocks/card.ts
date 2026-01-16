@@ -2,12 +2,12 @@ import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type {
   Card,
   CardQueryMetadata,
-  CardSegment,
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
   ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  ScalarSegment,
   SeriesOrderSetting,
   StructuredDatasetQuery,
   TableColumnOrderSetting,
@@ -176,7 +176,7 @@ export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
   ...opts,
 });
 
-export const createMockSegmentFormatting = (opts?: Partial<CardSegment>) => ({
+export const createMockSegmentFormatting = (opts?: Partial<ScalarSegment>) => ({
   label: "good",
   min: 0,
   max: 1,

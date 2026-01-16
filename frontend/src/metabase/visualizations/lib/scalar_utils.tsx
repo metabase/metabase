@@ -3,7 +3,7 @@ import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { CardSegment, RowValue } from "metabase-types/api";
+import type { RowValue, ScalarSegment } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -44,7 +44,7 @@ export function compactifyValue(
 
 const DEFAULT_COLOR = color("text-primary");
 
-export function getColor(_value: RowValue, segments?: CardSegment[]) {
+export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
   const value = parseInt(String(_value));
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
@@ -59,7 +59,7 @@ export function getColor(_value: RowValue, segments?: CardSegment[]) {
   return segment.color;
 }
 
-export function getTooltipContent(segments?: CardSegment[]) {
+export function getTooltipContent(segments?: ScalarSegment[]) {
   if (!segments || segments.length === 0) {
     return null;
   }
@@ -67,7 +67,7 @@ export function getTooltipContent(segments?: CardSegment[]) {
   return (
     <table style={{ borderSpacing: "0.75rem 0.25rem" }}>
       <tbody>
-        {segments.map(({ color, min, max, label }: CardSegment, index) => (
+        {segments.map(({ color, min, max, label }: ScalarSegment, index) => (
           <tr key={index}>
             <td>
               <ColorPill color={color} pillSize="xsmall" />
