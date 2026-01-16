@@ -97,7 +97,7 @@
   (let [profile {:max-iterations 3}]
     (testing "continues when iteration < max and has tool calls"
       (is (#'agent/should-continue? 0 profile [{:type :tool-input}]))
-      (is (#'agent/should-continue? 2 profile [{:type :tool-input}])))
+      (is (#'agent/should-continue? 1 profile [{:type :tool-input}])))
 
     (testing "continues when text AND tool calls present (LLM thinking aloud)"
       (is (#'agent/should-continue? 0 profile [{:type :tool-input}
@@ -106,8 +106,8 @@
                                                {:type :tool-input}])))
 
     (testing "stops at max iterations"
-      (is (not (#'agent/should-continue? 3 profile [{:type :tool-input}])))
-      (is (not (#'agent/should-continue? 4 profile [{:type :tool-input}]))))
+      (is (not (#'agent/should-continue? 2 profile [{:type :tool-input}])))
+      (is (not (#'agent/should-continue? 3 profile [{:type :tool-input}]))))
 
     (testing "stops when no tool calls (text-only is final answer)"
       (is (not (#'agent/should-continue? 0 profile [{:type :text}])))
@@ -194,6 +194,30 @@
       (is (sequential? messages))
       (is (pos? (count messages)))
       (is (= "system" (:role (first messages)))))))
+
+(deftest seed-state-from-context-test
+  (testing "seeds queries from user_is_viewing context"
+    (let [context {:user_is_viewing [{:type "native"
+                                      :id "query-123"
+                                      :query {:database 1 :type :query :query {:source-table 1}}}]}
+          state {}
+          seeded (#'agent/seed-state-from-context state context)]
+      (is (contains? (get seeded :queries) "query-123"))))
+
+  (testing "does not seed native SQL string queries"
+    (let [context {:user_is_viewing [{:type "native"
+                                      :id "query-456"
+                                      :query "SELECT * FROM users"}]}
+          state {}
+          seeded (#'agent/seed-state-from-context state context)]
+      (is (empty? (get seeded :queries)))))
+
+  (testing "ignores viewing items without ids or queries"
+    (let [context {:user_is_viewing [{:type "native" :query {:database 1}}
+                                     {:type "adhoc" :id "no-query"}]}
+          state {}
+          seeded (#'agent/seed-state-from-context state context)]
+      (is (empty? (get seeded :queries))))))
 
 (deftest stream-parts-to-output-test
   (testing "streams parts to output channel"
@@ -339,67 +363,84 @@
         (is (not (re-find #"metabase://" output-text)))
         (is (re-find #"/question#" output-text)))))
 
-  (testing "resolves chart links using chart state"
+  (testing "resolves links split across text parts"
     (let [out-chan (a/chan 10)
-          query-id "q-for-chart"
-          chart-id "c-test-chart"
+          query-id "split-query"
           query {:database 1 :type :query :query {:source-table 1}}
-          text-with-link (str "See [My Chart](metabase://chart/" chart-id ")")
-          parts [{:type :text :text text-with-link}]
-          memory {:state {:queries {query-id query}
-                          :charts {chart-id {:query-id query-id :chart-type :bar}}}}]
+          parts [{:type :text :text "Check [Results](metabase://query/"}
+                 {:type :text :text (str query-id ") now")}]
+          memory {:state {:queries {query-id query} :charts {}}}]
       (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
       (a/close! out-chan)
       (let [result (chan->seq out-chan)
-            output-text (-> result first :text)]
+            output-text (->> result
+                             (filter #(= :text (:type %)))
+                             (map :text)
+                             (apply str))]
+        (is (not (re-find #"metabase://" output-text)))
+        (is (re-find #"\[Results\]\(/question#" output-text))))))
+
+(testing "resolves chart links using chart state"
+  (let [out-chan (a/chan 10)
+        query-id "q-for-chart"
+        chart-id "c-test-chart"
+        query {:database 1 :type :query :query {:source-table 1}}
+        text-with-link (str "See [My Chart](metabase://chart/" chart-id ")")
+        parts [{:type :text :text text-with-link}]
+        memory {:state {:queries {query-id query}
+                        :charts {chart-id {:query-id query-id :chart-type :bar}}}}]
+    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+    (a/close! out-chan)
+    (let [result (chan->seq out-chan)
+          output-text (-> result first :text)]
         ;; Chart link should be resolved to /question#
-        (is (not (re-find #"metabase://chart" output-text)))
-        (is (re-find #"/question#" output-text)))))
+      (is (not (re-find #"metabase://chart" output-text)))
+      (is (re-find #"/question#" output-text)))))
 
-  (testing "resolves model/metric/dashboard links without state"
-    (let [out-chan (a/chan 10)
-          text-with-links "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
-          parts [{:type :text :text text-with-links}]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            output-text (-> result first :text)]
-        (is (re-find #"\[Model\]\(/model/123\)" output-text))
-        (is (re-find #"\[Metric\]\(/metric/456\)" output-text)))))
+(testing "resolves model/metric/dashboard links without state"
+  (let [out-chan (a/chan 10)
+        text-with-links "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
+        parts [{:type :text :text text-with-links}]
+        memory {:state {:queries {} :charts {}}}]
+    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+    (a/close! out-chan)
+    (let [result (chan->seq out-chan)
+          output-text (-> result first :text)]
+      (is (re-find #"\[Model\]\(/model/123\)" output-text))
+      (is (re-find #"\[Metric\]\(/metric/456\)" output-text)))))
 
-  (testing "preserves unresolvable links unchanged"
-    (let [out-chan (a/chan 10)
+(testing "falls back to link text when unresolvable"
+  (let [out-chan (a/chan 10)
           ;; Reference a query that doesn't exist in state
-          text-with-link "See [Missing](metabase://query/nonexistent)"
-          parts [{:type :text :text text-with-link}]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            output-text (-> result first :text)]
-        ;; Link should remain unchanged since query doesn't exist
-        (is (= text-with-link output-text)))))
+        text-with-link "See [Missing](metabase://query/nonexistent)"
+        parts [{:type :text :text text-with-link}]
+        memory {:state {:queries {} :charts {}}}]
+    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+    (a/close! out-chan)
+    (let [result (chan->seq out-chan)
+          output-text (-> result first :text)]
+        ;; Link should fall back to just the link text when resolution fails
+      (is (= "See Missing" output-text)))))
 
-  (testing "handles text parts with nil text gracefully"
-    (let [out-chan (a/chan 10)
-          parts [{:type :text :text nil}]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)]
-        (is (= 1 (count result)))
-        (is (nil? (-> result first :text))))))
+(testing "handles text parts with nil text gracefully"
+  (let [out-chan (a/chan 10)
+        parts [{:type :text :text nil}]
+        memory {:state {:queries {} :charts {}}}]
+    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+    (a/close! out-chan)
+    (let [result (chan->seq out-chan)]
+      (is (= 1 (count result)))
+      (is (nil? (-> result first :text))))))
 
-  (testing "streams non-text parts unchanged"
-    (let [out-chan (a/chan 10)
-          tool-part {:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}
-          parts [tool-part]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)]
-        (is (= [tool-part] result))))))
+(testing "streams non-text parts unchanged"
+  (let [out-chan (a/chan 10)
+        tool-part {:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}
+        parts [tool-part]
+        memory {:state {:queries {} :charts {}}}]
+    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
+    (a/close! out-chan)
+    (let [result (chan->seq out-chan)]
+      (is (= [tool-part] result)))))
 
 ;;; Reaction extraction and streaming tests
 
