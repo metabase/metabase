@@ -50,7 +50,7 @@
       ;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
       ;; timezone and the local datetime portion of the parameter, in UTC. Bad!
       ;;
-      ;; Convert it to a LocalDateTime, in the report timezone, so comparisions will work correctly.
+      ;; Convert it to a LocalDateTime, in the report timezone, so comparisons will work correctly.
       ;;
       ;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
       (let [offset (.. (t/zone-id) getRules (getOffset (t/instant t)))
