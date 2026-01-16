@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -8,6 +9,8 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
+
+import S from "./SidebarHeader.module.css";
 
 type SidebarHeaderProps = {
   node: DependencyNode;
@@ -26,7 +29,7 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       data-testid="dependency-list-sidebar-header"
     >
       <Anchor
-        className={CS.textWrap}
+        className={cx(CS.textWrap, S.link)}
         component={ForwardRefLink}
         fz="h3"
         fw="bold"

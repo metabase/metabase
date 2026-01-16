@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,6 +7,8 @@ import { Anchor, Breadcrumbs, Group, Icon } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
+
+import S from "./SidebarLocationInfo.module.css";
 
 type SidebarLocationInfoProps = {
   node: DependencyNode;
@@ -20,12 +23,12 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <Breadcrumbs fw="bold" lh="h5" aria-label={title}>
+    <Breadcrumbs lh="h5" aria-label={title}>
       {locationInfo.links.map((link, linkIndex) => (
         <Anchor
           key={linkIndex}
           component={Link}
-          className={CS.textWrap}
+          className={cx(CS.textWrap, S.link)}
           lh="h5"
           to={link.url}
         >

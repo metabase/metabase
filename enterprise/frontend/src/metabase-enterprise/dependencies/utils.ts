@@ -628,22 +628,29 @@ export function getDependentGroupLabel({
   }
 }
 
-export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
+export function getDependencyErrorTypeLabel(
+  type: DependencyErrorType,
+  count: number,
+): string {
   switch (type) {
     case "missing-column":
-      return t`Missing column`;
+      return ngettext(msgid`Missing column`, `Missing columns`, count);
     case "missing-table-alias":
-      return t`Missing table alias`;
+      return ngettext(
+        msgid`Missing table alias`,
+        `Missing table aliases`,
+        count,
+      );
     case "duplicate-column":
-      return t`Duplicate column`;
+      return ngettext(msgid`Duplicate column`, `Duplicate columns`, count);
     case "syntax-error":
-      return t`Syntax error`;
+      return ngettext(msgid`Syntax error`, `Syntax errors`, count);
     case "validation-error":
-      return t`Unknown problem`;
+      return ngettext(msgid`Unknown problem`, `Unknown problems`, count);
   }
 }
 
-export function getDependencyErrorTypeCountMessage(
+export function getDependencyErrorTypeLabelWithCount(
   type: DependencyErrorType,
   count: number,
 ): string {
@@ -690,7 +697,7 @@ export function getDependencyErrorInfo(
 
   if (errors.length === 1) {
     const [error] = errors;
-    const label = getDependencyErrorTypeLabel(error.type);
+    const label = getDependencyErrorTypeLabel(error.type, errors.length);
     const detail = error.detail;
     return { label, detail };
   }
@@ -699,7 +706,7 @@ export function getDependencyErrorInfo(
   if (types.size === 1) {
     const [type] = types;
     return {
-      label: getDependencyErrorTypeCountMessage(type, errors.length),
+      label: getDependencyErrorTypeLabelWithCount(type, errors.length),
       detail: null,
     };
   }

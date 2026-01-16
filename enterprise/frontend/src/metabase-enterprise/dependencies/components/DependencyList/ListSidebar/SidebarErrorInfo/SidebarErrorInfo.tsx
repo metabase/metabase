@@ -1,9 +1,11 @@
+import cx from "classnames";
+
 import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
-import { Card, Group, Stack, Title } from "metabase/ui";
+import { Badge, Box, Card, Group, Stack, Title } from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
-import { getDependencyErrorTypeCountMessage } from "../../../../utils";
+import { getDependencyErrorTypeLabel } from "../../../../utils";
 
 import S from "./SidebarErrorInfo.module.css";
 
@@ -13,14 +15,20 @@ type SidebarErrorInfoProps = {
 };
 
 export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
-  const title = getDependencyErrorTypeCountMessage(type, errors.length);
+  const count = errors.length;
+  const title = getDependencyErrorTypeLabel(type, count);
   const details = errors
     .map((error) => error.detail)
     .filter((detail) => detail != null);
 
   return (
-    <Stack gap="sm" role="region" aria-label={title}>
-      <Title order={5}>{title}</Title>
+    <Stack role="region" aria-label={title}>
+      <Group gap="sm">
+        <Badge c="text-selected" bg="error">
+          {count}
+        </Badge>
+        <Title order={5}>{title}</Title>
+      </Group>
       {details.length > 0 && (
         <Card p={0} shadow="none" withBorder>
           {details.map((detail, detailIndex) => (
@@ -31,7 +39,13 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
               justify="space-between"
               wrap="nowrap"
             >
-              <span className={CS.textWrap}>{detail}</span>
+              <Box
+                className={cx(CS.textWrap, CS.textMonospace)}
+                fz="sm"
+                lh="h5"
+              >
+                {detail}
+              </Box>
               <CopyButton value={detail} />
             </Group>
           ))}
