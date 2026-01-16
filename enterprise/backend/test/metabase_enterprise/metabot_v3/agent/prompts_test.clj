@@ -135,8 +135,8 @@
 (deftest build-system-message-content-test
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding.selmer"}
-          context {:current-time "2024-01-15 14:30:00"
-                   :first-day-of-week "Sunday"
+          context {:current_time "2024-01-15 14:30:00"
+                   :first_day_of_week "Sunday"
                    :sql-dialect "postgresql"}
           tools {}
           content (prompts/build-system-message-content profile context tools)]
@@ -148,7 +148,7 @@
 
   (testing "includes dialect instructions when dialect specified"
     (let [profile {:prompt-template "embedding.selmer"}
-          context {:current-time "2024-01-15 14:30:00"
+          context {:current_time "2024-01-15 14:30:00"
                    :sql-dialect "postgresql"}
           tools {}
           content (prompts/build-system-message-content profile context tools)]
@@ -167,7 +167,7 @@
 
   (testing "uses default template name if not specified"
     (let [profile {}
-          context {:current-time "2024-01-15 14:30:00"}
+          context {:current_time "2024-01-15 14:30:00"}
           tools {}
           content (prompts/build-system-message-content profile context tools)]
       (is (some? content))

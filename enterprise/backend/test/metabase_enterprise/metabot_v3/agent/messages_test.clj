@@ -96,61 +96,75 @@
         ;; Should contain search results XML formatting (not raw Clojure map)
         (is (re-find #"<search-results>" tool-result-content)))))
 
-  (testing "handles multiple iterations"
-    (let [input-messages [{:role :user :content "Hello"}]
-          iteration1 [{:type :tool-input :id "t1" :function "search" :arguments {}}]
-          iteration2 [{:type :tool-output :id "t1" :result {:data []}}]
-          iteration3 [{:type :text :text "Found results"}]
+  (testing "formats entity results when type is a string"
+    (let [input-messages [{:role :user :content "Details"}]
+          tool-output [{:type :tool-output
+                        :id "tool_1"
+                        :result {:structured_output {:type "table"
+                                                     :id 1
+                                                     :name "users"}}}]
           mem (-> (memory/initialize input-messages {})
-                  (memory/add-step iteration1)
-                  (memory/add-step iteration2)
-                  (memory/add-step iteration3))
-          history (messages/build-message-history mem)]
-      (is (= 4 (count history)))
-      (is (= "user" (:role (first history))))
-      (is (= "assistant" (:role (second history))))
-      (is (= "user" (:role (nth history 2))))
-      (is (= "assistant" (:role (nth history 3))))))
+                  (memory/add-step tool-output))
+          history (messages/build-message-history mem)
+          tool-result-content (-> (second history) :content first :content)]
+      (is (string? tool-result-content))
+      (is (re-find #"<table" tool-result-content)))))
 
-  (testing "merges consecutive assistant messages from input"
+(testing "handles multiple iterations"
+  (let [input-messages [{:role :user :content "Hello"}]
+        iteration1 [{:type :tool-input :id "t1" :function "search" :arguments {}}]
+        iteration2 [{:type :tool-output :id "t1" :result {:data []}}]
+        iteration3 [{:type :text :text "Found results"}]
+        mem (-> (memory/initialize input-messages {})
+                (memory/add-step iteration1)
+                (memory/add-step iteration2)
+                (memory/add-step iteration3))
+        history (messages/build-message-history mem)]
+    (is (= 4 (count history)))
+    (is (= "user" (:role (first history))))
+    (is (= "assistant" (:role (second history))))
+    (is (= "user" (:role (nth history 2))))
+    (is (= "assistant" (:role (nth history 3))))))
+
+(testing "merges consecutive assistant messages from input"
     ;; This happens when the frontend sends separate text and tool_calls messages
-    (let [input-messages [{:role :user :content "Hello"}
-                          {:role :assistant :content "I'll search for that."}
-                          {:role :assistant :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}
-                          {:role :tool :tool_call_id "t1" :content "results"}]
-          mem (memory/initialize input-messages {})
-          history (messages/build-message-history mem)]
+  (let [input-messages [{:role :user :content "Hello"}
+                        {:role :assistant :content "I'll search for that."}
+                        {:role :assistant :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}
+                        {:role :tool :tool_call_id "t1" :content "results"}]
+        mem (memory/initialize input-messages {})
+        history (messages/build-message-history mem)]
       ;; Should merge the two assistant messages into one
-      (is (= 3 (count history)))
-      (is (= "user" (:role (first history))))
-      (is (= "assistant" (:role (second history))))
-      (is (= "user" (:role (nth history 2))))
+    (is (= 3 (count history)))
+    (is (= "user" (:role (first history))))
+    (is (= "assistant" (:role (second history))))
+    (is (= "user" (:role (nth history 2))))
       ;; The merged assistant message should have both text and tool_use
-      (let [assistant-content (:content (second history))]
-        (is (vector? assistant-content))
-        (is (= 2 (count assistant-content)))
-        (is (= "text" (-> assistant-content first :type)))
-        (is (= "I'll search for that." (-> assistant-content first :text)))
-        (is (= "tool_use" (-> assistant-content second :type))))))
+    (let [assistant-content (:content (second history))]
+      (is (vector? assistant-content))
+      (is (= 2 (count assistant-content)))
+      (is (= "text" (-> assistant-content first :type)))
+      (is (= "I'll search for that." (-> assistant-content first :text)))
+      (is (= "tool_use" (-> assistant-content second :type))))))
 
-  (testing "merges multiple consecutive assistant messages"
+(testing "merges multiple consecutive assistant messages"
     ;; Edge case: more than 2 consecutive assistant messages
-    (let [input-messages [{:role :user :content "Hello"}
-                          {:role :assistant :content "First part."}
-                          {:role :assistant :content "Second part."}
-                          {:role :assistant :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}]
-          mem (memory/initialize input-messages {})
-          history (messages/build-message-history mem)]
-      (is (= 2 (count history)))
-      (is (= "user" (:role (first history))))
-      (is (= "assistant" (:role (second history))))
+  (let [input-messages [{:role :user :content "Hello"}
+                        {:role :assistant :content "First part."}
+                        {:role :assistant :content "Second part."}
+                        {:role :assistant :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}]
+        mem (memory/initialize input-messages {})
+        history (messages/build-message-history mem)]
+    (is (= 2 (count history)))
+    (is (= "user" (:role (first history))))
+    (is (= "assistant" (:role (second history))))
       ;; Should have 3 content blocks merged
-      (let [assistant-content (:content (second history))]
-        (is (vector? assistant-content))
-        (is (= 3 (count assistant-content)))
-        (is (= "text" (-> assistant-content first :type)))
-        (is (= "text" (-> assistant-content second :type)))
-        (is (= "tool_use" (-> assistant-content (nth 2) :type)))))))
+    (let [assistant-content (:content (second history))]
+      (is (vector? assistant-content))
+      (is (= 3 (count assistant-content)))
+      (is (= "text" (-> assistant-content first :type)))
+      (is (= "text" (-> assistant-content second :type)))
+      (is (= "tool_use" (-> assistant-content (nth 2) :type))))))
 
 (deftest format-message-test
   (testing "formats user message"
@@ -294,6 +308,29 @@
       ;; Second block is tool_use
       (is (= "tool_use" (-> formatted first :content second :type)))
       (is (= "toolu_456" (-> formatted first :content second :id)))))
+
+  (testing "appends tool_calls when content is already a block list"
+    (let [msg {:role :assistant
+               :content [{:type "text" :text "Here you go."}]
+               :tool_calls [{:id "t1" :name "search" :arguments "{\"query\":\"foo\"}"}]}
+          formatted (messages/build-message-history
+                     (memory/initialize [msg] {}))
+          content (:content (first formatted))]
+      (is (vector? content))
+      (is (= 2 (count content)))
+      (is (= "text" (-> content first :type)))
+      (is (= "tool_use" (-> content second :type)))
+      (is (= "t1" (-> content second :id)))))
+
+  (testing "handles malformed tool_call arguments"
+    (let [msg {:role :assistant
+               :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}
+          formatted (messages/build-message-history
+                     (memory/initialize [msg] {}))
+          content (:content (first formatted))]
+      (is (vector? content))
+      (is (= "tool_use" (-> content first :type)))
+      (is (= "{bad-json" (-> content first :input)))))
 
   (testing "handles string role tool message"
     ;; Frontend sends tool results with string roles too
