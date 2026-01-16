@@ -1278,7 +1278,9 @@ describe("scenarios > data studio > workspaces", () => {
           "Preview (SQL transform)",
         ]);
         cy.findByText("Preview (SQL transform)").click();
-        // TODO: Is it expected that ad-hoc cols have lowercase names?
+        // Ad-hoc query results show raw database column names (lowercase),
+        // while saved transforms show humanized names after table sync (capitalized).
+        // This is consistent with how Metabase handles native queries vs synced tables.
         H.assertTableData({
           columns: ["name", "score"],
           firstRows: [["Duck", "10"]],
