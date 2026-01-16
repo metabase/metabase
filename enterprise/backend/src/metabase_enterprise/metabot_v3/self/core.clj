@@ -5,7 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -217,6 +218,9 @@
       (fn
         ([result]
          (let [chans (keep :chan (vals @active-tools))]
+           (log/debug "tool-executor-rff completion"
+                      {:active-tool-count (count @active-tools)
+                       :chan-count (count chans)})
            (if (empty? chans)
              (rf result)
              ;; Use a/thread to drain channels to avoid blocking in dispatch thread
@@ -229,13 +233,22 @@
                             (if-let [v (a/<!! merged)]
                               (recur (conj acc v))
                               acc))))
-               (rf (reduce rf result @results-promise))))))
+               (let [tool-results @results-promise]
+                 (log/debug "tool-executor-rff drained tool results"
+                            {:count (count tool-results)
+                             :types (mapv :type tool-results)})
+                 (rf (reduce rf result tool-results)))))))
 
         ([result chunk]
+         (log/debug "tool-executor-rff chunk" {:type (:type chunk)})
          (case (:type chunk)
            :tool-input-start            ; start collecting chunks if tool is known
            (let [tool-name    (:toolName chunk)
                  tool-call-id (:toolCallId chunk)]
+             (log/debug "tool-input-start received"
+                        {:tool-name tool-name
+                         :tool-call-id tool-call-id
+                         :tool-known? (contains? tools tool-name)})
              (when (contains? tools tool-name)
                (vswap! active-tools assoc tool-call-id [chunk]))
              (rf result chunk))
@@ -251,11 +264,16 @@
            :tool-input-available
            (let [tool-name    (:toolName chunk)
                  tool-call-id (:toolCallId chunk)]
+             (log/debug "tool-input-available received"
+                        {:tool-name tool-name
+                         :tool-call-id tool-call-id
+                         :tracked? (contains? @active-tools tool-call-id)})
              (when-let [chunks (seq (get @active-tools tool-call-id))]
                (let [tool-entry (get tools tool-name)
                      ;; Support both vars and wrapped tool maps with :fn key
                      tool-fn (if (map? tool-entry) (:fn tool-entry) tool-entry)
                      chan    (a/chan 10)]
+                 (log/debug "Executing tool" {:tool-name tool-name})
                  (vswap! active-tools assoc tool-call-id {:chan chan})
                  (future
                    (try
@@ -264,8 +282,15 @@
                      (let [{:keys [arguments]
                             :as   tool-call} (into {} aisdk-xf chunks)
                            _                 (vswap! active-tools update tool-call-id merge tool-call)
+                           _                 (log/debug "Calling tool function"
+                                                        {:tool-name tool-name
+                                                         :arguments arguments})
                            result            (tool-fn arguments)
                            done-ch           (a/chan)]
+                       (log/debug "Tool function returned"
+                                  {:tool-name tool-name
+                                   :result-type (type result)
+                                   :result-keys (when (map? result) (keys result))})
                        (if (chan? result)
                          (do
                            (a/pipeline 1 chan (remove #(#{:start :finish} (:type %))) result done-ch)
@@ -275,6 +300,7 @@
                                       :toolName   tool-name
                                       :result     result})))
                      (catch Exception e
+                       (log/error e "Tool execution failed" {:tool-name tool-name})
                        (a/>!! chan {:type       :tool-output-available
                                     :toolCallId tool-call-id
                                     :toolName   tool-name
