@@ -17,9 +17,7 @@ const baseColors = getBaseColorsForThemeDefinitionOnly();
 export const getColors = (whitelabelColors?: ColorSettings) =>
   deriveFullMetabaseTheme({ colorScheme: "light", whitelabelColors }).colors;
 
-export const colors: Record<MetabaseColorKey, string> = {
-  ...getColors(whitelabelColors),
-};
+export const colors: Record<MetabaseColorKey, string> = getColors(whitelabelColors)
 
 export const mutateColors = (settings: ColorSettings) => {
   // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
