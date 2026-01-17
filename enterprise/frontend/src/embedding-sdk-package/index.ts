@@ -135,7 +135,7 @@ export type {
 } from "embedding-sdk-bundle/types";
 
 // Needed for doc generation
-export { PROTECTED_COLORS } from "embedding-sdk-bundle/lib/theme";
+export { PROTECTED_COLORS } from "metabase/lib/colors";
 
 export type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
