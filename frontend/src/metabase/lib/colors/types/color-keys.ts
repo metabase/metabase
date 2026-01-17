@@ -1,4 +1,5 @@
 import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
+import type { PROTECTED_COLORS } from "../constants/protected-colors";
 
 /**
  * All color keys available in Metabase themes.
@@ -91,3 +92,11 @@ export type MetabaseColorKey =
  * @inline
  */
 export type MetabaseAccentColorKey = (typeof ALL_ACCENT_COLOR_NAMES)[number];
+
+/**
+ * Color keys that are protected and should not be exposed to embedding.
+ *
+ * @inline
+ * @category Theming
+ */
+export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];
