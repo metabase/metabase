@@ -1,5 +1,8 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { readdir, writeFile } = require("fs");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { join: joinPath, relative } = require("path");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { promisify } = require("util");
 
 const asyncReaddir = promisify(readdir);
