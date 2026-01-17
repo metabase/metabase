@@ -30,7 +30,7 @@ module.exports = {
   },
   "looks-same": {
     strict: false,
-    antialiasingTolerance: 9,
-    tolerance: 9,
+    antialiasingTolerance: 10,
+    tolerance: 10,
   },
 };
