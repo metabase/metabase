@@ -7,6 +7,7 @@ import type { ResolvedColorScheme } from "../color-scheme";
 
 import { mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
+import { deriveColorsFromInputs } from "./derive-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
 
@@ -16,7 +17,6 @@ import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
  *
  * Priority: base theme colors < appearance settings whitelabel colors < modular embedding theme overrides
  *
- * TODO(EMB-984): generate lightness stops based on a single color
  * TODO(EMB-1013): generate square and octagonal color harmonies
  * TODO(EMB-1016): derive full color palette based on the given color object
  */
@@ -38,12 +38,48 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
+  const userColorDeriveInputs = {
+    ...whitelabelColors,
+    ...filteredEmbeddingColors,
+  };
+
+  // For color derivation (especially dark mode detection), we need background-primary
+  // and text-primary even if the user didn't explicitly set them. Fall back to base theme.
+  const deriveInputsWithBaseThemeFallback = {
+    "background-primary": baseTheme.colors["background-primary"],
+    "text-primary": baseTheme.colors["text-primary"],
+    ...userColorDeriveInputs,
+  };
+
+  const userColorDerives = deriveColorsFromInputs(
+    deriveInputsWithBaseThemeFallback,
+  );
+
+  // eslint-disable-next-line no-console -- TODO: remove me!!
+  console.log("derives", {
+    input: userColorDeriveInputs,
+    inputWithFallback: deriveInputsWithBaseThemeFallback,
+    output: userColorDerives,
+  });
+
   return {
     version: 2,
     colors: {
+      // Base: derive missing colors from base theme
+      // ...deriveColorsFromInputs(baseTheme.colors),
+
+      // Base: light and dark themes defined by Metabase
       ...baseTheme.colors,
       ...mapChartColorsToAccents(baseTheme.chartColors),
+
+      // Derive colors from customer's three main colors.
+      // Priority: whitelabel < modular embedding
+      ...userColorDerives,
+
+      // Colors set thru appearance settings e.g. brand, filter, summarize.
       ...whitelabelColors,
+
+      // Colors set thru modular embedding theme prop.
       ...filteredEmbeddingColors,
       ...mapChartColorsToAccents(embeddingThemeOverride?.chartColors ?? []),
     } as Record<MetabaseColorKey, string>,

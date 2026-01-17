@@ -84,4 +84,156 @@ describe("deriveFullMetabaseTheme", () => {
     expect(colors["accent0-light"]).toBe("#ff8888");
     expect(colors["accent0-dark"]).toBe("#880000");
   });
+
+  describe("color derivation from input colors", () => {
+    it("derives background colors from background-primary (light background)", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { "background-primary": "#ffffff" },
+        },
+      });
+
+      // Should derive secondary/tertiary backgrounds
+      expect(derived.colors["background-secondary"]).toBeDefined();
+      expect(derived.colors["background-tertiary"]).toBeDefined();
+      expect(derived.colors["background-primary-inverse"]).toBeDefined();
+      expect(derived.colors["border"]).toBeDefined();
+      expect(derived.colors["tooltip-background"]).toBeDefined();
+    });
+
+    it("derives background colors from background-primary (dark background)", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "dark",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { "background-primary": "#1a1a1a" },
+        },
+      });
+
+      // Should derive secondary/tertiary backgrounds for dark theme
+      expect(derived.colors["background-secondary"]).toBeDefined();
+      expect(derived.colors["background-tertiary"]).toBeDefined();
+      expect(derived.colors["background-primary-inverse"]).toBeDefined();
+      expect(derived.colors["border"]).toBeDefined();
+    });
+
+    it("derives text colors from text-primary", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { "text-primary": "#303030" },
+        },
+      });
+
+      // Should derive secondary/tertiary text colors
+      expect(derived.colors["text-secondary"]).toBeDefined();
+      expect(derived.colors["text-tertiary"]).toBeDefined();
+      expect(derived.colors["text-primary-inverse"]).toBeDefined();
+      expect(derived.colors["text-secondary-inverse"]).toBeDefined();
+    });
+
+    it("derives brand colors from brand", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { brand: "#509ee3" },
+        },
+      });
+
+      // Should derive brand variations
+      expect(derived.colors["brand-light"]).toBeDefined();
+      expect(derived.colors["brand-lighter"]).toBeDefined();
+      expect(derived.colors["brand-dark"]).toBeDefined();
+      expect(derived.colors["brand-darker"]).toBeDefined();
+      expect(derived.colors["text-brand"]).toBeDefined();
+      expect(derived.colors["background-brand"]).toBeDefined();
+      expect(derived.colors["focus"]).toBeDefined();
+    });
+
+    it("derives perceivable brand-light for light brand colors", () => {
+      // #af60ff is a light purple - previously produced nearly white brand-light
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { brand: "#af60ff" },
+        },
+      });
+
+      // brand-light should have perceivable color, not be nearly white
+      // With relative offsets, it should be around 85-90% lightness, not 97%+
+      const brandLight = derived.colors["brand-light"];
+      expect(brandLight).toBeDefined();
+
+      // Extract lightness from HSL string (e.g., "hsl(270deg, 100%, 85%)")
+      const lightnessMatch = brandLight?.match(/(\d+)%\)$/);
+      const lightness = lightnessMatch ? parseInt(lightnessMatch[1], 10) : 0;
+
+      // Should be perceivably colored (not nearly white)
+      expect(lightness).toBeLessThan(95);
+      expect(lightness).toBeGreaterThan(70);
+    });
+
+    it("ensures text-brand has sufficient contrast on white", () => {
+      // Light brand colors need darker text-brand for readability
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: { brand: "#af60ff" },
+        },
+      });
+
+      const textBrand = derived.colors["text-brand"];
+      expect(textBrand).toBeDefined();
+
+      // Extract lightness - should be dark enough for WCAG AA contrast
+      const lightnessMatch = textBrand?.match(/(\d+)%\)$/);
+      const lightness = lightnessMatch ? parseInt(lightnessMatch[1], 10) : 100;
+
+      // Text should be darker (lower lightness) to ensure readability
+      expect(lightness).toBeLessThan(60);
+    });
+
+    it("explicit overrides take precedence over derived colors", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: {
+            "background-primary": "#ffffff",
+            "background-secondary": "#custom-override",
+          },
+        },
+      });
+
+      // Explicit override should win over derived value
+      expect(derived.colors["background-secondary"]).toBe("#custom-override");
+    });
+
+    it("derives a complete theme from just 3 colors", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: {
+          version: 2,
+          colors: {
+            brand: "#509ee3",
+            "background-primary": "#ffffff",
+            "text-primary": "#303030",
+          },
+        },
+      });
+
+      // All derived colors should be present
+      expect(derived.colors["background-secondary"]).toBeDefined();
+      expect(derived.colors["background-primary-inverse"]).toBeDefined();
+      expect(derived.colors["text-secondary"]).toBeDefined();
+      expect(derived.colors["brand-light"]).toBeDefined();
+      expect(derived.colors["border"]).toBeDefined();
+    });
+  });
 });
