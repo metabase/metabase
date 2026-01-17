@@ -14,7 +14,7 @@ function MetabotRadio({
   price,
 }: IMetabotRadioProps): ReactElement {
   return (
-    <Box bg={selected ? "brand-light" : undefined} p="md" w="100%">
+    <Box bg={selected ? "background-brand" : undefined} p="md" w="100%">
       <Radio
         value={value}
         label={

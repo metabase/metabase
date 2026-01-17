@@ -1,5 +1,5 @@
 .ChipLabel {
-  background-color: var(--mb-color-brand-light);
+  background-color: var(--mb-color-background-brand);
   color: var(--mb-color-brand);
   padding: 0.5rem 1rem;
   display: block;

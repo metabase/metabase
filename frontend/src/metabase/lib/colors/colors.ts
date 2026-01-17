@@ -257,10 +257,7 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.octopus[80],
     dark: baseColors.octopus[60],
   },
-  "background-brand": {
-    light: baseColors.brand[10],
-    dark: baseColors.brand[90],
-  },
+
   "background-disabled": {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
@@ -273,18 +270,26 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.lobster[5],
     dark: baseColors.lobster[90],
   },
-  "background-hover": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
-    dark: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
+
+  "brand-hover": {
+    light: baseColors.brand[50],
+    dark: baseColors.brand[30],
   },
-  "background-hover-light": {
+  "background-brand": {
+    light: baseColors.brand[10],
+    dark: baseColors.brand[90],
+  },
+  "background-highlight": {
     light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
   },
-
+  "background-hover": {
+    light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
+  },
   "background-selected": {
-    light: baseColors.brand[50],
-    dark: baseColors.brand[40],
+    light: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 21%, transparent)`, //baseColors.oceanAlpha[20],
   },
   "background-primary": {
     light: baseColors.white,
@@ -326,31 +331,12 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.palm[5],
     dark: baseColors.palm[90],
   },
-  "brand-alpha-04": {
-    //all of these colors derived from brand should be reworked to fit the values in the new color palette, and to have semantic names
-    light: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
-    dark: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
-  },
-  "brand-alpha-88": {
-    light: `color-mix(in srgb, var(--mb-color-brand) 88%, transparent)`,
-    dark: `color-mix(in srgb, var(--mb-color-brand) 88%, transparent)`,
-  },
+
   "brand-dark": {
     light: baseColors.brand[60],
     dark: baseColors.brand[30],
   },
-  "brand-darker": {
-    light: baseColors.brand[70],
-    dark: baseColors.brand[20],
-  },
-  "brand-light": {
-    light: baseColors.brand[10],
-    dark: baseColors.brand[80],
-  },
-  "brand-lighter": {
-    light: baseColors.brand[5],
-    dark: baseColors.brand[90],
-  },
+
   brand: {
     light: settings.brand || baseColors.blue[40],
     dark: settings.brand || baseColors.blue[40],
@@ -371,9 +357,13 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.blue[20],
     dark: baseColors.blue[70],
   },
-  "icon-primary": {
+  "icon-brand": {
     light: baseColors.brand[40],
     dark: baseColors.brand[40],
+  },
+  "icon-primary": {
+    light: baseColors.orionAlpha[80],
+    dark: baseColors.orionAlphaInverse[80],
   },
   "icon-disabled": {
     light: baseColors.orionAlpha[30],
@@ -474,7 +464,7 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     dark: baseColors.orionAlpha[60],
   },
   "text-selected": {
-    light: baseColors.white,
+    light: baseColors.orionAlpha[80],
     dark: baseColors.white,
   },
   "tooltip-background-focused": {
@@ -565,6 +555,10 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
   },
+  "border-brand": {
+    light: baseColors.brand[10],
+    dark: baseColors.brand[80],
+  },
 
   // one-off colors for data layers which are not part of Metabase color palette
   // we got a blessing from the design team to use these colors 😇
@@ -583,6 +577,16 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   gold: {
     light: "#FFD700",
     dark: "#FFD700",
+  },
+
+  // Colors used in metabot and lighthouse illustrations. Do not use these in components
+  "illustration-brand-secondary": {
+    light: baseColors.brand[10],
+    dark: baseColors.brand[80],
+  },
+  "illustration-brand-tertiary": {
+    light: baseColors.brand[5],
+    dark: baseColors.brand[90],
   },
 });
 

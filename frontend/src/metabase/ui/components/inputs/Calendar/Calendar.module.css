@@ -43,7 +43,7 @@
   }
 
   &[data-selected] {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--mb-color-text-primary);
     background-color: var(--mb-color-brand);
 
     &:hover {
@@ -226,6 +226,7 @@
 
   &[data-selected] {
     color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
   }
 
   &:hover:not([data-selected]),

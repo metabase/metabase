@@ -98,22 +98,6 @@
   background-color: var(--mb-color-background-tertiary);
 }
 
-.highlighted {
-  animation: highlight 2s ease-out;
-}
-
-@keyframes highlight {
-  0% {
-    background-color: var(--mb-color-brand-light);
-    box-shadow: 0 0 0 4px var(--mb-color-brand-light);
-  }
-
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
-}
-
 .metadataItem {
   display: flex;
   align-items: center;
