@@ -30,7 +30,10 @@ export const getUserCanWriteSegments = (
   return !isRemoteSyncReadOnly || !isTablePublished;
 };
 
-export const canWriteMeasures = (state: State, isTablePublished: boolean) => {
+export const getUserCanWriteMeasures = (
+  state: State,
+  isTablePublished: boolean,
+) => {
   const isRemoteSyncReadOnly = getIsRemoteSyncReadOnly(state);
 
   return !isRemoteSyncReadOnly || !isTablePublished;
