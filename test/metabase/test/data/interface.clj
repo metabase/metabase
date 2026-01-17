@@ -528,6 +528,20 @@
   [_driver]
   nil)
 
+(defmulti fake-sync-table-name
+  "Return the table name to use for fake sync Table rows.
+   Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
+   that share a single database across datasets (like Redshift, Oracle).
+   Drivers with separate databases per dataset (like Snowflake) should override
+   to return just the table name."
+  {:arglists '([driver database-name table-name]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-table-name ::test-extensions
+  [_driver database-name table-name]
+  (db-qualified-table-name database-name table-name))
+
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
    Detection methods (in priority order):

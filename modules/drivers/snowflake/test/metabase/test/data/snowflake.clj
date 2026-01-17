@@ -387,3 +387,23 @@
        (into [] (map (juxt :database_name :created)))))
 
 (defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")
+
+;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
+
+;; Enable fake sync for Snowflake on feature branches.
+;; Fake sync skips network calls to the database for metadata sync, which saves significant CI time.
+;; On master/release branches, use real sync to catch any sync regressions.
+(defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
+  [_driver _feature _database]
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :snowflake
+  [_driver]
+  "PUBLIC")
+
+(defmethod tx/fake-sync-table-name :snowflake
+  [_driver _database-name table-name]
+  ;; Snowflake uses separate databases per dataset, so table names are NOT prefixed
+  ;; with the database name. Unlike Redshift (which uses test_data_venues), Snowflake
+  ;; tables are just "venues" within the sha_xxx_test_data database.
+  table-name)
