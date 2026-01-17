@@ -55,7 +55,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   type: TType;
   data: TData;
   dependents_count?: DependentsCount | null;
-  dependents_errors?: DependencyError[] | null;
+  dependents_errors?: AnalyzingFindingError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
@@ -199,18 +199,26 @@ export type DependencyNode =
   | SegmentDependencyNode
   | MeasureDependencyNode;
 
-export const DEPENDENCY_ERROR_TYPES = [
+export type AnalysisFindingErrorId = number;
+
+export const ANALYSIS_FINDING_ERROR_TYPES = [
   "missing-column",
   "missing-table-alias",
   "duplicate-column",
   "syntax-error",
   "validation-error",
 ] as const;
-export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
+export type AnalysisFindingErrorType =
+  (typeof ANALYSIS_FINDING_ERROR_TYPES)[number];
 
-export type DependencyError = {
-  type: DependencyErrorType;
-  detail?: string | null;
+export type AnalyzingFindingError = {
+  id: AnalysisFindingErrorId;
+  analyzed_entity_id: DependencyId;
+  analyzed_entity_type: DependencyType;
+  source_entity_id?: DependencyId | null;
+  source_entity_type?: DependencyType | null;
+  error_type: AnalysisFindingErrorType;
+  error_detail?: string | null;
 };
 
 export type DependencyEdge = {

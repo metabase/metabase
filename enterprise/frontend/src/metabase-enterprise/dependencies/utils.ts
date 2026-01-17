@@ -4,10 +4,10 @@ import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  AnalysisFindingErrorType,
+  AnalyzingFindingError,
   CardType,
   DependencyEntry,
-  DependencyError,
-  DependencyErrorType,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
@@ -18,6 +18,8 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  DependencyError,
+  DependencyErrorGroup,
   DependencyErrorInfo,
   DependencyGroupTypeInfo,
   DependentGroup,
@@ -414,17 +416,6 @@ export function getNodeViewCount(node: DependencyNode): number | null {
   }
 }
 
-export function getNodeDependentsCount(node: DependencyNode): number {
-  const dependentsCount = node.dependents_count;
-  if (dependentsCount == null) {
-    return 0;
-  }
-  return Object.values(dependentsCount).reduce(
-    (total, count) => total + count,
-    0,
-  );
-}
-
 export function getCardType(groupType: DependencyGroupType): CardType | null {
   switch (groupType) {
     case "question":
@@ -628,8 +619,8 @@ export function getDependentGroupLabel({
   }
 }
 
-export function getDependencyErrorTypeLabel(
-  type: DependencyErrorType,
+export function getErrorTypeLabel(
+  type: AnalysisFindingErrorType,
   count: number,
 ): string {
   switch (type) {
@@ -650,8 +641,8 @@ export function getDependencyErrorTypeLabel(
   }
 }
 
-export function getDependencyErrorTypeLabelWithCount(
-  type: DependencyErrorType,
+export function getErrorTypeLabelWithCount(
+  type: AnalysisFindingErrorType,
   count: number,
 ): string {
   switch (type) {
@@ -688,6 +679,36 @@ export function getDependencyErrorTypeLabelWithCount(
   }
 }
 
+export function getDependencyErrors(
+  errors: AnalyzingFindingError[],
+): DependencyError[] {
+  const errorByKey = new Map<string, DependencyError>();
+  for (const error of errors) {
+    const { error_type: type, error_detail: detail } = error;
+    const key = `${type}-${detail}`;
+    errorByKey.set(key, { type, detail });
+  }
+  return Array.from(errorByKey.values());
+}
+
+export function getDependencyErrorGroups(
+  errors: DependencyError[],
+): DependencyErrorGroup[] {
+  const groups = new Map<AnalysisFindingErrorType, DependencyError[]>();
+  for (const error of errors) {
+    const group = groups.get(error.type);
+    if (group != null) {
+      group.push(error);
+    } else {
+      groups.set(error.type, [error]);
+    }
+  }
+  return Array.from(groups.entries()).map(([type, errors]) => ({
+    type,
+    errors,
+  }));
+}
+
 export function getDependencyErrorInfo(
   errors: DependencyError[],
 ): DependencyErrorInfo | undefined {
@@ -697,7 +718,7 @@ export function getDependencyErrorInfo(
 
   if (errors.length === 1) {
     const [error] = errors;
-    const label = getDependencyErrorTypeLabel(error.type, errors.length);
+    const label = getErrorTypeLabel(error.type, errors.length);
     const detail = error.detail;
     return { label, detail };
   }
@@ -706,7 +727,7 @@ export function getDependencyErrorInfo(
   if (types.size === 1) {
     const [type] = types;
     return {
-      label: getDependencyErrorTypeLabelWithCount(type, errors.length),
+      label: getErrorTypeLabelWithCount(type, errors.length),
       detail: null,
     };
   }
@@ -719,6 +740,18 @@ export function getDependencyErrorInfo(
     ),
     detail: null,
   };
+}
+
+export function getDependentErrorNodesCount(
+  errors: AnalyzingFindingError[],
+): number {
+  const nodeIds = new Set();
+  errors.forEach((error) => {
+    nodeIds.add(
+      getNodeId(error.analyzed_entity_id, error.analyzed_entity_type),
+    );
+  });
+  return nodeIds.size;
 }
 
 export function parseString(value: unknown): string | undefined {

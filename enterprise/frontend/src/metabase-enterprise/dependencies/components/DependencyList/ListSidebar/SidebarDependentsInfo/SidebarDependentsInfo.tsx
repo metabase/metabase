@@ -20,6 +20,7 @@ import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
 import {
+  getDependentErrorNodesCount,
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
@@ -33,17 +34,22 @@ type SidebarDependentsInfoProps = {
 };
 
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
-  const { data: dependents = [] } = useListNodeDependentsQuery({
-    id: node.id,
-    type: node.type,
-    dependent_type: "card",
-    dependent_card_type: "question",
-  });
+  const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
+  const title = count > 1 ? t`Broken dependents` : t`Broken dependent`;
 
-  const title =
-    dependents.length > 1 ? t`Broken dependents` : t`Broken dependent`;
+  const { data: dependents = [] } = useListNodeDependentsQuery(
+    {
+      id: node.id,
+      type: node.type,
+      dependent_type: "card",
+      dependent_card_type: "question",
+    },
+    {
+      skip: count === 0,
+    },
+  );
 
-  if (dependents.length === 0) {
+  if (count === 0) {
     return null;
   }
 
@@ -51,7 +57,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
     <Stack role="region" aria-label={title}>
       <Group gap="sm">
         <Badge c="text-selected" bg="error">
-          {dependents.length}
+          {count}
         </Badge>
         <Title order={5}>{title}</Title>
       </Group>

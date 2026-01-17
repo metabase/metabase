@@ -15,20 +15,21 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type { DependencyError, DependencyErrorType } from "metabase-types/api";
+import type { AnalysisFindingErrorType } from "metabase-types/api";
 
-import { getDependencyErrorTypeLabel } from "../../../../utils";
+import type { DependencyError } from "../../../../types";
+import { getErrorTypeLabel } from "../../../../utils";
 
 import S from "./SidebarErrorInfo.module.css";
 
 type SidebarErrorInfoProps = {
-  type: DependencyErrorType;
+  type: AnalysisFindingErrorType;
   errors: DependencyError[];
 };
 
 export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
   const count = errors.length;
-  const title = getDependencyErrorTypeLabel(type, count);
+  const title = getErrorTypeLabel(type, count);
   const details = errors
     .map((error) => error.detail)
     .filter((detail) => detail != null);

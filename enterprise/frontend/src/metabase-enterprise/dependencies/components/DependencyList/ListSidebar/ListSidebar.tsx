@@ -3,13 +3,14 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
+
 import S from "./ListSidebar.module.css";
 import { SidebarCreationInfo } from "./SidebarCreationInfo";
 import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
 import { SidebarErrorInfo } from "./SidebarErrorInfo";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarLocationInfo } from "./SidebarLocationInfo";
-import { getDependencyErrorGroups } from "./utils";
 
 type ListSidebarProps = {
   node: DependencyNode;
@@ -20,7 +21,8 @@ export const ListSidebar = memo(function ListSidebar({
   node,
   onClose,
 }: ListSidebarProps) {
-  const errorGroups = getDependencyErrorGroups(node.dependents_errors ?? []);
+  const errors = getDependencyErrors(node.dependents_errors ?? []);
+  const errorGroups = getDependencyErrorGroups(errors);
 
   return (
     <Stack
