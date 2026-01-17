@@ -1,3 +1,4 @@
+import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
 import type { ChartColorV2 } from "./types";
 import type { MetabaseAccentColorKey } from "./types/color-keys";
 
@@ -21,24 +22,22 @@ export function mapChartColorsToAccents(
       return;
     }
 
-    const accentKey = `accent${index}` as MetabaseAccentColorKey;
+    const accentKeys = ACCENT_COLOR_NAMES_MAP[index];
 
     if (typeof color === "string") {
-      mappedColors[accentKey] = color;
+      mappedColors[accentKeys.base] = color;
       return;
     }
 
     if (typeof color === "object") {
-      mappedColors[accentKey] = color.base;
-
-      if (color.shade) {
-        mappedColors[`accent${index}-dark` as MetabaseAccentColorKey] =
-          color.shade;
-      }
+      mappedColors[accentKeys.base] = color.base;
 
       if (color.tint) {
-        mappedColors[`accent${index}-light` as MetabaseAccentColorKey] =
-          color.tint;
+        mappedColors[accentKeys.tint] = color.tint;
+      }
+
+      if (color.shade) {
+        mappedColors[accentKeys.shade] = color.shade;
       }
     }
   });

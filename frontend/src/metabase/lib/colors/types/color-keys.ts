@@ -1,4 +1,4 @@
-import type { ALL_ACCENT_COLOR_NAMES } from "../constants/color-names";
+import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
 
 /**
  * All color keys available in Metabase themes.
