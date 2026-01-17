@@ -241,8 +241,8 @@ export type GetDependencyGraphRequest = {
 export type ListNodeDependentsRequest = {
   id: DependencyId;
   type: DependencyType;
-  dependent_type?: DependencyType;
-  dependent_card_type?: CardType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
   broken?: boolean;
   archived?: boolean;
 };
