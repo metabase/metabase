@@ -2,6 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
+import type { ColorSettings } from "metabase-types/api";
 
 import Styles from "./Theme.module.css";
 import {
@@ -70,10 +71,11 @@ export type BreakpointName = keyof typeof breakpoints;
 
 export const getThemeOverrides = (
   colorScheme: "light" | "dark" = "light",
+  whitelabelColors?: ColorSettings | null,
 ): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getMantineThemeColors(colorScheme),
+  colors: getMantineThemeColors(colorScheme, whitelabelColors),
   primaryColor: "brand",
   primaryShade: 0,
   // Store colorScheme in other property for access later
