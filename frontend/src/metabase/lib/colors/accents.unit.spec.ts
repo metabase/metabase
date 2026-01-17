@@ -44,8 +44,7 @@ describe("mapChartColorsToAccents", () => {
     expect(result).not.toHaveProperty("accent8");
   });
 
-  it("skips null/undefined colors", () => {
-    // @ts-expect-error -- you should not be able to pass `null`
+  it("skips defining accent1 if index 1 is null", () => {
     const result = mapChartColorsToAccents(["#ff0000", null, "#0000ff"]);
 
     expect(result).toEqual({ accent0: "#ff0000", accent2: "#0000ff" });

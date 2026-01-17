@@ -40,7 +40,8 @@ export type ChartColorV2 =
 
       /** Darker variation of the base color */
       shade?: string;
-    };
+    }
+  | null;
 
 /**
  * Metabase color keys without accent0 - accent7.
