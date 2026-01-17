@@ -2,7 +2,7 @@ import {
   type MetabaseEmbeddingTheme,
   defineMetabaseTheme,
 } from "metabase/embedding-sdk/theme";
-import { METABASE_DARK_THEME } from "metabase/lib/colors/constants/dark";
+import { METABASE_DARK_THEME } from "metabase/lib/colors/constants/themes/dark";
 
 export const darkColors = {
   primary: "#DF75E9",

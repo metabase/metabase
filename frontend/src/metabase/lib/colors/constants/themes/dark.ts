@@ -1,8 +1,7 @@
 /* eslint-disable no-color-literals */
-import type { MetabaseThemeV2 } from "../types";
-
-import { getBaseColorsForThemeDefinitionOnly } from "./base-colors";
-import { DEFAULT_CHART_COLORS } from "./chart-colors";
+import type { MetabaseThemeV2 } from "../../types";
+import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
+import { DEFAULT_CHART_COLORS } from "../chart-colors";
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 

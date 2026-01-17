@@ -1,7 +1,7 @@
 import type { ResolvedColorScheme } from "../color-scheme";
 
-import { METABASE_DARK_THEME } from "./constants/dark";
-import { METABASE_LIGHT_THEME } from "./constants/light";
+import { METABASE_DARK_THEME } from "./constants/themes/dark";
+import { METABASE_LIGHT_THEME } from "./constants/themes/light";
 import type { MetabaseThemeV2 } from "./types";
 
 /** Returns the theme definition for a color scheme. */
