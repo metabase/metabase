@@ -41,8 +41,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
     {
       id: node.id,
       type: node.type,
-      dependent_type: "card",
-      dependent_card_type: "question",
+      broken: true,
     },
     {
       skip: count === 0,
