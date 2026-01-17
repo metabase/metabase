@@ -3,6 +3,8 @@ import _ from "underscore";
 import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
 import type { ColorSettings } from "metabase-types/api";
 
+import type { ResolvedColorScheme } from "../color-scheme";
+
 import { mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
@@ -23,7 +25,7 @@ export function deriveFullMetabaseTheme({
   whitelabelColors,
   embeddingThemeOverride,
 }: {
-  colorScheme: "light" | "dark";
+  colorScheme: ResolvedColorScheme;
   whitelabelColors?: ColorSettings | null;
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
 }): MetabaseDerivedThemeV2 {
