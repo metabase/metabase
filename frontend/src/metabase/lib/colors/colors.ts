@@ -17,14 +17,15 @@ const baseColors = getBaseColorsForThemeDefinitionOnly();
 export const getColors = (whitelabelColors?: ColorSettings) =>
   deriveFullMetabaseTheme({ colorScheme: "light", whitelabelColors }).colors;
 
-export const colors: Record<MetabaseColorKey, string> = getColors(whitelabelColors)
+export const colors: Record<MetabaseColorKey, string> =
+  getColors(whitelabelColors);
 
-export const mutateColors = (settings: ColorSettings) => {
+export const mutateColors = (whitelabelColors: ColorSettings) => {
   // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
   Object.keys(colors).forEach((key) => {
     delete colors[key as keyof typeof colors];
   });
-  Object.assign(colors, getColors(settings));
+  Object.assign(colors, getColors(whitelabelColors));
 };
 
 export const staticVizOverrides = {
