@@ -68,6 +68,7 @@ type QueryEditorBodyProps = {
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
   topBarInnerContent?: ReactNode;
+  extraButton?: ReactNode;
 };
 
 export function QueryEditorBody({
@@ -97,6 +98,7 @@ export function QueryEditorBody({
   onAcceptProposed,
   onRejectProposed,
   topBarInnerContent,
+  extraButton,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -162,6 +164,7 @@ export function QueryEditorBody({
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
       topBarInnerContent={topBarInnerContent}
+      extraButton={extraButton}
     />
   ) : (
     <ResizableBox

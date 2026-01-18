@@ -98,6 +98,10 @@ function getCardForBlankNativeQuestion(
 ) {
   const databaseId = options.db ? parseInt(options.db) : undefined;
 
+  // TODO don't use DEPRECATED_RAW_MBQL_* as it'd be better to:
+  // 1° load the db first
+  // 2° use the lib to create a provider
+  // 3° then create a native query
   const question = Question.create({
     DEPRECATED_RAW_MBQL_type: "native",
     DEPRECATED_RAW_MBQL_databaseId: databaseId,

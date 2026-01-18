@@ -37,7 +37,6 @@ function shouldShowEditButton({
 }) {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   return (
-    // !isNative &&
     isEditable && isActionListVisible && !question.isArchived() && !isBrandNew
   );
 }

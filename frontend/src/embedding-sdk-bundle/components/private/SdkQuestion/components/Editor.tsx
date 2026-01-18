@@ -73,13 +73,33 @@ export const Editor = ({
     getSetting(state, "report-timezone-long"),
   );
 
-  return (
-    question &&
-    (Lib.queryDisplayInfo(question.query()).isNative ? (
-      <QueryEditorAndResults
+  if (!question) {
+    return null;
+  }
+
+  return Lib.queryDisplayInfo(question.query()).isNative ? (
+    <QueryEditorAndResults
+      question={question}
+      hasVisualizeButton={hasVisualizeButton}
+      isDirty={isDirty}
+      updateQuestion={async (nextQuestion: Question) =>
+        await updateQuestion(nextQuestion, { run: false })
+      }
+      runQuestionQuery={async () => {
+        onApply();
+        await queryQuestion();
+      }}
+    />
+  ) : (
+    <ScrollArea w="100%" h="100%">
+      <QBNotebook
         question={question}
-        hasVisualizeButton={hasVisualizeButton}
         isDirty={isDirty}
+        isRunnable={isRunnable}
+        // the visualization button relies on this boolean
+        isResultDirty={true}
+        reportTimezone={reportTimezone}
+        readOnly={false}
         updateQuestion={async (nextQuestion: Question) =>
           await updateQuestion(nextQuestion, { run: false })
         }
@@ -87,28 +107,9 @@ export const Editor = ({
           onApply();
           await queryQuestion();
         }}
+        setQueryBuilderMode={() => {}}
+        hasVisualizeButton={hasVisualizeButton}
       />
-    ) : (
-      <ScrollArea w="100%" h="100%">
-        <QBNotebook
-          question={question}
-          isDirty={isDirty}
-          isRunnable={isRunnable}
-          // the visualization button relies on this boolean
-          isResultDirty={true}
-          reportTimezone={reportTimezone}
-          readOnly={false}
-          updateQuestion={async (nextQuestion: Question) =>
-            await updateQuestion(nextQuestion, { run: false })
-          }
-          runQuestionQuery={async () => {
-            onApply();
-            await queryQuestion();
-          }}
-          setQueryBuilderMode={() => {}}
-          hasVisualizeButton={hasVisualizeButton}
-        />
-      </ScrollArea>
-    ))
+    </ScrollArea>
   );
 };

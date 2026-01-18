@@ -28,6 +28,7 @@ type QueryEditorProps = {
   onRejectProposed?: () => void;
   topBarInnerContent?: ReactNode;
   height?: string | number;
+  extraEditorButton?: ReactNode;
 };
 
 export function QueryEditor({
@@ -41,6 +42,7 @@ export function QueryEditor({
   onRejectProposed,
   topBarInnerContent,
   height = "100%",
+  extraEditorButton,
 }: QueryEditorProps) {
   const {
     question,
@@ -115,6 +117,7 @@ export function QueryEditor({
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
             topBarInnerContent={topBarInnerContent}
+            extraButton={extraEditorButton}
           />
           <QueryEditorVisualization
             question={question}

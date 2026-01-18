@@ -117,6 +117,7 @@ type OwnProps = {
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   topBarInnerContent?: ReactNode;
+  extraButton?: ReactNode;
 };
 
 interface ExplicitSizeProps {
@@ -261,6 +262,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       highlightedLineNumbers,
       placeholder,
       extensions,
+      extraButton,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -401,19 +403,24 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                     </Tooltip>
                   </>
                 )}
-                {hasRunButton && !readOnly && (
-                  <NativeQueryEditorRunButton
-                    cancelQuery={this.props.cancelQuery}
-                    isResultDirty={this.props.isResultDirty}
-                    isRunnable={this.props.isRunnable}
-                    isRunning={this.props.isRunning}
-                    nativeEditorSelectedText={
-                      this.props.nativeEditorSelectedText
-                    }
-                    runQuery={this.props.runQuery}
-                    questionErrors={Lib.validateTemplateTags(question.query())}
-                  />
-                )}
+                <Flex gap="sm">
+                  {extraButton}
+                  {hasRunButton && !readOnly && (
+                    <NativeQueryEditorRunButton
+                      cancelQuery={this.props.cancelQuery}
+                      isResultDirty={this.props.isResultDirty}
+                      isRunnable={this.props.isRunnable}
+                      isRunning={this.props.isRunning}
+                      nativeEditorSelectedText={
+                        this.props.nativeEditorSelectedText
+                      }
+                      runQuery={this.props.runQuery}
+                      questionErrors={Lib.validateTemplateTags(
+                        question.query(),
+                      )}
+                    />
+                  )}
+                </Flex>
               </Stack>
             </Flex>
           </ResizableBox>

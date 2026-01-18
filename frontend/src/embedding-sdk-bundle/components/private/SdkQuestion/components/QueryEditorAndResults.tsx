@@ -29,7 +29,7 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
   const [currentQuestion, setCurrentQuestion] = useState(initialQuestion);
 
-  const { isRunnable, runQuery } = useQueryResults(
+  const { isRunnable, runQuery, result } = useQueryResults(
     currentQuestion,
     uiState,
     setUiState,
@@ -57,17 +57,19 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
         onAcceptProposed={handleRunQuery}
         onRejectProposed={() => {}}
         height={hasVisualizeButton ? "calc(100% - 100px)" : undefined}
+        extraEditorButton={
+          hasVisualizeButton && runQuestionQuery && result && !result?.error ? (
+            <VisualizeButton
+              question={currentQuestion}
+              isDirty={isDirty}
+              isRunnable={isRunnable}
+              isResultDirty
+              updateQuestion={updateQuestion}
+              runQuestionQuery={runQuestionQuery}
+            />
+          ) : undefined
+        }
       />
-      {hasVisualizeButton && runQuestionQuery && (
-        <VisualizeButton
-          question={currentQuestion}
-          isDirty={isDirty}
-          isRunnable={isRunnable}
-          isResultDirty
-          updateQuestion={updateQuestion}
-          runQuestionQuery={runQuestionQuery}
-        />
-      )}
     </>
   );
 }

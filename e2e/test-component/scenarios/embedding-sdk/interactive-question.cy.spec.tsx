@@ -48,13 +48,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  function getSqlQuery() {
-    cy.window().then((win) => {
-      const element = win.document.getElementsByClassName("cm-activeLine");
-      cy.wrap((element[0] as HTMLElement).innerText).as("sqlQuery");
-    });
-  }
-
   it("should be able to edit a native question with the QueryEditor", () => {
     cy.get("@sqlQuestionId").then((sqlQuestionId) => {
       mountSdkContent(
@@ -69,13 +62,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByTestId("notebook-button").click();
       cy.findByTestId("native-query-editor").should("be.visible");
 
-      getSqlQuery();
-      cy.get("@sqlQuery").should("equal", "select * from ORDERS limit 5");
+      H.NativeEditor.value().should("equal", "select * from ORDERS limit 5");
       cy.findByRole("textbox").should("be.visible").click();
 
-      cy.realPress(["Meta", "ArrowRight"]);
-      cy.realPress("Backspace");
-      cy.realType("10");
+      H.NativeEditor.type("{movetoend}{backspace}10");
 
       cy.realPress(["Meta", "Enter"]);
 
@@ -96,9 +86,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         "be.visible",
       );
 
-      cy.findByRole("textbox").should("be.visible").click();
-
-      cy.realType("SELECT * from ORDERS LIMIT 10");
+      H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
       cy.realPress(["Meta", "Enter"]);
 

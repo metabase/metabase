@@ -89,5 +89,5 @@ export function shouldRunCardQuery({
     return true;
   }
 
-  return question.canRun(); // && (question.isSaved() || !isNative);
+  return question.canRun();
 }
