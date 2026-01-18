@@ -222,6 +222,7 @@ config:
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     report-timezone: null
     reset-token-ttl-hours: 48

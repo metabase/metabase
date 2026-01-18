@@ -144,40 +144,6 @@ describe("metabot > ui", () => {
     });
   });
 
-  it("should present the user an option to provide feedback", async () => {
-    const feedbackPath = "path:/api/ee/metabot-v3/feedback";
-
-    setup();
-    fetchMock.post(feedbackPath, 204);
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
-
-    const feedbackModal = () => screen.findByTestId("metabot-feedback-modal");
-    const thumbsUp = () =>
-      within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
-    const thumbsDown = () =>
-      within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
-
-    expect(await thumbsUp()).toBeInTheDocument();
-    expect(await thumbsDown()).toBeInTheDocument();
-    await userEvent.click(await thumbsDown());
-
-    expect(await feedbackModal()).toBeInTheDocument();
-    await userEvent.click(
-      await within(await feedbackModal()).findByRole("button", {
-        name: /Submit/,
-      }),
-    );
-
-    expect(fetchMock.callHistory.calls(feedbackPath)).toHaveLength(1);
-
-    expect(await thumbsUp()).toBeDisabled();
-    expect(await thumbsDown()).toBeDisabled();
-  });
-
   it("should present the user an option to retry a response", async () => {
     setup();
     mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });

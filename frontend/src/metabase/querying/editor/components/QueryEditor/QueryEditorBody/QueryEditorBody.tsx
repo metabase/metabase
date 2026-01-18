@@ -67,6 +67,7 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onBlur?: () => void;
   topBarInnerContent?: ReactNode;
   extraButton?: ReactNode;
 };
@@ -97,6 +98,7 @@ export function QueryEditorBody({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
   topBarInnerContent,
   extraButton,
 }: QueryEditorBodyProps) {
@@ -163,6 +165,7 @@ export function QueryEditorBody({
       onOpenModal={onOpenModal}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
       topBarInnerContent={topBarInnerContent}
       extraButton={extraButton}
     />

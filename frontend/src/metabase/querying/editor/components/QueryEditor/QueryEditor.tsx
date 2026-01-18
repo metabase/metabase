@@ -26,6 +26,7 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onBlur?: () => void;
   topBarInnerContent?: ReactNode;
   height?: string | number;
   extraEditorButton?: ReactNode;
@@ -40,6 +41,7 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
   topBarInnerContent,
   height = "100%",
   extraEditorButton,
@@ -116,6 +118,7 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}
           />

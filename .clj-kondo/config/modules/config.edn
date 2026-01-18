@@ -1663,7 +1663,6 @@
            upload
            util
            warehouse-schema
-           warehouses-rest
            xrays}}
 
   warehouses
@@ -2321,6 +2320,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            collections
            driver
            events
@@ -2331,6 +2331,7 @@
            queries
            query-processor
            request
+           revisions
            search
            settings
            sync
