@@ -266,6 +266,7 @@ export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
   "dependents-count",
+  "dependents-errors",
 ] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 

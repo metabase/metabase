@@ -2363,3 +2363,44 @@
                                 "Card 1 sortdepstest"]
                          (= sort-direction :desc) reverse)
                        names))))))))))
+
+(deftest ^:sequential broken-entities-sort-by-dependents-errors-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents errors count"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          ;; Model 1 breaks 2 dependent cards (2 unique analyzed entities with errors)
+          ;; Model 2 breaks 1 dependent card (1 unique analyzed entity with errors)
+          (let [[model-card-1 model-card-2 dependent-card-1a dependent-card-1b dependent-card-2a]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-1 (create-model-card! user "Card 1 sorterrorstest")
+                        model-card-2 (create-model-card! user "Card 2 sorterrorstest")
+                        dependent-card-1a (create-dependent-card-on-model! user model-card-1 "Dependent 1a - sorterrorstest")
+                        dependent-card-1b (create-dependent-card-on-model! user model-card-1 "Dependent 1b - sorterrorstest")
+                        dependent-card-2a (create-dependent-card-on-model! user model-card-2 "Dependent 2a - sorterrorstest")]
+                    [model-card-1 model-card-2 dependent-card-1a dependent-card-1b dependent-card-2a]))]
+            ;; Break both models
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-1)
+              (break-model-card! model-card-2))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1a))
+              (run-analysis-for-card! (:id dependent-card-1b))
+              (run-analysis-for-card! (:id dependent-card-2a)))
+            (doseq [sort-direction [:asc :desc]]
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   "ee/dependencies/graph/broken"
+                                                   :types "card"
+                                                   :query "sorterrorstest"
+                                                   :sort_column :dependents-errors
+                                                   :sort_direction sort-direction)
+                    names (mapv #(get-in % [:data :name]) (:data response))]
+                ;; Card 2 has 1 broken dependent, Card 1 has 2 broken dependents
+                ;; Ascending: fewer errors first, Descending: more errors first
+                (is (= (cond-> ["Card 2 sorterrorstest"
+                                "Card 1 sorterrorstest"]
+                         (= sort-direction :desc) reverse)
+                       names))))))))))
