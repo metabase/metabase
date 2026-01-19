@@ -9,5 +9,7 @@ export const createMockTask = (task?: Partial<Task>): Task => ({
   task: "A task",
   task_details: null,
   status: "success",
+  logs: task?.logs ?? null,
+  run_id: task?.run_id ?? null,
   ...task,
 });
