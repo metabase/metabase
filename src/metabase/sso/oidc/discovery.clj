@@ -9,9 +9,22 @@
    [metabase.util.log :as log]))
 
 (def ^:private discovery-cache
-  "Cache of discovery documents by issuer URL.
-   Map of issuer URL string -> discovery document map."
+  "Cache of discovery documents with TTL.
+   Map of issuer URL string -> {:document discovery-map :fetched-at timestamp}."
   (atom {}))
+
+(def ^:private discovery-cache-ttl-ms
+  "Discovery document cache TTL: 24 hours. After this time, cached documents will be re-fetched.
+   This ensures endpoint changes by IdPs are picked up within a reasonable timeframe."
+  86400000)
+
+(defn- cache-expired?
+  "Check if a cache entry has expired based on its fetched-at timestamp."
+  [cache-entry]
+  (or (nil? cache-entry)
+      (nil? (:fetched-at cache-entry))
+      (> (- (System/currentTimeMillis) (:fetched-at cache-entry))
+         discovery-cache-ttl-ms)))
 
 (defn- normalize-issuer
   "Normalize issuer URL by removing trailing slashes."
@@ -51,6 +64,16 @@
   []
   (reset! discovery-cache {}))
 
+(defn invalidate-cache!
+  "Invalidate cached discovery document for a specific issuer.
+   Useful when an admin wants to force a refresh."
+  [issuer]
+  (when issuer
+    (let [normalized (normalize-issuer issuer)]
+      (swap! discovery-cache dissoc normalized)
+      (log/infof "Invalidated discovery cache for issuer %s" normalized)))
+  nil)
+
 (defn discover-oidc-configuration
   "Fetch and cache the OIDC discovery document for the given issuer.
 
@@ -58,17 +81,21 @@
    - issuer: The issuer URL (e.g., \"https://accounts.google.com\")
 
    Returns the discovery document map or nil if discovery fails.
-   Results are cached per issuer to avoid repeated requests."
+   Results are cached per issuer with TTL-based expiration (see [[discovery-cache-ttl-ms]])."
   [issuer]
   (when issuer
-    (let [normalized-issuer (normalize-issuer issuer)]
-      (if-let [cached (get @discovery-cache normalized-issuer)]
+    (let [normalized-issuer (normalize-issuer issuer)
+          cached (get @discovery-cache normalized-issuer)]
+      (if (and cached (not (cache-expired? cached)))
         (do
           (log/debugf "Using cached discovery document for issuer %s" normalized-issuer)
-          cached)
-        (when-let [doc (fetch-discovery-document normalized-issuer)]
-          (swap! discovery-cache assoc normalized-issuer doc)
-          doc)))))
+          (:document cached))
+        (do
+          (when cached
+            (log/infof "Discovery cache expired for issuer %s, re-fetching" normalized-issuer))
+          (when-let [doc (fetch-discovery-document normalized-issuer)]
+            (swap! discovery-cache assoc normalized-issuer {:document doc :fetched-at (System/currentTimeMillis)})
+            doc))))))
 
 (defn- get-endpoint
   "Extract an endpoint from the discovery document or manual configuration.

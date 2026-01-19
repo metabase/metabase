@@ -9,13 +9,33 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private jwks-cache
-  "Cache of JWKS by URI. Map of JWKS URI string -> JWKS map."
+  "Cache of JWKS with TTL. Map of JWKS URI string -> {:jwks map :fetched-at timestamp}."
   (atom {}))
+
+(def ^:private jwks-cache-ttl-ms
+  "JWKS cache TTL: 1 hour. After this time, cached JWKS will be re-fetched.
+   This ensures key rotations by IdPs are picked up within a reasonable timeframe."
+  3600000)
+
+(defn- cache-expired?
+  "Check if a cache entry has expired based on its fetched-at timestamp."
+  [cache-entry]
+  (or (nil? cache-entry)
+      (nil? (:fetched-at cache-entry))
+      (> (- (System/currentTimeMillis) (:fetched-at cache-entry))
+         jwks-cache-ttl-ms)))
 
 (defn clear-jwks-cache!
   "Clear all cached JWKS. Useful for testing."
   []
   (reset! jwks-cache {}))
+
+(defn invalidate-jwks-cache!
+  "Invalidate cached JWKS for a specific URI. Useful when signature verification fails
+   and keys may have been rotated by the IdP."
+  [jwks-uri]
+  (swap! jwks-cache dissoc jwks-uri)
+  nil)
 
 (defn- fetch-jwks
   "Fetch JWKS from the given URI. Returns the parsed JWKS map or nil on error."
@@ -33,16 +53,21 @@
       nil)))
 
 (defn get-jwks
-  "Get JWKS from URI, with caching. Returns JWKS map or nil."
+  "Get JWKS from URI, with TTL-based caching. Returns JWKS map or nil.
+   Cached entries expire after [[jwks-cache-ttl-ms]] milliseconds."
   [jwks-uri]
   (when jwks-uri
-    (if-let [cached (get @jwks-cache jwks-uri)]
-      (do
-        (log/debugf "Using cached JWKS for URI %s" jwks-uri)
-        cached)
-      (when-let [jwks (fetch-jwks jwks-uri)]
-        (swap! jwks-cache assoc jwks-uri jwks)
-        jwks))))
+    (let [cached (get @jwks-cache jwks-uri)]
+      (if (and cached (not (cache-expired? cached)))
+        (do
+          (log/debugf "Using cached JWKS for URI %s" jwks-uri)
+          (:jwks cached))
+        (do
+          (when cached
+            (log/infof "JWKS cache expired for URI %s, re-fetching" jwks-uri))
+          (when-let [jwks (fetch-jwks jwks-uri)]
+            (swap! jwks-cache assoc jwks-uri {:jwks jwks :fetched-at (System/currentTimeMillis)})
+            jwks))))))
 
 (defn- find-signing-key
   "Find the signing key from JWKS that matches the JWT kid (key ID).

@@ -248,3 +248,63 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
+
+;;; ================================================== Cache Expiration Tests ==================================================
+
+(deftest jwks-cache-uses-cached-entry-when-fresh-test
+  (testing "Uses cached JWKS when cache is fresh (not expired)"
+    (oidc.tokens/clear-jwks-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-jwks})]
+        ;; First call should fetch
+        (let [result1 (oidc.tokens/get-jwks "https://provider.com/jwks")]
+          (is (some? result1))
+          (is (= 1 @fetch-count)))
+        ;; Second call should use cache (no additional fetch)
+        (let [result2 (oidc.tokens/get-jwks "https://provider.com/jwks")]
+          (is (some? result2))
+          (is (= 1 @fetch-count)))))))
+
+(deftest jwks-cache-refetches-when-expired-test
+  (testing "Re-fetches JWKS when cache entry is expired"
+    (oidc.tokens/clear-jwks-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-jwks})]
+        ;; First call should fetch
+        (oidc.tokens/get-jwks "https://expired-test.com/jwks")
+        (is (= 1 @fetch-count))
+
+        ;; Manually expire the cache entry by setting fetched-at to 2 hours ago
+        (let [two-hours-ago (t/to-millis-from-epoch (t/minus (t/instant) (t/hours 2)))]
+          (swap! @#'oidc.tokens/jwks-cache
+                 assoc "https://expired-test.com/jwks"
+                 {:jwks test-jwks :fetched-at two-hours-ago}))
+
+        ;; Next call should re-fetch because cache is expired
+        (oidc.tokens/get-jwks "https://expired-test.com/jwks")
+        (is (= 2 @fetch-count))))))
+
+(deftest invalidate-jwks-cache-test
+  (testing "invalidate-jwks-cache! removes cache entry for specific URI"
+    (oidc.tokens/clear-jwks-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-jwks})]
+        ;; Populate cache
+        (oidc.tokens/get-jwks "https://provider.com/jwks")
+        (is (= 1 @fetch-count))
+
+        ;; Invalidate the cache entry
+        (oidc.tokens/invalidate-jwks-cache! "https://provider.com/jwks")
+
+        ;; Next call should re-fetch
+        (oidc.tokens/get-jwks "https://provider.com/jwks")
+        (is (= 2 @fetch-count))))))

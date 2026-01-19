@@ -115,3 +115,88 @@
                                      :authorization_endpoint "https://slash-provider.com/authorize"}})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://slash-provider.com/")]
         (is (some? config))))))
+
+;;; ================================================== Cache Expiration Tests ==================================================
+
+(def ^:private test-discovery-doc
+  {:issuer "https://test-provider.com"
+   :authorization_endpoint "https://test-provider.com/authorize"
+   :token_endpoint "https://test-provider.com/token"
+   :jwks_uri "https://test-provider.com/jwks"})
+
+(deftest discovery-cache-uses-cached-entry-when-fresh-test
+  (testing "Uses cached discovery document when cache is fresh (not expired)"
+    (oidc.discovery/clear-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-discovery-doc})]
+        ;; First call should fetch
+        (let [result1 (oidc.discovery/discover-oidc-configuration "https://test-provider.com")]
+          (is (some? result1))
+          (is (= 1 @fetch-count)))
+        ;; Second call should use cache (no additional fetch)
+        (let [result2 (oidc.discovery/discover-oidc-configuration "https://test-provider.com")]
+          (is (some? result2))
+          (is (= 1 @fetch-count)))))))
+
+(deftest discovery-cache-refetches-when-expired-test
+  (testing "Re-fetches discovery document when cache entry is expired"
+    (oidc.discovery/clear-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-discovery-doc})]
+        ;; First call should fetch
+        (oidc.discovery/discover-oidc-configuration "https://expired-cache-test.com")
+        (is (= 1 @fetch-count))
+
+        ;; Manually expire the cache entry by setting fetched-at to 25 hours ago (TTL is 24h)
+        (let [twenty-five-hours-ago (- (System/currentTimeMillis) (* 25 60 60 1000))]
+          (swap! @#'oidc.discovery/discovery-cache
+                 assoc "https://expired-cache-test.com"
+                 {:document test-discovery-doc :fetched-at twenty-five-hours-ago}))
+
+        ;; Next call should re-fetch because cache is expired
+        (oidc.discovery/discover-oidc-configuration "https://expired-cache-test.com")
+        (is (= 2 @fetch-count))))))
+
+(deftest invalidate-discovery-cache-test
+  (testing "invalidate-cache! removes cache entry for specific issuer"
+    (oidc.discovery/clear-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-discovery-doc})]
+        ;; Populate cache
+        (oidc.discovery/discover-oidc-configuration "https://invalidate-test.com")
+        (is (= 1 @fetch-count))
+
+        ;; Invalidate the cache entry
+        (oidc.discovery/invalidate-cache! "https://invalidate-test.com")
+
+        ;; Next call should re-fetch
+        (oidc.discovery/discover-oidc-configuration "https://invalidate-test.com")
+        (is (= 2 @fetch-count))))))
+
+(deftest invalidate-discovery-cache-with-trailing-slash-test
+  (testing "invalidate-cache! normalizes issuer URL"
+    (oidc.discovery/clear-cache!)
+    (let [fetch-count (atom 0)]
+      (with-redefs [http/get (fn [_url _opts]
+                               (swap! fetch-count inc)
+                               {:status 200
+                                :body test-discovery-doc})]
+        ;; Populate cache without trailing slash
+        (oidc.discovery/discover-oidc-configuration "https://slash-test.com")
+        (is (= 1 @fetch-count))
+
+        ;; Invalidate with trailing slash (should still work)
+        (oidc.discovery/invalidate-cache! "https://slash-test.com/")
+
+        ;; Next call should re-fetch
+        (oidc.discovery/discover-oidc-configuration "https://slash-test.com")
+        (is (= 2 @fetch-count))))))

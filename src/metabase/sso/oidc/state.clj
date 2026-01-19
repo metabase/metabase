@@ -8,14 +8,19 @@
    - AES256-CBC-HMAC-SHA512 encryption using MB_ENCRYPTION_SECRET_KEY
    - Built-in TTL validation (independent of cookie expiry)
    - Optional browser binding for request forgery protection
-   - Tamper-evident via HMAC validation"
+   - Tamper-evident via HMAC validation
+   - Redirect URL validation to prevent open redirect attacks"
   (:require
+   [clojure.string :as str]
+   [metabase.system.settings :as system.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+  (:import
+   (java.net URI URISyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,6 +34,82 @@
   "Default time-to-live for OIDC state in milliseconds (10 minutes)."
   600000)
 
+;;; -------------------------------------------------- Redirect URL Validation --------------------------------------------------
+
+(defn- parse-uri
+  "Parse a string as a URI, returning nil if invalid."
+  ^URI [^String s]
+  (when (and s (not (str/blank? s)))
+    (try
+      (URI. s)
+      (catch URISyntaxException _
+        nil))))
+
+(defn- uri-origin
+  "Extract the origin (scheme://host:port) from a URI string.
+   Returns nil if the URI is invalid or has no scheme/host."
+  [^String uri-str]
+  (when-let [^URI uri (parse-uri uri-str)]
+    (let [scheme (.getScheme uri)
+          host   (.getHost uri)
+          port   (.getPort uri)]
+      (when (and scheme host)
+        (if (or (neg? port)
+                (and (= scheme "http") (= port 80))
+                (and (= scheme "https") (= port 443)))
+          (str scheme "://" host)
+          (str scheme "://" host ":" port))))))
+
+(defn- relative-url?
+  "Returns true if the URL is a relative path (starts with /).
+   Rejects protocol-relative URLs (//example.com) which could redirect to external sites."
+  [^String url]
+  (and (str/starts-with? url "/")
+       (not (str/starts-with? url "//"))))
+
+(defn valid-redirect-url?
+  "Validates that a redirect URL is safe for use after OIDC authentication.
+
+   A redirect URL is considered safe if it is:
+   1. A relative URL starting with '/' (but not protocol-relative '//')
+   2. An absolute URL with the same origin as the site-url
+
+   Parameters:
+   - redirect-url: The URL to validate
+   - site-url: The configured site URL (optional, will use system setting if not provided)
+
+   Returns true if the redirect URL is safe, false otherwise."
+  ([redirect-url]
+   (valid-redirect-url? redirect-url (system.settings/site-url)))
+  ([redirect-url site-url]
+   (cond
+     ;; Nil or blank URLs are not valid
+     (or (nil? redirect-url) (str/blank? redirect-url))
+     false
+
+     ;; Relative URLs starting with / are safe (but not // which is protocol-relative)
+     (relative-url? redirect-url)
+     true
+
+     ;; Absolute URLs must have the same origin as site-url
+     :else
+     (let [redirect-origin (uri-origin redirect-url)
+           site-origin     (uri-origin site-url)]
+       (and (some? redirect-origin)
+            (some? site-origin)
+            (= (str/lower-case redirect-origin)
+               (str/lower-case site-origin)))))))
+
+(defn- validate-redirect-url!
+  "Validates a redirect URL and throws an exception if invalid.
+   This prevents open redirect attacks by ensuring redirects stay within the application."
+  [redirect-url]
+  (when-not (valid-redirect-url? redirect-url)
+    (log/warnf "OIDC redirect URL validation failed: %s" redirect-url)
+    (throw (ex-info (tru "Invalid redirect URL. Redirect must be a relative path or same-origin URL.")
+                    {:status-code 400
+                     :redirect-url redirect-url}))))
+
 ;;; -------------------------------------------------- State Creation --------------------------------------------------
 
 (defn create-oidc-state
@@ -37,17 +118,22 @@
    Required options:
    - :state      - CSRF protection token
    - :nonce      - ID token validation nonce
-   - :redirect   - Post-auth redirect URL
+   - :redirect   - Post-auth redirect URL (must be relative or same-origin)
    - :provider   - Provider identifier keyword or string (e.g., :slack-connect)
 
    Optional:
    - :ttl-ms     - Time-to-live in milliseconds (default: 600000 = 10 min)
    - :browser-id - Browser identifier for request forgery protection
 
-   Returns a map suitable for encryption."
+   Returns a map suitable for encryption.
+
+   Throws an exception if the redirect URL is invalid (not relative or not same-origin).
+   This prevents open redirect attacks."
   [{:keys [state nonce redirect provider ttl-ms browser-id]
     :or   {ttl-ms default-ttl-ms}}]
   {:pre [(some? state) (some? nonce) (some? redirect) (some? provider)]}
+  ;; Validate redirect URL to prevent open redirect attacks
+  (validate-redirect-url! redirect)
   (let [now (System/currentTimeMillis)]
     (cond-> {:state      state
              :nonce      nonce
