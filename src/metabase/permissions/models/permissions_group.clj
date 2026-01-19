@@ -112,14 +112,6 @@
         (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                         {:status-code 400}))))))
 
-(defn check-permissions-not-locked
-  "Check that we're allowed to modify permissions for this group. The Data Analysts group has locked permissions."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (when (= id (:id (data-analyst)))
-    (throw (ex-info (tru "You cannot modify permissions for the ''{0}'' group!" (:name (data-analyst)))
-                    {:status-code 400}))))
-
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (t2/define-before-insert :model/PermissionsGroup

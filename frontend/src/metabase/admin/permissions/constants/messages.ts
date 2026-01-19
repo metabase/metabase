@@ -7,6 +7,9 @@ export const Messages = {
   get UNABLE_TO_CHANGE_DATA_ANALYST_PERMISSIONS() {
     return t`Data Analysts always have full access to edit table metadata.`;
   },
+  get UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS() {
+    return t`Data Analysts always have full access to library collections.`;
+  },
   get NATIVE_PERMISSION_REQUIRES_DATA_ACCESS() {
     return t`Groups with View data access set to "Blocked" can't create queries.`;
   },

@@ -45,7 +45,7 @@ export function getSpecialGroupType(
 }
 
 export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {
-  return !isAdminGroup(group) && !isDataAnalystGroup(group);
+  return !isAdminGroup(group);
 }
 
 export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {

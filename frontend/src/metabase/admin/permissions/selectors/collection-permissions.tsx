@@ -18,6 +18,7 @@ import { SnippetCollections } from "metabase/entities/snippet-collections";
 import {
   getGroupNameLocalized,
   isAdminGroup,
+  isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
@@ -253,8 +254,10 @@ export const getCollectionsPermissionEditor = createSelector(
     const entities = groups
       .map((group: GroupType) => {
         const isAdmin = isAdminGroup(group);
+        const isDataAnalyst = isDataAnalystGroup(group);
         const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+        const isLibrary = isLibraryCollection(collection);
         const defaultGroup = _.find(
           groups,
           isExternal ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
@@ -292,14 +295,20 @@ export const getCollectionsPermissionEditor = createSelector(
                 COLLECTION_OPTIONS.none,
               ];
 
+        const isDataAnalystLibraryLocked = isDataAnalyst && isLibrary;
+
         const disabledTooltip = isIACollection
           ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-          : isTenantGroup || isExternal
-            ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
-            : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+          : isDataAnalystLibraryLocked
+            ? Messages.UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS
+            : isTenantGroup || isExternal
+              ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
+              : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
         const disabled =
-          (!isTenantCollection && (isTenantGroup || isExternal)) || isAdmin;
+          (!isTenantCollection && (isTenantGroup || isExternal)) ||
+          isAdmin ||
+          isDataAnalystLibraryLocked;
 
         return {
           id: group.id,
@@ -312,7 +321,10 @@ export const getCollectionsPermissionEditor = createSelector(
               toggleLabel,
               hasChildren,
               isDisabled: disabled,
-              disabledTooltip: isAdmin || isExternal ? disabledTooltip : null,
+              disabledTooltip:
+                isAdmin || isExternal || isDataAnalystLibraryLocked
+                  ? disabledTooltip
+                  : null,
               value: getCollectionPermission(
                 permissions,
                 group.id,

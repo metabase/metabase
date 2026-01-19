@@ -421,11 +421,17 @@
           (throw (ee-permissions-exception :blocked)))
         (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
 
-(defn- check-locked-group-permissions
-  "Check that we're not trying to modify permissions for the Data Analysts group, which has locked permissions."
+(defn- check-data-analyst-locked-permissions
+  "Check that we're not modifying data-model permission for the Data Analysts group.
+   Data Analysts always have full data-model (manage-table-metadata) permissions."
   [group-updates]
-  (doseq [group-id (keys group-updates)]
-    (perms/check-permissions-not-locked {:id group-id})))
+  (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))]
+    (when-let [da-updates (get group-updates data-analyst-group-id)]
+      (doseq [[_db-id db-changes] da-updates]
+        (when (contains? db-changes :data-model)
+          (throw (ex-info (tru "You cannot modify the data model permission for the ''{0}'' group."
+                               (:name (perms/data-analyst-group)))
+                          {:status-code 400})))))))
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
@@ -467,7 +473,7 @@
    (when (seq graph-updates)
      (cluster-lock/with-cluster-lock ::update-data-perms-graph
        (let [group-updates (:groups graph-updates)]
-         (check-locked-group-permissions group-updates)
+         (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
          (t2/with-transaction [_conn]
            (update-data-perms-graph!* group-updates)
