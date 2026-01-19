@@ -1,12 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Stack, Text } from "metabase/ui";
-import { useListTransformsQuery } from "metabase-enterprise/api";
+import {
+  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
+  useGetWorkspaceTablesQuery,
+  useListTransformsQuery,
+} from "metabase-enterprise/api";
 import type {
   DatabaseId,
   TableId,
-  WorkspaceTablesResponse,
+  WorkspaceId,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 
@@ -15,30 +20,39 @@ import { type OpenTable, useWorkspace } from "../WorkspaceProvider";
 import { TableListItem } from "./TableListItem";
 
 type DataTabSidebarProps = {
-  tables: WorkspaceTablesResponse;
-  workspaceTransforms: WorkspaceTransformListItem[];
   databaseId?: DatabaseId | null;
-  selectedTableId?: TableId | null;
+  readOnly?: boolean;
   runningTransforms?: Set<string>;
+  selectedTableId?: TableId | null;
+  workspaceId: WorkspaceId;
+  workspaceTransforms: WorkspaceTransformListItem[];
   onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableSelect?: (table: OpenTable) => void;
   onRunTransform?: (transform: WorkspaceTransformListItem) => void;
-  readOnly?: boolean;
 };
 
 export const DataTabSidebar = ({
-  tables,
-  workspaceTransforms,
   databaseId,
-  selectedTableId,
+  readOnly,
   runningTransforms,
+  selectedTableId,
+  workspaceId,
+  workspaceTransforms,
   onTransformClick,
   onTableSelect,
   onRunTransform,
-  readOnly,
 }: DataTabSidebarProps) => {
   const { hasTransformEdits } = useWorkspace();
-  const { data: allDbTransforms = [] } = useListTransformsQuery({});
+  const {
+    data: tables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
+    error: tablesError,
+    isLoading: isLoadingTables,
+  } = useGetWorkspaceTablesQuery(workspaceId);
+  const {
+    data: allDbTransforms = [],
+    error: allDbTransformsError,
+    isLoading: isLoadingAllDbTransforms,
+  } = useListTransformsQuery({});
 
   const dbTransforms = useMemo(
     () =>
@@ -56,6 +70,14 @@ export const DataTabSidebar = ({
       }),
     [allDbTransforms, databaseId],
   );
+
+  const error = tablesError || allDbTransformsError;
+  const loading = isLoadingTables || isLoadingAllDbTransforms;
+
+  if (error || loading) {
+    return <LoadingAndErrorWrapper error={error} loading={loading} />;
+  }
+
   return (
     <Stack h="100%" gap="sm">
       <Stack
@@ -64,9 +86,11 @@ export const DataTabSidebar = ({
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Text fw={600}>{t`Data active in this workspace`}</Text>
+
         {tables.outputs.length > 0 && (
           <Text size="sm" fw={600} c="text-tertiary">{t`Output tables`}</Text>
         )}
+
         <Stack gap={0}>
           {tables.outputs.map((table, index: number) => {
             const workspaceTransform = workspaceTransforms.find(

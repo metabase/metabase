@@ -19,6 +19,7 @@ import { t } from "ttag";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -110,8 +111,6 @@ function WorkspacePageContent({
   const {
     workspace,
     workspaceTransforms,
-    workspaceTables,
-    refetchWorkspaceTables,
     availableTransforms,
     allTransforms,
     setupStatus,
@@ -135,7 +134,6 @@ function WorkspacePageContent({
   } = useWorkspaceActions({
     workspaceId,
     workspace,
-    refetchWorkspaceTables,
     onOpenTab: setTab,
     workspaceTransforms,
     availableTransforms,
@@ -274,11 +272,7 @@ function WorkspacePageContent({
   );
 
   if (isLoadingWorkspace) {
-    return (
-      <Box p="lg">
-        <Text>{t`Loading...`}</Text>
-      </Box>
-    );
+    return <LoadingAndErrorWrapper loading={isLoadingWorkspace} />;
   }
 
   if (!workspace) {
@@ -594,11 +588,11 @@ function WorkspacePageContent({
               <Tabs.Panel value="data" p="md">
                 <DataTabSidebar
                   readOnly={isArchived || isPending}
-                  tables={workspaceTables}
                   workspaceTransforms={workspaceTransforms}
                   databaseId={databaseId}
                   selectedTableId={activeTable?.tableId}
                   runningTransforms={runningTransforms}
+                  workspaceId={workspace.id}
                   onTransformClick={handleTransformClick}
                   onTableSelect={handleTableSelect}
                   onRunTransform={handleRunTransformAndShowPreview}

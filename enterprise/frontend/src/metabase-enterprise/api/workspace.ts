@@ -409,6 +409,7 @@ export const {
   useValidateTableNameMutation,
   useUpdateWorkspaceMutation,
   useGetWorkspaceTablesQuery,
+  useLazyGetWorkspaceTablesQuery,
   useGetWorkspaceGraphQuery,
   useGetWorkspaceProblemsQuery,
   useGetWorkspaceLogQuery,

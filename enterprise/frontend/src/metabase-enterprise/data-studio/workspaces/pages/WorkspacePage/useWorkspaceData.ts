@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
   useGetExternalTransformsQuery,
   useGetWorkspaceLogQuery,
   useGetWorkspaceQuery,
-  useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
 } from "metabase-enterprise/api";
 import type {
@@ -37,11 +35,6 @@ export function useWorkspaceData({
       { skip: !workspaceId || !workspace?.database_id },
     );
 
-  const {
-    data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
-    refetch: refetchWorkspaceTables,
-  } = useGetWorkspaceTablesQuery(workspaceId);
-
   const setupStatus = useWorkspaceSetupStatus(workspaceId);
 
   const availableTransforms = useMemo(
@@ -51,8 +44,8 @@ export function useWorkspaceData({
 
   const isLoading =
     isLoadingWorkspace ||
-    isLoadingExternalTransforms ||
-    isLoadingWorkspaceTransforms;
+    isLoadingWorkspaceTransforms ||
+    isLoadingExternalTransforms;
 
   const allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[] =
     useMemo(
@@ -65,8 +58,6 @@ export function useWorkspaceData({
   return {
     workspace,
     workspaceTransforms,
-    workspaceTables,
-    refetchWorkspaceTables,
     availableTransforms,
     allTransforms,
     setupStatus,

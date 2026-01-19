@@ -7,6 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useLazyGetTransformQuery,
+  useLazyGetWorkspaceTablesQuery,
   useLazyGetWorkspaceTransformQuery,
   useMergeWorkspaceMutation,
   useRunWorkspaceTransformMutation,
@@ -16,7 +17,6 @@ import type {
   ExternalTransform,
   TaggedTransform,
   Workspace,
-  WorkspaceTablesResponse,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 
@@ -29,7 +29,6 @@ import {
 type UseWorkspaceActionsParams = {
   workspaceId: number;
   workspace: Workspace | undefined;
-  refetchWorkspaceTables: () => Promise<{ data?: WorkspaceTablesResponse }>;
   onOpenTab: (tabId: string) => void;
   workspaceTransforms: WorkspaceTransformListItem[];
   availableTransforms: ExternalTransform[];
@@ -38,7 +37,6 @@ type UseWorkspaceActionsParams = {
 export function useWorkspaceActions({
   workspaceId,
   workspace,
-  refetchWorkspaceTables,
   onOpenTab,
   workspaceTransforms,
   availableTransforms,
@@ -57,6 +55,7 @@ export function useWorkspaceActions({
   const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
     new Set(),
   );
+  const [getWorkspaceTables] = useLazyGetWorkspaceTablesQuery();
 
   const handleMergeWorkspace = useCallback(
     async (commitMessage: string) => {
@@ -132,12 +131,15 @@ export function useWorkspaceActions({
           return;
         }
 
-        const { data: updatedTables } = await refetchWorkspaceTables();
+        const { data: updatedTables, error } =
+          await getWorkspaceTables(workspaceId);
         const updatedOutput = updatedTables?.outputs.find(
           (t) => t.isolated.transform_id === transform.ref_id,
         );
 
-        if (updatedOutput?.isolated.table_id) {
+        if (error) {
+          sendErrorToast(t`Failed to fetch workspace tables`);
+        } else if (updatedOutput?.isolated.table_id) {
           handleTableSelect({
             tableId: updatedOutput.isolated.table_id,
             name: updatedOutput.global.table,
@@ -158,7 +160,7 @@ export function useWorkspaceActions({
     [
       workspaceId,
       runTransform,
-      refetchWorkspaceTables,
+      getWorkspaceTables,
       handleTableSelect,
       sendErrorToast,
     ],
