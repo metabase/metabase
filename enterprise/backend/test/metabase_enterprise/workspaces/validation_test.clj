@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.validation-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.validation :as ws.validation]
