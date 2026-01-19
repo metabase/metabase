@@ -48,7 +48,7 @@
                                         [:= :active true]
                                         [:= :t.db_id :workspace_input.db_id]
                                         [:or
-                                         [:and [:= :t.schema nil] [:= :t.schema nil]]
+                                         [:and [:= :t.schema nil] [:= :workspace_input.schema nil]]
                                          [:= :t.schema :workspace_input.schema]]
                                         [:= :t.name :workspace_input.table]]}]]}))
 
