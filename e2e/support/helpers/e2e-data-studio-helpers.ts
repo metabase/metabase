@@ -62,6 +62,7 @@ export const DataStudio = {
     definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
     dependenciesTab: () =>
       DataStudio.Metrics.header().findByText("Dependencies"),
+    cachingTab: () => DataStudio.Metrics.header().findByText("Caching"),
   },
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
