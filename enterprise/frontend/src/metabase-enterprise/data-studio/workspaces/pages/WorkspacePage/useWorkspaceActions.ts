@@ -166,18 +166,20 @@ export function useWorkspaceActions({
 
   const handleTransformClick = useCallback(
     async (workspaceTransform: WorkspaceTransformListItem) => {
-      const { data: transform } = await fetchWorkspaceTransform(
+      const { data: transform, error } = await fetchWorkspaceTransform(
         {
           workspaceId,
           transformId: workspaceTransform.ref_id,
         },
         true,
       );
-      if (transform) {
+      if (error) {
+        sendErrorToast(t`Failed to fetch transform`);
+      } else if (transform) {
         addOpenedTransform(transform);
       }
     },
-    [workspaceId, fetchWorkspaceTransform, addOpenedTransform],
+    [workspaceId, fetchWorkspaceTransform, addOpenedTransform, sendErrorToast],
   );
 
   // Callback to navigate to a transform (used by metabot reactions and URL param)
@@ -198,8 +200,11 @@ export function useWorkspaceActions({
       const isWsTransform = !!transform && "global_id" in transform;
 
       if (transform && !isWsTransform) {
-        const { data } = await fetchTransform(transform.id, true);
-        if (data) {
+        const { data, error } = await fetchTransform(transform.id, true);
+
+        if (error) {
+          sendErrorToast(t`Failed to fetch transform`);
+        } else if (data) {
           const taggedTransform: TaggedTransform = {
             ...data,
             type: "transform",
@@ -209,11 +214,13 @@ export function useWorkspaceActions({
           onOpenTab(String(targetTransformId));
         }
       } else if (transform && isWsTransform) {
-        const { data } = await fetchWorkspaceTransform({
+        const { data, error } = await fetchWorkspaceTransform({
           workspaceId,
           transformId: transform.ref_id,
         });
-        if (data) {
+        if (error) {
+          sendErrorToast(t`Failed to fetch transform`);
+        } else if (data) {
           addOpenedTransform(data);
           setActiveTransform(data);
           onOpenTab(String(targetTransformId));
