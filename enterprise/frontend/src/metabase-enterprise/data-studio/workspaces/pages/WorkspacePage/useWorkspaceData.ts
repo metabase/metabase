@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { skipToken } from "metabase/api";
 import {
   useGetExternalTransformsQuery,
   useGetWorkspaceLogQuery,
@@ -23,16 +24,21 @@ export function useWorkspaceData({
   workspaceId,
   unsavedTransforms,
 }: UseWorkspaceDataParams) {
-  const { data: workspace, isLoading: isLoadingWorkspace } =
-    useGetWorkspaceQuery(workspaceId);
+  const {
+    data: workspace,
+    error: workspaceError,
+    isLoading: isLoadingWorkspace,
+  } = useGetWorkspaceQuery(workspaceId);
   const {
     data: workspaceTransforms = [],
+    error: workspaceTransformsError,
     isLoading: isLoadingWorkspaceTransforms,
   } = useGetWorkspaceTransformsQuery(workspaceId);
   const { data: externalTransforms, isLoading: isLoadingExternalTransforms } =
     useGetExternalTransformsQuery(
-      { workspaceId, databaseId: workspace?.database_id ?? null },
-      { skip: !workspaceId || !workspace?.database_id },
+      workspace?.database_id
+        ? { workspaceId, databaseId: workspace?.database_id }
+        : skipToken,
     );
 
   const setupStatus = useWorkspaceSetupStatus(workspaceId);
@@ -46,6 +52,7 @@ export function useWorkspaceData({
     isLoadingWorkspace ||
     isLoadingWorkspaceTransforms ||
     isLoadingExternalTransforms;
+  const error = workspaceError || workspaceTransformsError;
 
   const allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[] =
     useMemo(
@@ -61,8 +68,10 @@ export function useWorkspaceData({
     availableTransforms,
     allTransforms,
     setupStatus,
+    error,
     isLoading,
     isLoadingWorkspace,
+    isLoadingWorkspaceTransforms,
     isArchived,
     isPending: setupStatus.workspace?.status === "pending",
   };

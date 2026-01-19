@@ -114,8 +114,10 @@ function WorkspacePageContent({
     availableTransforms,
     allTransforms,
     setupStatus,
+    error,
     isLoading,
     isLoadingWorkspace,
+    isLoadingWorkspaceTransforms,
     isArchived,
     isPending,
   } = useWorkspaceData({ workspaceId, unsavedTransforms });
@@ -271,8 +273,13 @@ function WorkspacePageContent({
     ],
   );
 
-  if (isLoadingWorkspace) {
-    return <LoadingAndErrorWrapper loading={isLoadingWorkspace} />;
+  if (error || isLoadingWorkspace || isLoadingWorkspaceTransforms) {
+    return (
+      <LoadingAndErrorWrapper
+        error={error}
+        loading={isLoadingWorkspace || isLoadingWorkspaceTransforms}
+      />
+    );
   }
 
   if (!workspace) {
@@ -573,7 +580,7 @@ function WorkspacePageContent({
                       ? getTransformId(activeTransform)
                       : undefined
                   }
-                  availableTransforms={availableTransforms}
+                  databaseId={databaseId}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
                   onTransformClick={(transform) => {

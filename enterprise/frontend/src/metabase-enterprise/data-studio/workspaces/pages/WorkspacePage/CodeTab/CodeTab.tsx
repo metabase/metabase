@@ -1,15 +1,19 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack, Text } from "metabase/ui";
 import {
+  useGetExternalTransformsQuery,
   useLazyGetTransformQuery,
   useLazyGetWorkspaceTransformQuery,
 } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type {
+  DatabaseId,
   ExternalTransform,
   TaggedTransform,
   UnsavedTransform,
@@ -38,16 +42,18 @@ function getWorkspaceTransformItemId(
 
 type CodeTabProps = {
   activeTransformId?: number | string;
-  availableTransforms: ExternalTransform[];
+  databaseId: DatabaseId | null | undefined;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
   readOnly: boolean;
   onTransformClick: (transform: TaggedTransform | WorkspaceTransform) => void;
 };
 
+const DEFAULT_AVAILABLE_TRANFORMS: ExternalTransform[] = [];
+
 export const CodeTab = ({
   activeTransformId,
-  availableTransforms,
+  databaseId,
   workspaceId,
   workspaceTransforms,
   readOnly,
@@ -55,6 +61,14 @@ export const CodeTab = ({
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
   const { sendErrorToast } = useMetadataToasts();
+
+  const {
+    data: availableTransforms = DEFAULT_AVAILABLE_TRANFORMS,
+    error,
+    isLoading,
+  } = useGetExternalTransformsQuery(
+    databaseId ? { workspaceId, databaseId } : skipToken,
+  );
 
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const [fetchTransform] = useLazyGetTransformQuery();
@@ -181,24 +195,28 @@ export const CodeTab = ({
 
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
-        {availableTransforms.map((transform) => (
-          <TransformListItem
-            key={transform.id}
-            name={transform.name}
-            isActive={activeTransformId === transform.id}
-            isEdited={editedTransforms.has(transform.id)}
-            onClick={() => {
-              handleExternalTransformClick(transform);
-            }}
-            opacity={transform.checkout_disabled ? 0.5 : 1}
-            tooltipLabel={getCheckoutDisabledMessage(
-              transform.checkout_disabled,
-            )}
-          />
-        ))}
-        {availableTransforms.length === 0 && (
-          <EmptyState message={t`No available transforms`} />
-        )}
+
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          {availableTransforms.map((transform) => (
+            <TransformListItem
+              key={transform.id}
+              name={transform.name}
+              isActive={activeTransformId === transform.id}
+              isEdited={editedTransforms.has(transform.id)}
+              onClick={() => {
+                handleExternalTransformClick(transform);
+              }}
+              opacity={transform.checkout_disabled ? 0.5 : 1}
+              tooltipLabel={getCheckoutDisabledMessage(
+                transform.checkout_disabled,
+              )}
+            />
+          ))}
+
+          {availableTransforms.length === 0 && (
+            <EmptyState message={t`No available transforms`} />
+          )}
+        </LoadingAndErrorWrapper>
       </Stack>
     </Stack>
   );
