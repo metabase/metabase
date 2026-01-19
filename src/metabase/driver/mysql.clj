@@ -153,22 +153,10 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
-(defn- mysql-flavor?
-  "Returns true if the database is MySQL. Checks :dbms_version if available, otherwise uses connection."
-  [driver db]
-  (if-let [flavor (-> db :dbms_version :flavor)]
-    (= flavor "MySQL")
-    (if-let [conn (:connection db)]
-      (mysql-connection? driver conn)
-      ;; No :dbms_version and no :connection - use connection from db
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver db nil
-       (fn [conn] (mysql-connection? driver conn))))))
-
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql-flavor? driver db)
+       (or (mysql? db) (mysql-connection? driver (:connection db)))
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
