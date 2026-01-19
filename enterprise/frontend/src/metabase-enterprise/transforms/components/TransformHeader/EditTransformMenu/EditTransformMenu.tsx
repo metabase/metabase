@@ -60,18 +60,12 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     const checkedWorkspaceIds = new Set(
       checkoutData?.workspaces
         ?.toSorted((a, b) => {
-          if (a.existing && b.existing) {
-            return 1;
-          }
-
-          if (a.existing) {
+          if (a.existing && !b.existing) {
             return -1;
           }
-
-          if (b.existing) {
+          if (!a.existing && b.existing) {
             return 1;
           }
-
           return 0;
         })
         ?.map((item) => item?.id),
