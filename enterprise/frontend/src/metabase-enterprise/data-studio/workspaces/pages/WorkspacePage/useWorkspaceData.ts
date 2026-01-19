@@ -7,7 +7,6 @@ import {
   useGetWorkspaceQuery,
   useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformsQuery,
-  useListTransformsQuery,
 } from "metabase-enterprise/api";
 import type {
   UnsavedTransform,
@@ -26,7 +25,6 @@ export function useWorkspaceData({
   workspaceId,
   unsavedTransforms,
 }: UseWorkspaceDataParams) {
-  const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(workspaceId);
   const {
@@ -56,25 +54,6 @@ export function useWorkspaceData({
     isLoadingExternalTransforms ||
     isLoadingWorkspaceTransforms;
 
-  const databaseId = workspace?.database_id;
-
-  const dbTransforms = useMemo(
-    () =>
-      allDbTransforms.filter((t) => {
-        if (t.source_type === "python") {
-          return (
-            "source-database" in t.source &&
-            t.source["source-database"] === databaseId
-          );
-        }
-        if (t.source_type === "native") {
-          return "query" in t.source && t.source.query.database === databaseId;
-        }
-        return false;
-      }),
-    [allDbTransforms, databaseId],
-  );
-
   const allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[] =
     useMemo(
       () => [...unsavedTransforms, ...workspaceTransforms],
@@ -90,7 +69,6 @@ export function useWorkspaceData({
     refetchWorkspaceTables,
     availableTransforms,
     allTransforms,
-    dbTransforms,
     setupStatus,
     isLoading,
     isLoadingWorkspace,

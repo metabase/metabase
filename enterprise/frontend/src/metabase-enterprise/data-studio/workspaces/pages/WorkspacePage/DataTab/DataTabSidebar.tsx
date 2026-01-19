@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
+import { useListTransformsQuery } from "metabase-enterprise/api";
 import type {
+  DatabaseId,
   TableId,
-  Transform,
   WorkspaceTablesResponse,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
@@ -15,7 +17,7 @@ import { TableListItem } from "./TableListItem";
 type DataTabSidebarProps = {
   tables: WorkspaceTablesResponse;
   workspaceTransforms: WorkspaceTransformListItem[];
-  dbTransforms: Transform[];
+  databaseId?: DatabaseId | null;
   selectedTableId?: TableId | null;
   runningTransforms?: Set<string>;
   onTransformClick?: (transform: WorkspaceTransformListItem) => void;
@@ -27,7 +29,7 @@ type DataTabSidebarProps = {
 export const DataTabSidebar = ({
   tables,
   workspaceTransforms,
-  dbTransforms,
+  databaseId,
   selectedTableId,
   runningTransforms,
   onTransformClick,
@@ -36,6 +38,24 @@ export const DataTabSidebar = ({
   readOnly,
 }: DataTabSidebarProps) => {
   const { hasTransformEdits } = useWorkspace();
+  const { data: allDbTransforms = [] } = useListTransformsQuery({});
+
+  const dbTransforms = useMemo(
+    () =>
+      allDbTransforms.filter((t) => {
+        if (t.source_type === "python") {
+          return (
+            "source-database" in t.source &&
+            t.source["source-database"] === databaseId
+          );
+        }
+        if (t.source_type === "native") {
+          return "query" in t.source && t.source.query.database === databaseId;
+        }
+        return false;
+      }),
+    [allDbTransforms, databaseId],
+  );
   return (
     <Stack h="100%" gap="sm">
       <Stack

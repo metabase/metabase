@@ -114,7 +114,6 @@ function WorkspacePageContent({
     refetchWorkspaceTables,
     availableTransforms,
     allTransforms,
-    dbTransforms,
     setupStatus,
     isLoading,
     isLoadingWorkspace,
@@ -597,7 +596,7 @@ function WorkspacePageContent({
                   readOnly={isArchived || isPending}
                   tables={workspaceTables}
                   workspaceTransforms={workspaceTransforms}
-                  dbTransforms={dbTransforms}
+                  databaseId={databaseId}
                   selectedTableId={activeTable?.tableId}
                   runningTransforms={runningTransforms}
                   onTransformClick={handleTransformClick}
