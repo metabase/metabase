@@ -85,24 +85,25 @@ function ActionVizForm({
     setShowEditModal(false);
   };
 
-  const fetchInitialValues = useCallback(async () => {
-    const prefetchDashcardValues =
-      getDashboardType(dashboard.id) === "public"
-        ? PublicApi.prefetchDashcardValues
-        : ActionsApi.prefetchDashcardValues;
+  const fetchInitialValues =
+    useCallback(async (): Promise<ParametersForActionExecution> => {
+      const prefetchDashcardValues =
+        getDashboardType(dashboard.id) === "public"
+          ? PublicApi.prefetchDashcardValues
+          : ActionsApi.prefetchDashcardValues;
 
-    const canPrefetch = Object.keys(dashcardParamValues).length > 0;
+      const canPrefetch = Object.keys(dashcardParamValues).length > 0;
 
-    if (!canPrefetch) {
-      return {};
-    }
+      if (!canPrefetch) {
+        return {};
+      }
 
-    return prefetchDashcardValues({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      parameters: JSON.stringify(dashcardParamValues),
-    });
-  }, [dashboard.id, dashcard.id, dashcardParamValues]);
+      return (await prefetchDashcardValues({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+        parameters: JSON.stringify(dashcardParamValues),
+      })) as ParametersForActionExecution;
+    }, [dashboard.id, dashcard.id, dashcardParamValues]);
 
   const shouldPrefetch = isImplicitUpdateAction(action);
 

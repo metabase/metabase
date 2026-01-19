@@ -45,7 +45,10 @@ type InnerProps = {
   onUpdateSize?: () => void;
 };
 
-type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
+type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height"> & {
+  className?: string;
+  style?: CSSProperties;
+};
 
 /**
  * @deprecated HOCs are deprecated

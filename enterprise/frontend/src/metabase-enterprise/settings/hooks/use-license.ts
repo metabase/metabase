@@ -50,9 +50,10 @@ export const useLicense = (onActivated?: () => void) => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        setTokenStatus(await StoreApi.tokenStatus());
+        setTokenStatus((await StoreApi.tokenStatus()) as TokenStatus);
       } catch (e) {
-        if ((e as any).status !== 404) {
+        const error = e as { status?: number };
+        if (error.status !== 404) {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         }
       } finally {

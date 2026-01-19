@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react/*";
+import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 

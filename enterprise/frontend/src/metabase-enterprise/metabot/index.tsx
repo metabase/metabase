@@ -73,7 +73,7 @@ export function initializePlugin() {
     );
     PLUGIN_METABOT.getNewMenuItemAIExploration = getNewMenuItemAIExploration;
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
-      useLazyMetabotGenerateContentQuery;
+      useLazyMetabotGenerateContentQuery as any;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
@@ -106,7 +106,7 @@ export function initializePlugin() {
       </Route>
     );
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
-      useLazyMetabotGenerateContentQuery;
+      useLazyMetabotGenerateContentQuery as any;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
   PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;

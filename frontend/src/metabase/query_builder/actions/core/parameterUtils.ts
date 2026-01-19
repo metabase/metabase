@@ -8,7 +8,7 @@ import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
 } from "metabase-lib/v1/queries/utils/card";
-import type { Card, Parameter } from "metabase-types/api";
+import type { Card, Dashboard, Parameter } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 type BlankQueryOptions = {
@@ -60,7 +60,9 @@ async function verifyMatchingDashcardAndParameters({
   parameters: Parameter[];
 }) {
   try {
-    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    const dashboard = (await DashboardApi.get({
+      dashId: dashboardId,
+    })) as Dashboard;
     if (
       !hasMatchingParameters({
         dashboard,

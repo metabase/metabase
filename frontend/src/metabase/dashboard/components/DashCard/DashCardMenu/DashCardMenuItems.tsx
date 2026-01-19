@@ -9,7 +9,7 @@ import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/p
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
-import { Icon, Menu } from "metabase/ui";
+import { Icon, Menu, type MenuItemProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
@@ -142,11 +142,12 @@ export const DashCardMenuItems = ({
   ]);
 
   return menuItems.map((item) => {
-    const { iconName, key, ...rest } = item;
+    const { iconName, key, color, ...rest } = item;
 
     return (
       <Menu.Item
         fw="bold"
+        color={color as MenuItemProps["color"]}
         {...rest}
         key={key}
         leftSection={<Icon name={iconName} aria-hidden />}
