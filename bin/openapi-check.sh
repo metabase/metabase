@@ -31,12 +31,9 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 echo ""
                 echo "Auto-committing changes..."
 
-                # Get the branch name from environment variable or current branch
-                BRANCH="${PR_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
-
-                if [[ "$BRANCH" == "HEAD" ]]; then
-                        echo "Error: Cannot push from detached HEAD state"
-                        echo "Please ensure PR_BRANCH environment variable is set or workflow checks out the branch"
+                # Require PR_BRANCH to be set for auto-commit
+                if [[ -z "${PR_BRANCH:-}" ]]; then
+                        echo "Error: PR_BRANCH environment variable must be set for auto-commit"
                         exit 1
                 fi
 
@@ -45,8 +42,8 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 cp "$OPENAPI_SPEC" "${OPENAPI_SPEC}.tmp"
 
                 # Checkout the actual PR branch (in case we're on a merge commit)
-                echo "Checking out branch: $BRANCH"
-                git checkout -f "$BRANCH"
+                echo "Checking out branch: $PR_BRANCH"
+                git checkout -f "$PR_BRANCH"
 
                 # Restore the generated spec from the merge commit
                 mv -f "${OPENAPI_SPEC}.tmp" "$OPENAPI_SPEC"
@@ -64,11 +61,11 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 fi
 
                 git commit -m "$COMMIT_MSG"
-                if ! git push origin "$BRANCH"; then
-                        echo "Error: Failed to push OpenAPI schema update to $BRANCH."
+                if ! git push origin "$PR_BRANCH"; then
+                        echo "Error: Failed to push OpenAPI schema update to $PR_BRANCH."
                         exit 1
                 fi
-                echo "OpenAPI schema updated and pushed to $BRANCH."
+                echo "OpenAPI schema updated and pushed to $PR_BRANCH."
                 exit 0
         fi
 
