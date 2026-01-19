@@ -41,4 +41,5 @@ jobs:
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           BASE_SHA: ${{ env.LATEST_BASE_SHA }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_SHA: ${{ github.sha }}
         run: ./bin/openapi-check.sh

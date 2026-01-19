@@ -7,6 +7,10 @@ AUTO_COMMIT="${AUTO_COMMIT:-false}"
 
 # Check that $OPENAPI_SPEC matches the current Malli schema definitions
 
+if [[ -n "${GITHUB_SHA:-}" ]]; then
+        echo "Running OpenAPI check on commit: $GITHUB_SHA"
+fi
+
 # Generate the current OpenAPI spec from Malli schemas using write-openapi-spec-to-file!
 # This creates $OPENAPI_SPEC directly
 # Using the generate-openapi-spec command from metabase.cmd.core
