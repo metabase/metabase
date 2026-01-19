@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack, Text } from "metabase/ui";
 import {
   useLazyGetTransformQuery,
@@ -53,6 +54,7 @@ export const CodeTab = ({
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
+  const { sendErrorToast } = useMetadataToasts();
 
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const [fetchTransform] = useLazyGetTransformQuery();
@@ -77,12 +79,14 @@ export const CodeTab = ({
         return;
       }
 
-      const { data: transform } = await fetchTransform(
+      const { data: transform, error } = await fetchTransform(
         externalTransform.id,
         true,
       );
 
-      if (transform) {
+      if (error) {
+        sendErrorToast(t`Failed to fetch transform`);
+      } else if (transform) {
         const taggedTransform: TaggedTransform = {
           ...transform,
           type: "transform",
@@ -90,7 +94,7 @@ export const CodeTab = ({
         handleFullTransformClick(taggedTransform);
       }
     },
-    [fetchTransform, handleFullTransformClick],
+    [fetchTransform, handleFullTransformClick, sendErrorToast],
   );
 
   const handleWorkspaceTransformItemClick = useCallback(
@@ -104,7 +108,7 @@ export const CodeTab = ({
         return;
       }
 
-      const { data: transform } = await fetchWorkspaceTransform(
+      const { data: transform, error } = await fetchWorkspaceTransform(
         {
           workspaceId,
           transformId: item.ref_id,
@@ -112,11 +116,18 @@ export const CodeTab = ({
         true,
       );
 
-      if (transform) {
+      if (error) {
+        sendErrorToast(t`Failed to fetch transform`);
+      } else if (transform) {
         handleFullTransformClick(transform);
       }
     },
-    [fetchWorkspaceTransform, workspaceId, handleFullTransformClick],
+    [
+      fetchWorkspaceTransform,
+      workspaceId,
+      handleFullTransformClick,
+      sendErrorToast,
+    ],
   );
 
   return (
