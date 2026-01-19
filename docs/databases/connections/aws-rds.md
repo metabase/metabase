@@ -25,7 +25,7 @@ Here's how to get connection information for databases on Amazon's RDS:
 
 {% include plans-blockquote.html feature="IAM authentication" self-hosted-only="true" %}
 
-You can connect to RDS PostgreSQL and MySQL instances and Aurora Postgres/MYSQL using AWS IAM authentication instead of a password.
+You can connect to RDS PostgreSQL and MySQL instances and Aurora Postgres/MySQL using AWS IAM authentication instead of a password.
 
 To set up IAM authentication:
 
