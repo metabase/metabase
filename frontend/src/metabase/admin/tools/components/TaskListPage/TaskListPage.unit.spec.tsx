@@ -17,12 +17,13 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
+import * as Urls from "metabase/lib/urls";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockLocation } from "metabase-types/store/mocks";
 
-import { TasksApp } from "./TasksApp";
+import { TaskListPage } from "./TaskListPage";
 
 interface SetupOpts {
   error?: boolean;
@@ -30,7 +31,7 @@ interface SetupOpts {
   tasksResponse?: ListTasksResponse;
 }
 
-const PATHNAME = "/admin/tools/tasks";
+const PATHNAME = Urls.adminToolsTasksList();
 
 const setup = ({
   error,
@@ -48,13 +49,16 @@ const setup = ({
     setupTasksEndpoints(tasksResponse, { delay: 10 });
   }
 
-  return renderWithProviders(<Route path={PATHNAME} component={TasksApp} />, {
-    initialRoute: `${location.pathname}${location.search}`,
-    withRouter: true,
-  });
+  return renderWithProviders(
+    <Route path={PATHNAME} component={TaskListPage} />,
+    {
+      initialRoute: `${location.pathname}${location.search}`,
+      withRouter: true,
+    },
+  );
 };
 
-describe("TasksApp", () => {
+describe("TaskListPage", () => {
   beforeEach(() => {
     jest.useFakeTimers({ advanceTimers: true });
   });
