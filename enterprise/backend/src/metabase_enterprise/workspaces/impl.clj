@@ -14,13 +14,10 @@
 
 (defn- query-ungranted-external-inputs
   "Query for external inputs in a workspace that haven't been granted access yet.
-   External inputs are tables that are not shadowed by any output.
-   Returns seq of WorkspaceInput records where access_granted is false."
+   External inputs are tables that are not shadowed by any output tables.
+   Returns seq of WorkspaceInput records where the table is active, and access_granted is false."
   [workspace-id]
-  ;; It would be nice if we could optimize this join to use table_id.
-  ;; In the case where the table doesn't exist yet (i.e. table_id is nil) it's OK to skip it - we can't grant any
-  ;; permissions until it exists.
-  ;; Currently, though, we fail if any of the global input tables don't yet exist. Maybe we're happy changing that.
+  ;; It would be nice if we could optimize this join to use table_id, since we ignore tables that don't exist anyway.
   (t2/select :model/WorkspaceInput
              :workspace_id workspace-id
              {:where [:and
