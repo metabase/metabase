@@ -188,10 +188,12 @@ export interface VisualizationProps {
   titleMenuItems?: React.ReactNode;
 
   /**
-   * Used in dashboards to open visualizer
+   * used by dashcards to invoke visualizer or update visualizer settings
    */
-
-  onEditVisualization: (initialState?: Partial<VisualizerUiState>) => void;
+  onEditVisualization?: (initialState?: Partial<VisualizerUiState>) => void;
+  onUpdateVisualizerVizSettings?: (
+    settings: Partial<VisualizationSettings>,
+  ) => void;
 }
 
 export type VisualizationPassThroughProps = {

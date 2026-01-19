@@ -45,9 +45,8 @@ export const DataPointsVisiblePopover = ({
       pos="absolute"
       right={0}
       left={0}
-      py="xl"
-      top={isDashboard ? 0 : undefined}
-      bottom={isDashboard ? 0 : undefined}
+      top={isDashboard ? 32 : undefined}
+      bottom={isDashboard ? 32 : undefined}
     >
       {isDashboard ? (
         <HoverCard>

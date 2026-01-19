@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { getIn } from "icepick";
+import { getIn, merge } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
@@ -7,7 +7,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { addParameter, duplicateCard } from "metabase/dashboard/actions";
+import {
+  addParameter,
+  duplicateCard,
+  replaceCardWithVisualization,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -311,27 +316,7 @@ function DashCardInner({
     dispatch(duplicateCard({ id: dashcard.id }));
   }, [dashcard.id, dispatch]);
 
-  const onEditVisualizationClick = useCallback(
-    (uiState: Partial<VisualizerUiState> = {}) => {
-      let initialState: VisualizerVizDefinitionWithColumns;
-
-      if (isVisualizerDashboardCard(dashcard)) {
-        initialState = getInitialStateForVisualizerCard(dashcard, datasets);
-      } else if (series.length > 1) {
-        initialState = getInitialStateForMultipleSeries(series);
-      } else {
-        initialState = getInitialStateForCardDataSource(
-          series[0].card,
-          series[0],
-        );
-      }
-
-      onEditVisualization(dashcard, initialState, uiState);
-    },
-    [dashcard, series, onEditVisualization, datasets],
-  );
-
-  const getVisualizerInitialState = () => {
+  const getVisualizerInitialState = useCallback(() => {
     if (isVisualizerDashboardCard(dashcard)) {
       return getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
@@ -339,7 +324,35 @@ function DashCardInner({
     } else {
       return getInitialStateForCardDataSource(series[0].card, series[0]);
     }
-  };
+  }, [dashcard, datasets, series]);
+
+  const onEditVisualizationClick = useCallback(
+    (uiState: Partial<VisualizerUiState> = {}) => {
+      const initialState = getVisualizerInitialState();
+
+      onEditVisualization(dashcard, initialState, uiState);
+    },
+    [dashcard, onEditVisualization, getVisualizerInitialState],
+  );
+
+  const onUpdateVisualizerVizSettings = useCallback(
+    async (_settings: VisualizationSettings) => {
+      const initialState = getVisualizerInitialState();
+
+      await dispatch(
+        replaceCardWithVisualization({
+          dashcardId: dashcard.id,
+          visualization: {
+            columnValuesMapping: initialState.columnValuesMapping,
+            display: initialState.display,
+            settings: merge(initialState.settings, _settings),
+          },
+        }),
+      );
+      await dispatch(updateDashboardAndCards());
+    },
+    [getVisualizerInitialState, dashcard, dispatch],
+  );
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -431,7 +444,7 @@ function DashCardInner({
           }
           onTogglePreviewing={handlePreviewToggle}
           onEditVisualization={onEditVisualizationClick}
-          getVisualizerInitialState={getVisualizerInitialState}
+          onUpdateVisualizerVizSettings={onUpdateVisualizerVizSettings}
         />
       </Box>
     </ErrorBoundary>

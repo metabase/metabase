@@ -3,11 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
-import {
-  replaceCardWithVisualization,
-  setEditingDashboard,
-  updateDashboardAndCards,
-} from "metabase/dashboard/actions";
+import { setEditingDashboard } from "metabase/dashboard/actions";
 import { isWebkit } from "metabase/lib/browser";
 import { setUIControls } from "metabase/query_builder/actions";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
@@ -41,10 +37,6 @@ function _CartesianChart(props: VisualizationProps) {
 
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
-  // const dashboardCtx = useContext(DashboardContext);
-
-  // console.log(dashboardCtx);
-
   const {
     showAllLegendItems,
     rawSeries,
@@ -71,7 +63,7 @@ function _CartesianChart(props: VisualizationProps) {
     onUpdateVisualizationSettings,
     dispatch,
     onEditVisualization,
-    getVisualizerInitialState,
+    onUpdateVisualizerVizSettings,
   } = props;
 
   const settings = useMemo(() => {
@@ -164,21 +156,8 @@ function _CartesianChart(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   const handleAutoChange = async () => {
-    if (isDashboard && props.dashcard) {
-      const visualizerInitialState = getVisualizerInitialState();
-      visualizerInitialState.settings["graph.y_axis.auto_range"] = true;
-
-      await dispatch(
-        replaceCardWithVisualization({
-          dashcardId: props.dashcard?.id,
-          visualization: {
-            columnValuesMapping: visualizerInitialState.columnValuesMapping,
-            display: visualizerInitialState.display,
-            settings: visualizerInitialState.settings,
-          },
-        }),
-      );
-      await dispatch(updateDashboardAndCards());
+    if (isDashboard && onUpdateVisualizerVizSettings) {
+      onUpdateVisualizerVizSettings({ "graph.y_axis.auto_range": true });
     } else {
       onUpdateVisualizationSettings({
         ...settings,
@@ -188,7 +167,7 @@ function _CartesianChart(props: VisualizationProps) {
   };
 
   const handleOpenSettings = () => {
-    if (isDashboard) {
+    if (isDashboard && props.dashboard && onEditVisualization) {
       dispatch(setEditingDashboard(props.dashboard));
       onEditVisualization({ isVizSettingsSidebarOpen: true });
     } else {

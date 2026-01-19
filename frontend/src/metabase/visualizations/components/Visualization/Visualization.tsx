@@ -58,6 +58,7 @@ import {
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import {
   formatVisualizerClickObject,
   isVisualizerDashboardCard,
@@ -144,6 +145,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
@@ -178,6 +180,10 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  onEditVisualization?: (initialState?: Partial<VisualizerUiState>) => void;
+  onUpdateVisualizerVizSettings?: (
+    settings: Partial<VisualizationSettings>,
+  ) => void;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -661,6 +667,7 @@ class Visualization extends PureComponent<
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      isVisualizer,
       isDownloadingToImage,
       metadata,
       mode,
@@ -918,7 +925,7 @@ class Visualization extends PureComponent<
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
-                    isVisualizer={this.props.isVisualizer}
+                    isVisualizer={!!isVisualizer}
                     isVisualizerCard={isVisualizerDashCard}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
@@ -973,8 +980,8 @@ class Visualization extends PureComponent<
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
                     onEditVisualization={this.props.onEditVisualization}
-                    getVisualizerInitialState={
-                      this.props.getVisualizerInitialState
+                    onUpdateVisualizerVizSettings={
+                      this.props.onUpdateVisualizerVizSettings
                     }
                   />
                 </VisualizationRenderedWrapper>

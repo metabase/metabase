@@ -217,7 +217,8 @@ interface DashCardVisualizationProps {
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onTogglePreviewing: () => void;
 
-  onEditVisualization?: () => void;
+  onEditVisualization: () => void;
+  onUpdateVisualizerVizSettings: (settings: VisualizationSettings) => void;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -247,7 +248,7 @@ export function DashCardVisualization({
   showClickBehaviorSidebar,
   onUpdateVisualizationSettings,
   onEditVisualization,
-  getVisualizerInitialState,
+  onUpdateVisualizerVizSettings,
 }: DashCardVisualizationProps) {
   const {
     cardTitled,
@@ -627,7 +628,7 @@ export function DashCardVisualization({
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
           onEditVisualization={onEditVisualization}
-          getVisualizerInitialState={getVisualizerInitialState}
+          onUpdateVisualizerVizSettings={onUpdateVisualizerVizSettings}
         />
       </EmbeddingEntityContextProvider>
     </div>
