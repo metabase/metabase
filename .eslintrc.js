@@ -8,7 +8,13 @@ const path = require("path");
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
-const plugins = ["react", "no-only-tests", "ttag", "i18next"];
+const plugins = [
+  "react",
+  "no-only-tests",
+  "ttag",
+  "i18next",
+  "metabase-custom",
+];
 if (shouldLintCssModules) {
   plugins.push("postcss-modules");
 }
@@ -176,11 +182,11 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
-        "jtag-missing-key": "error",
-        "no-unconditional-metabase-links-render": "error",
-        "no-color-literals": "error",
-        "no-literal-metabase-strings": "error",
-        "no-oss-reinitialize-import": "error",
+        "metabase-custom/jtag-missing-key": "error",
+        "metabase-custom/no-unconditional-metabase-links-render": "error",
+        "metabase-custom/no-color-literals": "error",
+        "metabase-custom/no-literal-metabase-strings": "error",
+        "metabase-custom/no-oss-reinitialize-import": "error",
         "depend/ban-dependencies": [
           "error",
           {
@@ -214,9 +220,9 @@ module.exports = {
         "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
-        "no-color-literals": "off",
-        "no-unconditional-metabase-links-render": "off",
-        "no-literal-metabase-strings": "off",
+        "metabase-custom/no-color-literals": "off",
+        "metabase-custom/no-unconditional-metabase-links-render": "off",
+        "metabase-custom/no-literal-metabase-strings": "off",
       },
     },
     {
