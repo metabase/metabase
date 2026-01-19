@@ -1,5 +1,8 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  findRequests,
   setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -9,6 +12,11 @@ import {
   setupNotificationChannelsEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import {
+  setupCreateNotificationEndpoint,
+  setupListNotificationEndpoints,
+} from "__support__/server-mocks/notification";
 import {
   mockGetBoundingClientRect,
   screen,
@@ -55,6 +63,8 @@ const TEST_DATASET = createMockDataset({
 
 const TEST_CARD_ID: CardId = 1 as const;
 
+const USER_ID = 999;
+
 interface SetupOpts {
   title?: string | boolean;
   withChartTypeSelector?: boolean;
@@ -64,6 +74,7 @@ interface SetupOpts {
   canManageSubscriptions?: boolean;
   isSuperuser?: boolean;
   isModel?: boolean;
+  willOpenModal?: boolean;
   collectionType?: CollectionType;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -79,6 +90,7 @@ const setup = async ({
   canManageSubscriptions = true,
   isSuperuser = true,
   isModel = false,
+  willOpenModal,
   collectionType,
   tokenFeatures,
   enterprisePlugins,
@@ -89,6 +101,7 @@ const setup = async ({
   } as any);
 
   const user = createMockUser({
+    id: USER_ID,
     is_superuser: isSuperuser,
   });
 
@@ -116,7 +129,6 @@ const setup = async ({
     id: COLLECTION_ID,
     location: "/",
     name: "Test collection",
-    personal_owner_id: 100,
     type: collectionType,
   });
 
@@ -144,6 +156,12 @@ const setup = async ({
   setupCollectionByIdEndpoint({
     collections: [TEST_COLLECTION],
   });
+
+  if (willOpenModal) {
+    setupWebhookChannelsEndpoint();
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+    setupCreateNotificationEndpoint();
+  }
 
   renderWithSDKProviders(
     <StaticQuestion
@@ -437,4 +455,65 @@ describe("StaticQuestion", () => {
       expect(screen.getByTestId("chart-type-selector-button")).toBeVisible();
     });
   });
+
+  describe("alert modal", () => {
+    it("should not show email selector on the SDK and use current logged in user as the recipient", async () => {
+      await setup({
+        withAlerts: true,
+        isEmailSetup: true,
+        canManageSubscriptions: true,
+        isModel: false,
+        enterprisePlugins: ["sdk_notifications"],
+        willOpenModal: true,
+      });
+
+      expect(
+        within(screen.getByRole("gridcell")).getByText("Test Row"),
+      ).toBeVisible();
+      await userEvent.click(screen.getByRole("button", { name: "Alerts" }));
+
+      const withinModal = within(getModal());
+      expect(
+        withinModal.getByRole("heading", { name: "New alert" }),
+      ).toBeVisible();
+      expect(
+        withinModal.getByText("What do you want to be alerted about?"),
+      ).toBeVisible();
+      expect(
+        withinModal.getByText("When do you want to check this?"),
+      ).toBeVisible();
+      // Email selector is within this section, checking only the header is fine
+      expect(
+        withinModal.queryByText("Where do you want to send the results?"),
+      ).not.toBeInTheDocument();
+      expect(withinModal.getByText("More options")).toBeVisible();
+      await userEvent.click(withinModal.getByRole("button", { name: "Done" }));
+
+      const createNotificationRequest = (await findRequests("POST")).find(
+        (postRequest) =>
+          postRequest.url === "http://localhost/api/notification",
+      );
+      // Checks that we're using the current logged in user as the sole recipient
+      expect(createNotificationRequest?.body).toMatchObject({
+        handlers: [
+          {
+            channel_type: "channel/email",
+            recipients: [
+              {
+                details: null,
+                type: "notification-recipient/user",
+                user_id: USER_ID,
+              },
+            ],
+          },
+        ],
+      });
+      // So that when we assert this value, we know we won't accidentally match the default mock ID
+      expect(USER_ID).not.toBe(1);
+    });
+  });
 });
+
+function getModal() {
+  return screen.getByRole("dialog");
+}
