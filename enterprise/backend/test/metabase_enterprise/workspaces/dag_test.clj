@@ -121,7 +121,7 @@
             {:check-outs   #{:x3 :m6 :m10 :m13}
              :dependencies (dag-abstract/expand-shorthand example-graph)})))))
 
- ;;;; Card dependency detection tests
+;;;; Card dependency detection tests
 
 (deftest unsupported-dependency-no-transforms-test
   (testing "empty input returns nil"
