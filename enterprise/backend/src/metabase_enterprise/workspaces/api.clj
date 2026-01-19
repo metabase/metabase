@@ -186,7 +186,7 @@
    _query-params]
   (let [workspace        (api/check-404 (t2/select-one :model/Workspace :id id))
         ;; Trigger creation of the Workspace*External entries
-        _                (ws.impl/get-or-calculate-graph workspace)
+        _                (ws.impl/get-or-calculate-graph! workspace)
         order-by         {:order-by [:db_id :global_schema :global_table]}
         outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
@@ -557,23 +557,22 @@
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-        db-id     (:database_id workspace)
-        driver    (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
-        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
+  (let [workspace      (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+        db-id          (:database_id workspace)
+        driver         (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
+        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph! workspace)
         ;; Batch fetch all transforms and build table-id lookup map
         transforms-map (fetch-transforms-for-graph entities)
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
         table-id-map   (table-ids-by-target db-id driver all-transforms)
-        ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
-        ;;      It could be cheaper to build it as we go.
-        inverted (reduce
-                  (fn [inv [c parents]]
-                    (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
-                  {}
-                  dependencies)
-        dep-count #(frequencies (map node-type (get inverted %)))]
+        ;; We may want to cache this inverted graph in the database JSON to avoid recalculating it each time.
+        inverted       (reduce
+                        (fn [inv [c parents]]
+                          (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
+                        {}
+                        dependencies)
+        dep-count      #(frequencies (map node-type (get inverted %)))]
 
     {:nodes (concat (for [i inputs]
                       {:type             :input-table
@@ -608,7 +607,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        graph     (ws.impl/get-or-calculate-graph workspace)]
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
@@ -792,14 +791,15 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    ;; If source or target changed, mark as stale in the same update
-    (let [source-or-target-changed? (or (:source body) (:target body))
-          update-body (cond-> body
-                        source-or-target-changed? (assoc :analysis_stale true))]
-      (t2/update! :model/WorkspaceTransform tx-id update-body)
-      ;; Mark workspace as stale too if source/target changed
+    (let [source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform tx-id body)
+      ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
-        (ws.impl/mark-workspace-stale! ws-id)))
+        (ws.impl/increment-analysis-version! ws-id tx-id)
+        ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
+        ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
+        ;; serialize the fields in the body, but the increment requires using an SQL expression.
+        (ws.impl/increment-graph-version! ws-id)))
     (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
@@ -807,7 +807,8 @@
    For provisional transforms we will skip even creating it in the first place."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at [:now]})))
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is leaving the graph
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
@@ -815,8 +816,11 @@
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
                                    {:ref_id tx-id :workspace_id id}
-                                   {:archived_at nil, :analysis_stale true})))
-  (ws.impl/mark-workspace-stale! id)
+                                   {:archived_at nil})))
+  ;; Increment both versions - transform re-enters graph and needs re-analysis
+  (ws.impl/increment-analysis-version! id tx-id)
+  ;; We could merge this with the initial WorkspaceTransform update to save a statement, but it adds complexity.
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil
@@ -824,8 +828,8 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
-  ;; Mark workspace as stale since the graph has changed
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is potentially leaving the graph, or reverting to the global definition.
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
@@ -78,9 +79,9 @@
                                                               :name     "output_table"}})
               ws (t2/select-one :model/Workspace (:id ws))]
           ;; Trigger analysis again to test idempotency
-          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.impl/increment-graph-version! (:id ws))
           (ws.tu/analyze-workspace! (:id ws))
-          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.impl/increment-graph-version! (:id ws))
           (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
