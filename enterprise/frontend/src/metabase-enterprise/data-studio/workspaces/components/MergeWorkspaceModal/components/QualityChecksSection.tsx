@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Collapse, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Collapse, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
 
@@ -55,7 +55,7 @@ export const QualityChecksSection = ({
     <Stack gap="sm">
       <Text fw="bold">{t`Quality Checks`}</Text>
 
-      <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      <LoadingAndErrorWrapper error={error}>
         <Stack gap="sm">
           {CHECK_CATEGORIES.map((category) => {
             const categoryProblems = grouped[category];
@@ -75,31 +75,36 @@ export const QualityChecksSection = ({
                 >
                   <Text>{getCheckTitle(category)}</Text>
 
-                  <Group gap="xs">
-                    {checkStatus.status === "passed" && (
-                      <Icon name="check" size={14} c="success" />
-                    )}
+                  {isLoading ? (
+                    <Loader size="xs" aria-label={t`Loading`} />
+                  ) : (
+                    <Group gap="xs">
+                      {checkStatus.status === "passed" && (
+                        <Icon name="check" size={14} c="success" />
+                      )}
 
-                    <Text
-                      c={
-                        checkStatus.status === "passed"
-                          ? "success"
-                          : checkStatus.problems.some(
-                                (p) => p.severity === "error",
-                              )
-                            ? "error"
-                            : "warning"
-                      }
-                    >
-                      {checkStatus.status === "passed"
-                        ? category === "unused-outputs" && checkStatus.count > 0
-                          ? t`${checkStatus.count} info`
-                          : t`Passed`
-                        : checkStatus.count === 1
-                          ? t`Failed`
-                          : t`${checkStatus.count} issues`}
-                    </Text>
-                  </Group>
+                      <Text
+                        c={
+                          checkStatus.status === "passed"
+                            ? "success"
+                            : checkStatus.problems.some(
+                                  (p) => p.severity === "error",
+                                )
+                              ? "error"
+                              : "warning"
+                        }
+                      >
+                        {checkStatus.status === "passed"
+                          ? category === "unused-outputs" &&
+                            checkStatus.count > 0
+                            ? t`${checkStatus.count} info`
+                            : t`Passed`
+                          : checkStatus.count === 1
+                            ? t`Failed`
+                            : t`${checkStatus.count} issues`}
+                      </Text>
+                    </Group>
+                  )}
                 </Group>
                 {hasProblems && (
                   <Collapse in={isExpanded}>

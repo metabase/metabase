@@ -1,5 +1,10 @@
 import { setupWorkspaceProblemsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import type { WorkspaceId, WorkspaceProblem } from "metabase-types/api";
 import { createMockWorkspaceProblem } from "metabase-types/api/mocks";
 
@@ -8,11 +13,12 @@ import { QualityChecksSection } from "./QualityChecksSection";
 const MOCK_WORKSPACE_ID: WorkspaceId = 1;
 
 describe("QualityChecksSection", () => {
-  it("should render all check categories", () => {
+  it("should render all check categories", async () => {
     setupWorkspaceProblemsEndpoint(MOCK_WORKSPACE_ID, []);
     renderWithProviders(
       <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
     );
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("External dependencies")).toBeInTheDocument();
     expect(screen.getByText("Internal dependencies")).toBeInTheDocument();
@@ -49,6 +55,7 @@ describe("QualityChecksSection", () => {
     renderWithProviders(
       <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
     );
+    await waitForLoaderToBeRemoved();
 
     await waitFor(() => {
       const passedTexts = screen.getAllByText("Passed");
@@ -61,6 +68,7 @@ describe("QualityChecksSection", () => {
     renderWithProviders(
       <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
     );
+    await waitForLoaderToBeRemoved();
 
     await waitFor(() => {
       const checkIcons = screen.getAllByLabelText("check icon");
@@ -83,6 +91,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         expect(screen.getByText("Failed")).toBeInTheDocument();
@@ -109,6 +118,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         expect(screen.getByText("2 issues")).toBeInTheDocument();
@@ -131,6 +141,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         expect(screen.getByText("Failed")).toBeInTheDocument();
@@ -153,6 +164,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         expect(screen.getByText("Failed")).toBeInTheDocument();
@@ -173,6 +185,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         expect(screen.getByText("Failed")).toBeInTheDocument();
@@ -207,6 +220,7 @@ describe("QualityChecksSection", () => {
       renderWithProviders(
         <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
       );
+      await waitForLoaderToBeRemoved();
 
       await waitFor(() => {
         // There should be multiple "Failed" texts (external dependencies and structural issues)
