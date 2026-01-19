@@ -17,6 +17,7 @@ export function MetabotDataStudioSidebar() {
         preventRetryMessage: true,
         preventClose: true,
         hideSuggestedPrompts: true,
+        profileOverride: "transforms_codegen",
         emptyText: t`Let's transform your data together!`,
         suggestionModels: ["dataset", "transform", "table", "database"],
       }}
