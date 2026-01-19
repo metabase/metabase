@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -55,20 +54,40 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         ?.filter((item) => item.database_id === sourceDatabaseId)
         ?.map((item) => item.id) ?? [];
 
-    // Workspaces which already include this transform.
-    const checkedWorkspaceIds =
-      checkoutData?.workspaces?.map((item) => item?.id) ?? [];
+    const workspacesMap = new Map(workspaces.map((w) => [w.id, w]));
 
-    return checkedWorkspaceIds
-      .concat(_.difference(allMatchingWorkspaceIds, checkedWorkspaceIds))
+    // Workspaces which already include this transform.
+    const checkedWorkspaceIds = new Set(
+      checkoutData?.workspaces
+        ?.toSorted((a, b) => {
+          if (a.existing && b.existing) {
+            return 1;
+          }
+
+          if (a.existing) {
+            return -1;
+          }
+
+          if (b.existing) {
+            return 1;
+          }
+
+          return 0;
+        })
+        ?.map((item) => item?.id),
+    );
+
+    return Array.from(
+      new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
+    )
       .map((id) => {
-        const workspace = workspaces.find((ws) => ws.id === id);
+        const workspace = workspacesMap.get(id);
         if (!workspace) {
           return null;
         }
         return {
           id,
-          isChecked: checkedWorkspaceIds.includes(id),
+          isChecked: checkedWorkspaceIds.has(id),
           name: workspace.name,
         };
       })
