@@ -26,6 +26,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -88,16 +89,13 @@
                                       rff))
           (qp/process-query (update query :info merge info) rff))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -123,10 +121,6 @@
     json-key
     (keyword json-key)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
@@ -149,6 +143,7 @@
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]]]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -212,16 +207,13 @@
       (cond-> compiled
         pretty (update :query prettify)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
    {:keys [database] :as query} :- [:map
                                     [:database ms/PositiveInt]]]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
