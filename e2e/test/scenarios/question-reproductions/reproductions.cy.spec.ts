@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -1456,20 +1456,37 @@ describe("issue 66210", () => {
     cy.signInAsAdmin();
 
     H.getMetadataProvider().then((provider) => {
-      H.createQuestion({
+      H.createTestQuestion({
         name: METRIC_NAME,
-        query: createTestJsQuery(provider, {
-          source: { type: "table", id: ORDERS_ID },
-          aggregation: [["count"]],
-        }),
         type: "metric",
+        dataset_query: createTestJsQuery(provider, {
+          databaseId: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: {
+                type: "table",
+                id: ORDERS_ID,
+              },
+              aggregations: [
+                {
+                  name: "Count",
+                  value: {
+                    type: "operator",
+                    operator: "count",
+                    args: [],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
       });
     });
 
     cy.visit("/");
   });
 
-  it.only("should not allow you to join on metrics", () => {
+  it("should not allow you to join on metrics", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
