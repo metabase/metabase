@@ -117,6 +117,7 @@
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform
+    :model/WorkspaceGraph
     :model/WorkspaceOutput
     :model/WorkspaceOutputExternal
     :model/WorkspaceTransform})

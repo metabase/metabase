@@ -24,7 +24,7 @@
                          target
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
-                 (nil? (:schema target))
+                 (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
                  (assoc :schema (driver.sql/default-schema driver)))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
