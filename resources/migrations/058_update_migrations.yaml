@@ -5088,6 +5088,14 @@ databaseChangeLog:
         - dropIndex:
             tableName: workspace_graph
             indexName: idx_workspace_graph_workspace_id
+      rollback:
+        - createIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_id
+            unique: true
+            columns:
+              - column:
+                  name: workspace_id
 
   - changeSet:
       id: v58.2026-01-12T14:00:21
@@ -5109,7 +5117,7 @@ databaseChangeLog:
             indexName: idx_workspace_graph_workspace_version
 
   - changeSet:
-      id: v58.2026-01-12T14:00:21b
+      id: v58.2026-01-12T14:00:22
       author: christruter
       comment: Recreate FK constraint on workspace_graph.workspace_id
       changes:
@@ -5122,7 +5130,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v58.2026-01-12T14:00:22
+      id: v58.2026-01-12T14:00:23
       author: christruter
       comment: Drop old unique constraint on workspace_input (workspace_id, ref_id, db_id, schema, table)
       changes:
@@ -5136,7 +5144,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_transform_table
 
   - changeSet:
-      id: v58.2026-01-12T14:00:23
+      id: v58.2026-01-12T14:00:24
       author: christruter
       comment: Add unique constraint on workspace_input including transform_version
       changes:
@@ -5150,7 +5158,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_versioned
 
   - changeSet:
-      id: v58.2026-01-12T14:00:24
+      id: v58.2026-01-12T14:00:25
       author: christruter
       comment: Drop old unique constraint on workspace_output (workspace_id, ref_id)
       changes:
@@ -5164,7 +5172,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_workspace_ref
 
   - changeSet:
-      id: v58.2026-01-12T14:00:25
+      id: v58.2026-01-12T14:00:26
       author: christruter
       comment: Add unique constraint on workspace_output including transform_version
       changes:
@@ -5178,7 +5186,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_versioned
 
   - changeSet:
-      id: v58.2026-01-12T14:00:26
+      id: v58.2026-01-12T14:00:27
       author: christruter
       comment: Drop old unique constraint on workspace_input_external
       changes:
@@ -5192,7 +5200,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_external_logical_table
 
   - changeSet:
-      id: v58.2026-01-12T14:00:27
+      id: v58.2026-01-12T14:00:28
       author: christruter
       comment: Add unique constraint on workspace_input_external including graph_version
       changes:
@@ -5206,7 +5214,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_external_versioned
 
   - changeSet:
-      id: v58.2026-01-12T14:00:28
+      id: v58.2026-01-12T14:00:29
       author: christruter
       comment: Drop old unique constraint on workspace_output_external
       changes:
@@ -5220,7 +5228,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_external_workspace_transform
 
   - changeSet:
-      id: v58.2026-01-12T14:00:29
+      id: v58.2026-01-12T14:00:30
       author: christruter
       comment: Add unique constraint on workspace_output_external including graph_version
       changes:
@@ -5235,7 +5243,7 @@ databaseChangeLog:
 
   # Drop legacy analysis_stale columns (replaced by version comparison)
   - changeSet:
-      id: v58.2026-01-12T14:00:30
+      id: v58.2026-01-12T14:00:31
       author: christruter
       comment: Drop analysis_stale column from workspace (replaced by version comparison)
       changes:
@@ -5255,7 +5263,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v58.2026-01-12T14:00:31
+      id: v58.2026-01-12T14:00:32
       author: christruter
       comment: Drop analysis_stale column from workspace_transform (replaced by version comparison)
       changes:
