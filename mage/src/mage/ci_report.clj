@@ -58,18 +58,57 @@
                         "--json" "name,state,link")]
     (json/parse-string result true)))
 
+(defn- find-test-report-start
+  "Find the line index where the test report section starts.
+   Tries multiple markers for robustness against format changes."
+  [lines]
+  (or
+   ;; Primary: 📚 Test Report header from trunk-analytics-cli
+   (->> lines
+        (map-indexed vector)
+        (filter (fn [[_ line]] (str/includes? line "📚")))
+        first
+        first)
+   ;; Fallback 1: Test summary line pattern (Total: X Pass: Y Fail: Z)
+   (->> lines
+        (map-indexed vector)
+        (filter (fn [[_ line]] (re-find #"Total:\s*\d+\s+Pass:" line)))
+        first
+        first)
+   ;; Fallback 2: Trunk.io links (appear in test failure reports)
+   (->> lines
+        (map-indexed vector)
+        (filter (fn [[_ line]] (str/includes? line "trunk.io")))
+        first
+        first)))
+
+(defn- extract-test-report-section
+  "Extract the test report section from logs.
+   For jobs with verbose cleanup output, the test report may be buried
+   far from the end of the logs."
+  [logs]
+  (let [lines (str/split-lines logs)
+        report-idx (find-test-report-start lines)]
+    (if report-idx
+      ;; Take 200 lines starting from the marker (report is typically <50 lines)
+      (->> lines
+           (drop report-idx)
+           (take 200)
+           (str/join "\n"))
+      ;; No marker found - fall back to last 2000 lines
+      (->> lines
+           (take-last 2000)
+           (str/join "\n")))))
+
 (defn- job-logs
   "Fetch logs for a specific job ID"
   [job-id]
   (try
     (let [result (p/shell {:out :string :err :string :continue true}
-                          "timeout" "20" "gh" "api"
+                          "timeout" "60" "gh" "api"
                           (format "repos/%s/actions/jobs/%s/logs" repo job-id))]
       (when (zero? (:exit result))
-        ;; Take last 2000 lines to avoid huge logs
-        (->> (str/split-lines (:out result))
-             (take-last 2000)
-             (str/join "\n"))))
+        (extract-test-report-section (:out result))))
     (catch Exception _ nil)))
 
 (defn- extract-job-id
