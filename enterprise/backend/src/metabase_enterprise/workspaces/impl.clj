@@ -306,7 +306,8 @@
                                                         :where  [:and
                                                                  [:= :wo.workspace_id ws-id]
                                                                  [:= :wo.ref_id :workspace_transform.ref_id]
-                                                                 [:= :wo.transform_version :workspace_transform.analysis_version]]}]]]})]
+                                                                 [:= :wo.transform_version
+                                                                  :workspace_transform.analysis_version]]}]]]})]
     ;; Analyze each stale transform
     (doseq [transform stale-transforms]
       (analyze-transform! workspace transform))
@@ -358,7 +359,9 @@
                                  global-table-id   (t2/select-one-fn :id [:model/Table :id]
                                                                      :db_id database :schema schema :name name)
                                  isolated-table-id (t2/select-one-fn :id [:model/Table :id]
-                                                                     :db_id database :schema isolated-schema :name isolated-table)]
+                                                                     :db_id database
+                                                                     :schema isolated-schema
+                                                                     :name isolated-table)]
                              {:workspace_id      workspace-id
                               :transform_id      tx-id
                               :graph_version     graph-version

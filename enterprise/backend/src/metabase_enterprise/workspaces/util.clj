@@ -167,7 +167,7 @@
   []
   (str (generate-name) "-" (format "%04x" (rand-int 65536))))
 
-;;; -------------------------------------------------- Epochal Versioning Helpers --------------------------------------------------
+;;; -------------------------------- Epochal Versioning Helpers ------------------------------------------
 
 (defmacro ignore-constraint-violation
   "Execute body and silently return nil if a unique constraint violation occurs.
