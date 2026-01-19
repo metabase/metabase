@@ -5064,6 +5064,23 @@ databaseChangeLog:
 
   # Update unique constraints to include version columns
   - changeSet:
+      id: v58.2026-01-12T14:00:19
+      author: christruter
+      comment: Drop FK constraint on workspace_graph.workspace_id (required before dropping index in H2)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_graph
+            constraintName: fk_workspace_graph_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_graph
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_graph_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
       id: v58.2026-01-12T14:00:20
       author: christruter
       comment: Drop old unique index on workspace_graph.workspace_id
@@ -5071,14 +5088,6 @@ databaseChangeLog:
         - dropIndex:
             tableName: workspace_graph
             indexName: idx_workspace_graph_workspace_id
-      rollback:
-        - createIndex:
-            tableName: workspace_graph
-            indexName: idx_workspace_graph_workspace_id
-            unique: true
-            columns:
-              - column:
-                  name: workspace_id
 
   - changeSet:
       id: v58.2026-01-12T14:00:21
@@ -5098,6 +5107,19 @@ databaseChangeLog:
         - dropIndex:
             tableName: workspace_graph
             indexName: idx_workspace_graph_workspace_version
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:21b
+      author: christruter
+      comment: Recreate FK constraint on workspace_graph.workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_graph
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_graph_workspace_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v58.2026-01-12T14:00:22
