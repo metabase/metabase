@@ -1,7 +1,6 @@
 // defines the order of options in the UI
 export const FILTER_OPTIONS = [
-  "in-dashboard",
-  "not-in-personal-collection",
+  "include-in-personal-collections",
 ] as const;
 
 // defines the order of options in the UI

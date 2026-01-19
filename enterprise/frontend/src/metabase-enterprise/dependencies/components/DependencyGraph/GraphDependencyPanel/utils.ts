@@ -42,17 +42,10 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  "in-dashboard": (node) => {
-    switch (node.type) {
-      case "card": {
-        const dashboard = node.data.dashboard;
-        return dashboard != null;
-      }
-      default:
-        return false;
+  "include-in-personal-collections": (node, isEnabled) => {
+    if (isEnabled) {
+      return true;
     }
-  },
-  "not-in-personal-collection": (node) => {
     switch (node.type) {
       case "card":
       case "dashboard":
@@ -72,14 +65,7 @@ export function canFilterByOption(
 ): boolean {
   const type = getDependencyType(groupType);
   switch (option) {
-    case "in-dashboard":
-      switch (type) {
-        case "card":
-          return true;
-        default:
-          return false;
-      }
-    case "not-in-personal-collection":
+    case "include-in-personal-collections":
       switch (type) {
         case "card":
         case "dashboard":
@@ -95,15 +81,15 @@ export function canFilter(groupType: DependencyGroupType): boolean {
   return FILTER_OPTIONS.some((option) => canFilterByOption(groupType, option));
 }
 
+export function getDefaultFilterOptions(groupType: DependencyGroupType): FilterOption[] {
+  return FILTER_OPTIONS.filter((option => canFilterByOption(groupType, option)))
+}
+
 function isMatchingFilters(
   node: DependencyNode,
   filterOptions: FilterOption[],
 ): boolean {
-  if (filterOptions.length === 0) {
-    return true;
-  }
-
-  return filterOptions.every((option) => FILTERS[option](node));
+  return FILTER_OPTIONS.every((option) => FILTERS[option](node, filterOptions.includes(option)));
 }
 
 const COMPARATORS: Record<SortColumn, SortCallback> = {

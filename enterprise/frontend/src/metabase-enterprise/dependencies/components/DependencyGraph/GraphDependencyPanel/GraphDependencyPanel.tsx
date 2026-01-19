@@ -17,10 +17,10 @@ import { DEPENDENTS_SEARCH_THRESHOLD } from "../constants";
 import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
-import type { FilterOption } from "./types";
 import {
   canFilterByOption,
   canSortByColumn,
+  getDefaultFilterOptions,
   getDefaultSortOptions,
   getListRequest,
   getVisibleNodes,
@@ -49,7 +49,7 @@ export function GraphDependencyPanel({
     searchText.trim(),
     SEARCH_DEBOUNCE_DURATION,
   );
-  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
+  const [filterOptions, setFilterOptions] = useState(() => getDefaultFilterOptions(groupType));
   const [sortOptions, setSortOptions] = useState(() =>
     getDefaultSortOptions(groupType),
   );
@@ -60,7 +60,7 @@ export function GraphDependencyPanel({
 
   useLayoutEffect(() => {
     if (filterOptions.some((option) => !canFilterByOption(groupType, option))) {
-      setFilterOptions([]);
+      setFilterOptions(getDefaultFilterOptions(groupType));
     }
 
     if (!canSortByColumn(groupType, sortOptions.column)) {
