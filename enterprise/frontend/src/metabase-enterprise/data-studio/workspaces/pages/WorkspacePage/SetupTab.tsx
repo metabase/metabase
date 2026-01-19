@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Select, Stack, Text, Title } from "metabase/ui";
 import {
@@ -25,8 +26,11 @@ export const SetupTab = ({
   workspace,
   setupStatus,
 }: SetupTabProps) => {
-  const { data: allowedDatabases, isLoading } =
-    useGetWorkspaceAllowedDatabasesQuery();
+  const {
+    data: allowedDatabases,
+    isLoading,
+    error,
+  } = useGetWorkspaceAllowedDatabasesQuery();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const workspaceId = workspace.id;
@@ -78,9 +82,8 @@ export const SetupTab = ({
 
       <Stack gap="xs">
         <Text fw="bold">{t`Data warehouse`}</Text>
-        {isLoading ? (
-          <Text>{t`Loading databases...`}</Text>
-        ) : (
+
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <Select
             data={databaseOptions}
             value={databaseId?.toString() ?? ""}
@@ -89,7 +92,7 @@ export const SetupTab = ({
             disabled={!isWorkspaceUninitialized(workspace)}
             maw="20rem"
           />
-        )}
+        </LoadingAndErrorWrapper>
 
         <Text c="text-light" size="sm">
           {t`Data warehouse selection is locked after adding transforms to the workspace`}
