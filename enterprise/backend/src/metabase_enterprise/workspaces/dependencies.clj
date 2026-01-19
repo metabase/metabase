@@ -280,12 +280,11 @@
    {:keys [output inputs]} :- ::analysis
    transform-version :- :int]
   (ws.u/assert-transform! entity-type)
-  ;; We could make this even more race friendly, and check for future versions as well.
-  (when-not (t2/exists? :model/WorkspaceOutput
-                        :workspace_id workspace-id
-                        :ref_id ref-id
-                        :transform_version transform-version)
-    (t2/with-transaction [_conn]
+  (t2/with-transaction [_conn]
+    (when-not (t2/exists? :model/WorkspaceOutput
+                          :workspace_id workspace-id
+                          :ref_id ref-id
+                          :transform_version [:>= transform-version])
       (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
                                                 :id [:in {:select [:database_id]
                                                           :from   [:workspace]
