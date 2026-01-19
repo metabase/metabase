@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.sso.oidc.discovery :as oidc.discovery]))
 
 (deftest ^:parallel get-authorization-endpoint-test
@@ -154,7 +155,7 @@
         (is (= 1 @fetch-count))
 
         ;; Manually expire the cache entry by setting fetched-at to 25 hours ago (TTL is 24h)
-        (let [twenty-five-hours-ago (- (System/currentTimeMillis) (* 25 60 60 1000))]
+        (let [twenty-five-hours-ago (t/to-millis-from-epoch (t/minus (t/instant) (t/hours 25)))]
           (swap! @#'oidc.discovery/discovery-cache
                  assoc "https://github.com"
                  {:document test-discovery-doc :fetched-at twenty-five-hours-ago}))

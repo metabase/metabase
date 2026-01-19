@@ -98,8 +98,8 @@
            site-origin     (uri-origin site-url)]
        (and (some? redirect-origin)
             (some? site-origin)
-            (= (str/lower-case redirect-origin)
-               (str/lower-case site-origin)))))))
+            (= (u/lower-case-en redirect-origin)
+               (u/lower-case-en site-origin)))))))
 
 (defn- validate-redirect-url!
   "Validates a redirect URL and throws an exception if invalid.
