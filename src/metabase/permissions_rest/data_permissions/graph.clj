@@ -428,7 +428,8 @@
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))]
     (when-let [da-updates (get group-updates data-analyst-group-id)]
       (doseq [[_db-id db-changes] da-updates]
-        (when (contains? db-changes :data-model)
+        (when (and (contains? db-changes :data-model)
+                   (not= (:data-model db-changes) (:data-model data-analyst-perms)))
           (throw (ex-info (tru "You cannot modify the data model permission for the ''{0}'' group."
                                (:name (perms/data-analyst-group)))
                           {:status-code 400})))))))
