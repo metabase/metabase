@@ -64,7 +64,10 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 fi
 
                 git commit -m "$COMMIT_MSG"
-                git push origin "$BRANCH"
+                if ! git push origin "$BRANCH"; then
+                        echo "Error: Failed to push OpenAPI schema update to $BRANCH."
+                        exit 1
+                fi
                 echo "OpenAPI schema updated and pushed to $BRANCH."
                 exit 0
         fi
