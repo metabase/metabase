@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase.analyze.core :as analyze]
@@ -175,18 +176,13 @@
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
    ::deps.dependency-types/entity-id])
 
-(mr/def ::dependency-error
-  [:map
-   [:type [:enum :missing-column :missing-table-alias :duplicate-column :syntax-error :validation-error]]
-   [:detail {:optional true} [:maybe :string]]])
-
 (mr/def ::base-entity
   [:map
    [:id                pos-int?]
    [:type              :keyword]
    [:data              [:map]]
    [:dependents_count  [:maybe [:ref ::usages]]]
-   [:dependents_errors {:optional true} [:set [:ref ::dependency-error]]]])
+   [:dependents_errors {:optional true} [:set [:ref ::analysis-finding-error/analysis-finding-error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
@@ -478,25 +474,18 @@
 
 (defn- node-downstream-errors
   "Fetches errors caused BY the given source entities (what downstream entities they're breaking).
-   Returns {[source-entity-type source-entity-id] #{error-maps...}}, or nil if none.
-
    Unlike `node-errors` which fetches errors ON an entity, this fetches errors that
    the entity is CAUSING in other entities that depend on it."
   [nodes-by-type]
-  (letfn [(normalize-finding-error
-            [{:keys [error_type error_detail]}]
-            (cond-> {:type error_type}
-              error_detail (assoc :detail error_detail)))
-          (normalize-source-errors [[[source-type source-id] errors]]
-            [[source-type source-id]
-             (into #{} (map normalize-finding-error) errors)])
+  (letfn [(group-source-errors [[[source-type source-id] errors]]
+            [[source-type source-id] (set errors)])
           (errors-by-source-type-and-id [[source-type ids]]
             (let [finding-errors (t2/select :model/AnalysisFindingError
                                             :source_entity_type source-type
                                             :source_entity_id [:in ids])]
               (->> finding-errors
                    (group-by (juxt :source_entity_type :source_entity_id))
-                   (map normalize-source-errors))))]
+                   (map group-source-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
