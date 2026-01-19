@@ -53,4 +53,6 @@ export const QuestionAlertsButton = (props: QuestionAlertsButtonProps) => {
       />
     );
   }
+
+  return null;
 };
