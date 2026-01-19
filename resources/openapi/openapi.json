@@ -1548,23 +1548,19 @@
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
         } ]
       },
-      "metabase-enterprise.dependencies.api.entity-id" : {
-        "minimum" : 1,
-        "type" : "integer"
-      },
       "metabase-enterprise.dependencies.api.graph-response" : {
         "properties" : {
           "edges" : {
             "items" : {
               "properties" : {
                 "from_entity_id" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
                 },
                 "from_entity_type" : {
                   "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
                 },
                 "to_entity_id" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
                 },
                 "to_entity_type" : {
                   "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
@@ -1861,13 +1857,17 @@
       },
       "metabase-enterprise.dependencies.api.usages" : {
         "additionalProperties" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.entity-id"
         },
         "type" : "object"
       },
       "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
         "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ],
         "type" : "string"
+      },
+      "metabase-enterprise.dependencies.dependency-types.entity-id" : {
+        "minimum" : 1,
+        "type" : "integer"
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "properties" : {
@@ -1929,33 +1929,12 @@
         "type" : "object"
       },
       "metabase-enterprise.metabot-v3.tools.api.aggregation" : {
-        "allOf" : [ {
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.bucket"
-            },
-            "field_id" : {
-              "type" : "string"
-            },
-            "function" : {
-              "enum" : [ "avg", "count", "count-distinct", "max", "min", "sum" ],
-              "type" : "string"
-            },
-            "sort_order" : {
-              "oneOf" : [ {
-                "enum" : [ "asc", "desc" ],
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "field_id", "function" ],
-          "type" : "object"
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field-aggregation"
         }, {
-          "properties" : { },
-          "type" : "object"
-        } ]
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.measure-aggregation"
+        } ],
+        "description" : "Aggregation - either field-based or measure-based."
       },
       "metabase-enterprise.metabot-v3.tools.api.answer-sources-arguments" : {
         "allOf" : [ {
@@ -2400,6 +2379,36 @@
           "type" : "object"
         } ]
       },
+      "metabase-enterprise.metabot-v3.tools.api.field-aggregation" : {
+        "allOf" : [ {
+          "properties" : {
+            "bucket" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.bucket"
+            },
+            "field_id" : {
+              "type" : "string"
+            },
+            "function" : {
+              "enum" : [ "avg", "count", "count-distinct", "max", "min", "sum" ],
+              "type" : "string"
+            },
+            "sort_order" : {
+              "oneOf" : [ {
+                "enum" : [ "asc", "desc" ],
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "field_id", "function" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Aggregation using a field and function."
+      },
       "metabase-enterprise.metabot-v3.tools.api.field-type" : {
         "enum" : [ "boolean", "date", "datetime", "time", "number", "string" ],
         "type" : "string"
@@ -2492,6 +2501,8 @@
       },
       "metabase-enterprise.metabot-v3.tools.api.filter" : {
         "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment-filter"
+        }, {
           "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.existence-filter"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter"
@@ -2732,6 +2743,12 @@
           },
           "queryable_dimensions" : {
             "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment"
+            },
+            "type" : "array"
           },
           "type" : {
             "const" : "metric"
@@ -3008,6 +3025,10 @@
             "with_queryable_dimensions" : {
               "default" : true,
               "type" : "boolean"
+            },
+            "with_segments" : {
+              "default" : false,
+              "type" : "boolean"
             }
           },
           "required" : [ "metric_id" ],
@@ -3205,6 +3226,10 @@
               "default" : true,
               "type" : "boolean"
             },
+            "with_measures" : {
+              "default" : false,
+              "type" : "boolean"
+            },
             "with_metric_default_temporal_breakout" : {
               "default" : true,
               "type" : "boolean"
@@ -3215,6 +3240,10 @@
             },
             "with_related_tables" : {
               "default" : true,
+              "type" : "boolean"
+            },
+            "with_segments" : {
+              "default" : false,
               "type" : "boolean"
             }
           },
@@ -3465,6 +3494,63 @@
           "properties" : { },
           "type" : "object"
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.measure" : {
+        "properties" : {
+          "definition" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.metabot-v3.tools.api.measure-aggregation" : {
+        "allOf" : [ {
+          "properties" : {
+            "measure_id" : {
+              "type" : "integer"
+            },
+            "sort_order" : {
+              "oneOf" : [ {
+                "enum" : [ "asc", "desc" ],
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "measure_id" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Aggregation using a pre-defined measure."
       },
       "metabase-enterprise.metabot-v3.tools.api.numeric-filter" : {
         "allOf" : [ {
@@ -3901,6 +3987,55 @@
         "required" : [ "id", "type", "name" ],
         "type" : "object"
       },
+      "metabase-enterprise.metabot-v3.tools.api.segment" : {
+        "properties" : {
+          "definition" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.metabot-v3.tools.api.segment-filter" : {
+        "allOf" : [ {
+          "properties" : {
+            "segment_id" : {
+              "type" : "integer"
+            }
+          },
+          "required" : [ "segment_id" ],
+          "type" : "object"
+        }, {
+          "properties" : { },
+          "type" : "object"
+        } ],
+        "description" : "Filter using a pre-defined segment."
+      },
       "metabase-enterprise.metabot-v3.tools.api.statistics" : {
         "properties" : {
           "average_length" : {
@@ -4127,6 +4262,12 @@
           "id" : {
             "type" : "integer"
           },
+          "measures" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.measure"
+            },
+            "type" : "array"
+          },
           "metrics" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
@@ -4146,6 +4287,12 @@
           "related_tables" : {
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
+            },
+            "type" : "array"
+          },
+          "segments" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.segment"
             },
             "type" : "array"
           },
@@ -12285,6 +12432,244 @@
         },
         "type" : "object"
       },
+      "metabase.task-history.api.RunEntity" : {
+        "properties" : {
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "entity_type", "entity_id" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.RunFilterParams" : {
+        "properties" : {
+          "entity-id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity-type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "run-type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskHistory" : {
+        "properties" : {
+          "duration" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "logs" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "run_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "unknown" ],
+            "type" : "string"
+          },
+          "task" : {
+            "type" : "string"
+          },
+          "task_details" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "task", "started_at", "ended_at", "duration", "status" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRun" : {
+        "properties" : {
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "failed_count" : {
+            "type" : "integer"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "run_type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          },
+          "success_count" : {
+            "type" : "integer"
+          },
+          "task_count" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "id", "run_type", "entity_type", "entity_id", "started_at", "ended_at", "status" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRunWithTasks" : {
+        "properties" : {
+          "ended_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "entity_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_type" : {
+            "enum" : [ "dashboard", "card", "database" ],
+            "type" : "string"
+          },
+          "failed_count" : {
+            "type" : "integer"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "run_type" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          },
+          "started_at" : { },
+          "status" : {
+            "enum" : [ "started", "success", "failed", "abandoned" ],
+            "type" : "string"
+          },
+          "success_count" : {
+            "type" : "integer"
+          },
+          "task_count" : {
+            "type" : "integer"
+          },
+          "tasks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.task-history.api.TaskHistory"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "id", "run_type", "entity_type", "entity_id", "started_at", "ended_at", "status", "tasks" ],
+        "type" : "object"
+      },
+      "metabase.task-history.api.TaskRunsResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.task-history.api.TaskRun"
+            },
+            "type" : "array"
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "minimum" : 0,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "total", "limit", "offset", "data" ],
+        "type" : "object"
+      },
       "metabase.tiles.api.legacy-ref" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field",
         "description" : "Form-encoded JSON-encoded legacy MBQL :field ref."
@@ -16033,7 +16418,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -16555,7 +16940,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -18335,7 +18720,7 @@
     },
     "/api/database/" : {
       "get" : {
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "description" : "include must be either empty or the value 'tables'",
           "in" : "query",
@@ -18417,6 +18802,28 @@
               "description" : "value must be an integer greater than zero.",
               "minimum" : 1,
               "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -19151,7 +19558,7 @@
     },
     "/api/database/{id}/schema/" : {
       "get" : {
-        "description" : "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.",
+        "description" : "Return a list of Tables for a Database whose `schema` is `nil` or an empty string.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -19185,6 +19592,28 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -19203,7 +19632,7 @@
     },
     "/api/database/{id}/schema/{schema}" : {
       "get" : {
-        "description" : "Returns a list of Tables for the given Database `id` and `schema`",
+        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -19245,6 +19674,28 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -19263,7 +19714,7 @@
     },
     "/api/database/{id}/schemas" : {
       "get" : {
-        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.",
+        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query\n  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
@@ -19297,9 +19748,41 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -22061,7 +22544,7 @@
     },
     "/api/ee/dependencies/graph/broken" : {
       "get" : {
-        "description" : "Returns a list of all items with broken queries.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n\n   Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields.",
+        "description" : "Returns a list of all items with broken queries.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -22099,16 +22582,65 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "name", "location", "dependents-count" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "desc", "asc" ],
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
                   },
-                  "type" : "array"
+                  "required" : [ "data", "total", "offset", "limit" ],
+                  "type" : "object"
                 }
               }
             },
@@ -22194,7 +22726,7 @@
     },
     "/api/ee/dependencies/graph/unreferenced" : {
       "get" : {
-        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - query: Search string to filter by name or location\n\n   Returns a list of unreferenced items, each with :id, :type, and :data fields.",
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card_types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)\n   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)\n   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -22232,16 +22764,65 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "name", "location", "dependents-count" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "desc", "asc" ],
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
                   },
-                  "type" : "array"
+                  "required" : [ "data", "total", "offset", "limit" ],
+                  "type" : "object"
                 }
               }
             },
@@ -25057,6 +25638,21 @@
                           "sync_status" : {
                             "type" : "string"
                           },
+                          "table_id" : {
+                            "oneOf" : [ {
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "table_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "updated_at" : {
                             "oneOf" : [ { }, {
                               "type" : "null"
@@ -25120,6 +25716,62 @@
           }
         },
         "summary" : "POST /api/ee/remote-sync/export",
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/has-remote-changes" : {
+      "get" : {
+        "description" : "Check if there are new changes on the remote branch that can be pulled.\n   Uses in-memory caching (configurable TTL via remote-sync-check-changes-cache-ttl-seconds setting).\n\n   Returns:\n   - has_changes: true if remote version differs from last imported version, or if never imported\n   - remote_version: current Git SHA on remote branch\n   - local_version: Git SHA of last successful import (nil if never imported)\n   - cached: true if result was served from cache",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "force-refresh",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "cached" : {
+                      "type" : "boolean"
+                    },
+                    "has_changes" : {
+                      "type" : "boolean"
+                    },
+                    "local_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "remote_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "has_changes", "remote_version", "local_version", "cached" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/remote-sync/has-remote-changes",
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
@@ -35679,7 +36331,7 @@
     },
     "/api/table/" : {
       "get" : {
-        "description" : "Get all `Tables`.",
+        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `can-write=true` - filter to only tables the user can edit metadata for",
         "parameters" : [ {
           "in" : "query",
           "name" : "term",
@@ -35740,6 +36392,28 @@
         }, {
           "in" : "query",
           "name" : "unused-only",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "can-write",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -36538,6 +37212,104 @@
         "tags" : [ "/api/task" ]
       }
     },
+    "/api/task/runs" : {
+      "get" : {
+        "description" : "List task runs with optional filters. Returns runs with hydrated entity names and task counts.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.task-history.api.TaskRunsResponse"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs",
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/runs/entities" : {
+      "get" : {
+        "description" : "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "run-type",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "alert", "sync", "fingerprint", "subscription" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.task-history.api.RunEntity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs/entities",
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/runs/{id}" : {
+      "get" : {
+        "description" : "Get a single task run with all its child tasks.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.task-history.api.TaskRunWithTasks"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/task/runs/{id}",
+        "tags" : [ "/api/task" ]
+      }
+    },
     "/api/task/unique-tasks" : {
       "get" : {
         "description" : "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique\n  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should\n  reflect that.",
@@ -36587,7 +37359,7 @@
     },
     "/api/testing/echo" : {
       "get" : {
-        "description" : "Simple echo hander. Fails when you GET with `?fail=true`.",
+        "description" : "Simple echo handler. Fails when you GET with `?fail=true`.",
         "parameters" : [ {
           "in" : "query",
           "name" : "fail",
@@ -36620,7 +37392,7 @@
         "tags" : [ "/api/testing" ]
       },
       "post" : {
-        "description" : "Simple echo hander. Fails when you POST with `?fail=true`.",
+        "description" : "Simple echo handler. Fails when you POST with `?fail=true`.",
         "parameters" : [ {
           "in" : "query",
           "name" : "fail",
@@ -38373,19 +39145,6 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "token" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "token" ],
-                  "type" : "object"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
