@@ -30,6 +30,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.server.streaming-response]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,7 +38,11 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.middleware.multipart-params]
-   [ring.util.codec]))
+   [ring.util.codec])
+  (:import
+   (metabase.server.streaming_response StreamingResponse)))
+
+(comment metabase.server.streaming-response/keep-me)
 
 ;;;;
 ;;;; Malli schema
@@ -328,18 +333,23 @@
   (not config/is-prod?))
 
 (mu/defn validate-and-encode-response :- any?
-  "Impl for [[endpoint-core-fn]]; validate the endpoint response against `schema` "
+  "Impl for [[endpoint-core-fn]]; validate the endpoint response against `schema`.
+  Skips validation for [[metabase.server.streaming-response/StreamingResponse]] objects since they write directly
+  to an OutputStream and cannot be validated against a data schema - the schema is used for OpenAPI docs only."
   [schema   :- some?
    response :- any?]
-  (when *enable-response-validation*
-    (when-not (mr/validate schema response)
-      (throw (ex-info "Invalid response" ; TODO -- better error message?
-                      {:status-code 400
-                       :error       (-> schema
-                                        (mr/explain response)
-                                        me/with-spell-checking
-                                        (me/humanize {:wrap mu/humanize-include-value}))}))))
-  ((encoder schema) response))
+  (if (instance? StreamingResponse response)
+    response
+    (do
+      (when *enable-response-validation*
+        (when-not (mr/validate schema response)
+          (throw (ex-info "Invalid response" ; TODO -- better error message?
+                          {:status-code 400
+                           :error       (-> schema
+                                            (mr/explain response)
+                                            me/with-spell-checking
+                                            (me/humanize {:wrap mu/humanize-include-value}))}))))
+      ((encoder schema) response))))
 
 (mu/defn- params-binding :- some?
   [args        :- ::parsed-args
