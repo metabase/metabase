@@ -138,7 +138,7 @@
   JSON content they return while validating that the return value is a StreamingResponse instance."
   [schema]
   (let [resolved-schema (mr/resolve-schema schema)
-        ;; Check for :openapi/response-schema in the schema properties - used by ms/StreamingResponse
+        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
         content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
                             schema)
         jss-schema      (mjs-collect-definitions content-schema)]
