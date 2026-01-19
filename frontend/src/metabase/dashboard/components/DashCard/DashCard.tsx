@@ -26,6 +26,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
@@ -87,6 +88,7 @@ export interface DashCardProps {
   onEditVisualization: (
     dashcard: StoreDashcard,
     initialState: VisualizerVizDefinitionWithColumns,
+    initialUiState: Partial<VisualizerUiState>,
   ) => void;
 }
 
@@ -309,22 +311,25 @@ function DashCardInner({
     dispatch(duplicateCard({ id: dashcard.id }));
   }, [dashcard.id, dispatch]);
 
-  const onEditVisualizationClick = useCallback(() => {
-    let initialState: VisualizerVizDefinitionWithColumns;
+  const onEditVisualizationClick = useCallback(
+    (uiState: Partial<VisualizerUiState> = {}) => {
+      let initialState: VisualizerVizDefinitionWithColumns;
 
-    if (isVisualizerDashboardCard(dashcard)) {
-      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
-    } else if (series.length > 1) {
-      initialState = getInitialStateForMultipleSeries(series);
-    } else {
-      initialState = getInitialStateForCardDataSource(
-        series[0].card,
-        series[0],
-      );
-    }
+      if (isVisualizerDashboardCard(dashcard)) {
+        initialState = getInitialStateForVisualizerCard(dashcard, datasets);
+      } else if (series.length > 1) {
+        initialState = getInitialStateForMultipleSeries(series);
+      } else {
+        initialState = getInitialStateForCardDataSource(
+          series[0].card,
+          series[0],
+        );
+      }
 
-    onEditVisualization(dashcard, initialState);
-  }, [dashcard, series, onEditVisualization, datasets]);
+      onEditVisualization(dashcard, initialState, uiState);
+    },
+    [dashcard, series, onEditVisualization, datasets],
+  );
 
   const getVisualizerInitialState = () => {
     if (isVisualizerDashboardCard(dashcard)) {

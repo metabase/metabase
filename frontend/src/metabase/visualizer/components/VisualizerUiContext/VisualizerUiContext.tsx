@@ -14,17 +14,13 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getDatasets } from "metabase/visualizer/selectors";
 
-type VisualizerUiState = {
-  isDataSidebarOpen: boolean;
-  isVizSettingsSidebarOpen: boolean;
-  isSwapAffordanceVisible: boolean;
-
+type _VisualizerUiState = VisualizerUiState & {
   setDataSidebarOpen: Dispatch<SetStateAction<boolean>>;
   setVizSettingsSidebarOpen: Dispatch<SetStateAction<boolean>>;
   setSwapAffordanceVisible: Dispatch<SetStateAction<boolean>>;
 };
 
-const VisualizerUiContext = createContext<VisualizerUiState>({
+const VisualizerUiContext = createContext<_VisualizerUiState>({
   isDataSidebarOpen: false,
   isVizSettingsSidebarOpen: false,
   isSwapAffordanceVisible: false,
@@ -33,14 +29,30 @@ const VisualizerUiContext = createContext<VisualizerUiState>({
   setSwapAffordanceVisible: _.noop,
 });
 
-interface VisualizerUiProviderProps {
-  children: ReactNode;
+export interface VisualizerUiState {
+  isDataSidebarOpen: boolean;
+  isVizSettingsSidebarOpen: boolean;
+  isSwapAffordanceVisible: boolean;
 }
 
-export function VisualizerUiProvider({ children }: VisualizerUiProviderProps) {
-  const [isDataSidebarOpen, setDataSidebarOpen] = useState(true);
-  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(true);
-  const [isSwapAffordanceVisible, setSwapAffordanceVisible] = useState(false);
+interface VisualizerUiProviderProps {
+  children: ReactNode;
+  initialUiState?: Partial<VisualizerUiState>;
+}
+
+export function VisualizerUiProvider({
+  initialUiState = {},
+  children,
+}: VisualizerUiProviderProps) {
+  const [isDataSidebarOpen, setDataSidebarOpen] = useState(
+    initialUiState.isDataSidebarOpen ?? true,
+  );
+  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(
+    initialUiState.isVizSettingsSidebarOpen ?? false,
+  );
+  const [isSwapAffordanceVisible, setSwapAffordanceVisible] = useState(
+    initialUiState.isSwapAffordanceVisible ?? false,
+  );
 
   const dataSourceCount = useSelector(
     (state) => Object.keys(getDatasets(state)).length,

@@ -13,6 +13,7 @@ import type {
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -129,7 +130,10 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isDocument: boolean;
-  isVisualizerViz: boolean;
+  // Is this the visuslization *inside* the visualizer
+  isVisualizer: boolean;
+  // Is this visualization made by the visualizer
+  isVisualizerCard: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isSettings: boolean;
@@ -182,6 +186,12 @@ export interface VisualizationProps {
    * Used for visualizer cards to jump to underlying questions
    */
   titleMenuItems?: React.ReactNode;
+
+  /**
+   * Used in dashboards to open visualizer
+   */
+
+  onEditVisualization: (initialState?: Partial<VisualizerUiState>) => void;
 }
 
 export type VisualizationPassThroughProps = {

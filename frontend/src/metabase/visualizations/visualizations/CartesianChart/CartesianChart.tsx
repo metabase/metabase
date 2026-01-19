@@ -2,11 +2,16 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
-import { t } from "ttag";
 
+import {
+  replaceCardWithVisualization,
+  setEditingDashboard,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 import { isWebkit } from "metabase/lib/browser";
 import { setUIControls } from "metabase/query_builder/actions";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
@@ -24,12 +29,6 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings } from "./utils";
-import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
-import {
-  replaceCardWithVisualization,
-  setEditingDashboard,
-  updateDashboardAndCards,
-} from "metabase/dashboard/actions";
 
 const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
@@ -41,6 +40,10 @@ function _CartesianChart(props: VisualizationProps) {
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
+
+  // const dashboardCtx = useContext(DashboardContext);
+
+  // console.log(dashboardCtx);
 
   const {
     showAllLegendItems,
@@ -58,7 +61,7 @@ function _CartesianChart(props: VisualizationProps) {
     isEditing,
     isVisualizer,
     isQueryBuilder,
-    isVisualizerViz,
+    isVisualizerCard,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -151,7 +154,7 @@ function _CartesianChart(props: VisualizationProps) {
   // so title selection is disabled in this case
   const canSelectTitle =
     !!onChangeCardAndRun &&
-    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+    (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
@@ -161,11 +164,9 @@ function _CartesianChart(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   const handleAutoChange = async () => {
-    if (isDashboard) {
+    if (isDashboard && props.dashcard) {
       const visualizerInitialState = getVisualizerInitialState();
       visualizerInitialState.settings["graph.y_axis.auto_range"] = true;
-
-      console.log("in dashboard", visualizerInitialState);
 
       await dispatch(
         replaceCardWithVisualization({
@@ -189,7 +190,7 @@ function _CartesianChart(props: VisualizationProps) {
   const handleOpenSettings = () => {
     if (isDashboard) {
       dispatch(setEditingDashboard(props.dashboard));
-      onEditVisualization();
+      onEditVisualization({ isVizSettingsSidebarOpen: true });
     } else {
       dispatch(
         setUIControls({
