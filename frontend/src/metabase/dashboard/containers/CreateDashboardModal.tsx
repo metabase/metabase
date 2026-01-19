@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal, type ModalProps } from "metabase/ui";
@@ -37,15 +36,20 @@ export const CreateDashboardModal = ({
     [onCreate, onClose, dispatch],
   );
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       title={t`New dashboard`}
       onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"
       size="lg"
+      //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
       closeOnEscape={false}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
       {...modalProps}
     >
       <CreateDashboardForm

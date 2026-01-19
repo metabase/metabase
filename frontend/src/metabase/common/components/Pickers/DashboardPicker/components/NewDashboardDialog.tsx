@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   Form,
   FormErrorMessage,
@@ -44,8 +43,6 @@ export const NewDashboardDialog = ({
     onClose();
   };
 
-  useEscapeToCloseModal(onClose, { capture: true });
-
   return (
     <Modal
       title={t`Create a new dashboard`}
@@ -54,7 +51,14 @@ export const NewDashboardDialog = ({
       data-testid="create-dashboard-on-the-go"
       trapFocus={true}
       withCloseButton={false}
+      //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
       closeOnEscape={false}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
       styles={{
         content: {
           padding: "1rem",

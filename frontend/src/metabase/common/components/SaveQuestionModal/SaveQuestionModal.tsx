@@ -4,7 +4,6 @@ import {
 } from "metabase/common/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
@@ -31,7 +30,6 @@ export const SaveQuestionModal = ({
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave,
   });
-  useEscapeToCloseModal(onClose);
 
   return (
     <SaveQuestionProvider
@@ -56,7 +54,14 @@ export const SaveQuestionModal = ({
         padding="xl"
         {...modalProps}
         size={isConfirmationShown ? "xl" : undefined}
+        //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
         closeOnEscape={false}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
         onClose={onClose}
       >
         <Modal.Overlay />

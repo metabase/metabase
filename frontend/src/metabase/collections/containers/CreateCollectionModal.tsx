@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -57,8 +56,6 @@ function CreateCollectionModal({
     [onCreate, onChangeLocation, onClose, handleCreateCollection],
   );
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       opened
@@ -67,7 +64,14 @@ function CreateCollectionModal({
       data-testid="new-collection-modal"
       padding="40px"
       title={t`New collection`}
+      //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
       closeOnEscape={false}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <CreateCollectionForm
         {...props}

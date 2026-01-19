@@ -3,7 +3,6 @@ import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   Form,
   FormErrorMessage,
@@ -57,8 +56,6 @@ export const NewCollectionDialog = ({
     onClose();
   };
 
-  useEscapeToCloseModal(onClose, { capture: true });
-
   return (
     <Modal
       title={t`Create a new collection`}
@@ -67,7 +64,14 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
+      //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
       closeOnEscape={false}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <FormProvider
         initialValues={{ name: "" }}

@@ -1,4 +1,3 @@
-import { useWindowEvent } from "@mantine/hooks";
 import {
   type ReactNode,
   useCallback,
@@ -137,7 +136,6 @@ export function EntityPickerModal<
   onConfirm,
   onItemSelect,
   isLoadingTabs = false,
-  disableCloseOnEscape = false,
   children,
   searchModels: _searchModels,
 }: EntityPickerModalProps<Id, Model, Item>) {
@@ -372,17 +370,6 @@ export function EntityPickerModal<
     setSelectedTabId(initialTabId);
   }, [initialTabId]);
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        !disableCloseOnEscape && onClose();
-      }
-    },
-    { capture: true },
-  );
-
   const titleId = useUniqueId("entity-picker-modal-title-");
 
   const modalContentResizeHandler = useCallback(
@@ -426,7 +413,14 @@ export function EntityPickerModal<
       h="100vh"
       w="100vw"
       trapFocus={trapFocus}
-      closeOnEscape={false} // we're doing this manually in useWindowEvent
+      //handle closing on escape manually, because Mantine captures the event which makes nested modal handling difficult
+      closeOnEscape={false}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
       yOffset="10dvh"
     >
       <Modal.Overlay />
