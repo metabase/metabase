@@ -232,7 +232,7 @@
                         :limit        1})))))))))))
 
 (mt/defdataset long-col-name-dataset
-  [["long_col_name" [{:field-name "fk"
+  [["long_col_name" [{:field-name "fk_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                       :base-type :type/Integer}
                      {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                       :base-type :type/Text}]
@@ -253,7 +253,7 @@
       (let [mp (mt/metadata-provider)
             table (lib.metadata/table mp (mt/id :long_col_name))
             query (lib/query mp table)
-            fk-field (mt/id :long_col_name :fk)
+            fk-field (mt/id :long_col_name :fk_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_)
             id-2-field (mt/id :long_col_name_2 :foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_)]
         (t2/update! :model/Field fk-field {:semantic_type :type/FK
                                            :fk_target_field_id id-2-field})
@@ -271,7 +271,7 @@
         (testing "Explicit join with long column name should use desired alias as source alias"
           (let [table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
                 join-cols (lib/joinable-columns query -1 table-2)
-                fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
+                fk-col (lib.metadata/field mp (mt/id :long_col_name :fk_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_))
                 id-col (m/find-first #(str/starts-with? (u/lower-case-en (:name %)) "foo") join-cols)
                 join-clause (-> (lib/join-clause table-2)
                                 (lib/with-join-conditions [(lib/= fk-col id-col)])
