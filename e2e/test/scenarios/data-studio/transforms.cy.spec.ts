@@ -1505,76 +1505,6 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    describe("when remote sync is read-only", () => {
-      beforeEach(() => {
-        cy.log("set up remote sync");
-        H.setupGitSync();
-        H.configureGit("read-only");
-      });
-
-      it("should not allow editing a transform", () => {
-        cy.log("create and visit a new transform");
-        createSqlTransform({
-          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-          visitTransform: true,
-        });
-
-        H.DataStudio.Transforms.editDefinition().should("not.exist");
-
-        cy.log("visiting edit mode url directly redirects to view-only mode");
-        cy.visit("/data-studio/transforms/1/edit");
-        cy.url().should("not.include", "/edit");
-      });
-
-      it("should not show the move or delete menu items", () => {
-        cy.log("create and visit a new transform");
-        createSqlTransform({
-          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-          visitTransform: true,
-        });
-
-        H.DataStudio.Transforms.header()
-          .findByRole("img", { name: "ellipsis icon" })
-          .click();
-
-        cy.findByRole("menu").within(() => {
-          cy.findByRole("menuitem", { name: /History/ }).should("be.visible");
-          cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
-          cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
-        });
-      });
-
-      it("should not allow to change run tags on the Run tab", () => {
-        cy.log("create and visit a new transform");
-        createSqlTransform({
-          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-          visitTransform: true,
-        });
-
-        cy.log("visit the Run tab");
-        H.DataStudio.Transforms.runTab().click();
-
-        cy.findByLabelText("Tags").should("be.visible");
-        cy.findByLabelText("Tags").should("be.disabled");
-      });
-
-      it("should show the Settings tab in read-only mode", () => {
-        cy.log("create and visit a new transform");
-        createSqlTransform({
-          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-          visitTransform: true,
-        });
-
-        cy.log("visit the Settings tab");
-        H.DataStudio.Transforms.settingsTab().click();
-
-        cy.findByRole("button", { name: /Change target/ }).should("not.exist");
-        cy.findByRole("switch", {
-          name: /Only process new and changed data/,
-        }).should("be.disabled");
-      });
-    });
-
     it("should be able to update a Python query", { tags: ["@python"] }, () => {
       setPythonRunnerSettings();
       cy.log("create a new transform");
@@ -2656,6 +2586,82 @@ LIMIT
       cy.findByTestId("transform-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+    });
+  });
+
+  describe("read-only remote sync", () => {
+    beforeEach(() => {
+      cy.log("set up remote sync");
+      H.setupGitSync();
+      H.configureGit("read-only");
+    });
+
+    it("should not show the 'Create a transform' menu button", () => {
+      cy.log("visit transforms page");
+      visitTransformListPage();
+      cy.button("Create a transform").should("not.exist");
+    });
+
+    it("should not allow editing a transform", () => {
+      cy.log("create and visit a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      H.DataStudio.Transforms.editDefinition().should("not.exist");
+
+      cy.log("visiting edit mode url directly redirects to view-only mode");
+      cy.visit("/data-studio/transforms/1/edit");
+      cy.url().should("not.include", "/edit");
+    });
+
+    it("should not show the move or delete menu items", () => {
+      cy.log("create and visit a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      H.DataStudio.Transforms.header()
+        .findByRole("img", { name: "ellipsis icon" })
+        .click();
+
+      cy.findByRole("menu").within(() => {
+        cy.findByRole("menuitem", { name: /History/ }).should("be.visible");
+        cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
+        cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
+      });
+    });
+
+    it("should not allow to change run tags on the Run tab", () => {
+      cy.log("create and visit a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      cy.log("visit the Run tab");
+      H.DataStudio.Transforms.runTab().click();
+
+      cy.findByLabelText("Tags").should("be.visible");
+      cy.findByLabelText("Tags").should("be.disabled");
+    });
+
+    it("should show the Settings tab in read-only mode", () => {
+      cy.log("create and visit a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      cy.log("visit the Settings tab");
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.findByRole("button", { name: /Change target/ }).should("not.exist");
+      cy.findByRole("switch", {
+        name: /Only process new and changed data/,
+      }).should("be.disabled");
     });
   });
 });
