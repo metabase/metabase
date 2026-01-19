@@ -185,5 +185,6 @@
              cause-msg# (or (some-> e# ex-cause ex-message) "")]
          (if (or (re-find #"(?i)unique|duplicate|constraint" msg#)
                  (re-find #"(?i)unique|duplicate|constraint" cause-msg#))
+           ;; It's good to keep these visible, as they should be rare and can cause transient consistency issues.
            (log/info "Ignoring constraint violation (concurrent insert race):" msg#)
            (throw e#))))))
