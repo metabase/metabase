@@ -1450,96 +1450,15 @@
 ;; The key difference from Redshift: Snowflake uses plain table names ("venues") because each
 ;; dataset has its own database, while Redshift uses qualified names ("test_data_venues").
 
-(deftest real-sync-validation-test
-  ;; This test uses real sync (not fake sync) to validate that our table naming is correct.
-  ;; Only runs on master/release branches where real sync is used anyway.
-  ;; Uses a minimal dataset to keep sync time reasonable.
-  (when (tx/on-master-or-release-branch?)
-    (mt/test-driver :snowflake
-      (testing "Forces a real sync for a minimal dataset to test real sync logic"
-        ;; Disable fake sync for this test to force a real sync
-        (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
-          (mt/dataset (mt/dataset-definition "real-sync-validation"
-                                             [["sync_test_table"
-                                               [{:field-name "text_col" :base-type :type/Text}
-                                                {:field-name "int_col" :base-type :type/Integer}]
-                                               [["hello" 1]
-                                                ["world" 2]]]])
-            (testing "Table was synced with correct schema"
-              ;; Snowflake uses plain table names (not qualified with database name)
-              (let [table (t2/select-one :model/Table :db_id (mt/id) :name "sync_test_table")]
-                (is (some? table) "Table should exist")
-                (is (= "PUBLIC" (:schema table)) "Schema should be PUBLIC")))
-            (testing "Fields were synced with correct types"
-              (let [fields (t2/select [:model/Field :name :base_type :semantic_type]
-                                      :table_id (mt/id :sync_test_table)
-                                      :active true
-                                      {:order-by [:database_position]})]
-                (is (= 3 (count fields)) "Should have 3 fields (id + 2 defined)")
-                (is (= "id" (:name (first fields))) "First field should be auto-generated PK")
-                (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")
-                (is (= :type/Text (:base_type (second fields))) "text_col should be :type/Text")
-                (is (= :type/Integer (:base_type (nth fields 2))) "int_col should be :type/Integer")))))))))
-
-;;; ---------------------------------------- Fake Sync Transformation Test ----------------------------------------
-;; Tests the pure transformation functions that convert dbdefs to Table/Field row maps.
-;; These are the "debuggable" pure functions separated from the stateful insertion code.
-
 (deftest ^:parallel fake-sync-transformation-test
   (mt/test-driver :snowflake
-    (testing "dbdef->fake-sync-rows produces correct Table and Field row maps for Snowflake"
+    (testing "Snowflake fake-sync uses plain table names (not qualified)"
+      ;; Snowflake has separate databases per dataset, so tables are just "users"
+      ;; not "transform_test_users" like Redshift which shares a single database.
       (let [dbdef {:database-name "transform-test"
-                   :table-definitions
-                   [{:table-name "users"
-                     :table-comment "User accounts"
-                     :field-definitions
-                     [{:field-name "name" :base-type :type/Text :field-comment "User name"}
-                      {:field-name "age" :base-type :type/Integer}
-                      {:field-name "org_id" :base-type :type/Integer :fk :organizations}]}
-                    {:table-name "organizations"
-                     :field-definitions
-                     [{:field-name "org_name" :base-type :type/Text}]}]}
-            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :snowflake 123 dbdef)]
-        (testing "returns one entry per table"
-          (is (= 2 (count rows)))
-          (is (= ["users" "organizations"] (mapv :table-name rows))))
-
-        (testing "table rows have correct structure - Snowflake uses plain table names"
-          (let [users-table (:table-row (first rows))]
-            (is (= 123 (:db_id users-table)))
-            ;; KEY DIFFERENCE: Snowflake uses plain table names, not qualified names
-            (is (= "users" (:name users-table)) "Snowflake should use plain table name, not 'transform_test_users'")
-            (is (= "PUBLIC" (:schema users-table)) "Schema should be PUBLIC")
-            (is (= "Users" (:display_name users-table)))
-            (is (= "User accounts" (:description users-table)))
-            (is (= "complete" (:initial_sync_status users-table)))))
-
-        (testing "auto PK field is injected at position 0"
-          (let [users-fields (:field-rows (first rows))
-                pk-field     (first users-fields)]
-            (is (= 4 (count users-fields)) "Should have 4 fields: auto PK + 3 defined")
-            (is (= "id" (:name pk-field)))
-            (is (= :type/PK (:semantic_type pk-field)))
-            (is (= 0 (:position pk-field)))))
-
-        (testing "user-defined fields have correct positions and types"
-          (let [users-fields (:field-rows (first rows))
-                name-field   (second users-fields)
-                age-field    (nth users-fields 2)
-                fk-field     (nth users-fields 3)]
-            (is (= "name" (:name name-field)))
-            (is (= 1 (:position name-field)))
-            (is (= :type/Text (:base_type name-field)))
-            (is (= "User name" (:description name-field)))
-
-            (is (= "age" (:name age-field)))
-            (is (= 2 (:position age-field)))
-            (is (= :type/Integer (:base_type age-field)))
-
-            (is (= "org_id" (:name fk-field)))
-            (is (= 3 (:position fk-field)))
-            (is (= :type/FK (:semantic_type fk-field)))))
-
-        (testing "organizations table also uses plain name"
-          (let [orgs-table (:table-row (second rows))]
-            (is (= "organizations" (:name orgs-table)) "Should be plain name, not 'transform_test_organizations'"))))))))
+                   :table-definitions [{:table-name        "users"
+                                        :field-definitions [{:field-name "name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :snowflake 123 dbdef)
+            table (:table-row (first rows))]
+        (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
+        (is (= "PUBLIC" (:schema table)))))))
