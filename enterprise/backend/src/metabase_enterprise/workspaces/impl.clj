@@ -468,7 +468,7 @@
         version (or version min-version)
         ;; Write workspace_input_external if needed, bump version if we have been overtaken.
         _ (insert-external-inputs-for-version! ws-id (:entities graph) version)
-        ;; Write workspace_putput_external if needed, bump version if we have been overtaken.
+        ;; Write workspace_output_external if needed, bump version if we have been overtaken.
         _ (insert-external-outputs-for-version! ws-id isolated-schema (:entities graph) version)]
     (log/debugf "Have graph for workspace %d at version %d (target was %d)" ws-id version min-version)
     ;; Discard any obsolete rows (including our own, if we've been overtaken)

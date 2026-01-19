@@ -74,7 +74,7 @@
 (defn- ws-transform-parents [ws-id ref-id]
   ;; We assume there are no card dependencies yet
   ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
-  ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze to the current snapshot.
+  ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze to a snapshot.
   ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
   (t2/select-fn-vec (fn [table-coord]
                       {:node-type :table, :id (t2.realize/realize table-coord)})
@@ -91,6 +91,9 @@
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id
   (let [{:keys [db schema table id]} (if (map? id-or-coord) id-or-coord (table-id->coord id-or-coord))
+        ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
+        ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze to a snapshot.
+        ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
         tx-ref-id (t2/select-one-fn :ref_id [:model/WorkspaceOutput :ref_id]
                                     {:where [:and
                                              [:= :workspace_id ws-id]
@@ -101,10 +104,6 @@
                                                [:= :db_id db]
                                                [:= :global_schema schema]
                                                [:= :global_table table]]]]
-                                     ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
-                                     ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze
-                                     ;; things to the expected snapshot.
-                                     ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
                                      :order-by [[:id :desc]]
                                      :limit 1})]
     (if tx-ref-id
