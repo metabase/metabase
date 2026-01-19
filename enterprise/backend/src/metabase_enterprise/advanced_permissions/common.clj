@@ -67,8 +67,7 @@
   [user]
   (let [permissions-set       @api/*current-user-permissions-set*
         user-id               api/*current-user-id*
-        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
-        is-data-analyst       (:is_data_analyst (t2/select-one [:model/User :is_data_analyst] :id user-id))]
+        can-access-data-model (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)]
     (update user :permissions assoc
             :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
