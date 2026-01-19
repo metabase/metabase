@@ -1,0 +1,65 @@
+name: Runner System Info
+
+on:
+  push:
+
+jobs:
+  inspect-runner:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: System Overview
+        run: |
+          echo "=== System Information ==="
+          uname -a
+          echo ""
+          cat /etc/os-release
+          echo ""
+          hostnamectl || true
+
+      - name: CPU Information
+        run: |
+          echo "=== CPU Details ==="
+          lscpu
+          echo ""
+          echo "Number of CPU cores: $(nproc)"
+          echo ""
+          cat /proc/cpuinfo | grep "model name" | head -1
+
+      - name: Memory Information
+        run: |
+          echo "=== Memory Details ==="
+          free -h
+          echo ""
+          cat /proc/meminfo | grep -E "MemTotal|MemAvailable|SwapTotal"
+
+      - name: Disk Information
+        run: |
+          echo "=== Disk Space ==="
+          df -h
+          echo ""
+          echo "=== Block Devices ==="
+          lsblk
+
+      - name: Network Information
+        run: |
+          echo "=== Network Interfaces ==="
+          ip addr
+          echo ""
+          hostname -I
+
+      - name: Performance & Load
+        run: |
+          echo "=== System Load ==="
+          uptime
+          echo ""
+          echo "=== Top Processes ==="
+          top -bn1 | head -20
+
+      - name: Summary
+        run: |
+          echo "=== Quick Summary ==="
+          echo "CPU Cores: $(nproc)"
+          echo "Total Memory: $(free -h | awk '/^Mem:/ {print $2}')"
+          echo "Available Memory: $(free -h | awk '/^Mem:/ {print $7}')"
+          echo "Root Disk Space: $(df -h / | awk 'NR==2 {print $4}') available"
