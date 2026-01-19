@@ -120,7 +120,7 @@
     :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform
     :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
     :model/WorkspaceOutputExternal           metabase-enterprise.workspaces.models.workspace-output-external
-
+    :model/WorkspaceGraph                    metabase-enterprise.workspaces.models.workspace-graph
     :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
