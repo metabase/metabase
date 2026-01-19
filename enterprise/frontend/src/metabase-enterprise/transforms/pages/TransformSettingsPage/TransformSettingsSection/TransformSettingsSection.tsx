@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -20,6 +21,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Transform } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";
@@ -34,24 +36,28 @@ type TransformSettingsSectionProps = {
 
 export const TransformSettingsSection = ({
   transform,
-}: TransformSettingsSectionProps) => (
-  <Stack gap="2.5rem">
-    <TitleSection
-      label={t`Transform target`}
-      description={t`Change what this transform generates and where.`}
-    >
-      <Group p="lg">
-        <TargetInfo transform={transform} />
-      </Group>
-      <Divider />
-      <Group p="lg">
-        <EditTargetButton transform={transform} />
-        <EditMetadataButton transform={transform} />
-      </Group>
-    </TitleSection>
-    <UpdateIncrementalSettings transform={transform} />
-  </Stack>
-);
+}: TransformSettingsSectionProps) => {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  return (
+    <Stack gap="2.5rem">
+      <TitleSection
+        label={t`Transform target`}
+        description={t`Change what this transform generates and where.`}
+      >
+        <Group p="lg">
+          <TargetInfo transform={transform} />
+        </Group>
+        <Divider />
+        <Group p="lg">
+          {!isRemoteSyncReadOnly && <EditTargetButton transform={transform} />}
+          <EditMetadataButton transform={transform} />
+        </Group>
+      </TitleSection>
+      <UpdateIncrementalSettings transform={transform} />
+    </Stack>
+  );
+};
 
 type TargetInfoProps = {
   transform: Transform;

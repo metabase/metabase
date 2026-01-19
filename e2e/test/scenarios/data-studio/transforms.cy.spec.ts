@@ -1548,17 +1548,34 @@ LIMIT
         });
       });
 
-      it("should allow to change run tags on the Run tab", () => {
+      it("should not allow to change run tags on the Run tab", () => {
         cy.log("create and visit a new transform");
         createSqlTransform({
           sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
           visitTransform: true,
         });
 
+        cy.log("visit the Run tab");
         H.DataStudio.Transforms.runTab().click();
 
         cy.findByLabelText("Tags").should("be.visible");
         cy.findByLabelText("Tags").should("be.disabled");
+      });
+
+      it("should show the Settings tab in read-only mode", () => {
+        cy.log("create and visit a new transform");
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+          visitTransform: true,
+        });
+
+        cy.log("visit the Settings tab");
+        H.DataStudio.Transforms.settingsTab().click();
+
+        cy.findByRole("button", { name: /Change target/ }).should("not.exist");
+        cy.findByRole("switch", {
+          name: /Only process new and changed data/,
+        }).should("be.disabled");
       });
     });
 
