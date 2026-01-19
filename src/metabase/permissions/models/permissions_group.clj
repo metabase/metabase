@@ -9,6 +9,7 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -16,6 +17,7 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -93,17 +95,22 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
+(def ^:dynamic ^:private *allow-modifying-magic-groups*
+  "Dynamic var that, when bound to true, allows modifying magic groups. Used by [[sync-data-analyst-group-for-oss!]]."
+  false)
+
 (defn- check-not-magic-group
   "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
   [{id :id}]
   {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
+  (when-not *allow-modifying-magic-groups*
+    (doseq [magic-group [(all-users)
+                         (all-external-users)
+                         (admin)
+                         (data-analyst)]]
+      (when (= id (:id magic-group))
+        (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+                        {:status-code 400}))))))
 
 (defn check-permissions-not-locked
   "Check that we're allowed to modify permissions for this group. The Data Analysts group has locked permissions."
@@ -216,3 +223,56 @@
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
+
+;;; ------------------------------------------ OSS Data Analyst Group Handling ------------------------------------------
+
+(defn- unique-converted-group-name
+  "Generate a unique name for the converted Data Analysts group.
+  Returns \"Data Analysts (converted)\", or \"Data Analysts (converted) (2)\", etc."
+  []
+  (let [existing-names (t2/select-fn-set :name :model/PermissionsGroup
+                                         :name [:like "Data Analysts (converted)%"])
+        base-name      "Data Analysts (converted)"]
+    (if-not (contains? existing-names base-name)
+      base-name
+      (loop [n 2]
+        (let [candidate (str base-name " (" n ")")]
+          (if-not (contains? existing-names candidate)
+            candidate
+            (recur (inc n))))))))
+
+(defn- grant-library-permissions!
+  "Grant write permissions on all library collections to a group."
+  [group-id]
+  (when-let [collection-ids (seq (t2/select-pks-set :model/Collection
+                                                    :type [:in ["library" "library-data" "library-metrics"]]))]
+    (t2/insert! :model/Permissions
+                (for [coll-id collection-ids]
+                  {:group_id group-id
+                   :object   (str "/collection/" coll-id "/write/")}))))
+
+(defn sync-data-analyst-group-for-oss!
+  "On OSS startup, convert the Data Analysts group to a normal visible group and create a new empty magic group.
+
+  In OSS, we don't want the Data Analysts group to be invisible while still granting permissions - that's a hidden
+  backdoor. Instead, we convert any existing Data Analysts group (with members) to a normal group with a unique name
+  like 'Data Analysts (converted)' that admins can see and manage. We then create a fresh empty Data Analysts magic
+  group.
+
+  This is idempotent: if the magic group has no members, nothing happens."
+  []
+  (when-not config/ee-available?
+    (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
+      (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
+        (log/info "Converting Data Analysts group to normal group for OSS")
+        (binding [*allow-modifying-magic-groups* true]
+          (t2/with-transaction [_conn]
+            ;; Rename and demote the existing group to a normal visible group
+            (t2/update! :model/PermissionsGroup (:id existing-group)
+                        {:name             (unique-converted-group-name)
+                         :magic_group_type nil})
+            ;; Create new empty magic group with default library permissions
+            (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
+                                                                    {:name             "Data Analysts"
+                                                                     :magic_group_type data-analyst-magic-group-type})]
+              (grant-library-permissions! new-group-id))))))))
