@@ -1,8 +1,6 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,6 +20,7 @@ import {
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
+  SchemaName,
   TaggedTransform,
   TransformSource,
   WorkspaceId,
@@ -41,6 +40,9 @@ import type {
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { useTransformValidation } from "./useTransformValidation";
+
+const schemasFilter = (schema: SchemaName) =>
+  !schema.startsWith("mb__isolation");
 
 type SaveTransformButtonProps = {
   databaseId: DatabaseId;
@@ -92,18 +94,6 @@ export const SaveTransformButton = ({
     "target" in transform &&
     transform.target.name !== editedTransform.target.name;
   const hasChanges = hasSourceChanged || hasTargetNameChanged;
-
-  // Fetch schemas for CreateTransformModal
-  const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId && isNewTransform
-      ? { id: databaseId, include_hidden: false }
-      : skipToken,
-  );
-  const allowedSchemas = useMemo(
-    () =>
-      fetchedSchemas.filter((schema) => !schema.startsWith("mb__isolation")),
-    [fetchedSchemas],
-  );
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
@@ -276,7 +266,7 @@ export const SaveTransformButton = ({
           source={editedTransform.source as TransformSource}
           defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
-          schemas={allowedSchemas}
+          schemasFilter={schemasFilter}
           showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
           validateOnMount
