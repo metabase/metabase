@@ -104,11 +104,11 @@
    [:row_count              :int]
    [:data                   {:optional true} ::query-result.data]
    [:running_time           {:optional true} :int]
-   [:started_at             {:optional true} :any]
+   [:started_at             {:optional true} :string]
    [:database_id            {:optional true} ::lib.schema.id/database]
    [:json_query             {:optional true} :map]
    [:average_execution_time {:optional true} [:maybe :int]]
    [:context                {:optional true} :any]
-   [:cached                 {:optional true} [:maybe :any]]
+   [:cached                 {:optional true} [:maybe :string]]
    [:error                  {:optional true} :string]
    [:error_type             {:optional true} :keyword]])
