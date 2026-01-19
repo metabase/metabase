@@ -11,6 +11,7 @@ import {
   setupDatabaseEndpoints,
   setupNotificationChannelsEndpoints,
   setupTableEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import {
@@ -40,6 +41,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockNotification } from "metabase-types/api/mocks/notification";
 
 import { StaticQuestion } from "./StaticQuestion";
 
@@ -74,7 +76,7 @@ interface SetupOpts {
   canManageSubscriptions?: boolean;
   isSuperuser?: boolean;
   isModel?: boolean;
-  willOpenModal?: boolean;
+  notifications?: ReturnType<typeof createMockNotification>[];
   collectionType?: CollectionType;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -90,7 +92,7 @@ const setup = async ({
   canManageSubscriptions = true,
   isSuperuser = true,
   isModel = false,
-  willOpenModal,
+  notifications = [],
   collectionType,
   tokenFeatures,
   enterprisePlugins,
@@ -157,11 +159,14 @@ const setup = async ({
     collections: [TEST_COLLECTION],
   });
 
-  if (willOpenModal) {
-    setupWebhookChannelsEndpoint();
-    setupListNotificationEndpoints({ card_id: card.id }, []);
-    setupCreateNotificationEndpoint();
-  }
+  setupListNotificationEndpoints({ card_id: card.id }, notifications);
+  /**
+   * We don't care about these endpoints' results.
+   * We only want to avoid getting fetch-mock's unmocked endpoints error.
+   */
+  setupUserRecipientsEndpoint({ users: [] });
+  setupWebhookChannelsEndpoint([]);
+  setupCreateNotificationEndpoint();
 
   renderWithSDKProviders(
     <StaticQuestion
@@ -457,6 +462,39 @@ describe("StaticQuestion", () => {
   });
 
   describe("alert modal", () => {
+    it("should show alert list modal when there are existing alerts", async () => {
+      await setup({
+        withAlerts: true,
+        isEmailSetup: true,
+        canManageSubscriptions: true,
+        isModel: false,
+        enterprisePlugins: ["sdk_notifications"],
+        notifications: [createMockNotification()],
+      });
+
+      expect(
+        within(screen.getByRole("gridcell")).getByText("Test Row"),
+      ).toBeVisible();
+
+      await userEvent.click(screen.getByRole("button", { name: "Alerts" }));
+
+      // Verify the alert list modal appears, not the create modal
+      const withinModal = within(await findModal());
+
+      // Show the alert list modal title
+      expect(
+        await withinModal.findByRole("heading", { name: "Edit alerts" }),
+      ).toBeVisible();
+
+      // Should show the button to create a new alert in the list modal
+      expect(withinModal.getByText("New alert")).toBeVisible();
+
+      // Should NOT show the create alert form fields
+      expect(
+        withinModal.queryByText("What do you want to be alerted about?"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should not show email selector on the SDK and use current logged in user as the recipient", async () => {
       await setup({
         withAlerts: true,
@@ -464,7 +502,6 @@ describe("StaticQuestion", () => {
         canManageSubscriptions: true,
         isModel: false,
         enterprisePlugins: ["sdk_notifications"],
-        willOpenModal: true,
       });
 
       expect(
@@ -472,7 +509,7 @@ describe("StaticQuestion", () => {
       ).toBeVisible();
       await userEvent.click(screen.getByRole("button", { name: "Alerts" }));
 
-      const withinModal = within(getModal());
+      const withinModal = within(await findModal());
       expect(
         withinModal.getByRole("heading", { name: "New alert" }),
       ).toBeVisible();
@@ -514,6 +551,6 @@ describe("StaticQuestion", () => {
   });
 });
 
-function getModal() {
-  return screen.getByRole("dialog");
+async function findModal() {
+  return await screen.findByRole("dialog");
 }
