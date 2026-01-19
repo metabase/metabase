@@ -997,7 +997,7 @@ LIMIT
 
       // Make a second change while first is still in progress
       // Select any available checkpoint field
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
       getFieldPicker().click();
 
       // Click the first available option in the popover
@@ -1032,7 +1032,7 @@ LIMIT
       // The source strategy select should be visible
       // (Currently only one option "checkpoint" is available, so select might not be shown)
       // The checkpoint field select should be visible
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
 
       cy.log("Select a checkpoint field");
       getFieldPicker().click();
