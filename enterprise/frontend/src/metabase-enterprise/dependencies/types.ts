@@ -26,5 +26,5 @@ export type DependentGroup = {
 
 export type DependencyErrorInfo = {
   label: string;
-  detail: string | null;
+  detail?: string | null;
 };

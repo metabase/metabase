@@ -67,6 +67,7 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onBlur?: () => void;
   topBarInnerContent?: ReactNode;
 };
 
@@ -96,6 +97,7 @@ export function QueryEditorBody({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
   topBarInnerContent,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
@@ -161,6 +163,7 @@ export function QueryEditorBody({
       onOpenModal={onOpenModal}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
       topBarInnerContent={topBarInnerContent}
     />
   ) : (

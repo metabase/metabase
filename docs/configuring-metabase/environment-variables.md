@@ -1369,6 +1369,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
+
+Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
 - Type: integer

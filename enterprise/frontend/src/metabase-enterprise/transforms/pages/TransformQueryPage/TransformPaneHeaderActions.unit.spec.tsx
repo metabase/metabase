@@ -17,12 +17,20 @@ const mockQuerySource: DraftTransformSource = {
   },
 };
 
+const mockPythonSource: DraftTransformSource = {
+  type: "python",
+  body: "# Python script",
+  "source-database": 1,
+  "source-tables": {},
+};
+
 type SetupOpts = {
   isDirty?: boolean;
   isEditMode?: boolean;
   isSaving?: boolean;
   source?: DraftTransformSource;
   isNative?: boolean;
+  isPython?: boolean;
 };
 
 function setup({
@@ -31,6 +39,7 @@ function setup({
   isSaving = false,
   source = mockQuerySource,
   isNative = false,
+  isPython = false,
 }: SetupOpts = {}) {
   const handleCancel = jest.fn();
   const handleSave = jest.fn().mockResolvedValue(undefined);
@@ -44,6 +53,12 @@ function setup({
     },
   };
 
+  const resolvedSource = isPython
+    ? mockPythonSource
+    : isNative
+      ? nativeSource
+      : source;
+
   const { unmount } = renderWithProviders(
     <Route
       component={() => (
@@ -53,7 +68,7 @@ function setup({
           isDirty={isDirty}
           isEditMode={isEditMode}
           isSaving={isSaving}
-          source={isNative ? nativeSource : source}
+          source={resolvedSource}
           transformId={1}
         />
       )}
@@ -145,6 +160,23 @@ describe("TransformPaneHeaderActions", () => {
       expect(
         screen.queryByRole("button", { name: /save/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Python transforms", () => {
+    it("should not render EditDefinitionButton for Python transforms (handled by PythonTransformTopBar)", () => {
+      setup({ isEditMode: false, isPython: true });
+      expect(
+        screen.queryByRole("link", { name: /edit definition/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render Save and Cancel in edit mode for Python transforms", () => {
+      setup({ isEditMode: true, isPython: true, isDirty: true });
+      expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /cancel/i }),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -424,7 +424,7 @@
            :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
            :details        (update-details-perms! group-id db-id new-perms))))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
@@ -441,6 +441,6 @@
            (delete-impersonations-if-needed-after-permissions-change! group-updates)
            (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))

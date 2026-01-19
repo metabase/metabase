@@ -256,7 +256,7 @@ export type ExtractColumnsFromQueryResponse = {
 
 export type CheckQueryComplexityRequest = string;
 
-export type CheckQueryComplexityResponse = {
+export type QueryComplexity = {
   is_simple: boolean;
   reason: string;
 };

@@ -91,7 +91,7 @@
                   (throw e)))))))
 
 (defmacro with-cluster-lock
-  "Run `body` in a tranactions that tries to take a lock from the metabase_cluster_lock table of
+  "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))
