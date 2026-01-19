@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Loader } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Box } from "metabase/ui";
 import { useGetWorkspaceGraphQuery } from "metabase-enterprise/api";
 import { DependencyGraph as DependencyGraphComponent } from "metabase-enterprise/dependencies/components/DependencyGraph/DependencyGraph";
 import { WorkspaceGraphNode } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphNode/WorkspaceGraphNode";
@@ -39,24 +40,8 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
     type: "workspace-transform",
   };
 
-  if (isFetching) {
-    return (
-      <div
-        style={{ display: "flex", justifyContent: "center", padding: "4rem" }}
-      >
-        <Loader />
-      </div>
-    );
-  }
-
-  if (error || !graphData) {
-    return (
-      <div
-        style={{ display: "flex", justifyContent: "center", padding: "4rem" }}
-      >
-        {t`Failed to load dependency graph`}
-      </div>
-    );
+  if (isFetching || error) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
   const getGraphUrl = () => `/api/ee/workspace/${workspaceId}/graph`;
