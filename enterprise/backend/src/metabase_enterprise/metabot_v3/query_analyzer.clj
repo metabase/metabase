@@ -7,7 +7,6 @@
   (:require
    [clojure.string :as str]
    [macaw.core :as macaw]
-   [metabase-enterprise.metabot-v3.query-analyzer.impl :as nqa.impl]
    [metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
