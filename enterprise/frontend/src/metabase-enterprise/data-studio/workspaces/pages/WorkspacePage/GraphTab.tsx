@@ -129,18 +129,25 @@ function useDependencyGraph(
     }, []);
 
     // Transform edges to match WorkspaceGraphDependencyEdge format
-    const dependencyEdges: WorkspaceGraphDependencyEdge[] = [
-      ...graphData.edges,
-    ].map((edge) => ({
-      from_entity_id: edge.from_entity_id,
-      from_entity_type: (edge.from_entity_type === "workspace-transform"
-        ? "workspace-transform"
-        : "table") as "table" | "workspace-transform",
-      to_entity_id: edge.to_entity_id,
-      to_entity_type: (edge.to_entity_type === "input-table"
-        ? "table"
-        : edge.to_entity_type) as "table" | "workspace-transform",
-    }));
+    const dependencyEdges: WorkspaceGraphDependencyEdge[] = graphData.edges.map(
+      (edge) => {
+        const fromEntityType: WorkspaceGraphDependencyEdge["from_entity_type"] =
+          edge.from_entity_type === "workspace-transform"
+            ? "workspace-transform"
+            : "table";
+        const toEntityType: WorkspaceGraphDependencyEdge["to_entity_type"] =
+          edge.to_entity_type === "workspace-transform"
+            ? "workspace-transform"
+            : "table";
+
+        return {
+          from_entity_id: edge.from_entity_id,
+          from_entity_type: fromEntityType,
+          to_entity_id: edge.to_entity_id,
+          to_entity_type: toEntityType,
+        };
+      },
+    );
 
     // Add edges from workspace-transforms to their target tables
     graphData.nodes.forEach((node) => {

@@ -34,6 +34,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DraftTransformSource,
+  TaggedTransform,
   Transform,
   UnsavedTransform,
   WorkspaceTransform,
@@ -46,6 +47,7 @@ import {
   getTransformId,
   useWorkspace,
 } from "./WorkspaceProvider";
+import { isSavedTransformInfo } from "./utils/guards";
 
 const normalizeSource = (
   source: DraftTransformSource,
@@ -140,7 +142,10 @@ export function useWorkspaceMetabot({
 
   const openTaggedTransformInWorkspace = useCallback(
     (nextTransform: Transform) => {
-      const taggedTransform = { ...nextTransform, type: "transform" as const };
+      const taggedTransform: TaggedTransform = {
+        ...nextTransform,
+        type: "transform",
+      };
       addOpenedTransform(taggedTransform);
       setActiveTransform(taggedTransform);
     },
@@ -167,11 +172,11 @@ export function useWorkspaceMetabot({
 
       // If editing an existing transform, fetch and open it
       if (existingTransformId != null) {
-        const targetTransform: Transform | undefined =
-          (editorTransform as Transform | undefined) ??
-          (existingTransformId
-            ? (suggestedTransform as unknown as Transform)
-            : undefined);
+        const targetTransform = isSavedTransformInfo(editorTransform)
+          ? editorTransform
+          : isSavedTransformInfo(suggestedTransform)
+            ? suggestedTransform
+            : undefined;
 
         if (targetTransform) {
           openTaggedTransformInWorkspace(targetTransform);

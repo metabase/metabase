@@ -58,16 +58,15 @@ export function useTransformDryRunPreview({
   }, [workspaceId, transformId, hasQuery, dryRunTransform]);
 
   const normalizedCols = useMemo<DatasetColumn[]>(() => {
-    const cols = data?.data?.cols ?? [];
+    const cols: Partial<DatasetColumn>[] = data?.data?.cols ?? [];
     return cols.map((col, index) => {
-      const typedCol = col as Partial<DatasetColumn>;
-      const name = typedCol.name ?? `column_${index + 1}`;
+      const name = col.name ?? `column_${index + 1}`;
 
       return {
-        ...typedCol,
+        ...col,
         name,
-        display_name: typedCol.display_name ?? name,
-        source: typedCol.source ?? "native",
+        display_name: col.display_name ?? name,
+        source: col.source ?? "native",
       };
     });
   }, [data]);
