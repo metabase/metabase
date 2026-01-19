@@ -3192,6 +3192,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:30:05

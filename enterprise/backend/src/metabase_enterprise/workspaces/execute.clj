@@ -8,7 +8,6 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
-   [java-time.api :as t]
    [macaw.core :as macaw]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
