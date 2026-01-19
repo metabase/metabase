@@ -59,6 +59,7 @@ type ScheduleWidgetProps = {
 };
 
 const SCHEDULE_OPTIONS: ScheduleType[] = [
+  "every_n_minutes",
   "hourly",
   "daily",
   "weekly",

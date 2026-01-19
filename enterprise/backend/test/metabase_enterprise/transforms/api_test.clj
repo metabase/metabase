@@ -1101,6 +1101,42 @@
           (is (= "Contains a CTE" (:reason response))))))))
 
 ;;; ------------------------------------------------------------
+;;; User Attribution Tests
+;;; ------------------------------------------------------------
+
+(deftest manual-run-user-attribution-test
+  (testing "Manual runs are attributed to the triggering user, not the owner"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "user_attribution_test"]
+            (let [rasta-id (mt/user->id :rasta)
+                  crowberto-id (mt/user->id :crowberto)
+                  ;; Create transform owned by rasta, but run by crowberto
+                  transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Attribution Test"
+                                                   :source {:type "query"
+                                                            :query (make-query "Gadget")}
+                                                   :target {:type "table"
+                                                            :schema (get-test-schema)
+                                                            :name table-name}
+                                                   :owner_user_id rasta-id})
+                  transform-id (:id transform)]
+              ;; Verify owner is rasta
+              (is (= rasta-id (:owner_user_id transform))
+                  "Owner should be rasta")
+              ;; Run as crowberto (different from owner)
+              (mt/user-http-request :crowberto :post 202
+                                    (format "ee/transform/%d/run" transform-id))
+              ;; Wait for run to start and check attribution
+              (let [run (u/poll {:thunk #(t2/select-one :model/TransformRun :transform_id transform-id)
+                                 :done? some?
+                                 :timeout-ms 5000})]
+                (is (some? run) "Run should exist")
+                (is (= crowberto-id (:user_id run))
+                    "Run should be attributed to the triggering user (crowberto), not the owner (rasta)")))))))))
+
+;;; ------------------------------------------------------------
 ;;; Collection Items Integration Tests
 ;;; ------------------------------------------------------------
 

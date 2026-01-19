@@ -332,7 +332,8 @@
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
-                                             :run-method :manual}))
+                                             :run-method :manual
+                                             :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

@@ -42,7 +42,7 @@
 
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise]}]
+  ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise user-id]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
@@ -56,8 +56,10 @@
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
            features (transforms.util/required-database-features transform)
-           ;; Use owner_user_id if set, otherwise fall back to creator_id for attribution
-           run-user-id (or owner_user_id creator_id)]
+           ;; For manual runs, use the triggering user; for cron, use owner/creator
+           run-user-id (if (and (= run-method :manual) user-id)
+                         user-id
+                         (or owner_user_id creator_id))]
 
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
