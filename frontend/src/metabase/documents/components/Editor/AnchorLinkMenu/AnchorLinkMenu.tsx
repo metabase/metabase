@@ -2,9 +2,9 @@ import cx from "classnames";
 import { type CSSProperties, forwardRef } from "react";
 import { createPortal } from "react-dom";
 
-import { AnchorLinkButton } from "metabase/rich_text_editing/tiptap/components/AnchorLinkButton";
 import { Box, rem } from "metabase/ui";
 
+import { AnchorLinkButton } from "./AnchorLinkButton";
 import S from "./AnchorLinkMenu.module.css";
 
 interface Props {

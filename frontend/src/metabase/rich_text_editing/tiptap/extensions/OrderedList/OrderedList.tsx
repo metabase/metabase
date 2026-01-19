@@ -7,7 +7,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 
-import { AnchorLinkMenu } from "metabase/documents/components/Editor/AnchorLinkMenu";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
 import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
 
@@ -56,12 +55,9 @@ export const OrderedListNodeView = ({
     threads,
     document,
     shouldShowMenus,
-    anchorUrl,
     setReferenceElement,
     commentsRefs,
     commentsFloatingStyles,
-    anchorRefs,
-    anchorFloatingStyles,
   } = useBlockMenus({ node, editor, getPos });
 
   return (
@@ -81,22 +77,14 @@ export const OrderedListNodeView = ({
       </NodeViewWrapper>
 
       {shouldShowMenus && document && (
-        <>
-          <AnchorLinkMenu
-            ref={anchorRefs.setFloating}
-            show={hovered}
-            style={anchorFloatingStyles}
-            url={anchorUrl}
-          />
-          <CommentsMenu
-            active={isOpen}
-            href={`/document/${document.id}/comments/${_id}`}
-            ref={commentsRefs.setFloating}
-            show={isOpen || hovered}
-            style={commentsFloatingStyles}
-            threads={threads}
-          />
-        </>
+        <CommentsMenu
+          active={isOpen}
+          href={`/document/${document.id}/comments/${_id}`}
+          ref={commentsRefs.setFloating}
+          show={isOpen || hovered}
+          style={commentsFloatingStyles}
+          threads={threads}
+        />
       )}
     </>
   );
