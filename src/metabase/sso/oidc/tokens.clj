@@ -4,6 +4,7 @@
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -83,6 +84,25 @@
               key-data))
           keys)))
 
+(def ^:private allowed-algorithms
+  "Allowlist of acceptable JWT signing algorithms.
+   Includes RSA and ECDSA families commonly used by OIDC providers."
+  #{:rs256 :rs384 :rs512 :es256 :es384 :es512})
+
+(defn- get-key-algorithm
+  "Extract and validate the signing algorithm from a JWK.
+   Returns the algorithm keyword if valid, or :rs256 as default if not specified.
+   Throws an exception if the algorithm is specified but not in the allowlist."
+  [key-data]
+  (if-let [alg (:alg key-data)]
+    (let [alg-kw (keyword (str/lower-case alg))]
+      (when-not (contains? allowed-algorithms alg-kw)
+        (throw (ex-info "Unsupported JWT signing algorithm"
+                        {:algorithm alg :allowed allowed-algorithms})))
+      alg-kw)
+    ;; Default to RS256 for backwards compatibility with JWKs that don't specify alg
+    :rs256))
+
 (defn- verify-signature
   "Verify JWT signature using JWKS.
 
@@ -98,9 +118,10 @@
       (let [header-json (jwt/decode-header token)
             kid (:kid header-json)]
         (when-let [key-data (find-signing-key jwks kid)]
-          ;; Convert JWK to public key and verify
-          (let [public-key (keys/jwk->public-key key-data)]
-            (jwt/unsign token public-key {:alg :rs256})))))
+          ;; Convert JWK to public key and verify using algorithm from JWK
+          (let [alg (get-key-algorithm key-data)
+                public-key (keys/jwk->public-key key-data)]
+            (jwt/unsign token public-key {:alg alg})))))
     (catch Exception e
       (log/warn e "JWT signature verification failed")
       nil)))

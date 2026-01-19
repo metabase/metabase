@@ -5,7 +5,10 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.sso.oidc.tokens :as oidc.tokens]))
+   [metabase.sso.oidc.tokens :as oidc.tokens])
+  (:import
+   (java.security KeyPairGenerator)
+   (java.security.spec ECGenParameterSpec)))
 
 (def ^:private test-rsa-private-key-pem
   "Test RSA private key PEM string for signing JWTs"
@@ -61,6 +64,30 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
 (def ^:private test-jwks
   "Test JWKS"
   {:keys [(merge {:kid "test-key-id" :use "sig"} (buddy.keys/public-key->jwk test-rsa-public-key))]})
+
+(defn- generate-ec-keypair
+  "Generate an ECDSA keypair for the given curve (e.g., \"secp256r1\" for ES256)."
+  [curve-name]
+  (let [kpg (KeyPairGenerator/getInstance "EC")]
+    (.initialize kpg (ECGenParameterSpec. curve-name))
+    (.generateKeyPair kpg)))
+
+(def ^:private test-ec-keypair
+  "Test ECDSA keypair for ES256 algorithm"
+  (generate-ec-keypair "secp256r1"))
+
+(def ^:private test-ec-private-key
+  "Test EC private key for signing JWTs"
+  (.getPrivate test-ec-keypair))
+
+(def ^:private test-ec-public-key
+  "Test EC public key for verifying JWTs"
+  (.getPublic test-ec-keypair))
+
+(def ^:private test-ec-jwks
+  "Test JWKS with EC key"
+  {:keys [(merge {:kid "test-ec-key-id" :use "sig" :alg "ES256"}
+                 (buddy.keys/public-key->jwk test-ec-public-key))]})
 
 (defn- create-test-id-token
   "Create a test ID token with the given claims"
@@ -341,3 +368,92 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Invalid JWKS URI: internal addresses not allowed"
                           (oidc.tokens/get-jwks "http://10.0.0.1/jwks")))))
+
+;;; ================================================== Algorithm Support Tests ==================================================
+
+(defn- create-test-ec-token
+  "Create a test ID token signed with ES256 algorithm"
+  [claims]
+  (jwt/sign claims test-ec-private-key {:alg :es256 :header {:kid "test-ec-key-id"}}))
+
+(deftest validate-id-token-es256-algorithm-test
+  (oidc.tokens/clear-jwks-cache!)
+  (testing "Successfully validates an ID token signed with ES256 algorithm"
+    (let [now (t/instant)
+          exp (t/plus now (t/seconds 3600))
+          iat (t/minus now (t/seconds 60))
+          claims {:sub "user123"
+                  :iss "https://provider.com"
+                  :aud "test-client-id"
+                  :exp (quot (t/to-millis-from-epoch exp) 1000)
+                  :iat (quot (t/to-millis-from-epoch iat) 1000)
+                  :nonce "test-nonce"
+                  :email "user@example.com"}
+          token (create-test-ec-token claims)
+          config {:jwks-uri "https://provider.com/jwks"
+                  :issuer-uri "https://provider.com"
+                  :client-id "test-client-id"}]
+      (with-redefs [http/get (fn [_url _opts]
+                               {:status 200
+                                :body test-ec-jwks})]
+        (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
+          (is (true? (:valid? result)))
+          (is (some? (:claims result)))
+          (is (= "user123" (get-in result [:claims :sub])))
+          (is (= "user@example.com" (get-in result [:claims :email])))
+          (is (nil? (:error result))))))))
+
+(deftest validate-id-token-unsupported-algorithm-test
+  (oidc.tokens/clear-jwks-cache!)
+  (testing "Rejects tokens from JWKs with unsupported algorithm (HS256)"
+    (let [now (t/instant)
+          exp (t/plus now (t/seconds 3600))
+          iat (t/minus now (t/seconds 60))
+          claims {:sub "user123"
+                  :iss "https://provider.com"
+                  :aud "test-client-id"
+                  :exp (quot (t/to-millis-from-epoch exp) 1000)
+                  :iat (quot (t/to-millis-from-epoch iat) 1000)
+                  :nonce "test-nonce"}
+          token (create-test-id-token claims)
+          ;; JWK with unsupported algorithm
+          unsupported-jwks {:keys [(merge {:kid "test-key-id" :use "sig" :alg "HS256"}
+                                          (buddy.keys/public-key->jwk test-rsa-public-key))]}
+          config {:jwks-uri "https://provider.com/jwks"
+                  :issuer-uri "https://provider.com"
+                  :client-id "test-client-id"}]
+      (with-redefs [http/get (fn [_url _opts]
+                               {:status 200
+                                :body unsupported-jwks})]
+        (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
+          (is (false? (:valid? result)))
+          (is (= "JWT signature verification failed" (:error result))))))))
+
+(deftest validate-id-token-jwk-without-alg-defaults-to-rs256-test
+  (oidc.tokens/clear-jwks-cache!)
+  (testing "Successfully validates RS256 token when JWK has no alg field (backwards compatibility)"
+    (let [now (t/instant)
+          exp (t/plus now (t/seconds 3600))
+          iat (t/minus now (t/seconds 60))
+          claims {:sub "user123"
+                  :iss "https://provider.com"
+                  :aud "test-client-id"
+                  :exp (quot (t/to-millis-from-epoch exp) 1000)
+                  :iat (quot (t/to-millis-from-epoch iat) 1000)
+                  :nonce "test-nonce"
+                  :email "user@example.com"}
+          token (create-test-id-token claims)
+          ;; JWK without alg field (should default to RS256)
+          jwks-without-alg {:keys [(merge {:kid "test-key-id" :use "sig"}
+                                          (buddy.keys/public-key->jwk test-rsa-public-key))]}
+          config {:jwks-uri "https://provider.com/jwks"
+                  :issuer-uri "https://provider.com"
+                  :client-id "test-client-id"}]
+      (with-redefs [http/get (fn [_url _opts]
+                               {:status 200
+                                :body jwks-without-alg})]
+        (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
+          (is (true? (:valid? result)))
+          (is (some? (:claims result)))
+          (is (= "user123" (get-in result [:claims :sub])))
+          (is (nil? (:error result))))))))
