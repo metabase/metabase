@@ -36,13 +36,13 @@
 ;;
 ;;  <hr />
 ;;
-;; ## How does defendpoint coersion work?
+;; ## How does defendpoint coercion work?
 ;;
 ;; The `defendpoint` macro uses the schemas to generate code which binds args to their decoded values. Values are
 ;; decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be coerced; unmentioned
 ;; aliases will not be bound.
 ;;
-;; The exact coersion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
+;; The exact coercion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
 ;; for more details
 ;;
@@ -351,6 +351,25 @@
    (write-check (t2/select-one entity :id id)))
   ([entity id & other-conditions]
    (write-check (apply t2/select-one entity :id id other-conditions))))
+
+(defn query-check
+  "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have query permissions, throw a 403. This is separate from [[read-check]] - for data model entities like
+  Tables and Databases, `query-check` means 'can execute queries against' while `read-check` means 'can see metadata'.
+  This will fetch the object if it was not already fetched, and returns `obj` if the check is successful."
+  ([obj]
+   (check-404 obj)
+   (try
+     (check-403 (mi/can-query? obj))
+     (catch clojure.lang.ExceptionInfo e
+       (events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
+                                                              :object  obj})
+       (throw e)))
+   obj)
+  ([entity id]
+   (query-check (t2/select-one entity :id id)))
+  ([entity id & other-conditions]
+   (query-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.

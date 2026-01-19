@@ -59,7 +59,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
 
   return (
     <PaneHeaderActions
-      alwaysVisible={!isPythonTransform && isEditMode}
+      alwaysVisible={isEditMode}
       errorMessage={validationResult.errorMessage}
       isDirty={isDirty}
       isSaving={isSaving}

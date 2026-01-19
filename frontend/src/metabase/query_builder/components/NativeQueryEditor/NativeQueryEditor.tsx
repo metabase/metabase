@@ -79,6 +79,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
     | null;
   nativeEditorSelectedText?: string | null;
   onAcceptProposed?: (query: DatasetQuery) => void;
+  onBlur?: () => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   onRejectProposed?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
@@ -136,6 +137,7 @@ export const NativeQueryEditor = forwardRef<
     modalSnippet,
     nativeEditorSelectedText,
     onAcceptProposed,
+    onBlur,
     onOpenModal,
     onRejectProposed,
     onSetDatabaseId,
@@ -329,6 +331,7 @@ export const NativeQueryEditor = forwardRef<
               placeholder={placeholder}
               highlightedLineNumbers={highlightedLineNumbers}
               extensions={extensions}
+              onBlur={onBlur}
               onChange={handleChange}
               onRunQuery={runQuery}
               onSelectionChange={setNativeEditorSelectedRange}

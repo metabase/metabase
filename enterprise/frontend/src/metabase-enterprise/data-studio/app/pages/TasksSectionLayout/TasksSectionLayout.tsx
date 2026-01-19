@@ -10,6 +10,6 @@ type TasksSectionLayoutProps = {
 };
 
 export function TasksSectionLayout({ children }: TasksSectionLayoutProps) {
-  usePageTitle(t`Tasks`);
+  usePageTitle(t`Dependency diagnostics`);
   return <SectionLayout>{children}</SectionLayout>;
 }

@@ -20,7 +20,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException]))
+            [java.sql SQLException PreparedStatement]
+            [java.time LocalDate]))
 
 (set! *warn-on-reflection* true)
 
@@ -347,3 +348,9 @@
   [_driver _database _table]
   (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
   #{})
+
+;; Override clickhouse to not pass in the Types/DATE parameter due to jdbc
+;; driver issue: https://github.com/ClickHouse/clickhouse-java/issues/2701
+(defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
+  [_ ^PreparedStatement prepared-statement i object]
+  (.setObject prepared-statement i object))

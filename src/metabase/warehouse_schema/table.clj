@@ -31,20 +31,12 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defenterprise can-access-via-collection?
-  "Returns true if the user can access this published table via collection read permissions.
-  OSS returns false (published tables don't grant access).
-  Enterprise checks collection permissions for published tables."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table]
-  false)
-
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
-  Checks collection permissions for published tables, data permissions for unpublished tables."
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
   [table]
-  (or (can-access-via-collection? table)
-      (mi/can-read? table)))
+  (mi/can-read? table))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -119,7 +111,7 @@
                       :id            (or col-id
                                          ;; TODO -- what????
                                          [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
+                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
                       :semantic_type (keyword (:semantic_type col)))

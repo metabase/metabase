@@ -58,7 +58,7 @@ export const DefaultViewTitle = ({
   }
 
   if (title === undefined || title === true) {
-    const originalName = originalQuestion?.displayName();
+    const originalName = tc(originalQuestion?.displayName());
 
     const titleText = tc(getQuestionTitle({ question }));
 

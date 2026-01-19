@@ -86,6 +86,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-check-changes-cache-ttl-seconds
+  (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
+  :type :integer
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default 60)
+
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
@@ -122,8 +130,8 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-
-  (if (str/blank? remote-sync-url)
+  (if (and (contains? settings :remote-sync-url)
+           (str/blank? remote-sync-url))
     (t2/with-transaction [_conn]
       (setting/set! :remote-sync-url nil)
       (setting/set! :remote-sync-token nil)
@@ -134,5 +142,6 @@
           _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
-          (when (not (and (= k :remote-sync-token) obfuscated?))
+          (when (and (contains? settings k)
+                     (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))

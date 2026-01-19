@@ -32,15 +32,13 @@ export const SearchUserSelectBox = styled(Stack)`
 export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
-  ${({ theme }) => {
-    const primaryColor = theme.fn.themeColor("brand");
-
+  ${() => {
     return css`
-      background-color: color-mix(in srgb, ${primaryColor}, white 88%);
+      background-color: var(--mb-color-brand-lighter) !important;
       border: 0;
 
       &:hover {
-        background-color: color-mix(in srgb, ${primaryColor}, white 60%);
+        background-color: var(--mb-color-brand-light) !important;
       }
     `;
   }}
