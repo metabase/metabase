@@ -3,10 +3,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 import type { NodeSelection } from "../bulk-selection.utils";
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 
-import {
-  type CheckboxToggleRow,
-  changeCheckboxSelection,
-} from "./TablePickerTreeTable";
+import { changeCheckboxSelection } from "./TablePickerTreeTable";
 
 describe("handleCheckboxToggle", () => {
   const createCheckboxRow = (
@@ -15,7 +12,9 @@ describe("handleCheckboxToggle", () => {
     tableId?: TableId,
     databaseId?: DatabaseId,
     isDisabled?: boolean,
-  ): CheckboxToggleRow => ({
+    depth?: number,
+  ) => ({
+    depth: depth ?? 0,
     original: {
       type,
       nodeKey,
@@ -424,10 +423,31 @@ describe("handleCheckboxToggle", () => {
       const schema2 = createMockSchemaNode(1, "public", [table2]);
       const database = createMockDatabaseNode(1, [schema1, schema2]);
 
-      const row1 = createCheckboxRow("database", database.key, undefined, 1);
-      const row2 = createCheckboxRow("schema", schema1.key, undefined, 1);
-      const row3 = createCheckboxRow("table", table2.key, 102, 1);
-      const row4 = createCheckboxRow("schema", schema2.key, undefined, 1);
+      const row1 = createCheckboxRow(
+        "database",
+        database.key,
+        undefined,
+        1,
+        false,
+        0,
+      );
+      const row2 = createCheckboxRow(
+        "schema",
+        schema1.key,
+        undefined,
+        1,
+        false,
+        1,
+      );
+      const row3 = createCheckboxRow("table", table2.key, 102, 1, false, 2);
+      const row4 = createCheckboxRow(
+        "schema",
+        schema2.key,
+        undefined,
+        1,
+        false,
+        1,
+      );
       const rows = [row1, row2, row3, row4];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -463,9 +483,16 @@ describe("handleCheckboxToggle", () => {
       const table2 = createMockTableNode(1, "public", 102);
       const schema = createMockSchemaNode(1, "public", [table1, table2]);
 
-      const row1 = createCheckboxRow("schema", schema.key, undefined, 1);
-      const row2 = createCheckboxRow("table", table1.key, 101, 1);
-      const row3 = createCheckboxRow("table", table2.key, 102, 1);
+      const row1 = createCheckboxRow(
+        "schema",
+        schema.key,
+        undefined,
+        1,
+        false,
+        0,
+      );
+      const row2 = createCheckboxRow("table", table1.key, 101, 1, false, 1);
+      const row3 = createCheckboxRow("table", table2.key, 102, 1, false, 1);
       const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -526,6 +553,113 @@ describe("handleCheckboxToggle", () => {
       // Both table1 and the database's children should be selected
       expect(result.selection.tables).toEqual(new Set([101]));
       expect(result.lastSelectedRowIndex).toBe(1);
+    });
+
+    it("should select collapsed schema between expanded parents", () => {
+      // Simulates: raw (expanded) -> Events Raw -> Users Events -> staging (collapsed) -> Sample Database -> Orders
+      const eventsRaw = createMockTableNode(1, "raw", 101);
+      const usersEvents = createMockTableNode(1, "raw", 102);
+      const rawSchema = createMockSchemaNode(1, "raw", [
+        eventsRaw,
+        usersEvents,
+      ]);
+
+      // staging is collapsed (no children loaded)
+      const stagingSchema = createMockSchemaNode(1, "staging", []);
+
+      const orders = createMockTableNode(2, "public", 201);
+      const sampleDbSchema = createMockSchemaNode(2, "public", [orders]);
+      const sampleDatabase = createMockDatabaseNode(2, [sampleDbSchema]);
+
+      const rowRaw = createCheckboxRow(
+        "schema",
+        rawSchema.key,
+        undefined,
+        1,
+        false,
+        0,
+      );
+      const rowEventsRaw = createCheckboxRow(
+        "table",
+        eventsRaw.key,
+        101,
+        1,
+        false,
+        1,
+      );
+      const rowUsersEvents = createCheckboxRow(
+        "table",
+        usersEvents.key,
+        102,
+        1,
+        false,
+        1,
+      );
+      const rowStaging = createCheckboxRow(
+        "schema",
+        stagingSchema.key,
+        undefined,
+        1,
+        false,
+        0,
+      );
+      const rowSampleDb = createCheckboxRow(
+        "database",
+        sampleDatabase.key,
+        undefined,
+        2,
+        false,
+        0,
+      );
+      const rowOrders = createCheckboxRow(
+        "table",
+        orders.key,
+        201,
+        2,
+        false,
+        1,
+      );
+
+      const rows = [
+        rowRaw,
+        rowEventsRaw,
+        rowUsersEvents,
+        rowStaging,
+        rowSampleDb,
+        rowOrders,
+      ];
+      const selection: NodeSelection = {
+        tables: new Set(),
+        schemas: new Set(),
+        databases: new Set(),
+      };
+      const nodeKeyToOriginal = new Map<string, TreeNode>([
+        [rawSchema.key, rawSchema],
+        [eventsRaw.key, eventsRaw],
+        [usersEvents.key, usersEvents],
+        [stagingSchema.key, stagingSchema],
+        [sampleDatabase.key, sampleDatabase],
+        [orders.key, orders],
+      ]);
+
+      // Click on raw (index 0), shift+click on Orders (index 5)
+      const result = changeCheckboxSelection({
+        row: rowOrders,
+        index: 5,
+        isShiftPressed: true,
+        selection,
+        lastSelectedRowIndex: 0,
+        rows,
+        nodeKeyToOriginal,
+      });
+
+      // staging should be selected by ID since it's collapsed (no children in range)
+      // raw should be skipped since its children (eventsRaw, usersEvents) are in range
+      // sampleDatabase should be skipped since its child (orders) is in range
+      expect(result.selection.tables).toEqual(new Set([101, 102, 201]));
+      expect(result.selection.schemas).toEqual(new Set(["1:staging"]));
+      expect(result.selection.databases).toEqual(new Set());
+      expect(result.lastSelectedRowIndex).toBe(5);
     });
   });
 });

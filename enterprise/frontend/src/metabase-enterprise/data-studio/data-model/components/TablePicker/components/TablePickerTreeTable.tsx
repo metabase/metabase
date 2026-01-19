@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -18,13 +19,15 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { DatabaseId, TableId, UserId } from "metabase-types/api";
+import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
   type NodeSelection,
   addDatabaseToSelection,
   addSchemaToSelection,
+  addTableToSelection,
+  cloneSelection,
   getSchemaId,
   isItemSelected,
   toggleDatabaseSelection,
@@ -32,12 +35,15 @@ import {
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { TYPE_ICONS } from "../constants";
-import type {
-  ChangeOptions,
-  RootNode,
-  TablePickerTreeNode,
-  TreeNode,
-  TreePath,
+import {
+  type ChangeOptions,
+  type RootNode,
+  type TablePickerTreeNode,
+  type TreeNode,
+  type TreePath,
+  isDatabaseNode,
+  isSchemaNode,
+  isTableNode,
 } from "../types";
 import {
   getTreeMap,
@@ -418,28 +424,18 @@ export function TablePickerTreeTable({
   );
 }
 
-export interface CheckboxToggleRow {
-  original: {
-    type: "database" | "schema" | "table";
-    nodeKey: string;
-    tableId?: TableId;
-    databaseId?: DatabaseId;
-    isDisabled?: boolean;
-  };
-}
-
 export interface CheckboxToggleResult {
   selection: NodeSelection;
   lastSelectedRowIndex: number;
 }
 
 export function changeCheckboxSelection(params: {
-  row: CheckboxToggleRow;
+  row: Row<TablePickerTreeNode>;
   index: number;
   isShiftPressed: boolean;
   selection: NodeSelection;
   lastSelectedRowIndex: number | null;
-  rows: CheckboxToggleRow[];
+  rows: Row<TablePickerTreeNode>[];
   nodeKeyToOriginal: Map<string, TreeNode>;
 }): CheckboxToggleResult {
   const {
@@ -452,98 +448,93 @@ export function changeCheckboxSelection(params: {
     nodeKeyToOriginal,
   } = params;
 
-  // Handle shift-click range selection
   if (isShiftPressed && lastSelectedRowIndex != null) {
-    const start = Math.min(lastSelectedRowIndex, index);
-    const end = Math.max(lastSelectedRowIndex, index);
-    const rangeRows = rows
-      .slice(start, end + 1)
-      .filter((r) => !r.original.isDisabled);
-
-    const nextTables = new Set(selection.tables);
-    const nextSchemas = new Set(selection.schemas);
-    const nextDatabases = new Set(selection.databases);
-
-    const lastExpandedDatabaseIndex = rangeRows.findLastIndex(
-      (r) => r.original.type === "database",
-    );
-    const lastExpandedSchemaIndex = rangeRows.findLastIndex(
-      (r) => r.original.type === "schema",
-    );
-    const lastRowIndex = rangeRows.length - 1;
-
-    // We want to allow selecting partial ranges.
-    // In case of the last db/schema, if it's expanded
-    //  and we have something selected after it (it's not last row)
-    //  then let's don't mark this parent element, and mark it's selected children
-    const indexesToSkip = [
-      lastExpandedDatabaseIndex,
-      lastExpandedSchemaIndex,
-    ].filter((idx) => idx !== lastRowIndex);
-
-    rangeRows.forEach((rangeRow, rowIndex) => {
-      const { original } = rangeRow;
-      if (original.type === "table") {
-        if (original.tableId != null) {
-          nextTables.add(original.tableId);
-        }
-        return;
-      }
-
-      const originalNode = nodeKeyToOriginal.get(original.nodeKey);
-
-      if (indexesToSkip.includes(rowIndex)) {
-        return;
-      }
-
-      if (original.type === "schema") {
-        if (!originalNode || originalNode.type !== "schema") {
-          return;
-        }
-
-        const updated = addSchemaToSelection(originalNode, {
-          tables: nextTables,
-          schemas: nextSchemas,
-          databases: nextDatabases,
-        });
-        updated.tables.forEach((t) => nextTables.add(t));
-        updated.schemas.forEach((s) => nextSchemas.add(s));
-        return;
-      }
-
-      if (original.type === "database") {
-        if (!originalNode || originalNode.type !== "database") {
-          return;
-        }
-
-        const updated = addDatabaseToSelection(originalNode, {
-          tables: nextTables,
-          schemas: nextSchemas,
-          databases: nextDatabases,
-        });
-        updated.tables.forEach((t) => nextTables.add(t));
-        updated.schemas.forEach((s) => nextSchemas.add(s));
-        updated.databases.forEach((d) => nextDatabases.add(d));
-      }
+    return handleRangeCheckboxSelection({
+      startIndex: Math.min(lastSelectedRowIndex, index),
+      endIndex: Math.max(lastSelectedRowIndex, index),
+      currentIndex: index,
+      rows,
+      nodeKeyToOriginal,
+      baseSelection: selection,
     });
-
-    return {
-      selection: {
-        tables: nextTables,
-        schemas: nextSchemas,
-        databases: nextDatabases,
-      },
-      lastSelectedRowIndex: index,
-    };
   }
 
-  // Handle single item toggle
+  return handleSingleCheckboxSelection({
+    row,
+    index,
+    selection,
+    nodeKeyToOriginal,
+  });
+}
+
+function handleRangeCheckboxSelection(params: {
+  startIndex: number;
+  endIndex: number;
+  currentIndex: number;
+  rows: Row<TablePickerTreeNode>[];
+  nodeKeyToOriginal: Map<string, TreeNode>;
+  baseSelection: NodeSelection;
+}): CheckboxToggleResult {
+  const {
+    startIndex,
+    endIndex,
+    currentIndex,
+    rows,
+    nodeKeyToOriginal,
+    baseSelection,
+  } = params;
+
+  const rangeRows = rows
+    .slice(startIndex, endIndex + 1)
+    .filter((r) => !r.original.isDisabled);
+
+  // Skip a parent if its next item is its child (deeper in the tree).
+  // This allows partial selection within expanded parents.
+  const indexesToSkip = rangeRows.reduce<number[]>((memo, row, i, arr) => {
+    const nextRow = arr[i + 1];
+    if (nextRow?.depth > row.depth) {
+      memo.push(i);
+    }
+    return memo;
+  }, []);
+
+  const nextSelection: NodeSelection = rangeRows
+    .entries()
+    .reduce((memo, [rowIndex, rangeRow]) => {
+      const originalNode = nodeKeyToOriginal.get(rangeRow.original.nodeKey);
+      if (indexesToSkip.includes(rowIndex) || !originalNode) {
+        return memo;
+      }
+      return match(originalNode)
+        .when(isTableNode, (treeNode) => addTableToSelection(treeNode, memo))
+        .when(isSchemaNode, (schemaNode) =>
+          addSchemaToSelection(schemaNode, memo),
+        )
+        .when(isDatabaseNode, (databaseNode) =>
+          addDatabaseToSelection(databaseNode, memo),
+        )
+        .otherwise(() => memo);
+    }, cloneSelection(baseSelection));
+
+  return {
+    selection: nextSelection,
+    lastSelectedRowIndex: currentIndex,
+  };
+}
+
+function handleSingleCheckboxSelection(params: {
+  row: Row<TablePickerTreeNode>;
+  index: number;
+  selection: NodeSelection;
+  nodeKeyToOriginal: Map<string, TreeNode>;
+}): CheckboxToggleResult {
+  const { row, index, selection, nodeKeyToOriginal } = params;
+
   if (row.original.type === "table") {
     const tableId = row.original.tableId;
     if (tableId == null) {
       return { selection, lastSelectedRowIndex: index };
     }
-
     return {
       selection: {
         ...selection,
@@ -560,25 +551,21 @@ export function changeCheckboxSelection(params: {
     }
 
     if (originalNode.children.length > 0) {
-      const { schemas, tables, databases } = toggleDatabaseSelection(
-        originalNode,
-        selection,
-      );
       return {
-        selection: { schemas, tables, databases },
+        selection: toggleDatabaseSelection(originalNode, selection),
         lastSelectedRowIndex: index,
       };
-    } else {
-      const databaseId = row.original.databaseId;
-      if (databaseId) {
-        return {
-          selection: {
-            ...selection,
-            databases: toggleInSet(selection.databases, databaseId),
-          },
-          lastSelectedRowIndex: index,
-        };
-      }
+    }
+
+    const databaseId = row.original.databaseId;
+    if (databaseId) {
+      return {
+        selection: {
+          ...selection,
+          databases: toggleInSet(selection.databases, databaseId),
+        },
+        lastSelectedRowIndex: index,
+      };
     }
   }
 
@@ -589,21 +576,20 @@ export function changeCheckboxSelection(params: {
     }
 
     if (originalNode.children.length > 0) {
-      const { tables } = toggleSchemaSelection(originalNode, selection);
       return {
-        selection: { ...selection, tables },
-        lastSelectedRowIndex: index,
-      };
-    } else {
-      const schemaId = getSchemaId(originalNode);
-      return {
-        selection: {
-          ...selection,
-          schemas: toggleInSet(selection.schemas, schemaId),
-        },
+        selection: toggleSchemaSelection(originalNode, selection),
         lastSelectedRowIndex: index,
       };
     }
+
+    const schemaId = getSchemaId(originalNode);
+    return {
+      selection: {
+        ...selection,
+        schemas: toggleInSet(selection.schemas, schemaId),
+      },
+      lastSelectedRowIndex: index,
+    };
   }
 
   return { selection, lastSelectedRowIndex: index };

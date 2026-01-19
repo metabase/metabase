@@ -1,7 +1,7 @@
 import type { SelectionState } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { DatabaseNode, SchemaNode, TreeNode } from "./types";
+import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "./types";
 import { isSchemaNode, isTableNode } from "./types";
 
 export interface NodeSelection {
@@ -175,45 +175,47 @@ export function toggleInSet<T>(set: Set<T>, item: T): Set<T> {
   return newSet;
 }
 
+export const cloneSelection = (selection: NodeSelection): NodeSelection => ({
+  tables: new Set(selection.tables),
+  databases: new Set(selection.databases),
+  schemas: new Set(selection.schemas),
+});
+
+export function addTableToSelection(
+  table: TableNode,
+  selection: NodeSelection,
+): NodeSelection {
+  const nextSelection = cloneSelection(selection);
+  nextSelection.tables.add(table.value.tableId);
+  return nextSelection;
+}
+
 export function addSchemaToSelection(
   schema: SchemaNode,
   selection: NodeSelection,
 ): NodeSelection {
-  const tables = new Set(selection.tables);
-  const schemas = new Set(selection.schemas);
-
+  const nextSelection = cloneSelection(selection);
   if (schema.children.length > 0) {
-    for (const tableId of getSchemaChildrenTableIds(schema)) {
-      tables.add(tableId);
-    }
-  } else {
-    schemas.add(getSchemaId(schema));
+    return schema.children.reduce(
+      (memo, tableNode) => addTableToSelection(tableNode, memo),
+      nextSelection,
+    );
   }
-
-  return { tables, schemas, databases: selection.databases };
+  nextSelection.schemas.add(getSchemaId(schema));
+  return nextSelection;
 }
 
 export function addDatabaseToSelection(
   database: DatabaseNode,
   selection: NodeSelection,
 ): NodeSelection {
-  const tables = new Set(selection.tables);
-  const databases = new Set(selection.databases);
-  const schemas = new Set(selection.schemas);
-
+  const nextSelection = cloneSelection(selection);
   if (database.children.length > 0) {
-    for (const schema of database.children) {
-      const updated = addSchemaToSelection(schema, {
-        tables,
-        schemas,
-        databases,
-      });
-      updated.schemas.forEach((s) => schemas.add(s));
-      updated.databases.forEach((d) => databases.add(d));
-    }
-  } else {
-    databases.add(database.value.databaseId);
+    return database.children.reduce(
+      (memo, schema) => addSchemaToSelection(schema, memo),
+      nextSelection,
+    );
   }
-
-  return { tables, schemas, databases };
+  nextSelection.databases.add(database.value.databaseId);
+  return nextSelection;
 }
