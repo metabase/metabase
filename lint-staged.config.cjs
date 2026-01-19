@@ -7,12 +7,12 @@ module.exports = {
     "prettier --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-    "cross-env LINT_CSS_MODULES=true eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
+    "cross-env LINT_CSS_MODULES=true eslint --max-warnings 0 --fix",
     "prettier --write",
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/*.{js,jsx,ts,jsx}": [
-    "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
+    "eslint --max-warnings 0 --fix",
     "prettier --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [

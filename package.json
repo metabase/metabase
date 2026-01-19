@@ -455,7 +455,7 @@
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-css": "stylelint './frontend/**/*.css'",
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
-    "lint-eslint-pure": "eslint --cache --cache-strategy content --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
+    "lint-eslint-pure": "eslint --cache --cache-strategy content --ext .js,.jsx,.ts,.tsx --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
     "lint-prettier": "yarn && yarn lint-prettier-pure",
     "lint-prettier-pure": "prettier --check --cache '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
