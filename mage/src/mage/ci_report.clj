@@ -20,13 +20,13 @@
         (println (format "Shell error: %s" (.getMessage e))))
       nil)))
 
-(defn gh-api
+(defn- gh-api
   "Call GitHub API via gh cli, return parsed JSON"
   [endpoint]
   (when-let [result (sh "gh" "api" endpoint)]
     (json/parse-string result true)))
 
-(defn strip-ansi
+(defn- strip-ansi
   "Remove ANSI escape codes from string"
   [s]
   (-> s
@@ -34,31 +34,31 @@
       (str/replace #"\[J" "")
       (str/replace #"\[K" "")))
 
-(defn log-progress [msg]
+(defn- log-progress [msg]
   (binding [*out* *err*]
     (println (str "\u001b[34m→\u001b[0m " msg))))
 
-(defn log-success [msg]
+(defn- log-success [msg]
   (binding [*out* *err*]
     (println (str "\u001b[32m✓\u001b[0m " msg))))
 
 ;;; GitHub API
 
-(defn get-pr-info
+(defn- pr-info
   "Fetch PR metadata"
   [pr-number]
   (when-let [result (sh "gh" "pr" "view" (str pr-number) "-R" repo
                         "--json" "headRefName,headRefOid,title,url")]
     (json/parse-string result true)))
 
-(defn get-pr-checks
+(defn- pr-checks
   "Fetch PR check statuses"
   [pr-number]
   (when-let [result (sh "gh" "pr" "checks" (str pr-number) "-R" repo
                         "--json" "name,state,link")]
     (json/parse-string result true)))
 
-(defn fetch-job-logs
+(defn- job-logs
   "Fetch logs for a specific job ID"
   [job-id]
   (try
@@ -72,7 +72,7 @@
              (str/join "\n"))))
     (catch Exception _ nil)))
 
-(defn extract-job-id
+(defn- extract-job-id
   "Extract job ID from a check link URL"
   [link]
   (when link
@@ -80,7 +80,7 @@
 
 ;;; Log Parsing
 
-(defn parse-trunk-report
+(defn- parse-trunk-report
   "Extract test failure info from Trunk test report section in logs"
   [logs]
   (let [clean-logs (strip-ansi logs)
@@ -124,7 +124,7 @@
             (swap! results conj {:type :trunk-link :text link})))))
     @results))
 
-(defn format-trunk-report
+(defn- format-trunk-report
   "Format parsed trunk report as markdown"
   [report-items]
   (when (seq report-items)
@@ -142,14 +142,14 @@
 
 ;;; Report Generation
 
-(defn categorize-checks
+(defn- categorize-checks
   "Categorize checks by state"
   [checks]
   {:failed (filter #(#{"FAILURE" "ERROR"} (:state %)) checks)
    :pending (filter #(#{"PENDING" "IN_PROGRESS" "QUEUED"} (:state %)) checks)
    :passed (filter #(= "SUCCESS" (:state %)) checks)})
 
-(defn fetch-failed-logs-parallel
+(defn- fetch-failed-logs-parallel
   "Fetch logs for failed checks in parallel"
   [failed-checks]
   (let [job-ids (->> failed-checks
@@ -162,12 +162,12 @@
       (log-progress (format "  Fetching logs for %d failed job(s) in parallel..." (count job-ids)))
       (->> job-ids
            (pmap (fn [job-id]
-                   (when-let [logs (fetch-job-logs job-id)]
+                   (when-let [logs (job-logs job-id)]
                      [job-id logs])))
            (filter some?)
            (into {})))))
 
-(defn generate-report
+(defn- generate-report
   "Generate markdown report"
   [pr-number pr-info checks logs-by-job-id]
   (let [{:keys [failed pending passed]} (categorize-checks checks)
@@ -293,7 +293,7 @@
                     (parse-pr-arg (first arguments)))]
     (log-progress (format "Fetching PR #%s info..." pr-number))
 
-    (let [pr-info (get-pr-info pr-number)]
+    (let [pr-info (pr-info pr-number)]
       (when-not pr-info
         (binding [*out* *err*]
           (println (format "Error: Could not fetch PR #%s" pr-number)))
@@ -302,7 +302,7 @@
       (log-success (format "Found PR on branch: %s" (:headRefName pr-info)))
       (log-progress "Checking PR status...")
 
-      (let [checks (get-pr-checks pr-number)
+      (let [checks (pr-checks pr-number)
             {:keys [failed pending]} (categorize-checks checks)]
 
         (log-progress (format "Found %d failed, %d pending check(s)"
