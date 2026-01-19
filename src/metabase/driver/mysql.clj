@@ -118,12 +118,12 @@
 (defn mariadb?
   "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
   [database]
-  (-> database :dbms-version :flavor (= "MariaDB")))
+  (-> database :dbms_version :flavor (= "MariaDB")))
 
 (defn mysql?
   "Returns true if the database is MySQL. Assumes the database has been synced so `:dbms_version` is present."
   [database]
-  (-> database :dbms-version :flavor (= "MySQL")))
+  (-> database :dbms_version :flavor (= "MySQL")))
 
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
