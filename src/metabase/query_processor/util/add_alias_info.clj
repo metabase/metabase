@@ -398,7 +398,11 @@
                                                    :join join
                                                    :ref  field-ref
                                                    :col  col})))
-        source-alias          (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias)
+        ;; if we have an implicit join, we will be joining with the table directly instead of renaming things, so we
+        ;; need to use the original name of the field instead of our remapped/deduplicated version
+        source-alias          (if (:qp/is-implicit-join join)
+                                ((some-fn :lib/original-name :name) col)
+                                (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias))
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions
