@@ -148,6 +148,70 @@
         (is (= nil (ws.dag/unsupported-dependency? {:transforms [1]})))
         (is (= {:transforms [2 3 4]} (ws.dag/unsupported-dependency? {:transforms [1 2 3 4]}))))))
 
+;;;; Graph utility tests
+
+(deftest reverse-graph-test
+  (testing "empty graph"
+    (is (= {} (ws.dag/reverse-graph {}))))
+
+  (testing "single edge"
+    (is (= {:a [:b]}
+           (ws.dag/reverse-graph {:b [:a]}))))
+
+  (testing "chain graph - reverses direction"
+    (is (= {:a [:b], :b [:c], :c [:d]}
+           (ws.dag/reverse-graph {:b [:a], :c [:b], :d [:c]}))))
+
+  (testing "diamond graph"
+    ;; Original:  a -> b -> d
+    ;;            a -> c -> d
+    (is (= {:a [:b :c], :b [:d], :c [:d]}
+           (ws.dag/reverse-graph {:b [:a], :c [:a], :d [:b :c]}))))
+
+  (testing "multiple parents become multiple children"
+    ;; x has parents [a b c] => a, b, c each get child x
+    (is (= {:a [:x], :b [:x], :c [:x]}
+           (ws.dag/reverse-graph {:x [:a :b :c]})))))
+
+(deftest bfs-reachable-test
+  (testing "empty adjacency returns empty"
+    (is (= [] (ws.dag/bfs-reachable {} :a))))
+
+  (testing "no neighbors returns empty"
+    (is (= [] (ws.dag/bfs-reachable {:a []} :a))))
+
+  (testing "single hop"
+    (is (= [:b :c]
+           (ws.dag/bfs-reachable {:a [:b :c]} :a))))
+
+  (testing "chain traversal - collects all reachable nodes"
+    (let [graph {:a [:b], :b [:c], :c [:d], :d []}]
+      (is (= [:b :c :d] (ws.dag/bfs-reachable graph :a)))
+      (is (= [:c :d] (ws.dag/bfs-reachable graph :b)))
+      (is (= [:d] (ws.dag/bfs-reachable graph :c)))
+      (is (= [] (ws.dag/bfs-reachable graph :d)))))
+
+  (testing "diamond graph - no duplicates"
+    ;; a -> b -> d
+    ;; a -> c -> d
+    (let [graph {:a [:b :c], :b [:d], :c [:d], :d []}]
+      (is (= [:b :c :d] (ws.dag/bfs-reachable graph :a)))))
+
+  (testing "works with map nodes (like workspace transform nodes)"
+    (let [tx1 {:node-type :workspace-transform :id "tx1"}
+          tx2 {:node-type :workspace-transform :id "tx2"}
+          tx3 {:node-type :workspace-transform :id "tx3"}
+          tbl {:node-type :table :id {:db 1 :schema "public" :table "foo"}}
+          graph {tx1 [tx2 tbl], tx2 [tx3], tx3 [], tbl []}]
+      (is (= [tx2 tbl tx3] (ws.dag/bfs-reachable graph tx1)))
+      (is (= [tx3] (ws.dag/bfs-reachable graph tx2)))))
+
+  (testing "handles cycles gracefully (visited check)"
+    ;; a -> b -> c -> a (cycle)
+    (let [graph {:a [:b], :b [:c], :c [:a]}]
+      ;; Should not infinite loop, should return all unique nodes
+      (is (= [:b :c :a] (ws.dag/bfs-reachable graph :a))))))
+
 (deftest collapse-test
   (is (= {:x1 [:x2 :x3]
           :x2 [:t3]

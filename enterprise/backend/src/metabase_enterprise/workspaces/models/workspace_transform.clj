@@ -47,22 +47,3 @@
     (throw (ex-info "ref_id required for WorkspaceTransform insertion."
                     {:instance instance})))
   instance)
-
-(t2/define-before-update :model/WorkspaceTransform
-  [transform]
-  (let [changes (t2/changes transform)]
-    (cond-> transform
-      ;; Mark as definition_stale if source or target changes.
-      ;; This hook is a safety net - prefer using mark-definition-changed! explicitly.
-      (or (:source changes) (:target changes)) (assoc :definition_stale true))))
-
-(defn mark-definition-changed!
-  "Mark a workspace transform as stale due to definition changes (source/target).
-   Sets both definition_stale and analysis_stale flags.
-   This should be called when source or target is modified.
-
-   Returns true if the update was performed, false otherwise."
-  [ref-id]
-  (pos? (t2/update! :model/WorkspaceTransform ref-id
-                    {:definition_stale true
-                     :analysis_stale   true})))

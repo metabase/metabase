@@ -179,6 +179,34 @@
 
 ;;;; Public API
 
+(defn reverse-graph
+  "Reverse edge direction: child->parents becomes parent->children.
+   Takes a dependency map and returns a map where each parent points to its children."
+  [deps-map]
+  (reduce (fn [m [child parents]]
+            (reduce (fn [acc parent]
+                      (update acc parent (fnil conj []) child))
+                    m
+                    parents))
+          {}
+          deps-map))
+
+(defn bfs-reachable
+  "Return all nodes reachable from start-node via adjacency-fn (excluding start).
+   adjacency-fn should take a node and return its neighbors (e.g., a map or function)."
+  [adjacency-fn start-node]
+  (loop [queue   (vec (adjacency-fn start-node))
+         visited #{}
+         result  []]
+    (if (empty? queue)
+      result
+      (let [[current & rest-q] queue]
+        (if (visited current)
+          (recur (vec rest-q) visited result)
+          (recur (into (vec rest-q) (adjacency-fn current))
+                 (conj visited current)
+                 (conj result current)))))))
+
 (defn path-induced-subgraph
   "Given a map of entity types to IDs, compute the path-induced subgraph.
    `entities-by-type` is a map like {:transform [1 2 3]}.
