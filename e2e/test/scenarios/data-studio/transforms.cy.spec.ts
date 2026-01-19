@@ -1508,12 +1508,8 @@ LIMIT
     describe("when remote sync is read-only", () => {
       beforeEach(() => {
         cy.log("set up remote sync");
-        cy.request("PUT", "/api/ee/remote-sync/settings", {
-          "remote-sync-branch": "main",
-          "remote-sync-type": "read-only",
-          "remote-sync-url": H.LOCAL_GIT_PATH + "/.git",
-          "remote-sync-enabled": true,
-        });
+        H.setupGitSync();
+        H.configureGit("read-only");
       });
 
       it("should not allow editing a transform", () => {
