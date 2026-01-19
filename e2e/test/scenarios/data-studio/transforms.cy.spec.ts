@@ -748,10 +748,11 @@ LIMIT
   });
 
   describe("ownership", () => {
-    it("should display the ownership section in transform settings", () => {
+    it("should be able to view and manage transform ownership", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
 
+      cy.log("verify the ownership section is displayed");
       getTransformsTargetContent().within(() => {
         cy.findByText("Ownership").should("be.visible");
         cy.findByText("Specify who is responsible for this transform.").should(
@@ -759,48 +760,32 @@ LIMIT
         );
         cy.findByText("Owner").should("be.visible");
       });
-    });
 
-    it("should be able to change the owner to another user", () => {
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("open the owner picker and select a different user");
+      cy.log("change the owner to another user");
       getTransformsTargetContent().within(() => {
         cy.findByLabelText("Owner").click();
       });
       H.popover().findByText("Robert Tableton").click();
       cy.wait("@updateTransform");
-
       H.undoToast().findByText("Transform owner updated").should("be.visible");
-    });
+      H.undoToast().icon("close").click();
 
-    it("should be able to set an external email as owner", () => {
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("type an external email address");
+      cy.log("set an external email as owner");
       getTransformsTargetContent().within(() => {
         cy.findByLabelText("Owner").click();
-        cy.findByLabelText("Owner").type("external@example.com");
+        cy.findByLabelText("Owner").clear().type("external@example.com");
       });
       H.popover().findByText("external@example.com").click();
       cy.wait("@updateTransform");
-
       H.undoToast().findByText("Transform owner updated").should("be.visible");
-    });
+      H.undoToast().icon("close").click();
 
-    it("should be able to clear the owner", () => {
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("select unspecified to clear the owner");
+      cy.log("clear the owner");
       getTransformsTargetContent().within(() => {
         cy.findByLabelText("Owner").click();
       });
       H.popover().findByText("Unspecified").click();
       cy.wait("@updateTransform");
-
       H.undoToast().findByText("Transform owner updated").should("be.visible");
     });
   });
