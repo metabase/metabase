@@ -8,7 +8,15 @@ import type {
 let canvas: HTMLCanvasElement | null = null;
 
 export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
-  canvas ??= document.createElement("canvas");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    document.body.appendChild(canvas);
+    canvas.style.display = "none";
+    canvas.style.fontSize = window.getComputedStyle(
+      document.documentElement,
+    ).fontSize;
+  }
+
   const context = canvas.getContext("2d");
 
   if (!context) {

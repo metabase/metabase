@@ -7,6 +7,7 @@ import type {
   ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  ScalarSegment,
   SeriesOrderSetting,
   StructuredDatasetQuery,
   TableColumnOrderSetting,
@@ -172,5 +173,14 @@ export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
   key: "Doohickey",
   name: "Doohickey",
   originalName: "Doohickey",
+  ...opts,
+});
+
+export const createMockSegmentFormatting = (opts?: Partial<ScalarSegment>) => ({
+  label: "good",
+  min: 0,
+  max: 1,
+  // eslint-disable-next-line no-color-literals
+  color: "#7172AD",
   ...opts,
 });
