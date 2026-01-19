@@ -1,4 +1,4 @@
-import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/subscriptions";
+import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
 
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,

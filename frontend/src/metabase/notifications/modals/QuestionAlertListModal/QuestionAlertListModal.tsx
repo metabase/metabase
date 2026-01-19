@@ -135,6 +135,7 @@ export const QuestionAlertListModal = ({
 
       {(activeModal === "create-modal" || activeModal === "update-modal") && (
         <CreateOrEditQuestionAlertModal
+          question={question}
           editingNotification={
             activeModal === "update-modal" && editingItem
               ? editingItem
