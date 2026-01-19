@@ -10,6 +10,7 @@
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-filters]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
@@ -21,6 +22,16 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+;;; ---------------------------------------------------- Helpers ------------------------------------------------------
+
+(defn- check-tool-result
+  "Extract :structured-output from a tool result, or throw 404 with the error message.
+   Tool functions return {:structured-output ...} on success, {:output \"error\"} on failure.
+   Note: Not all errors are true 404s - see OPEN_QUESTIONS.md."
+  [{:keys [structured-output output]}]
+  (or structured-output
+      (api/check false [404 (or output "Not found.")])))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 
@@ -175,31 +186,27 @@
        [:with-metrics        {:optional true} [:maybe :boolean]]
        [:with-measures       {:optional true} [:maybe :boolean]]
        [:with-segments       {:optional true} [:maybe :boolean]]]]
-  (let [result (entity-details/get-table-details
-                {:table-id             id
-                 :with-fields?         with-fields
-                 :with-field-values?   with-field-values
-                 :with-related-tables? with-related-tables
-                 :with-metrics?        with-metrics
-                 :with-measures?       with-measures
-                 :with-segments?       with-segments})]
-    (if-let [data (:structured-output result)]
-      data
-      {:status 404, :body {:error (or (:output result) "Table not found")}})))
+  (check-tool-result
+   (entity-details/get-table-details
+    {:table-id             id
+     :with-fields?         with-fields
+     :with-field-values?   with-field-values
+     :with-related-tables? with-related-tables
+     :with-metrics?        with-metrics
+     :with-measures?       with-measures
+     :with-segments?       with-segments})))
 
 (api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values-response
   "Get statistics and sample values for a table field."
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
                              [:field-id ms/NonBlankString]]]
-  (let [result (field-stats/field-values
-                {:entity-type "table"
-                 :entity-id   id
-                 :field-id    field-id
-                 :limit       (request/limit)})]
-    (if-let [data (:structured-output result)]
-      data
-      {:status 404, :body {:error (or (:output result) "Field not found")}})))
+  (check-tool-result
+   (field-stats/field-values
+    {:entity-type "table"
+     :entity-id   id
+     :field-id    field-id
+     :limit       (request/limit)})))
 
 (api.macros/defendpoint :get "/v1/metric/:id" :- ::full-metric-response
   "Get details for a metric by ID."
@@ -212,29 +219,25 @@
        [:with-field-values              {:optional true} [:maybe :boolean]]
        [:with-queryable-dimensions      {:optional true} [:maybe :boolean]]
        [:with-segments                  {:optional true} [:maybe :boolean]]]]
-  (let [result (entity-details/get-metric-details
-                {:metric-id                       id
-                 :with-default-temporal-breakout? with-default-temporal-breakout
-                 :with-field-values?              with-field-values
-                 :with-queryable-dimensions?      with-queryable-dimensions
-                 :with-segments?                  with-segments})]
-    (if-let [data (:structured-output result)]
-      data
-      {:status 404, :body {:error (or (:output result) "Metric not found")}})))
+  (check-tool-result
+   (entity-details/get-metric-details
+    {:metric-id                       id
+     :with-default-temporal-breakout? with-default-temporal-breakout
+     :with-field-values?              with-field-values
+     :with-queryable-dimensions?      with-queryable-dimensions
+     :with-segments?                  with-segments})))
 
 (api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values-response
   "Get statistics and sample values for a metric field."
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
                              [:field-id ms/NonBlankString]]]
-  (let [result (field-stats/field-values
-                {:entity-type "metric"
-                 :entity-id   id
-                 :field-id    field-id
-                 :limit       (request/limit)})]
-    (if-let [data (:structured-output result)]
-      data
-      {:status 404, :body {:error (or (:output result) "Field not found")}})))
+  (check-tool-result
+   (field-stats/field-values
+    {:entity-type "metric"
+     :entity-id   id
+     :field-id    field-id
+     :limit       (request/limit)})))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
@@ -301,41 +304,37 @@
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
   [{:keys [table_id filters fields aggregations group_by order_by limit]}]
-  (let [result (metabot-filters/query-datasource
-                {:table-id     table_id
-                 :filters      filters
-                 :fields       fields
-                 :aggregations aggregations
-                 :group-by     group_by
-                 :order-by     (mapv (fn [{:keys [field direction]}]
-                                       {:field field :direction (keyword direction)})
-                                     order_by)
-                 :limit        limit})]
-    (if-let [data (:structured-output result)]
-      {:query (-> (:query data)
-                  lib/->legacy-MBQL
-                  json/encode
-                  encode-base64-url-safe)}
-      {:status 400, :body {:error (or (:output result) "Failed to construct query")}})))
+  (let [data (check-tool-result
+              (metabot-filters/query-datasource
+               {:table-id     table_id
+                :filters      filters
+                :fields       fields
+                :aggregations aggregations
+                :group-by     group_by
+                :order-by     (mapv (fn [{:keys [field direction]}]
+                                      {:field field :direction (keyword direction)})
+                                    order_by)
+                :limit        limit}))]
+    {:query (-> (:query data)
+                json/encode
+                encode-base64-url-safe)}))
 
 (defn- construct-metric-query
   "Build a query from a metric using filters and group_by."
   [{:keys [metric_id filters group_by]}]
-  (let [result (metabot-filters/query-metric
-                {:metric-id metric_id
-                 :filters   filters
-                 :group-by  group_by})]
-    (if-let [data (:structured-output result)]
-      {:query (-> (:query data)
-                  lib/->legacy-MBQL
-                  json/encode
-                  encode-base64-url-safe)}
-      {:status 404, :body {:error (or (:output result) "Metric not found")}})))
+  (let [data (check-tool-result
+              (metabot-filters/query-metric
+               {:metric-id metric_id
+                :filters   filters
+                :group-by  group_by}))]
+    {:query (-> (:query data)
+                json/encode
+                encode-base64-url-safe)}))
 
 (api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a table or metric.
 
-  Returns a base64-encoded MBQL query that can be used with the query API.
+  Returns a base64-encoded MBQL5 query that can be used with the query API.
 
   For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."

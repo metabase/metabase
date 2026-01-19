@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.agent-api.api-test
   (:require
    [buddy.sign.jwt :as jwt]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -15,6 +16,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -263,4 +266,45 @@
                     (client/client :post 200 "agent/v1/search"
                                    {:request-options {:headers (auth-headers)}}
                                    {:term_queries ["AgentSearchTestTable"]})))))))))
+
+(defn- decode-base64-url-safe
+  "Decode a URL-safe base64 string back to the original string."
+  [s]
+  (-> s
+      (str/replace "-" "+")
+      (str/replace "_" "/")
+      u/decode-base64))
+
+(defn- decode-query
+  "Decode a base64-encoded query response to a Clojure map."
+  [response]
+  (-> response :query decode-base64-url-safe json/decode+kw))
+
+(deftest construct-query-test
+  (with-agent-api-setup!
+    (testing "Constructs a simple query from a table"
+      (let [table-id (mt/id :orders)
+            response (client/client :post 200 "agent/v1/construct-query"
+                                    {:request-options {:headers (auth-headers)}}
+                                    {:table_id table-id})]
+        (is (string? (:query response)) "Response should contain a query string")
+        (let [decoded (decode-query response)]
+          (is (= "mbql/query" (:lib/type decoded)))
+          (is (= (mt/id) (:database decoded)))
+          (is (= (mt/id :orders) (get-in decoded [:stages 0 :source-table]))))))
+
+    (testing "Constructs a query with a limit"
+      (let [table-id (mt/id :orders)
+            response (client/client :post 200 "agent/v1/construct-query"
+                                    {:request-options {:headers (auth-headers)}}
+                                    {:table_id table-id
+                                     :limit    10})]
+        (let [decoded (decode-query response)]
+          (is (= 10 (get-in decoded [:stages 0 :limit]))))))
+
+    (testing "Returns 404 for non-existent table"
+      (is (= "No table found with table_id 999999"
+             (client/client :post 404 "agent/v1/construct-query"
+                            {:request-options {:headers (auth-headers)}}
+                            {:table_id 999999}))))))
 
