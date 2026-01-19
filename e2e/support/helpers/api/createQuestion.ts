@@ -204,3 +204,11 @@ export const logAction = (
 
   cy.log(message);
 };
+
+export const createTestQuestion = (
+  options: Omit<QuestionDetails, "dataset_query"> & {
+    dataset_query: DatasetQuery;
+  },
+) => {
+  return question(options);
+};

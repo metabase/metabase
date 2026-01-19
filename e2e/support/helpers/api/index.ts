@@ -18,7 +18,7 @@ export type { NativeQuestionDetails } from "./createNativeQuestion";
 export { createNativeQuestionAndDashboard } from "./createNativeQuestionAndDashboard";
 export { createQuestionAlert } from "./createNotification";
 export { createPulse } from "./createPulse";
-export { createQuestion } from "./createQuestion";
+export { createQuestion, createTestQuestion } from "./createQuestion";
 export type {
   QuestionDetails,
   StructuredQuestionDetails,
