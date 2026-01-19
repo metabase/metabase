@@ -32,6 +32,8 @@
                               :type/Decimal        "DECIMAL"
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
+                              ;; :type/Number is used by tx/id-field-type for Snowflake PKs
+                              :type/Number         "NUMBER"
                               :type/Text           "TEXT"
                               ;; 3 = millisecond precision. Default is allegedly 9 (nanosecond precision) according to
                               ;; https://docs.snowflake.com/en/sql-reference/data-types-datetime#time, but it seems like
