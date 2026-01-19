@@ -989,7 +989,7 @@
                 (is (= (:id card) (:id (first response))))))))))))
 
 ;; TODO (AlexP 01/15/26) -- fix and unskip this test
-#_(deftest graph-archived-measure-in-chain-test
+#_(deftest ^:sequential graph-archived-measure-in-chain-test
     (testing "GET /api/ee/dependencies/graph when a measure in the chain is archived"
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/Measure]
@@ -1060,6 +1060,41 @@
                 (is (contains? node-ids measure-b-id) "measure B should appear with archived=true")
                 (is (contains? node-ids measure-c-id) "measure C should appear")
                 (is (contains? node-ids products-id) "products table should appear"))))))))
+
+(deftest ^:sequential graph-view-count-test
+  (testing "GET /api/ee/dependencies/graph should return :view_count for :card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Card {card-id :id} {}]
+        (events/publish-event! :event/card-read {:object-id card-id :user-id user-id :context :question})
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id card-id
+                                             :type "card")]
+          (is (=? {:nodes [{:id card-id
+                            :data {:view_count 1}}]}
+                  response))))))
+  (testing "GET /api/ee/dependencies/graph should return :view_count for :dashboard"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User      {user-id :id}      {}
+                     :model/Dashboard {dashboard-id :id} {}]
+        (events/publish-event! :event/dashboard-read {:object-id dashboard-id :user-id user-id})
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id dashboard-id
+                                             :type "dashboard")]
+          (is (=? {:nodes [{:id dashboard-id
+                            :data {:view_count 1}}]}
+                  response))))))
+  (testing "GET /api/ee/dependencies/graph should return :view_count for :document"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User     {user-id :id}      {}
+                     :model/Document {document-id :id} {}]
+        (events/publish-event! :event/document-read {:object-id document-id :user-id user-id})
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id document-id
+                                             :type "document")]
+          (is (=? {:nodes [{:id document-id
+                            :data {:view_count 1}}]}
+                  response)))))))
 
 (deftest ^:sequential unreferenced-questions-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced questions are returned"
