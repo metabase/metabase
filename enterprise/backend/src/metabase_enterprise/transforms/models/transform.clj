@@ -65,23 +65,16 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  ;; Populate computed fields
-  (let [target-db-id (transforms.i/target-db-id transform)]
-    (-> transform
-        (assoc-in [:target :database] target-db-id)
-        (assoc
-         :source_type (transforms.util/transform-source-type source)
-         :target_db_id target-db-id))))
+  (assoc transform :source_type (transforms.util/transform-source-type source)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (let [changes (t2/changes transform)]
-    (cond-> transform
-      source             (assoc :source_type (transforms.util/transform-source-type source))
-      (or (:source changes) (:target changes)) (assoc :execution_stale true))))
+  (if source
+    (assoc transform :source_type (transforms.util/transform-source-type source))
+    transform))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]

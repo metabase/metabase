@@ -233,28 +233,34 @@
                (remap-python-source table-mapping source)))))))
 
 (deftest run-transform-marks-not-stale-on-success
-  (testing "Successful transform run marks stale=false"
-    (transforms.tu/with-transform-cleanup! [output-table "ws_stale_test"]
-      (let [workspace    (ws.tu/create-ready-ws! "Stale Test Workspace")
-            db-id        (:database_id workspace)
-            body         {:name   "Test Transform"
-                          :source {:type  "query"
-                                   :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
-                          :target {:type     "table"
-                                   :database db-id
-                                   :schema   nil
-                                   :name     output-table}}
-            ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)]
-        ;; Mark as stale
-        (t2/update! :model/WorkspaceTransform (:ref_id ws-transform) {:stale true})
-        (is (true? (:stale (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform)))))
+  (testing "Successful transform run marks definition_stale=false"
+    (let [query1 (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})]
+      (mt/with-temp [:model/Workspace {workspace-id :id}     {:name "Stale Test Workspace"}
+                     :model/WorkspaceTransform {ref-id :ref_id} {:workspace_id workspace-id
+                                                                 :ref_id (str (random-uuid))
+                                                                 :name "Test Transform"
+                                                                 :source {:type "query" :query query1}
+                                                                 :target {:type     "table"
+                                                                          :database (mt/id)
+                                                                          :schema   nil
+                                                                          :name     "ws_stale_test"}
+                                                                 :definition_stale true}]
+        (let [workspace (t2/select-one :model/Workspace :id workspace-id)]
+          ;; Verify it starts as stale
+          (is (true? (:definition_stale (t2/select-one :model/WorkspaceTransform :ref_id ref-id))))
 
-        ;; Run the transform
-        (mt/with-current-user (mt/user->id :crowberto)
-          (ws.impl/run-transform! workspace ws-transform))
+          ;; Run the transform (mocked)
+          (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                      (fn [_transform _remapping]
+                                        {:status :succeeded
+                                         :end_time (java.time.Instant/now)
+                                         :message "Mocked execution"})]
+            (let [ws-transform (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
+              (mt/with-current-user (mt/user->id :crowberto)
+                (ws.impl/run-transform! workspace ws-transform))))
 
-        ;; Check that it's marked as not stale
-        (is (false? (:stale (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform)))))))))
+          ;; Check that it's marked as not stale
+          (is (false? (:definition_stale (t2/select-one :model/WorkspaceTransform :ref_id ref-id)))))))))
 
 (deftest transform-stale-lifecycle
   (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"

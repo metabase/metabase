@@ -694,7 +694,7 @@
    [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
-(def ^:private workspace-transform-alias {:target_stale :execution_stale})
+(def ^:private workspace-transform-alias {:target_stale :definition_stale})
 
 (defn- attach-isolated-target [{:keys [workspace_id ref_id] :as ws-transform}]
   (let [{:keys [db_id isolated_schema isolated_table]}
@@ -784,12 +784,12 @@
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
     ;; If source or target changed, mark as stale.
-    ;; We set both execution_stale and analysis_stale explicitly here rather than
+    ;; We set both definition_stale and analysis_stale explicitly here rather than
     ;; relying solely on the before-update hook. See: https://github.com/metabase/metabase/pull/67974
     (let [source-or-target-changed? (or (:source body) (:target body))
           update-body (cond-> body
                         source-or-target-changed? (assoc :analysis_stale true
-                                                         :execution_stale true))]
+                                                         :definition_stale true))]
       (t2/update! :model/WorkspaceTransform tx-id update-body)
       ;; Mark workspace as stale too if source/target changed
       (when source-or-target-changed?
