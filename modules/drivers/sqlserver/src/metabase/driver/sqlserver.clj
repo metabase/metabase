@@ -23,6 +23,7 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1027,7 +1028,7 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query sql-query)
+        ^Select parsed-query (macaw/parsed-query sql-query (driver.u/macaw-options driver))
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
     [(str parsed-query) sql-params]))
