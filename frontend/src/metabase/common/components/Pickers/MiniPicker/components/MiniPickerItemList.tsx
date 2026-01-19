@@ -1,4 +1,3 @@
-import { useDebouncedValue } from "@mantine/hooks";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,13 +11,13 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Repeat, Skeleton, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
 import { useMiniPickerContext } from "../context";
@@ -298,9 +297,9 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
 function SearchItemList({ query }: { query: string }) {
   const { onChange, models, isHidden } = useMiniPickerContext();
-  const [debouncedQuery] = useDebouncedValue(query, 500);
+  const debouncedQuery = useDebouncedValue(query, 500);
 
-  const { data: searchResponse, isLoading } = useSearchQuery({
+  const { data: searchResponse, isFetching } = useSearchQuery({
     q: debouncedQuery,
     models: models as SearchModel[],
     limit: 50,
@@ -310,35 +309,46 @@ function SearchItemList({ query }: { query: string }) {
     searchResponse?.data ?? []
   ).filter((i) => !isHidden(i));
 
+  const isFetchingDebounced = useDebouncedValue(
+    isFetching,
+    500,
+    (_lastValue, newValue) => newValue === true,
+  );
+
   return (
     <ItemList>
       <Box>
-        {isLoading && <MiniPickerListLoader />}
-        {!isLoading && searchResults.length === 0 && (
+        {!isFetchingDebounced && searchResults.length === 0 && (
           <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
         )}
       </Box>
-      {searchResults.map((item) => {
-        return (
-          <MiniPickerItem
-            key={`${item.model}-${item.id}`}
-            name={item.name}
-            model={item.model}
-            onClick={() => {
-              onChange(item);
-            }}
-            rightSection={<LocationInfo item={item} />}
-          />
-        );
-      })}
+      {isFetchingDebounced && <MiniPickerListLoader />}
+      {!isFetchingDebounced &&
+        searchResults.map((item) => {
+          return (
+            <MiniPickerItem
+              key={`${item.model}-${item.id}`}
+              name={item.name}
+              model={item.model}
+              onClick={() => {
+                onChange(item);
+              }}
+              rightSection={<LocationInfo item={item} />}
+            />
+          );
+        })}
     </ItemList>
   );
 }
 
 export const MiniPickerListLoader = () => (
-  <Box data-testid="mini-picker-loader">
-    <LoadingAndErrorWrapper loading />
-  </Box>
+  <>
+    <Repeat times={3}>
+      <Box px="sm" py="2px">
+        <Skeleton height={35} />
+      </Box>
+    </Repeat>
+  </>
 );
 
 const isTableInDb = (
