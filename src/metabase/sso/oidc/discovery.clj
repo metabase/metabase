@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
 (def ^:private discovery-cache
@@ -42,6 +43,9 @@
    Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
+    (when-not (u.http/valid-host? :external-only url)
+      (throw (ex-info "Invalid issuer URL: internal addresses not allowed"
+                      {:url url})))
     (try
       (log/infof "Fetching OIDC discovery document from %s" url)
       (let [response (http/get url {:as :json

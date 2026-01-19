@@ -4,6 +4,7 @@
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -40,6 +41,9 @@
 (defn- fetch-jwks
   "Fetch JWKS from the given URI. Returns the parsed JWKS map or nil on error."
   [jwks-uri]
+  (when-not (u.http/valid-host? :external-only jwks-uri)
+    (throw (ex-info "Invalid JWKS URI: internal addresses not allowed"
+                    {:url jwks-uri})))
   (try
     (log/infof "Fetching JWKS from %s" jwks-uri)
     (-> (http/get jwks-uri {:as :json

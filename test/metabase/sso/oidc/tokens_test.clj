@@ -277,17 +277,17 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
                                {:status 200
                                 :body test-jwks})]
         ;; First call should fetch
-        (oidc.tokens/get-jwks "https://expired-test.com/jwks")
+        (oidc.tokens/get-jwks "https://github.com/jwks")
         (is (= 1 @fetch-count))
 
         ;; Manually expire the cache entry by setting fetched-at to 2 hours ago
         (let [two-hours-ago (t/to-millis-from-epoch (t/minus (t/instant) (t/hours 2)))]
           (swap! @#'oidc.tokens/jwks-cache
-                 assoc "https://expired-test.com/jwks"
+                 assoc "https://github.com/jwks"
                  {:jwks test-jwks :fetched-at two-hours-ago}))
 
         ;; Next call should re-fetch because cache is expired
-        (oidc.tokens/get-jwks "https://expired-test.com/jwks")
+        (oidc.tokens/get-jwks "https://github.com/jwks")
         (is (= 2 @fetch-count))))))
 
 (deftest invalidate-jwks-cache-test
@@ -308,3 +308,36 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
         ;; Next call should re-fetch
         (oidc.tokens/get-jwks "https://provider.com/jwks")
         (is (= 2 @fetch-count))))))
+
+;;; ================================================== SSRF Protection Tests ==================================================
+
+(deftest get-jwks-ssrf-protection-test
+  (testing "Rejects internal addresses (localhost)"
+    (oidc.tokens/clear-jwks-cache!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid JWKS URI: internal addresses not allowed"
+                          (oidc.tokens/get-jwks "http://localhost/jwks"))))
+
+  (testing "Rejects internal addresses (127.0.0.1)"
+    (oidc.tokens/clear-jwks-cache!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid JWKS URI: internal addresses not allowed"
+                          (oidc.tokens/get-jwks "http://127.0.0.1/jwks"))))
+
+  (testing "Rejects cloud metadata endpoint"
+    (oidc.tokens/clear-jwks-cache!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid JWKS URI: internal addresses not allowed"
+                          (oidc.tokens/get-jwks "http://169.254.169.254/jwks"))))
+
+  (testing "Rejects private network addresses (192.168.x.x)"
+    (oidc.tokens/clear-jwks-cache!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid JWKS URI: internal addresses not allowed"
+                          (oidc.tokens/get-jwks "http://192.168.1.1/jwks"))))
+
+  (testing "Rejects private network addresses (10.x.x.x)"
+    (oidc.tokens/clear-jwks-cache!)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid JWKS URI: internal addresses not allowed"
+                          (oidc.tokens/get-jwks "http://10.0.0.1/jwks")))))
