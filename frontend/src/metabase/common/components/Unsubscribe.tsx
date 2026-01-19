@@ -199,7 +199,7 @@ function useUnsubscribeRequest({
         ? api.unsubscribe
         : api.undo_unsubscribe;
 
-    return await method(params);
+    return (await method(params)) as { title: string } | undefined;
   }, [params, subscriptionChange]);
 
   return { data, isLoading, error };

@@ -6,7 +6,8 @@ import type { UserAttributeKey } from "metabase-types/api";
 
 export const fetchUserAttributes = createAsyncThunk(
   "metabase-enterprise/shared/FETCH_USER_ATTRIBUTES",
-  async () => GTAPApi.attributes(),
+  async (): Promise<UserAttributeKey[] | null> =>
+    (await GTAPApi.attributes()) as UserAttributeKey[] | null,
 );
 
 export interface EnterpriseSharedState {

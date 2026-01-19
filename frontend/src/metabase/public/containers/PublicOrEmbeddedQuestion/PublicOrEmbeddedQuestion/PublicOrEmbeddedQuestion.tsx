@@ -59,11 +59,15 @@ export const PublicOrEmbeddedQuestion = ({
 
   useMount(async () => {
     try {
-      let card;
+      let card: Card & { param_fields?: Record<string, unknown[]> };
       if (token) {
-        card = await EmbedApi.card({ token });
+        card = (await EmbedApi.card({ token })) as Card & {
+          param_fields?: Record<string, unknown[]>;
+        };
       } else if (uuid) {
-        card = await PublicApi.card({ uuid });
+        card = (await PublicApi.card({ uuid })) as Card & {
+          param_fields?: Record<string, unknown[]>;
+        };
       } else {
         throw { status: 404 };
       }

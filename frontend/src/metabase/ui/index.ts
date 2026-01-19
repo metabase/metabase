@@ -9,6 +9,7 @@ export type {
   MantineThemeOverride,
   PolymorphicComponentProps,
   MantineColorsTuple,
+  MantineColor,
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 

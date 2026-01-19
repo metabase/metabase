@@ -14,9 +14,9 @@ export const UserNameDisplay = ({
   userIdList,
   label,
 }: UserNameDisplayProps) => {
-  const { loading: isLoading, value } = useAsync<
-    () => Promise<{ data: UserListResult[] }>
-  >(UserApi.list);
+  const { loading: isLoading, value } = useAsync(
+    () => UserApi.list() as Promise<{ data: UserListResult[] }>,
+  );
   const users = value?.data ?? [];
 
   const selectedUserList = users.filter((user) => userIdList.includes(user.id));

@@ -8,12 +8,10 @@ export const useMostRecentlyViewedDashboard = () => {
     loading: isLoading,
     error,
     value: data,
-  } = useAsync(async () => {
-    const dashboard: Dashboard | undefined =
-      await ActivityApi.most_recently_viewed_dashboard();
-
-    return dashboard;
-  });
+  } = useAsync(
+    () =>
+      ActivityApi.most_recently_viewed_dashboard() as Promise<Dashboard | null>,
+  );
 
   return { data, isLoading, error };
 };

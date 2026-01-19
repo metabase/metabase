@@ -56,15 +56,17 @@ const ImpersonationModalInner = ({
       error: impersonationError,
     },
     fetchImpersonation,
-  ] = useAsyncFn(
+  ] = useAsyncFn<
+    (groupId: number, databaseId: number) => Promise<Impersonation | undefined>
+  >(
     async (
       groupId: number,
       databaseId: number,
     ): Promise<Impersonation | undefined> =>
-      ImpersonationApi.get({
+      (await ImpersonationApi.get({
         db_id: databaseId,
         group_id: groupId,
-      }),
+      })) as Impersonation | undefined,
     [],
   );
 

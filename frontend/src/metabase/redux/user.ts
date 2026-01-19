@@ -8,9 +8,9 @@ import type { User } from "metabase-types/api";
 
 export const refreshCurrentUser = createAsyncThunk(
   "metabase/user/REFRESH_CURRENT_USER",
-  async (_, { fulfillWithValue }) => {
+  async (_, { fulfillWithValue }): Promise<User | null> => {
     try {
-      return UserApi.current();
+      return (await UserApi.current()) as User;
     } catch (e) {
       return fulfillWithValue(null);
     }

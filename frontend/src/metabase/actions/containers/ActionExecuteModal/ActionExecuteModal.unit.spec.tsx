@@ -8,6 +8,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ActionsApi } from "metabase/services";
+import type { ParametersForActionExecution } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
@@ -41,11 +42,11 @@ function setupPrefetch() {
   });
 }
 
-const fetchInitialValues = () =>
+const fetchInitialValues = (): Promise<ParametersForActionExecution> =>
   ActionsApi.prefetchValues({
     id: implicitUpdateAction.id,
     parameters: JSON.stringify({}),
-  });
+  }) as Promise<ParametersForActionExecution>;
 
 function setup(props?: Partial<ActionExecuteModalProps>) {
   setupActionsEndpoints([implicitUpdateAction]);
