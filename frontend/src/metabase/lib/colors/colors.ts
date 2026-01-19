@@ -332,11 +332,6 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     dark: baseColors.palm[90],
   },
 
-  "brand-dark": {
-    light: baseColors.brand[60],
-    dark: baseColors.brand[30],
-  },
-
   brand: {
     light: settings.brand || baseColors.blue[40],
     dark: settings.brand || baseColors.blue[40],
