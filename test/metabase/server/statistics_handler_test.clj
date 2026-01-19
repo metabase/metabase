@@ -1,7 +1,7 @@
 (ns metabase.server.statistics-handler-test
   (:require
    [clj-http.client :as http]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is]]
    [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [GET]]
    [compojure.route :as route]
    [metabase.analytics.prometheus-test :as prometheus-test]
