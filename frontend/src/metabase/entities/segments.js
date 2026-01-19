@@ -11,7 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Segments = createEntity({
+export const Segments = createEntity({
   name: "segments",
   nameOne: "segment",
   path: "/api/segment",
@@ -49,8 +49,6 @@ const Segments = createEntity({
         dispatch,
         segmentApi.endpoints.updateSegment,
       ),
-    delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(id, dispatch, segmentApi.endpoints.deleteSegment),
   },
 
   objectActions: {
@@ -77,5 +75,3 @@ const Segments = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetSegmentQuery(id, options);
 };
-
-export default Segments;

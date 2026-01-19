@@ -28,6 +28,7 @@
    [metabase.indexed-entities.api]
    [metabase.logger.api]
    [metabase.login-history.api]
+   [metabase.measures.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
@@ -36,7 +37,7 @@
    [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
-   [metabase.queries.api]
+   [metabase.queries-rest.api]
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
@@ -78,6 +79,7 @@
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
+         metabase.measures.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
@@ -141,8 +143,8 @@
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
-   "/card"                 (+auth metabase.queries.api/card-routes)
-   "/cards"                (+auth metabase.queries.api/cards-routes)
+   "/card"                 (+auth metabase.queries-rest.api/card-routes)
+   "/cards"                (+auth metabase.queries-rest.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
@@ -162,6 +164,7 @@
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   "/measure"              (+auth 'metabase.measures.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes

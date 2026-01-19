@@ -6,6 +6,7 @@ import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";
 
@@ -105,7 +106,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query";
+  mode?: "view" | "notebook" | "query" | "ask";
   creationType?: string;
   objectId?: number | string;
 };
@@ -116,6 +117,10 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams) {
+  if (mode === "ask") {
+    return `/question/ask`;
+  }
+
   const question = Question.create(options);
   const url = ML_Urls.getUrl(question, {
     creationType,
@@ -150,7 +155,7 @@ export function publicQuestion({
   );
 }
 
-export function embedCard(token: string, type: string | null = null) {
+export function embedCard(token: EntityToken, type: string | null = null) {
   return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 

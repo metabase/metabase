@@ -7,8 +7,13 @@ import {
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import type { Database, QueryTransformSource } from "metabase-types/api";
+import type {
+  Database,
+  QueryTransformSource,
+  TransformId,
+} from "metabase-types/api";
 
+import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";
 
 type TransformEditorProps = {
@@ -20,6 +25,9 @@ type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onBlur?: () => void;
+  readOnly?: boolean;
+  transformId?: TransformId;
 };
 
 export function TransformEditor({
@@ -31,6 +39,9 @@ export function TransformEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
+  readOnly,
+  transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(
@@ -44,7 +55,10 @@ export function TransformEditor({
         : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
+  const uiOptions = useMemo(
+    () => getEditorOptions(databases, readOnly),
+    [databases, readOnly],
+  );
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -66,6 +80,20 @@ export function TransformEditor({
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
+      topBarInnerContent={
+        readOnly &&
+        !!transformId && (
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
+        )
+      }
     />
   );
 }

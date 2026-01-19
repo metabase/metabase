@@ -211,12 +211,12 @@ describe("MetabotPurchasePage", () => {
     await expectStoreUserTrialPage();
 
     const metabase_ai_tier3 = screen.getByRole("radio", {
-      name: /up to 3456 requests\/month/,
+      name: /up to 3456 requests\/year/,
     });
     expect(metabase_ai_tier3).toBeVisible();
     expect(metabase_ai_tier3).toHaveAccessibleName(/\$333\/year/);
     const metabase_ai_tier4 = screen.getByRole("radio", {
-      name: /up to 4567 requests\/month/,
+      name: /up to 4567 requests\/year/,
     });
     expect(metabase_ai_tier4).toBeVisible();
     expect(metabase_ai_tier4).toHaveAccessibleName(/\$444\/year/);

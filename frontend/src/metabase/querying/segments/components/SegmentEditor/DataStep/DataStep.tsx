@@ -6,7 +6,7 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
@@ -65,7 +65,7 @@ export function DataStep({
       <Box>
         {tableId && (
           <Flex maw={300} wrap="nowrap">
-            <Text c="text-medium" size="sm" w="100%">
+            <Text c="text-secondary" size="sm" w="100%">
               <TableBreadcrumbs hideTableName tableId={tableId} />
             </Text>
           </Flex>
@@ -75,14 +75,14 @@ export function DataStep({
           <Button
             variant="subtle"
             p={0}
-            c="text-dark"
+            c="text-primary"
             rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsOpened(true)}
           >
             {tableInfo ? tableInfo.displayName : t`Select a table`}
           </Button>
         ) : (
-          <Text c="text-dark" fw="bold">
+          <Text c="text-primary" fw="bold">
             {tableInfo?.displayName}
           </Text>
         )}

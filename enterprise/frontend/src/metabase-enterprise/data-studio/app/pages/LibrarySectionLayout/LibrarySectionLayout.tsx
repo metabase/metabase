@@ -1,0 +1,433 @@
+import { useCallback, useMemo, useState } from "react";
+import { goBack, push } from "react-router-redux";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { isLibraryCollection } from "metabase/collections/utils";
+import DateTime from "metabase/common/components/DateTime";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSetting } from "metabase/common/hooks";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useRouter } from "metabase/router";
+import {
+  Anchor,
+  Card,
+  EntityNameCell,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  TextInput,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import type { Collection, CollectionId } from "metabase-types/api";
+
+import { SectionLayout } from "../../components/SectionLayout";
+
+import { CreateMenu } from "./CreateMenu";
+import { PublishTableModal } from "./PublishTableModal";
+import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
+import {
+  useBuildSnippetTree,
+  useBuildTreeForCollection,
+  useErrorHandling,
+} from "./hooks";
+import {
+  type EmptyStateData,
+  type TreeItem,
+  isCollection,
+  isEmptyStateData,
+} from "./types";
+import { getAccessibleCollection } from "./utils";
+
+interface EmptyStateActionProps {
+  data: EmptyStateData;
+  onPublishTable: () => void;
+}
+
+function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
+  if (data.sectionType === "data") {
+    return (
+      <Anchor
+        component="button"
+        type="button"
+        fz="inherit"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPublishTable();
+        }}
+      >
+        {data.actionLabel}
+      </Anchor>
+    );
+  }
+
+  if (data.actionUrl) {
+    return (
+      <Anchor
+        component={ForwardRefLink}
+        to={data.actionUrl}
+        fz="inherit"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {data.actionLabel}
+      </Anchor>
+    );
+  }
+
+  return null;
+}
+
+export function LibrarySectionLayout() {
+  usePageTitle(t`Library`);
+  const dispatch = useDispatch();
+  const { location } = useRouter();
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(
+    null,
+  );
+  const [permissionsCollectionId, setPermissionsCollectionId] =
+    useState<CollectionId | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
+
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
+
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    return _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+  }, [location.query?.expandedId]);
+
+  const { data: collections = [], isLoading: isLoadingCollections } =
+    useListCollectionsTreeQuery({
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+      "include-library": true,
+    });
+
+  const isInstanceRemoteSyncEnabled = Boolean(
+    useSetting("remote-sync-enabled"),
+  );
+
+  const libraryCollection = useMemo(
+    () => collections.find(isLibraryCollection),
+    [collections],
+  );
+
+  const tableCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-data",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
+
+  const metricCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-metrics",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
+
+  const handleItemSelect = useCallback(
+    (item: TreeItem) => {
+      if (item.model === "empty-state" || isEmptyStateData(item.data)) {
+        return;
+      }
+      const entityId = item.data.id as number;
+      if (item.model === "metric") {
+        dispatch(push(Urls.dataStudioMetric(entityId)));
+      } else if (item.model === "snippet") {
+        dispatch(push(Urls.dataStudioSnippet(entityId)));
+      } else if (item.model === "table") {
+        dispatch(push(Urls.dataStudioTable(entityId)));
+      }
+    },
+    [dispatch],
+  );
+  const {
+    tree: tablesTree,
+    isLoading: loadingTables,
+    error: tablesError,
+  } = useBuildTreeForCollection(tableCollection, "data");
+  const {
+    tree: metricsTree,
+    isLoading: loadingMetrics,
+    error: metricsError,
+  } = useBuildTreeForCollection(
+    metricCollection,
+    "metrics",
+    metricCollection?.id,
+  );
+  const {
+    tree: snippetTree,
+    isLoading: loadingSnippets,
+    error: snippetsError,
+  } = useBuildSnippetTree();
+
+  const combinedTree = useMemo(
+    () => [...tablesTree, ...metricsTree, ...snippetTree],
+    [tablesTree, metricsTree, snippetTree],
+  );
+
+  const isLoading = loadingTables || loadingMetrics || loadingSnippets;
+  useErrorHandling(tablesError || metricsError || snippetsError);
+
+  // Collections with only empty-state children should always be expanded
+  // (even when navigating back via breadcrumbs which may collapse other sections)
+  const alwaysExpandedIds = useMemo(() => {
+    const ids: Record<string, boolean> = {};
+    combinedTree.forEach((node) => {
+      if (node.model === "collection" && node.children) {
+        const hasOnlyEmptyState = node.children.every(
+          (child) => child.model === "empty-state",
+        );
+        if (hasOnlyEmptyState) {
+          ids[node.id] = true;
+        }
+      }
+    });
+    return ids;
+  }, [combinedTree]);
+
+  // Merge URL-based expansion with always-expanded empty sections
+  const effectiveExpandedState = useMemo(() => {
+    if (!expandedIdsFromUrl) {
+      return true; // Expand all by default
+    }
+    return {
+      ...expandedIdsFromUrl,
+      ...alwaysExpandedIds,
+    };
+  }, [expandedIdsFromUrl, alwaysExpandedIds]);
+
+  const libraryHasContent = useMemo(
+    () =>
+      combinedTree.some(
+        (node) =>
+          node.children &&
+          node.children.length > 0 &&
+          node.children.some((child) => child.model !== "empty-state"),
+      ),
+    [combinedTree],
+  );
+
+  const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
+    () => [
+      {
+        id: "name",
+        header: t`Name`,
+        enableSorting: true,
+        accessorKey: "name",
+        minWidth: 200,
+        cell: ({ row }) => {
+          const { data } = row.original;
+
+          if (isEmptyStateData(data)) {
+            return (
+              <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
+                <Text c="text-tertiary" fz="inherit">
+                  {data.description}
+                </Text>
+                <EmptyStateAction
+                  data={data}
+                  onPublishTable={() => setIsPublishTableModalOpen(true)}
+                />
+              </Flex>
+            );
+          }
+
+          return (
+            <EntityNameCell
+              data-testid={`${row.original.model}-name`}
+              icon={row.original.icon}
+              name={row.original.name}
+            />
+          );
+        },
+      },
+      {
+        id: "updatedAt",
+        header: t`Updated At`,
+        accessorKey: "updatedAt",
+        enableSorting: true,
+        sortingFn: "datetime",
+        width: "auto",
+        widthPadding: 20,
+        cell: ({ row, getValue }) => {
+          if (row.original.model === "empty-state") {
+            return null;
+          }
+          const dateValue = getValue() as string | undefined;
+          return dateValue ? <DateTime value={dateValue} /> : null;
+        },
+      },
+      {
+        id: "actions",
+        width: 48,
+        cell: ({ row }) => {
+          const { data } = row.original;
+          if (isEmptyStateData(data)) {
+            return null;
+          }
+          if (
+            isCollection(data) &&
+            data.model === "collection" &&
+            data.namespace === "snippets"
+          ) {
+            if (data.id === "root") {
+              return (
+                <RootSnippetsCollectionMenu
+                  setPermissionsCollectionId={setPermissionsCollectionId}
+                />
+              );
+            } else {
+              return (
+                <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+                  collection={data}
+                  onEditDetails={setEditingCollection}
+                  onChangePermissions={setPermissionsCollectionId}
+                />
+              );
+            }
+          }
+
+          return null;
+        },
+      },
+    ],
+    [setIsPublishTableModalOpen],
+  );
+
+  const handleRowActivate = useCallback(
+    (row: { original: TreeItem }) => {
+      handleItemSelect(row.original);
+    },
+    [handleItemSelect],
+  );
+
+  const treeTableInstance = useTreeTableInstance({
+    data: combinedTree,
+    columns: libraryColumnDef,
+    getSubRows: (node) => node.children,
+    getNodeId: (node) => node.id,
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    isFilterable: (node) =>
+      node.model !== "collection" && node.model !== "empty-state",
+    defaultExpanded: effectiveExpandedState,
+    onRowActivate: handleRowActivate,
+  });
+
+  let emptyMessage = null;
+  if (!libraryHasContent) {
+    emptyMessage = t`No tables, metrics, or snippets yet`;
+  } else if (searchQuery) {
+    emptyMessage = t`No results for "${searchQuery}"`;
+  }
+
+  return (
+    <>
+      <SectionLayout>
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
+          }
+          px="3.5rem"
+          py={0}
+        />
+        <Stack
+          bg="background-secondary"
+          data-testid="library-page"
+          pb="2rem"
+          px="3.5rem"
+          style={{ overflow: "hidden" }}
+        >
+          <Flex gap="md">
+            <TextInput
+              placeholder={t`Search...`}
+              leftSection={<Icon name="search" />}
+              bdrs="md"
+              flex="1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <CreateMenu
+              metricCollectionId={metricCollection?.id}
+              canWriteToMetricCollection={metricCollection?.can_write}
+            />
+          </Flex>
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
+            ) : (
+              <TreeTable
+                instance={treeTableInstance}
+                emptyState={
+                  emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
+                }
+                onRowClick={(row) => {
+                  if (row.original.model === "empty-state") {
+                    return;
+                  }
+                  if (row.getCanExpand()) {
+                    row.toggleExpanded();
+                  } else {
+                    handleRowActivate(row);
+                  }
+                }}
+              />
+            )}
+          </Card>
+        </Stack>
+      </SectionLayout>
+      {editingCollection && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
+          collection={editingCollection}
+          onClose={() => setEditingCollection(null)}
+          onSaved={() => setEditingCollection(null)}
+        />
+      )}
+      {permissionsCollectionId !== null && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
+          collectionId={permissionsCollectionId}
+          onClose={() => setPermissionsCollectionId(null)}
+        />
+      )}
+      <CreateLibraryModal
+        isOpened={!isLoadingCollections && !libraryCollection}
+        onClose={() => {
+          dispatch(goBack());
+        }}
+      />
+      <PublishTableModal
+        opened={isPublishTableModalOpen}
+        onClose={() => setIsPublishTableModalOpen(false)}
+        onPublished={() => setIsPublishTableModalOpen(false)}
+      />
+    </>
+  );
+}

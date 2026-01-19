@@ -40,6 +40,7 @@ export type SnippetFormModalProps = {
   collection: Partial<Collection>;
   onClose: () => void;
   onSaved?: () => void;
+  opened?: boolean;
 };
 
 export type SnippetCollectionMenuProps = {

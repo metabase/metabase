@@ -102,6 +102,7 @@ export {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
@@ -138,10 +139,12 @@ export {
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export { PLUGIN_SUPPORT } from "./oss/support";
+export { PLUGIN_TENANTS } from "./oss/tenants";
 
 // Re-export types that are used by other files
 export type {
   GetAuthProviders,
+  GitSyncSetupMenuItemProps,
   PluginGroupManagersType,
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
@@ -176,6 +179,7 @@ import { reinitialize as reinitializeSettings } from "./oss/settings";
 import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
 import { reinitialize as reinitializeSnippets } from "./oss/snippets";
 import { reinitialize as reinitializeSupport } from "./oss/support";
+import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
@@ -215,6 +219,7 @@ export function reinitialize() {
   reinitializeSmtpOverride();
   reinitializeSnippets();
   reinitializeSupport();
+  reinitializeTenants();
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();

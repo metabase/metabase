@@ -140,8 +140,7 @@ describe("data studio > glossary", () => {
 
   function visitDataStudioGlossary() {
     H.DataModel.visitDataStudio();
-    cy.findByRole("img", { name: "model icon" }).click();
-    cy.findByRole("link", { name: /Glossary/ }).click();
+    H.DataStudio.nav().findByLabelText("Glossary").click();
     cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
   }
 

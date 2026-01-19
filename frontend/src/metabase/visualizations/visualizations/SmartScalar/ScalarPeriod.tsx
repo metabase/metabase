@@ -19,7 +19,11 @@ export function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
       className={DashboardS.fullscreenNormalText}
       onClick={onClick}
     >
-      <Ellipsified tooltip={period} lines={1} placement="bottom">
+      <Ellipsified
+        tooltip={period}
+        lines={1}
+        tooltipProps={{ position: "bottom" }}
+      >
         {period}
       </Ellipsified>
     </Text>

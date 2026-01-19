@@ -22,7 +22,8 @@
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata
-   ;; TODO does this belong here, or in the `dashboards` module?
+  batch-fetch-card-metadata
+  ;; TODO does this belong here, or in the `dashboards` module?
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
@@ -35,7 +36,10 @@
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
-  refresh-metadata]
+  infer-metadata
+  maybe-async-result-metadata
+  refresh-metadata
+  save-metadata-async!]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms

@@ -2,7 +2,7 @@
   padding: 0.75rem;
   min-width: 11.5rem;
   overflow: visible;
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
 }
 
@@ -13,7 +13,7 @@
   padding: var(--mantine-spacing-sm);
 
   &[data-disabled="true"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     opacity: 1;
   }
 
@@ -34,13 +34,13 @@
   }
 
   &[data-position="right"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     margin-left: var(--mantine-spacing-md);
   }
 }
 
 .label {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);

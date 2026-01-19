@@ -17,7 +17,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--mb-color-background);
+  background: var(--mb-color-background-primary);
   overflow: hidden;
 }
 
@@ -33,8 +33,9 @@
   -ms-user-select: none;
 }
 
-.cardEmbed div[data-element-id="data-grid-measure-root"] {
-  display: none;
+/* Firefox doesn't respect `user-select: none` when inside a contenteditable element. */
+.cardEmbed *:not(input, textarea)::selection {
+  background: transparent;
 }
 
 .questionHeader {
@@ -73,6 +74,7 @@
   opacity: 0;
   transition: opacity 0.2s ease;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .titleContainer:hover .titleEditIcon {
@@ -85,6 +87,6 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 }

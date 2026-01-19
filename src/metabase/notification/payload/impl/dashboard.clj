@@ -42,7 +42,8 @@
                                 :color_text_light  channel.render/color-text-light
                                 :color_text_medium channel.render/color-text-medium}
        :parameters             parameters
-       :dashboard_subscription dashboard_subscription})))
+       :dashboard_subscription dashboard_subscription
+       :disable_links          (:disable_links dashboard_subscription)})))
 
 (mu/defmethod notification.payload/skip-reason :notification/dashboard
   [{:keys [payload] :as _noti-payload}]

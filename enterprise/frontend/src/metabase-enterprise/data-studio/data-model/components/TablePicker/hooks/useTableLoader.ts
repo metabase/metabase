@@ -13,9 +13,9 @@ import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   DatabaseNode,
+  RootNode,
   SchemaNode,
   TableNode,
-  TreeNode,
   TreePath,
 } from "../types";
 import { merge, node, rootNode, toKey } from "../utils";
@@ -39,13 +39,11 @@ export function useTableLoader() {
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
 
-  const [tree, setTree] = useState<TreeNode>(rootNode());
+  const [tree, setTree] = useState<RootNode>(rootNode());
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases(
-      { include_editable_data_model: true },
-      true,
-    );
+    const response = await fetchDatabases({}, true);
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
       // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -76,7 +74,6 @@ export function useTableLoader() {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
-        include_editable_data_model: true,
       };
 
       if (
@@ -114,7 +111,6 @@ export function useTableLoader() {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
-        include_editable_data_model: true,
       };
 
       if (
@@ -170,7 +166,7 @@ export function useTableLoader() {
         getTables(path.databaseId, path.schemaName),
       ]);
 
-      const newTree: TreeNode = rootNode(
+      const newTree = rootNode(
         databases.map((database) => ({
           ...database,
           children:
@@ -190,6 +186,7 @@ export function useTableLoader() {
           const merged = merge(current, newTree);
           return _.isEqual(current, merged) ? current : merged;
         });
+        setIsInitialLoading(false);
       } finally {
         pendingPathsRef.current.delete(key);
       }
@@ -197,5 +194,5 @@ export function useTableLoader() {
     [getDatabases, getSchemas, getTables],
   );
 
-  return { tree, reload: load };
+  return { tree, reload: load, isLoading: isInitialLoading };
 }

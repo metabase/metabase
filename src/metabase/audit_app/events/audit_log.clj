@@ -163,6 +163,17 @@
                                   :user-id user-id
                                   :details (when revision-message {:revision-message revision-message})}))
 
+(derive ::measure-event ::event)
+(derive :event/measure-create ::measure-event)
+(derive :event/measure-update ::measure-event)
+(derive :event/measure-delete ::measure-event)
+
+(methodical/defmethod events/publish-event! ::measure-event
+  [topic {:keys [object user-id revision-message] :as _event}]
+  (audit-log/record-event! topic {:object  object
+                                  :user-id user-id
+                                  :details (when revision-message {:revision-message revision-message})}))
+
 (derive ::user-event ::event)
 (derive :event/user-invited ::user-event)
 (derive :event/user-deactivated ::user-event)
@@ -355,3 +366,11 @@
                   (get-in event [:details :scope :table_id]))]
       (audit-log/record-event! :event/table-data-edit (merge event {:model :model/Table :model-id table-id}))
       (audit-log/record-event! topic event))))
+
+(derive ::tenant-event ::event)
+(derive :event/tenant-create ::tenant-event)
+(derive :event/tenant-update ::tenant-event)
+
+(methodical/defmethod events/publish-event! ::tenant-event
+  [topic event]
+  (audit-log/record-event! topic event))

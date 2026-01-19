@@ -1,32 +1,20 @@
-import type { ReactNode } from "react";
+import { useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
-import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 
 import { PythonEditor } from "../../PythonEditor";
 
-import S from "./PythonEditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
   proposedSource?: string;
   isRunnable: boolean;
+  isEditMode?: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
   onCancel?: () => void;
@@ -39,12 +27,15 @@ type PythonEditorBodyProps = {
 };
 
 const EDITOR_HEIGHT = 400;
+const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
+const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 export function PythonEditorBody({
   source,
   proposedSource,
   onChange,
   isRunnable,
+  isEditMode,
   onRun,
   onCancel,
   isRunning,
@@ -53,146 +44,88 @@ export function PythonEditorBody({
   onAcceptProposed,
   onRejectProposed,
 }: PythonEditorBodyProps) {
+  const [isResizing, setIsResizing] = useState(false);
+  const editorHeight = useInitialEditorHeight(isEditMode);
+
   return (
-    <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light" pos="relative">
+    <ResizableBox
+      axis="y"
+      height={editorHeight}
+      handle={<ResizableBoxHandle />}
+      resizeHandles={!isEditMode || !withDebugger ? [] : ["s"]}
+      style={isResizing ? undefined : { transition: "height 0.25s" }}
+      onResizeStart={() => setIsResizing(true)}
+      onResizeStop={() => setIsResizing(false)}
+    >
+      <Flex h="100%" align="end" bg="background-secondary" pos="relative">
         <PythonEditor
           value={source}
           proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
+          readOnly={!isEditMode}
           data-testid="python-editor"
         />
 
-        <Stack m="1rem" gap="md" mt="auto">
-          {proposedSource && onRejectProposed && onAcceptProposed && (
-            <>
-              <Tooltip label={t`Accept proposed changes`} position="left">
-                <Button
-                  data-testid="accept-proposed-changes-button"
-                  variant="filled"
-                  bg="success"
-                  px="0"
-                  w="2.5rem"
-                  onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
-              </Tooltip>
-              <Tooltip label={t`Reject proposed changes`} position="left">
-                <Button
-                  data-testid="reject-proposed-changes-button"
-                  w="2.5rem"
-                  px="0"
-                  variant="filled"
-                  bg="danger"
-                  onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
-              </Tooltip>
-            </>
-          )}
-          {withDebugger && (
-            <Box p="md">
-              <RunButtonWithTooltip
-                disabled={!isRunnable}
-                isRunning={isRunning}
-                isDirty={isDirty}
-                onRun={onRun}
-                onCancel={onCancel}
-                getTooltip={() => t`Run Python script`}
-              />
-            </Box>
-          )}
-        </Stack>
-        <SharedLibraryActions source={source} onChange={onChange} />
+        {isEditMode && (
+          <Stack m="1rem" gap="md" mt="auto">
+            {proposedSource && onRejectProposed && onAcceptProposed && (
+              <>
+                <Tooltip label={t`Accept proposed changes`} position="left">
+                  <Button
+                    data-testid="accept-proposed-changes-button"
+                    variant="filled"
+                    bg="success"
+                    px="0"
+                    w="2.5rem"
+                    onClick={onAcceptProposed}
+                  >
+                    <Icon name="check" />
+                  </Button>
+                </Tooltip>
+                <Tooltip label={t`Reject proposed changes`} position="left">
+                  <Button
+                    data-testid="reject-proposed-changes-button"
+                    w="2.5rem"
+                    px="0"
+                    variant="filled"
+                    bg="danger"
+                    onClick={onRejectProposed}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </Tooltip>
+              </>
+            )}
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={isDirty}
+              onRun={onRun}
+              onCancel={onCancel}
+              getTooltip={() => t`Run Python script`}
+            />
+          </Stack>
+        )}
       </Flex>
-    </MaybeResizableBox>
-  );
-}
-
-function MaybeResizableBox({
-  resizable,
-  children,
-}: {
-  resizable?: boolean;
-  children?: ReactNode;
-}) {
-  if (!resizable) {
-    return (
-      <Box w="100%" h="100%">
-        {children}
-      </Box>
-    );
-  }
-
-  return (
-    <ResizableBox
-      axis="y"
-      height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
-      resizeHandles={["s"]}
-    >
-      {children}
     </ResizableBox>
   );
 }
 
-function SharedLibraryActions({
-  source,
-  onChange,
-}: {
-  source: string;
-  onChange: (source: string) => void;
-}) {
-  return (
-    <Group className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportButton source={source} onChange={onChange} />
-      <SharedLibraryEditLink />
-    </Group>
+function useInitialEditorHeight(isEditMode?: boolean) {
+  const { height: windowHeight } = useWindowSize();
+  const availableHeight = windowHeight - HEADER_HEIGHT;
+
+  if (!isEditMode) {
+    // When not in edit mode, we don't need to split the container to show the results panel on the bottom
+    return availableHeight;
+  }
+
+  // Let's make the preview initial height be half of the available height at most
+  const previewInitialHeight = Math.min(
+    availableHeight / 2,
+    PREVIEW_MAX_INITIAL_HEIGHT,
   );
-}
 
-function SharedLibraryImportButton({
-  source,
-  onChange,
-}: {
-  source: string;
-  onChange: (source: string) => void;
-}) {
-  const label = t`Import common library`;
-
-  const handleToggleSharedLib = () => {
-    if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
-      onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
-    } else {
-      onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
-    }
-  };
-
-  return (
-    <Tooltip label={label}>
-      <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
-        <Icon name="reference" c="text-dark" />
-      </ActionIcon>
-    </Tooltip>
-  );
-}
-
-function SharedLibraryEditLink() {
-  const label = t`Edit common library`;
-
-  return (
-    <Tooltip label={label}>
-      <ActionIcon
-        component={ForwardRefLink}
-        target="_blank"
-        aria-label={label}
-        to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
-      >
-        <Icon name="pencil" c="text-dark" />
-      </ActionIcon>
-    </Tooltip>
-  );
+  return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
 }

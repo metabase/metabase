@@ -47,13 +47,6 @@
   :default    false
   :audit      :never)
 
-(defsetting notebook-native-preview-shown
-  (deferred-tru "User preference for the state of the native query preview in the notebook.")
-  :user-local :only
-  :visibility :authenticated
-  :type       :boolean
-  :default    false)
-
 (defsetting notebook-native-preview-sidebar-width
   (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
   :user-local :only

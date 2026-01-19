@@ -36,6 +36,7 @@
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
+   [metabase-enterprise.tenants.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -48,11 +49,11 @@
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
-   :attached-dwh               (deferred-tru "Attached DWH")
-   :audit-app                  (deferred-tru "Audit app")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
+   :attached-dwh               (deferred-tru "Attached DWH")
+   :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :data-studio                (deferred-tru "Data Studio")
@@ -68,6 +69,7 @@
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :transforms                 (deferred-tru "Transforms")
+   :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
@@ -131,6 +133,7 @@
    "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
    "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
+   "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

@@ -12,14 +12,14 @@ const DATA_BY_MB_EDITION = {
   oss: {
     cardTestId: "guest-embeds-setting-card",
     cardText:
-      "To continue, enable Guest embeds and agree to the usage conditions.",
+      "To continue, enable guest embeds and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-static",
     showTermsSettingName: "show-static-embed-terms",
   },
   ee: {
     cardTestId: "sdk-setting-card",
     cardText:
-      "To continue, enable Embedded Analytics JS and agree to the usage conditions.",
+      "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-simple",
     showTermsSettingName: "show-simple-embed-terms",
   },
@@ -88,10 +88,22 @@ describe(
         .should("be.visible")
         .should("be.disabled");
 
+      // Going to the next step and selecting "Orders in a dashboard" explicitely
+      // because sometimes it selects another one that's been used recently
+      // see EMB-1106
+      cy.log("Navigating to embed flow step 2 and selecting an item to embed");
+      cy.findByRole("button", { name: "Next" }).click();
+      cy.get('[data-testid="embed-recent-item-card"]')
+        .should("have.length.greaterThan", 0)
+        .contains("Orders in a dashboard")
+        .click();
+
       cy.log("Preview should load after embedding is enabled");
       H.waitForSimpleEmbedIframesToLoad();
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders in a dashboard", { timeout: 60_000 }).should(
+          "be.visible",
+        );
       });
     });
 

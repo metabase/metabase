@@ -20,6 +20,7 @@ export const createMockCollection = (
   archived: false,
   is_personal: false,
   authority_level: null,
+  namespace: null,
   entity_id: createMockEntityId(),
   ...opts,
 });
@@ -37,8 +38,6 @@ export const createMockCollectionItem = (
   collection_id: null,
   fully_parameterized: true,
   type: null,
-  getIcon: () => ({ name: "question" }),
-  getUrl: () => "/question/1",
   archived: false,
   ...opts,
 });

@@ -70,9 +70,10 @@ export const PublicDocumentCardMenu = ({
           <QuestionDownloadWidget
             question={question}
             result={dataset}
-            onDownload={(opts) => {
+            onDownload={async (opts) => {
               close();
-              handleDownload(opts);
+
+              await handleDownload(opts);
             }}
           />
         ) : (

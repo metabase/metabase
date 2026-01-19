@@ -17,14 +17,20 @@ export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
   columns: TColumn[],
 ): ColumnDescriptor[] => {
-  return columnNames.map((columnName) => {
+  const result: ColumnDescriptor[] = [];
+
+  columnNames.forEach((columnName) => {
     const index = columns.findIndex((column) => column.name === columnName);
 
-    return {
-      index,
-      column: columns[index],
-    };
+    if (index > -1) {
+      result.push({
+        index,
+        column: columns[index],
+      });
+    }
   });
+
+  return result;
 };
 
 export const hasValidColumnsSelected = (

@@ -3,7 +3,13 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
@@ -43,6 +49,7 @@ import type {
 import {
   trackDocumentBookmark,
   trackDocumentCreated,
+  trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
 import {
@@ -52,12 +59,14 @@ import {
   setChildTargetId,
   setCurrentDocument,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
   getDraftCards,
   getHasUnsavedChanges,
+  getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
@@ -66,6 +75,7 @@ import { getListCommentsQuery } from "../utils/api";
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
+import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
@@ -90,6 +100,7 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
+  const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
@@ -261,6 +272,10 @@ export const DocumentPage = ({
       : createBookmark({ type: "document", id: documentId });
   }, [isBookmarked, deleteBookmark, createBookmark, documentId]);
 
+  const handleShowHistory = useCallback(() => {
+    dispatch(setIsHistorySidebarOpen(true));
+  }, [dispatch]);
+
   const handleSave = useCallback(
     async (collectionId: RegularCollectionId | null = null) => {
       if (!editorInstance || isSaving) {
@@ -409,6 +424,20 @@ export const DocumentPage = ({
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
+  const isLeaveConfirmModalOpen = useMemo(
+    () =>
+      hasUnsavedChanges() &&
+      isNewDocument &&
+      location.key !== previousLocationKey,
+    [hasUnsavedChanges, isNewDocument, location.key, previousLocationKey],
+  );
+
+  useEffect(() => {
+    if (isLeaveConfirmModalOpen) {
+      trackDocumentUnsavedChangesWarningDisplayed(documentData);
+    }
+  }, [isLeaveConfirmModalOpen, documentData]);
+
   return (
     <Box className={styles.documentPage}>
       {documentData?.archived && <DocumentArchivedEntityBanner />}
@@ -434,6 +463,7 @@ export const DocumentPage = ({
               onMove={() => setCollectionPickerMode("move")}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
+              onShowHistory={handleShowHistory}
               hasComments={hasComments}
             />
             <Editor
@@ -489,19 +519,28 @@ export const DocumentPage = ({
           key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
+          onOpenChange={(open) => {
+            if (open) {
+              trackDocumentUnsavedChangesWarningDisplayed(documentData);
+            }
+          }}
         />
 
         <LeaveConfirmModal
           // only applies when going from /new -> /new
-          opened={
-            hasUnsavedChanges() &&
-            isNewDocument &&
-            location.key !== previousLocationKey
-          }
+          opened={isLeaveConfirmModalOpen}
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}
         />
       </Box>
+      {isHistorySidebarOpen && documentData && (
+        <Box className={styles.sidebar} data-testid="document-history-sidebar">
+          <DocumentRevisionHistorySidebar
+            document={documentData}
+            onClose={() => dispatch(setIsHistorySidebarOpen(false))}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

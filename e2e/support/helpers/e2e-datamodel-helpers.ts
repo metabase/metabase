@@ -9,6 +9,7 @@ export const DataModel = {
   visit,
   visitDataStudio,
   visitDataStudioSegments,
+  visitDataStudioMeasures,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
@@ -21,6 +22,7 @@ export const DataModel = {
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
+    getFilterForm: getTablePickerFilter,
   },
   TableSection: {
     get: getTableSection,
@@ -38,6 +40,7 @@ export const DataModel = {
     getSortableFields: getTableSectionSortableFields,
     getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
+    getCloseButton: getTableSectionCloseButton,
   },
   FieldSection: {
     get: getFieldSection,
@@ -62,6 +65,7 @@ export const DataModel = {
     getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+    getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
     get: getPreviewSection,
@@ -79,11 +83,41 @@ export const DataModel = {
     getNameInput: getSegmentEditorNameInput,
     getDescriptionInput: getSegmentEditorDescriptionInput,
     getFilterPlaceholder: getSegmentEditorFilterPlaceholder,
-    getRowCount: getSegmentEditorRowCount,
     getPreviewLink: getSegmentEditorPreviewLink,
     getSaveButton: getSegmentEditorSaveButton,
+    getCancelButton: getSegmentEditorCancelButton,
     getActionsButton: getSegmentEditorActionsButton,
     getBreadcrumb: getSegmentEditorBreadcrumb,
+    getDefinitionTab: getSegmentEditorDefinitionTab,
+    getRevisionHistoryTab: getSegmentEditorRevisionHistoryTab,
+    getDependenciesTab: getSegmentEditorDependenciesTab,
+  },
+  SegmentRevisionHistory: {
+    get: getSegmentRevisionHistory,
+  },
+  MeasureList: {
+    get: getMeasureList,
+    getEmptyState: getMeasureListEmptyState,
+    getNewMeasureLink: getMeasureListNewLink,
+    getMeasure: getMeasureListItem,
+    getMeasures: getMeasureListItems,
+  },
+  MeasureEditor: {
+    get: getMeasureEditor,
+    getNameInput: getMeasureEditorNameInput,
+    getDescriptionInput: getMeasureEditorDescriptionInput,
+    getAggregationPlaceholder: getMeasureEditorAggregationPlaceholder,
+    getPreviewLink: getMeasureEditorPreviewLink,
+    getSaveButton: getMeasureEditorSaveButton,
+    getCancelButton: getMeasureEditorCancelButton,
+    getActionsButton: getMeasureEditorActionsButton,
+    getBreadcrumb: getMeasureEditorBreadcrumb,
+    getDefinitionTab: getMeasureEditorDefinitionTab,
+    getRevisionHistoryTab: getMeasureEditorRevisionHistoryTab,
+    getDependenciesTab: getMeasureEditorDependenciesTab,
+  },
+  MeasureRevisionHistory: {
+    get: getMeasureRevisionHistory,
   },
 };
 
@@ -252,6 +286,10 @@ function getTablePickerSearchInput() {
   return cy.findByPlaceholderText("Search tables");
 }
 
+function getTablePickerFilter() {
+  return cy.findByTestId("table-picker-filter");
+}
+
 function getTablePickerTables() {
   return cy.findAllByTestId("tree-item").filter('[data-type="table"]');
 }
@@ -260,6 +298,10 @@ function getTablePickerTables() {
 
 function getTableSection() {
   return cy.findByTestId("table-section");
+}
+
+function getTableSectionHeader() {
+  return cy.findByTestId("table-section-header");
 }
 
 function getTableNameInput() {
@@ -323,10 +365,18 @@ function clickTableSectionField(name: string) {
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
 }
 
+function getTableSectionCloseButton() {
+  return getTableSectionHeader().findByRole("link", { name: /close/ });
+}
+
 /** field section helpers */
 
 function getFieldSection() {
   return cy.findByTestId("field-section");
+}
+
+function getFieldSectioHeader() {
+  return cy.findByTestId("field-section-header");
 }
 
 function getFieldNameInput() {
@@ -417,6 +467,10 @@ function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
 }
 
+function getFieldSectionCloseButton() {
+  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+}
+
 /** preview section helpers */
 
 function getPreviewSection() {
@@ -444,7 +498,7 @@ function visitDataStudioSegments(options: {
 }
 
 function getSegmentList() {
-  return cy.findByRole("tabpanel");
+  return cy.findByTestId("table-segments-page");
 }
 
 function getSegmentListEmptyState() {
@@ -467,7 +521,7 @@ function getSegmentListItems() {
 
 function getSegmentEditor() {
   return cy.get(
-    "[data-testid='new-segment-page'], [data-testid='edit-segment-page']",
+    "[data-testid='new-segment-page'], [data-testid='segment-detail-page']",
   );
 }
 
@@ -476,15 +530,11 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Description");
+  return getSegmentEditor().findByLabelText("Give it a description");
 }
 
 function getSegmentEditorFilterPlaceholder() {
   return getSegmentEditor().findByText("Add filters to narrow your answer");
-}
-
-function getSegmentEditorRowCount() {
-  return getSegmentEditor().findByText(/\d+ rows/);
 }
 
 function getSegmentEditorPreviewLink() {
@@ -495,10 +545,122 @@ function getSegmentEditorSaveButton() {
   return getSegmentEditor().button("Save");
 }
 
+function getSegmentEditorCancelButton() {
+  return getSegmentEditor().button("Cancel");
+}
+
 function getSegmentEditorActionsButton() {
   return cy.findByLabelText("Segment actions");
 }
 
 function getSegmentEditorBreadcrumb(tableName: string) {
-  return getSegmentEditor().findByText(`${tableName} segments`);
+  return cy.findByText(tableName);
+}
+
+function getSegmentEditorDefinitionTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Definition");
+}
+
+function getSegmentEditorRevisionHistoryTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Revision history");
+}
+
+function getSegmentEditorDependenciesTab() {
+  return cy.findByTestId("segment-pane-header").findByText("Dependencies");
+}
+
+function getSegmentRevisionHistory() {
+  return cy.findByTestId("segment-revision-history-page");
+}
+
+/** measure list helpers */
+
+function visitDataStudioMeasures(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/measures`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getMeasureList() {
+  return cy.findByTestId("table-measures-page");
+}
+
+function getMeasureListEmptyState() {
+  return getMeasureList().findByText("No measures yet");
+}
+
+function getMeasureListNewLink() {
+  return getMeasureList().findByRole("link", { name: /New measure/i });
+}
+
+function getMeasureListItem(name: string) {
+  return getMeasureList().findByRole("listitem", { name });
+}
+
+function getMeasureListItems() {
+  return getMeasureList().findAllByRole("listitem");
+}
+
+/** measure editor helpers */
+
+function getMeasureEditor() {
+  return cy.get(
+    "[data-testid='new-measure-page'], [data-testid='measure-detail-page']",
+  );
+}
+
+function getMeasureEditorNameInput() {
+  return getMeasureEditor().findByPlaceholderText("New measure");
+}
+
+function getMeasureEditorDescriptionInput() {
+  return getMeasureEditor().findByLabelText("Give it a description");
+}
+
+function getMeasureEditorAggregationPlaceholder() {
+  return getMeasureEditor().findByText("Pick an aggregation function");
+}
+
+function getMeasureEditorPreviewLink() {
+  return getMeasureEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getMeasureEditorSaveButton() {
+  return getMeasureEditor().button("Save");
+}
+
+function getMeasureEditorCancelButton() {
+  return getMeasureEditor().button("Cancel");
+}
+
+function getMeasureEditorActionsButton() {
+  return cy.findByLabelText("Measure actions");
+}
+
+function getMeasureEditorBreadcrumb(tableName: string) {
+  return cy.findByText(tableName);
+}
+
+function getMeasureEditorDefinitionTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Definition");
+}
+
+function getMeasureEditorRevisionHistoryTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Revision history");
+}
+
+function getMeasureEditorDependenciesTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Dependencies");
+}
+
+function getMeasureRevisionHistory() {
+  return cy.findByTestId("measure-revision-history-page");
 }

@@ -106,3 +106,7 @@ op = "latest"
 # jq - Command-line JSON processor
 # https://github.com/jqlang/jq
 jq = "latest"
+
+# claude code - Terminal AI coding agent
+# https://github.com/anthropics/claude-code
+claude = "latest"

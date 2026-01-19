@@ -1,3 +1,5 @@
+import type { PropsWithChildren } from "react";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -19,7 +21,7 @@ import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButton
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";
 
-interface NativeQueryEditorTopBarProps {
+interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   question: Question;
   query: NativeQuery;
 
@@ -55,6 +57,7 @@ interface NativeQueryEditorTopBarProps {
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const {
+    children,
     query,
     question,
     canChangeDatabase,
@@ -142,7 +145,8 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           enableParameterRequiredBehavior
         />
       )}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px" pl="md">
+      <Flex ml="auto" gap="lg" mr="lg" align="center" h="3rem" pl="md">
+        {children}
         {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}

@@ -7,7 +7,7 @@ export type UserAttributeKey = string;
 export type UserAttributeValue = string;
 export type UserAttributeMap = Record<UserAttributeKey, UserAttributeValue>;
 
-export type UserAttributeSource = "system" | "jwt" | "user";
+export type UserAttributeSource = "system" | "tenant" | "jwt" | "user";
 
 type StructuredAttributeBase = {
   frozen: boolean;
@@ -39,6 +39,7 @@ export interface BaseUser {
   last_login: string;
   first_login: string;
   updated_at: string;
+  tenant_id: number | null;
 }
 
 export interface UserPermissions {
@@ -63,7 +64,9 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
+  tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
@@ -135,6 +138,8 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
+  tenancy?: UserTenancy;
+  tenant_id?: number;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
@@ -173,6 +178,11 @@ export type UserKeyValue =
       namespace: "transforms";
       key: string;
       value: "tree" | "alphabetical" | "last-modified";
+    }
+  | {
+      namespace: "data_studio";
+      key: string;
+      value: boolean;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
@@ -184,3 +194,5 @@ export type GetUserKeyValueRequest = UserKeyValueKey;
 export type UpdateUserKeyValueRequest = UserKeyValue & {
   expires_at?: string;
 };
+
+export type UserTenancy = "internal" | "external" | "all";

@@ -2,8 +2,8 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/common/components/InputBlurChange";
 import CS from "metabase/css/core/index.css";
+import { TextInputBlurChange } from "metabase/ui";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
@@ -33,7 +33,7 @@ export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
         className={S.Label}
         htmlFor="link-text-template"
       >{t`Customize link text (optional)`}</label>
-      <InputBlurChange
+      <TextInputBlurChange
         id="link-text-template"
         className={cx(CS.block, CS.full)}
         placeholder={t`E.x. Details for {{Column Name}}`}

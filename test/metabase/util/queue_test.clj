@@ -175,7 +175,7 @@
         (finally
           (queue/stop-listening! listener-name)))
 
-      (is (not (thread-name-running? thread-name)))
+      (await-test-while (thread-name-running? thread-name))
       (is (not (queue/listener-exists? listener-name)))
 
       ; additional calls to stop are no-ops
@@ -217,12 +217,15 @@
 (deftest multithreaded-listener-test
   (testing "Test behavior with a multithreaded listener"
     (let [listener-name "test-multithreaded-listener"
+          thread-name-0 (str "queue-" listener-name "-0")
+          thread-name-1 (str "queue-" listener-name "-1")
+          thread-name-2 (str "queue-" listener-name "-2")
           batches-handled (atom 0)
           handlers-used (atom #{})
           queue (queue/delay-queue)]
-      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
+      (is (not (thread-name-running? thread-name-0)))
+      (is (not (thread-name-running? thread-name-1)))
+      (is (not (thread-name-running? thread-name-2)))
 
       (queue/listen! listener-name
                      queue
@@ -232,9 +235,9 @@
                       :max-batch-messages 10
                       :max-next-ms        5})
       (try
-        (is (thread-name-running? (str "queue-" listener-name "-0")))
-        (is (thread-name-running? (str "queue-" listener-name "-1")))
-        (is (thread-name-running? (str "queue-" listener-name "-2")))
+        (is (thread-name-running? thread-name-0))
+        (is (thread-name-running? thread-name-1))
+        (is (thread-name-running? thread-name-2))
 
         (dotimes [i 100]
           (queue/put-with-delay! queue 0 i))
@@ -245,6 +248,6 @@
 
         (finally
           (queue/stop-listening! listener-name)))
-      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-2ˇ")))))))
+      (await-test-while (or (thread-name-running? thread-name-0)
+                            (thread-name-running? thread-name-1)
+                            (thread-name-running? thread-name-2))))))

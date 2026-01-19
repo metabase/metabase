@@ -2,15 +2,16 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
+import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
   setIsGuestEmbed,
-  setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -64,7 +65,6 @@ export const ComponentProviderInternal = (
     reduxStore,
     locale,
     errorComponent,
-    loaderComponent,
     allowConsoleLog,
     isLocalHost,
   } = useNormalizeComponentProviderProps(props);
@@ -85,6 +85,8 @@ export const ComponentProviderInternal = (
 
   useInitPlugins();
 
+  useSdkCustomLoader();
+
   useEffect(() => {
     reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
   }, [reduxStore, isGuestEmbed]);
@@ -102,10 +104,6 @@ export const ComponentProviderInternal = (
   useEffect(() => {
     reduxStore.dispatch(setEventHandlers(eventHandlers || null));
   }, [reduxStore, eventHandlers]);
-
-  useEffect(() => {
-    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [reduxStore, loaderComponent]);
 
   useEffect(() => {
     reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
@@ -126,6 +124,8 @@ export const ComponentProviderInternal = (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
+
+                {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
 
               {isInstanceToRender && (

@@ -9,6 +9,7 @@ import {
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
+  type User,
   isBaseEntityID,
 } from "metabase-types/api";
 
@@ -38,6 +39,25 @@ export function isRootPersonalCollection(
   return typeof collection.personal_owner_id === "number";
 }
 
+export function isDedicatedTenantCollectionRoot(
+  collection: Partial<Collection> | CollectionItem,
+): boolean {
+  return collection.type === "tenant-specific-root-collection";
+}
+
+export function isDedicatedTenantCollectionOfUser({
+  user,
+  collection,
+}: {
+  user: User;
+  collection: Collection;
+}): boolean {
+  return (
+    user.tenant_collection_id !== null &&
+    user.tenant_collection_id === collection.id
+  );
+}
+
 export function isPersonalCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
@@ -62,13 +82,17 @@ export function isPublicCollection(
   return !isPersonalCollection(collection);
 }
 
-export function isEditableCollection(collection: Collection) {
+export function isEditableCollection(
+  collection: Collection,
+  { currentUser }: { currentUser: User },
+) {
   return (
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
     !isTrashedCollection(collection) &&
-    !isLibraryCollection(collection)
+    !isLibraryCollection(collection) &&
+    !isDedicatedTenantCollectionOfUser({ user: currentUser, collection })
   );
 }
 
@@ -221,7 +245,10 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !(
+      isItemCollection(item) &&
+      (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))
+    ) &&
     !isLibraryCollection(item as Pick<Collection, "type">) &&
     item.model !== "table" &&
     !item.archived
@@ -277,6 +304,7 @@ export function canonicalCollectionId(
 ): number | null {
   if (
     collectionId === "root" ||
+    collectionId === "tenant" ||
     collectionId === null ||
     collectionId === undefined
   ) {

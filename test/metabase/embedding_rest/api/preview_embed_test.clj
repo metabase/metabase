@@ -552,6 +552,28 @@
                 :params   {}}
                additional-token-params)))
 
+;;; ----------------------------- GET /api/preview_embed/card/:token/params/:param-key/values --------------------------
+
+(deftest card-params-values-test
+  (testing "GET /api/preview_embed/card/:token/params/:param-key/values"
+    ;; Card endpoint uses check-and-unsign which requires enable-embedding-static,
+    ;; unlike dashboard endpoints which skip the check in preview mode
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)
+                                       :parameters    [{:name                 "Static Category"
+                                                        :slug                 "static_category"
+                                                        :id                   "_STATIC_CATEGORY_"
+                                                        :type                 "category"
+                                                        :values_source_type   "static-list"
+                                                        :values_source_config {:values ["African" "American" "Asian"]}}]}]
+        (let [signed-token (embed-test/card-token card {:_embedding_params {:static_category "enabled"}})]
+          (testing "Should work if the param we're fetching values for is enabled"
+            (is (= {:values          [["African"] ["American"] ["Asian"]]
+                    :has_more_values false}
+                   (mt/user-http-request :crowberto :get 200
+                                         (format "preview_embed/card/%s/params/%s/values"
+                                                 signed-token "_STATIC_CATEGORY_"))))))))))
+
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!

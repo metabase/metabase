@@ -1,1 +1,1 @@
-export { SegmentEditorV2 } from "./components/SegmentEditorV2";
+export { SegmentFilterEditor } from "./components/SegmentFilterEditor";

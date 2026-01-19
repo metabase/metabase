@@ -138,7 +138,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query weights]}]
+           entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries        term-queries
               :semantic-queries    semantic-queries
@@ -148,6 +148,7 @@
               :entity-types        entity-types
               :limit               limit
               :metabot-id          metabot-id
+              :profile-id          profile-id
               :search-native-query search-native-query
               :weights             weights})
   (let [search-models   (if (seq entity-types)
@@ -158,6 +159,9 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
+        embedded-metabot?  (= metabot-id metabot-v3.config/embedded-metabot-id)
+        collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
+                          (:collection_id metabot))
         limit           (or limit 50)
         search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
@@ -185,7 +189,9 @@
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine
-                                                  (assoc :search-engine (name search-engine))))
+                                                  (assoc :search-engine (name search-engine))
+                                                  collection-id
+                                                  (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                                           search-string (:models search-context))
                                 search-results (search/search search-context)

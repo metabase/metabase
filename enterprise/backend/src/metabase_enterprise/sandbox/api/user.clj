@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.tenants.core :as tenants]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -39,10 +40,10 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/attributes"
-  "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
-  existing Users and returns those. "
+  "Fetch a list of possible keys for User `login_attributes`. This includes keys from tenant model
+  attributes and keys that have already been set for existing Users."
   []
-  (into #{}
+  (into (tenants/login-attribute-keys)
         (comp
          (mapcat keys)
          (distinct)

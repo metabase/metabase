@@ -15,7 +15,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
 
   return (
     <EnableEmbeddingCard
-      embeddingType="Embedded Analytics JS"
+      embeddingType="modular embedding"
       isEnabled={isSimpleEmbeddingEnabled}
       termsAccepted={isSimpleEmbeddingTermsAccepted}
       settingsToUpdate={{
@@ -26,7 +26,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
           "show-simple-embed-terms": false,
         }),
       }}
-      errorMessage={t`Failed to enable Embedded Analytics JS`}
+      errorMessage={t`Failed to enable modular embedding`}
     />
   );
 };

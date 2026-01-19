@@ -289,9 +289,9 @@
   (when (and (:source-incremental-strategy source)
              (> (count (:source-tables source)) 1))
     (throw (ex-info "Incremental transforms for python only supports one source table" {})))
-  ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [[table-name table-id] (:source-tables source)
-          :let [{:keys [s3-client bucket-name objects]} shared-storage
+  (doseq [[table-name v] (:source-tables source)
+          :let [table-id                                (if (int? v) v (:table_id v))
+                {:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])
                 {manifest-path :path}                   (get objects [:table table-id :manifest])]]
     (let [tmp-data-file (File/createTempFile data-path "")

@@ -1474,3 +1474,95 @@ describe("issue QUE-1359", () => {
       });
   });
 });
+
+describe("issue QUE-2567", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: [
+              "datetime-add",
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "effective-type": "type/DateTime",
+                },
+              ],
+              5,
+              "day",
+            ],
+            Bar: ["datetime", "2025-12-24"],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Foo").click();
+      cy.findByText("Previous 12 months").click();
+    });
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Bar").click();
+      cy.findByText("Previous 12 months").click();
+    });
+  });
+
+  it("should be possible to edit a datetime filter that is based on a custom expression (QUE-2567)", () => {
+    cy.log("Editing the filter should show the date picker");
+    cy.findAllByTestId("filter-pill").should("have.length", 2).eq(0).click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
+
+    cy.log(
+      "Editing the filter should show the date picker for coerced datetime",
+    );
+    cy.findAllByTestId("filter-pill").should("have.length", 2).eq(1).click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
+  });
+});
+
+describe("issue QUE-2567 (bis)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
+    H.openOrdersTable();
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Quantity").click();
+      cy.findByText("Previous 12 months").click();
+    });
+  });
+
+  it("should open the datetime filter for coerced columns", () => {
+    cy.log("Editing the filter should show the date picker");
+    cy.findByTestId("filter-pill").click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
+  });
+});

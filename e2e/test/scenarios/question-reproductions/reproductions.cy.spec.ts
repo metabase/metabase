@@ -1362,3 +1362,118 @@ describe("issue 64293", () => {
     });
   });
 });
+
+describe("issue 13347", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: "13347 structured",
+      database: WRITABLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    });
+
+    H.createNativeQuestion({
+      name: "13347 native",
+      database: WRITABLE_DB_ID,
+      native: {
+        query: "SELECT * FROM ORDERS",
+      },
+    });
+
+    cy.signInAsNormalUser();
+
+    cy.visit("/");
+  });
+
+  it("should not display questions in mini data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerOurAnalytics().click();
+
+    H.miniPicker().within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+
+  it("should not display questions in big data picker that cannot be used for new questions (metabase#13347)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalLevel(1).within(() => {
+      cy.findByText("Orders").should("exist");
+
+      cy.findByText("13347 structured").should("not.exist");
+      cy.findByText("13347 native").should("not.exist");
+    });
+  });
+});
+
+describe("issue #47005", () => {
+  beforeEach(() => {
+    H.restore();
+    H.restore("postgres-12");
+    cy.signInAsNormalUser();
+
+    H.createQuestion({
+      name: "Question A",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: question }) => {
+      H.createQuestion(
+        {
+          name: "Question B",
+          query: {
+            "source-table": "card__" + question.id,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+  });
+
+  it("should show the collection of the base question in breadcrumbs (metabase#47005)", () => {
+    cy.findAllByTestId("head-crumbs-container")
+      .filter(":contains(Question A)")
+      .findByText("Our analytics")
+      .should("be.visible");
+  });
+});
+
+describe("issue 66210", () => {
+  const METRIC_NAME = "66210 metric";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion({
+      name: METRIC_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      type: "metric",
+    });
+
+    cy.visit("/");
+  });
+
+  it("should not allow you to join on metrics", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
+    H.entityPickerModalItem(1, "Orders").click();
+    H.join();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalTab("Data").click();
+    H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
+  });
+});

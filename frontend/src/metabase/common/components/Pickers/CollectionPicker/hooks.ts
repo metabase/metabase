@@ -8,9 +8,10 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
+import { useGetPersonalCollection, useSetting } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -26,6 +27,22 @@ const personalCollectionsRoot: CollectionPickerItem = {
   below: ["collection"],
 };
 
+const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
+  const base = PLUGIN_TENANTS.TENANT_SPECIFIC_COLLECTIONS;
+  if (!base) {
+    return null;
+  }
+  return {
+    ...base,
+    can_write: false,
+    model: "collection",
+    location: "/",
+    description: "",
+    here: ["collection", "card", "dashboard"],
+    below: ["collection"],
+  };
+};
+
 /**
  * This is a special item list that exists "above" our analytics and might include:
  * a) the highest-level collections the user can access (often "our analytics")
@@ -35,19 +52,16 @@ const personalCollectionsRoot: CollectionPickerItem = {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
+  const tenantsEnabled = useSetting("use-tenants");
+  const currentUser = useSelector(getUser);
 
-  const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useGetCollectionQuery(
-      currentUser?.personal_collection_id
-        ? { id: currentUser.personal_collection_id }
-        : skipToken,
-    );
+  const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
+    useGetPersonalCollection();
 
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection({
@@ -58,9 +72,9 @@ export const useRootCollectionPickerItems = (
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
   } = useListCollectionItemsQuery(
-    currentUser?.personal_collection_id
+    personalCollection
       ? {
-          id: currentUser?.personal_collection_id,
+          id: personalCollection.id,
           models: ["collection", "dashboard"],
           limit: 0, // we only want total number of items
         }
@@ -70,14 +84,37 @@ export const useRootCollectionPickerItems = (
 
   const {
     data: rootCollection,
-    isLoading: isLoadingRootCollecton,
+    isLoading: isLoadingRootCollection,
     error: rootCollectionError,
   } = useGetCollectionQuery({ id: "root" });
 
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
 
-    if (options.showLibrary && libraryCollection) {
+    if (
+      options?.restrictToNamespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+    ) {
+      if (tenantsEnabled && currentUser) {
+        collectionItems.push({
+          name: t`Shared collections`,
+          id: "tenant",
+          namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
+          here: ["collection", "card", "dashboard"],
+          description: null,
+          can_write: true,
+          model: "collection",
+          location: "/",
+        });
+      }
+      return collectionItems;
+    }
+
+    if (
+      options.showLibrary &&
+      libraryCollection &&
+      options.namespace !== "snippets" &&
+      options.namespace !== "transforms"
+    ) {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
@@ -85,7 +122,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showDatabases && databases.length > 0) {
+    if (options?.showDatabases && databases.length > 0) {
       collectionItems.push({
         id: "databases",
         name: t`Databases`,
@@ -97,7 +134,11 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showRootCollection || options.namespace === "snippets") {
+    if (
+      options?.showRootCollection ||
+      options?.namespace === "snippets" ||
+      options?.namespace === "transforms"
+    ) {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -106,8 +147,10 @@ export const useRootCollectionPickerItems = (
           location: "/",
           name:
             options.namespace === "snippets"
-              ? t`Top folder`
-              : rootCollection.name,
+              ? t`SQL snippets`
+              : options.namespace === "transforms"
+                ? t`Transforms`
+                : rootCollection.name,
         });
       } else if (rootCollectionError) {
         collectionItems.push({
@@ -123,8 +166,9 @@ export const useRootCollectionPickerItems = (
     }
 
     if (
-      options.showPersonalCollections &&
-      options.namespace !== "snippets" &&
+      options?.showPersonalCollections &&
+      options?.namespace !== "snippets" &&
+      options?.namespace !== "transforms" &&
       currentUser &&
       !!personalCollection
     ) {
@@ -140,9 +184,49 @@ export const useRootCollectionPickerItems = (
       }
     }
 
+    // Only show tenant collections if NOT restricted to a different namespace
+    // When restrictToNamespace is "default", we exclude tenant collections
+    const shouldShowTenantCollections =
+      tenantsEnabled &&
+      currentUser &&
+      options?.restrictToNamespace !== "default";
+
+    if (shouldShowTenantCollections) {
+      collectionItems.push({
+        name: t`Shared collections`,
+        id: "tenant",
+        namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+      });
+    }
+
+    const userTenantCollectionId = currentUser?.tenant_collection_id;
+    if (shouldShowTenantCollections && userTenantCollectionId) {
+      collectionItems.push({
+        name: t`Our data`,
+        id: userTenantCollectionId,
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+        type: "tenant-specific-root-collection",
+      });
+    }
+
+    if (shouldShowTenantCollections && isAdmin) {
+      const tenantSpecificRoot = getTenantSpecificCollectionsRoot();
+      if (tenantSpecificRoot) {
+        collectionItems.push(tenantSpecificRoot);
+      }
+    }
+
     return collectionItems;
   }, [
-    currentUser,
     personalCollection,
     rootCollection,
     isAdmin,
@@ -151,12 +235,14 @@ export const useRootCollectionPickerItems = (
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
+    tenantsEnabled,
+    currentUser,
   ]);
 
   const isLoading =
     isLoadingDatabases ||
-    isLoadingRootCollecton ||
-    isLoadingPersonalCollecton ||
+    isLoadingRootCollection ||
+    isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
   return { items, isLoading };

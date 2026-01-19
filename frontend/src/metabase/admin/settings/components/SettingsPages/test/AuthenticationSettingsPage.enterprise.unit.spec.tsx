@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 
@@ -8,7 +8,7 @@ const setup = async (
   extraSettings?: Partial<EnterpriseSettings>,
   tab = "authentication",
 ) => {
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("auth");
   return OSSSetup(extraSettings, true, tab);
 };
 

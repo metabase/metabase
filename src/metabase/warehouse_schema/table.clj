@@ -31,20 +31,12 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defenterprise can-access-via-collection?
-  "Returns true if the user can access this published table via collection read permissions.
-  OSS returns false (published tables don't grant access).
-  Enterprise checks collection permissions for published tables."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table]
-  false)
-
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
-  Checks collection permissions for published tables, data permissions for unpublished tables."
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
   [table]
-  (or (can-access-via-collection? table)
-      (mi/can-read? table)))
+  (mi/can-read? table))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -55,7 +47,7 @@
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] :metrics :collection]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
@@ -82,6 +74,7 @@
            tables (t2/hydrate tables
                               [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                               :segments
+                              :measures
                               :metrics)
            excluded-visibility-types (cond-> #{:hidden}
                                        (not include-sensitive-fields?) (conj :sensitive))]
@@ -122,14 +115,19 @@
                      (merge (select-keys (underlying col-id)
                                          [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
-                      :table_id     (str "card__" card-id)
-                      :id           (or col-id
-                                        ;; TODO -- what????
-                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
+                      :table_id      (str "card__" card-id)
+                      :id            (or col-id
+                                         ;; TODO -- what????
+                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
-                      :semantic_type (keyword (:semantic_type col)))))]
+                      :semantic_type (keyword (:semantic_type col)))
+                     (m/assoc-some
+                      ;; If the semantic type is a FK, and the target is defined, keep it too.
+                      :fk_target_field_id (when (and (:semantic_type col)
+                                                     (isa? (keyword (:semantic_type col)) :type/FK))
+                                            (:fk_target_field_id col)))))]
     fields))
 
 (defn root-collection-schema-name
@@ -223,9 +221,11 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
+        ;; stale data that remained there from a time when the given column was still FK. We assume
+        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
+        ;; settings, so we trust the model's information.
+        (let [trust-semantic-keys? (= (:type card) :model)]
           (-> card
               (card->virtual-table :include-database? include-database?
                                    :include-fields? true

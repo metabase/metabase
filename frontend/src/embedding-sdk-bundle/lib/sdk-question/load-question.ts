@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
@@ -12,11 +10,13 @@ import type {
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import type { EntityToken } from "metabase-types/api/entity";
 
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
 };
 
 export const loadQuestionSdk =
@@ -74,18 +74,20 @@ export const loadQuestionSdk =
       question = question.applyTemplateTagParameters();
     }
 
-    const queryParams = initialSqlParameters
-      ? _.mapObject(initialSqlParameters, String)
-      : {};
-
     const parameterValues = getParameterValuesForQuestion({
       card,
       metadata,
-      queryParams,
+      queryParams: initialSqlParameters,
     });
 
     if (parameterValues) {
       question = question.setParameterValues(parameterValues);
+    }
+
+    if ("param_fields" in card && card.param_fields) {
+      // This is needed to make some parameter widget populate the dropdown list
+      // otherwise they will use a normal text input
+      dispatch(addFields(Object.values(card.param_fields).flat()));
     }
 
     return { question, originalQuestion, parameterValues };

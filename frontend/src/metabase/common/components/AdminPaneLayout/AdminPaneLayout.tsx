@@ -1,32 +1,51 @@
 import type { ReactNode } from "react";
 
-import { AdminPaneTitle } from "./AdminPaneTitle";
-import type { AdminPaneProps } from "./types";
+import CS from "metabase/css/core/index.css";
+import { Flex, Stack, Text } from "metabase/ui";
 
-type AdminPaneLayoutProps = AdminPaneProps & {
+interface AdminPaneLayoutProps {
+  title?: React.ReactNode;
+  description?: string;
+  titleActions?: ReactNode;
+  headerContent?: ReactNode;
   children: ReactNode;
-};
+}
 
 export const AdminPaneLayout = ({
   title,
   description,
-  buttonText,
-  buttonAction,
-  buttonDisabled,
   children,
-  buttonLink,
-  headingContent,
-}: AdminPaneLayoutProps) => (
-  <div data-testid="admin-panel">
-    <AdminPaneTitle
-      title={title}
-      description={description}
-      buttonText={buttonText}
-      buttonAction={buttonAction}
-      buttonDisabled={buttonDisabled}
-      buttonLink={buttonLink}
-      headingContent={headingContent}
-    />
-    {children}
-  </div>
-);
+  headerContent,
+  titleActions,
+}: AdminPaneLayoutProps) => {
+  return (
+    <div data-testid="admin-panel">
+      <Stack component="section" px="md" mb="xl" gap="lg">
+        {(title || description || titleActions) && (
+          <Flex
+            justify="space-between"
+            align="flex-start"
+            gap="md"
+            wrap="nowrap"
+          >
+            <Stack gap="md">
+              {title && (
+                <h2 data-testid="admin-pane-page-title" className={CS.m0}>
+                  {title}
+                </h2>
+              )}
+              {description && <Text maw="40rem">{description}</Text>}
+            </Stack>
+            {titleActions}
+          </Flex>
+        )}
+
+        <Flex w="100%" align="center" gap="xl">
+          {headerContent}
+        </Flex>
+      </Stack>
+
+      {children}
+    </div>
+  );
+};

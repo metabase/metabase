@@ -1,23 +1,49 @@
 import { Route } from "react-router";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Segment, TableId } from "metabase-types/api";
-import { createMockSegment } from "metabase-types/api/mocks";
+import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
+import {
+  createMockSegment,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { SegmentList } from "./SegmentList";
 
 type SetupOpts = {
   segments?: Segment[];
-  tableId?: TableId;
+  table?: Partial<Table>;
+  isAdmin?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
-function setup({ segments = [], tableId = 1 }: SetupOpts = {}) {
+function setup({
+  segments = [],
+  table = {},
+  isAdmin = true,
+  remoteSyncType,
+}: SetupOpts = {}) {
+  const mockTable = createMockTable({
+    id: 1,
+    db_id: 1,
+    schema: "PUBLIC",
+    segments,
+    ...table,
+  });
+
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <SegmentList segments={segments} tableId={tableId} />}
-    />,
-    { withRouter: true },
+    <Route path="/" component={() => <SegmentList table={mockTable} />} />,
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+        settings: mockSettings({
+          "remote-sync-type": remoteSyncType,
+          "remote-sync-enabled": !!remoteSyncType,
+        }),
+      },
+    },
   );
 }
 
@@ -32,6 +58,23 @@ describe("SegmentList", () => {
     expect(
       screen.getByRole("link", { name: /New segment/i }),
     ).toBeInTheDocument();
+  });
+
+  it("should not render 'New segment' button when user cannot create segments", () => {
+    setup({ segments: [], isAdmin: false });
+
+    expect(screen.getByText("No segments yet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /New segment/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render 'New segment' button when remote sync is set to read-only", () => {
+    setup({ segments: [], isAdmin: true, remoteSyncType: "read-only" });
+
+    expect(
+      screen.queryByRole("link", { name: /New segment/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should render segment items", () => {
@@ -51,6 +94,9 @@ describe("SegmentList", () => {
     expect(screen.getByText("Active Users")).toBeInTheDocument();
     expect(
       screen.getByRole("listitem", { name: "High Value" }),
-    ).toHaveAttribute("href", "/data-studio/modeling/segments/1");
+    ).toHaveAttribute(
+      "href",
+      "/data-studio/data/database/1/schema/1:PUBLIC/table/1/segments/1",
+    );
   });
 });

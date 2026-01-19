@@ -28,18 +28,24 @@ export const databaseManagementPermissionAllowedPathGetter = (
   return canUserAccessDatabaseManagement(user) ? ["databases"] : [];
 };
 
-export const getDataColumns = (subject: PermissionSubject) => {
-  const allSubjectsColumns = [
+export const getDataColumns = (
+  subject: PermissionSubject,
+  isExternal?: boolean,
+) => {
+  const allSubjectsColumns: { name: string; hint?: string }[] = [
     {
       name: t`Download results`,
       hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
     },
-    {
-      name: t`Manage table metadata`,
-    },
   ];
 
-  if (subject === "schemas") {
+  if (!isExternal) {
+    allSubjectsColumns.push({
+      name: t`Manage table metadata`,
+    });
+  }
+
+  if (subject === "schemas" && !isExternal) {
     allSubjectsColumns.push({
       name: t`Manage database`,
     });

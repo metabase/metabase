@@ -402,7 +402,7 @@
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
-   This can be used to see something is either `nil` or statisfies a predicate function:
+   This can be used to see something is either `nil` or satisfies a predicate function:
 
      (string? nil)          -> false
      (string? \"A\")        -> true
@@ -650,7 +650,7 @@
     m))
 
 (defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` returns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
@@ -1213,11 +1213,7 @@
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
-   (into {}
-         (comp (index-by kf)
-               (map (fn [[k v]]
-                      [k (vf v)])))
-         coll)))
+   (into {} (map (juxt kf vf)) coll)))
 
 (defn rfirst
   "Return first item from Reducible"

@@ -27,7 +27,7 @@ import {
 interface LogsProps {
   children?: ReactNode;
   location: Location;
-  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB isntance
+  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
   pollingDurationMs?: number;
@@ -85,7 +85,7 @@ const LogsBase = ({
                     query.length > 0 ? (
                       <Button
                         aria-label={t`Clear`}
-                        c="text-dark"
+                        c="text-primary"
                         leftSection={<Icon name="close" />}
                         size="xs"
                         variant="subtle"

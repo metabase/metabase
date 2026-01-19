@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 
+import Link from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Card } from "metabase-types/api";
 
 import { MetricMoreMenu } from "./MetricMoreMenu";
@@ -16,6 +20,10 @@ type MetricHeaderProps = {
 };
 
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: card.collection_id,
+  });
+
   return (
     <PaneHeader
       data-testid="metric-header"
@@ -30,6 +38,21 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
       menu={<MetricMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
       actions={actions}
+      breadcrumbs={
+        <DataStudioBreadcrumbs loading={isLoadingPath}>
+          {path?.map((collection, i) => (
+            <Link
+              key={collection.id}
+              to={Urls.dataStudioLibrary({
+                expandedIds: path.slice(1, i + 1).map((c) => c.id),
+              })}
+            >
+              {collection.name}
+            </Link>
+          ))}
+          <span>{card.name}</span>
+        </DataStudioBreadcrumbs>
+      }
     />
   );
 }

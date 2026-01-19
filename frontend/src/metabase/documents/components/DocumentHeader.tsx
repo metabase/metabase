@@ -50,6 +50,7 @@ interface DocumentHeaderProps {
   onMove: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
+  onShowHistory: () => void;
   hasComments?: boolean;
 }
 
@@ -66,6 +67,7 @@ export const DocumentHeader = ({
   onMove,
   onToggleBookmark,
   onArchive,
+  onShowHistory,
   hasComments = false,
 }: DocumentHeaderProps) => {
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
@@ -243,6 +245,12 @@ export const DocumentHeader = ({
                     onClick={onToggleBookmark}
                   >
                     {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="history" />}
+                    onClick={onShowHistory}
+                  >
+                    {t`History`}
                   </Menu.Item>
                   {canWrite && (
                     <>

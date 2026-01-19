@@ -909,10 +909,10 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.startNewNativeQuestion();
 
     dataReferenceSidebar().within(() => {
-      cy.findByText("2 models");
+      cy.findByText("2 models in 2 collections");
+      cy.findByText("Bobby Tables's Personal Collection").click(); // collection
       cy.findByText("Native Products Model").click();
       cy.findByText("A model of the Products table"); // description
-      cy.findByText("Bobby Tables's Personal Collection"); // collection
       cy.findByText("1 column");
       cy.findByText("RENAMED_ID").click();
       cy.findByText("No description");

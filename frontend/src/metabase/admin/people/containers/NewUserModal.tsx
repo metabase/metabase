@@ -6,6 +6,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";
 
@@ -13,9 +14,13 @@ import { UserForm } from "../forms/UserForm";
 
 interface NewUserModalProps {
   onClose: () => void;
+  external?: boolean;
 }
 
-export const NewUserModal = ({ onClose }: NewUserModalProps) => {
+export const NewUserModal = ({
+  onClose,
+  external = false,
+}: NewUserModalProps) => {
   const dispatch = useDispatch();
 
   const [createUser] = useCreateUserMutation();
@@ -32,12 +37,16 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
         : { password: generatePassword() }),
     }).unwrap();
 
-    dispatch(push(Urls.newUserSuccess(user.id)));
+    dispatch(push(Urls.newUserSuccess(user)));
   };
 
+  // Use plugin-provided title for external users, fallback to default
+  const title = PLUGIN_TENANTS.getNewUserModalTitle(external) ?? t`Create user`;
+
   return (
-    <Modal opened title={t`Create user`} padding="xl" onClose={onClose}>
+    <Modal opened title={title} padding="xl" onClose={onClose}>
       <UserForm
+        external={external}
         initialValues={{}}
         submitText={t`Create`}
         onCancel={onClose}

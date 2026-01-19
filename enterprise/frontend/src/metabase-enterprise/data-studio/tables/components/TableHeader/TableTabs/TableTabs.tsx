@@ -37,6 +37,22 @@ function getTabs(table: Table, location: Location): PaneHeaderTab[] {
     ),
   });
 
+  tabs.push({
+    label: t`Segments`,
+    to: Urls.dataStudioTableSegments(table.id),
+    isSelected: location.pathname.startsWith(
+      Urls.dataStudioTableSegments(table.id),
+    ),
+  });
+
+  tabs.push({
+    label: t`Measures`,
+    to: Urls.dataStudioTableMeasures(table.id),
+    isSelected: location.pathname.startsWith(
+      Urls.dataStudioTableMeasures(table.id),
+    ),
+  });
+
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,

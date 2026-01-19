@@ -4,10 +4,7 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
-                                             :exclusions  [org.clojure/clojure
-                                                           org.clojure/clojurescript]}
-  amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+ {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
                                              :exclusions  [junit/junit]}
@@ -87,8 +84,8 @@
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
-  ;; TODO: replace back to normal artifact
-  io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.30"}             ; Parse native SQL queries
+  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -104,7 +101,8 @@
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
-  metosin/malli                             {:mvn/version "0.20.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
+                                             :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.23.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI
@@ -116,11 +114,11 @@
   net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.2"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.2"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.2"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.25.2"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
@@ -192,7 +190,7 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.36.2"}             ; AWS SDK v2 for S3
+  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
   software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
@@ -259,8 +257,6 @@
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
-    peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
-                                  :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"

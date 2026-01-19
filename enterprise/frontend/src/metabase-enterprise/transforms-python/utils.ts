@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import type { PythonTransformSourceValidationResult } from "metabase/plugins";
-import type { PythonTransformSourceDraft } from "metabase-types/api";
+import type {
+  PythonTransformSource,
+  PythonTransformSourceDraft,
+} from "metabase-types/api";
 
 export function getPythonSourceValidationResult(
   source: PythonTransformSourceDraft,
@@ -25,4 +28,10 @@ export function getPythonSourceValidationResult(
   }
 
   return { isValid: true };
+}
+
+export function isPythonTransformSource(
+  source: PythonTransformSourceDraft,
+): source is PythonTransformSource {
+  return source.type === "python" && source["source-database"] !== undefined;
 }

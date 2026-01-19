@@ -7,6 +7,24 @@
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 
+(deftest ^:parallel cacheable?-test
+  (testing "JS/CSS with cache-busting hash are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/main.abc123def.js"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/styles.abc123def.css"}))))
+  (testing "Resources in /app/dist/ with hex hash prefix are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/abc123def456.png"}))))
+  (testing "Font files are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.ttf"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.otf"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.eot"}))))
+  (testing "Non-GET requests are not cacheable"
+    (is (not (req.util/cacheable? {:request-method :post :uri "/app/fonts/Lato/lato.woff2"}))))
+  (testing "Other paths are not cacheable"
+    (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
+    (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
+
 (deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
                               {"x-forwarded-proto" "http"}     false
@@ -40,7 +58,7 @@
             :embedded           true
             :ip_address         "0:0:0:0:0:0:0:1"}
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-sdk-react")))))
-  (testing "Embedded Analytics JS request"
+  (testing "Modular embedding request"
     (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
             :embedded           true

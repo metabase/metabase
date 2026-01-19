@@ -2,6 +2,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 interface TileCoordinate {
   x: number | string;
@@ -18,7 +19,7 @@ interface TileUrlParams {
   lonField: string;
   datasetQuery?: JsonQuery;
   uuid?: string;
-  token?: string;
+  token?: EntityToken;
   datasetResult?: Dataset;
   /**
    * Indicates whether the tile URL is being generated for a preview embed context.
@@ -202,7 +203,7 @@ function dashboardTileUrl(
 }
 
 function publicCardTileUrl(
-  token: string,
+  token: EntityToken,
   zoom: string | number,
   coord: TileCoordinate,
   latField: string,
@@ -220,7 +221,7 @@ function publicCardTileUrl(
 }
 
 function publicDashboardTileUrl(
-  token: string,
+  token: EntityToken,
   dashcardId: number,
   cardId: number,
   zoom: string | number,
@@ -240,7 +241,7 @@ function publicDashboardTileUrl(
 }
 
 function embedCardTileUrl(
-  token: string,
+  token: EntityToken,
   zoom: string | number,
   coord: TileCoordinate,
   latField: string,
@@ -262,7 +263,7 @@ function embedCardTileUrl(
 }
 
 function embedDashboardTileUrl(
-  token: string,
+  token: EntityToken,
   dashcardId: number,
   cardId: number,
   zoom: string | number,

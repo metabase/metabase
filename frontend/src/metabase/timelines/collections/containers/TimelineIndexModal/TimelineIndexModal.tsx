@@ -1,4 +1,4 @@
-import Timelines from "metabase/entities/timelines";
+import { Timelines } from "metabase/entities/timelines";
 import * as Urls from "metabase/lib/urls";
 import type { State } from "metabase-types/store";
 

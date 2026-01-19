@@ -9,7 +9,11 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
@@ -25,13 +29,14 @@ import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSetti
 
 function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
   const isEE = isEEBuild();
+  const isUsingTenants = useSetting("use-tenants");
 
   return (
     <SettingsPageWrapper title={t`Embedding settings`}>
       {children}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
+        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
       />
 
       {isEE && <UpsellDevInstances location="embedding-page" />}
@@ -54,8 +59,8 @@ function EmbeddingSettingsEE() {
       </Text>
 
       <EmbeddingSettingsCard
-        title={t`Enable Embedded Analytics JS`}
-        description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+        title={t`Enable modular embedding`}
+        description={t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming.`}
         settingKey="enable-embedding-simple"
         links={[
           {
@@ -120,11 +125,11 @@ function EmbeddingSettingsOSS() {
 }
 
 export const EmbeddingSettings = () => {
-  const isEE = isEEBuild();
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <EmbeddingSettingsPageWrapper>
-      {isEE ? <EmbeddingSettingsEE /> : <EmbeddingSettingsOSS />}
+      {hasSimpleEmbedding ? <EmbeddingSettingsEE /> : <EmbeddingSettingsOSS />}
     </EmbeddingSettingsPageWrapper>
   );
 };

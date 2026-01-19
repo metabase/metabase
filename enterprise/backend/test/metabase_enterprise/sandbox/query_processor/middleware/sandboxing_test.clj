@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -880,7 +881,7 @@
           (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
-              (is (= {"cat" 40}
+              (is (= {"cat" "40"} ;; attributes are always stringified
                      (:login_attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil
@@ -1781,3 +1782,34 @@
                   result))
           (is (= ["First row, first column" "First row, second column"]
                  (->> result :data :rows first (drop 1)))))))))
+
+(deftest test-66781
+  (testing "Handle user attribute filters against implicitly joined tables that are also sandboxed correctly (#66781)"
+    (met/with-gtaps! (let [mp (mt/metadata-provider)]
+                       {:gtaps      {:orders {:query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                              (as-> $query (lib/remove-field $query
+                                                                                             -1
+                                                                                             (lib.tu.notebook/find-col-with-spec
+                                                                                              $query
+                                                                                              (lib/returned-columns $query)
+                                                                                              {:display-name "Orders"}
+                                                                                              {:display-name "Total"}))))
+                                              :remappings {:user_id [:variable [:field
+                                                                                (mt/id :people :id)
+                                                                                {:source-field (mt/id :orders :user_id)}]]}}
+                                     :people {:query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                                         (as-> $query (lib/remove-field $query
+                                                                                        -1
+                                                                                        (lib.tu.notebook/find-col-with-spec
+                                                                                         $query
+                                                                                         (lib/returned-columns $query)
+                                                                                         {:display-name "People"}
+                                                                                         {:display-name "Email"})))
+                                                         (lib/order-by (lib.metadata/field mp (mt/id :people :id))))
+                                              :remappings {:user_id [:variable [:field (mt/id :people :id)]]}}}
+                        :attributes {:user_id 1}})
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity)))))]
+        (is (= [[44]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))

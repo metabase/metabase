@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
   setupPerformanceEndpoints,
@@ -11,7 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import type { Dashboard, Settings } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -26,13 +26,13 @@ import { DashboardSettingsSidebar } from "../DashboardSettingsSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
-  hasEnterprisePlugins,
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
   const onClose = jest.fn();
@@ -57,9 +57,9 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   const TestDashboardSettingsSidebar = () => (
     <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
@@ -79,19 +79,3 @@ export async function setup({
     onClose,
   };
 }
-
-export const setupEnterprise = (
-  opts: SetupOpts = {},
-  tokenFeatures: Partial<TokenFeatures> = {},
-) => {
-  return setup({
-    ...opts,
-    settings: createMockSettings({
-      ...opts.settings,
-      "token-features": createMockTokenFeatures({
-        ...tokenFeatures,
-      }),
-    }),
-    hasEnterprisePlugins: true,
-  });
-};

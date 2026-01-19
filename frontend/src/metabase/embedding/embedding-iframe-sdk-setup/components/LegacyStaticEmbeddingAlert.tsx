@@ -32,7 +32,7 @@ export const LegacyStaticEmbeddingAlert = () => {
   }
 
   const shouldShowLegacyStaticEmbeddingAlert =
-    resource.enable_embedding && resource.embedding_type === "static-legacy";
+    resource.enable_embedding && resource.embedding_type !== "guest-embed";
 
   if (!shouldShowLegacyStaticEmbeddingAlert) {
     return null;
@@ -42,12 +42,12 @@ export const LegacyStaticEmbeddingAlert = () => {
     <Alert color="info" variant="outline">
       <Flex gap="sm">
         <Box>
-          <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
+          <Icon color="text-secondary" name="info" mt="2px" />
         </Box>
 
         <Stack>
           <Text c="text-primary" lh="lg">
-            {t`This embed uses the legacy static embedding method. The controls shown are for the new embedding method, which is recommended.`}
+            {t`This embed was originally published with static embedding. We recommend using this new, modular embedding code snippet. Your embed won't change; you'll just have better theming options.`}
           </Text>
 
           <Anchor
@@ -78,8 +78,8 @@ export const LegacyStaticEmbeddingAlert = () => {
               );
             }}
           >
-            {c("A link that toggles the legacy static embedding wizard.")
-              .t`Use legacy static embedding (not recommended)`}
+            {c("A link that toggles the static embedding wizard.")
+              .t`Use static embedding instead`}
           </Anchor>
         </Stack>
       </Flex>

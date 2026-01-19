@@ -33,7 +33,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -4793,12 +4793,14 @@
                   :tables     [{:id (str "card__" card-id-1)}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
+         ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
+         ;; The source table can't be resolved, but the database should still be present.
          #(testing "After delete"
             (is (=? {:cards      empty?
                      :fields     empty?
                      :dashboards empty?
                      :tables     empty?
-                     :databases  empty?}
+                     :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test

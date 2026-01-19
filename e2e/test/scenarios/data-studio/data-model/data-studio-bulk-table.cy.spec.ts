@@ -35,7 +35,7 @@ describe("bulk table operations", () => {
     );
     cy.intercept(
       "GET",
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
     ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
@@ -124,8 +124,8 @@ describe("bulk table operations", () => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
-      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
-      H.DataStudio.Modeling.tableItem("Products").should("be.visible");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.tableItem("Products").should("be.visible");
       cy.go("back");
 
       cy.log("unpublish some tables and verify they are unpublished");
@@ -134,9 +134,9 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
-      H.DataStudio.nav().findByLabelText("Modeling").click();
-      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
-      H.DataStudio.Modeling.collectionPage().within(() => {
+      H.DataStudio.nav().findByLabelText("Library").click();
+
+      H.DataStudio.Library.libraryPage().within(() => {
         cy.findByText("Reviews").should("be.visible");
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Products").should("not.exist");
@@ -206,7 +206,10 @@ describe("bulk table operations", () => {
 
         cy.log("publish and check publish state column");
 
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .scrollIntoView()
+          .check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
@@ -235,16 +238,6 @@ describe("bulk table operations", () => {
         });
 
         cy.log("publish and check publish state column");
-
-        /**
-         * we need to wait a little until TableAttributesEditBulk component is destroyed (see enterprise/frontend/src/metabase-enterprise/data-studio/data-model/components/TablePicker/components/SearchNew.tsx:153)
-         * Otherwise, the button will be found, but it will be immediately removed.
-         * And then we have to reselect because when there is a filter rows are unselected after a change
-         */
-        cy.findByRole("button", { name: /Publish/ }).should("not.exist");
-
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
         cy.wait("@publishTables");

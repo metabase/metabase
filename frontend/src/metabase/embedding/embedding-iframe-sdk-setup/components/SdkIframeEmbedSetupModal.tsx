@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
@@ -47,6 +48,9 @@ export const SdkIframeEmbedSetupContent = () => {
     handleNext,
     handleBack,
     canGoBack,
+    isLoading,
+    experience,
+    resource,
     settings,
   } = useSdkIframeEmbedSetupContext();
 
@@ -71,10 +75,19 @@ export const SdkIframeEmbedSetupContent = () => {
     ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
     : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
+  const isQuestionOrDashboard = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
+
+  const isMissingResource =
+    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
       <Button
         variant="filled"
+        disabled={resource?.enable_embedding === false}
         onClick={handleEmbedDone}
         leftSection={<Icon name="check_filled" />}
       >
@@ -108,11 +121,12 @@ export const SdkIframeEmbedSetupContent = () => {
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md">
+            <Stack gap="md" flex={1}>
               <SdkIframeStepHeader />
 
               <Stack
                 gap="md"
+                flex={1}
                 opacity={allowPreviewAndNavigation ? 1 : 0.5}
                 className={cx(
                   !allowPreviewAndNavigation && CS.pointerEventsNone,
@@ -145,7 +159,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
           <SdkIframeGuestEmbedStatusBar />
 
-          {allowPreviewAndNavigation ? (
+          {allowPreviewAndNavigation && !isMissingResource ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">

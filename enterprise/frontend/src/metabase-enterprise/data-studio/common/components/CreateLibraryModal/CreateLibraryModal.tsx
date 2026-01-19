@@ -28,7 +28,7 @@ type CreateLibraryModalProps = {
   title?: string;
   explanatorySentence?: string;
   isOpened: boolean;
-  onCreate: (collection: Collection) => void;
+  onCreate?: (collection: Collection) => void;
   onClose: () => void;
 };
 
@@ -72,7 +72,7 @@ function ModalTitle({ title }: ModalTitleProps) {
 
 type ModalBodyProps = {
   explanatorySentence?: string;
-  onCreate: (collection: Collection) => void;
+  onCreate?: (collection: Collection) => void;
   onClose: () => void;
 };
 
@@ -84,7 +84,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
     const collection = await createLibrary().unwrap();
     sendSuccessToast(t`Library created`);
     trackDataStudioLibraryCreated(collection.id);
-    onCreate(collection);
+    onCreate?.(collection);
   };
 
   return (

@@ -45,6 +45,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -137,7 +138,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statement]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close` (metabase#40010)
 
@@ -171,6 +172,12 @@
   `.execute()` for the given sql on the given statement, and then `.getResultSet()` if that returns true (throwing an
   exception if not). It is unlikely you will need to override this."
   {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti db-type-name
+  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this information from rsmeta."
+  {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -346,6 +353,9 @@
           (with-open [conn ^Connection (get-conn)]
             (f conn)))))))
 
+(defonce ^:private network-timeout-executor
+  (delay (Executors/newCachedThreadPool)))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -405,6 +415,12 @@
             (.setAutoCommit conn false)
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
+    (try
+      ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
+      ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
+      (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
+      (catch Throwable e
+        (log/debug e "Error setting network timeout for connection")))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
@@ -687,12 +703,16 @@
         metadatas))
     metadatas))
 
+(defmethod db-type-name :sql-jdbc
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (.getColumnTypeName rsmeta column-index))
+
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (->> (mapv
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
-                db-type-name (.getColumnTypeName rsmeta i)
+                db-type-name (db-type-name driver rsmeta i)
                 base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
             (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                         i col-name db-type-name base-type driver)
@@ -733,7 +753,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -778,9 +798,9 @@
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]
            (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
+                ;; Following cancels the statement on the dbms side.
                 ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                 ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                 ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                 (finally

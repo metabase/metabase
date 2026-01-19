@@ -134,7 +134,7 @@ function ModalBody({
     if (collection != null) {
       sendSuccessToast(
         t`Published`,
-        () => dispatch(push(Urls.dataStudioCollection(collection.id))),
+        () => dispatch(push(Urls.dataStudioLibrary())),
         t`Go to ${collection.name}`,
       );
     } else {

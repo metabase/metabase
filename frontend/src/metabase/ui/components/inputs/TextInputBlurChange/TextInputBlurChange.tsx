@@ -14,7 +14,7 @@ export type TextInputBlurChangeProps<
   normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
   resetOnEsc?: boolean;
   value: T["value"] | undefined;
-  onBlurChange: (event: { target: HTMLInputElement }) => void;
+  onBlurChange?: (event: { target: HTMLInputElement }) => void;
 };
 
 /**
@@ -76,7 +76,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     const lastPropsValue = value || "";
     const currentValue = ref.current?.value || "";
 
-    if (ref.current && lastPropsValue !== currentValue) {
+    if (onBlurChange && ref.current && lastPropsValue !== currentValue) {
       onBlurChange({
         target: ref.current,
       });

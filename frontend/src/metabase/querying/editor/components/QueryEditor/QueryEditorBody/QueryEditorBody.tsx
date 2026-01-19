@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import { useWindowSize } from "react-use";
 
@@ -26,6 +26,7 @@ import S from "./QueryEditorBody.module.css";
 const EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
 const HEADER_HEIGHT = 65 + 50;
+const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
@@ -33,7 +34,6 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   formatQuery: true,
   variables: false,
   promptInput: false,
-  aiGeneration: false,
 };
 
 type QueryEditorBodyProps = {
@@ -67,6 +67,8 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  onBlur?: () => void;
+  topBarInnerContent?: ReactNode;
 };
 
 export function QueryEditorBody({
@@ -95,10 +97,12 @@ export function QueryEditorBody({
   onOpenModal,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
+  topBarInnerContent,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
-  const editorHeight = useInitialEditorHeight(isNative);
+  const editorHeight = useInitialEditorHeight(isNative, readOnly);
 
   const dataPickerOptions = useMemo(
     () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
@@ -134,7 +138,7 @@ export function QueryEditorBody({
       resizableBoxProps={resizableBoxProps}
       placeholder="SELECT * FROM TABLE_NAME"
       hasTopBar
-      hasRunButton
+      hasRunButton={!readOnly}
       isInitiallyOpen
       isNativeEditorOpen
       readOnly={readOnly}
@@ -159,6 +163,8 @@ export function QueryEditorBody({
       onOpenModal={onOpenModal}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
+      topBarInnerContent={topBarInnerContent}
     />
   ) : (
     <ResizableBox
@@ -166,7 +172,7 @@ export function QueryEditorBody({
       className={S.queryResizableBox}
       height={editorHeight}
       handle={<ResizeHandle />}
-      resizeHandles={["s"]}
+      resizeHandles={readOnly ? [] : ["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >
@@ -195,8 +201,21 @@ function getHeaderHeight(isNative: boolean) {
   return HEADER_HEIGHT;
 }
 
-function useInitialEditorHeight(isNative: boolean) {
+function useInitialEditorHeight(isNative: boolean, readOnly?: boolean) {
   const { height: windowHeight } = useWindowSize();
   const headerHeight = getHeaderHeight(isNative);
-  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
+  const availableHeight = windowHeight - headerHeight;
+
+  if (readOnly) {
+    // When read-only, we don't need to split the container to show the query visualization on the bottom
+    return availableHeight;
+  }
+
+  // Let's make the preview initial height be half of the available height at most
+  const previewInitialHeight = Math.min(
+    availableHeight / 2,
+    PREVIEW_MAX_INITIAL_HEIGHT,
+  );
+
+  return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
 }

@@ -1,7 +1,8 @@
 import { cardApi, datasetApi } from "metabase/api";
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch } from "metabase-types/store";
 
@@ -20,7 +21,7 @@ export const loadMetadataForCard =
     {
       token,
       includeSensitiveFields,
-    }: { token?: string | null; includeSensitiveFields?: boolean } = {},
+    }: { token?: EntityToken | null; includeSensitiveFields?: boolean } = {},
   ) =>
   async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {

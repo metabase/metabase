@@ -277,7 +277,7 @@
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
-  E.g: A keyword transfomer that throw an error if the value is not namespaced
+  E.g: A keyword transformer that throw an error if the value is not namespaced
     (transform-validator
       transform-keyword (fn [x]
       (when-not (-> x namespace some?)
@@ -630,12 +630,36 @@
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
 
+(defmulti can-query?
+  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
+  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
+  metadata.
+
+  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
+  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
+
+  The default implementation falls back to [[can-read?]] for backward compatibility."
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
+
+(defmethod can-query? :default
+  ;; Default implementation: fall back to can-read? for backward compatibility
+  ([instance]
+   (can-read? instance))
+  ([model pk]
+   (can-read? model pk)))
+
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write
   "Hydration method for `:can_write`."
   [instance]
   (can-write? instance))
+
+(methodical/defmethod t2/simple-hydrate [:default :can_query]
+  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+  [_model k instance]
+  (assoc instance k (can-query? instance)))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -674,10 +698,12 @@
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defmulti visible-filter-clause
-  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
-  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+  "Return a map with:
+   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
+   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
 
-  Defaults to returning a no-op false statement 0=1."
+  Uses the map of permission type->minimum permission-level for filtering.
+  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
   {:arglists '([model column-or-exp user-info perm-type->perm-level])}
   dispatch-on-model)
 
@@ -768,7 +794,7 @@
 
 (defmethod visible-filter-clause :default
   [_m _column-or-expression _user-info _perm-type->perm-level]
-  [:= [:inline 0] [:inline 1]])
+  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 

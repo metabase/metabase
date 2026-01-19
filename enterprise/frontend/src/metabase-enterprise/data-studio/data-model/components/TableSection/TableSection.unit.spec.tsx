@@ -4,9 +4,10 @@ import {
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
-import type { Segment, Table } from "metabase-types/api";
+import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
 import {
   createMockSegment,
   createMockTable,
@@ -22,16 +23,23 @@ type SetupOpts = {
   params?: RouteParams;
   activeTab?: DataStudioTableMetadataTab;
   segments?: Segment[];
+  isAdmin?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 function setup({
   table = createMockTable(),
   activeTab = "field",
   segments,
+  isAdmin = true,
+  remoteSyncType,
 }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
-
   const tableWithSegments = segments ? { ...table, segments } : table;
+  const settings = mockSettings({
+    "remote-sync-type": remoteSyncType,
+    "remote-sync-enabled": !!remoteSyncType,
+  });
 
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
@@ -52,7 +60,13 @@ function setup({
         />
       )}
     />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+        settings,
+      },
+    },
   );
 
   return { onSyncOptionsClick };
@@ -69,6 +83,28 @@ describe("TableSection", () => {
       "href",
       `/question#?db=${table.db_id}&table=${table.id}`,
     );
+  });
+
+  it("should not render publish button for non-admin users", () => {
+    setup({ isAdmin: false });
+
+    expect(
+      screen.queryByRole("button", { name: /Publish/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Unpublish/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render publish button when remote sync is set to read-only", () => {
+    setup({ remoteSyncType: "read-only" });
+
+    expect(
+      screen.queryByRole("button", { name: /Publish/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Unpublish/i }),
+    ).not.toBeInTheDocument();
   });
 
   describe("tabs", () => {

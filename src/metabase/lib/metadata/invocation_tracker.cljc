@@ -30,6 +30,7 @@
     table-id
     (let [tracking-type (case metadata-type
                           :metadata/column  ::table-fields
+                          :metadata/measure ::table-measures
                           :metadata/metric  ::table-metrics
                           :metadata/segment ::table-segments)]
       (track-ids! tracker tracking-type [table-id]))
@@ -69,14 +70,18 @@
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/store-metadata! metadata-provider object)))
   (cached-value [_this k not-found]
-    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-      (lib.metadata.protocols/cached-value metadata-provider k not-found)))
+    (if (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cached-value metadata-provider k not-found)
+      not-found))
   (cache-value! [_this k v]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/cache-value! metadata-provider k v)))
   (has-cache? [_this]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       (lib.metadata.protocols/has-cache? metadata-provider)))
+  (clear-cache! [_this]
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/clear-cache! metadata-provider)))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

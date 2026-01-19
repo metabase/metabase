@@ -20,6 +20,7 @@ import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/typ
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -78,6 +79,7 @@ export function NotebookDataPicker({
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
   const isEmbedding = useSelector(getIsEmbedding);
+  const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
@@ -96,11 +98,13 @@ export function NotebookDataPicker({
     );
   }, [query, stageIndex]);
 
-  if (isEmbedding) {
+  // EMB-1144: force the embedding picker if user is a tenant user.
+  //           this is to support the sidecar use-case where tenant users are given instance logins.
+  if (isEmbedding || isTenantUser) {
     const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
       <NotebookCellItem
-        color="var(--mb-color-brand)"
+        color="brand"
         inactive={!table}
         right={canSelectTableColumns && columnPicker}
         containerStyle={{ padding: 0 }}

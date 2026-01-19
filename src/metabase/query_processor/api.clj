@@ -18,7 +18,6 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -63,9 +62,7 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (when-not (or (mi/can-read? :model/Database database)
-                    (perms/user-has-published-table-permission-for-database? database))
-        (api/throw-403)))
+      (api/query-check :model/Database database))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
@@ -139,7 +136,7 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     visualization-settings        :visualization_settings}
-   ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
+   ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map

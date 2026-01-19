@@ -4,6 +4,8 @@ import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
+import add_collection_component from "./add_collection.svg?component";
+import add_collection_source from "./add_collection.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
 import add_comment_component from "./add_comment.svg?component";
@@ -136,6 +138,8 @@ import data_studio_component from "./data_studio.svg?component";
 import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import dependencies_component from "./dependencies.svg?component";
+import dependencies_source from "./dependencies.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -160,6 +164,8 @@ import empty_component from "./empty.svg?component";
 import empty_source from "./empty.svg?source";
 import enter_or_return_component from "./enter_or_return.svg?component";
 import enter_or_return_source from "./enter_or_return.svg?source";
+import exit_component from "./exit.svg?component";
+import exit_source from "./exit.svg?source";
 import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
@@ -184,6 +190,8 @@ import filter_plus_component from "./filter_plus.svg?component";
 import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_database_component from "./folder_database.svg?component";
+import folder_database_source from "./folder_database.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
 import format_code_component from "./format_code.svg?component";
@@ -210,6 +218,8 @@ import git_branch_component from "./git_branch.svg?component";
 import git_branch_source from "./git_branch.svg?source";
 import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
+import glossary_component from "./glossary.svg?component";
+import glossary_source from "./glossary.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import google_drive_component from "./google_drive.svg?component";
@@ -318,6 +328,8 @@ import octagon_alert_component from "./octagon_alert.svg?component";
 import octagon_alert_source from "./octagon_alert.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import open_folder_component from "./open_folder.svg?component";
+import open_folder_source from "./open_folder.svg?source";
 import ordered_list_component from "./ordered_list.svg?component";
 import ordered_list_source from "./ordered_list.svg?source";
 import package_component from "./package.svg?component";
@@ -534,6 +546,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add: {
       component: add_component,
       source: add_source,
+    },
+    add_collection: {
+      component: add_collection_component,
+      source: add_collection_source,
     },
     add_column: {
       component: add_column_component,
@@ -775,6 +791,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: database_component,
       source: database_source,
     },
+    dependencies: {
+      component: dependencies_component,
+      source: dependencies_source,
+    },
     data_studio: {
       component: data_studio_component,
       source: data_studio_source,
@@ -826,6 +846,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     enter_or_return: {
       component: enter_or_return_component,
       source: enter_or_return_source,
+    },
+    exit: {
+      component: exit_component,
+      source: exit_source,
     },
     expand: {
       component: expand_component,
@@ -899,6 +923,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: folder_component,
       source: folder_source,
     },
+    folder_database: {
+      component: folder_database_component,
+      source: folder_database_source,
+    },
     folder_filled: {
       component: folder_filled_component,
       source: folder_filled_source,
@@ -930,6 +958,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     globe: {
       component: globe_component,
       source: globe_source,
+    },
+    glossary: {
+      component: glossary_component,
+      source: glossary_source,
     },
     grabber: {
       component: grabber_component,
@@ -1529,6 +1561,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: official_collection_component,
       source: official_collection_source,
     },
+    open_folder: {
+      component: open_folder_component,
+      source: open_folder_source,
+    },
     ordered_list: {
       component: ordered_list_component,
       source: ordered_list_source,
@@ -1591,7 +1627,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       source: birthday_source,
     },
     external: { component: share_component, source: share_source },
-    table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
     collection2: {
       component: collection2_component,
@@ -1607,6 +1642,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
  */
 export type IconName =
   | "add"
+  | "add_collection"
   | "add_column"
   | "add_data"
   | "add_folder"
@@ -1668,6 +1704,7 @@ export type IconName =
   | "copy"
   | "curved"
   | "database"
+  | "dependencies"
   | "data_studio"
   | "dash"
   | "dashboard"
@@ -1684,6 +1721,7 @@ export type IconName =
   | "embed_static"
   | "empty"
   | "enter_or_return"
+  | "exit"
   | "expand"
   | "expand_arrow"
   | "extract"
@@ -1702,6 +1740,7 @@ export type IconName =
   | "funnel"
   | "funnel_outline"
   | "folder"
+  | "folder_database"
   | "folder_filled"
   | "gauge"
   | "gear"
@@ -1709,6 +1748,7 @@ export type IconName =
   | "gem"
   | "ghost"
   | "globe"
+  | "glossary"
   | "git_branch"
   | "grabber"
   | "grid"
@@ -1856,6 +1896,7 @@ export type IconName =
   | "variable"
   | "verified"
   | "official_collection"
+  | "open_folder"
   | "ordered_list"
   | "verified_filled"
   | "verified_round"
@@ -1873,7 +1914,6 @@ export type IconName =
   | "scalar"
   | "cake"
   | "external"
-  | "table_spaced"
   | "collection"
   | "beaker"
   | "test_tube"

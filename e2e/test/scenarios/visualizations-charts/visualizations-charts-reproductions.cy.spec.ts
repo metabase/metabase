@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
@@ -87,7 +87,8 @@ describe("issue 45255", () => {
 
     // Can reorder (empty)
     H.getDraggableElements().eq(2).should("have.text", "(empty)");
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+    H.getDraggableElements().first().as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
     H.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
@@ -529,5 +530,153 @@ union all select 'Medium length category', 30 as count`;
         const width = $tooltip.width();
         expect(width).to.be.lte(550);
       });
+  });
+});
+
+describe("issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+        select 'Category B' as category, 0.0002 as value union all
+        select 'Category C' as category, 0.00015 as value union all
+        select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().get("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .get("text")
+      .then(($texts) => {
+        const percentTexts: Array<{ text: string; element: HTMLElement }> = [];
+        const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
+
+        $texts.each((i, el) => {
+          const text = (el as HTMLElement).textContent?.trim() || "";
+          if (text.includes("%") && text !== "value") {
+            percentTexts.push({ text, element: el as HTMLElement });
+          }
+          if (text === "value") {
+            axisTitle.push({ text, element: el as HTMLElement });
+          }
+        });
+
+        cy.log("Verify we have percentage labels");
+        expect(percentTexts.length).to.be.greaterThan(0);
+
+        cy.log("Check that axis labels and title don't overlap");
+        if (axisTitle.length > 0 && percentTexts.length > 0) {
+          const titleRect = axisTitle[0].element.getBoundingClientRect();
+
+          percentTexts.forEach(({ text, element }) => {
+            const labelRect = element.getBoundingClientRect();
+
+            expect(
+              labelRect.left - titleRect.right,
+              `Label "${text}" should not overlap with axis title "${axisTitle[0].text}"`,
+            ).to.be.greaterThan(5);
+          });
+        }
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
+    });
+  });
+});
+
+describe("issue 10493", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should display bar chart for binned column distribution after applying filter (metabase#10493)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    cy.log("Click on Quantity column header and select Distribution");
+    H.tableHeaderClick("Quantity");
+    H.popover().findByText("Distribution").click();
+
+    cy.log("Verify bar chart is displayed with binned quantity as dimension");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
+
+    cy.log("Apply filter: count >= 20");
+    cy.findByTestId("qb-header-action-panel").findByText("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
+    });
+    H.selectFilterOperator("Greater than or equal to");
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("20");
+      cy.button("Apply filter").click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.log(
+      "Verify bar chart is still displayed (binned column should still be treated as dimension)",
+    );
+    cy.findByTestId("query-builder-main")
+      .findByText(/^Doing science/)
+      .should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("not.exist");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
   });
 });

@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.pivot-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
@@ -17,6 +17,8 @@
 ;; 2. Category + Location: a. date, b. date + category
 ;; 3. Category + Time: a. address, b. category, c. category + category
 ;; 4. All types: a. no breakouts.
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel pivot-availability-test
   (testing "pivot drill is available only for cell clicks"
@@ -199,8 +201,8 @@
 
 (defn- expecting [dim-names pivot-types]
   {:expected {:type       :drill-thru/pivot
-              :dimensions (for [dim dim-names]
-                            {:column {:name dim}})
+              :dimensions (not-empty (for [dim dim-names]
+                                       {:column {:name dim}}))
               :pivots     (->> (for [typ [:category :location :time]]
                                  [typ (if ((set pivot-types) typ)
                                         not-empty
@@ -291,7 +293,6 @@
                         (lib.drill-thru.tu/append-filter-stage "count"))
       :expected-query (-> base-case
                           :expected-query
-                          (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
                           (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
 
 (deftest ^:parallel returns-pivot-drill-boolean-column-test
@@ -314,3 +315,36 @@
              :custom-row   {"IS_OPEN" true
                             "count"   10}}
             (expecting ["IS_OPEN"] [:category :time])))))
+
+(deftest ^:parallel expression-after-aggregation-test
+  (testing "custom column defined after aggregation should not offer pivot drill (#66715)"
+    (let [;; Stage 0: Count of products by category
+          ;; Stage 1: Add custom column "Custom Category" that references the breakout result
+          base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (meta/field-metadata :products :category))
+                             lib/append-stage)
+          category-col   (some #(when (= (:name %) "CATEGORY") %)
+                               (lib/returned-columns base-query))
+          query          (lib/expression base-query "Custom Category" (lib/ref category-col))
+          cols           (lib/returned-columns query)
+          custom-cat-col (some #(when (= (:name %) "Custom Category") %) cols)
+          count-col      (some #(when (= (:name %) "count") %) cols)
+          ;; Simulate clicking on a cell with Custom Category as the dimension
+          context        {:column     count-col
+                          :column-ref (lib/ref count-col)
+                          :value      42
+                          :row        [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      42}]
+                          :dimensions [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}]}
+          ;; No pivot drill:
+          drill          (some #(when (= (:type %) :drill-thru/pivot) %)
+                               (lib/available-drill-thrus query context))]
+      (testing "drill should not be available when dimension can't be traced back"
+        (is (nil? drill))))))

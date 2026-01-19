@@ -966,6 +966,46 @@
                    {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
                   (result-metadata/returned-columns query))))))))
 
+(deftest ^:parallel model-metadata-id-preservation-test
+  (testing "Model metadata :id handling based on query type (#67680)"
+    (testing "MBQL query: stale :id from model metadata should be ignored"
+      ;; When a model's source table changes, result_metadata may have stale :id values
+      ;; pointing to the old table. These should NOT override the :id from query analysis.
+      (let [query                     (lib/query meta/metadata-provider
+                                                 {:database (meta/id)
+                                                  :type     :query
+                                                  :query    {:source-table (meta/id :venues)}})
+            ;; Get the real columns to use as a base
+            real-cols                 (result-metadata/returned-columns query)
+            real-id                   (:id (first real-cols))
+            ;; Create "stale" model metadata with wrong :id values (pointing to ORDERS instead of VENUES)
+            stale-model-metadata      (for [col real-cols]
+                                        {:name          (:name col)
+                                         :display_name  (:display-name col)
+                                         :base_type     (:base-type col)
+                                         :semantic_type (:semantic-type col)
+                                         :id            (meta/id :orders :id)
+                                         :table_id      (meta/id :orders)})
+            ;; Add stale metadata to query
+            query-with-stale-metadata (assoc-in query [:info :metadata/model-metadata] stale-model-metadata)
+            result-cols               (result-metadata/returned-columns query-with-stale-metadata)]
+        (is (= real-id (:id (first result-cols)))
+            "MBQL models should use :id from query analysis, not stale model metadata")))
+    (testing "Native query: :id from model metadata should be preserved"
+      ;; Native queries have no field references to analyze, so user-mapped :id values
+      ;; from model metadata are the only source of field linkage and must be preserved.
+      (let [native-query         (lib/native-query meta/metadata-provider "SELECT * FROM venues")
+            ;; User-mapped model metadata with explicit :id values
+            user-mapped-metadata [{:name         "ID"
+                                   :display_name "Venue ID"
+                                   :base_type    :type/BigInteger
+                                   :id           (meta/id :venues :id)
+                                   :table_id     (meta/id :venues)}]
+            query-with-metadata  (assoc-in native-query [:info :metadata/model-metadata] user-mapped-metadata)
+            result-cols          (result-metadata/returned-columns query-with-metadata)]
+        (is (= (meta/id :venues :id) (:id (first result-cols)))
+            "Native models should preserve :id from model metadata (user mappings)")))))
+
 (deftest ^:parallel propagate-binning-test
   (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
     (let [mp (lib.tu/mock-metadata-provider

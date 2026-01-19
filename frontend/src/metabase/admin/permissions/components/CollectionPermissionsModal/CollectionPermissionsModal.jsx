@@ -8,8 +8,8 @@ import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
 import ModalContent from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import Collections from "metabase/entities/collections";
-import Groups from "metabase/entities/groups";
+import { Collections } from "metabase/entities/collections";
+import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 

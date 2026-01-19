@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type { MetabaseThemePreset } from "metabase/embedding-sdk/theme";
@@ -8,17 +7,15 @@ import { BaseAppearanceSection } from "./BaseAppearanceSection";
 
 type Props = {
   preset: MetabaseThemePreset | undefined;
-  upsellIcon: ReactNode;
   onPresetChange: (themePreset: MetabaseThemePreset) => void;
 };
 
 export const SimpleThemeSwitcherSection = ({
   preset,
-  upsellIcon,
   onPresetChange,
 }: Props) => {
   return (
-    <BaseAppearanceSection icons={upsellIcon}>
+    <BaseAppearanceSection>
       <Radio.Group
         value={preset}
         onChange={(value) => onPresetChange(value as MetabaseThemePreset)}

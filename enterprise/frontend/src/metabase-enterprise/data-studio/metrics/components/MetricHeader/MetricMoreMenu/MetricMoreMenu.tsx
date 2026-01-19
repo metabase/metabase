@@ -102,7 +102,7 @@ function MetricMenu({ card, onOpenModal }: MetricMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon>
+        <ActionIcon size="sm">
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
@@ -125,7 +125,7 @@ function MetricModal({ card, modalType, onClose }: MetricModalProps) {
   };
 
   const handleArchive = () => {
-    dispatch(push(Urls.dataStudioModeling()));
+    dispatch(push(Urls.dataStudioLibrary()));
   };
 
   const handleUnarchive = () => {

@@ -52,6 +52,7 @@ const ItemLinkComponent = ({
   if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
   return (
     <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
       {children}
@@ -185,6 +186,38 @@ export const Columns = {
             )}
           </ItemLinkComponent>
         </ItemNameCell>
+      );
+    },
+  },
+  Description: {
+    Col: () => (
+      <TableColumn
+        hideAtContainerBreakpoint="sm"
+        containerName="ItemsTableContainer"
+      />
+    ),
+    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+      <SortableColumnHeader
+        name="description"
+        sortingOptions={sortingOptions}
+        hideAtContainerBreakpoint="sm"
+        onSortingOptionsChange={onSortingOptionsChange}
+      >
+        {t`Description`}
+      </SortableColumnHeader>
+    ),
+    Cell: ({
+      item,
+      testIdPrefix = "table",
+    }: {
+      item: CollectionItem;
+      testIdPrefix?: string;
+      onClick?: (item: CollectionItem) => void;
+    }) => {
+      return (
+        <ItemCell data-testid={`${testIdPrefix}-description`}>
+          <Ellipsified>{item.description ?? ""}</Ellipsified>
+        </ItemCell>
       );
     },
   },

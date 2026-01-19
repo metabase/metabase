@@ -43,7 +43,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   database: "database",
   table: "table",
   dataset: "model",
-  schema: "folder",
+  schema: "folder_database",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
@@ -74,7 +74,11 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "group" };
   }
 
-  if (item.model === "collection" && item.is_personal) {
+  if (
+    item.model === "collection" &&
+    item.is_personal &&
+    item.location === "/"
+  ) {
     return { name: "person" };
   }
 
@@ -101,9 +105,12 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
  * relies mainly on the `model` property to determine the icon to return
  * also handle special collection icons and visualization types for cards
  */
-export const getIcon = (item: ObjectWithModel): IconData => {
+export const getIcon = (
+  item: ObjectWithModel,
+  { isTenantUser = false }: { isTenantUser?: boolean } = {},
+): IconData => {
   if (PLUGIN_COLLECTIONS) {
-    return PLUGIN_COLLECTIONS.getIcon(item);
+    return PLUGIN_COLLECTIONS.getIcon(item, { isTenantUser });
   }
   return getIconBase(item);
 };

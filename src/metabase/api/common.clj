@@ -36,29 +36,31 @@
 ;;
 ;;  <hr />
 ;;
-;; ## How does defendpoint coersion work?
+;; ## How does defendpoint coercion work?
 ;;
-;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
-;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
-;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;; The `defendpoint` macro uses the schemas to generate code which binds args to their decoded values. Values are
+;; decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be coerced; unmentioned
+;; aliases will not be bound.
 ;;
-;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; The exact coercion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;; for more details
 ;;
 ;; ### Here's an example repl session showing how it works:
 ;;
 ;; <pre><code>
+;;
 ;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
 ;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;;          '[malli.transform :as mtx] '[metabase.api.macros :as api.macros])
 ;; </code></pre>
 ;;
-;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;; To see how a schema will be transformed, call `mc/decode` with `api.macros/decode-transformer`.
 ;;
 ;; With the `:keyword` schema:
 ;;
 ;; <pre><code>
-;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; (mc/decode :keyword "foo/bar" @#'api.macros/decode-transformer)
 ;; ;; => :foo/bar
 ;; </code></pre>
 ;;
@@ -71,7 +73,7 @@
 ;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
 ;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
 ;;
-;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; (mc/decode DecodableKwInt :123 @#'metabase.api.macros/decode-transformer)
 ;; ;; => 123
 ;; </code></pre>
 ;; <hr />
@@ -350,6 +352,25 @@
   ([entity id & other-conditions]
    (write-check (apply t2/select-one entity :id id other-conditions))))
 
+(defn query-check
+  "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have query permissions, throw a 403. This is separate from [[read-check]] - for data model entities like
+  Tables and Databases, `query-check` means 'can execute queries against' while `read-check` means 'can see metadata'.
+  This will fetch the object if it was not already fetched, and returns `obj` if the check is successful."
+  ([obj]
+   (check-404 obj)
+   (try
+     (check-403 (mi/can-query? obj))
+     (catch clojure.lang.ExceptionInfo e
+       (events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
+                                                              :object  obj})
+       (throw e)))
+   obj)
+  ([entity id]
+   (query-check (t2/select-one entity :id id)))
+  ([entity id & other-conditions]
+   (query-check (apply t2/select-one entity :id id other-conditions))))
+
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
 
@@ -577,6 +598,7 @@
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
+   "measure"           {:db-model :model/Measure            :alias :measure}
    "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
    "table"             {:db-model :model/Table              :alias :table}
    "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}

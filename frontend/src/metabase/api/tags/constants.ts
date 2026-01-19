@@ -24,6 +24,7 @@ export const TAG_TYPES = [
   "glossary",
   "indexed-entity",
   "logger-preset",
+  "measure",
   "model-index",
   "notification",
   "parameter-values",
@@ -40,6 +41,7 @@ export const TAG_TYPES = [
   "transform",
   "table",
   "task",
+  "task-run",
   "timeline",
   "timeline-event",
   "transform",
@@ -51,6 +53,7 @@ export const TAG_TYPES = [
   "public-action",
   "unique-tasks",
   "user-key-value",
+  "tenant",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -61,6 +64,7 @@ export const TAG_TYPE_MAPPING = {
   database: "database",
   document: "document",
   "indexed-entity": "indexed-entity",
+  measure: "measure",
   table: "table",
   dataset: "card",
   action: "action",

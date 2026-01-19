@@ -4,9 +4,8 @@ import { useSetting } from "metabase/common/hooks";
 import { Box, Group, Icon } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
+import { parseTimestampWithTimezone } from "../../utils";
 import { RunInfo } from "../RunInfo";
-
-import { parseTimestampWithTimezone } from "./../../utils";
 
 type RunStatusSectionProps = {
   run: TransformRun | null;

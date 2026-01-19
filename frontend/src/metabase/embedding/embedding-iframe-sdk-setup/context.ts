@@ -47,6 +47,7 @@ export interface SdkIframeEmbedSetupContextType {
   isError: boolean;
   isLoading: boolean;
   isFetching: boolean;
+  isRecentsLoading: boolean;
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;

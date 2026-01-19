@@ -10,7 +10,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Table } from "metabase-types/api";
 
 import { DescriptionSection } from "./DescriptionSection";
-import S from "./TableOverview.module.css";
 
 type TableOverviewProps = {
   table: Table;
@@ -19,13 +18,12 @@ type TableOverviewProps = {
 export function TableOverview({ table }: TableOverviewProps) {
   const metadata = useSelector(getMetadata);
   const card = useMemo(() => getCard(table, metadata), [table, metadata]);
-
   return (
-    <Flex className={S.root} p="lg" flex={1} bg="bg-light">
+    <Flex flex={1} gap="lg">
       <Flex direction="column" flex={1} mah={700}>
         {card && <OverviewVisualization card={card} />}
       </Flex>
-      <Stack maw={300} ml="lg" gap="lg" className={S.sidebar}>
+      <Stack flex="0 0 300px">
         <DescriptionSection table={table} />
       </Stack>
     </Flex>

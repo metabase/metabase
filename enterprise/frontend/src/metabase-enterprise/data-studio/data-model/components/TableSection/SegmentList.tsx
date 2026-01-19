@@ -2,31 +2,50 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import type { Segment, TableId } from "metabase-types/api";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";
 
 type SegmentListProps = {
-  segments: Segment[];
-  tableId: TableId;
+  table: Table;
 };
 
-export function SegmentList({ segments, tableId }: SegmentListProps) {
+export function SegmentList({ table }: SegmentListProps) {
+  const canCreateSegment = useSelector(getUserCanWriteSegments);
+  const segments = table.segments ?? [];
+  const getSegmentHref = (segmentId: number) =>
+    Urls.dataStudioDataModelSegment({
+      databaseId: table.db_id,
+      schemaName: table.schema,
+      tableId: table.id,
+      segmentId,
+    });
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
   return (
-    <Stack gap="md">
-      <Group gap="md" justify="flex-start" wrap="nowrap">
-        <Button
-          component={ForwardRefLink}
-          to={Urls.newDataStudioSegment(tableId)}
-          h={32}
-          px="sm"
-          py="xs"
-          size="xs"
-          leftSection={<Icon name="add" />}
-        >{t`New segment`}</Button>
-      </Group>
+    <Stack gap="md" data-testid="table-segments-page">
+      {canCreateSegment && !remoteSyncReadOnly && (
+        <Group gap="md" justify="flex-start" wrap="nowrap">
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newDataStudioDataModelSegment({
+              databaseId: table.db_id,
+              schemaName: table.schema,
+              tableId: table.id,
+            })}
+            h={32}
+            px="sm"
+            py="xs"
+            size="xs"
+            leftSection={<Icon name="add" />}
+          >{t`New segment`}</Button>
+        </Group>
+      )}
 
       {segments.length === 0 ? (
         <EmptyState
@@ -42,7 +61,7 @@ export function SegmentList({ segments, tableId }: SegmentListProps) {
             <SegmentItem
               key={segment.id}
               segment={segment}
-              href={Urls.dataStudioSegment(segment.id)}
+              href={getSegmentHref(segment.id)}
             />
           ))}
         </Stack>

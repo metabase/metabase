@@ -33,7 +33,7 @@ export const underlyingRecordsDrill: Drill<
       name: "underlying-records",
       title: actionTitle,
       section: "records",
-      icon: "table_spaced",
+      icon: "table",
       buttonType: "horizontal",
       question: () =>
         applyDrill(drill)

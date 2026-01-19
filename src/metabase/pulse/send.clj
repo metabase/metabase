@@ -3,6 +3,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.task-history.core :as task-history]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -67,6 +68,7 @@
                               :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
+                              :disable_links                    (:disable_links pulse)
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}
@@ -106,6 +108,25 @@
           (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
     nil))
 
+(defn pulse->task-run-info
+  "Extract task run info from a pulse for use with [[metabase.task-history.core/with-task-run]].
+   - Dashboard subscriptions: entity_type :dashboard
+   - Legacy pulses (no dashboard): entity_type :card (first card)
+   - Returns nil if neither dashboard_id nor cards are present."
+  [{:keys [dashboard_id cards]}]
+  (cond
+    dashboard_id
+    {:run_type    :subscription
+     :entity_type :dashboard
+     :entity_id   dashboard_id}
+
+    (seq cards)
+    {:run_type    :subscription
+     :entity_type :card
+     :entity_id   (:id (first cards))}
+
+    :else nil))
+
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
    `PulseCard`, formatting the content, and sending the content to any specified destination.
@@ -120,11 +141,14 @@
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids async?]
                                         :or   {async? false}}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
-        pulse     (-> (mi/instance :model/Pulse pulse)
-                      ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
-                      ;; to fetch the Pulse.
-                      models.pulse/hydrate-notification
-                      (merge (when channel-ids {:channel-ids channel-ids})))]
-    (when (not (:archived dashboard))
-      (send-pulse!* pulse dashboard async?))))
+  ;; with-task-run is a no-op if already nested (e.g., from scheduler)
+  (task-history/with-task-run (some-> (pulse->task-run-info pulse)
+                                      (assoc :auto-complete (not async?)))
+    (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
+          pulse     (-> (mi/instance :model/Pulse pulse)
+                        ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
+                        ;; to fetch the Pulse.
+                        models.pulse/hydrate-notification
+                        (merge (when channel-ids {:channel-ids channel-ids})))]
+      (when (not (:archived dashboard))
+        (send-pulse!* pulse dashboard async?)))))

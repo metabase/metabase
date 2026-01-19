@@ -27,7 +27,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
   useExistingUserSession,
 }: {
   experience: SdkIframeEmbedSetupExperience;
-  resourceId: SdkDashboardId | SdkQuestionId;
+  resourceId: SdkDashboardId | SdkQuestionId | null;
   isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
   isSsoEnabledAndConfigured: boolean;

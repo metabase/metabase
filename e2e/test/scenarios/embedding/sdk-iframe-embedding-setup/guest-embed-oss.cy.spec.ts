@@ -129,22 +129,13 @@ describe(
         getEmbedSidebar().within(() => {
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
-          ["Metabase account (SSO)"].forEach((text) => {
-            cy.findAllByTestId("tooltip-warning")
-              .filter(`:contains("${text}")`)
-              .within(() => {
-                cy.findByTestId("upsell-gem").should("be.visible");
-              });
-          });
+          ["Metabase account (SSO)", "Exploration", "Browser"].forEach(
+            (label) => {
+              cy.findByLabelText(label).should("be.disabled");
+            },
+          );
 
-          ["Exploration", "Browser"].forEach((label) => {
-            cy.findByLabelText(label).should("be.disabled");
-            cy.get("label")
-              .contains(label)
-              .within(() => {
-                cy.findByTestId("upsell-gem").should("be.visible");
-              });
-          });
+          cy.findByTestId("upsell-card").should("be.visible");
 
           cy.findByText("Chart").click();
           cy.findByText("Next").click();
@@ -192,13 +183,11 @@ describe(
           "Allow people to drill through on data points",
           "Allow downloads",
           "Allow people to save new questions",
-        ].forEach((text) => {
-          cy.findAllByTestId("tooltip-warning")
-            .filter(`:contains("${text}")`)
-            .within(() => {
-              cy.findByTestId("upsell-gem").should("be.visible");
-            });
+        ].forEach((label) => {
+          cy.findByLabelText(label).should("be.disabled");
         });
+
+        cy.findByTestId("upsell-card").should("exist");
 
         H.setEmbeddingParameter("Text", "Locked");
         cy.findAllByTestId("parameter-widget")
@@ -215,8 +204,6 @@ describe(
 
         getEmbedSidebar().within(() => {
           cy.findByTestId("appearance-section").within(() => {
-            cy.findByTestId("upsell-gem").should("be.visible");
-
             cy.findByText("Dark").click();
           });
         });

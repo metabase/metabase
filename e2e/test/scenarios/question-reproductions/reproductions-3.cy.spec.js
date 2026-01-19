@@ -3185,7 +3185,10 @@ describe("Issue 42817", () => {
   });
 
   it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
-    H.echartsContainer().get("path[fill='#fff']").first().click();
+    H.echartsContainer()
+      .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
+      .first()
+      .click();
 
     H.popover().findByText("See this day by hour").click();
 

@@ -144,6 +144,7 @@ export const createMockTokenFeatures = (
   "transforms-python": false,
   data_studio: false,
   "support-users": false,
+  tenants: false,
   ...opts,
 });
 
@@ -265,7 +266,7 @@ export const createMockSettings = (
    * This is a derived setting and it reads either from an env, or from the list
    * of databases. It checks whether there is a db with `is_sample` property.
    * You probably don't want to set this directly in tests because it can get out
-   * of sync with the database state (whch should be a source of truth).
+   * of sync with the database state (which should be a source of truth).
    */
   "has-sample-database?": undefined,
   "has-user-setup": true,
@@ -288,6 +289,7 @@ export const createMockSettings = (
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
   "jwt-attribute-groups": null,
+  "jwt-attribute-tenant": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
@@ -333,6 +335,7 @@ export const createMockSettings = (
   "saml-attribute-email": null,
   "saml-attribute-firstname": null,
   "saml-attribute-lastname": null,
+  "saml-attribute-tenant": null,
   "saml-identity-provider-issuer": null,
   "saml-identity-provider-certificate": null,
   "saml-keystore-password": null,
@@ -388,12 +391,12 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "embedding-hub-test-embed-snippet-created": false,
   "embedding-hub-production-embed-snippet-created": false,
-  "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,
+  "use-tenants": false,
   ...opts,
 });

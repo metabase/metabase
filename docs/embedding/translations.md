@@ -1,15 +1,49 @@
 ---
 title: Translate embedded dashboards and questions
-summary: Upload a translation dictionary to translate questions and dashboards into different languages. Only available for static embeds.
+summary: Upload a translation dictionary to translate questions and dashboards into different languages. Translation dictionaries are only available for guest embeds.
 ---
 
 # Translate embedded dashboards and questions
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics JS/SDK.
+You can set a locale on all modular embeds (guest and SSO) to translate Metabase's UI. Translation dictionaries, however, are only available for [guest embeds](./guest-embedding.md).
 
-You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
+## Set a locale to translate UI, and upload a dictionary to translate content
+
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+
+For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    // Translates UI elements to the locale's language.
+    // For guest embeds, if you've uploaded a translation dictionary,
+    // Metabase will also translate content strings
+    // to this locale from that dictionary.
+    locale: "es"
+  };
+</script>
+
+<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+For guest embeds (and only guest embeds), if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
+
+### SDK translations
+
+For the SDK, set the `locale` prop on the `MetabaseProvider` component:
+
+```tsx
+<MetabaseProvider
+  authConfig={authConfig}
+  locale="es"
+>
+</MetabaseProvider>
+```
 
 ## Add a translation dictionary
 
@@ -23,26 +57,16 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding > Static**.
+1. Go to **Admin settings > Embedding**.
 2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
 
 Uploading a new dictionary will replace the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
 
-## Translate content in static embeds
-
-To translate content in a static embed using the uploaded dictionary, add the [`locale` parameter](./static-embedding-parameters.md#setting-the-language-for-a-static-embed) to the embed URL:
-
-```
-https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
-```
-
-Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
-
 ## Example translation dictionary
 
-Metabase uses these dictionaries to translate user-generated content, like dashboard names in [static embeds](./static-embedding.md).
+Metabase uses these dictionaries to translate user-generated content, like dashboard names in [guest embeds](./guest-embedding.md).
 
 | Language | String      | Translation  |
 | -------- | ----------- | ------------ |
@@ -53,7 +77,7 @@ Metabase uses these dictionaries to translate user-generated content, like dashb
 | pt-BR    | Vendor      | Vendedor     |
 | IT       | Examples    | Esempi       |
 
-Prefer hyphens in your `pt-BR` in your translation dictionary. Underscores are also acceptable (if you download the dictionary _after_ uploading it, Metabase will transform `pt-BR` to `pt_BR`), but since the `locale` parameter in static embedding only accepts locales with hyphens (like `pt-BR`), we recommend using hyphens for consistency.
+Prefer hyphens in your `pt-BR` in your translation dictionary. Underscores are also acceptable (if you download the dictionary _after_ uploading it, Metabase will transform `pt-BR` to `pt_BR`), but since the `locale` parameter in guest embeds only accepts locales with hyphens (like `pt-BR`), we recommend using hyphens for consistency.
 
 [See a list of supported locales](../configuring-metabase/localization.md#supported-languages).
 
@@ -87,4 +111,4 @@ If the strings you want to translate include markdown formatting, you'll need to
 
 ## Further reading
 
-- [Static embedding](./static-embedding.md)
+- [Guest embedding](./guest-embedding.md)

@@ -22,7 +22,9 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", true);
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -61,6 +63,48 @@ describe(suiteTitle, () => {
 
         cy.log("dashboard card is visible");
         cy.findByText("Orders").should("be.visible");
+      });
+    });
+
+    it("shows the `guest embeds disabled` icon + tooltip when guest embeds disabled", () => {
+      H.updateSetting("enable-embedding-static", false);
+
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      cy.url().should("not.match", /\/admin\/embedding\/guest/);
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("guest-embeds-disabled-info-icon").should("be.visible");
+        cy.findByTestId("guest-embeds-disabled-info-icon").click();
+      });
+
+      H.hovercard()
+        .findByText(/You can enable guest embeds in/)
+        .should("exist");
+
+      H.hovercard()
+        .findByText(/admin settings/)
+        .click();
+
+      cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+        .first()
+        .within(() => {
+          cy.url().should("match", /\/admin\/embedding\/guest/);
+          cy.findByText("Enable guest embeds").should("be.visible");
+        });
+    });
+
+    it("hides the `guest embeds disabled` icon + tooltip when guest embeds enabled", () => {
+      H.updateSetting("enable-embedding-static", true);
+
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("guest-embeds-disabled-info-icon").should("not.exist");
       });
     });
 
@@ -212,6 +256,50 @@ describe(suiteTitle, () => {
     );
 
     cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
+
+  it("should respect slow loading of recent dashboars and wait till loading complete", () => {
+    cy.intercept("GET", "/api/activity/recents*", (req) => {
+      req.on("response", (res) => {
+        res.setThrottle(0.3); // Slow down the response
+      });
+    }).as("getRecents");
+
+    visitNewEmbedPage();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
+
+  it("shows no-data block when example-dashboard-id points to an archived dashboard", () => {
+    H.createDashboard({
+      name: "Archived Dashboard",
+    }).then(({ body: { id: dashboardId } }) => {
+      H.archiveDashboard(dashboardId);
+
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["example-dashboard-id"] = dashboardId;
+          res.send();
+        });
+      });
+    });
+
+    cy.intercept("GET", "/api/activity/recents*", {
+      body: [],
+    }).as("emptyRecentItems");
+
+    visitNewEmbedPage({ waitForResource: false });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    cy.wait("@emptyRecentItems");
+
+    cy.findByAltText("No results").should("be.visible");
   });
 
   it("shows Metabot experience when selected", () => {

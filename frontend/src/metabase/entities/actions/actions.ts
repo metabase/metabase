@@ -114,7 +114,7 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Actions = createEntity({
+export const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   schema: ActionSchema,
@@ -226,6 +226,3 @@ const Actions = createEntity({
     }
   },
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Actions;

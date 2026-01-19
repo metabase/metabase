@@ -75,6 +75,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.column :as lib.metadata.column]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
@@ -205,7 +206,7 @@
 
 (defn ^:export as-returned
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
-  (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and
+  (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
 
   Given `a-query` and `stage-number`, this returns a **JS object** with `query` and `stageIndex` keys, for working with
@@ -1305,6 +1306,14 @@
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
+(defn ^:export measure-metadata?
+  "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
+
+  > **Code health:** Healthy. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/measure (:lib/type arg))))
+
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
 ;; functions provided to inspect and manage that list of fields.
@@ -2083,6 +2092,23 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
+(defn ^:export measure-metadata
+  "Get metadata for the Measure with `measure-id`, if it can be found.
+
+  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
+  will be a query.
+
+  > **Code health:** Healthy."
+  [metadata-providerable measure-id]
+  (lib.metadata/measure metadata-providerable measure-id))
+
+(defn ^:export available-measures
+  "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
+
+  > **Code health:** Healthy."
+  [a-query stage-number]
+  (to-array (lib.core/available-measures a-query stage-number)))
+
 (defn ^:export available-metrics
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
@@ -2172,7 +2198,7 @@
   (lib.core/database-id a-query))
 
 (defn ^:export join-condition-update-temporal-bucketing
-  "Updates the provided `join-condition` so both the LHS and RHS columns have the provied temporal bucketing option.
+  "Updates the provided `join-condition` so both the LHS and RHS columns have the provided temporal bucketing option.
 
   `join-condition` must be a *standard join condition*, meaning it's in the form constructed by the query builder UI,
   where the LHS is a column in the outer query and RHS is a column from the joinable.
@@ -2715,3 +2741,11 @@
     (or (.get cache js-query)
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
+
+(defn ^:export validate-template-tags
+  "Validates if the template tags in `query` are all valid and well-formed."
+  [js-query]
+  (-> js-query
+      js->clj
+      lib.native/validate-template-tags
+      clj->js))

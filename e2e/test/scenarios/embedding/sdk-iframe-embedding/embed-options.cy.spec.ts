@@ -7,7 +7,7 @@ import {
 const { H } = cy;
 
 describe("OSS", { tags: "@OSS" }, () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (ex EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
         withToken: false,
@@ -45,7 +45,7 @@ describe("OSS", { tags: "@OSS" }, () => {
 });
 
 describe("EE without license", () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
         withToken: "starter",
@@ -83,7 +83,7 @@ describe("EE without license", () => {
 });
 
 describe("EE", () => {
-  describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
       H.setupSMTP();
@@ -224,7 +224,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get('[aria-label="Download as PDF"]').should("be.visible");
 
       cy.log("4. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+
+      cy.findAllByText("37.65").first().click();
+
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });
@@ -254,7 +257,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get("[aria-label='download icon']").should("be.visible");
 
       cy.log("3. clicking on the column value should show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("be.visible");
 
       cy.log("4. clicking on the filter should drill down");

@@ -5,7 +5,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
-(defn- diff-string [k v1 v2 identifier]
+(defn- match-1 [k v1 v2 identifier]
   (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
@@ -15,6 +15,9 @@
 
     [:description (_ :guard some?) _]
     (deferred-tru "changed the description")
+
+    [:document _ _]
+    (deferred-tru "edited the content")
 
     [:private true false]
     (deferred-tru "made {0} public" identifier)
@@ -43,6 +46,10 @@
     [:embedding_params _ _]
     (deferred-tru "changed the embedding parameters")
 
+    :else nil))
+
+(defn- match-2 [k v1 v2 identifier]
+  (match [k v1 v2]
     [:archived _ after]
     (if after
       (deferred-tru "trashed {0}" identifier)
@@ -107,12 +114,19 @@
       (deferred-tru "changed the width setting from {0} to {1}" (name v1) (name v2))
       (deferred-tru "changed the width setting"))
 
+    [:source _ _]
+    (deferred-tru "changed the source")
+
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
     nil
 
     :else nil))
+
+(defn- diff-string [k v1 v2 identifier]
+  (or (match-1 k v1 v2 identifier)
+      (match-2 k v1 v2 identifier)))
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one."
@@ -128,8 +142,10 @@
   (case model-str
     "Dashboard" (deferred-tru "Dashboard")
     "Card"      (deferred-tru "Card")
-    "Segment" (deferred-tru "Segment")
-    "Document" (deferred-tru "Document")))
+    "Segment"   (deferred-tru "Segment")
+    "Measure"   (deferred-tru "Measure")
+    "Document"  (deferred-tru "Document")
+    "Transform" (deferred-tru "Transform")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.

@@ -21,8 +21,8 @@ import {
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import Bookmarks from "metabase/entities/bookmarks";
-import Questions from "metabase/entities/questions";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Questions } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -409,7 +409,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
-            c="text-dark"
+            c="text-primary"
           >
             <Icon name="ellipsis" />
           </Button>

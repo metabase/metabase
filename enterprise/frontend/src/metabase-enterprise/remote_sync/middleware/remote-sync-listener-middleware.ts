@@ -6,11 +6,15 @@ import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { documentApi } from "metabase/api/document";
+import { fieldApi } from "metabase/api/field";
+import { segmentApi } from "metabase/api/segment";
+import { tableApi as coreTableApi } from "metabase/api/table";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
+import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type {
   Card,
   CardId,
@@ -35,11 +39,6 @@ export const remoteSyncListenerMiddleware = createListenerMiddleware<State>();
 
 function invalidateRemoteSyncTags(dispatch: any) {
   dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
-}
-
-function isDeactivatingRemoteSync(action: any): boolean {
-  const settings = action.meta?.arg?.originalArgs;
-  return settings?.["remote-sync-url"] === "";
 }
 
 const ALL_INVALIDATION_TAGS = [
@@ -306,6 +305,52 @@ remoteSyncListenerMiddleware.startListening({
   },
 });
 
+// Enterprise table mutations (publish/unpublish/edit)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    enterpriseTableApi.endpoints.publishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.unpublishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.editTables.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Core table mutations (metadata edits)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    coreTableApi.endpoints.updateTable.matchFulfilled,
+    coreTableApi.endpoints.updateTableFieldsOrder.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Field mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    fieldApi.endpoints.updateField.matchFulfilled,
+    fieldApi.endpoints.createFieldDimension.matchFulfilled,
+    fieldApi.endpoints.deleteFieldDimension.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Segment mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    segmentApi.endpoints.createSegment.matchFulfilled,
+    segmentApi.endpoints.updateSegment.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
   effect: async (_action, { dispatch }) => {
@@ -328,19 +373,18 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
+  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchFulfilled,
   effect: async (action, { dispatch }) => {
-    if (!isDeactivatingRemoteSync(action)) {
+    const response = action.payload;
+    // Only show modal if a task was actually started (indicated by task_id presence)
+    if (response.task_id) {
       dispatch(taskStarted({ taskType: "import" }));
     }
   },
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: isAnyOf(
-    remoteSyncApi.endpoints.importChanges.matchRejected,
-    remoteSyncApi.endpoints.updateRemoteSyncSettings.matchRejected,
-  ),
+  matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
   effect: async (_action, { dispatch }) => {
     dispatch(taskCleared());
   },

@@ -8,6 +8,7 @@ export const TYPE_KEY = "remote-sync-type";
 export const BRANCH_KEY = "remote-sync-branch";
 export const REMOTE_SYNC_KEY = "remote-sync-enabled";
 export const AUTO_IMPORT_KEY = "remote-sync-auto-import";
+export const COLLECTIONS_KEY = "collections";
 
 export const REMOTE_SYNC_SCHEMA = Yup.object({
   [REMOTE_SYNC_KEY]: Yup.boolean().nullable().default(true),
@@ -19,10 +20,12 @@ export const REMOTE_SYNC_SCHEMA = Yup.object({
     .nullable()
     .default("read-only"),
   [BRANCH_KEY]: Yup.string().nullable().default("main"),
+  [COLLECTIONS_KEY]: Yup.object().nullable().default({}),
 });
 
 export const REMOTE_SYNC_INVALIDATION_TAGS = [
   tag("collection-dirty-entities"),
   tag("collection-is-dirty"),
   tag("remote-sync-current-task"),
+  tag("remote-sync-has-remote-changes"),
 ];

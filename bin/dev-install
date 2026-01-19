@@ -471,6 +471,17 @@ main() {
     echo "Your development environment is ready."
     echo ""
 
+    # Run mage doctor to verify the setup
+    print_step "Running health check..."
+    echo ""
+    if has_tool bb; then
+        "$SCRIPT_DIR/mage" doctor || true
+    else
+        print_warning "Babashka not available yet - skipping health check"
+        echo "      Run './bin/mage doctor' after restarting your shell"
+    fi
+    echo ""
+
     # Check if mise was already active in the parent shell
     if [ -n "$MISE_WAS_ACTIVE" ]; then
         # mise was already active in parent shell
