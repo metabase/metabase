@@ -49,7 +49,9 @@ export function GraphDependencyPanel({
     searchText.trim(),
     SEARCH_DEBOUNCE_DURATION,
   );
-  const [filterOptions, setFilterOptions] = useState(() => getDefaultFilterOptions(groupType));
+  const [filterOptions, setFilterOptions] = useState(() =>
+    getDefaultFilterOptions(groupType),
+  );
   const [sortOptions, setSortOptions] = useState(() =>
     getDefaultSortOptions(groupType),
   );

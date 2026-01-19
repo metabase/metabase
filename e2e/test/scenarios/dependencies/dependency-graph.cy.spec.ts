@@ -611,11 +611,7 @@ describe("scenarios > dependencies > dependency graph", () => {
   });
 
   describe("dependent filtering", () => {
-    function toggleFilter({
-      filterName
-    }: {
-      filterName: string
-    }) {
+    function toggleFilter({ filterName }: { filterName: string }) {
       H.DependencyGraph.dependencyPanel().icon("filter").click();
       H.popover().findByText(filterName).click();
       H.DependencyGraph.dependencyPanel().icon("filter").click();
@@ -623,10 +619,10 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     function verifyItems({
       visibleItems = [],
-      hiddenItems = []
+      hiddenItems = [],
     }: {
-      visibleItems?: string[],
-      hiddenItems?: string[]
+      visibleItems?: string[];
+      hiddenItems?: string[];
     }) {
       H.DependencyGraph.dependencyPanel().within(() => {
         visibleItems.forEach((item) =>
@@ -671,18 +667,18 @@ describe("scenarios > dependencies > dependency graph", () => {
         .findByText("5 questions")
         .click();
 
-        verifyItems({
-          visibleItems: [
-            "Question in dashboard",
-            "Question in root collection",
-            "Question in first collection",
-            "Question in second collection",
-            "Question in personal collection"
-          ],
-        });
+      verifyItems({
+        visibleItems: [
+          "Question in dashboard",
+          "Question in root collection",
+          "Question in first collection",
+          "Question in second collection",
+          "Question in personal collection",
+        ],
+      });
       toggleFilter({
-        filterName: "Include items in personal collections"
-      })
+        filterName: "Include items in personal collections",
+      });
       verifyItems({
         visibleItems: [
           "Question in dashboard",

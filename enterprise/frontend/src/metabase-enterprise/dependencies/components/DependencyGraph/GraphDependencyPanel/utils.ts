@@ -81,15 +81,21 @@ export function canFilter(groupType: DependencyGroupType): boolean {
   return FILTER_OPTIONS.some((option) => canFilterByOption(groupType, option));
 }
 
-export function getDefaultFilterOptions(groupType: DependencyGroupType): FilterOption[] {
-  return FILTER_OPTIONS.filter((option => canFilterByOption(groupType, option)))
+export function getDefaultFilterOptions(
+  groupType: DependencyGroupType,
+): FilterOption[] {
+  return FILTER_OPTIONS.filter((option) =>
+    canFilterByOption(groupType, option),
+  );
 }
 
 function isMatchingFilters(
   node: DependencyNode,
   filterOptions: FilterOption[],
 ): boolean {
-  return FILTER_OPTIONS.every((option) => FILTERS[option](node, filterOptions.includes(option)));
+  return FILTER_OPTIONS.every((option) =>
+    FILTERS[option](node, filterOptions.includes(option)),
+  );
 }
 
 const COMPARATORS: Record<SortColumn, SortCallback> = {
