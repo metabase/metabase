@@ -231,6 +231,14 @@
   [message & body]
   `(do-with-returning-throwable ~message (^:once fn* [] ~@body)))
 
+(def ^:private operation->run-type
+  "Map sync operation keywords to task run types."
+  {:sync              :sync
+   :sync-metadata     :sync
+   :cache-field-values :sync
+   :analyze           :fingerprint
+   :refingerprint     :fingerprint})
+
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
@@ -238,15 +246,20 @@
    message   :- ms/NonBlankString
    f         :- fn?]
   (when (database/should-sync? database)
-    ((with-duplicate-ops-prevented
-      operation database
-      (with-sync-events
-       operation database
-       (with-start-and-finish-logging
-        message
-        (with-db-logging-disabled
-         (sync-in-context database
-                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
+    (let [run-type (operation->run-type operation)]
+      (task-history/with-task-run (when run-type
+                                    {:run_type    run-type
+                                     :entity_type :database
+                                     :entity_id   (u/the-id database)})
+        ((with-duplicate-ops-prevented
+          operation database
+          (with-sync-events
+           operation database
+           (with-start-and-finish-logging
+            message
+            (with-db-logging-disabled
+             (sync-in-context database
+                              (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things

@@ -1451,6 +1451,8 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
+           config
            models
            permissions
            premium-features
