@@ -12,6 +12,7 @@
    - Redirect URL validation to prevent open redirect attacks"
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.system.settings :as system.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -134,7 +135,7 @@
   {:pre [(some? state) (some? nonce) (some? redirect) (some? provider)]}
   ;; Validate redirect URL to prevent open redirect attacks
   (validate-redirect-url! redirect)
-  (let [now (System/currentTimeMillis)]
+  (let [now (t/to-millis-from-epoch (t/instant))]
     (cond-> {:state      state
              :nonce      nonce
              :redirect   redirect
@@ -181,7 +182,7 @@
        (let [state-map (-> encrypted-state
                            encryption/decrypt
                            json/decode+kw)
-             now       (System/currentTimeMillis)]
+             now       (t/to-millis-from-epoch (t/instant))]
          (cond
            ;; Not a valid map
            (not (map? state-map))

@@ -10,6 +10,8 @@
    (java.security KeyPairGenerator)
    (java.security.spec ECGenParameterSpec)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private test-rsa-private-key-pem
   "Test RSA private key PEM string for signing JWTs"
   "-----BEGIN PRIVATE KEY-----

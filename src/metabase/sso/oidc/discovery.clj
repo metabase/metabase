@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -24,7 +25,7 @@
   [cache-entry]
   (or (nil? cache-entry)
       (nil? (:fetched-at cache-entry))
-      (> (- (System/currentTimeMillis) (:fetched-at cache-entry))
+      (> (- (t/to-millis-from-epoch (t/instant)) (:fetched-at cache-entry))
          discovery-cache-ttl-ms)))
 
 (defn- normalize-issuer
@@ -98,7 +99,7 @@
           (when cached
             (log/infof "Discovery cache expired for issuer %s, re-fetching" normalized-issuer))
           (when-let [doc (fetch-discovery-document normalized-issuer)]
-            (swap! discovery-cache assoc normalized-issuer {:document doc :fetched-at (System/currentTimeMillis)})
+            (swap! discovery-cache assoc normalized-issuer {:document doc :fetched-at (t/to-millis-from-epoch (t/instant))})
             doc))))))
 
 (defn- get-endpoint

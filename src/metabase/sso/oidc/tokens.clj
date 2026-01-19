@@ -4,7 +4,8 @@
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
-   [clojure.string :as str]
+   [java-time.api :as t]
+   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
@@ -24,7 +25,7 @@
   [cache-entry]
   (or (nil? cache-entry)
       (nil? (:fetched-at cache-entry))
-      (> (- (System/currentTimeMillis) (:fetched-at cache-entry))
+      (> (- (t/to-millis-from-epoch (t/instant)) (:fetched-at cache-entry))
          jwks-cache-ttl-ms)))
 
 (defn clear-jwks-cache!
@@ -71,7 +72,7 @@
           (when cached
             (log/infof "JWKS cache expired for URI %s, re-fetching" jwks-uri))
           (when-let [jwks (fetch-jwks jwks-uri)]
-            (swap! jwks-cache assoc jwks-uri {:jwks jwks :fetched-at (System/currentTimeMillis)})
+            (swap! jwks-cache assoc jwks-uri {:jwks jwks :fetched-at (t/to-millis-from-epoch (t/instant))})
             jwks))))))
 
 (defn- find-signing-key
@@ -95,7 +96,7 @@
    Throws an exception if the algorithm is specified but not in the allowlist."
   [key-data]
   (if-let [alg (:alg key-data)]
-    (let [alg-kw (keyword (str/lower-case alg))]
+    (let [alg-kw (keyword (u/lower-case-en alg))]
       (when-not (contains? allowed-algorithms alg-kw)
         (throw (ex-info "Unsupported JWT signing algorithm"
                         {:algorithm alg :allowed allowed-algorithms})))
@@ -135,7 +136,7 @@
    Returns true if token is not expired, false otherwise."
   [claims]
   (when-let [exp (:exp claims)]
-    (let [now (quot (System/currentTimeMillis) 1000)]
+    (let [now (quot (t/to-millis-from-epoch (t/instant)) 1000)]
       (> exp now))))
 
 (defn- validate-issuer
