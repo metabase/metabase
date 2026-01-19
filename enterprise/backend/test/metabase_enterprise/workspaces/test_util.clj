@@ -70,7 +70,7 @@
                                         {:db_id  (mt/id)
                                          :schema (some-> schema normalize)
                                          :name   (normalize (str "test_table_" (kw->id t)))
-                                         :active false})]))))
+                                         :active true})]))))
 
 (defn create-transform!
   "Create a global transform with given dependencies. Returns transform ID."

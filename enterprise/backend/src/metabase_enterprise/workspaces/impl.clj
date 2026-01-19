@@ -77,7 +77,9 @@
             (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
                         {:access_granted true})
             (catch Exception e
-              (log/warn e "Error granting RO table permissions"))))))))
+              ;; Suppress errors for tables that don't exist (common in tests with fake tables)
+              (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
+                (log/warn e "Error granting RO table permissions")))))))))
 
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
