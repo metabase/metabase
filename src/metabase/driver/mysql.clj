@@ -121,15 +121,19 @@
   (-> database :dbms_version :flavor (= "MariaDB")))
 
 (defn mysql?
-  "Returns true if the database is MySQL (not MariaDB). Returns true when flavor is explicitly MySQL
-   or when flavor is unknown (not synced yet). Only returns false when flavor is explicitly MariaDB."
+  "Returns true if the database is MySQL. Assumes the database has been synced so `:dbms_version` is present."
   [database]
-  (not (mariadb? database)))
+  (-> database :dbms_version :flavor (= "MySQL")))
 
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+
+(defn mysql-connection?
+  "Returns true if the database is MySQL."
+  [driver conn]
+  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MySQL")))
 
 (defn- partial-revokes-enabled?
   [driver db]
@@ -149,10 +153,22 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
+(defn- mysql-flavor?
+  "Returns true if the database is MySQL. Checks :dbms_version if available, otherwise uses connection."
+  [driver db]
+  (if-let [flavor (-> db :dbms_version :flavor)]
+    (= flavor "MySQL")
+    (if-let [conn (:connection db)]
+      (mysql-connection? driver conn)
+      ;; No :dbms_version and no :connection - use connection from db
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver db nil
+       (fn [conn] (mysql-connection? driver conn))))))
+
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql? db)
+       (mysql-flavor? driver db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
