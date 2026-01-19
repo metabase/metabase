@@ -13,10 +13,10 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -57,27 +57,6 @@ const countTransforms = (node: TreeNode): number => {
     }
     return count + countTransforms(child);
   }, 0);
-};
-
-const AVATAR_COLOR_PALETTE = [
-  color("brand"),
-  color("accent2"),
-  color("accent4"),
-  color("accent1"),
-  color("summarize"),
-];
-
-const getOwnerAvatarColor = (id?: number, email?: string): string => {
-  if (id) {
-    return AVATAR_COLOR_PALETTE[id % AVATAR_COLOR_PALETTE.length];
-  }
-  if (email) {
-    const hash = email
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return AVATAR_COLOR_PALETTE[hash % AVATAR_COLOR_PALETTE.length];
-  }
-  return color("brand");
 };
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
@@ -186,38 +165,41 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         enableSorting: true,
         cell: ({ row }) => {
           const owner = row.original.owner;
-          const ownerEmail = row.original.owner_email;
-          if (owner) {
-            const displayName =
-              owner.first_name && owner.last_name
-                ? `${owner.first_name} ${owner.last_name}`
-                : owner.email;
-            const initials =
-              owner.first_name && owner.last_name
-                ? `${owner.first_name.charAt(0)}${owner.last_name.charAt(0)}`.toUpperCase()
-                : (owner.email?.slice(0, 2).toUpperCase() ?? "?");
-            const bgColor = getOwnerAvatarColor(owner.id, owner.email);
+          const hasUserName = owner?.first_name ?? owner?.last_name;
+
+          if (hasUserName) {
+            const displayName = getUserName(owner as NamedUser);
             return (
               <Flex align="center" gap="sm">
-                <Avatar size="sm" radius="xl" bg={bgColor} c="white">
-                  {initials}
-                </Avatar>
+                <Avatar size="sm" name={displayName} />
                 <Ellipsified>{displayName}</Ellipsified>
               </Flex>
             );
           }
+
+          const ownerEmail = row.original.owner_email ?? owner?.email;
           if (ownerEmail) {
-            const initials = ownerEmail.split("@")[0].slice(0, 2).toUpperCase();
-            const bgColor = getOwnerAvatarColor(undefined, ownerEmail);
             return (
               <Flex align="center" gap="sm">
-                <Avatar size="sm" radius="xl" bg={bgColor} c="white">
-                  {initials}
+                <Avatar size="sm" color="initials" name="emails">
+                  <Icon name="mail" />
                 </Avatar>
                 <Ellipsified>{ownerEmail}</Ellipsified>
               </Flex>
             );
           }
+
+          if (row.original.nodeType === "transform") {
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" color="background-secondary" name="unknown">
+                  <Icon name="person" c="text-secondary" />
+                </Avatar>
+                <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>
+              </Flex>
+            );
+          }
+
           return null;
         },
       },

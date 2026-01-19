@@ -784,7 +784,7 @@ LIMIT
       getTransformsTargetContent().within(() => {
         cy.findByLabelText("Owner").click();
       });
-      H.popover().findByText("Unspecified").click();
+      H.popover().findByText("No owner").click();
       cy.wait("@updateTransform");
       H.undoToast().findByText("Transform owner updated").should("be.visible");
     });

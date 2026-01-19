@@ -287,6 +287,7 @@ function OwnerSection({ transform }: OwnerSectionProps) {
               ? "unknown"
               : (transform.owner_user_id ?? null)
           }
+          unknownUserLabel={t`No owner`}
           onEmailChange={handleOwnerEmailChange}
           onUserIdChange={handleOwnerUserIdChange}
         />
