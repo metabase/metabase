@@ -54,7 +54,7 @@ const FILTERS: Record<FilterOption, FilterCallback> = {
         return collection != null && !collection.is_personal;
       }
       default:
-        return false;
+        return true;
     }
   },
 };
