@@ -1,12 +1,16 @@
 /* eslint-disable import/no-commonjs */
 
-/**
- * Local ESLint plugin for Metabase custom rules
- * This makes custom rules work with both CLI and editor integrations
- */
+const fs = require("fs");
 
-// eslint-disable-next-line import/no-commonjs
+// eslint-disable-next-line no-undef
+const pkg = JSON.parse(fs.readFileSync(__dirname + "/package.json", "utf8"));
+
 module.exports = {
+  meta: {
+    name: pkg.name,
+    version: pkg.version,
+    namespace: "metabase-custom",
+  },
   rules: {
     "jtag-missing-key": require("./jtag-missing-key"),
     "no-color-literals": require("./no-color-literals"),

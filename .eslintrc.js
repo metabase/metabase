@@ -2,6 +2,7 @@
 /* eslint-disable no-undef */
 
 const path = require("path");
+require("./frontend/lint/eslint-rules");
 
 // `postcss-modules` lints css modules class names, but it currently crashes
 // eslint on vscode. If you use webstorm or want to run the lint for the cli, you
@@ -343,7 +344,7 @@ module.exports = {
         "import/no-default-export": "off",
         "import/order": "off",
         "import/no-unresolved": "off",
-        "no-color-literals": "off",
+        "metabase-custom/no-color-literals": "off",
       },
     },
     {
