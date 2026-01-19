@@ -592,38 +592,58 @@
 
 (def ^:private dependents-args
   [:map
-   [:id                  ms/PositiveInt]
-   [:type                ::deps.dependency-types/dependency-types]
-   [:dependent_type      ::deps.dependency-types/dependency-types]
-   [:dependent_card_type {:optional true} (ms/enum-decode-keyword lib.schema.metadata/card-types)]
-   [:archived            {:optional true} :boolean]
-   [:broken              {:optional true} :boolean]])
+   [:id                   ms/PositiveInt]
+   [:type                 ::deps.dependency-types/dependency-types]
+   [:dependent_types      {:optional true}
+    [:or
+     ::deps.dependency-types/dependency-types
+     [:sequential ::deps.dependency-types/dependency-types]]]
+   [:dependent_card_types {:optional true}
+    [:or
+     (ms/enum-decode-keyword lib.schema.metadata/card-types)
+     [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
+   [:archived             {:optional true} :boolean]
+   [:broken               {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
-  "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
-   all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further
-   filtered by :dependent_card_type.
+  "Returns a list of dependents for the specified entity.
 
-   Optional :archived parameter controls whether entities in archived collections are included:
-   - false (default): Excludes entities in archived collections
-   - true: Includes entities in archived collections
+   Required parameters:
+   - `id`: The ID of the entity
+   - `type`: The type of the entity (card, table, dashboard, etc.)
 
-   Optional :broken parameter controls whether only broken entities are returned:
-   - false (default): Returns all dependents
-   - true: Returns only dependents that have failed analysis (analysis_finding.result = false)"
+   Optional parameters:
+   - `dependent_types`: Dependency types to filter by. Can be single value or array.
+     If not provided, returns all types. Example: ?dependent_types=card&dependent_types=dashboard
+   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.
+     Ignored if dependent_types doesn't include :card. Example: ?dependent_card_types=question&dependent_card_types=model
+   - `archived`: Include entities in archived collections (default: false)
+   - `broken`: Return only broken entities (default: false)"
   [_route-params
-   {:keys [id type dependent_type dependent_card_type archived broken]} :- dependents-args]
+   {:keys [id type dependent_types dependent_card_types archived broken]} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
     (let [graph-opts {:include-archived-items (if archived :all :exclude)
                       :broken broken}
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (-> (graph/children-of downstream-graph [[type id]])
-                    (get [type id]))]
+                    (get [type id]))
+          ;; Normalize to sets for efficient lookup
+          dep-types-set (cond
+                          (nil? dependent_types) nil ;; nil means "all types"
+                          (sequential? dependent_types) (set dependent_types)
+                          :else #{dependent_types})
+          card-types-set (cond
+                           (nil? dependent_card_types) nil ;; nil means "all card types"
+                           (sequential? dependent_card_types) (set dependent_card_types)
+                           :else #{dependent_card_types})]
       (->> (expanded-nodes downstream-graph nodes {:include-errors? false})
-           (filter #(and (= (:type %) dependent_type)
-                         (or (not= dependent_type :card)
-                             (= (-> % :data :type) dependent_card_type))))))))
+           (filter (fn [node]
+                     (and (or (nil? dep-types-set)
+                              (contains? dep-types-set (:type node)))
+                          (or (not= (:type node) :card)
+                              (nil? card-types-set)
+                              (contains? card-types-set (-> node :data :type))))))))))
 
 (defn- dependency-items-query
   [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections sort-column]}]

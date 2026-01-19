@@ -447,8 +447,8 @@
                 response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                :id card-id-1
                                                :type "card"
-                                               :dependent_type "card"
-                                               :dependent_card_type "question")]
+                                               :dependent_types "card"
+                                               :dependent_card_types "question")]
             (is (=? [{:data
                       {:collection
                        {:id "root"
@@ -467,6 +467,85 @@
                       :id card-id-2
                       :type "card"}]
                     response))))))))
+
+(deftest dependents-multiple-types-test
+  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_types"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DashboardCard]
+        (mt/with-temp [:model/User user {:email "test@test.com"}
+                       :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
+          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - multi") user)
+                _dependent-card (card/create-card! (wrap-card dependency-card) user)]
+            ;; Add the dependent card to a dashboard to create a dashboard dependent
+            (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
+                                              :card_id card-id-1
+                                              :row 0
+                                              :col 0
+                                              :size_x 4
+                                              :size_y 4})
+            (testing "single dependent_types value (backward compatibility)"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "card")]
+                (is (= 1 (count response)))
+                (is (every? #(= "card" (:type %)) response))))
+            (testing "multiple dependent_types via repeated params"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "card"
+                                                   :dependent_types "dashboard")]
+                (is (= 2 (count response)))
+                (is (= #{"card" "dashboard"} (set (map :type response))))))
+            (testing "no dependent_types returns all types"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card")]
+                (is (>= (count response) 2))
+                (is (contains? (set (map :type response)) "card"))
+                (is (contains? (set (map :type response)) "dashboard"))))))))))
+
+(deftest dependents-multiple-card-types-test
+  (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_card_types"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - cardtypes") user)
+                _question-card (card/create-card! (assoc (wrap-card dependency-card) :name "Question card") user)
+                _model-card (card/create-card! (assoc (wrap-card dependency-card) :name "Model card" :type :model) user)]
+            (testing "single dependent_card_types value"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "card"
+                                                   :dependent_card_types "question")]
+                (is (= 1 (count response)))
+                (is (= "question" (-> response first :data :type)))))
+            (testing "multiple dependent_card_types via repeated params"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "card"
+                                                   :dependent_card_types "question"
+                                                   :dependent_card_types "model")]
+                (is (= 2 (count response)))
+                (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
+            (testing "no dependent_card_types returns all card types"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "card")]
+                (is (= 2 (count response)))
+                (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
+            (testing "dependent_card_types ignored when dependent_types doesn't include card"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id card-id-1
+                                                   :type "card"
+                                                   :dependent_types "dashboard"
+                                                   :dependent_card_types "question")]
+                ;; Should return only dashboards, not cards
+                (is (every? #(= "dashboard" (:type %)) response))))))))))
 
 (deftest graph-archived-card-test
   (testing "GET /api/ee/dependencies/graph with archived parameter"
@@ -507,14 +586,14 @@
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type "card"
-                                                   :dependent_type "card")]
+                                                   :dependent_types "card")]
                 (is (empty? response))))
             (testing "archived=true includes archived dependent"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type "card"
-                                                   :dependent_type "card"
-                                                   :dependent_card_type "question"
+                                                   :dependent_types "card"
+                                                   :dependent_card_types "question"
                                                    :archived true)
                     dependent-ids (set (map :id response))]
                 (is (contains? dependent-ids (:id dependent-card)))))))))))
@@ -543,7 +622,7 @@
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id model-card)
                                                    :type "card"
-                                                   :dependent_type "card")
+                                                   :dependent_types "card")
                     dependent-ids (set (map :id response))]
                 (is (contains? dependent-ids (:id dependent-card-1)))
                 (is (contains? dependent-ids (:id dependent-card-2)))))
@@ -551,7 +630,7 @@
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id model-card)
                                                    :type "card"
-                                                   :dependent_type "card"
+                                                   :dependent_types "card"
                                                    :broken true)
                     dependent-ids (set (map :id response))]
                 (is (contains? dependent-ids (:id dependent-card-1))
@@ -646,15 +725,15 @@
                        (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/dependents"
                                              :id card-id
                                              :type "card"
-                                             :dependent_type "card"
-                                             :dependent_card_type "question"))))
+                                             :dependent_types "card"
+                                             :dependent_card_types "question"))))
               (testing "Returns 200 when user has read permissions"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                       :id card-id
                                       :type "card"
-                                      :dependent_type "card"
-                                      :dependent_card_type "question")))))))))
+                                      :dependent_types "card"
+                                      :dependent_card_types "question")))))))))
 
 (deftest graph-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out upstream nodes the user cannot read"
@@ -717,8 +796,8 @@
                 (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                      :id (:id base-card)
                                                      :type "card"
-                                                     :dependent_type "card"
-                                                     :dependent_card_type "question")
+                                                     :dependent_types "card"
+                                                     :dependent_card_types "question")
                       dependent-ids (set (map :id response))]
                   (is (contains? dependent-ids (:id readable-dependent)))
                   (is (not (contains? dependent-ids (:id unreadable-dependent)))))))))))))
@@ -838,8 +917,8 @@
                   (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                        :id snippet-id
                                                        :type "snippet"
-                                                       :dependent_type "card"
-                                                       :dependent_card_type "question")
+                                                       :dependent_types "card"
+                                                       :dependent_card_types "question")
                         dependent-ids (set (map :id response))]
                     (is (contains? dependent-ids (:id readable-card))
                         "Should see readable card as dependent")
@@ -899,8 +978,8 @@
                 (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                      :id (:id base-card)
                                                      :type :card
-                                                     :dependent_type :card
-                                                     :dependent_card_type :question)
+                                                     :dependent_types :card
+                                                     :dependent_card_types :question)
                       card-node (first (filter #(= (:id %) (:id dashboard-card)) response))]
                   (is (some? card-node))
                   (is (= {:id (:id dashboard) :name "Test Dashboard"}
@@ -931,8 +1010,8 @@
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                    :id (:id base-card)
                                                    :type :card
-                                                   :dependent_type :card
-                                                   :dependent_card_type :question)
+                                                   :dependent_types :card
+                                                   :dependent_card_types :question)
                     card-node (first (filter #(= (:id %) (:id document-card)) response))]
                 (is (some? card-node))
                 (is (= {:id (:id document) :name "Test Document"}
@@ -981,8 +1060,8 @@
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id segment-id
                                                  :type "segment"
-                                                 :dependent_type "card"
-                                                 :dependent_card_type "question")]
+                                                 :dependent_types "card"
+                                                 :dependent_card_types "question")]
               (testing "returns card that uses the segment"
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
@@ -1070,8 +1149,8 @@
                   response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                  :id measure-id
                                                  :type "measure"
-                                                 :dependent_type "card"
-                                                 :dependent_card_type "question")]
+                                                 :dependent_types "card"
+                                                 :dependent_card_types "question")]
               (testing "returns card that uses the measure"
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
