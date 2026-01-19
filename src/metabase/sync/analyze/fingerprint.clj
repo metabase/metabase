@@ -218,24 +218,23 @@
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
-   (qp.store/with-metadata-provider (u/the-id database)
-     (let [tables (if *refingerprint?*
-                    (sync-util/refingerprint-reducible-sync-tables database)
-                    (sync-util/reducible-sync-tables database))]
-       (reduce (fn [acc table]
-                 (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [ret (fingerprint-table! table)
-                       new-acc (let [ret (if (:throwable ret)
-                                           (-> ret
-                                               (dissoc :throwable)
-                                               (update :failed-fingerprints inc))
-                                           ret)]
-                                 (merge-with + acc ret))]
-                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
-                     new-acc
-                     (reduced new-acc))))
-               (empty-stats-map 0)
-               tables)))))
+   (let [tables (if *refingerprint?*
+                  (sync-util/refingerprint-reducible-sync-tables database)
+                  (sync-util/reducible-sync-tables database))]
+     (reduce (fn [acc table]
+               (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
+               (let [ret (fingerprint-table! table)
+                     new-acc (let [ret (if (:throwable ret)
+                                         (-> ret
+                                             (dissoc :throwable)
+                                             (update :failed-fingerprints inc))
+                                         ret)]
+                               (merge-with + acc ret))]
+                 (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
+                   new-acc
+                   (reduced new-acc))))
+             (empty-stats-map 0)
+             tables))))
 
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-table!]] on every table in `database`"
