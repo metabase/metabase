@@ -625,6 +625,23 @@ describe(suiteTitle, () => {
       .click()
       .should("be.checked");
 
+    cy.log("assert that alert button appears in preview");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
+    cy.log(
+      "test that with drills off, alerts still work because it will now render <StaticQuestion /> (from <SdkQuestion />)",
+    );
+    getEmbedSidebar()
+      .findByLabelText("Allow people to drill through on data points")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
     cy.log("assert that unchecking alerts will close the alert modal");
     const newAlertModalTitle = "New alert";
     H.getSimpleEmbedIframeContent().within(() => {
