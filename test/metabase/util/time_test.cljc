@@ -47,13 +47,13 @@
   "True if these two datetimes are equivalent.
   JVM objects are [[=]] but Day.js values are not, so use the Day.js isSame method in CLJS."
   [t1 t2]
-  #?(:cljs (.isSame t1 t2)
+  #?(:cljs (.isSame ^dayjs t1 t2)
      :clj  (= t1 t2)))
 
 (defn- same-instant?
   "The same point on the timeline of the universe, adjusting to the same time zone (UTC)."
   [t1 t2]
-  #?(:cljs (.isSame t1 t2)
+  #?(:cljs (.isSame ^dayjs t1 t2)
      :clj  (= (t/instant t1) (t/instant t2))))
 
 (def test-epoch

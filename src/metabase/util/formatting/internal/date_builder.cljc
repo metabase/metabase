@@ -69,7 +69,7 @@
         fmt-str   (apply str parts)]
     #?(:cljs (if (str/includes? fmt-str "__DAY_OF_YEAR__")
                ;; Special handling for day-of-year since dayjs doesn't have a format token for it
-               (fn [t]
+               (fn [^js t]
                  (str/replace (.format t fmt-str) "__DAY_OF_YEAR__" (str (.dayOfYear t))))
                #(.format % fmt-str))
        :clj  (let [formatter (DateTimeFormatter/ofPattern fmt-str)]
