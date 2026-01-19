@@ -43,7 +43,7 @@
 (defn valid?
   "Given a Day.js instance, check that it's valid."
   [value]
-  (and (datetime? value) (.isValid value)))
+  (and (datetime? value) (.isValid ^dayjs value)))
 
 (defn normalize
   "Does nothing. Just a placeholder in CLJS; the JVM implementation does some real work."
@@ -52,17 +52,17 @@
 
 (defn same-day?
   "Given two platform-specific datetimes, checks if they fall within the same day."
-  [d1 d2]
+  [^dayjs d1 ^dayjs d2]
   (.isSame d1 d2 "day"))
 
 (defn same-month?
   "True if these two datetimes fall in the same (year and) month."
-  [d1 d2]
+  [^dayjs d1 ^dayjs d2]
   (.isSame d1 d2 "month"))
 
 (defn same-year?
   "True if these two datetimes fall in the same year."
-  [d1 d2]
+  [^dayjs d1 ^dayjs d2]
   (.isSame d1 d2 "year"))
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
@@ -85,10 +85,10 @@
    offset-n
    (name offset-unit)))
 
-(defmethod common/to-range :default [value {:keys [n unit]}]
-  (let [adjusted (if (> n 1)
-                   (.add value (dec n) (name unit))
-                   value)]
+(defmethod common/to-range :default [^dayjs value {:keys [n unit]}]
+  (let [^dayjs adjusted (if (> n 1)
+                          (.add value (dec n) (name unit))
+                          value)]
     [(.startOf value      (name unit))
      (.endOf   adjusted   (name unit))]))
 
@@ -265,13 +265,13 @@
      (throw (ex-info "Expected valid Day.js instances for date and time" {:date a-date
                                                                           :time a-time})))
    ;; Use Day.js object support plugin to set all values at once
-   (dayjs #js {:year        (.year a-date)
-               :month       (.month a-date)
-               :date        (.date a-date)
-               :hour        (.hour a-time)
-               :minute      (.minute a-time)
-               :second      (.second a-time)
-               :millisecond (.millisecond a-time)}))
+   (dayjs #js {:year        (.year ^dayjs a-date)
+               :month       (.month ^dayjs a-date)
+               :date        (.date ^dayjs a-date)
+               :hour        (.hour ^dayjs a-time)
+               :minute      (.minute ^dayjs a-time)
+               :second      (.second ^dayjs a-time)
+               :millisecond (.millisecond ^dayjs a-time)}))
   ([year month day hours minutes]
    (dayjs #js {:year   year
                :month  (dec (or (common/month-keywords month) month))
@@ -327,7 +327,7 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit locale]
+  [^dayjs t unit locale]
   ;; Special case for day-of-year: use the dayOfYear() method instead of format
   ;; because DDD produces zero-padded output
   (if (= unit :day-of-year)
@@ -343,7 +343,7 @@
   "Does this Day.js value have explicit time parts?
   For Day.js we check if hour, minute or second are non-zero, since Day.js doesn't track parsed parts.
   Note: This also returns true for time 00:00 if there's no date (checked by has-explicit-date?)."
-  [m]
+  [^dayjs m]
   (or (pos? (.hour m))
       (pos? (.minute m))
       (pos? (.second m))
@@ -353,8 +353,8 @@
   "Does this Day.js value have explicit date parts?
   For Day.js we check if the date matches today - if it does, it might be a time-only value
   where dayjs defaulted to today's date. This is a heuristic since dayjs doesn't track parsed parts."
-  [m]
-  (let [today (dayjs)]
+  [^dayjs m]
+  (let [^dayjs today (dayjs)]
     ;; If the date matches today and time components are not all zero,
     ;; it's likely a time-only value that defaulted to today
     (not (and (= (.year m) (.year today))
@@ -543,31 +543,31 @@
   Note: In dayjs, Z matches timezone offsets like +05:00, while [Z] matches literal 'Z'.
   We include both patterns to handle both Z and +HH:mm offsets."
   {:offset-date-time {:regex   common/offset-datetime-regex
-                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"
-                                     "YYYY-MM-DDTHH:mm:ss.SSSZ"
-                                     "YYYY-MM-DDTHH:mm:ss[Z]"
-                                     "YYYY-MM-DDTHH:mm:ssZ"
-                                     "YYYY-MM-DDTHH:mm[Z]"
-                                     "YYYY-MM-DDTHH:mmZ"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"
+                                    "YYYY-MM-DDTHH:mm:ss.SSSZ"
+                                    "YYYY-MM-DDTHH:mm:ss[Z]"
+                                    "YYYY-MM-DDTHH:mm:ssZ"
+                                    "YYYY-MM-DDTHH:mm[Z]"
+                                    "YYYY-MM-DDTHH:mmZ"]}
    :local-date-time  {:regex   common/local-datetime-regex
-                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
-                                     "YYYY-MM-DDTHH:mm:ss"
-                                     "YYYY-MM-DDTHH:mm"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
+                                    "YYYY-MM-DDTHH:mm:ss"
+                                    "YYYY-MM-DDTHH:mm"]}
    :local-date       {:regex   common/local-date-regex
-                       :formats #js ["YYYY-MM-DD"
-                                     "YYYY-MM"
-                                     "YYYY"]}
+                      :formats #js ["YYYY-MM-DD"
+                                    "YYYY-MM"
+                                    "YYYY"]}
    :offset-time      {:regex   common/offset-time-regex
-                       :formats #js ["HH:mm:ss.SSS[Z]"
-                                     "HH:mm:ss.SSSZ"
-                                     "HH:mm:ss[Z]"
-                                     "HH:mm:ssZ"
-                                     "HH:mm[Z]"
-                                     "HH:mmZ"]}
+                      :formats #js ["HH:mm:ss.SSS[Z]"
+                                    "HH:mm:ss.SSSZ"
+                                    "HH:mm:ss[Z]"
+                                    "HH:mm:ssZ"
+                                    "HH:mm[Z]"
+                                    "HH:mmZ"]}
    :local-time       {:regex   common/local-time-regex
-                       :formats #js ["HH:mm:ss.SSS"
-                                     "HH:mm:ss"
-                                     "HH:mm"]}})
+                      :formats #js ["HH:mm:ss.SSS"
+                                    "HH:mm:ss"
+                                    "HH:mm"]}})
 
 (defn- parse-with-formats
   "Parse a string with the given formats array. Returns a valid dayjs or nil."
@@ -606,7 +606,7 @@
 
 (defn- dayjs+type->iso-8601
   "Format a dayjs instance as ISO-8601 string based on its type."
-  [[t value-type]]
+  [[^dayjs t value-type]]
   (let [formats (get iso-8601-format-strings value-type)
         format-string (or (:default formats)
                           (cond
@@ -615,7 +615,7 @@
                             :else                   (:minute formats)))]
     (.format t format-string)))
 
-(defn- ->dayjs
+(defn- ^dayjs ->dayjs
   "Convert a value to a dayjs instance. Handles strings, js/Date, and dayjs instances."
   [t]
   (cond
@@ -641,12 +641,14 @@
   "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Day.js instances and ISO-8601
   strings."
   [t unit]
-  (with-string-preservation t #(.startOf % (name unit))))
+  (with-string-preservation t (fn [^dayjs parsed]
+                                (.startOf parsed (name unit)))))
 
 (defn add
   "ClojureScript implementation of [[metabase.util.time/add]]; supports both Day.js instances and ISO-8601 strings."
   [t unit amount]
-  (with-string-preservation t #(.add % amount (name unit))))
+  (with-string-preservation t (fn [^dayjs parsed]
+                                (.add parsed amount (name unit)))))
 
 (defn format-for-base-type
   "ClojureScript implementation of [[metabase.util.time/format-for-base-type]]; format a temporal value as an ISO-8601
@@ -666,7 +668,7 @@
 
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
-  [t unit]
+  [^dayjs t unit]
   (case unit
     :second-of-minute (.second t)
     :minute-of-hour   (.minute t)
