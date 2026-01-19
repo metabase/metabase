@@ -2663,6 +2663,27 @@ LIMIT
         name: /Only process new and changed data/,
       }).should("be.disabled");
     });
+
+    it("should show the python library in read-only mode", () => {
+      cy.log("visit transforms page");
+      visitTransformListPage();
+      cy.log("clicking Python library navigates to the library editor");
+      getTransformsList().findByText("Python library").click();
+
+      cy.url().should("include", "/data-studio/transforms/library/common.py");
+      cy.findByRole("alert")
+        .contains(/The Python library is not editable/)
+        .should("be.visible");
+
+      H.DataStudio.PythonLibrary.editor().within(() => {
+        cy.findByRole("textbox").should(
+          "have.attr",
+          "contenteditable",
+          "false",
+        );
+        cy.findByRole("textbox").should("have.attr", "aria-readonly", "true");
+      });
+    });
   });
 });
 

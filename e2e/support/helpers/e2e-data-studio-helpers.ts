@@ -38,6 +38,7 @@ export const DataStudio = {
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),
+    editor: () => cy.findByTestId("python-editor"),
   },
   Snippets: {
     newPage: newSnippetPage,
