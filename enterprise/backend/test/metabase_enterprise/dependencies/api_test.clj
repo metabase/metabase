@@ -1071,6 +1071,28 @@
                                              :type "card")]
           (is (=? {:nodes [{:id card-id
                             :data {:view_count 1}}]}
+                  response))))))
+  (testing "GET /api/ee/dependencies/graph should return :view_count for :dashboard"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User      {user-id :id}      {}
+                     :model/Dashboard {dashboard-id :id} {}]
+        (events/publish-event! :event/dashboard-read {:object-id dashboard-id :user-id user-id})
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id dashboard-id
+                                             :type "dashboard")]
+          (is (=? {:nodes [{:id dashboard-id
+                            :data {:view_count 1}}]}
+                  response))))))
+  (testing "GET /api/ee/dependencies/graph should return :view_count for :document"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User     {user-id :id}      {}
+                     :model/Document {document-id :id} {}]
+        (events/publish-event! :event/document-read {:object-id document-id :user-id user-id})
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                             :id document-id
+                                             :type "document")]
+          (is (=? {:nodes [{:id document-id
+                            :data {:view_count 1}}]}
                   response)))))))
 
 (deftest ^:sequential unreferenced-questions-test
