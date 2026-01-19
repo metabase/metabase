@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import {
-  getNodeDependentsCount,
+  getDependentErrorNodesCount,
   getNodeLabel,
   getNodeLocationInfo,
 } from "../../../utils";
@@ -19,7 +19,7 @@ import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
 
-function getNodeNameColumn(
+function getNameColumn(
   mode: DependencyListMode,
 ): TreeTableColumnDef<DependencyNode> {
   return {
@@ -35,7 +35,7 @@ function getNodeNameColumn(
   };
 }
 
-function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
+function getLocationColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "location",
     header: t`Location`,
@@ -53,7 +53,7 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
+function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-errors",
     header: t`Problems`,
@@ -71,16 +71,17 @@ function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
+function getBrokenDependentsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
-    header: t`Dependents`,
+    header: t`Broken dependents`,
     minWidth: 100,
     enableSorting: true,
-    accessorFn: (node) => getNodeDependentsCount(node),
+    accessorFn: (node) =>
+      getDependentErrorNodesCount(node.dependents_errors ?? []),
     cell: ({ row }) => {
       const node = row.original;
-      return getNodeDependentsCount(node);
+      return getDependentErrorNodesCount(node.dependents_errors ?? []);
     },
   };
 }
@@ -89,10 +90,10 @@ export function getColumns(
   mode: DependencyListMode,
 ): TreeTableColumnDef<DependencyNode>[] {
   return [
-    getNodeNameColumn(mode),
-    getNodeLocationColumn(),
-    ...(mode === "broken" ? [getNodeErrorsColumn()] : []),
-    ...(mode === "broken" ? [getNodeDependentsCountColumn()] : []),
+    getNameColumn(mode),
+    getLocationColumn(),
+    ...(mode === "broken" ? [getDependentsErrorsColumn()] : []),
+    ...(mode === "broken" ? [getBrokenDependentsColumn()] : []),
   ];
 }
 

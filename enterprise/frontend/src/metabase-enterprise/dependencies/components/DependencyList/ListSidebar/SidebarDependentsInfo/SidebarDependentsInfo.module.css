@@ -1,7 +1,8 @@
 .item {
   cursor: pointer;
 
-  &:hover {
+  &:hover,
+  &.active {
     background-color: var(--mb-color-background-secondary);
   }
 
