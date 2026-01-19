@@ -159,7 +159,7 @@
     :else (recur (rest xs) ys)))
 
 (defn- get-last-run [transform-id]
-  (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
+  (:last_run (mt/user-real-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
 
 (defn- open-message-value-observer
   "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
@@ -199,7 +199,7 @@
 
           (create-transform [{:keys [program]} target]
             {:post [(integer? %)]}
-            (:id (mt/user-http-request :crowberto :post 200 "ee/transform"
+            (:id (mt/user-real-request :crowberto :post 200 "ee/transform"
                                        {:name   "Python logging test"
                                         :source {:type            "python"
                                                  :body            (program->source program)
