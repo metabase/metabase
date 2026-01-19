@@ -317,19 +317,11 @@
       (sync-grant-accesses! workspace))
     (boolean (seq stale-transforms))))
 
-(defn- transform-output-exists-for-version?
-  "Check if workspace_output exists for a transform at the given version or later."
-  [ws-id ref-id analysis-version]
-  (t2/exists? :model/WorkspaceOutput
-              :workspace_id ws-id
-              :ref_id ref-id
-              :transform_version [:>= analysis-version]))
-
 (defn analyze-transform-if-stale!
   "Analyze a single transform if its workspace_output doesn't exist for current analysis_version.
    Used before running a transform to ensure grants are up-to-date."
   [{ws-id :id :as workspace} {:keys [ref_id analysis_version] :as transform}]
-  (when-not (transform-output-exists-for-version? ws-id ref_id analysis_version)
+  (when-not (ws.deps/transform-output-exists-for-version? ws-id ref_id analysis_version)
     (analyze-transform! workspace transform)
     (sync-grant-accesses! workspace)))
 

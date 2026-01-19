@@ -258,6 +258,14 @@
                     :table_id          table_id}))))
   nil)
 
+(defn transform-output-exists-for-version?
+  "Check if workspace_output exists for a transform at the given version or later."
+  [ws-id ref-id transform-version]
+  (t2/exists? :model/WorkspaceOutput
+              :workspace_id ws-id
+              :ref_id ref-id
+              :transform_version [:>= transform-version]))
+
 (mu/defn write-entity-analysis! :- :nil
   "Persist dependency analysis for a workspace entity.
 
@@ -281,10 +289,7 @@
    transform-version :- :int]
   (ws.u/assert-transform! entity-type)
   (t2/with-transaction [_conn]
-    (when-not (t2/exists? :model/WorkspaceOutput
-                          :workspace_id workspace-id
-                          :ref_id ref-id
-                          :transform_version [:>= transform-version])
+    (when-not (transform-output-exists-for-version? workspace-id ref-id transform-version)
       (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
                                                 :id [:in {:select [:database_id]
                                                           :from   [:workspace]
