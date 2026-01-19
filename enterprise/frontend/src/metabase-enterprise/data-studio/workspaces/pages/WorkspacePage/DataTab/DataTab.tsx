@@ -37,9 +37,11 @@ export function DataTab({
   query,
   pythonPreviewResult,
 }: DataTabProps) {
-  const { data: table } = useGetTableQuery(
-    tableId && !query ? { id: tableId } : skipToken,
-  );
+  const {
+    data: table,
+    error: tableError,
+    isLoading: tableIsLoading,
+  } = useGetTableQuery(tableId && !query ? { id: tableId } : skipToken);
   const { data: transform } = useGetWorkspaceTransformQuery(
     transformId ? { workspaceId, transformId } : skipToken,
   );
@@ -77,28 +79,23 @@ export function DataTab({
   const previewResult = shouldUseDryRunPreview
     ? dryRunPreviewResult
     : tablePreviewResult;
-  const { rawSeries, isFetching, error } = previewResult;
+  const { rawSeries, isFetching, error: previewResultError } = previewResult;
+
+  const error = tableError || previewResultError;
+  const isLoading = tableIsLoading || isFetching;
 
   if (pythonPreviewResult) {
     return <PythonPreviewResults executionResult={pythonPreviewResult} />;
+  }
+
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
   if (!databaseId || (!tableId && !query)) {
     return (
       <Stack h="100%" align="center" justify="center">
         <Text c="text-medium">{t`Select a table to view its data`}</Text>
-      </Stack>
-    );
-  }
-
-  if (isFetching) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  if (error) {
-    return (
-      <Stack h="100%" align="center" justify="center">
-        <Text c="error">{t`Error loading data`}</Text>
       </Stack>
     );
   }
