@@ -90,12 +90,12 @@
           (qp/process-query (update query :info merge info) rff))))))
 
 (api.macros/defendpoint :post "/"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
    query :- [:map
              [:database {:optional true} [:maybe :int]]]]
-  :- (server/streaming-response-schema ::qp.schema/query-result)
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -122,6 +122,7 @@
     (keyword json-key)))
 
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
                                [:export-format ::qp.schema/export-format]]
@@ -143,7 +144,6 @@
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]]]
-  :- (server/streaming-response-schema ::qp.schema/query-result)
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -208,12 +208,12 @@
         pretty (update :query prettify)))))
 
 (api.macros/defendpoint :post "/pivot"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
    {:keys [database] :as query} :- [:map
                                     [:database ms/PositiveInt]]]
-  :- (server/streaming-response-schema ::qp.schema/query-result)
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
