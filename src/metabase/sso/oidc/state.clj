@@ -13,7 +13,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.system.settings :as system.settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
@@ -81,7 +81,7 @@
 
    Returns true if the redirect URL is safe, false otherwise."
   ([redirect-url]
-   (valid-redirect-url? redirect-url (system.settings/site-url)))
+   (valid-redirect-url? redirect-url (system/site-url)))
   ([redirect-url site-url]
    (cond
      ;; Nil or blank URLs are not valid
