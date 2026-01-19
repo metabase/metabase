@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useListDatabasesQuery } from "metabase/api";
 import {
   DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
   useGetExternalTransformsQuery,
@@ -27,7 +26,6 @@ export function useWorkspaceData({
   workspaceId,
   unsavedTransforms,
 }: UseWorkspaceDataParams) {
-  const { data: databases = { data: [] } } = useListDatabasesQuery({});
   const { data: allDbTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(workspaceId);
@@ -58,9 +56,7 @@ export function useWorkspaceData({
     isLoadingExternalTransforms ||
     isLoadingWorkspaceTransforms;
 
-  const sourceDb = databases?.data.find(
-    (db) => db.id === workspace?.database_id,
-  );
+  const databaseId = workspace?.database_id;
 
   const dbTransforms = useMemo(
     () =>
@@ -68,17 +64,15 @@ export function useWorkspaceData({
         if (t.source_type === "python") {
           return (
             "source-database" in t.source &&
-            t.source["source-database"] === sourceDb?.id
+            t.source["source-database"] === databaseId
           );
         }
         if (t.source_type === "native") {
-          return (
-            "query" in t.source && t.source.query.database === sourceDb?.id
-          );
+          return "query" in t.source && t.source.query.database === databaseId;
         }
         return false;
       }),
-    [allDbTransforms, sourceDb],
+    [allDbTransforms, databaseId],
   );
 
   const allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[] =
@@ -97,7 +91,6 @@ export function useWorkspaceData({
     availableTransforms,
     allTransforms,
     dbTransforms,
-    sourceDb,
     setupStatus,
     isLoading,
     isLoadingWorkspace,

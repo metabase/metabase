@@ -7,7 +7,7 @@ import {
   useGetWorkspaceAllowedDatabasesQuery,
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import type { Workspace } from "metabase-types/api";
+import type { DatabaseId, Workspace } from "metabase-types/api";
 
 import { isWorkspaceUninitialized } from "../../utils";
 
@@ -15,7 +15,7 @@ import { SetupLog } from "./SetupLog";
 import type { SetupStatus } from "./useWorkspaceData";
 
 interface SetupTabProps {
-  databaseId?: number;
+  databaseId?: DatabaseId | null;
   workspace: Workspace;
   setupStatus: SetupStatus;
 }

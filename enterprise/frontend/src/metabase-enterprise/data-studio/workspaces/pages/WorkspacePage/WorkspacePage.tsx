@@ -116,12 +116,12 @@ function WorkspacePageContent({
     allTransforms,
     dbTransforms,
     setupStatus,
-    sourceDb,
     isLoading,
     isLoadingWorkspace,
     isArchived,
     isPending,
   } = useWorkspaceData({ workspaceId, unsavedTransforms });
+  const databaseId = workspace?.database_id;
 
   // Workspace actions
   const {
@@ -464,7 +464,7 @@ function WorkspacePageContent({
             >
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab
-                  databaseId={sourceDb?.id}
+                  databaseId={databaseId}
                   workspace={workspace}
                   setupStatus={setupStatus}
                 />
@@ -565,9 +565,9 @@ function WorkspacePageContent({
                   <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
                   <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
                 </Tabs.List>
-                {sourceDb && (
+                {databaseId && (
                   <AddTransformMenu
-                    databaseId={sourceDb.id}
+                    databaseId={databaseId}
                     disabled={isArchived}
                   />
                 )}
