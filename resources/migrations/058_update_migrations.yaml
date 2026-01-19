@@ -1253,10 +1253,7 @@ databaseChangeLog:
                   remarks: Workspace that owns schema with this table
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:08
@@ -1275,7 +1272,10 @@ databaseChangeLog:
             constraintName: fk_metabase_table_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
-      rollback: # will be removed along with the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T12:00:09
@@ -1298,10 +1298,7 @@ databaseChangeLog:
                   remarks: Workspace that owns schema with this field
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: metabase_field
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:10
@@ -1320,7 +1317,10 @@ databaseChangeLog:
             constraintName: fk_metabase_field_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
-      rollback: # will be removed along with the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_metabase_field_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T12:00:11
@@ -1343,29 +1343,7 @@ databaseChangeLog:
                   remarks: Workspace containing this collection
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: collection
-            columnName: workspace_id
-
-  - changeSet:
-      id: v58.2025-11-26T12:00:12
-      validCheckSum: ANY
-      author: piranha
-      comment: Add foreign key constraint from collection.workspace_id to workspace
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_collection_workspace_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-      rollback:
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:13
@@ -1388,10 +1366,7 @@ databaseChangeLog:
                   remarks: Workspace containing this card
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: report_card
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:14
@@ -1410,7 +1385,10 @@ databaseChangeLog:
             constraintName: fk_report_card_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
-      rollback: # will be removed along with the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T12:00:17
@@ -1433,10 +1411,7 @@ databaseChangeLog:
                   remarks: Workspace containing this transform
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:18
@@ -1455,7 +1430,10 @@ databaseChangeLog:
             constraintName: fk_transform_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
-      rollback: # will be removed along with the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_workspace_id
 
   - changeSet:
       id: v58.2025-11-26T13:34:41
@@ -1824,41 +1802,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      # MySQL requires FK to be dropped before its underlying index can be dropped
-      # Use modifySql to make the FK drop conditional since rollback doesn't support preconditions
-      rollback:
-        - sql:
-            dbms: mysql,mariadb
-            failOnError: false
-            sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
-        - sql:
-            dbms: h2
-            sql: ALTER TABLE COLLECTION DROP CONSTRAINT FK_COLLECTION_WORKSPACE_ID
-        - dropIndex:
-            tableName: collection
-            indexName: idx_collection_workspace_id
-
-  - changeSet:
-      id: v58.2025-11-26T13:35:02
-      validCheckSum: ANY
-      author: christruter
-      comment: Drop collection.workspace_id FK for cascade update
-      validCheckSum: ANY
-      preConditions:
-        - onFail: MARK_RAN
-        - foreignKeyConstraintExists:
-            foreignKeyName: fk_collection_workspace_id
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
 
   - changeSet:
       id: v58.2025-11-26T13:35:03
@@ -4200,10 +4143,7 @@ databaseChangeLog:
                   remarks: FK to core_user who created this workspace transform
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: creator_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-22T10:00:01

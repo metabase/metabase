@@ -2364,7 +2364,6 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
-           app-db
            driver
            events
            lib
