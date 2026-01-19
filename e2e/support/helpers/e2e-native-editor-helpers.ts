@@ -10,7 +10,14 @@ export function selectNativeEditorDataSource(name: string) {
   popover().findByText(name).click();
 }
 
+function clickOnRun() {
+  cy.findByTestId("native-query-editor-container").within(() =>
+    cy.findByTestId("run-button").click(),
+  );
+}
+
 export const NativeEditor = codeMirrorHelpers("native-query-editor", {
   dataSource: nativeEditorDataSource,
   selectDataSource: selectNativeEditorDataSource,
+  clickOnRun,
 });

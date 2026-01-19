@@ -49,7 +49,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should be able to edit a native question with the QueryEditor", () => {
-    cy.intercept("GET", "/api/database?can-query=true").as("schema");
+    cy.intercept("GET", "/api/database").as("schema");
 
     cy.get("@sqlQuestionId").then((sqlQuestionId) => {
       mountSdkContent(
@@ -70,9 +70,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       H.NativeEditor.type("{movetoend}{backspace}10");
 
-      cy.realPress(["Meta", "Enter"]);
+      H.NativeEditor.clickOnRun();
 
-      cy.button("Visualize").click();
+      cy.button("Visualize").should("be.visible").click();
 
       H.assertTableRowsCount(10);
     });
@@ -95,9 +95,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
-      cy.realPress(["Meta", "Enter"]);
+      H.NativeEditor.clickOnRun();
 
-      cy.button("Visualize").click();
+      cy.button("Visualize").should("be.visible").click();
 
       H.assertTableRowsCount(10);
     });
