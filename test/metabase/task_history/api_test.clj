@@ -613,7 +613,9 @@
 (deftest runs-entities-perms-test
   (testing "non-superuser cannot access runs/entities"
     (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "task/runs/entities" :run-type "sync")))))
+           (mt/user-http-request :rasta :get 403 "task/runs/entities"
+                                 :run-type "sync"
+                                 :started-at "past30days")))))
 
 (deftest ^:synchronized runs-task-counts-test
   (t2/delete! :model/TaskRun)
@@ -677,14 +679,14 @@
       (testing "sync entities"
         (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
                                              :run-type "sync"
-                                             :started-at "past30days")]
+                                             :started-at "past30days~")]
           (is (= 2 (count response)))
           (is (every? #(= "database" (:entity_type %)) response))
           (is (= #{"DB1" "DB2"} (set (map :entity_name response))))))
       (testing "subscription entities"
         (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities"
                                              :run-type "subscription"
-                                             :started-at "past30days")]
+                                             :started-at "past30days~")]
           (is (= 1 (count response)))
           (is (= "dashboard" (-> response first :entity_type)))
           (is (= "My Dashboard" (-> response first :entity_name))))))))
@@ -696,15 +698,17 @@
           old-date (t/minus now (t/days 10))
           recent-date (t/minus now (t/days 2))]
       (mt/with-temp [:model/Database db {:name "Test DB"}
+                     :model/Database db2 {:name "Test DB 2"}
+                     :model/Database db3 {:name "Test DB 3"}
                      :model/TaskRun _ {:run_type    :sync
                                        :entity_type :database
-                                       :entity_id   (:id db)
+                                       :entity_id   (:id db3)
                                        :status      :success
                                        :started_at  old-date
                                        :ended_at    old-date}
                      :model/TaskRun _ {:run_type    :sync
                                        :entity_type :database
-                                       :entity_id   (:id db)
+                                       :entity_id   (:id db2)
                                        :status      :success
                                        :started_at  recent-date
                                        :ended_at    recent-date}
@@ -715,14 +719,14 @@
                                        :started_at  now
                                        :ended_at    now}]
         (testing "past7days returns only recent runs"
-          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past7days")]
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past7days~")]
             (is (= 2 (:total response)))))
         (testing "past30days returns all runs"
-          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past30days")]
+          (let [response (mt/user-http-request :crowberto :get 200 "task/runs" :started-at "past30days~")]
             (is (= 3 (:total response)))))
         (testing "absolute date range filtering"
-          (let [start-date (u.date/format (t/minus now (t/days 3)))
-                end-date (u.date/format now)
+          (let [start-date (u.date/format (t/local-date (t/minus now (t/days 3))))
+                end-date (u.date/format (t/local-date now))
                 response (mt/user-http-request :crowberto :get 200 "task/runs"
                                                :started-at (str start-date "~" end-date))]
             (is (= 2 (:total response)))))))))
@@ -771,8 +775,8 @@
 
 (deftest runs-started-at-invalid-date-test
   (testing "invalid date string returns 400 error"
-    (is (=? {:message #"Failed to parse datetime value.*"}
-            (mt/user-http-request :crowberto :get 400 "task/runs" :started-at "invalid-date")))))
+    (is (re-matches #"Failed to parse datetime value.*"
+                    (mt/user-http-request :crowberto :get 400 "task/runs" :started-at "invalid-date")))))
 
 (deftest ^:synchronized runs-entities-started-at-filter-test
   (t2/delete! :model/TaskRun)
