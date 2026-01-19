@@ -1079,3 +1079,20 @@
                        (mt/with-current-user user-id
                          (mt/user-http-request user-id :post 403 "dataset"
                                                (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-sensitive-fields-test
+  (testing "POST /api/dataset/query_metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (testing "sensitive fields are excluded by default"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (mt/mbql-query venues))]
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))
+              "Sensitive field should NOT be included by default")))
+      (testing "sensitive fields are included when :settings :include-sensitive-fields is true"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
