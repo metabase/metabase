@@ -54,7 +54,7 @@
               key-data))
           keys)))
 
-(defn verify-signature
+(defn- verify-signature
   "Verify JWT signature using JWKS.
 
    Parameters:
@@ -76,19 +76,19 @@
       (log/warn e "JWT signature verification failed")
       nil)))
 
-(defn validate-expiry
+(defn- validate-expiry
   "Validate that the token has not expired.
 
    Parameters:
    - claims: Token claims map
 
-   Returns true if token is not expired, falseotherwise."
+   Returns true if token is not expired, false otherwise."
   [claims]
   (when-let [exp (:exp claims)]
     (let [now (quot (System/currentTimeMillis) 1000)]
       (> exp now))))
 
-(defn validate-issuer
+(defn- validate-issuer
   "Validate that the token issuer matches expected issuer.
 
    Parameters:
@@ -99,7 +99,7 @@
   [claims expected-issuer]
   (= (:iss claims) expected-issuer))
 
-(defn validate-audience
+(defn- validate-audience
   "Validate that the token audience includes the expected client ID.
 
    Parameters:
@@ -114,7 +114,7 @@
       (sequential? aud) (some #(= % expected-audience) aud)
       :else false)))
 
-(defn validate-nonce
+(defn- validate-nonce
   "Validate that the token nonce matches the expected nonce.
 
    Parameters:

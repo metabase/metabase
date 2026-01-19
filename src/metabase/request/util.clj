@@ -8,7 +8,6 @@
    [metabase.embedding.util :as embed.util]
    [metabase.request.settings :as request.settings]
    [metabase.util :as u]
-   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -51,8 +50,8 @@
   In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
   request handled by Jetty will be over HTTP.
 
-  Note: Implementation is in [[metabase.util.http/https?]] to avoid circular dependencies."
-  u.http/https?)
+  Note: Implementation is in [[metabase.util/https?]]."
+  u/https?)
 
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."

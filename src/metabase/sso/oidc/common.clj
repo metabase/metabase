@@ -7,20 +7,14 @@
    [ring.util.codec :as codec]))
 
 (defn generate-state
-  "Generate a cryptographically random state token for CSRF protection.
-   Returns a URL-safe base64-encoded random string."
+  "Generate a cryptographically random state token for CSRF protection."
   []
-  (-> (nonce/random-bytes 32)
-      codecs/bytes->hex
-      (str/replace #"[+/=]" "")))
+  (-> (nonce/random-bytes 32) codecs/bytes->hex))
 
 (defn generate-nonce
-  "Generate a cryptographically random nonce for token validation.
-   Returns a URL-safe base64-encoded random string."
+  "Generate a cryptographically random nonce for token validation."
   []
-  (-> (nonce/random-bytes 32)
-      codecs/bytes->hex
-      (str/replace #"[+/=]" "")))
+  (-> (nonce/random-bytes 32) codecs/bytes->hex))
 
 (defn build-query-string
   "Build a URL query string from a map of parameters.
@@ -54,17 +48,6 @@
         query-string (build-query-string params)]
     (str authorization-endpoint "?" query-string)))
 
-(defn build-redirect-uri
-  "Construct the redirect URI for OIDC callbacks.
-
-   Parameters:
-   - base-url: The base URL of the application
-   - provider-id: The provider ID (for multi-provider support)
-
-   Returns the complete callback URI."
-  [base-url provider-id]
-  (str base-url "/api/oidc/" provider-id "/callback"))
-
 (defn extract-oidc-config
   "Extract OIDC configuration from various sources.
 
@@ -83,22 +66,6 @@
                  (select-keys request [:client-id :client-secret :issuer-uri :redirect-uri
                                        :authorization-endpoint :token-endpoint
                                        :userinfo-endpoint :jwks-uri :scopes]))))
-
-(defn oidc-error
-  "Create a structured error response for OIDC errors.
-
-   Parameters:
-   - error-code: Error code (e.g., :invalid_request, :invalid_token)
-   - message: Human-readable error message
-   - details: Optional additional error details
-
-   Returns an error map."
-  ([error-code message]
-   (oidc-error error-code message nil))
-  ([error-code message details]
-   {:error error-code
-    :message message
-    :details details}))
 
 (defn parse-token-response
   "Parse the token endpoint response.

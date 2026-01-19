@@ -10,8 +10,8 @@
    - Optional browser binding for request forgery protection
    - Tamper-evident via HMAC validation"
   (:require
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -140,7 +140,7 @@
     :max-age   ttl-seconds}
    ;; Use SameSite=Lax for OIDC since we need the cookie sent on redirect back from IdP
    ;; Secure=true only when using HTTPS
-   (if (u.http/https? request)
+   (if (u/https? request)
      {:same-site :lax
       :secure    true}
      {:same-site :lax})))

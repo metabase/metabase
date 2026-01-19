@@ -109,26 +109,6 @@
    [:family_name {:optional true} ::family-name]
    [:name {:optional true} ::name]])
 
-;;; Helper Functions
-
-(defn validate-configuration
-  "Validates an OIDC configuration map against the schema.
-   Returns a map with :valid? boolean and :errors (if any)."
-  [config]
-  (if (mr/validate ::oidc-configuration config)
-    {:valid? true}
-    {:valid? false
-     :errors (mr/explain ::oidc-configuration config)}))
-
-(defn validate-id-token-claims
-  "Validates ID token claims against the schema.
-   Returns a map with :valid? boolean and :errors (if any)."
-  [claims]
-  (if (mr/validate ::id-token-claims claims)
-    {:valid? true}
-    {:valid? false
-     :errors (mr/explain ::id-token-claims claims)}))
-
 (defn discovery-based?
   "Returns true if the configuration relies on discovery (only required fields present),
    false if endpoints are manually specified."
@@ -137,8 +117,3 @@
            (:token-endpoint config)
            (:userinfo-endpoint config)
            (:jwks-uri config))))
-
-(defn manual-configuration?
-  "Returns true if the configuration manually specifies endpoints."
-  [config]
-  (not (discovery-based? config)))

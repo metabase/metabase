@@ -51,12 +51,6 @@
   []
   (reset! discovery-cache {}))
 
-(defn clear-issuer-cache!
-  "Clear the cached discovery document for a specific issuer.
-   Useful when an issuer's configuration changes."
-  [issuer]
-  (swap! discovery-cache dissoc (normalize-issuer issuer)))
-
 (defn discover-oidc-configuration
   "Fetch and cache the OIDC discovery document for the given issuer.
 
@@ -118,38 +112,6 @@
    Returns the JWKS URI."
   [config]
   (get-endpoint config :jwks_uri :jwks-uri))
-
-(defn get-userinfo-endpoint
-  "Get the userinfo endpoint from discovery document or manual config.
-
-   Parameters:
-   - config: Map with either :discovery-document or :userinfo-endpoint
-
-   Returns the userinfo endpoint URL."
-  [config]
-  (get-endpoint config :userinfo_endpoint :userinfo-endpoint))
-
-(defn configuration-from-issuer
-  "Build a configuration map from an issuer URL.
-   Attempts discovery and returns a map with the discovery document.
-
-   Parameters:
-   - issuer: The OIDC issuer URL
-
-   Returns a map with :discovery-document if discovery succeeds, otherwise nil."
-  [issuer]
-  (when-let [doc (discover-oidc-configuration issuer)]
-    {:discovery-document doc}))
-
-(defn configuration-from-manual
-  "Build a configuration map from manually specified endpoints.
-
-   Parameters:
-   - endpoints: Map with keys :authorization-endpoint, :token-endpoint, :jwks-uri, :userinfo-endpoint
-
-   Returns the endpoints map."
-  [endpoints]
-  endpoints)
 
 (defn validate-configuration
   "Validate that a configuration has all required endpoints.

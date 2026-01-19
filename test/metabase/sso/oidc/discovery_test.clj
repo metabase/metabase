@@ -70,28 +70,6 @@
           uri (oidc.discovery/get-jwks-uri config)]
       (is (nil? uri)))))
 
-(deftest ^:parallel get-userinfo-endpoint-test
-  (testing "Gets userinfo endpoint from discovery document"
-    (let [config {:discovery-document {:userinfo_endpoint "https://provider.com/userinfo"}}
-          endpoint (oidc.discovery/get-userinfo-endpoint config)]
-      (is (= "https://provider.com/userinfo" endpoint))))
-
-  (testing "Gets userinfo endpoint from manual config"
-    (let [config {:userinfo-endpoint "https://provider.com/manual/userinfo"}
-          endpoint (oidc.discovery/get-userinfo-endpoint config)]
-      (is (= "https://provider.com/manual/userinfo" endpoint))))
-
-  (testing "Prefers discovery document over manual config"
-    (let [config {:discovery-document {:userinfo_endpoint "https://provider.com/discovery/userinfo"}
-                  :userinfo-endpoint "https://provider.com/manual/userinfo"}
-          endpoint (oidc.discovery/get-userinfo-endpoint config)]
-      (is (= "https://provider.com/discovery/userinfo" endpoint))))
-
-  (testing "Returns nil when not found"
-    (let [config {}
-          endpoint (oidc.discovery/get-userinfo-endpoint config)]
-      (is (nil? endpoint)))))
-
 (deftest discover-oidc-configuration-success-test
   (testing "Successfully discovers OIDC configuration"
     (oidc.discovery/clear-cache!)

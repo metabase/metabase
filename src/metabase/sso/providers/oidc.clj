@@ -20,18 +20,6 @@
 
 ;;; -------------------------------------------------- Configuration Handling --------------------------------------------------
 
-(defn- get-oidc-config
-  "Extract OIDC configuration from the request.
-
-   Configuration can come from:
-   1. :oidc-config key in request (for testing or direct calls)
-   2. :metadata field of :auth-identity (for existing auth identities)
-   3. Direct parameters in request
-
-   Returns a configuration map or nil."
-  [request]
-  (oidc.common/extract-oidc-config request))
-
 (defn- enrich-config-with-discovery
   "Enrich configuration with OIDC discovery endpoints if needed.
 
@@ -56,12 +44,12 @@
 
    Parameters:
    - code: Authorization code
-   - config: OIDC configuration with token endpoint, client credentials, redirect URI
+   - config: Enriched OIDC configuration with discovery document (if applicable),
+             token endpoint, client credentials, redirect URI
 
    Returns token response map with :id-token, :access-token, etc."
   [code config]
-  (let [enriched-config (enrich-config-with-discovery config)
-        token-endpoint (oidc.discovery/get-token-endpoint enriched-config)]
+  (let [token-endpoint (oidc.discovery/get-token-endpoint config)]
     (try
       (let [response (http/post token-endpoint
                                 {:form-params {:grant_type "authorization_code"
@@ -115,7 +103,7 @@
 
 (methodical/defmethod auth-identity/authenticate :provider/oidc
   [_provider request]
-  (let [config (get-oidc-config request)]
+  (let [config (oidc.common/extract-oidc-config request)]
     (cond
       ;; Configuration missing
       (not config)
@@ -132,17 +120,17 @@
            :error :invalid-callback
            :message (get-in validation [:error :description] "Invalid callback parameters")}
 
-          ;; Exchange code for tokens
-          (let [code (:code validation)
-                tokens (exchange-code-for-tokens code config)]
+          ;; Enrich config with discovery once for the entire callback flow
+          (let [enriched-config (enrich-config-with-discovery config)
+                code (:code validation)
+                tokens (exchange-code-for-tokens code enriched-config)]
             (if-not (:id-token tokens)
               {:success? false
                :error :token-exchange-failed
                :message "Failed to exchange authorization code for tokens"}
 
               ;; Validate ID token
-              (let [enriched-config (enrich-config-with-discovery config)
-                    jwks-uri (oidc.discovery/get-jwks-uri enriched-config)
+              (let [jwks-uri (oidc.discovery/get-jwks-uri enriched-config)
                     validation-config {:jwks-uri jwks-uri
                                        :issuer-uri (:issuer-uri config)
                                        :client-id (:client-id config)}

@@ -98,19 +98,6 @@
                "nonce")]
       (is (str/includes? url "scope=openid%20email%20profile%20groups")))))
 
-(deftest ^:parallel build-redirect-uri-test
-  (testing "Builds redirect URI with provider ID"
-    (let [uri (oidc.common/build-redirect-uri "https://metabase.example.com" "auth0")]
-      (is (= "https://metabase.example.com/api/oidc/auth0/callback" uri))))
-
-  (testing "Handles base URL without trailing slash"
-    (let [uri (oidc.common/build-redirect-uri "https://metabase.example.com" "okta")]
-      (is (= "https://metabase.example.com/api/oidc/okta/callback" uri))))
-
-  (testing "Handles base URL with trailing slash"
-    (let [uri (oidc.common/build-redirect-uri "https://metabase.example.com/" "slack")]
-      (is (= "https://metabase.example.com//api/oidc/slack/callback" uri)))))
-
 (deftest ^:parallel extract-oidc-config-test
   (testing "Extracts config from :oidc-config key"
     (let [config {:client-id "test"
@@ -164,19 +151,6 @@
     (let [request {:other-key "value"}
           extracted (oidc.common/extract-oidc-config request)]
       (is (nil? extracted)))))
-
-(deftest ^:parallel oidc-error-test
-  (testing "Creates error map with code and message"
-    (let [error (oidc.common/oidc-error :invalid_request "Request is invalid")]
-      (is (= :invalid_request (:error error)))
-      (is (= "Request is invalid" (:message error)))
-      (is (nil? (:details error)))))
-
-  (testing "Creates error map with details"
-    (let [error (oidc.common/oidc-error :invalid_token "Token is invalid" {:token-type "id_token"})]
-      (is (= :invalid_token (:error error)))
-      (is (= "Token is invalid" (:message error)))
-      (is (= {:token-type "id_token"} (:details error))))))
 
 (deftest ^:parallel parse-token-response-test
   (testing "Parses token response with all fields"
