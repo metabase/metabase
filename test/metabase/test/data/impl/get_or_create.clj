@@ -243,25 +243,7 @@
         (t2/update! :model/Field (:id source-field)
                     {:fk_target_field_id (:id target-pk-field)})))))
 
-;; ---------------------- Main Entry Point ----------------------
-
-(defn- fake-sync-database!
-  "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
-   This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
-   When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
-  [driver {:keys [database-name] :as database-definition} db scan]
-  (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
-  (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
-        table-name->tbl (insert-fake-sync-rows! rows)]
-    (resolve-fk-relationships! table-name->tbl database-definition)
-    ;; Use fake fingerprinting for :full scan - compute from in-memory rows instead of querying DB
-    (when (= scan :full)
-      (log/info "Using FAKE FINGERPRINTING from in-memory test data")
-      (fake-fingerprint-database! (:id db) database-definition))))
-
-;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
-
-;;; ---------------------------------------------- Fake Fingerprinting ----------------------------------------------
+;; ---------------------- Fake Fingerprinting ----------------------
 ;; For drivers using fake sync, we also compute fingerprints from in-memory test data rows
 ;; instead of querying the database. This uses the real fingerprinting transducers (HyperLogLog,
 ;; histograms, etc.) but feeds them data from the dbdef instead of executing database queries.
@@ -309,7 +291,23 @@
   (doseq [table-def table-definitions]
     (fake-fingerprint-table! db-id database-name table-def)))
 
-;;; ------------------------------------------- End Fake Fingerprinting -------------------------------------------
+;; ---------------------- Main Entry Point ----------------------
+
+(defn- fake-sync-database!
+  "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
+   This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
+   When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
+  [driver {:keys [database-name] :as database-definition} db scan]
+  (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
+  (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
+        table-name->tbl (insert-fake-sync-rows! rows)]
+    (resolve-fk-relationships! table-name->tbl database-definition)
+    ;; Use fake fingerprinting for :full scan - compute from in-memory rows instead of querying DB
+    (when (= scan :full)
+      (log/info "Using FAKE FINGERPRINTING from in-memory test data")
+      (fake-fingerprint-database! (:id db) database-definition))))
+
+;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
   (assert (= (humanization/humanization-strategy) :simple)
