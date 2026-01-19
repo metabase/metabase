@@ -1,28 +1,46 @@
+import type { Row } from "@tanstack/react-table";
+
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { NodeSelection } from "../bulk-selection.utils";
-import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
+import type {
+  DatabaseNode,
+  SchemaNode,
+  TableNode,
+  TablePickerTreeNode,
+  TreeNode,
+} from "../types";
 
 import { changeCheckboxSelection } from "./TablePickerTreeTable";
 
 describe("handleCheckboxToggle", () => {
-  const createCheckboxRow = (
-    type: "database" | "schema" | "table",
-    nodeKey: string,
-    tableId?: TableId,
-    databaseId?: DatabaseId,
-    isDisabled?: boolean,
-    depth?: number,
-  ) => ({
-    depth: depth ?? 0,
-    original: {
-      type,
-      nodeKey,
-      tableId,
-      databaseId,
-      isDisabled,
-    },
-  });
+  interface CheckboxRowParams {
+    type: "database" | "schema" | "table";
+    nodeKey: string;
+    tableId?: TableId;
+    databaseId?: DatabaseId;
+    isDisabled?: boolean;
+    depth?: number;
+  }
+
+  const createCheckboxRow = ({
+    type,
+    nodeKey,
+    tableId,
+    databaseId,
+    isDisabled,
+    depth = 0,
+  }: CheckboxRowParams): Row<TablePickerTreeNode> =>
+    ({
+      depth,
+      original: {
+        type,
+        nodeKey,
+        tableId,
+        databaseId,
+        isDisabled,
+      },
+    }) as Row<TablePickerTreeNode>;
 
   const createMockTableNode = (
     databaseId: DatabaseId,
@@ -63,7 +81,12 @@ describe("handleCheckboxToggle", () => {
     describe("table selection", () => {
       it("should select a table when it is not selected", () => {
         const table = createMockTableNode(1, "public", 101);
-        const row = createCheckboxRow("table", table.key, 101, 1);
+        const row = createCheckboxRow({
+          type: "table",
+          nodeKey: table.key,
+          tableId: 101,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set(),
           schemas: new Set(),
@@ -89,12 +112,12 @@ describe("handleCheckboxToggle", () => {
 
       it("should deselect a table when it is selected", () => {
         const table = createMockTableNode(1, "public", 101);
-        const row = createCheckboxRow(
-          "table",
-          table.key,
-          table.value.tableId,
-          1,
-        );
+        const row = createCheckboxRow({
+          type: "table",
+          nodeKey: table.key,
+          tableId: table.value.tableId,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set([table.value.tableId]),
           schemas: new Set(),
@@ -122,7 +145,11 @@ describe("handleCheckboxToggle", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
-        const row = createCheckboxRow("schema", schema.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "schema",
+          nodeKey: schema.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set(),
           schemas: new Set(),
@@ -147,7 +174,11 @@ describe("handleCheckboxToggle", () => {
 
       it("should select empty schema without children", () => {
         const schema = createMockSchemaNode(1, "public", []);
-        const row = createCheckboxRow("schema", schema.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "schema",
+          nodeKey: schema.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set(),
           schemas: new Set(),
@@ -174,7 +205,11 @@ describe("handleCheckboxToggle", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
-        const row = createCheckboxRow("schema", schema.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "schema",
+          nodeKey: schema.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set([table1.value.tableId, table2.value.tableId]),
           schemas: new Set(),
@@ -205,7 +240,11 @@ describe("handleCheckboxToggle", () => {
         const schema1 = createMockSchemaNode(1, "public", [table1]);
         const schema2 = createMockSchemaNode(1, "private", [table2]);
         const database = createMockDatabaseNode(1, [schema1, schema2]);
-        const row = createCheckboxRow("database", database.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "database",
+          nodeKey: database.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set(),
           schemas: new Set(),
@@ -230,7 +269,11 @@ describe("handleCheckboxToggle", () => {
 
       it("should select empty database without children", () => {
         const database = createMockDatabaseNode(1, []);
-        const row = createCheckboxRow("database", database.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "database",
+          nodeKey: database.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set(),
           schemas: new Set(),
@@ -258,7 +301,11 @@ describe("handleCheckboxToggle", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const schema1 = createMockSchemaNode(1, "public", [table1]);
         const database = createMockDatabaseNode(1, [schema1]);
-        const row = createCheckboxRow("database", database.key, undefined, 1);
+        const row = createCheckboxRow({
+          type: "database",
+          nodeKey: database.key,
+          databaseId: 1,
+        });
         const selection: NodeSelection = {
           tables: new Set([101]),
           schemas: new Set(),
@@ -288,9 +335,24 @@ describe("handleCheckboxToggle", () => {
       const table1 = createMockTableNode(1, "public", 101);
       const table2 = createMockTableNode(1, "public", 102);
       const table3 = createMockTableNode(1, "public", 103);
-      const row1 = createCheckboxRow("table", table1.key, 101, 1);
-      const row2 = createCheckboxRow("table", table2.key, 102, 1);
-      const row3 = createCheckboxRow("table", table3.key, 103, 1);
+      const row1 = createCheckboxRow({
+        type: "table",
+        nodeKey: table1.key,
+        tableId: 101,
+        databaseId: 1,
+      });
+      const row2 = createCheckboxRow({
+        type: "table",
+        nodeKey: table2.key,
+        tableId: 102,
+        databaseId: 1,
+      });
+      const row3 = createCheckboxRow({
+        type: "table",
+        nodeKey: table3.key,
+        tableId: 103,
+        databaseId: 1,
+      });
       const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -321,9 +383,24 @@ describe("handleCheckboxToggle", () => {
       const table1 = createMockTableNode(1, "public", 101);
       const table2 = createMockTableNode(1, "public", 102);
       const table3 = createMockTableNode(1, "public", 103);
-      const row1 = createCheckboxRow("table", table1.key, 101, 1);
-      const row2 = createCheckboxRow("table", table2.key, 102, 1);
-      const row3 = createCheckboxRow("table", table3.key, 103, 1);
+      const row1 = createCheckboxRow({
+        type: "table",
+        nodeKey: table1.key,
+        tableId: 101,
+        databaseId: 1,
+      });
+      const row2 = createCheckboxRow({
+        type: "table",
+        nodeKey: table2.key,
+        tableId: 102,
+        databaseId: 1,
+      });
+      const row3 = createCheckboxRow({
+        type: "table",
+        nodeKey: table3.key,
+        tableId: 103,
+        databaseId: 1,
+      });
       const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -354,9 +431,25 @@ describe("handleCheckboxToggle", () => {
       const table1 = createMockTableNode(1, "public", 101);
       const table2 = createMockTableNode(1, "public", 102);
       const table3 = createMockTableNode(1, "public", 103);
-      const row1 = createCheckboxRow("table", table1.key, 101, 1, false);
-      const row2 = createCheckboxRow("table", table2.key, 102, 1, true); // disabled
-      const row3 = createCheckboxRow("table", table3.key, 103, 1, false);
+      const row1 = createCheckboxRow({
+        type: "table",
+        nodeKey: table1.key,
+        tableId: 101,
+        databaseId: 1,
+      });
+      const row2 = createCheckboxRow({
+        type: "table",
+        nodeKey: table2.key,
+        tableId: 102,
+        databaseId: 1,
+        isDisabled: true,
+      });
+      const row3 = createCheckboxRow({
+        type: "table",
+        nodeKey: table3.key,
+        tableId: 103,
+        databaseId: 1,
+      });
       const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -388,8 +481,17 @@ describe("handleCheckboxToggle", () => {
       const table2 = createMockTableNode(1, "public", 102);
       const schema = createMockSchemaNode(1, "public", [table1, table2]);
       const table3 = createMockTableNode(1, "public", 103);
-      const row1 = createCheckboxRow("table", table3.key, 103, 1);
-      const row2 = createCheckboxRow("schema", schema.key, undefined, 1);
+      const row1 = createCheckboxRow({
+        type: "table",
+        nodeKey: table3.key,
+        tableId: 103,
+        databaseId: 1,
+      });
+      const row2 = createCheckboxRow({
+        type: "schema",
+        nodeKey: schema.key,
+        databaseId: 1,
+      });
       const rows = [row1, row2];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -423,31 +525,31 @@ describe("handleCheckboxToggle", () => {
       const schema2 = createMockSchemaNode(1, "public", [table2]);
       const database = createMockDatabaseNode(1, [schema1, schema2]);
 
-      const row1 = createCheckboxRow(
-        "database",
-        database.key,
-        undefined,
-        1,
-        false,
-        0,
-      );
-      const row2 = createCheckboxRow(
-        "schema",
-        schema1.key,
-        undefined,
-        1,
-        false,
-        1,
-      );
-      const row3 = createCheckboxRow("table", table2.key, 102, 1, false, 2);
-      const row4 = createCheckboxRow(
-        "schema",
-        schema2.key,
-        undefined,
-        1,
-        false,
-        1,
-      );
+      const row1 = createCheckboxRow({
+        type: "database",
+        nodeKey: database.key,
+        databaseId: 1,
+        depth: 0,
+      });
+      const row2 = createCheckboxRow({
+        type: "schema",
+        nodeKey: schema1.key,
+        databaseId: 1,
+        depth: 1,
+      });
+      const row3 = createCheckboxRow({
+        type: "table",
+        nodeKey: table2.key,
+        tableId: 102,
+        databaseId: 1,
+        depth: 2,
+      });
+      const row4 = createCheckboxRow({
+        type: "schema",
+        nodeKey: schema2.key,
+        databaseId: 1,
+        depth: 1,
+      });
       const rows = [row1, row2, row3, row4];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -483,16 +585,26 @@ describe("handleCheckboxToggle", () => {
       const table2 = createMockTableNode(1, "public", 102);
       const schema = createMockSchemaNode(1, "public", [table1, table2]);
 
-      const row1 = createCheckboxRow(
-        "schema",
-        schema.key,
-        undefined,
-        1,
-        false,
-        0,
-      );
-      const row2 = createCheckboxRow("table", table1.key, 101, 1, false, 1);
-      const row3 = createCheckboxRow("table", table2.key, 102, 1, false, 1);
+      const row1 = createCheckboxRow({
+        type: "schema",
+        nodeKey: schema.key,
+        databaseId: 1,
+        depth: 0,
+      });
+      const row2 = createCheckboxRow({
+        type: "table",
+        nodeKey: table1.key,
+        tableId: 101,
+        databaseId: 1,
+        depth: 1,
+      });
+      const row3 = createCheckboxRow({
+        type: "table",
+        nodeKey: table2.key,
+        tableId: 102,
+        databaseId: 1,
+        depth: 1,
+      });
       const rows = [row1, row2, row3];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -527,8 +639,17 @@ describe("handleCheckboxToggle", () => {
       const schema1 = createMockSchemaNode(1, "public", [table1]);
       const database = createMockDatabaseNode(1, [schema1]);
 
-      const row1 = createCheckboxRow("table", table1.key, 101, 1);
-      const row2 = createCheckboxRow("database", database.key, undefined, 1);
+      const row1 = createCheckboxRow({
+        type: "table",
+        nodeKey: table1.key,
+        tableId: 101,
+        databaseId: 1,
+      });
+      const row2 = createCheckboxRow({
+        type: "database",
+        nodeKey: database.key,
+        databaseId: 1,
+      });
       const rows = [row1, row2];
       const selection: NodeSelection = {
         tables: new Set(),
@@ -556,7 +677,6 @@ describe("handleCheckboxToggle", () => {
     });
 
     it("should select collapsed schema between expanded parents", () => {
-      // Simulates: raw (expanded) -> Events Raw -> Users Events -> staging (collapsed) -> Sample Database -> Orders
       const eventsRaw = createMockTableNode(1, "raw", 101);
       const usersEvents = createMockTableNode(1, "raw", 102);
       const rawSchema = createMockSchemaNode(1, "raw", [
@@ -571,54 +691,45 @@ describe("handleCheckboxToggle", () => {
       const sampleDbSchema = createMockSchemaNode(2, "public", [orders]);
       const sampleDatabase = createMockDatabaseNode(2, [sampleDbSchema]);
 
-      const rowRaw = createCheckboxRow(
-        "schema",
-        rawSchema.key,
-        undefined,
-        1,
-        false,
-        0,
-      );
-      const rowEventsRaw = createCheckboxRow(
-        "table",
-        eventsRaw.key,
-        101,
-        1,
-        false,
-        1,
-      );
-      const rowUsersEvents = createCheckboxRow(
-        "table",
-        usersEvents.key,
-        102,
-        1,
-        false,
-        1,
-      );
-      const rowStaging = createCheckboxRow(
-        "schema",
-        stagingSchema.key,
-        undefined,
-        1,
-        false,
-        0,
-      );
-      const rowSampleDb = createCheckboxRow(
-        "database",
-        sampleDatabase.key,
-        undefined,
-        2,
-        false,
-        0,
-      );
-      const rowOrders = createCheckboxRow(
-        "table",
-        orders.key,
-        201,
-        2,
-        false,
-        1,
-      );
+      const rowRaw = createCheckboxRow({
+        type: "schema",
+        nodeKey: rawSchema.key,
+        databaseId: 1,
+        depth: 0,
+      });
+      const rowEventsRaw = createCheckboxRow({
+        type: "table",
+        nodeKey: eventsRaw.key,
+        tableId: 101,
+        databaseId: 1,
+        depth: 1,
+      });
+      const rowUsersEvents = createCheckboxRow({
+        type: "table",
+        nodeKey: usersEvents.key,
+        tableId: 102,
+        databaseId: 1,
+        depth: 1,
+      });
+      const rowStaging = createCheckboxRow({
+        type: "schema",
+        nodeKey: stagingSchema.key,
+        databaseId: 1,
+        depth: 0,
+      });
+      const rowSampleDb = createCheckboxRow({
+        type: "database",
+        nodeKey: sampleDatabase.key,
+        databaseId: 2,
+        depth: 0,
+      });
+      const rowOrders = createCheckboxRow({
+        type: "table",
+        nodeKey: orders.key,
+        tableId: 201,
+        databaseId: 2,
+        depth: 1,
+      });
 
       const rows = [
         rowRaw,
