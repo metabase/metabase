@@ -49,6 +49,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should be able to edit a native question with the QueryEditor", () => {
+    cy.intercept("GET", "/api/database?can-query=true").as("schema");
+
     cy.get("@sqlQuestionId").then((sqlQuestionId) => {
       mountSdkContent(
         <InteractiveQuestion questionId={sqlQuestionId} withParameters />,
@@ -61,6 +63,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.findByTestId("notebook-button").click();
       cy.findByTestId("native-query-editor").should("be.visible");
+      cy.wait("@schema");
 
       H.NativeEditor.value().should("equal", "select * from ORDERS limit 5");
       cy.findByRole("textbox").should("be.visible").click();
@@ -76,6 +79,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should be able to create a native question with the QueryEditor", () => {
+    cy.intercept("GET", "/api/database?can-query=true").as("schema");
+
     mountSdkContent(
       <InteractiveQuestion questionId="new-native" withParameters />,
     );
@@ -85,6 +90,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByLabelText("placeholder SELECT * FROM TABLE_NAME").should(
         "be.visible",
       );
+
+      cy.wait("@schema");
 
       H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
