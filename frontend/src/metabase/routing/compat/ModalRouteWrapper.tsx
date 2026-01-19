@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Modal from "metabase/common/components/Modal";
 import MetabaseSettings from "metabase/lib/settings";
@@ -33,7 +33,7 @@ interface ModalRouteWrapperProps {
  * @param currentPath - The current location pathname
  * @param modalPath - The modal route path (e.g., "move", "archive")
  */
-function getParentPath(currentPath: string, modalPath?: string): string {
+function getParentPath(currentPath: string, _modalPath?: string): string {
   // Handle custom site URL subpath
   const siteUrlSegments = (MetabaseSettings.get("site-url") ?? "").split("/");
   const subPath = siteUrlSegments.slice(3).join("/");

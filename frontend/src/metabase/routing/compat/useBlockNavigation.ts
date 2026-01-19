@@ -6,8 +6,8 @@ import {
   useLocation as useLocationV7,
 } from "react-router-dom";
 
-import { useNavigation } from "./useNavigation";
 import { USE_REACT_ROUTER_V7 } from "./config";
+import { useNavigation } from "./useNavigation";
 
 interface UseBlockNavigationInput {
   /**
@@ -75,10 +75,19 @@ export function useBlockNavigation({
   router,
   route,
 }: UseBlockNavigationInput): UseBlockNavigationResult {
+  // Always call both hooks to satisfy rules of hooks
+  const v7Result = useBlockNavigationV7({ isEnabled, isLocationAllowed });
+  const v3Result = useBlockNavigationV3({
+    isEnabled,
+    isLocationAllowed,
+    router,
+    route,
+  });
+
   if (USE_REACT_ROUTER_V7) {
-    return useBlockNavigationV7({ isEnabled, isLocationAllowed });
+    return v7Result;
   }
-  return useBlockNavigationV3({ isEnabled, isLocationAllowed, router, route });
+  return v3Result;
 }
 
 /**
@@ -91,7 +100,8 @@ function useBlockNavigationV7({
   UseBlockNavigationInput,
   "isEnabled" | "isLocationAllowed"
 >): UseBlockNavigationResult {
-  const location = useLocationV7();
+  // Call useLocationV7 to ensure we're in a router context, even if we don't use the value
+  useLocationV7();
 
   const blocker = useBlockerV7(({ currentLocation, nextLocation }) => {
     if (!isEnabled) {

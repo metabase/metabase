@@ -1,14 +1,15 @@
 import type { Location as HistoryLocation } from "history";
 import { useMemo } from "react";
 import {
+  type Location as LocationV7,
   useLocation as useLocationV7,
   useSearchParams as useSearchParamsV7,
-  type Location as LocationV7,
 } from "react-router-dom";
 
 import { useRouter } from "metabase/router";
 
 import { USE_V7_LOCATION } from "./config";
+import { useNavigation } from "./useNavigation";
 
 /**
  * Extended location type that includes both v3 and v7 properties
@@ -48,10 +49,14 @@ export interface CompatLocation extends LocationV7 {
  * ```
  */
 export const useCompatLocation = (): CompatLocation => {
+  // Always call both hooks to satisfy rules of hooks
+  const v7Result = useLocationV7Compat();
+  const v3Result = useLocationV3Compat();
+
   if (USE_V7_LOCATION) {
-    return useLocationV7Compat();
+    return v7Result;
   }
-  return useLocationV3Compat();
+  return v3Result;
 };
 
 /**
@@ -137,10 +142,6 @@ export const useCompatSearchParams = (): [
   (params: Record<string, string | undefined>) => void,
 ] => {
   const location = useCompatLocation();
-
-  // Import navigation for updating
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useNavigation } = require("./useNavigation");
   const { replace } = useNavigation();
 
   const setSearchParams = (params: Record<string, string | undefined>) => {

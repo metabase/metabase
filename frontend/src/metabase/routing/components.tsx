@@ -6,7 +6,7 @@
  */
 
 import type { Store } from "@reduxjs/toolkit";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { trackPageView } from "metabase/lib/analytics";
@@ -73,7 +73,11 @@ export function SetupGuard({ store, children }: SetupGuardProps) {
  *
  * This replaces the ScrollToTop HOC that used withRouter.
  */
-export function ScrollToTopOnNavigation({ children }: { children?: ReactNode }) {
+export function ScrollToTopOnNavigation({
+  children,
+}: {
+  children?: ReactNode;
+}) {
   const location = useLocation();
 
   useEffect(() => {

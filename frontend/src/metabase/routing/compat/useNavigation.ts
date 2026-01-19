@@ -1,9 +1,9 @@
 import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 import {
-  useNavigate as useNavigateV7,
   type NavigateOptions,
   type To,
+  useNavigate as useNavigateV7,
 } from "react-router-dom";
 import { goBack, push, replace } from "react-router-redux";
 
@@ -48,9 +48,8 @@ interface NavigationActions {
 export const useNavigation = (): NavigationActions => {
   const dispatch = useDispatch();
 
-  // For v7, we use the useNavigate hook directly
-  // For v3, we create a shim that uses redux actions
-  const navigateV7 = USE_V7_NAVIGATION ? useNavigateV7() : null;
+  // Always call the hook to satisfy rules of hooks, but only use in v7 mode
+  const navigateV7 = useNavigateV7();
 
   const pushAction = useCallback(
     (path: LocationDescriptor | string) => {

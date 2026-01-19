@@ -1,9 +1,9 @@
 import type { Store } from "@reduxjs/toolkit";
 import {
+  type RouteObject,
+  RouterProvider as RouterProviderV7,
   createBrowserRouter,
   createRoutesFromElements,
-  RouterProvider as RouterProviderV7,
-  type RouteObject,
 } from "react-router-dom";
 
 import { trackPageView } from "metabase/lib/analytics";
@@ -19,7 +19,7 @@ const BASENAME = (window as any).MetabaseRoot?.replace(/\/+$/, "") || "";
  */
 export function createAppRouterV7(
   routes: RouteObject[] | React.ReactElement,
-  store: Store,
+  _store: Store,
 ) {
   const routeObjects = Array.isArray(routes)
     ? routes
@@ -66,11 +66,11 @@ export function AppRouterProviderV7({ router }: AppRouterProviderProps) {
  */
 export function createNavigationListener(
   router: ReturnType<typeof createBrowserRouter>,
-  store: Store,
+  _store: Store,
 ) {
-  return router.subscribe((state) => {
+  return router.subscribe((_state) => {
     // You can dispatch Redux actions here if needed for specific use cases
     // For example, clearing error state on navigation:
-    // store.dispatch({ type: 'LOCATION_CHANGED', payload: state.location });
+    // _store.dispatch({ type: 'LOCATION_CHANGED', payload: _state.location });
   });
 }
