@@ -25,6 +25,7 @@
              :workspace_id workspace-id
              {:where [:and
                       [:= :workspace_input.access_granted false]
+                      ;; Ignore tables that will be shadowed by outputs of other transforms.
                       [:not [:exists {:select [1]
                                       :from   [[:workspace_output :wo]]
                                       :where  [:and
@@ -34,6 +35,16 @@
                                                 [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
                                                 [:= :wo.global_schema :workspace_input.schema]]
                                                [:= :wo.global_table :workspace_input.table]]}]]
+                      [:not [:exists {:select [1]
+                                      :from   [[:workspace_output_external :woe]]
+                                      :where  [:and
+                                               [:= :woe.workspace_id :workspace_input.workspace_id]
+                                               [:= :woe.db_id :workspace_input.db_id]
+                                               [:or
+                                                [:and [:= :woe.global_schema nil] [:= :workspace_input.schema nil]]
+                                                [:= :woe.global_schema :workspace_input.schema]]
+                                               [:= :woe.global_table :workspace_input.table]]}]]
+                      ;; Ignore tables that don't currently exist.
                       [:exists {:select [1]
                                 :from [[:metabase_table :t]]
                                 :where [:and
