@@ -33,7 +33,16 @@
                                                [:or
                                                 [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
                                                 [:= :wo.global_schema :workspace_input.schema]]
-                                               [:= :wo.global_table :workspace_input.table]]}]]]}))
+                                               [:= :wo.global_table :workspace_input.table]]}]]
+                      [:exists {:select [1]
+                                :from [[:metabase_table :t]]
+                                :where [:and
+                                        [:= :active true]
+                                        [:= :t.db_id :workspace_input.db_id]
+                                        [:or
+                                         [:and [:= :t.schema nil] [:= :t.schema nil]]
+                                         [:= :t.schema :workspace_input.schema]]
+                                        [:= :t.name :workspace_input.table]]}]]}))
 
 (defn- external-input->table
   [{:keys [schema table]}]
@@ -208,24 +217,16 @@
 ;; - Graph level: graph_version on workspace, workspace_graph, workspace_input_external, workspace_output_external
 
 (defn increment-graph-version!
-  "Atomically increment graph_version for a workspace. Returns the new version."
+  "Atomically increment graph_version for a workspace. Used to invalidate cached analysis."
   [workspace-id]
-  (:graph_version
-   (first (t2/query {:update    :workspace
-                     :set       {:graph_version [:+ :graph_version 1]}
-                     :where     [:= :id workspace-id]
-                     :returning [:graph_version]}))))
+  (t2/update! :model/Workspace workspace-id {:graph_version [:+ :graph_version 1]}))
 
 (defn increment-analysis-version!
-  "Atomically increment analysis_version for a transform. Returns the new version."
+  "Atomically increment analysis_version for a transform. Used to invalidate cached analysis."
   [workspace-id ref-id]
-  (:analysis_version
-   (first (t2/query {:update    :workspace_transform
-                     :set       {:analysis_version [:+ :analysis_version 1]}
-                     :where     [:and
-                                 [:= :workspace_id workspace-id]
-                                 [:= :ref_id ref-id]]
-                     :returning [:analysis_version]}))))
+  (t2/update! :model/Transform
+              {:workspace_id workspace-id, :ref_id ref-id}
+              {:analysis_version [:+ :analysis_version 1]}))
 
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
 
@@ -278,11 +279,11 @@
     (ws.deps/write-entity-analysis! ws-id isolated-schema :transform ref_id analysis analysis_version)
     (cleanup-old-transform-versions! ws-id ref_id)))
 
-(defn analyze-stale-transforms!
+(defn- analyze-stale-transforms!
   "Analyze transforms where workspace_output doesn't exist for current analysis_version.
    Skips transforms that haven't changed since last analysis.
    Returns true if any transforms were analyzed."
-  [{ws-id :id :as workspace}]
+  [{ws-id :id, db-status :db_status :as workspace}]
   ;; Find transforms needing analysis: those without output at current analysis_version
   (let [stale-transforms (t2/select :model/WorkspaceTransform
                                     ;; Ordering is only for determinism in tests.
@@ -301,7 +302,8 @@
       (analyze-transform! workspace transform))
     ;; Grant any missing read access. Do this even if no transforms were stale, as we may have been unable to grant
     ;; some permissions previously (insufficient permissions, table didn't exist yet, etc.)
-    (sync-grant-accesses! workspace)
+    (when (= :ready db-status)
+      (sync-grant-accesses! workspace))
     (boolean (seq stale-transforms))))
 
 (defn- transform-output-exists-for-version?
@@ -417,7 +419,7 @@
                     {:order-by [[:workspace_graph.graph_version :desc]]
                      :limit    1}))
 
-(defn- minimum-graph
+(defn- graph-with-minimum-version
   "Fetch the latest graph (and its version) that meets a minimum version constraint."
   [ws-id min-version]
   (t2/select-one [:model/WorkspaceGraph :graph [:graph_version :version]]
@@ -447,7 +449,7 @@
   ;; This writes workspace_input and workspace_output.
   (analyze-stale-transforms! workspace)
   ;; See if there's already a computed graph we can use, otherwise compute a new one.
-  (let [{:keys [graph version]} (minimum-graph ws-id min-version)
+  (let [{:keys [graph version]} (graph-with-minimum-version ws-id min-version)
         graph   (or graph
                     ;; Note that we can't freeze the versions of the transform's input and outputs, used to
                     ;; calculate the graph, they don't use the same version numbering.
@@ -468,7 +470,7 @@
     (cleanup-old-graph-versions! ws-id)
     ;; If there's an even more recent version in the database now, return that.
     ;; This decreases the chance of returning a graph with transient corruption.
-    (or (minimum-graph ws-id (inc version)) graph)))
+    (or (graph-with-minimum-version ws-id (inc version)) graph)))
 
 (defn get-or-calculate-graph!
   "Return the dependency graph for a workspace.
