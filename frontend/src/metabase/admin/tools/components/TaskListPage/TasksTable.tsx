@@ -1,15 +1,16 @@
 import cx from "classnames";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
@@ -39,7 +40,7 @@ export const TasksTable = ({
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(`/admin/tools/tasks/${task.id}`));
+    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
   };
 
   return (
@@ -75,7 +76,7 @@ export const TasksTable = ({
       <tbody>
         {showLoadingAndErrorWrapper && (
           <tr>
-            <td colSpan={8}>
+            <td colSpan={7}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
@@ -121,14 +122,8 @@ export const TasksTable = ({
                   </td>
                   <td>{task.duration}</td>
                   <td>
-                    {match(task.status)
-                      .with("failed", () => t`Failed`)
-                      .with("started", () => t`Started`)
-                      .with("success", () => t`Success`)
-                      .with("unknown", () => t`Unknown`)
-                      .exhaustive()}
+                    <TaskStatusBadge task={task} />
                   </td>
-                  <td></td>
                 </tr>
               );
             })}
