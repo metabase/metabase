@@ -272,8 +272,12 @@ export const SdkQuestionDefaultView = ({
               )}
             </Group>
             <Group gap="sm" ml="auto" data-hide-empty>
-              <DownloadWidgetDropdown />
-              <QuestionAlertsButton />
+              {!isEditorOpen && (
+                <>
+                  <DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </>
+              )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>
