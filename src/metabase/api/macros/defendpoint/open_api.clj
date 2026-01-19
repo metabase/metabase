@@ -91,7 +91,7 @@
                       e)))))
 
 (defn- mjs-collect-definitions
-  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  "We transform json-schema in a few different places, but we need to collect all definitions in a single one."
   [malli-schema]
   (let [jss (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*

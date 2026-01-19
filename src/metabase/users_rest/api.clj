@@ -256,7 +256,7 @@
              (or api/*is-superuser?*
                  api/*is-group-manager?*)
              (t2/hydrate :group_ids)
-             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
+             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple groups
              group_id
              distinct)
      :total  (-> (t2/query
@@ -617,7 +617,7 @@
   (t2/update! :model/User (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
-               ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
                                :google (when (sso/google-auth-enabled) :google)

@@ -41,3 +41,28 @@
     [:validate/duplicate-column           [:ref ::duplicate-column-error]]
     [:validate/syntax-error               [:ref ::syntax-error]]
     [:validate/validation-exception-error [:ref ::validation-exception-error]]]])
+
+(mr/def ::source-entity-type
+  "The type of the source entity causing an error."
+  [:enum :table :card])
+
+(mr/def ::source-entity
+  "Optional source entity tracking fields for dependency analysis."
+  [:map
+   [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
+   [:source-entity-id {:optional true} [:maybe pos-int?]]])
+
+(mr/def ::error-with-source
+  "An error with optional source entity information.
+   Extends the base error types with source tracking for dependency analysis."
+  [:and
+   [:map
+    [:type {:decode/normalize common/normalize-keyword} ::validate-error-type]
+    [:source-entity-type {:optional true} [:maybe ::source-entity-type]]
+    [:source-entity-id {:optional true} [:maybe pos-int?]]]
+   [:multi {:dispatch #(-> % :type keyword)}
+    [:validate/missing-column             [:merge [:ref ::missing-column-error] [:ref ::source-entity]]]
+    [:validate/missing-table-alias        [:merge [:ref ::missing-table-alias-error] [:ref ::source-entity]]]
+    [:validate/duplicate-column           [:merge [:ref ::duplicate-column-error] [:ref ::source-entity]]]
+    [:validate/syntax-error               [:merge [:ref ::syntax-error] [:ref ::source-entity]]]
+    [:validate/validation-exception-error [:merge [:ref ::validation-exception-error] [:ref ::source-entity]]]]])

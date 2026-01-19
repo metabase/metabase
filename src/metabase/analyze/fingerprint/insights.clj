@@ -289,7 +289,7 @@
               (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 
 (defn insights
-  "Based on the shape of returned data construct a transducer to statistically analyize data."
+  "Based on the shape of returned data construct a transducer to statistically analyze data."
   [cols]
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
@@ -302,11 +302,11 @@
                                           lib-source     :lib/source
                                           lib-breakout?  :lib/breakout?}]
                                       (cond
-                                        (isa? semantic-type :Relation/*) :others
-
-                                     ;; Only count datetime columns from breakouts/dimensions, not aggregations
-                                     ;; Aggregations of datetime values (like max(created_at)) are computed values,
-                                     ;; not datetime dimensions for the X-axis (#62069)
+                                        ;; Only count datetime columns from breakouts/dimensions, not aggregations
+                                        ;; Aggregations of datetime values (like max(created_at)) are computed values,
+                                        ;; not datetime dimensions for the X-axis (#62069)
+                                        ;; Datetime columns with FK/PK semantic types should still be recognized as
+                                        ;; datetimes for timeseries insights (#35281)
                                         (and
                                          (or (u.date/truncate-units unit)
                                              (isa? (or effective-type base-type) :type/Temporal))
@@ -317,7 +317,11 @@
                                         :datetimes
 
                                         (u.date/extract-units unit) :numbers
-                                        (isa? base-type :type/Number) :numbers
+                                        ;; Don't treat numeric FK/PK columns as numbers - they are identifiers, not
+                                        ;; values to compute insights over
+                                        (and (isa? base-type :type/Number)
+                                             (not (isa? semantic-type :Relation/*)))
+                                        :numbers
                                         :else :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
