@@ -11,13 +11,15 @@ import {
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
-import type { TreeItem } from "./types";
-import { buildSnippetTree } from "./utils";
+import type { LibrarySectionType, TreeItem } from "./types";
+import { buildSnippetTree, createEmptyStateItem } from "./utils";
 
 export const useBuildTreeForCollection = (
-  collection?: Collection,
+  collection: Collection | undefined,
+  sectionType: LibrarySectionType,
+  metricCollectionId?: CollectionId,
 ): {
   isLoading: boolean;
   tree: TreeItem[];
@@ -39,6 +41,19 @@ export const useBuildTreeForCollection = (
         error,
       };
     }
+
+    const hasItems = items.data.length > 0;
+    const children: TreeItem[] = hasItems
+      ? items.data.map((item) => ({
+          name: item.name,
+          updatedAt: item["last-edit-info"]?.timestamp,
+          icon: getIcon({ model: item.model }).name,
+          data: item,
+          id: `${item.model}:${item.id}`,
+          model: item.model,
+        }))
+      : [createEmptyStateItem(sectionType, metricCollectionId)];
+
     return {
       isLoading,
       error,
@@ -49,18 +64,11 @@ export const useBuildTreeForCollection = (
           icon: getIcon({ ...collection, model: "collection" }).name,
           data: { ...collection, model: "collection" },
           model: "collection",
-          children: items.data.map((item) => ({
-            name: item.name,
-            updatedAt: item["last-edit-info"]?.timestamp,
-            icon: getIcon({ model: item.model }).name,
-            data: item,
-            id: `${item.model}:${item.id}`,
-            model: item.model,
-          })),
+          children,
         },
       ],
     };
-  }, [isLoading, items, collection, error]);
+  }, [isLoading, items, collection, error, sectionType, metricCollectionId]);
 };
 
 export const useBuildSnippetTree = (): {
