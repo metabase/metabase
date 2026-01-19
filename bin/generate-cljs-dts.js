@@ -8,16 +8,28 @@ const fs = require("fs");
 const path = require("path");
 
 const CLJS_DEV_DIR = path.join(__dirname, "..", "target", "cljs_dev");
+const CLJS_RELEASE_DIR = path.join(__dirname, "..", "target", "cljs_release");
+
+function getCljsDir() {
+  if (fs.existsSync(CLJS_RELEASE_DIR)) {
+    return CLJS_RELEASE_DIR;
+  }
+  return CLJS_DEV_DIR;
+}
 
 // Find all .js files that have module.exports
 function findCljsModules() {
-  const files = fs.readdirSync(CLJS_DEV_DIR).filter((f) => f.endsWith(".js") && !f.endsWith(".map"));
+  const cljsDir = getCljsDir();
+  const files = fs.readdirSync(cljsDir).filter((f) => f.endsWith(".js") && !f.endsWith(".map"));
 
   const modulesWithExports = [];
 
   for (const file of files) {
-    const content = fs.readFileSync(path.join(CLJS_DEV_DIR, file), "utf-8");
-    if (content.includes("Object.defineProperty(module.exports")) {
+    const content = fs.readFileSync(path.join(cljsDir, file), "utf-8");
+    // Dev format: Object.defineProperty(module.exports, "name", ...)
+    // Release format: module.exports={name:function...}
+    if (content.includes("Object.defineProperty(module.exports") ||
+        content.includes("module.exports={")) {
       modulesWithExports.push(file);
     }
   }
@@ -27,15 +39,30 @@ function findCljsModules() {
 
 // Extract export names from a JS file
 function extractExports(filename) {
-  const content = fs.readFileSync(path.join(CLJS_DEV_DIR, filename), "utf-8");
+  const cljsDir = getCljsDir();
+  const content = fs.readFileSync(path.join(cljsDir, filename), "utf-8");
   const exports = [];
 
-  // Match: Object.defineProperty(module.exports, "name", ...
-  const regex = /Object\.defineProperty\(module\.exports,\s*"([^"]+)"/g;
+  // Dev format: Object.defineProperty(module.exports, "name", ...
+  const devRegex = /Object\.defineProperty\(module\.exports,\s*"([^"]+)"/g;
   let match;
 
-  while ((match = regex.exec(content)) !== null) {
+  while ((match = devRegex.exec(content)) !== null) {
     exports.push(match[1]);
+  }
+
+  // Release format: module.exports={name:function...,name2:...}
+  // Extract top-level keys from the object literal
+  if (exports.length === 0 && content.includes("module.exports={")) {
+    const startIdx = content.indexOf("module.exports={");
+    if (startIdx !== -1) {
+      const objContent = content.slice(startIdx);
+      // Match keys that appear after { or , followed by identifier and colon
+      const keyRegex = /[{,]([a-zA-Z_$][a-zA-Z0-9_$]*):/g;
+      while ((match = keyRegex.exec(objContent)) !== null) {
+        exports.push(match[1]);
+      }
+    }
   }
 
   return exports;
@@ -60,6 +87,7 @@ function generateDts(exports) {
 
 // Main
 function main() {
+  const cljsDir = getCljsDir();
   const modules = findCljsModules();
   console.log(`Found ${modules.length} CLJS modules with exports`);
 
@@ -72,7 +100,7 @@ function main() {
     totalExports += exports.length;
 
     const dtsFilename = module.replace(/\.js$/, ".d.ts");
-    const dtsPath = path.join(CLJS_DEV_DIR, dtsFilename);
+    const dtsPath = path.join(cljsDir, dtsFilename);
     const dtsContent = generateDts(exports);
 
     fs.writeFileSync(dtsPath, dtsContent);
