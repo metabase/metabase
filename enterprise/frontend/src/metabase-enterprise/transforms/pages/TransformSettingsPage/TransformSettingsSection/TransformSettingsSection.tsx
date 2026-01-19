@@ -241,18 +241,21 @@ function OwnerSection({ transform }: OwnerSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
+  const showResultToast = (error: unknown) => {
+    if (error) {
+      sendErrorToast(t`Failed to update transform owner`);
+    } else {
+      sendSuccessToast(t`Transform owner updated`);
+    }
+  };
+
   const handleOwnerEmailChange = async (email: string | null) => {
     const { error } = await updateTransform({
       id: transform.id,
       owner_email: email,
       owner_user_id: null,
     });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform owner`);
-    } else {
-      sendSuccessToast(t`Transform owner updated`);
-    }
+    showResultToast(error);
   };
 
   const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
@@ -265,12 +268,7 @@ function OwnerSection({ transform }: OwnerSectionProps) {
       owner_email: null,
       owner_user_id: userId === "unknown" ? null : userId,
     });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform owner`);
-    } else {
-      sendSuccessToast(t`Transform owner updated`);
-    }
+    showResultToast(error);
   };
 
   return (
