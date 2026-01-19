@@ -172,5 +172,5 @@
                            :isolated_table_id (:id isolated-table)})
 
               ;; Should have no problems since isolated table has all required fields
-              ;; TODO update this test, it rightly complains about outputs not existing yet (I think)
+              ;; TODO (Chris 2026-01-19) update this, it rightly complains about outputs not existing yet (I think)
               (is (empty? (ws.validation/find-downstream-problems ws-id (build-graph! ws-id)))))))))))
