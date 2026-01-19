@@ -234,7 +234,7 @@
 (defn increment-analysis-version!
   "Atomically increment analysis_version for a transform. Used to invalidate cached analysis."
   [workspace-id ref-id]
-  (t2/update! :model/Transform
+  (t2/update! :model/WorkspaceTransform
               {:workspace_id workspace-id, :ref_id ref-id}
               {:analysis_version [:+ :analysis_version 1]}))
 
