@@ -2,21 +2,14 @@ import * as Lib from "metabase-lib";
 import {
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
-  createTestJsQuery,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
-import {
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} from "metabase-types/api/mocks/presets";
-
-const uuid = expect.any(String);
+import { ORDERS_ID, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
 describe("createTestQuery", () => {
   it("should create a query with stages", () => {
     const provider = Lib.metadataProvider(SAMPLE_DATABASE.id, SAMPLE_METADATA);
-    const query = createTestJsQuery(provider, {
+    const query = createTestQuery(provider, {
       databaseId: SAMPLE_DATABASE.id,
       stages: [
         {
@@ -144,196 +137,46 @@ describe("createTestQuery", () => {
       ],
     });
 
-    expect(query).toEqual({
-      "lib/type": "mbql/query",
-      database: SAMPLE_DATABASE.id,
-      stages: [
-        {
-          "lib/type": "mbql.stage/mbql",
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              "lib/type": "mbql/join",
-              stages: [
-                {
-                  "lib/type": "mbql.stage/mbql",
-                  "lib/options": { "lib/uuid": uuid },
-                  "source-table": 5,
-                },
-              ],
-              "lib/options": { "lib/uuid": uuid },
-              fields: "all",
-              conditions: [
-                [
-                  "=",
-                  { "lib/uuid": uuid },
-                  [
-                    "field",
-                    {
-                      "lib/uuid": uuid,
-                      "effective-type": "type/Integer",
-                      "base-type": "type/Integer",
-                    },
-                    ORDERS.USER_ID,
-                  ],
-                  [
-                    "+",
-                    { "lib/uuid": uuid },
-                    [
-                      "field",
-                      {
-                        "lib/uuid": uuid,
-                        "effective-type": "type/BigInteger",
-                        "base-type": "type/BigInteger",
-                        "join-alias": "People",
-                      },
-                      PEOPLE.ID,
-                    ],
-                    1,
-                  ],
-                ],
-              ],
-              strategy: "inner-join",
-              alias: "People",
-            },
-          ],
-          fields: [
-            [
-              "field",
-              {
-                "lib/uuid": uuid,
-                "effective-type": "type/BigInteger",
-                "base-type": "type/BigInteger",
-                "join-alias": "People",
-              },
-              PEOPLE.ID,
-            ],
-            [
-              "field",
-              {
-                "lib/uuid": uuid,
-                "effective-type": "type/BigInteger",
-                "base-type": "type/BigInteger",
-              },
-              ORDERS.ID,
-            ],
-            [
-              "expression",
-              {
-                "lib/uuid": uuid,
-                "base-type": "type/Float",
-                "effective-type": "type/Float",
-              },
-              "Bar",
-            ],
-          ],
-          expressions: [
-            [
-              "+",
-              {
-                "lib/uuid": uuid,
-                "lib/expression-name": "Bar",
-              },
-              [
-                "field",
-                {
-                  "lib/uuid": uuid,
-                  "base-type": "type/Float",
-                  "effective-type": "type/Float",
-                },
-                ORDERS.SUBTOTAL,
-              ],
-              50,
-            ],
-          ],
-          filters: [
-            [
-              ">=",
-              { "lib/uuid": uuid },
-              [
-                "field",
-                {
-                  "lib/uuid": uuid,
-                  "effective-type": "type/Float",
-                  "base-type": "type/Float",
-                },
-                ORDERS.TOTAL,
-              ],
-              10,
-            ],
-          ],
-          aggregation: [
-            [
-              "avg",
-              {
-                "lib/uuid": uuid,
-                name: "Foo",
-                "display-name": "Foo",
-              },
-              [
-                "field",
-                {
-                  "lib/uuid": uuid,
-                  "effective-type": "type/Float",
-                  "base-type": "type/Float",
-                },
-                ORDERS.TOTAL,
-              ],
-            ],
-          ],
-          breakout: [
-            [
-              "field",
-              {
-                "lib/uuid": uuid,
-                "effective-type": "type/DateTime",
-                "base-type": "type/DateTime",
-                "temporal-unit": "month",
-              },
-              ORDERS.CREATED_AT,
-            ],
-          ],
-          "order-by": [
-            [
-              "desc",
-              { "lib/uuid": uuid },
-              [
-                "field",
-                {
-                  "lib/uuid": uuid,
-                  "effective-type": "type/DateTime",
-                  "base-type": "type/DateTime",
-                  "temporal-unit": "month",
-                },
-                ORDERS.CREATED_AT,
-              ],
-            ],
-          ],
-          limit: 101,
-        },
-        {
-          "lib/type": "mbql.stage/mbql",
-          expressions: [
-            [
-              "+",
-              {
-                "lib/expression-name": "FooPlusOne",
-                "lib/uuid": uuid,
-              },
-              [
-                "field",
-                {
-                  "base-type": "type/Float",
-                  "effective-type": "type/Float",
-                  "lib/uuid": uuid,
-                },
-                "Foo",
-              ],
-              1,
-            ],
-          ],
-        },
-      ],
+    const customExpressions = Lib.expressions(query, 0).map(
+      (expression) => Lib.displayInfo(query, 0, expression).displayName,
+    );
+    expect(customExpressions).toEqual(["Bar"]);
+
+    const fields = Lib.fields(query, 0).map(
+      (field) => Lib.displayInfo(query, -1, field).displayName,
+    );
+    expect(fields).toEqual(["People → ID", "ID", "Bar"]);
+
+    const joins = Lib.joins(query, 0).map((join) => {
+      const joinConditions = Lib.joinConditions(join);
+      return joinConditions.map(
+        (condition) => Lib.displayInfo(query, 0, condition).longDisplayName,
+      );
     });
+    expect(joins).toEqual([["User ID is ID + 1"]]);
+
+    const filters = Lib.filters(query, 0).map(
+      (filter) => Lib.displayInfo(query, 0, filter).displayName,
+    );
+    expect(filters).toEqual(["Total is greater than or equal to 10"]);
+
+    const aggregations = Lib.aggregations(query, 0).map(
+      (aggregation) => Lib.displayInfo(query, 0, aggregation).displayName,
+    );
+    expect(aggregations).toEqual(["Foo"]);
+
+    const orderBys = Lib.orderBys(query, 0).map((orderBy) => {
+      const info = Lib.displayInfo(query, 0, orderBy);
+      return {
+        name: info.displayName,
+        direction: info.direction,
+      };
+    });
+    expect(orderBys).toEqual([
+      { name: "Created At: Month", direction: "desc" },
+    ]);
+
+    const limit = Lib.currentLimit(query, 0);
+    expect(limit).toEqual(101);
   });
 });
