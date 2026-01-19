@@ -4694,8 +4694,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: DELETE FROM workspace_input
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:01
@@ -4796,8 +4795,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: UPDATE workspace_transform SET stale = true
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:07
@@ -4921,10 +4919,6 @@ databaseChangeLog:
                   remarks: Incremented when graph structure changes (transform add/remove, global transform changes)
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace
-            columnName: graph_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:02
@@ -4941,10 +4935,6 @@ databaseChangeLog:
                   remarks: Incremented when transform source/target changes, triggers re-analysis
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: analysis_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:03
@@ -4961,10 +4951,6 @@ databaseChangeLog:
                   remarks: The analysis_version of the transform when this row was created
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_input
-            columnName: transform_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:04
@@ -4981,10 +4967,6 @@ databaseChangeLog:
                   remarks: The analysis_version of the transform when this row was created
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_output
-            columnName: transform_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:05
@@ -5001,10 +4983,6 @@ databaseChangeLog:
                   remarks: The graph_version this cached graph was calculated for
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_graph
-            columnName: graph_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:06
@@ -5021,10 +4999,6 @@ databaseChangeLog:
                   remarks: The graph_version this row was calculated for
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_input_external
-            columnName: graph_version
 
   - changeSet:
       id: v58.2026-01-12T14:00:07
@@ -5041,10 +5015,6 @@ databaseChangeLog:
                   remarks: The graph_version this row was calculated for
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_output_external
-            columnName: graph_version
 
   # Clear existing data from versioned tables - will be recalculated on first access
   - changeSet:
@@ -5054,8 +5024,7 @@ databaseChangeLog:
       changes:
         - delete:
             tableName: workspace_graph
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-12T14:00:11
@@ -5064,8 +5033,7 @@ databaseChangeLog:
       changes:
         - delete:
             tableName: workspace_input
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-12T14:00:12
@@ -5074,8 +5042,7 @@ databaseChangeLog:
       changes:
         - delete:
             tableName: workspace_output
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-12T14:00:13
@@ -5084,8 +5051,7 @@ databaseChangeLog:
       changes:
         - delete:
             tableName: workspace_input_external
-      rollback:
-        - empty
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-12T14:00:14
@@ -5094,8 +5060,7 @@ databaseChangeLog:
       changes:
         - delete:
             tableName: workspace_output_external
-      rollback:
-        - empty
+      rollback: empty
 
   # Update unique constraints to include version columns
   - changeSet:
