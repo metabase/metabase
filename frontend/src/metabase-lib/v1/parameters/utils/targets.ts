@@ -177,7 +177,15 @@ export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 
-export function getParameterColumns(question: Question, parameter?: Parameter) {
+export type GetParameterColumnsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
+export function getParameterColumns(
+  question: Question,
+  parameter?: Parameter,
+  opts?: GetParameterColumnsOpts,
+) {
   // treat the dataset/model question like it is already composed so that we can apply
   // dataset/model-specific metadata to the underlying dimension options
   const query =
@@ -199,7 +207,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     return { query: nextQuery, columns };
   }
 
-  const availableColumns = getFilterableColumns(nextQuery);
+  const availableColumns = getFilterableColumns(nextQuery, opts);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
         columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
@@ -222,9 +230,12 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   }));
 }
 
-function getFilterableColumns(query: Lib.Query) {
+function getFilterableColumns(
+  query: Lib.Query,
+  opts?: GetParameterColumnsOpts,
+) {
   return Lib.stageIndexes(query).flatMap((stageIndex) => {
-    const columns = Lib.filterableColumns(query, stageIndex);
+    const columns = Lib.filterableColumns(query, stageIndex, opts);
     const groups = Lib.groupColumns(columns);
 
     return groups.flatMap((group) => {
