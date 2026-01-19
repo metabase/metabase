@@ -5,7 +5,7 @@ import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 
 import {
   type CheckboxToggleRow,
-  handleCheckboxToggleUtil as handleCheckboxToggle,
+  changeCheckboxSelection,
 } from "./TablePickerTreeTable";
 
 describe("handleCheckboxToggle", () => {
@@ -72,7 +72,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[table.key, table]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -103,7 +103,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[table.key, table]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -131,7 +131,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[schema.key, schema]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -156,7 +156,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[schema.key, schema]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -183,7 +183,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[schema.key, schema]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -214,7 +214,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[database.key, database]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -239,7 +239,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[database.key, database]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -267,7 +267,7 @@ describe("handleCheckboxToggle", () => {
         };
         const nodeKeyToOriginal = new Map([[database.key, database]]);
 
-        const result = handleCheckboxToggle({
+        const result = changeCheckboxSelection({
           row,
           index: 0,
           isShiftPressed: false,
@@ -304,7 +304,7 @@ describe("handleCheckboxToggle", () => {
         [table3.key, table3],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row3,
         index: 2,
         isShiftPressed: true,
@@ -337,7 +337,7 @@ describe("handleCheckboxToggle", () => {
         [table3.key, table3],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row1,
         index: 0,
         isShiftPressed: true,
@@ -370,7 +370,7 @@ describe("handleCheckboxToggle", () => {
         [table3.key, table3],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row3,
         index: 2,
         isShiftPressed: true,
@@ -402,7 +402,7 @@ describe("handleCheckboxToggle", () => {
         [schema.key, schema],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row2,
         index: 1,
         isShiftPressed: true,
@@ -439,7 +439,7 @@ describe("handleCheckboxToggle", () => {
         [table2.key, table2],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row3,
         index: 2,
         isShiftPressed: true,
@@ -478,7 +478,7 @@ describe("handleCheckboxToggle", () => {
         [table2.key, table2],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row2,
         index: 1,
         isShiftPressed: true,
@@ -513,7 +513,7 @@ describe("handleCheckboxToggle", () => {
         [database.key, database],
       ]);
 
-      const result = handleCheckboxToggle({
+      const result = changeCheckboxSelection({
         row: row2,
         index: 1,
         isShiftPressed: true,

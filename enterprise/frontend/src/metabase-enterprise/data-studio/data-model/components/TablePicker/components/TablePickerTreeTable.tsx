@@ -161,7 +161,7 @@ export function TablePickerTreeTable({
         databases: selectedDatabases,
       };
 
-      const result = handleCheckboxToggleUtil({
+      const result = changeCheckboxSelection({
         row,
         index,
         isShiftPressed,
@@ -433,7 +433,7 @@ export interface CheckboxToggleResult {
   lastSelectedRowIndex: number;
 }
 
-export function handleCheckboxToggleUtil(params: {
+export function changeCheckboxSelection(params: {
   row: CheckboxToggleRow;
   index: number;
   isShiftPressed: boolean;
