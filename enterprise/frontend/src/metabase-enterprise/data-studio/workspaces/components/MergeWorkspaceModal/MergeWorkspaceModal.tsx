@@ -56,8 +56,10 @@ export const MergeWorkspaceModal = ({
   const { sendErrorToast } = useMetadataToasts();
   const validationSchema = useMemo(() => getMergeWorkspaceSchema(), []);
 
-  const { data: workspaceProblems = [] } =
-    useGetWorkspaceProblemsQuery(workspaceId);
+  const {
+    data: workspaceProblems = [],
+    isFetching: isLoadingWorkspaceProblems,
+  } = useGetWorkspaceProblemsQuery(workspaceId);
   const hasBlockingProblems = useMemo(
     () => workspaceProblems.some((p) => p.block_merge === true),
     [workspaceProblems],
@@ -227,6 +229,7 @@ export const MergeWorkspaceModal = ({
                   !values.commit_message?.trim() ||
                   (touched.commit_message && !!errors.commit_message) ||
                   hasBlockingProblems ||
+                  isLoadingWorkspaceProblems ||
                   isDisabled
                 }
                 label={t`Merge`}
