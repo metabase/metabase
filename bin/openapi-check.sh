@@ -3,16 +3,9 @@
 set -euo pipefail
 
 OPENAPI_SPEC="resources/openapi/openapi.json"
-
-AUTO_COMMIT=false
+AUTO_COMMIT="${AUTO_COMMIT:-false}"
 
 # Check that $OPENAPI_SPEC matches the current Malli schema definitions
-# Usage: ./bin/openapi-check.sh [--auto-commit]
-#   --auto-commit: Automatically commit and push changes if schema is out of date
-
-if [[ "${1:-}" == "--auto-commit" ]]; then
-        AUTO_COMMIT=true
-fi
 
 # Generate the current OpenAPI spec from Malli schemas using write-openapi-spec-to-file!
 # This creates $OPENAPI_SPEC directly

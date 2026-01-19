@@ -32,7 +32,8 @@ jobs:
         run: ./bin/build.sh :steps [:version]
       - name: Check OpenAPI specs are up to date
         env:
+          AUTO_COMMIT: "true"
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: ./bin/openapi-check.sh --auto-commit
+        run: ./bin/openapi-check.sh
