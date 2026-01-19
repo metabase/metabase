@@ -308,3 +308,28 @@
                             {:request-options {:headers (auth-headers)}}
                             {:table_id 999999}))))))
 
+(deftest execute-query-test
+  (with-agent-api-setup!
+    (testing "Executes a query and returns results with column metadata"
+      (let [table-id       (mt/id :orders)
+            construct-resp (client/client :post 200 "agent/v1/construct-query"
+                                          {:request-options {:headers (auth-headers)}}
+                                          {:table_id table-id
+                                           :limit    5})
+            ;; Streaming response returns 202 (accepted) since it starts streaming before completion
+            execute-resp   (client/client :post 202 "agent/v1/execute"
+                                          {:request-options {:headers (auth-headers)}}
+                                          {:query (:query construct-resp)})
+            cols           (get-in execute-resp [:data :cols])
+            rows           (get-in execute-resp [:data :rows])]
+        (testing "response structure"
+          (is (= "completed" (:status execute-resp)))
+          (is (= 5 (:row_count execute-resp)))
+          (is (sequential? cols))
+          (is (sequential? rows))
+          (is (= 5 (count rows))))
+        (testing "column metadata"
+          (is (seq cols) "Should have column metadata")
+          (is (every? :name cols) "Each column should have a name")
+          (is (every? :base_type cols) "Each column should have a base_type"))))))
+

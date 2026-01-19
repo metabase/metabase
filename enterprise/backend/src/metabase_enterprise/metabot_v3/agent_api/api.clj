@@ -15,6 +15,8 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -301,6 +303,15 @@
       (str/replace "+" "-")
       (str/replace "/" "_")))
 
+(defn- decode-base64-url-safe
+  "Decode a URL-safe base64 string (RFC 4648).
+   Converts - back to + and _ back to / before decoding."
+  [^String s]
+  (-> s
+      (str/replace "-" "+")
+      (str/replace "_" "/")
+      u/decode-base64))
+
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
   [{:keys [table_id filters fields aggregations group_by order_by limit]}]
@@ -344,6 +355,42 @@
   (if (:table_id body)
     (construct-table-query body)
     (construct-metric-query body)))
+
+;;; ------------------------------------------------- Execute Query --------------------------------------------------
+
+(mr/def ::execute-query-request
+  "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
+  [:map
+   [:query ms/NonBlankString]])
+
+;; Response is a streaming JSON response in the standard QP format:
+;; {:data {:cols [...] :rows [...]} :row_count N :status :completed/:failed ...}
+;; We skip defining a response schema since streaming responses are written directly
+;; to the output stream and can't be validated by malli in the usual way.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/v1/execute"
+  "Execute an MBQL query and return results.
+
+  Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,
+  returning results with column metadata.
+
+  Response format:
+  - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}
+  - On failure: {:status :failed :error \"message\" ...}
+
+  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
+  [_route-params
+   _query-params
+   {encoded-query :query} :- ::execute-query-request]
+  (let [query (-> encoded-query
+                  decode-base64-url-safe
+                  json/decode+kw)]
+    (qp.streaming/streaming-response [rff :api]
+      (qp/process-query
+       (-> query
+           (update-in [:middleware :js-int-to-string?] (fnil identity true))
+           qp/userland-query-with-default-constraints)
+       rff))))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
