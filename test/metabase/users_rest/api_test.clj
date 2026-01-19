@@ -1268,33 +1268,31 @@
 (deftest filter-by-data-analyst-test
   (testing "GET /api/user"
     (testing "Filter users by is_data_analyst=true includes data analysts group members"
-      (let [data-analyst-group-id (:id (perms-group/data-analyst))]
-        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
-                                                     :email "analyst-filter@metabase.com"
-                                                     :is_data_analyst true}
-                       :model/User {non-analyst-id :id} {:first_name "NonAnalyst" :last_name "User"
-                                                         :email "non-analyst-filter@metabase.com"}]
-          (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst true))
-                result-ids (set (map :id result))]
-            (testing "data analyst group member is included"
-              (is (contains? result-ids analyst-id)))
-            (testing "non-analyst is excluded"
-              (is (not (contains? result-ids non-analyst-id))))))))
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
+                                                   :email "analyst-filter@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst" :last_name "User"
+                                                       :email "non-analyst-filter@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst true))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is included"
+            (is (contains? result-ids analyst-id)))
+          (testing "non-analyst is excluded"
+            (is (not (contains? result-ids non-analyst-id)))))))
 
     (testing "Filter users by is_data_analyst=false excludes data analysts group members"
-      (let [data-analyst-group-id (:id (perms-group/data-analyst))]
-        (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2"
-                                                     :last_name "User"
-                                                     :email "analyst-filter2@metabase.com"
-                                                     :is_data_analyst true}
-                       :model/User {non-analyst-id :id} {:first_name "NonAnalyst2" :last_name "User"
-                                                         :email "non-analyst-filter2@metabase.com"}]
-          (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst false))
-                result-ids (set (map :id result))]
-            (testing "data analyst group member is excluded"
-              (is (not (contains? result-ids analyst-id))))
-            (testing "non-analyst is included"
-              (is (contains? result-ids non-analyst-id)))))))))
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2"
+                                                   :last_name "User"
+                                                   :email "analyst-filter2@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst2" :last_name "User"
+                                                       :email "non-analyst-filter2@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst false))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is excluded"
+            (is (not (contains? result-ids analyst-id))))
+          (testing "non-analyst is included"
+            (is (contains? result-ids non-analyst-id))))))))
 
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"

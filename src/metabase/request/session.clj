@@ -4,7 +4,6 @@
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
-   [metabase.request.current :as request.current]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
