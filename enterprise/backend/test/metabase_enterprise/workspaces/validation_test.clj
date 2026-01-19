@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.test :as mt]
@@ -11,13 +12,10 @@
 
 (ws.tu/ws-fixtures!)
 
-(defn- build-graph
+(defn- build-graph!
   "Build the workspace graph for validation tests."
   [ws-id]
-  (let [changeset (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform, :id ref_id})
-                                    [:model/WorkspaceTransform :ref_id] :workspace_id ws-id)]
-    (when (seq changeset)
-      (ws.dag/path-induced-subgraph ws-id changeset))))
+  (ws.impl/get-or-calculate-graph! (t2/select-one :model/Workspace ws-id)))
 
 ;;; ---------------------------------------- Basic API Tests ----------------------------------------
 
@@ -64,7 +62,7 @@
                                                              :name   "test_output_table"}})
             ;; The transform hasn't been run, so isolated_table_id is nil
             ;; No external transforms depend on it
-            graph    (build-graph ws-id)
+            graph    (build-graph! ws-id)
             problems (ws.validation/find-downstream-problems ws-id graph)]
         (is (= [{:category    :unused
                  :problem     :not-run
@@ -122,7 +120,7 @@
                                      :dependents [{:type :external-transform
                                                    :id   (:id external-tx)
                                                    :name "External Transform"}]}}]
-                     (ws.validation/find-downstream-problems ws-id (build-graph ws-id)))))))))))
+                     (ws.validation/find-downstream-problems ws-id (build-graph! ws-id)))))))))))
 
 (deftest no-problems-when-output-exists-and-no-field-changes-test
   (testing "no problems when isolated table exists and has all required fields"
@@ -175,4 +173,5 @@
                            :isolated_table_id (:id isolated-table)})
 
               ;; Should have no problems since isolated table has all required fields
-              (is (empty? (ws.validation/find-downstream-problems ws-id (build-graph ws-id)))))))))))
+              ;; TODO update this test, it rightly complains about outputs not existing yet (I think)
+              (is (empty? (ws.validation/find-downstream-problems ws-id (build-graph! ws-id)))))))))))

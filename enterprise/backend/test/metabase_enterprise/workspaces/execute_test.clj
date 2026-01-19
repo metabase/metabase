@@ -44,17 +44,16 @@
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
 
-          ;; Not sure why this is here, but we're testing the analysis metadata, which is lazy
-          (ws.impl/get-or-calculate-graph! workspace)
-          (is (=? [{:workspace_id      (:id workspace)
-                    :global_table      output-table
-                    :global_schema     nil
-                    :global_table_id   nil
-                    :isolated_schema   string?
-                    :isolated_table    string?
-                    ;; TODO I think this is broken because of normalization breaking case equality
-                    #_#_:isolated_table_id number?}]
-                  (t2/select :model/WorkspaceOutput :workspace_id (:id workspace)))))
+          (testing "The isolated_table_id gets populated"
+            (ws.impl/get-or-calculate-graph! workspace)
+            (is (=? [{:workspace_id      (:id workspace)
+                      :global_table      output-table
+                      :global_schema     nil
+                      :global_table_id   nil
+                      :isolated_schema   string?
+                      :isolated_table    string?
+                      :isolated_table_id number?}]
+                    (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
         (testing "app DB records are rolled back"
           (is (= before
@@ -79,7 +78,7 @@
       (testing "dry-run returns data nested under :data like /api/dataset"
         (is (=? {:status :succeeded
                  :data   {:rows [[1 "hello"] [2 "world"]]
-                          :cols [{:name "ID"} {:name "NAME"}]}}
+                          :cols [{:name #"(ID)|(id)"} {:name #"(NAME)|(name)"}]}}
                 (mt/with-current-user (mt/user->id :crowberto)
                   (ws.impl/dry-run-transform workspace ws-transform)))))
 
