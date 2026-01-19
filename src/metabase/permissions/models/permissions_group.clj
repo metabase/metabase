@@ -275,4 +275,5 @@
             (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
                                                                     {:name             "Data Analysts"
                                                                      :magic_group_type data-analyst-magic-group-type})]
-              (grant-library-permissions! new-group-id))))))))
+              (grant-library-permissions! new-group-id))
+            (t2/update! :model/User :is_data_analyst false)))))))

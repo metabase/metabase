@@ -247,7 +247,6 @@
   ;; - Access via published table in a collection (EE feature)
   ([instance]
    (or
-    api/*is-data-analyst?*
     ;; Has data access permissions
     (and (perms/user-has-permission-for-table?
           api/*current-user-id*
