@@ -247,7 +247,7 @@
                     [:model/WorkspaceTransform :ref_id]
                     :workspace_id ws-id))
 
-(defn- calculate-graph!
+(defn- calculate-graph
   "Calculate the dependency graph for a workspace.
    Returns the graph without caching - caller is responsible for caching."
   [ws-id]
@@ -463,7 +463,7 @@
                     ;; across the reads we make to the transforms. There are perverse cases where this can lead
                     ;; to cycles or other data defects. Since such a graph will itself be stale, we will recover
                     ;; from those defects on the next read.
-                    (u/prog1 (calculate-graph! ws-id)
+                    (u/prog1 (calculate-graph ws-id)
                       (insert-workspace-graph! ws-id min-version <>)))
         version (or version min-version)
         ;; Write workspace_input_external if needed, bump version if we have been overtaken.
