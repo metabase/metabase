@@ -46,7 +46,7 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
 
                 # Checkout the actual PR branch (in case we're on a merge commit)
                 echo "Checking out branch: $BRANCH"
-                git checkout "$BRANCH"
+                git checkout -f "$BRANCH"
 
                 # Restore the generated spec from the merge commit
                 mv -f "${OPENAPI_SPEC}.tmp" "$OPENAPI_SPEC"
