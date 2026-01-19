@@ -1082,7 +1082,6 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-11-26T12:00:00
-      validCheckSum: ANY
       author: piranha
       comment: Create workspace table
       validCheckSum: ANY
@@ -2535,6 +2534,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.workspace_id
       preConditions:
@@ -2553,6 +2553,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:02
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.global_id
       preConditions:
@@ -2571,6 +2572,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:03
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.collection_id
       preConditions:
@@ -2589,6 +2591,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:04
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.workspace_id to workspace
       preConditions:
@@ -2608,6 +2611,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:05
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.global_id to transform with SET NULL on delete
       preConditions:
@@ -2627,6 +2631,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:06
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.collection_id to collection with SET NULL on delete
       preConditions:
@@ -2668,6 +2673,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:08
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace.name
       preConditions:
@@ -2752,6 +2758,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:01
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_input.workspace_id
       preConditions:
@@ -2770,6 +2777,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:02
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_input.workspace_id to workspace
       preConditions:
@@ -2789,6 +2797,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:04
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
       preConditions:
@@ -2874,6 +2883,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:06
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_output.workspace_id
       preConditions:
@@ -2892,6 +2902,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:07
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_output.ref_id
       preConditions:
@@ -2910,6 +2921,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:08
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_output.workspace_id to workspace
       preConditions:
@@ -2929,6 +2941,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:09
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_output.ref_id to workspace_transform
       preConditions:
@@ -2948,6 +2961,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:10
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_output (workspace_id, ref_id)
       preConditions:
@@ -3027,6 +3041,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:12
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency.workspace_id
       preConditions:
@@ -3045,6 +3060,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:13
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_dependency.workspace_id to workspace
       preConditions:
@@ -3064,6 +3080,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:14
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_dependency edges
       preConditions:
@@ -3081,6 +3098,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:15
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency from entity
       preConditions:
@@ -3101,6 +3119,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:16
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency to entity
       preConditions:
@@ -3139,6 +3158,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:30:05
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
       preConditions:
@@ -3905,6 +3925,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_output_external.workspace_id
       preConditions:
@@ -3923,6 +3944,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:02
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_output_external.transform_id
       preConditions:
@@ -3941,6 +3963,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:03
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_output_external.workspace_id to workspace
       preConditions:
@@ -3960,6 +3983,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:04
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_output_external.transform_id to transform
       preConditions:
@@ -3979,6 +4003,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:05
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace_output_external (workspace_id, transform_id)
       preConditions:
@@ -4071,6 +4096,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:07
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_input_external.workspace_id
       preConditions:
@@ -4089,6 +4115,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:08
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_input_external.workspace_id to workspace
       preConditions:
@@ -4108,6 +4135,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:09
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace_input_external (workspace_id, db_id, schema, table)
       preConditions:
@@ -4125,6 +4153,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-22T10:00:00
+      validCheckSum: ANY
       author: piranha
       comment: Add creator_id column to workspace_transform
       preConditions:
@@ -4147,6 +4176,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-22T10:00:01
+      validCheckSum: ANY
       author: piranha
       comment: Add index on workspace_transform.creator_id
       preConditions:
@@ -4165,6 +4195,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-22T10:00:02
+      validCheckSum: ANY
       author: piranha
       comment: Add foreign key constraint from workspace_transform.creator_id to core_user
       preConditions:
@@ -4184,6 +4215,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-23T10:00:00
+      validCheckSum: ANY
       author: piranha
       comment: Add last_run_message column to workspace_transform
       preConditions:
@@ -4241,6 +4273,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-29T19:00:00
+      validCheckSum: ANY
       author: christruter
       comment: Add db_status column for tracking database isolation state
       changes:
@@ -4258,6 +4291,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-29T19:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add base_status column for tracking workspace lifecycle
       changes:
@@ -4331,6 +4365,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-30T10:00:00
+      validCheckSum: ANY
       author: christruter
       comment: Add analysis_stale column to workspace_transform for lazy analysis
       changes:
@@ -4348,6 +4383,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-30T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add analysis_stale column to workspace for lazy graph caching
       changes:
@@ -4442,6 +4478,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T07:51:01
+      validCheckSum: ANY
       author: christruter
       comment: Add ref_id column to workspace_input
       changes:
@@ -4482,6 +4519,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T07:51:03
+      validCheckSum: ANY
       author: christruter
       comment: Drop old unique constraint on workspace_input (workspace_id, db_id, schema, table)
       changes:
@@ -4492,6 +4530,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T07:51:04
+      validCheckSum: ANY
       author: christruter
       comment: Add new unique constraint on workspace_input including ref_id
       changes:
@@ -4503,6 +4542,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T07:51:05
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_input (workspace_id, ref_id) for DAG queries
       changes:
@@ -4580,6 +4620,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T09:28:40
+      validCheckSum: ANY
       author: piranha
       comment: Add target_db_id column to transform table
       preConditions:
@@ -4602,6 +4643,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-12T10:47:48
+      validCheckSum: ANY
       author: christruter
       comment: Add last_run_status column to workspace_transform
       preConditions:
