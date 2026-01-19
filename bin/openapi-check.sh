@@ -59,8 +59,8 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 # Build commit message with SHAs if available
                 COMMIT_MSG="Update OpenAPI schema"
                 if [[ -n "${BASE_SHA:-}" ]] && [[ -n "${HEAD_SHA:-}" ]]; then
-                        BASE_SHORT=$(echo "$BASE_SHA" | cut -c1-7)
-                        HEAD_SHORT=$(echo "$HEAD_SHA" | cut -c1-7)
+                        BASE_SHORT="${BASE_SHA:0:7}"
+                        HEAD_SHORT="${HEAD_SHA:0:7}"
                         COMMIT_MSG="Update OpenAPI schema (${BASE_SHORT}...${HEAD_SHORT})"
                 fi
 
