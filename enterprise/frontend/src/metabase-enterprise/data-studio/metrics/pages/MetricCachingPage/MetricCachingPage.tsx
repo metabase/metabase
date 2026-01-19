@@ -33,7 +33,7 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
   const {
     configs,
     setConfigs,
-    loading,
+    loading: isLoadingConfigs,
     error: configsError,
   } = useCacheConfigs({
     configurableModels,
@@ -57,11 +57,11 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
   const { confirmationModal, setIsStrategyFormDirty } =
     useConfirmIfFormIsDirty();
 
-  const isLoading = isLoadingCard || loading;
+  const isLoading = isLoadingCard || isLoadingConfigs;
   const error = cardError || configsError;
 
   return (
-    <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
+    <PageContainer pos="relative" data-testid="metric-caching" gap="xl">
       {card && <MetricHeader card={card} />}
       {isLoading || error != null ? (
         <Center h="100%">
