@@ -16,8 +16,10 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -363,12 +365,8 @@
   [:map
    [:query ms/NonBlankString]])
 
-;; Response is a streaming JSON response in the standard QP format:
-;; {:data {:cols [...] :rows [...]} :row_count N :status :completed/:failed ...}
-;; We skip defining a response schema since streaming responses are written directly
-;; to the output stream and can't be validated by malli in the usual way.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/v1/execute"
+  :- (streaming-response/streaming-response-schema ::qp.schema/query-result)
   "Execute an MBQL query and return results.
 
   Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,
