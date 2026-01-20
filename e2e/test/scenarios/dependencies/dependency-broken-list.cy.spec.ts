@@ -140,6 +140,71 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
+  describe("filtering", () => {
+    it("should filter entities by type", () => {
+      createContent({ withErrors: true });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().within(() => {
+        cy.findByText("Table").click();
+        cy.findByText("Question").click();
+        cy.findByText("Model").click();
+      });
+
+      cy.log("only tables");
+      H.popover().findByText("Table").click();
+      checkList({
+        visibleEntities: BROKEN_TABLE_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_QUESTION_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+      });
+
+      cy.log("only questions");
+      H.popover().within(() => {
+        cy.findByText("Table").click();
+        cy.findByText("Question").click();
+      });
+      checkList({
+        visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+      });
+
+      cy.log("only models");
+      H.popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Model").click();
+      });
+      checkList({
+        visibleEntities: BROKEN_MODEL_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_QUESTION_DEPENDENCIES,
+        ],
+      });
+    });
+
+    it("should filter entities by location", () => {
+      createContent({ withErrors: true });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().within(() => {
+        cy.findByText("Include items in personal collections").click();
+      });
+      checkList({
+        visibleEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+        hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
+      });
+    });
+  });
+
   describe("sorting", () => {
     it("should sort by name", () => {
       createContent({ withErrors: true });
