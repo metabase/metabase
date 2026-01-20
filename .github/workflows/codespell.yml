@@ -20,6 +20,9 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Install codespell
+        run: pip install codespell
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
