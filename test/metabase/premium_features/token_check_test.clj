@@ -374,7 +374,7 @@
       (is (contains? stats :embedding-dashboard-count))
       (is (contains? stats :embedding-question-count)))))
 
-(deftest starter-plan?-test
+(deftest ^:parallel starter-plan?-test
   (testing "returns true when hosted and has no premium features (Starter plan)"
     (with-redefs [premium-features.settings/is-hosted? (constantly true)
                   token-check/has-any-features?        (constantly false)]
