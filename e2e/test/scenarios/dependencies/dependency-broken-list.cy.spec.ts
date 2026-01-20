@@ -128,6 +128,18 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
+  describe("search", () => {
+    it("should search for entities", () => {
+      createContent({ withErrors: true });
+      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DataStudio.Tasks.searchInput().type("Products");
+      checkList({
+        visibleEntities: ["Products"],
+        hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
+      });
+    });
+  });
+
   describe("sorting", () => {
     it("should sort by name", () => {
       createContent({ withErrors: true });
