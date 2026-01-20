@@ -31,8 +31,18 @@ module.exports = function transformer(file, api) {
   result = source.replace(eslintCommentPattern, (match, prefix, rules, suffix) => {
     let rulesModified = false;
 
+    // Check if there's a -- comment separator
+    const commentSeparatorMatch = rules.match(/^(.+?)\s+--\s+(.+)$/);
+    let rulesPart = rules;
+    let commentPart = '';
+
+    if (commentSeparatorMatch) {
+      rulesPart = commentSeparatorMatch[1];
+      commentPart = ' -- ' + commentSeparatorMatch[2];
+    }
+
     // Split the rules part by comma or space
-    const updatedRules = rules
+    const updatedRules = rulesPart
       .split(/\s*,\s*|\s+/)
       .map(rule => {
         rule = rule.trim();
@@ -51,8 +61,8 @@ module.exports = function transformer(file, api) {
 
     if (rulesModified) {
       // Reconstruct the comment
-      const joinChar = rules.includes(',') ? ', ' : ' ';
-      return `${prefix} ${updatedRules.join(joinChar)}${suffix}`;
+      const joinChar = rulesPart.includes(',') ? ', ' : ' ';
+      return `${prefix} ${updatedRules.join(joinChar)}${commentPart}${suffix}`;
     }
 
     return match;
