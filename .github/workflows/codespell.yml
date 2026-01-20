@@ -35,7 +35,9 @@ jobs:
       - name: Run codespell check
         id: codespell_check
         continue-on-error: true
-        run: ./bin/mage codespell 2>&1 | tee codespell_output.txt
+        run: |
+          set -o pipefail
+          ./bin/mage codespell 2>&1 | tee codespell_output.txt
 
       - name: Generate GitHub App Token for Claude
         if: steps.codespell_check.outcome == 'failure'
