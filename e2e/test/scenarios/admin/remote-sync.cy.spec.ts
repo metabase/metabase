@@ -374,21 +374,24 @@ describe("Remote Sync", () => {
           cy.button(/Push changes/).click();
         });
 
-        H.waitForTask({ taskName: "export" });
+        H.waitForTask({ taskName: "export" }).then(() => {
+          H.getGitSyncControls().should("contain.text", NEW_BRANCH);
+          H.collectionTable().within(() => {
+            cy.findByText("Orders").should("exist");
+            cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+          });
 
-        H.getGitSyncControls().should("contain.text", NEW_BRANCH);
-        H.collectionTable().within(() => {
-          cy.findByText("Orders").should("exist");
-          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
-        });
+          H.modal().findByText("Pushing to Git").should("not.exist");
 
-        H.getSwitchBranchOption().click();
-        H.popover().findByRole("option", { name: "main" }).click();
+          H.getSwitchBranchOption().click();
+          H.popover().findByRole("option", { name: "main" }).click();
 
-        H.waitForTask({ taskName: "import" });
-        H.collectionTable().within(() => {
-          cy.findByText("Orders").should("not.exist");
-          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+          H.waitForTask({ taskName: "import" }).then(() => {
+            H.collectionTable().within(() => {
+              cy.findByText("Orders").should("not.exist");
+              cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+            });
+          });
         });
       });
 
