@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +22,7 @@ import {
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/lib/groups";
+import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
@@ -233,6 +235,20 @@ const getCollectionDisabledTooltip = (
   }
 };
 
+type PermissionOption = {
+  label: string;
+  value: string;
+  icon: string;
+  iconColor: string;
+};
+
+type PermissionConfirmation = {
+  title: string;
+  message: string;
+  confirmButtonText: string;
+  cancelButtonText: string;
+};
+
 export type CollectionPermissionEditorType = null | {
   title: string;
   filterPlaceholder: string;
@@ -240,15 +256,18 @@ export type CollectionPermissionEditorType = null | {
   entities: {
     id: number;
     name: string;
+    icon?: ReactElement;
     permissions: {
-      toggleLabel: string;
+      toggleLabel: string | null;
       hasChildren: boolean;
       isDisabled: boolean;
       disabledTooltip: string | null;
       value: string;
       warning: string | null;
-      confirmations: (newValue: string) => string[];
-      options: string[];
+      confirmations: (
+        newValue: DataPermissionValue,
+      ) => (PermissionConfirmation | undefined)[];
+      options: PermissionOption[];
     }[];
   }[];
 };
@@ -353,14 +372,14 @@ export const getCollectionsPermissionEditor = createSelector(
             },
           ],
         };
-      })
-      .filter(Boolean);
+      }).filter(isNotNull)
+
 
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
       columns: [{ name: t`Group name` }, { name: t`Collection access` }],
-      entities,
+      entities
     };
   },
 );
@@ -393,7 +412,7 @@ function getCollectionWarning(
   permissions: CollectionPermissions,
 ) {
   if (!collection) {
-    return;
+    return null;
   }
   const collectionPerm = getCollectionPermission(
     permissions,
@@ -414,4 +433,6 @@ function getCollectionWarning(
   } else if (collectionPerm === "read" && descendentPerms.has("write")) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
+
+  return null
 }
