@@ -44,7 +44,8 @@
   entity IDs that were imported."
   [timestamp imported-entities-by-model]
   (t2/delete! :model/RemoteSyncObject)
-  (let [inserts (->> imported-entities-by-model
+  ;; TODO(edpaget 2026-01-19): Actions are not dirty tracked
+  (let [inserts (->> (dissoc imported-entities-by-model "Action")
                      (mapcat (fn [[model entity-ids]]
                                (let [fields (model-fields-for-sync model)
                                      model-kw (keyword "model" model)]
@@ -153,7 +154,7 @@
                       :version (source.p/version source)
                       :message (format "Skipping import: source version %s matches last imported version" source-version)}
               (log/infof (:message <>)))
-            (let [ingestable-source (->> (source.p/->ingestable source {:path-filters [#"collections/.*"]})
+            (let [ingestable-source (->> (source.p/->ingestable source {:path-filters [#"collections/.*" #"actions/.*"]})
                                          (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-source))
