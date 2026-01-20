@@ -236,6 +236,13 @@ export interface TreeTableProps<TData extends TreeNodeData>
    */
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
 
+  /**
+   * Callback to get the href for a row. When provided and returns a non-null value,
+   * the row will be rendered as a link, enabling Cmd+Click to open in new tab.
+   * Return null for rows that shouldn't be links (e.g., expandable parent nodes).
+   */
+  getRowHref?: (row: Row<TData>) => string | null;
+
   ariaLabel?: string;
   ariaLabelledBy?: string;
 }
@@ -265,6 +272,8 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   getSelectionState?: (row: Row<TData>) => SelectionState;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
+  /** When provided, renders the row as a link for Cmd+Click support */
+  href?: string | null;
 }
 
 /**
