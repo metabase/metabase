@@ -11,7 +11,6 @@
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -91,7 +90,7 @@
                       e)))))
 
 (defn- mjs-collect-definitions
-  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  "We transform json-schema in a few different places, but we need to collect all definitions in a single one."
   [malli-schema]
   (let [jss (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*
@@ -135,7 +134,7 @@
   This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema."
   [schema]
   (let [jss-schema (mjs-collect-definitions schema)]
-    {"2XX" (-> {:description (or (:description jss-schema) (umd/describe schema))}
+    {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
                (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
 
 (comment

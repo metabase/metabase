@@ -1,13 +1,13 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CheckQueryComplexityRequest,
-  CheckQueryComplexityResponse,
   CreateTransformRequest,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
+  QueryComplexity,
   RunTransformResponse,
   Transform,
   TransformId,
@@ -213,7 +213,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     checkQueryComplexity: builder.query<
-      CheckQueryComplexityResponse,
+      QueryComplexity,
       CheckQueryComplexityRequest
     >({
       query: (queryString) => ({

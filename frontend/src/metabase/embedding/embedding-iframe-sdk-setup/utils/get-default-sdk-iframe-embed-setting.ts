@@ -63,6 +63,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
         withDownloads: false,
         withTitle: true,
         isSaveEnabled: false,
+        initialSqlParameters: {},
       }),
     )
     .with(

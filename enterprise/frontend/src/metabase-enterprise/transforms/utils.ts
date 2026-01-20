@@ -5,6 +5,7 @@ import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Database,
   DatabaseId,
@@ -170,7 +171,7 @@ export function isSameSource(
   return false;
 }
 
-export function isNotDraftSource(
+export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
   return source.type !== "python" || source["source-database"] != null;
@@ -204,3 +205,25 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
 
   return { isValid: Lib.canSave(query, "question") };
 }
+
+export const getLibQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  if (source.type !== "query") {
+    return null;
+  }
+  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+};
+
+// Check if this is an MBQL query (not native SQL or Python)
+export const isMbqlQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  const query = getLibQuery(source, metadata);
+  if (!query) {
+    return false;
+  }
+  return !Lib.queryDisplayInfo(query).isNative;
+};

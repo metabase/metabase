@@ -21,7 +21,7 @@ export function LocationFilterPicker({
     const newValue = event.target.checked;
     onParamsChange({
       ...params,
-      includePersonalCollections: newValue,
+      includePersonalCollections: newValue ? undefined : false,
     });
   };
 

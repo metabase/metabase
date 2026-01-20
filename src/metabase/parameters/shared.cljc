@@ -224,7 +224,7 @@
   #"\{\{\s*([A-Za-z0-9_\.]+?)\s*\}\}")
 
 (def ^:private template-tag-splitting-regex
-  "A regex for spliting text around template tags. This should be identical to `template-tag-regex` above, but without
+  "A regex for splitting text around template tags. This should be identical to `template-tag-regex` above, but without
   the capture group around the tag name."
   #"\{\{\s*[A-Za-z0-9_\.]+?\s*\}\}")
 

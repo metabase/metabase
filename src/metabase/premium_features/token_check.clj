@@ -223,7 +223,7 @@
 (declare decode-airgap-token)
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
-  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
+  "Returns the max users value from an airgapped key, or nil indicating there is no limit."
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
@@ -450,7 +450,7 @@
     (error-catching-token-checker)))
 
 (def token-checker
-  "The token checker. Combines http/airgapping vaildation, circuit breaking, grace periods, caching, and error
+  "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
   handling."
   (make-checker {:base            store-and-airgap-token-checker
                  :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]

@@ -1,8 +1,9 @@
 import type { HTMLAttributes, MouseEventHandler } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import S from "./EditorButton.module.css";
 
@@ -25,6 +26,21 @@ export type EditorButtonProps = {
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
 
+function shouldShowEditButton({
+  question,
+  isActionListVisible,
+  isBrandNew = false,
+}: {
+  question: Question;
+  isActionListVisible: boolean;
+  isBrandNew?: boolean;
+}) {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  return (
+    isEditable && isActionListVisible && !question.isArchived() && !isBrandNew
+  );
+}
+
 /**
  * Toggle button for showing/hiding the Editor interface.
  * In custom layouts, the `EditorButton` _must_ have an {@link InteractiveQuestionEditorButtonProps.onClick}` handler or the button won't do anything when clicked.
@@ -40,7 +56,7 @@ export const EditorButton = ({
   const { question } = useSdkQuestionContext();
   return (
     question &&
-    QuestionNotebookButton.shouldRender({
+    shouldShowEditButton({
       question,
       isActionListVisible: true,
     }) && (

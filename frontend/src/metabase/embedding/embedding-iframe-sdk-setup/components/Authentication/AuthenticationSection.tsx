@@ -8,6 +8,8 @@ import {
   useHandleExperienceChange,
 } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-experience";
+import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import { closeModal } from "metabase/redux/ui";
@@ -15,8 +17,10 @@ import { Card, Flex, HoverCard, Icon, Radio, Stack, Text } from "metabase/ui";
 
 export const AuthenticationSection = () => {
   const {
+    experience,
     isSimpleEmbedFeatureAvailable,
     isFirstStep,
+    currentStep,
     settings,
     updateSettings,
   } = useSdkIframeEmbedSetupContext();
@@ -32,8 +36,13 @@ export const AuthenticationSection = () => {
     const isGuest = value === "guest-embed";
     const isSso = value === "sso";
 
-    if (isGuest) {
-      // Reset experience to default when switching to guest embeds
+    // Reset experience to default when switching to guest embeds from non-supported experience
+    const shouldSwitchExperience =
+      isGuest &&
+      !isStepWithResource(currentStep) &&
+      !isQuestionOrDashboardExperience(experience);
+
+    if (shouldSwitchExperience) {
       handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
     }
 

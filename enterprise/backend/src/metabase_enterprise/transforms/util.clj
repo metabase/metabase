@@ -98,14 +98,16 @@
     (premium-features/has-feature? :transforms)))
 
 (defn try-start-unless-already-running
-  "Start a transform run, throwing an informative error if already running."
-  [id run-method]
+  "Start a transform run, throwing an informative error if already running.
+   If `user-id` is provided, it will be stored with the run for attribution purposes."
+  [id run-method user-id]
   (try
-    (transform-run/start-run! id {:run_method run-method})
+    (transform-run/start-run! id (cond-> {:run_method run-method}
+                                   user-id (assoc :user_id user-id)))
     (catch java.sql.SQLException e
       (if (= (.getSQLState e) "23505")
         (throw (ex-info "Transform is already running"
-                        {:error :already-running
+                        {:error        :already-running
                          :transform-id id}
                         e))
         (throw e)))))
