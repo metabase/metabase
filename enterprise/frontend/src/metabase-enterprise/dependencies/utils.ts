@@ -633,29 +633,25 @@ export function getDependentGroupLabel({
 
 export function getErrorTypeLabel(
   type: AnalysisFindingErrorType,
-  count: number,
+  count = 0,
 ): string {
   switch (type) {
     case "missing-column":
-      return ngettext(msgid`Missing column`, `Missing columns`, count);
+      return count === 1 ? t`Missing column` : t`Missing columns`;
     case "missing-table-alias":
-      return ngettext(
-        msgid`Missing table alias`,
-        `Missing table aliases`,
-        count,
-      );
+      return count === 1 ? t`Missing table alias` : t`Missing table aliases`;
     case "duplicate-column":
-      return ngettext(msgid`Duplicate column`, `Duplicate columns`, count);
+      return count === 1 ? t`Duplicate column` : t`Duplicate columns`;
     case "syntax-error":
-      return ngettext(msgid`Syntax error`, `Syntax errors`, count);
+      return count === 1 ? t`Syntax error` : t`Syntax errors`;
     case "validation-error":
-      return ngettext(msgid`Unknown problem`, `Unknown problems`, count);
+      return count === 1 ? t`Unknown problem` : t`Unknown problems`;
   }
 }
 
 export function getErrorTypeLabelWithCount(
   type: AnalysisFindingErrorType,
-  count: number,
+  count = 0,
 ): string {
   switch (type) {
     case "missing-column":

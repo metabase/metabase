@@ -19,7 +19,6 @@ type SidebarCreationInfoProps = {
 };
 
 export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
-  const title = t`Creator and last editor`;
   const createdBy = getNodeCreatedBy(node);
   const createdAt = getNodeCreatedAt(node);
   const editedBy = getNodeLastEditedBy(node);
@@ -32,7 +31,13 @@ export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
   }
 
   return (
-    <Card p={0} shadow="none" withBorder role="region" aria-label={title}>
+    <Card
+      p={0}
+      shadow="none"
+      withBorder
+      role="region"
+      aria-label={t`Creator and last editor`}
+    >
       {createdBy != null && createdAt != null && (
         <UserSection
           label={t`Created by`}

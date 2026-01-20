@@ -19,17 +19,14 @@ const TABLE_BASED_QUESTION_BROKEN_IMPLICIT_JOIN =
   "Table-based question with broken implicit join";
 const TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN =
   "Table-based question with broken explicit join";
-
 const TABLE_BASED_QUESTION = "Table-based question";
 const QUESTION_BASED_QUESTION_BROKEN_FILTER =
   "Question-based question with broken filter";
-
 const TABLE_BASED_MODEL = "Table-based model";
 const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
   "Model-based model with broken aggregation";
 
 const BROKEN_TABLE_DEPENDENCIES = ["Orders", "Reviews"];
-
 const BROKEN_TABLE_DEPENDENTS = [
   TABLE_BASED_QUESTION_BROKEN_FIELD,
   TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
@@ -41,11 +38,9 @@ const BROKEN_TABLE_DEPENDENTS = [
 ];
 
 const BROKEN_QUESTION_DEPENDENCIES = [TABLE_BASED_QUESTION];
-
 const BROKEN_QUESTION_DEPENDENTS = [QUESTION_BASED_QUESTION_BROKEN_FILTER];
 
 const BROKEN_MODEL_DEPENDENCIES = [TABLE_BASED_MODEL];
-
 const BROKEN_MODEL_DEPENDENTS = [MODEL_BASED_MODEL_BROKEN_AGGREGATION];
 
 const BROKEN_DEPENDENCIES = [
@@ -72,13 +67,40 @@ describe("scenarios > dependencies > broken list", () => {
     it("should show broken dependencies and not dependents", () => {
       createContent({ withErrors: true });
       H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_DEPENDENCIES.forEach((dependency) => {
-          cy.findByText(dependency).should("be.visible");
-        });
-        BROKEN_DEPENDENTS.forEach((dependent) => {
-          cy.findByText(dependent).should("not.exist");
-        });
+      checkList({
+        visibleEntities: BROKEN_DEPENDENCIES,
+        hiddenEntities: BROKEN_DEPENDENTS,
+      });
+    });
+  });
+
+  describe("sidebar", () => {
+    it("should show broken dependents", () => {
+      createContent({ withErrors: true });
+      H.DataStudio.Tasks.visitBrokenEntities();
+
+      cy.log("table dependents");
+      H.DataStudio.Tasks.list().findByText("Orders").click();
+      checkSidebar({
+        entityName: "Orders",
+        missingColumns: ["TOTAL", "DISCOUNT", "RATING"],
+        brokenDependents: BROKEN_TABLE_DEPENDENTS,
+      });
+
+      cy.log("question dependents");
+      H.DataStudio.Tasks.list().findByText(TABLE_BASED_QUESTION).click();
+      checkSidebar({
+        entityName: TABLE_BASED_QUESTION,
+        missingColumns: ["PRICE"],
+        brokenDependents: BROKEN_QUESTION_DEPENDENTS,
+      });
+
+      cy.log("model dependents");
+      H.DataStudio.Tasks.list().findByText(TABLE_BASED_MODEL).click();
+      checkSidebar({
+        entityName: TABLE_BASED_MODEL,
+        missingColumns: ["AMOUNT"],
+        brokenDependents: BROKEN_MODEL_DEPENDENTS,
       });
     });
   });
@@ -219,5 +241,52 @@ function createModelContent({
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     });
+  });
+}
+
+function checkList({
+  visibleEntities = [],
+  hiddenEntities = [],
+}: {
+  visibleEntities?: string[];
+  hiddenEntities?: string[];
+}) {
+  H.DataStudio.Tasks.list().within(() => {
+    visibleEntities.forEach((name) => {
+      cy.findByText(name).should("be.visible");
+    });
+    hiddenEntities.forEach((name) => {
+      cy.findByText(name).should("not.exist");
+    });
+  });
+}
+
+function checkSidebar({
+  entityName,
+  missingColumns,
+  brokenDependents,
+}: {
+  entityName: string;
+  missingColumns?: string[];
+  brokenDependents?: string[];
+}) {
+  H.DataStudio.Tasks.sidebar().within(() => {
+    H.DataStudio.Tasks.Sidebar.header()
+      .findByText(entityName)
+      .should("be.visible");
+    if (missingColumns) {
+      H.DataStudio.Tasks.Sidebar.missingColumnsInfo().within(() => {
+        missingColumns.forEach((column) => {
+          cy.findByText(column).should("be.visible");
+        });
+      });
+    }
+    if (brokenDependents) {
+      H.DataStudio.Tasks.Sidebar.brokenDependentsInfo().within(() => {
+        brokenDependents.forEach((dependent) => {
+          cy.findByText(dependent).should("be.visible");
+        });
+      });
+    }
   });
 }

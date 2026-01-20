@@ -55,7 +55,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   }
 
   return (
-    <Stack role="region" aria-label={title}>
+    <Stack role="region" aria-label={t`Broken dependents`}>
       <Group gap="sm">
         <Badge c="text-selected" bg="error">
           {count}

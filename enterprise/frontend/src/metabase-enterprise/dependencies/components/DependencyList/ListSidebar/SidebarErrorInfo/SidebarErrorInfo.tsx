@@ -35,7 +35,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
     .filter((detail) => detail != null);
 
   return (
-    <Stack role="region" aria-label={title}>
+    <Stack role="region" aria-label={getErrorTypeLabel(type)}>
       <Group gap="sm">
         <Badge c="text-selected" bg="error">
           {count}

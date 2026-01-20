@@ -14,7 +14,6 @@ type SidebarLocationInfoProps = {
 };
 
 export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
-  const title = t`Location`;
   const locationInfo = getNodeLocationInfo(node);
 
   if (locationInfo == null) {
@@ -22,7 +21,7 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <div role="region" aria-label={title}>
+    <div role="region" aria-label={t`Location`}>
       <Breadcrumbs lh="1rem">
         {locationInfo.links.map((link, linkIndex) => (
           <Anchor
