@@ -56,10 +56,12 @@
   (if (keyword? x) (name x) x))
 
 (mr/def ::field-type
+  "A data type for a field derived from Metabase's type hierarchy."
   [:enum {:encode/api keyword->string}
    :boolean :date :datetime :time :number :string])
 
 (mr/def ::field
+  "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
   [:map {:encode/api ->snake_case-keys}
    [:field_id :string]
    [:name :string]
@@ -70,10 +72,12 @@
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
+  "The type of queryable entity."
   [:enum {:encode/api keyword->string}
-   :model :table :metric])
+   :table :metric])
 
-(mr/def ::basic-metric
+(mr/def ::metric-summary
+  "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:type [:= {:encode/api keyword->string} :metric]]
@@ -82,6 +86,7 @@
    [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
 
 (mr/def ::segment
+  "A predefined filter condition that can be applied to queries via the segment_id in filters."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:name :string]
@@ -89,6 +94,7 @@
    [:description {:optional true} [:maybe :string]]])
 
 (mr/def ::related-table
+  "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:type ::entity-type]
@@ -101,7 +107,8 @@
    [:fields {:optional true} [:maybe [:sequential ::field]]]
    [:related_by {:optional true} [:maybe :string]]])
 
-(mr/def ::table-response
+(mr/def ::table
+  "Full details of a table including its fields, related tables, metrics, and segments."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:type ::entity-type]
@@ -113,10 +120,11 @@
    [:description {:optional true} [:maybe :string]]
    [:fields [:sequential ::field]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
-   [:metrics {:optional true} [:maybe [:sequential ::basic-metric]]]
+   [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
-(mr/def ::full-metric-response
+(mr/def ::metric
+  "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:type [:= {:encode/api keyword->string} :metric]]
@@ -128,6 +136,7 @@
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
 (mr/def ::statistics
+  "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges."
   [:map {:encode/api ->snake_case-keys}
    [:distinct_count {:optional true} [:maybe :int]]
    [:percent_null   {:optional true} [:maybe number?]]
@@ -145,14 +154,15 @@
    [:earliest       {:optional true} [:maybe :string]]
    [:latest         {:optional true} [:maybe :string]]])
 
-(mr/def ::field-values-response
+(mr/def ::field-values
+  "Statistics and sample values for a specific field."
   [:map {:encode/api ->snake_case-keys}
    [:field_id {:optional true} [:maybe :string]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::search-result-item
-  "Schema for search result items (tables and metrics only, no collection info)."
+  "A table or metric returned from search."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
    [:type [:enum "table" "metric"]]
@@ -166,6 +176,7 @@
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
+  "Search results containing tables and metrics matching the query."
   [:map {:encode/api ->snake_case-keys}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -177,7 +188,7 @@
   []
   {:message "pong"})
 
-(api.macros/defendpoint :get "/v1/table/:id" :- ::table-response
+(api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
@@ -200,7 +211,7 @@
      :with-measures?       with-measures
      :with-segments?       with-segments})))
 
-(api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values-response
+(api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a table field."
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
@@ -212,7 +223,7 @@
      :field-id    field-id
      :limit       (request/limit)})))
 
-(api.macros/defendpoint :get "/v1/metric/:id" :- ::full-metric-response
+(api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
   "Get details for a metric by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
@@ -231,7 +242,7 @@
      :with-queryable-dimensions?      with-queryable-dimensions
      :with-segments?                  with-segments})))
 
-(api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values-response
+(api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a metric field."
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
@@ -293,6 +304,7 @@
   [:or ::construct-query-table-request ::construct-query-metric-request])
 
 (mr/def ::construct-query-response
+  "Response containing a URL-safe base64-encoded MBQL query for use with /v1/execute."
   [:map
    [:query :string]])
 
