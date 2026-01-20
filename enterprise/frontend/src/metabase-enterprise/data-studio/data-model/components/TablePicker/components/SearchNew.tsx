@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase-enterprise/data-studio/analytics";
 import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -143,6 +144,12 @@ export function SearchNew({
   useEffect(() => {
     resetSelection();
   }, [query, filters, resetSelection]);
+
+  useEffect(() => {
+    if (!isLoading && query.trim().length > 0) {
+      trackDataStudioTablePickerSearchPerformed();
+    }
+  }, [isLoading, query]);
 
   if (isLoading) {
     return (

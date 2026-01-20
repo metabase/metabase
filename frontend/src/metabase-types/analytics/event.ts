@@ -553,6 +553,10 @@ export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
   event: "data_studio_table_picker_filters_cleared";
 }>;
 
+export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_search_performed";
+}>;
+
 export type DataStudioTableUnpublishedEvent = ValidateEvent<{
   event: "data_studio_table_unpublished";
   target_id: number | null;
@@ -591,6 +595,7 @@ export type DataStudioEvent =
   | DataStudioGlossaryDeletedEvent
   | DataStudioTablePickerFiltersAppliedEvent
   | DataStudioTablePickerFiltersClearedEvent
+  | DataStudioTablePickerSearchPerformedEvent
   | DataStudioTableUnpublishedEvent
   | DataStudioBulkSyncSettingsClickedEvent
   | DataStudioBulkAttributeUpdatedEvent

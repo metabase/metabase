@@ -48,6 +48,12 @@ export const trackDataStudioTablePickerFiltersCleared = () => {
   });
 };
 
+export const trackDataStudioTablePickerSearchPerformed = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_search_performed",
+  });
+};
+
 export const trackDataStudioTableUnpublished = (
   id: TableId | null | undefined,
 ) => {
