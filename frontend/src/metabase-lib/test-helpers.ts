@@ -422,7 +422,7 @@ export function createLegendItemClickObject(
   return { dimensions: [dimension] };
 }
 
-type CreateTestQueryOpts = {
+export type CreateTestQueryOpts = {
   databaseId: DatabaseId;
   stages: [TestQueryStageWithSource, ...TestQueryStage[]];
 };
