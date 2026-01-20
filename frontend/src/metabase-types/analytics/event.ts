@@ -568,6 +568,21 @@ export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
   result: "success" | "failure";
 }>;
 
+export type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
+  event: "data_studio_table_schema_synced";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
+  event: "data_studio_table_fields_rescanned";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
+  event: "data_studio_table_field_values_discarded";
+  result: "success" | "failure";
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
@@ -578,7 +593,10 @@ export type DataStudioEvent =
   | DataStudioTablePickerFiltersClearedEvent
   | DataStudioTableUnpublishedEvent
   | DataStudioBulkSyncSettingsClickedEvent
-  | DataStudioBulkAttributeUpdatedEvent;
+  | DataStudioBulkAttributeUpdatedEvent
+  | DataStudioTableSchemaSyncedEvent
+  | DataStudioTableFieldsRescannedEvent
+  | DataStudioTableFieldValuesDiscardedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";

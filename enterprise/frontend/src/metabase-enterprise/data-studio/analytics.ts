@@ -73,3 +73,30 @@ export const trackDataStudioBulkAttributeUpdated = (
     result,
   });
 };
+
+export const trackDataStudioTableSchemaSynced = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_schema_synced",
+    result,
+  });
+};
+
+export const trackDataStudioTableFieldsRescanned = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_fields_rescanned",
+    result,
+  });
+};
+
+export const trackDataStudioTableFieldValuesDiscarded = (
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_field_values_discarded",
+    result,
+  });
+};
