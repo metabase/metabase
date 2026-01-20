@@ -10,6 +10,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
+
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-input-external]
    [metabase-enterprise.workspaces.models.workspace-log]
@@ -25,6 +26,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -344,14 +346,14 @@
    2. The workspaces_enabled column is true"
   [_url-params
    _query-params]
-  (let [databases (->> (t2/select [:model/Database :id :name :engine :workspaces_enabled :workspace_permissions_status]
+  (let [databases (->> (t2/select [:model/Database :id :name :engine :settings :workspace_permissions_status]
                                   :is_audit false :is_sample false {:order-by [:name]})
                        (filter #(driver.u/supports? (:engine %) :workspace %)))]
-    {:databases (mapv (fn [{:keys [id name workspaces_enabled workspace_permissions_status]}]
-                        {:id                 id
-                         :name               name
-                         :enabled            workspaces_enabled
-                         :permissions_status (or workspace_permissions_status {:status "unknown"})})
+    {:databases (mapv (fn [{:keys [id name workspace_permissions_status settings]}]
+                        {:id                           id
+                         :name                         name
+                         :enabled                      (boolean (:database-enable-workspaces settings))
+                         :workspace_permissions_status (or workspace_permissions_status {:status "unknown"})})
                       databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace

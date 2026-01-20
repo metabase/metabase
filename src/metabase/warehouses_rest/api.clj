@@ -1229,46 +1229,23 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
-(api.macros/defendpoint :post "/:id/check-workspace-permissions"
+(api.macros/defendpoint :post "/:id/permission/workspace"
   :- [:map
       [:status :string]
       [:checked_at :string]
       [:error {:optional true} :string]]
-  "Force refresh the workspace isolation permissions check for this database.
-   Returns the new permission status."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  "Check if database's connection has the required permissions to manage workspaces.
+  By default it'll return the cached permission check."
+  [{:keys [id cached]} :- [:map [:id ms/PositiveInt]
+                           [:cached {:optional true
+                                     :default true} :boolean]]]
   (api/check-superuser)
   (let [db (api/check-404 (t2/select-one :model/Database id))
         _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
                           "Database does not support workspaces")]
-    (database/check-and-cache-workspace-permissions! db)))
-
-(api.macros/defendpoint :post "/:id/workspaces"
-  :- [:map
-      [:enabled :boolean]
-      [:permissions_status {:optional true}
-       [:map
-        [:status :string]
-        [:checked_at :string]
-        [:error {:optional true} :string]]]]
-  "Enable or disable workspaces for this database.
-   When enabling, runs the workspace isolation permissions check first.
-   Returns the new workspace status."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [enabled]} :- [:map [:enabled :boolean]]]
-  (api/check-superuser)
-  (let [db (api/check-404 (t2/select-one :model/Database id))
-        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
-                          "Database does not support workspaces")]
-    (if enabled
-      (let [result (database/check-and-cache-workspace-permissions! db)]
-        (when (= "ok" (:status result))
-          (t2/update! :model/Database id {:workspaces_enabled true}))
-        {:enabled (= "ok" (:status result)) :permissions_status result})
-      (do
-        (t2/update! :model/Database id {:workspaces_enabled false})
-        {:enabled false}))))
+    (or (when cached
+          (t2/select-one-fn :workspace_permissions_status :model/Database id))
+        (database/check-and-cache-workspace-permissions! db))))
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
