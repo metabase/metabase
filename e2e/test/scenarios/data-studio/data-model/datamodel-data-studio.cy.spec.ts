@@ -8,7 +8,6 @@ import {
   NODATA_USER_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { DataModel } from "e2e/support/helpers";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -1081,7 +1080,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow analysts to edit all table metadata even without data access", () => {
-        setUserAsAnalyst(NODATA_USER_ID);
+        H.setUserAsAnalyst(NODATA_USER_ID);
 
         cy.signIn("nodata");
         H.DataModel.visitDataStudio({
@@ -1249,7 +1248,7 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow analysts to edit field metadata but not preview data without data access", () => {
-        setUserAsAnalyst(NODATA_USER_ID);
+        H.setUserAsAnalyst(NODATA_USER_ID);
         cy.signIn("nodata");
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
@@ -1295,14 +1294,14 @@ describe("scenarios > data studio > datamodel", () => {
         FieldSection.getPreviewButton().click();
         cy.wait("@dataset");
         PreviewSection.get()
-          .findByText("Sorry, you don't have permission to see that.")
+          .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
 
         cy.log("verify detail preview is also blocked");
         PreviewSection.getPreviewTypeInput().findByText("Detail").click();
         cy.wait("@dataset");
         PreviewSection.get()
-          .findByText("Sorry, you don't have permission to see that.")
+          .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
 
         cy.log("verify field changes in data reference as admin");
@@ -3368,7 +3367,7 @@ describe("scenarios > data studio > datamodel", () => {
         fieldId: ORDERS.PRODUCT_ID,
       });
 
-      DataModel.TableSection.getVisibilityTypeInput().click();
+      H.DataModel.TableSection.getVisibilityTypeInput().click();
       H.popover().findByText("Copper").click();
       cy.wait("@updateTable");
 
@@ -3754,10 +3753,6 @@ describe("scenarios > data studio > datamodel", () => {
 
 function clickAway() {
   cy.get("body").click(0, 0);
-}
-
-function setUserAsAnalyst(userId: number) {
-  cy.request("PUT", `/api/user/${userId}`, { is_data_analyst: true });
 }
 
 type TableSummary = {

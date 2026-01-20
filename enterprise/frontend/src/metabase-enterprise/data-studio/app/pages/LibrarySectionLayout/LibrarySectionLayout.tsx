@@ -369,7 +369,10 @@ export function LibrarySectionLayout() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <CreateMenu metricCollectionId={writableMetricCollection?.id} />
+            <CreateMenu
+              metricCollectionId={writableMetricCollection?.id}
+              canWriteToMetricCollection={!!writableMetricCollection}
+            />
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (

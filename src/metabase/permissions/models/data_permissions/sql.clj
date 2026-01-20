@@ -276,11 +276,14 @@
 (mu/defn visible-database-filter-select
   "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
    Similar to visible-table-filter-select but for databases."
-  [{:keys [user-id is-superuser?]} :- UserInfo
+  [{:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping :- PermissionMapping]
   {:select [:md.id]
    :from [[:metabase_database :md]]
-   :where (if is-superuser?
+   ;; Superusers see all databases. Data analysts see all databases when checking manage-table-metadata.
+   :where (if (or is-superuser?
+                  (and is-data-analyst?
+                       (contains? permission-mapping :perms/manage-table-metadata)))
             [:= [:inline 1] [:inline 1]]
             (into [:and]
                   (mapcat (fn [[perm-type perm-level]]
