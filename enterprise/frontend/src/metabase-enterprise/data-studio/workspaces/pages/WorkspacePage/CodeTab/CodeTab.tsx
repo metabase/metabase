@@ -23,7 +23,7 @@ import type {
 } from "metabase-types/api";
 import { isUnsavedTransform } from "metabase-types/api";
 
-import { getTransformId, useWorkspace } from "../WorkspaceProvider";
+import { useWorkspace } from "../WorkspaceProvider";
 
 import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
@@ -71,20 +71,6 @@ export const CodeTab = ({
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const [fetchTransform] = useLazyGetTransformQuery();
 
-  const handleFullTransformClick = useCallback(
-    (transform: TaggedTransform | WorkspaceTransform) => {
-      const transformId = getTransformId(transform);
-      const edited = editedTransforms.get(transformId);
-      // Cast is safe because we're just merging edited fields into the transform
-      const transformToOpen = (
-        edited != null ? { ...transform, ...edited } : transform
-      ) as TaggedTransform | WorkspaceTransform;
-
-      onTransformClick(transformToOpen);
-    },
-    [editedTransforms, onTransformClick],
-  );
-
   const handleExternalTransformClick = useCallback(
     async (externalTransform: ExternalTransform) => {
       if (externalTransform.checkout_disabled) {
@@ -103,10 +89,10 @@ export const CodeTab = ({
           ...transform,
           type: "transform",
         };
-        handleFullTransformClick(taggedTransform);
+        onTransformClick(taggedTransform);
       }
     },
-    [fetchTransform, handleFullTransformClick, sendErrorToast],
+    [fetchTransform, onTransformClick, sendErrorToast],
   );
 
   const handleWorkspaceTransformItemClick = useCallback(
@@ -131,15 +117,10 @@ export const CodeTab = ({
       if (error) {
         sendErrorToast(t`Failed to fetch transform`);
       } else if (transform) {
-        handleFullTransformClick(transform);
+        onTransformClick(transform);
       }
     },
-    [
-      fetchWorkspaceTransform,
-      workspaceId,
-      handleFullTransformClick,
-      sendErrorToast,
-    ],
+    [fetchWorkspaceTransform, workspaceId, onTransformClick, sendErrorToast],
   );
 
   return (
