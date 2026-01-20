@@ -59,7 +59,7 @@
                   (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
                           {:analyzed_entity_type (name entity-type)
                            :analyzed_entity_id entity-id
-                           :error_type (name error-type)
+                           :error_type error-type
                            :error_detail error-detail
                            :source_entity_type (some-> source-entity-type name)
                            :source_entity_id source-entity-id})

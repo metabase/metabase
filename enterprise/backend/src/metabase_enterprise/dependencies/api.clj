@@ -947,14 +947,15 @@
                   :total)
         ;; Build response with downstream errors attached
         usages (node-usages downstream-graph all-ids)
+        fetch-entity (fn [entity-type entity-id]
+                       (let [model (deps.dependency-types/dependency-type->model entity-type)
+                             fields (entity-select-fields entity-type)]
+                         (t2/select-one (into [model] fields) :id entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
-                           (let [model (deps.dependency-types/dependency-type->model entity-type)
-                                 fields (entity-select-fields entity-type)
-                                 entity (t2/select-one (into [model] fields) :id entity-id)]
-                             (when entity
-                               (let [hydrated (first (hydrate-entities entity-type [entity]))]
-                                 (entity-value entity-type hydrated usages downstream-errors))))))
+                           (when-let [entity (fetch-entity entity-type entity-id)]
+                             (let [hydrated (first (hydrate-entities entity-type [entity]))]
+                               (entity-value entity-type hydrated usages downstream-errors)))))
                    all-ids)]
     {:data   data
      :offset offset

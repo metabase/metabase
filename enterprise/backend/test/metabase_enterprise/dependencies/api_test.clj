@@ -482,7 +482,7 @@
                       :type "card"}]
                     response))))))))
 
-(deftest dependents-multiple-types-test
+(deftest ^:sequential dependents-multiple-types-test
   (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DashboardCard]
@@ -522,7 +522,7 @@
                 (is (contains? (set (map :type response)) "card"))
                 (is (contains? (set (map :type response)) "dashboard"))))))))))
 
-(deftest dependents-multiple-card-types-test
+(deftest ^:sequential dependents-multiple-card-types-test
   (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent_card_types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency]
@@ -614,7 +614,7 @@
                     dependent-ids (set (map :id response))]
                 (is (contains? dependent-ids (:id dependent-card)))))))))))
 
-(deftest dependents-broken-parameter-test
+(deftest ^:sequential dependents-broken-parameter-test
   (testing "GET /api/ee/dependencies/graph/dependents?broken=true - only returns entities that are broken"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
