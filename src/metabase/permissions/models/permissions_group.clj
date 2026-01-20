@@ -9,7 +9,6 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.models.data-permissions :as data-perms]
