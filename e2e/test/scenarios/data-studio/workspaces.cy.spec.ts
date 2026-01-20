@@ -1817,6 +1817,40 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
+    it("should detect changes after closing and reopening a transform tab (GDGT-1535)", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open transform and make edits");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 2");
+
+      cy.log("Save the transform to workspace");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getSaveTransformButton().should("be.disabled");
+
+      cy.log("Make additional edits");
+      H.NativeEditor.type(";");
+      Workspaces.getSaveTransformButton().should("be.enabled");
+
+      cy.log("Close the transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "SQL transform" })
+          .findByLabelText("close icon")
+          .click();
+      });
+
+      cy.log("Reopen the transform tab by clicking in Code tab");
+      Workspaces.getWorkspaceTransforms().findByText("SQL transform").click();
+
+      cy.log("Verify Save button is enabled (changes should be detected)");
+      Workspaces.getSaveTransformButton().should("be.enabled");
+
+      cy.log("Verify the edited content is preserved");
+      H.NativeEditor.value().should("contain", "LIMIT 2;");
+    });
+
     it("should show empty state after creating, archiving, and deleting a workspace", () => {
       Workspaces.visitWorkspaces();
 
