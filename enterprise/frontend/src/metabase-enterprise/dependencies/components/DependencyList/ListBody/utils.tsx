@@ -5,6 +5,7 @@ import type { TreeTableColumnDef } from "metabase/ui";
 import {
   DEPENDENCY_SORT_COLUMNS,
   type DependencyNode,
+  type DependencySortColumn,
   type DependencySortingOptions,
 } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ function getNameColumn(
   mode: DependencyListMode,
 ): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "name",
+    id: "name" satisfies DependencySortColumn,
     header: mode === "broken" ? t`Dependency` : t`Name`,
     minWidth: 100,
     enableSorting: true,
@@ -37,7 +38,7 @@ function getNameColumn(
 
 function getLocationColumn(): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "location",
+    id: "location" satisfies DependencySortColumn,
     header: t`Location`,
     minWidth: 100,
     enableSorting: true,
@@ -55,7 +56,7 @@ function getLocationColumn(): TreeTableColumnDef<DependencyNode> {
 
 function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "dependents-errors",
+    id: "dependents-errors" satisfies DependencySortColumn,
     header: t`Problems`,
     minWidth: 100,
     enableSorting: true,
@@ -71,9 +72,9 @@ function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-function getDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
+function getDependentsWithErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
-    id: "dependents-count",
+    id: "dependents-with-errors" satisfies DependencySortColumn,
     header: t`Broken dependents`,
     minWidth: 100,
     enableSorting: true,
@@ -93,7 +94,7 @@ export function getColumns(
     getNameColumn(mode),
     getLocationColumn(),
     ...(mode === "broken" ? [getDependentsErrorsColumn()] : []),
-    ...(mode === "broken" ? [getDependentsCountColumn()] : []),
+    ...(mode === "broken" ? [getDependentsWithErrorsColumn()] : []),
   ];
 }
 

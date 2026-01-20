@@ -674,13 +674,6 @@
                           (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :table.display_name)
-        dependents-count-column {:select [[[:count [:distinct [:concat [:cast :analyzed_entity_id :text]
-                                                               [:inline ":"]
-                                                               :analyzed_entity_type]]]]]
-                                 :from [:analysis_finding_error]
-                                 :where [:and
-                                         [:= :source_entity_id :entity.id]
-                                         [:= :source_entity_type [:inline (name entity-type)]]]}
         dependents-errors-column {:select [[[:count [:distinct [:concat :error_type
                                                                 [:inline ":"]
                                                                 [:coalesce :error_detail [:inline ""]]]]]]]
@@ -688,6 +681,14 @@
                                   :where [:and
                                           [:= :source_entity_id :entity.id]
                                           [:= :source_entity_type [:inline (name entity-type)]]]}
+
+        dependents-with-errors-column {:select [[[:count [:distinct [:concat [:cast :analyzed_entity_id :text]
+                                                                     [:inline ":"]
+                                                                     :analyzed_entity_type]]]]]
+                                       :from [:analysis_finding_error]
+                                       :where [:and
+                                               [:= :source_entity_id :entity.id]
+                                               [:= :source_entity_type [:inline (name entity-type)]]]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
@@ -737,8 +738,8 @@
                             nil))
         sort-key-column (case sort-column
                           :location location-column
-                          :dependents-count dependents-count-column
                           :dependents-errors dependents-errors-column
+                          :dependents-with-errors dependents-with-errors-column
                           name-column)
         sort-by-location? (= sort-column :location)
         ;; Need location joins when sorting by location OR when query filter uses location
@@ -780,7 +781,7 @@
 
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
-  #{:name :location :dependents-count :dependents-errors})
+  #{:name :location :dependents-with-errors :dependents-errors})
 
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
@@ -817,7 +818,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)
+   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
    - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
@@ -878,7 +879,7 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
-   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-count`, or `:dependents-errors` (default: `:name`)
+   - `sort_column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)
    - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
    - `offset`: Default 0
    - `limit`: Default 50
