@@ -54,39 +54,32 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
       (mt/dataset transforms-dataset/transforms-test
-<<<<<<< HEAD
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
-            (let [query (make-query "Gadget")
-                  schema (get-test-schema)
-                  response (mt/user-http-request :lucky :post 200 "ee/transform"
-                                                 {:name "Gadget Products"
-=======
-        (with-transform-cleanup! [table-name "gadget_products"]
-          (let [query (make-query "Gadget")
-                schema (get-test-schema)
-                response (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                               {:name "Gadget Products"
-                                                :source {:type "query"
-                                                         :query query}
-                                                :target {:type "table"
-                                                         :schema schema
-                                                         :name table-name}})
-                transform-id (:id response)
-                crowberto-id (mt/user->id :crowberto)
-                creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
-            (testing "Response includes creator_id"
-              (is (= crowberto-id (:creator_id response))))
-            (testing "Database record has creator_id set correctly"
-              (is (= crowberto-id creator-id)))
-            (testing "Response hydrates creator"
-              (is (map? (:creator response)))
-              (is (= crowberto-id (get-in response [:creator :id]))))
-            (testing "Response includes owner_user_id defaulting to creator"
-              (is (= crowberto-id (:owner_user_id response))))
-            (testing "Response hydrates owner"
-              (is (map? (:owner response)))
-              (is (= crowberto-id (get-in response [:owner :id]))))))))))
+            (let [query        (make-query "Gadget")
+                  schema       (get-test-schema)
+                  response     (mt/user-http-request :lucky :post 200 "ee/transform"
+                                                     {:name   "Gadget Products"
+                                                      :source {:type  "query"
+                                                               :query query}
+                                                      :target {:type   "table"
+                                                               :schema schema
+                                                               :name   table-name}})
+                  transform-id (:id response)
+                  lucky-id (mt/user->id :lucky)
+                  creator-id   (t2/select-one-fn :creator_id :model/Transform transform-id)]
+              (testing "Response includes creator_id"
+                (is (= lucky-id (:creator_id response))))
+              (testing "Database record has creator_id set correctly"
+                (is (= lucky-id creator-id)))
+              (testing "Response hydrates creator"
+                (is (map? (:creator response)))
+                (is (= lucky-id (get-in response [:creator :id]))))
+              (testing "Response includes owner_user_id defaulting to creator"
+                (is (= lucky-id (:owner_user_id response))))
+              (testing "Response hydrates owner"
+                (is (map? (:owner response)))
+                (is (= lucky-id (get-in response [:owner :id])))))))))))
 
 (deftest create-transform-with-owner-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -99,24 +92,10 @@
                   rasta-id (mt/user->id :rasta)
                   response (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                  {:name "Transform with explicit owner"
->>>>>>> origin/master
                                                   :source {:type "query"
                                                            :query query}
                                                   :target {:type "table"
                                                            :schema schema
-<<<<<<< HEAD
-                                                           :name table-name}})
-                  transform-id (:id response)
-                  lucky-id (mt/user->id :lucky)
-                  creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
-              (testing "Response includes creator_id"
-                (is (= lucky-id (:creator_id response))))
-              (testing "Database record has creator_id set correctly"
-                (is (= lucky-id creator-id)))
-              (testing "Response hydrates creator"
-                (is (map? (:creator response)))
-                (is (= lucky-id (get-in response [:creator :id])))))))))))
-=======
                                                            :name table-name}
                                                   :owner_user_id rasta-id})]
               (is (= rasta-id (:owner_user_id response))
@@ -191,7 +170,6 @@
                 (is (nil? (:owner_user_id updated)))
                 (is (nil? (:owner_email updated)))
                 (is (nil? (:owner updated)))))))))))
->>>>>>> origin/master
 
 (deftest transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"

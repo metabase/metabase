@@ -282,25 +282,15 @@
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
    :skip      [:dependency_analysis_version :source_type]
-<<<<<<< HEAD
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
+               :owner_user_id      (serdes/fk :model/User)
                :source_database_id (serdes/fk :model/Database :name)
                :source             {:export #(update % :query serdes/export-mbql)
                                     :import #(update % :query serdes/import-mbql)}
                :target             {:export serdes/export-mbql :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
-=======
-   :transform {:created_at     (serdes/date)
-               :creator_id     (serdes/fk :model/User)
-               :owner_user_id  (serdes/fk :model/User)
-               :collection_id  (serdes/fk :model/Collection)
-               :source         {:export #(update % :query serdes/export-mbql)
-                                :import #(update % :query serdes/import-mbql)}
-               :target         {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags           (serdes/nested :model/TransformTransformTag :transform_id opts)}})
->>>>>>> origin/master
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags source_database_id]}]

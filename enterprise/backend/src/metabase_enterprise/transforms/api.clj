@@ -102,8 +102,7 @@
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (check-any-transforms-permission)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
-<<<<<<< HEAD
-    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator)
+    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
                (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                      (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -111,15 +110,6 @@
                      (map #(update % :last_run transforms.util/localize-run-timestamps))
                      (map python-source-table-ref->table-id)))
          transforms.util/add-source-readable)))
-=======
-    (into []
-          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
->>>>>>> origin/master
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -154,15 +144,10 @@
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-<<<<<<< HEAD
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-403 (transforms.util/has-db-transforms-permission? api/*current-user-id* (transforms.i/source-db-id body)))
-=======
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (api/check-superuser)
->>>>>>> origin/master
+  (api/check-403 (transforms.util/has-db-transforms-permission? api/*current-user-id* (transforms.i/source-db-id body)))
   (check-database-feature body)
   (check-feature-enabled! body)
 
@@ -224,17 +209,11 @@
   (let [id->transform   (t2/select-pk->fn identity :model/Transform)
         _               (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
-<<<<<<< HEAD
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator)
+    (->> (t2/hydrate dependencies :creator :owner)
          (mapv python-source-table-ref->table-id)
          transforms.util/add-source-readable)))
-=======
-        dep-ids (get global-ordering id)
-        dependencies (map id->transform dep-ids)]
-    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator :owner))))
->>>>>>> origin/master
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -279,14 +258,9 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-<<<<<<< HEAD
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-=======
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (api/check-superuser)
->>>>>>> origin/master
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
