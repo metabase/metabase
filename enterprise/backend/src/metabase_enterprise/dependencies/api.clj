@@ -679,7 +679,7 @@
                                  :where [:and
                                          [:= :analysis_finding_error.source_entity_id :entity.id]
                                          [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
-        dependents-errors-column {:select [[[:count [:distinct :analysis_finding_error.error_type :analysis_finding_error.error_detail]]]]
+        dependents-errors-column {:select [[[:count [:distinct :analysis_finding_error.error_detail :analysis_finding_error.error_type]]]]
                                   :from [:analysis_finding_error]
                                   :where [:and
                                           [:= :analysis_finding_error.source_entity_id :entity.id]
