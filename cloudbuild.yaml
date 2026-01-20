@@ -35,11 +35,3 @@ options:
 
 timeout: '7200s'
 ```
-
-### `.gcloudignore` (to speed up builds)
-```
-.git
-.gitignore
-node_modules/
-*.md
-.github/
