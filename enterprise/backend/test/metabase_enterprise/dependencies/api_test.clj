@@ -21,7 +21,7 @@
 (comment
   metabase-enterprise.dependencies.events/keep-me)
 
-(defn card-with-query
+(defn- card-with-query
   "Create a card map with the given name and dataset query."
   [card-name dataset-query]
   {:name card-name
@@ -32,7 +32,7 @@
    :dataset_query dataset-query
    :visualization_settings {}})
 
-(defn basic-card
+(defn- basic-card
   "Construct a basic card for dependency testing."
   ([]
    (basic-card "Test card"))
@@ -42,19 +42,19 @@
    (let [mp (mt/metadata-provider)]
      (card-with-query card-name (lib/query mp (lib.metadata/table mp (mt/id table-keyword)))))))
 
-(defn wrap-card-query
+(defn- wrap-card-query
   "Construct a query depending on `inner-card` for dependency testing."
   [inner-card]
   (let [mp (mt/metadata-provider)
         card-meta (lib.metadata/card mp (:id inner-card))]
     (lib/query mp card-meta)))
 
-(defn wrap-card
+(defn- wrap-card
   "Construct a card depending on `inner-card` for dependency testing."
   [inner-card]
   (card-with-query "Downstream card" (wrap-card-query inner-card)))
 
-(defn wrap-two-cards
+(defn- wrap-two-cards
   "Construct a card depending on both `card1` and `card2` via a join."
   [card1 card2]
   (let [mp (mt/metadata-provider)
@@ -79,24 +79,24 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))))
 
-(defn create-model-card!
+(defn- create-model-card!
   "Create a model card with the given name and optional collection-id.
    Returns the created card."
   [user card-name & {:keys [collection-id archived]}]
   (let [mp (mt/metadata-provider)
         orders (lib.metadata/table mp (mt/id :orders))]
-    (card/create-card! (cond-> {:name card-name
-                                :database_id (mt/id)
-                                :display :table
-                                :query_type :query
-                                :type :model
-                                :dataset_query (lib/query mp orders)
-                                :visualization_settings {}}
-                         collection-id (assoc :collection_id collection-id)
-                         archived (assoc :archived archived))
+    (card/create-card! (m/assoc-some {:name card-name
+                                      :database_id (mt/id)
+                                      :display :table
+                                      :query_type :query
+                                      :type :model
+                                      :dataset_query (lib/query mp orders)
+                                      :visualization_settings {}}
+                                     :collection_id collection-id
+                                     :archived archived)
                        user)))
 
-(defn create-dependent-card-on-model!
+(defn- create-dependent-card-on-model!
   "Create a card that depends on a model card by filtering on the TOTAL column.
    This creates a card that will break if the model's query changes to a table without TOTAL."
   [user model-card card-name & {:keys [collection-id]}]
@@ -110,7 +110,7 @@
                          collection-id (assoc :collection_id collection-id))
                        user)))
 
-(defn create-dependent-card-on-products-model!
+(defn- create-dependent-card-on-products-model!
   "Create a card that depends on a model card by filtering on the PRICE column.
    This creates a card that will break if the model's query changes to a table without PRICE"
   [user model-card card-name & {:keys [collection-id]}]
@@ -124,7 +124,7 @@
                          collection-id (assoc :collection_id collection-id))
                        user)))
 
-(defn break-model-card!
+(defn- break-model-card!
   "Update a model card to query the products table instead of orders.
    This breaks any downstream cards that depend on columns only in the orders table (like TOTAL)."
   [model-card]
@@ -133,7 +133,7 @@
     (card/update-card! {:card-before-update model-card
                         :card-updates {:dataset_query (lib/query mp products)}})))
 
-(defn run-analysis-for-card!
+(defn- run-analysis-for-card!
   "Run analysis for a specific card to detect broken references.
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]

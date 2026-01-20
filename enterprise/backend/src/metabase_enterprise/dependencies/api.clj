@@ -26,12 +26,13 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
-   [toucan2.util :as u]))
+   [toucan2.util :as t2.util]))
 
 (mr/def ::card-body
   [:merge
@@ -477,15 +478,13 @@
    Unlike `node-errors` which fetches errors ON an entity, this fetches errors that
    the entity is CAUSING in other entities that depend on it."
   [nodes-by-type]
-  (letfn [(group-source-errors [[[source-type source-id] errors]]
-            [[source-type source-id] (set errors)])
-          (errors-by-source-type-and-id [[source-type ids]]
-            (let [finding-errors (t2/select :model/AnalysisFindingError
-                                            :source_entity_type source-type
-                                            :source_entity_id [:in ids])]
-              (->> finding-errors
-                   (group-by (juxt :source_entity_type :source_entity_id))
-                   (map group-source-errors))))]
+  (letfn [(errors-by-source-type-and-id [[source-type ids]]
+            (when (seq ids)
+              (let [finding-errors (t2/select :model/AnalysisFindingError
+                                              :source_entity_type source-type
+                                              :source_entity_id [:in ids])]
+                (u/group-by (juxt :source_entity_type :source_entity_id)
+                            identity conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
@@ -498,16 +497,13 @@
             [{:keys [error_type error_detail]}]
             (cond-> {:type error_type}
               error_detail (assoc :detail error_detail)))
-          (normalize-entity-errors [[[entity-type entity-id] errors]]
-            (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
-              [[entity-type entity-id] normalized-errors]))
           (errors-by-entity-type-and-id [[type ids]]
-            (let [finding-errors (t2/select :model/AnalysisFindingError
-                                            :analyzed_entity_type type
-                                            :analyzed_entity_id [:in ids])]
-              (->> finding-errors
-                   (group-by (juxt :analyzed_entity_type :analyzed_entity_id))
-                   (map normalize-entity-errors))))]
+            (when (seq ids)
+              (let [finding-errors (t2/select :model/AnalysisFindingError
+                                              :analyzed_entity_type type
+                                              :analyzed_entity_id [:in ids])]
+                (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
+                            normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
@@ -630,11 +626,11 @@
                     (get [type id]))
           ;; Normalize to sets for efficient lookup
           dep-types-set (cond
-                          (nil? dependent_types) nil ;; nil means "all types"
+                          (nil? dependent_types) deps.dependency-types/dependency-types
                           (sequential? dependent_types) (set dependent_types)
                           :else #{dependent_types})
           card-types-set (cond
-                           (nil? dependent_card_types) nil ;; nil means "all card types"
+                           (nil? dependent_card_types) lib.schema.metadata/card-types
                            (sequential? dependent_card_types) (set dependent_card_types)
                            :else #{dependent_card_types})]
       (->> (expanded-nodes downstream-graph nodes {:include-errors? false})
@@ -680,7 +676,7 @@
                                   :from [:analysis_finding_error]
                                   :where [:and
                                           [:= :source_entity_id :entity.id]
-                                          [:= :source_entity_type [:inline (name entity-type)]]]}
+                                          [:= :source_entity_type (name entity-type)]]}
 
         dependents-with-errors-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
                                                                       [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
@@ -688,11 +684,11 @@
                                        :from [:analysis_finding_error]
                                        :where [:and
                                                [:= :source_entity_id :entity.id]
-                                               [:= :source_entity_type [:inline (name entity-type)]]]}
+                                               [:= :source_entity_type (name entity-type)]]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
-                                                      [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+                                                      [:= :dependency.to_entity_type (name entity-type)]]]
                           :broken [:analysis_finding [:and
                                                       [:= :analysis_finding.analyzed_entity_id :entity.id]
                                                       [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
@@ -702,14 +698,14 @@
         dependency-filter (case query-type
                             :unreferenced [:= :dependency.id nil]
                             :broken [:= :analysis_finding.result false]
-                            :breaking [:is-not :analysis_finding_error.id nil])
+                            :breaking [:!= :analysis_finding_error.id nil])
         card-type-filter (when (and (= entity-type :card)
                                     (seq card-types))
                            [:in :entity.type (mapv name card-types)])
         query-filter (when (and query (not= entity-type :sandbox))
                        [:or
-                        [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]
-                        [:like [:lower location-column] (str "%" (u/lower-case-en query) "%")]])
+                        [:like [:lower name-column] (str "%" (t2.util/lower-case-en query) "%")]
+                        [:like [:lower location-column] (str "%" (t2.util/lower-case-en query) "%")]])
         database-filter (when (= entity-type :table)
                           [:and [:not :database.is_sample] [:not :database.is_audit]])
         archived-filter (when (= include-archived-items :exclude)
@@ -763,21 +759,10 @@
                   needs-dashboard-join? (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
                   needs-document-join? (conj :document [:= :entity.document_id :document.id])
                   needs-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
-     :where (cond->> dependency-filter
-              card-type-filter
-              (conj [:and card-type-filter])
 
-              query-filter
-              (conj [:and query-filter])
-
-              database-filter
-              (conj [:and database-filter])
-
-              archived-filter
-              (conj [:and archived-filter])
-
-              personal-filter
-              (conj [:and personal-filter]))}))
+     :where (into [:and dependency-filter]
+                  (keep identity)
+                  [card-type-filter query-filter database-filter archived-filter personal-filter])}))
 
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
@@ -921,8 +906,7 @@
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
         ;; Fetch errors caused BY these source entities
-        nodes-by-type (->> (group-by first all-ids)
-                           (m/map-vals #(map second %)))
+        nodes-by-type (u/group-by first second all-ids)
         downstream-errors (node-downstream-errors nodes-by-type)
         total (-> (t2/query {:select [[:%count.* :total]]
                              :from [[union-query :subquery]]})
@@ -934,7 +918,7 @@
                    (keep (fn [[entity-type entity-id]]
                            (let [model (deps.dependency-types/dependency-type->model entity-type)
                                  fields (entity-select-fields entity-type)
-                                 entity (first (t2/select (into [model] fields) :id entity-id))]
+                                 entity (t2/select-one (into [model] fields) :id entity-id)]
                              (when entity
                                (let [hydrated (first (hydrate-entities entity-type [entity]))]
                                  (entity-value entity-type hydrated usages downstream-errors))))))
