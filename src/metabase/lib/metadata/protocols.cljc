@@ -19,7 +19,7 @@
   `:id` and `:name` are mutually exclusive.
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed.
+  unless `:id` or `:name` is specified.
 
   `:include-sensitive?` can be set to `true` to include Fields with `:visibility-type` `:sensitive` in the results."
   [:and
