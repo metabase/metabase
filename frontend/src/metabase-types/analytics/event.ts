@@ -545,12 +545,22 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_applied";
+}>;
+
+export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_cleared";
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
   | DataStudioGlossaryEditedEvent
-  | DataStudioGlossaryDeletedEvent;
+  | DataStudioGlossaryDeletedEvent
+  | DataStudioTablePickerFiltersAppliedEvent
+  | DataStudioTablePickerFiltersClearedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";

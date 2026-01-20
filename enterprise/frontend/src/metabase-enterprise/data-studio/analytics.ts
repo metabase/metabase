@@ -35,3 +35,15 @@ export const trackDataStudioGlossaryTermDeleted = (id: number | null) => {
     target_id: id,
   });
 };
+
+export const trackDataStudioTablePickerFiltersApplied = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_filters_applied",
+  });
+};
+
+export const trackDataStudioTablePickerFiltersCleared = () => {
+  trackSimpleEvent({
+    event: "data_studio_table_picker_filters_cleared",
+  });
+};
