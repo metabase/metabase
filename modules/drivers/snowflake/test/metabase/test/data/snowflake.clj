@@ -437,7 +437,7 @@
   ;; Map native Snowflake type strings to their base_type.
   ;; These must match what sql-jdbc.sync/database-type->base-type returns for Snowflake.
   ;; See metabase.driver.snowflake for the full mapping.
-  (case (some-> native-type str/upper-case)
+  (case (some-> native-type u/upper-case-en)
     ;; Timestamp types
     "TIMESTAMPTZ"  :type/DateTimeWithLocalTZ
     "TIMESTAMPLTZ" :type/DateTimeWithTZ
