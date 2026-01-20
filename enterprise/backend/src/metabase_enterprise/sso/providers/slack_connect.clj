@@ -110,10 +110,7 @@
                                       (get auth-result :claims))
                   slack-attrs (when id-token-claims
                                 (extract-slack-claims id-token-claims))]
-              (cond-> auth-result
-                true
-                (assoc-in [:user-data :sso_source] :slack)
-
+              (cond-> (assoc-in auth-result [:user-data :sso_source] :slack)
                 slack-attrs
                 (assoc-in [:user-data :login_attributes] slack-attrs)
 
