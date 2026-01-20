@@ -1828,53 +1828,6 @@
               (is (contains? dashboard-ids dash-in-personal))
               (is (contains? dashboard-ids dash-regular)))))))))
 
-#_(deftest ^:sequential broken-personal-collection-card-test
-    (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
-      (mt/with-premium-features #{:dependencies}
-        (binding [collection/*allow-deleting-personal-collections* true]
-          (mt/with-temp [:model/User {user-id :id} {}
-                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                   :name "Test Personal Collection"}
-                         :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
-                                                               :type :question
-                                                               :collection_id personal-coll-id
-                                                               :dataset_query (broken-mbql-query)}
-                         :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
-                                                           :type :question
-                                                           :dataset_query (broken-mbql-query)}]
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
-                    card-ids (set (map :id (:data response)))]
-                (is (not (contains? card-ids broken-in-personal)))
-                (is (contains? card-ids broken-regular))))
-            (testing "include_personal_collections=true includes broken cards in personal collections"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
-                    card-ids (set (map :id (:data response)))]
-                (is (contains? card-ids broken-in-personal))
-                (is (contains? card-ids broken-regular)))))))))
-
-#_(deftest ^:sequential broken-pagination-test
-    (testing "GET /api/ee/dependencies/broken - should paginate results"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card1-id :id} {:name "Card 1 - brokentest"
-                                                   :type :question
-                                                   :dataset_query (broken-mbql-query)}
-                       :model/Card {card2-id :id} {:name "Card 2 - brokentest"
-                                                   :type :question
-                                                   :dataset_query (broken-mbql-query)}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (is (=? {:data   [{:id card1-id}]
-                   :total  2
-                   :offset 0
-                   :limit  1}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=0&limit=1")))
-          (is (=? {:data   [{:id card2-id}]
-                   :total  2
-                   :offset 1
-                   :limit  1}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1")))))))
-
 (deftest ^:sequential broken-entities-personal-collection-card-test
   (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
     (mt/with-premium-features #{:dependencies}
