@@ -188,4 +188,20 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       defineMetabaseConfig({});
     }).not.toThrow();
   });
+
+  it("should include a random query parameter in the iframe src for cache busting", () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://example.com",
+    });
+
+    const embed = document.createElement("metabase-dashboard");
+    embed.setAttribute("dashboard-id", "1");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe");
+    expect(iframe).not.toBeNull();
+    expect(iframe?.src).toMatch(
+      /^https:\/\/example\.com\/embed\/sdk\/v1\?v=\d+$/,
+    );
+  });
 });
