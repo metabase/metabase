@@ -7,7 +7,6 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
