@@ -268,4 +268,4 @@
                                                                     {:name             "Data Analysts"
                                                                      :magic_group_type data-analyst-magic-group-type})]
               (grant-library-permissions! new-group-id))
-            (t2/update! :model/User :is_data_analyst false)))))))
+            (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false})))))))
