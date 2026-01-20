@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -29,7 +31,7 @@ export function SidebarTransformInfo({ node }: SidebarTransformInfoProps) {
         <Box lh="h4" c="text-primary">
           <Anchor
             component={Link}
-            className={S.link}
+            className={cx(CS.textWrap, S.link)}
             to={Urls.transform(transform.id)}
             target="_blank"
           >
