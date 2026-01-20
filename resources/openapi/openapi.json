@@ -10866,10 +10866,6 @@
       "metabase.lib.schema.settings.settings" : {
         "description" : "Options that tweak the behavior of the query processor.",
         "properties" : {
-          "include-sensitive-fields" : {
-            "description" : "Whether to include fields with visibility_type :sensitive when fetching query metadata.",
-            "type" : "boolean"
-          },
           "report-timezone" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id",
             "description" : "The timezone the query should be ran in, overriding the default report timezone for the instance."
@@ -20280,7 +20276,7 @@
     },
     "/api/dataset/query_metadata" : {
       "post" : {
-        "description" : "Get all of the required query metadata for an ad-hoc query.\n\n  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with\n  visibility_type :sensitive in the response.",
+        "description" : "Get all of the required query metadata for an ad-hoc query.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -20291,18 +20287,6 @@
                     "description" : "value must be an integer greater than zero.",
                     "minimum" : 1,
                     "type" : "integer"
-                  },
-                  "settings" : {
-                    "oneOf" : [ {
-                      "properties" : {
-                        "include_sensitive_fields" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "type" : "object"
-                    }, {
-                      "type" : "null"
-                    } ]
                   }
                 },
                 "required" : [ "database" ],
@@ -20379,189 +20363,6 @@
         },
         "summary" : "POST /api/dataset/{export-format}",
         "tags" : [ "/api/dataset" ]
-      }
-    },
-    "/api/dev/prototype/{type}/" : {
-      "get" : {
-        "description" : "Gets all records of the given type.\n  Any parameters passed will be used for equals filters",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/dev/prototype/{type}/",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "post" : {
-        "description" : "Create a new record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/dev/prototype/{type}/",
-        "tags" : [ "/api/dev/prototype" ]
-      }
-    },
-    "/api/dev/prototype/{type}/all" : {
-      "delete" : {
-        "description" : "Deletes all records of this type. Helpful for resetting to a clean state.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/dev/prototype/{type}/all",
-        "tags" : [ "/api/dev/prototype" ]
-      }
-    },
-    "/api/dev/prototype/{type}/{id}" : {
-      "delete" : {
-        "description" : "Deletes an existing record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "get" : {
-        "description" : "Returns an existing record",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
-      },
-      "put" : {
-        "description" : "Updates an existing record.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "type",
-          "required" : true,
-          "schema" : {
-            "minLength" : 1,
-            "type" : "string"
-          }
-        }, {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "PUT /api/dev/prototype/{type}/{id}",
-        "tags" : [ "/api/dev/prototype" ]
       }
     },
     "/api/document/" : {
@@ -28165,22 +27966,6 @@
                   "name" : {
                     "type" : "string"
                   },
-                  "owner_email" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "owner_user_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "minimum" : 1,
-                      "type" : "integer"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "run_trigger" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.run-trigger"
                   },
@@ -28497,22 +28282,6 @@
                   },
                   "name" : {
                     "type" : "string"
-                  },
-                  "owner_email" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "owner_user_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "minimum" : 1,
-                      "type" : "integer"
-                    }, {
-                      "type" : "null"
-                    } ]
                   },
                   "run_trigger" : {
                     "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.run-trigger"
