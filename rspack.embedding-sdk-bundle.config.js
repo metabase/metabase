@@ -67,8 +67,9 @@ const config = {
     // we must use a different directory than the main rspack config,
     // otherwise the path conflicts and the output bundle will not appear.
     path: TMP_BUILD_PATH,
-    publicPath: "",
+    publicPath: "./embedding-sdk/",
     filename: SDK_BUNDLE_FILENAME,
+    chunkFilename: "[name].embedding-sdk.js",
   },
 
   devtool: IS_DEV_MODE ? mainConfig.devtool : false,
@@ -162,12 +163,15 @@ const config = {
 
   externals: EXTERNAL_DEPENDENCIES,
 
-  optimization: OPTIMIZATION_CONFIG,
+  optimization: {
+    ...OPTIMIZATION_CONFIG,
+    splitChunks: {
+      chunks: 'async',
+      minSize: 1000,
+    },
+  },
 
   plugins: [
-    new rspack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1,
-    }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903

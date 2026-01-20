@@ -165,3 +165,4 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
+resources/frontend_client/app/embedding-sdk/

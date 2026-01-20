@@ -19,7 +19,7 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
       const outputFilePath = path.join(outputPath, fileName);
 
       // copy embedding-sdk.js from the temp directory to the resources directory
-      fs.mkdirSync(tmpPath, { recursive: true });
+      fs.mkdirSync(outputPath, { recursive: true });
       fs.copyFileSync(tmpFilePath, outputFilePath);
 
       if (copySourceMap) {
@@ -29,6 +29,21 @@ module.exports.CopyJsFromTmpDirectoryPlugin = ({
         if (fs.existsSync(tmpSourceMapPath)) {
           fs.copyFileSync(tmpSourceMapPath, outputSourceMapPath);
         }
+      }
+
+      // Copy all chunk files (*.embedding-sdk.js) to embedding-sdk/ subfolder
+      const chunksOutputPath = path.join(outputPath, "embedding-sdk");
+      fs.mkdirSync(chunksOutputPath, { recursive: true });
+
+      if (fs.existsSync(tmpPath)) {
+        const files = fs.readdirSync(tmpPath);
+        files.forEach(file => {
+          if (file.endsWith(".embedding-sdk.js") || (copySourceMap && file.endsWith(".embedding-sdk.js.map"))) {
+            const tmpChunkPath = path.join(tmpPath, file);
+            const outputChunkPath = path.join(chunksOutputPath, file);
+            fs.copyFileSync(tmpChunkPath, outputChunkPath);
+          }
+        });
       }
 
       if (!IS_DEV_MODE || cleanupInDevMode) {

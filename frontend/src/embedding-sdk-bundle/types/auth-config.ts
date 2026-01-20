@@ -29,6 +29,15 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
+  /**
+   * Optional: Disable early auth optimization in the package.
+   * If true, the bundle will handle all auth.
+   * Useful for debugging or when you want to control auth timing.
+   *
+   * @default false
+   */
+  skipPackageAuth?: boolean;
+
   isGuest?: false;
   apiKey?: never;
 };
