@@ -60,7 +60,9 @@
 (defn fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
-  (slack-get client "/conversations.replies" (select-keys message [:channel :ts])))
+  (slack-get client "/conversations.replies"
+             {:channel (:channel message)
+              :ts (or (:thread_ts message) (:ts message))}))
 
 (defn get-upload-url
   "Get a URL we can upload to"
