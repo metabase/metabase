@@ -178,13 +178,21 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
-  "Get all of the required query metadata for an ad-hoc query."
+  "Get all of the required query metadata for an ad-hoc query.
+
+  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
+  visibility_type :sensitive in the response."
   [_route-params
    _query-params
    query :- [:map
-             [:database ms/PositiveInt]]]
+             [:database ms/PositiveInt]
+             [:settings {:optional true} [:maybe [:map
+                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
   (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata [query])))
+    (queries/batch-fetch-query-metadata
+     [query]
+     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+       {:include-sensitive-fields? include-sensitive-fields}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
