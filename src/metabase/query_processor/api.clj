@@ -63,6 +63,7 @@
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
       (api/query-check :model/Database database))
+    ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
@@ -70,7 +71,7 @@
       ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card (when source-card-id
-                        (t2/select-one [:model/Card :result_metadata :type] :id source-card-id))
+                        (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
           info (cond-> {:executed-by api/*current-user-id*
                         :context context
                         :card-id source-card-id}
