@@ -137,6 +137,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           p={linesCount > 1 ? 0 : "xs"}
           pos="relative"
           mt="md"
+          data-testid="code-container"
         >
           <CodeEditor
             language="json"

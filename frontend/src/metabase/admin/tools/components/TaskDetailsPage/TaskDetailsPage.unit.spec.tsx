@@ -1,3 +1,4 @@
+import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
@@ -9,6 +10,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import type { Task } from "metabase-types/api";
@@ -16,6 +18,13 @@ import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskDetailsPage } from "./TaskDetailsPage";
+
+jest.mock("@mantine/hooks", () => ({
+  ...jest.requireActual("@mantine/hooks"),
+  useClipboard: jest.fn(),
+}));
+
+const mockUseClipboard = useClipboard as jest.Mock;
 
 const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;
 
@@ -37,6 +46,15 @@ const setup = ({ task = createMockTask() }: SetupOpts = {}) => {
 };
 
 describe("TaskDetailsPage", () => {
+  beforeEach(() => {
+    mockUseClipboard.mockReturnValue({
+      copy: jest.fn(),
+      copied: false,
+      reset: jest.fn(),
+      error: null,
+    });
+  });
+
   it("should display task details", async () => {
     const task = createMockTask({
       id: 42,
@@ -83,5 +101,40 @@ describe("TaskDetailsPage", () => {
     await userEvent.hover(dateTimeElements[0]);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
+  });
+
+  it("should copy raw ISO timestamp to clipboard when clicking copy button", async () => {
+    const copyMock = jest.fn();
+    mockUseClipboard.mockReturnValue({
+      copy: copyMock,
+      copied: false,
+      reset: jest.fn(),
+      error: null,
+    });
+
+    const startedAt = "2023-03-04T01:45:26.005475-08:00";
+    const endedAt = "2023-03-04T01:46:26.518597-08:00";
+    const task = createMockTask({
+      started_at: startedAt,
+      ended_at: endedAt,
+    });
+
+    setup({ task });
+
+    await waitForLoaderToBeRemoved();
+
+    const copyButtons = screen.getAllByTestId("copy-button");
+
+    const startedAtCopyIcon = within(copyButtons[0]).getByRole("img", {
+      name: "copy icon",
+    });
+    await userEvent.click(startedAtCopyIcon);
+    expect(copyMock).toHaveBeenCalledWith(startedAt);
+
+    const endedAtCopyIcon = within(copyButtons[1]).getByRole("img", {
+      name: "copy icon",
+    });
+    await userEvent.click(endedAtCopyIcon);
+    expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
 });

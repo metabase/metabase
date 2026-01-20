@@ -244,7 +244,7 @@ describe("scenarios > admin > tools > tasks", () => {
     cy.window().then((window) => {
       cy.stub(window.navigator.clipboard, "writeText").resolves();
     });
-    cy.icon("copy").click();
+    cy.findByTestId("code-container").icon("copy").click();
     cy.window()
       .its("navigator.clipboard.writeText")
       .should("be.calledWith", formattedTaskJson);
