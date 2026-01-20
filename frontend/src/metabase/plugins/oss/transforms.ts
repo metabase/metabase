@@ -46,6 +46,7 @@ export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transformId?: TransformId;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
