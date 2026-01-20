@@ -12,8 +12,7 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
 } from "../../../../utils";
-
-import S from "./SidebarCreationInfo.module.css";
+import S from "../ListSidebar.module.css";
 
 type SidebarCreationInfoProps = {
   node: DependencyNode;

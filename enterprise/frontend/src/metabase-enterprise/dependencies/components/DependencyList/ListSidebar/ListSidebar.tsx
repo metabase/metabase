@@ -11,6 +11,7 @@ import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
 import { SidebarErrorInfo } from "./SidebarErrorInfo";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarLocationInfo } from "./SidebarLocationInfo";
+import { SidebarTransformInfo } from "./SidebarTransformInfo";
 
 type ListSidebarProps = {
   node: DependencyNode;
@@ -36,6 +37,7 @@ export const ListSidebar = memo(function ListSidebar({
       <Stack gap="lg">
         <SidebarHeader node={node} onClose={onClose} />
         <SidebarLocationInfo node={node} />
+        <SidebarTransformInfo node={node} />
         <SidebarCreationInfo node={node} />
       </Stack>
       {errorGroups.map((errorGroup) => (

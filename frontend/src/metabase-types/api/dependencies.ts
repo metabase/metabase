@@ -60,7 +60,15 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
 
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
+  | "name"
+  | "display_name"
+  | "description"
+  | "db_id"
+  | "schema"
+  | "db"
+  | "fields"
+  | "transform_id"
+  | "transform"
 >;
 
 export type TransformDependencyNodeData = Pick<

@@ -3,12 +3,11 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Anchor, Breadcrumbs, Group, Icon } from "metabase/ui";
+import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
-
-import S from "./SidebarLocationInfo.module.css";
+import S from "../ListSidebar.module.css";
 
 type SidebarLocationInfoProps = {
   node: DependencyNode;
@@ -35,7 +34,7 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
             target="_blank"
           >
             <Group gap="sm" wrap="nowrap">
-              {linkIndex === 0 && <Icon name={locationInfo.icon} />}
+              {linkIndex === 0 && <FixedSizeIcon name={locationInfo.icon} />}
               {link.label}
             </Group>
           </Anchor>

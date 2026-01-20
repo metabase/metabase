@@ -13,6 +13,7 @@ import type {
   DependencyNode,
   DependencyType,
   LastEditInfo,
+  Transform,
   UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -414,6 +415,13 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "segment":
       return null;
   }
+}
+
+export function getNodeTransform(node: DependencyNode): Transform | null {
+  if (node.type === "table") {
+    return node.data.transform ?? null;
+  }
+  return null;
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {

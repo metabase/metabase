@@ -146,7 +146,7 @@
     (broken-cards-response {})))
 
 (def ^:private entity-keys
-  {:table     [:name :description :display_name :db_id :db :schema :fields]
+  {:table     [:name :description :display_name :db_id :db :schema :fields :transform]
    :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
@@ -518,7 +518,7 @@
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db)
+    :table (t2/hydrate entities :fields :db :transform)
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
