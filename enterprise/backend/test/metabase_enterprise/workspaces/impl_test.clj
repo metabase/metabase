@@ -99,32 +99,32 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query {}}
                                                             :target          {:database 1 :schema "public" :name "t1"}
-                                                            :definition_stale true
-                                                            :input_data_stale false}
+                                                            :definition_changed true
+                                                            :input_data_changed false}
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}]
                                                                            :dependencies {}
                                                                            :inputs       []
                                                                            :outputs      []}}]
-        (testing "initial read shows transform as definition_stale"
+        (testing "initial read shows transform as definition_changed"
           (let [graph (ws.impl/get-or-calculate-graph-with-staleness (t2/select-one :model/Workspace ws-id))
                 entity (first (:entities graph))]
-            (is (true? (:definition_stale entity)))
-            (is (false? (:input_data_stale entity)))))
+            (is (true? (:definition_changed entity)))
+            (is (false? (:input_data_changed entity)))))
 
-        (t2/update! :model/WorkspaceTransform t1-ref {:definition_stale false :input_data_stale true})
+        (t2/update! :model/WorkspaceTransform t1-ref {:definition_changed false :input_data_changed true})
 
         (testing "after updating flags in DB, graph read reflects the change"
           (let [graph (ws.impl/get-or-calculate-graph-with-staleness (t2/select-one :model/Workspace ws-id))
                 entity (first (:entities graph))]
-            (is (false? (:definition_stale entity)))
-            (is (true? (:input_data_stale entity)))))))))
+            (is (false? (:definition_changed entity)))
+            (is (true? (:input_data_changed entity)))))))))
 
 (deftest run-transform-with-stale-ancestor-sets-input-data-stale-test
-  (testing "Running a transform with stale ancestor sets input_data_stale"
-    ;; t1 queries from orders, outputs to t1 (definition_stale)
+  (testing "Running a transform with stale ancestor sets input_data_changed"
+    ;; t1 queries from orders, outputs to t1 (definition_changed)
     ;; t2 queries from t1 (t1's output), outputs to t2 (fresh)
-    ;; When t2 runs while t1 is still stale, t2 should have input_data_stale=true
+    ;; When t2 runs while t1 is still stale, t2 should have input_data_changed=true
     (let [t1-ref (str (random-uuid))
           t2-ref (str (random-uuid))
           mp     (mt/metadata-provider)
@@ -136,15 +136,15 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_stale true
-                                                            :input_data_stale false}
+                                                            :definition_changed true
+                                                            :input_data_changed false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t2-ref
                                                             :name            "Transform 2"
                                                             :source          {:type "query" :query query2}
                                                             :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_stale false
-                                                            :input_data_stale false}
+                                                            :definition_changed false
+                                                            :input_data_changed false}
                      ;; Graph showing t2 depends on t1
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
@@ -153,10 +153,10 @@
                                                                                           [{:node-type :workspace-transform :id t1-ref}]}
                                                                            :inputs       []
                                                                            :outputs      []}}]
-        (testing "initial state: t1 is definition_stale, t2 is fresh"
-          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
+        (testing "initial state: t1 is definition_changed, t2 is fresh"
+          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
 
         (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
                                     (fn [_transform _remapping]
@@ -168,12 +168,12 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (ws.impl/run-transform! workspace ws-transform))))
 
-        (testing "after running t2: t2 has input_data_stale because t1 is still stale"
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
+        (testing "after running t2: t2 has input_data_changed because t1 is still stale"
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
 
 (deftest run-transform-marks-downstream-stale-test
-  (testing "Running a transform marks all transitive downstream as input_data_stale"
+  (testing "Running a transform marks all transitive downstream as input_data_changed"
     (let [t1-ref (str (random-uuid))
           t2-ref (str (random-uuid))
           mp     (mt/metadata-provider)
@@ -185,15 +185,15 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_stale true
-                                                            :input_data_stale false}
+                                                            :definition_changed true
+                                                            :input_data_changed false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t2-ref
                                                             :name            "Transform 2"
                                                             :source          {:type "query" :query query2}
                                                             :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_stale false
-                                                            :input_data_stale false}
+                                                            :definition_changed false
+                                                            :input_data_changed false}
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
                                                                                           {:node-type :workspace-transform :id t2-ref}]
@@ -201,11 +201,11 @@
                                                                                           [{:node-type :workspace-transform :id t1-ref}]}
                                                                            :inputs       []
                                                                            :outputs      []}}]
-        (testing "initial state: t1 is definition_stale, t2 is fresh"
-          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
+        (testing "initial state: t1 is definition_changed, t2 is fresh"
+          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
 
         (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
                                     (fn [_transform _remapping]
@@ -217,11 +217,11 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (ws.impl/run-transform! workspace ws-transform))))
 
-        (testing "after running t1: t1 is fresh, t2 is input_data_stale"
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
+        (testing "after running t1: t1 is fresh, t2 is input_data_changed"
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
 
 (deftest run-transform-marks-transitive-downstream-test
   (testing "Running a transform marks all transitive downstream, not just direct"
@@ -236,22 +236,22 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_stale true
-                                                            :input_data_stale false}
+                                                            :definition_changed true
+                                                            :input_data_changed false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t2-ref
                                                             :name            "Transform 2"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_stale false
-                                                            :input_data_stale false}
+                                                            :definition_changed false
+                                                            :input_data_changed false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t3-ref
                                                             :name            "Transform 3"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t3"}
-                                                            :definition_stale false
-                                                            :input_data_stale false}
+                                                            :definition_changed false
+                                                            :input_data_changed false}
                      ;; t1 -> t2 -> t3
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
@@ -273,10 +273,10 @@
             (mt/with-current-user (mt/user->id :crowberto)
               (ws.impl/run-transform! workspace ws-transform))))
 
-        (testing "after running t1: both t2 and t3 are input_data_stale"
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t3-ref))))))))
+        (testing "after running t1: both t2 and t3 are input_data_changed"
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t3-ref))))))))
 
 (deftest run-transform-clears-both-flags-when-fresh-test
   (testing "Running a transform with fresh ancestor clears both flags"
@@ -291,15 +291,15 @@
                                                             :name            "Transform 1"
                                                             :source          {:type "query" :query query1}
                                                             :target          {:database (mt/id) :schema "public" :name "t1"}
-                                                            :definition_stale false
-                                                            :input_data_stale false}
+                                                            :definition_changed false
+                                                            :input_data_changed false}
                      :model/WorkspaceTransform _           {:workspace_id    ws-id
                                                             :ref_id          t2-ref
                                                             :name            "Transform 2"
                                                             :source          {:type "query" :query query2}
                                                             :target          {:database (mt/id) :schema "public" :name "t2"}
-                                                            :definition_stale true
-                                                            :input_data_stale true}
+                                                            :definition_changed true
+                                                            :input_data_changed true}
                      :model/WorkspaceGraph     _           {:workspace_id ws-id
                                                             :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}
                                                                                           {:node-type :workspace-transform :id t2-ref}]
@@ -308,9 +308,9 @@
                                                                            :inputs       []
                                                                            :outputs      []}}]
         (testing "initial state: t1 is fresh, t2 has both flags set"
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t1-ref)))
-          (is (true? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (true? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t1-ref)))
+          (is (true? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (true? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))
 
         (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
                                     (fn [_transform _remapping]
@@ -323,5 +323,5 @@
               (ws.impl/run-transform! workspace ws-transform))))
 
         (testing "after running t2 with fresh ancestor: both flags are cleared"
-          (is (false? (t2/select-one-fn :definition_stale :model/WorkspaceTransform :ref_id t2-ref)))
-          (is (false? (t2/select-one-fn :input_data_stale :model/WorkspaceTransform :ref_id t2-ref))))))))
+          (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
+          (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))

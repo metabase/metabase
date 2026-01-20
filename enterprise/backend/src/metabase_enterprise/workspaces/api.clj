@@ -702,7 +702,7 @@
    [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
-(def ^:private workspace-transform-alias {:target_stale :definition_stale})
+(def ^:private workspace-transform-alias {:target_stale :definition_changed})
 
 (defn- attach-isolated-target [{:keys [workspace_id ref_id] :as ws-transform}]
   (let [{:keys [db_id isolated_schema isolated_table]}
@@ -793,7 +793,7 @@
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
     (let [source-or-target-changed? (or (:source body) (:target body))
           update-body (cond-> body
-                        source-or-target-changed? (assoc :definition_stale true))]
+                        source-or-target-changed? (assoc :definition_changed true))]
       (t2/update! :model/WorkspaceTransform tx-id update-body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?

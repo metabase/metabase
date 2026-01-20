@@ -4896,13 +4896,13 @@ databaseChangeLog:
   - changeSet:
       id: v58.2026-01-09T10:00:02
       author: qnkhuat
-      comment: Add definition_stale column to workspace_transform table
+      comment: Add definition_changed column to workspace_transform table
       changes:
         - addColumn:
             tableName: workspace_transform
             columns:
               - column:
-                  name: definition_stale
+                  name: definition_changed
                   type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Indicates if the transform definition has changed and needs re-execution
@@ -4911,18 +4911,18 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: workspace_transform
-            columnName: definition_stale
+            columnName: definition_changed
 
   - changeSet:
       id: v58.2026-01-16T10:00:00
       author: qnkhuat
-      comment: Add input_data_stale column to workspace_transform table
+      comment: Add input_data_changed column to workspace_transform table
       changes:
         - addColumn:
             tableName: workspace_transform
             columns:
               - column:
-                  name: input_data_stale
+                  name: input_data_changed
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: Indicates if upstream data has changed and transform needs re-execution
@@ -4931,7 +4931,7 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: workspace_transform
-            columnName: input_data_stale
+            columnName: input_data_changed
 
   - changeSet:
       id: v58.2026-01-12T10:47:48

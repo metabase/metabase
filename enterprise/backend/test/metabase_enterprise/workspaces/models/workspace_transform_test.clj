@@ -10,7 +10,7 @@
 (ws.tu/ws-fixtures!)
 
 (deftest workspace-transform-definition-stale-marking
-  (testing "WorkspaceTransform definition_stale is marked based on source/target changes"
+  (testing "WorkspaceTransform definition_changed is marked based on source/target changes"
     (let [query1 (query-util/make-query :source-table "ORDERS")
           query2 (query-util/make-query :source-table "PRODUCTS")]
       (mt/with-temp [:model/Workspace          {workspace-id :id} {:name "Test Workspace"}
@@ -19,19 +19,19 @@
                                                                    :name "Test Transform"
                                                                    :source {:type "query" :query query1}
                                                                    :target {:database (mt/id) :schema "public" :name "test_table"}
-                                                                   :definition_stale false}]
+                                                                   :definition_changed false}]
         (testing "marks as stale when source changes"
           (t2/update! :model/WorkspaceTransform ref-id {:source {:type "query" :query query2}})
           (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (true? (:definition_stale updated)))))
+            (is (true? (:definition_changed updated)))))
 
         (testing "marks as stale when target changes"
           (t2/update! :model/WorkspaceTransform ref-id {:target {:database (mt/id) :schema "public" :name "new_table"}})
           (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (true? (:definition_stale updated)))))
+            (is (true? (:definition_changed updated)))))
 
-        (testing "preserves definition_stale when other fields change"
-          (t2/update! :model/WorkspaceTransform ref-id {:definition_stale false})
+        (testing "preserves definition_changed when other fields change"
+          (t2/update! :model/WorkspaceTransform ref-id {:definition_changed false})
           (t2/update! :model/WorkspaceTransform ref-id {:name "New Name"})
           (let [updated (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
-            (is (false? (:definition_stale updated)))))))))
+            (is (false? (:definition_changed updated)))))))))
