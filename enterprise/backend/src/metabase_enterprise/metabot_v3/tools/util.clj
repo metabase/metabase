@@ -12,6 +12,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -128,6 +129,11 @@
       (when-not (if (string? expected-prefix)
                   (str/starts-with? field-id expected-prefix)
                   (re-matches expected-prefix field-id))
+        (log/warn "Field id prefix mismatch"
+                  {:field-id field-id
+                   :expected-prefix expected-prefix
+                   :model-tag model-tag
+                   :model-id model-id})
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
                          :status-code 400
