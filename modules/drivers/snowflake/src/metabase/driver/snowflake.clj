@@ -1024,16 +1024,14 @@
   [_driver database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         db-name   (-> database :details :db)
-        role-name (-> workspace :database_details :role)
-        schemas   (distinct (map :schema tables))]
+        role-name (-> workspace :database_details :role)]
     (when-not db-name
       (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
                       {:database-id (:id database) :step :grant})))
     (when-not role-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
                       {:workspace-id (:id workspace) :step :grant})))
-    (doseq [schema schemas]
-      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema role-name)]))
+    ;; Grant SELECT on each specific table only - no schema-level grants
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
                                         db-name (:schema table) (:name table) role-name)]))))

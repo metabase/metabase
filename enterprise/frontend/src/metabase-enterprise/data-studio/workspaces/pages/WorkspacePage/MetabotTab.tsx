@@ -7,7 +7,10 @@ import type {
   WorkspaceTransform,
 } from "metabase-types/api";
 
-type AnyWorkspaceTransform = TaggedTransform | WorkspaceTransform | UnsavedTransform;
+type AnyWorkspaceTransform =
+  | TaggedTransform
+  | WorkspaceTransform
+  | UnsavedTransform;
 
 type MetabotTabProps = {
   transform?: AnyWorkspaceTransform;

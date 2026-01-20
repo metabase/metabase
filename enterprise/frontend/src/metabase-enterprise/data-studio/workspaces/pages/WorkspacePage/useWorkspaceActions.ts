@@ -7,6 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useLazyGetTransformQuery,
+  useLazyGetWorkspaceTablesQuery,
   useLazyGetWorkspaceTransformQuery,
   useMergeWorkspaceMutation,
   useRunWorkspaceTransformMutation,
@@ -16,7 +17,6 @@ import type {
   ExternalTransform,
   TaggedTransform,
   Workspace,
-  WorkspaceTablesResponse,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 
@@ -29,7 +29,6 @@ import {
 type UseWorkspaceActionsParams = {
   workspaceId: number;
   workspace: Workspace | undefined;
-  refetchWorkspaceTables: () => Promise<{ data?: WorkspaceTablesResponse }>;
   onOpenTab: (tabId: string) => void;
   workspaceTransforms: WorkspaceTransformListItem[];
   availableTransforms: ExternalTransform[];
@@ -38,7 +37,6 @@ type UseWorkspaceActionsParams = {
 export function useWorkspaceActions({
   workspaceId,
   workspace,
-  refetchWorkspaceTables,
   onOpenTab,
   workspaceTransforms,
   availableTransforms,
@@ -46,7 +44,8 @@ export function useWorkspaceActions({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const { addOpenedTab, addOpenedTransform, setActiveTransform } = useWorkspace();
+  const { addOpenedTab, addOpenedTransform, setActiveTransform } =
+    useWorkspace();
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
@@ -56,6 +55,7 @@ export function useWorkspaceActions({
   const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
     new Set(),
   );
+  const [getWorkspaceTables] = useLazyGetWorkspaceTablesQuery();
 
   const handleMergeWorkspace = useCallback(
     async (commitMessage: string) => {
@@ -131,12 +131,15 @@ export function useWorkspaceActions({
           return;
         }
 
-        const { data: updatedTables } = await refetchWorkspaceTables();
+        const { data: updatedTables, error } =
+          await getWorkspaceTables(workspaceId);
         const updatedOutput = updatedTables?.outputs.find(
           (t) => t.isolated.transform_id === transform.ref_id,
         );
 
-        if (updatedOutput?.isolated.table_id) {
+        if (error) {
+          sendErrorToast(t`Failed to fetch workspace tables`);
+        } else if (updatedOutput?.isolated.table_id) {
           handleTableSelect({
             tableId: updatedOutput.isolated.table_id,
             name: updatedOutput.global.table,
@@ -157,7 +160,7 @@ export function useWorkspaceActions({
     [
       workspaceId,
       runTransform,
-      refetchWorkspaceTables,
+      getWorkspaceTables,
       handleTableSelect,
       sendErrorToast,
     ],
@@ -165,27 +168,32 @@ export function useWorkspaceActions({
 
   const handleTransformClick = useCallback(
     async (workspaceTransform: WorkspaceTransformListItem) => {
-      const { data: transform } = await fetchWorkspaceTransform(
+      const { data: transform, error } = await fetchWorkspaceTransform(
         {
           workspaceId,
           transformId: workspaceTransform.ref_id,
         },
         true,
       );
-      if (transform) {
+      if (error) {
+        sendErrorToast(t`Failed to fetch transform`);
+      } else if (transform) {
         addOpenedTransform(transform);
       }
     },
-    [workspaceId, fetchWorkspaceTransform, addOpenedTransform],
+    [workspaceId, fetchWorkspaceTransform, addOpenedTransform, sendErrorToast],
   );
 
   // Callback to navigate to a transform (used by metabot reactions and URL param)
   const handleNavigateToTransform = useCallback(
-    async (targetTransformId: number) => {
+    async (targetTransformId: number | string) => {
       const transform = [...workspaceTransforms, ...availableTransforms].find(
         (transform) => {
           if ("global_id" in transform) {
-            return transform.global_id === targetTransformId;
+            return (
+              transform.global_id === targetTransformId ||
+              transform.ref_id === targetTransformId
+            );
           }
           return transform.id === targetTransformId;
         },
@@ -194,19 +202,27 @@ export function useWorkspaceActions({
       const isWsTransform = !!transform && "global_id" in transform;
 
       if (transform && !isWsTransform) {
-        const { data } = await fetchTransform(transform.id, true);
-        if (data) {
-          const taggedTransform: TaggedTransform = { ...data, type: "transform" };
+        const { data, error } = await fetchTransform(transform.id, true);
+
+        if (error) {
+          sendErrorToast(t`Failed to fetch transform`);
+        } else if (data) {
+          const taggedTransform: TaggedTransform = {
+            ...data,
+            type: "transform",
+          };
           addOpenedTransform(taggedTransform);
           setActiveTransform(taggedTransform);
           onOpenTab(String(targetTransformId));
         }
       } else if (transform && isWsTransform) {
-        const { data } = await fetchWorkspaceTransform({
+        const { data, error } = await fetchWorkspaceTransform({
           workspaceId,
           transformId: transform.ref_id,
         });
-        if (data) {
+        if (error) {
+          sendErrorToast(t`Failed to fetch transform`);
+        } else if (data) {
           addOpenedTransform(data);
           setActiveTransform(data);
           onOpenTab(String(targetTransformId));
@@ -227,7 +243,6 @@ export function useWorkspaceActions({
       sendErrorToast,
     ],
   );
-
 
   return {
     isMerging,

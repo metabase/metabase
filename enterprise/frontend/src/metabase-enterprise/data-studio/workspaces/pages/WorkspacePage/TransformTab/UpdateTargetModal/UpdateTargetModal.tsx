@@ -17,6 +17,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useUpdateWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
@@ -83,6 +84,7 @@ function UpdateTargetForm({
   onClose,
 }: UpdateTargetFormProps) {
   const { source } = transform;
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const databaseId = sourceDatabaseId(source);
   const [updateWorkspaceTransform] = useUpdateWorkspaceTransformMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
@@ -123,11 +125,18 @@ function UpdateTargetForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const updatedTransform = await updateWorkspaceTransform(
-      getUpdateTargetRequest(transform, values, databaseId),
-    ).unwrap();
 
-    onUpdate(updatedTransform);
+    try {
+      const updatedTransform = await updateWorkspaceTransform(
+        getUpdateTargetRequest(transform, values, databaseId),
+      ).unwrap();
+
+      sendSuccessToast(t`Transform target updated`);
+
+      onUpdate(updatedTransform);
+    } catch (error) {
+      sendErrorToast(t`Failed to update transform target`);
+    }
   };
 
   return (

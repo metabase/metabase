@@ -27,6 +27,7 @@ type TableListItemProps = {
   tableId?: TableId;
   isSelected?: boolean;
   isRunning?: boolean;
+  readOnly?: boolean;
   onTransformClick?: (transform: WorkspaceTransformListItem) => void;
   onTableClick?: (table: OpenTable) => void;
   onRunTransform?: (transform: WorkspaceTransformListItem) => void;
@@ -42,6 +43,7 @@ export const TableListItem = ({
   tableId,
   isSelected = false,
   isRunning = false,
+  readOnly = false,
   onTransformClick,
   onTableClick,
   onRunTransform,
@@ -61,7 +63,7 @@ export const TableListItem = ({
     }
     if (tableId && onTableClick) {
       onTableClick({ tableId, name, schema, transformId: transform?.ref_id });
-    } else if (type === "output" && transform && onRunTransform) {
+    } else if (type === "output" && transform && onRunTransform && !readOnly) {
       onRunTransform(transform);
     }
   };
@@ -77,6 +79,7 @@ export const TableListItem = ({
       className={cx(S.root, {
         [S.selected]: isSelected,
         [S.clickable]: isClickable,
+        [S.noResults]: type === "output" && !tableId,
       })}
       aria-label={displayName}
       onClick={isClickable ? handleTableClick : undefined}

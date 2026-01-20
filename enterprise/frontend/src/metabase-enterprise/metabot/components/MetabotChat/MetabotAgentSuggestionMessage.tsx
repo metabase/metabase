@@ -9,9 +9,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { slugify } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -27,24 +25,18 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import {
-  useCreateTransformMutation,
-  useLazyGetTransformQuery,
-} from "metabase-enterprise/api";
-import { useOptionalWorkspace } from "metabase-enterprise/data-studio/workspaces/pages/WorkspacePage/WorkspaceProvider";
+import { useLazyGetTransformQuery } from "metabase-enterprise/api";
+import { useMetabotSuggestionActions } from "metabase-enterprise/metabot/context";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  DraftTransformSource,
   MetabotTransformInfo,
   SuggestedTransform,
-  Transform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
@@ -114,11 +106,10 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const workspace = useOptionalWorkspace();
-  const [createTransform] = useCreateTransformMutation();
+  const suggestionActions = useMetabotSuggestionActions();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
-  const [hasAppliedInWorkspace, setHasAppliedInWorkspace] = useState(false);
+  const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const { suggestedTransform, editorTransform } = message.payload;
   const existingTransformId =
@@ -136,8 +127,8 @@ export const AgentSuggestionMessage = ({
     getTransformUrl(suggestedTransform),
   );
 
-  const canApply = workspace
-    ? !hasAppliedInWorkspace && !isApplying
+  const canApply = suggestionActions
+    ? !hasAppliedInContext && !isApplying
     : !isViewing || !isActive;
   const isNew = !isViewing && !editorTransform && existingTransformId == null;
 
@@ -155,130 +146,21 @@ export const AgentSuggestionMessage = ({
   const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
 
-    if (workspace) {
-      const targetTransform: Transform | undefined =
-        (editorTransform as Transform | undefined) ??
-        (originalTransform as Transform | undefined) ??
-        (existingTransformId ? (suggestedTransform as unknown as Transform) : undefined);
-      const taggedTargetTransfrom = targetTransform ? { ...targetTransform, type: "transform" as const } : undefined;
-
-      if (existingTransformId != null && taggedTargetTransfrom) {
-        workspace.addOpenedTransform(taggedTargetTransfrom);
-        workspace.setActiveTransform(taggedTargetTransfrom);
-        setHasAppliedInWorkspace(true);
-        return;
-      }
-
-      if (existingTransformId == null && suggestedTransform.target) {
-        setIsApplying(true);
-        try {
-          const normalizeSource = (
-            source: DraftTransformSource,
-          ): DraftTransformSource => {
-            if (source.type !== "query") {
-              return source;
-            }
-
-            const question = Question.create({
-              dataset_query: source.query,
-              metadata,
-            });
-            const query = question.query();
-            const { isNative } = Lib.queryDisplayInfo(query);
-            const normalizedQuery = isNative
-              ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
-              : query;
-
-            return {
-              type: "query",
-              query: question.setQuery(normalizedQuery).datasetQuery(),
-            };
-          };
-
-          const normalizedSource = normalizeSource(suggestedTransform.source);
-          const targetWithDatabase =
-            suggestedTransform.target &&
-            suggestedTransform.target.type === "table"
-              ? {
-                  ...suggestedTransform.target,
-                  database:
-                    suggestedTransform.target.database ??
-                    (normalizedSource.type === "query"
-                      ? normalizedSource.query.database
-                      : normalizedSource.type === "python"
-                        ? normalizedSource["source-database"]
-                        : undefined),
-                }
-              : suggestedTransform.target;
-
-          const sanitizedTarget =
-            targetWithDatabase?.type === "table"
-              ? (() => {
-                  const fallbackName = slugify(suggestedTransform.name);
-                  const trimmedName =
-                    targetWithDatabase.name?.trim() || fallbackName;
-
-                  if (!trimmedName) {
-                    sendErrorToast(
-                      t`Suggestion is missing a target table name to create the transform.`,
-                    );
-                    setIsApplying(false);
-                    return null;
-                  }
-
-                  return {
-                    ...targetWithDatabase,
-                    name: trimmedName,
-                    schema:
-                      targetWithDatabase.schema &&
-                      targetWithDatabase.schema.trim() !== ""
-                        ? targetWithDatabase.schema.trim()
-                        : null,
-                  };
-                })()
-              : targetWithDatabase;
-
-          if (sanitizedTarget === null) {
-            return;
+    if (suggestionActions) {
+      setIsApplying(true);
+      try {
+        const result = await suggestionActions.applySuggestion(message.payload);
+        if (result.status === "applied") {
+          setHasAppliedInContext(true);
+          if (isNew) {
+            sendSuccessToast(t`Transform created`);
           }
-
-          if (
-            targetWithDatabase?.type === "table" &&
-            targetWithDatabase.database == null
-          ) {
-            sendErrorToast(
-              t`Suggestion is missing a target database to create the transform.`,
-            );
-            setIsApplying(false);
-            return;
-          }
-
-          const transform = await createTransform({
-            name: suggestedTransform.name,
-            description: suggestedTransform.description ?? null,
-            source: normalizedSource,
-            target: sanitizedTarget,
-          }).unwrap();
-
-          const taggedTransform = { ...transform, type: "transform" as const};
-
-          workspace.addOpenedTransform(taggedTransform);
-          workspace.setActiveTransform(taggedTransform);
-          setHasAppliedInWorkspace(true);
-          sendSuccessToast(t`Transform created`);
-          return;
-        } catch (error) {
-          sendErrorToast(
-            getErrorMessage(error) ??
-              t`Failed to create transform from suggestion`,
-          );
-        } finally {
-          setIsApplying(false);
+        } else {
+          sendErrorToast(result.message);
         }
-      } else if (existingTransformId == null) {
-        sendErrorToast(t`Suggestion is missing a target table`);
+      } finally {
+        setIsApplying(false);
       }
-
       return;
     }
 

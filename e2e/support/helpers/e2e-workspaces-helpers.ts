@@ -45,6 +45,10 @@ export const Workspaces = {
     this.getWorkspaceSidebar().findByRole("tab", { name: "Data" }).click();
   },
 
+  openGraphTab() {
+    this.getWorkspaceContent().findByRole("tab", { name: "Graph" }).click();
+  },
+
   getWorkspacesSection() {
     return cy.findByTestId("workspaces-section");
   },
@@ -125,5 +129,13 @@ export const Workspaces = {
 
   getTransformStatusDot(name: string | RegExp) {
     return cy.findByText(name).parent().findByTestId("status-dot");
+  },
+
+  getTransformTargetDiff() {
+    return cy.findByTestId("transform-target-diff");
+  },
+
+  getSourceTablesDiff() {
+    return cy.findByTestId("source-tables-diff");
   },
 };

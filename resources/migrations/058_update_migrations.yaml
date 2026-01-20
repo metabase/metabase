@@ -4472,9 +4472,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: DELETE FROM workspace_input
-      rollback:
-        - sql:
-            sql: SELECT 1  # No rollback needed, data will be regenerated
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:01
@@ -4563,9 +4561,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: UPDATE workspace_transform SET stale = true
-      rollback:
-        - sql:
-            sql: SELECT 1  # No rollback needed
+      rollback: empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:07
@@ -4663,6 +4659,390 @@ databaseChangeLog:
                   constraints:
                     nullable: true
       rollback: # will be removed along with the table
+
+  # ===== Epochal Versioning for Thread-Safe Graph Calculation =====
+  # Replace boolean analysis_stale flags with incrementing version numbers.
+  # Two-level versioning:
+  # - Transform level: analysis_version on workspace_transform, transform_version on workspace_input/workspace_output
+  # - Graph level: graph_version on workspace, workspace_graph, workspace_input_external, workspace_output_external
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:00
+      author: christruter
+      comment: Add graph_version column to workspace for epochal versioning
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 1
+                  remarks: Incremented when graph structure changes (transform add/remove, global transform changes)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:02
+      author: christruter
+      comment: Add analysis_version column to workspace_transform for transform-level versioning
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: analysis_version
+                  type: bigint
+                  defaultValueNumeric: 1
+                  remarks: Incremented when transform source/target changes, triggers re-analysis
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:03
+      author: christruter
+      comment: Add transform_version column to workspace_input
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  remarks: The analysis_version of the transform when this row was created
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:04
+      author: christruter
+      comment: Add transform_version column to workspace_output
+      changes:
+        - addColumn:
+            tableName: workspace_output
+            columns:
+              - column:
+                  name: transform_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  remarks: The analysis_version of the transform when this row was created
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:05
+      author: christruter
+      comment: Add graph_version column to workspace_graph
+      changes:
+        - addColumn:
+            tableName: workspace_graph
+            columns:
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  remarks: The graph_version this cached graph was calculated for
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:06
+      author: christruter
+      comment: Add graph_version column to workspace_input_external
+      changes:
+        - addColumn:
+            tableName: workspace_input_external
+            columns:
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  remarks: The graph_version this row was calculated for
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:07
+      author: christruter
+      comment: Add graph_version column to workspace_output_external
+      changes:
+        - addColumn:
+            tableName: workspace_output_external
+            columns:
+              - column:
+                  name: graph_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  remarks: The graph_version this row was calculated for
+                  constraints:
+                    nullable: false
+
+  # Clear existing data from versioned tables - will be recalculated on first access
+  - changeSet:
+      id: v58.2026-01-12T14:00:10
+      author: christruter
+      comment: Clear workspace_graph data for epochal versioning migration
+      changes:
+        - delete:
+            tableName: workspace_graph
+      rollback: empty
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:11
+      author: christruter
+      comment: Clear workspace_input data for epochal versioning migration
+      changes:
+        - delete:
+            tableName: workspace_input
+      rollback: empty
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:12
+      author: christruter
+      comment: Clear workspace_output data for epochal versioning migration
+      changes:
+        - delete:
+            tableName: workspace_output
+      rollback: empty
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:13
+      author: christruter
+      comment: Clear workspace_input_external data for epochal versioning migration
+      changes:
+        - delete:
+            tableName: workspace_input_external
+      rollback: empty
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:14
+      author: christruter
+      comment: Clear workspace_output_external data for epochal versioning migration
+      changes:
+        - delete:
+            tableName: workspace_output_external
+      rollback: empty
+
+  # Update unique constraints to include version columns
+  - changeSet:
+      id: v58.2026-01-12T14:00:19
+      author: christruter
+      comment: Drop FK constraint on workspace_graph.workspace_id (required before dropping index in H2)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_graph
+            constraintName: fk_workspace_graph_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_graph
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_graph_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:20
+      author: christruter
+      comment: Drop old unique index on workspace_graph.workspace_id
+      changes:
+        - dropIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_id
+      rollback:
+        - createIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_id
+            unique: true
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:21
+      author: christruter
+      comment: Add unique index on workspace_graph (workspace_id, graph_version)
+      changes:
+        - createIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_version
+            unique: true
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: graph_version
+      rollback:
+        - dropIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_version
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:22
+      author: christruter
+      comment: Recreate FK constraint on workspace_graph.workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_graph
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_graph_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:23
+      author: christruter
+      comment: Drop old unique constraint on workspace_input (workspace_id, ref_id, db_id, schema, table)
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_transform_table
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, ref_id, db_id, schema, table
+            constraintName: uq_workspace_input_transform_table
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:24
+      author: christruter
+      comment: Add unique constraint on workspace_input including transform_version
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, ref_id, db_id, schema, table, transform_version
+            constraintName: uq_workspace_input_versioned
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_versioned
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:25
+      author: christruter
+      comment: Drop old unique constraint on workspace_output (workspace_id, ref_id)
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_output
+            constraintName: uq_workspace_output_workspace_ref
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_output
+            columnNames: workspace_id, ref_id
+            constraintName: uq_workspace_output_workspace_ref
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:26
+      author: christruter
+      comment: Add unique constraint on workspace_output including transform_version
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_output
+            columnNames: workspace_id, ref_id, transform_version
+            constraintName: uq_workspace_output_versioned
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_output
+            constraintName: uq_workspace_output_versioned
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:27
+      author: christruter
+      comment: Drop old unique constraint on workspace_input_external
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_input_external
+            constraintName: uq_workspace_input_external_logical_table
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_input_external
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_external_logical_table
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:28
+      author: christruter
+      comment: Add unique constraint on workspace_input_external including graph_version
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input_external
+            columnNames: workspace_id, db_id, schema, table, graph_version
+            constraintName: uq_workspace_input_external_versioned
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input_external
+            constraintName: uq_workspace_input_external_versioned
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:29
+      author: christruter
+      comment: Drop old unique constraint on workspace_output_external
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_output_external
+            constraintName: uq_workspace_output_external_workspace_transform
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_output_external
+            columnNames: workspace_id, transform_id
+            constraintName: uq_workspace_output_external_workspace_transform
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:30
+      author: christruter
+      comment: Add unique constraint on workspace_output_external including graph_version
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_output_external
+            columnNames: workspace_id, transform_id, graph_version
+            constraintName: uq_workspace_output_external_versioned
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_output_external
+            constraintName: uq_workspace_output_external_versioned
+
+  # Drop legacy analysis_stale columns (replaced by version comparison)
+  - changeSet:
+      id: v58.2026-01-12T14:00:31
+      author: christruter
+      comment: Drop analysis_stale column from workspace (replaced by version comparison)
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: analysis_stale
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: analysis_stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Whether the graph needs to be recalculated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-12T14:00:32
+      author: christruter
+      comment: Drop analysis_stale column from workspace_transform (replaced by version comparison)
+      changes:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: analysis_stale
+      rollback:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: analysis_stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Whether dependency analysis needs to be recalculated
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

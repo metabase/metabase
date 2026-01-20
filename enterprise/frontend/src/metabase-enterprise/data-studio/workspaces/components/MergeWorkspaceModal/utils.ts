@@ -2,7 +2,10 @@ import { diffLines } from "diff";
 
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { TransformSource } from "metabase-types/api";
+import type {
+  PythonTransformTableAliases,
+  TransformSource,
+} from "metabase-types/api";
 
 export function getSourceCode(
   transform: { source: TransformSource },
@@ -42,4 +45,24 @@ export function computeDiffStats(
   }
 
   return { additions, deletions };
+}
+
+export function areSourceTablesEqual(
+  a: PythonTransformTableAliases | undefined,
+  b: PythonTransformTableAliases | undefined,
+) {
+  if (a == null || b == null) {
+    return a === b;
+  }
+
+  const aEntries = Object.entries(a);
+  const bEntries = Object.entries(b);
+
+  if (aEntries.length !== bEntries.length) {
+    return false;
+  }
+
+  return aEntries.every(([key, value], index) => {
+    return bEntries[index][0] === key && bEntries[index][1] === value;
+  });
 }
