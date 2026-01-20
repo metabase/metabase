@@ -271,7 +271,8 @@
   [db-id database-name {:keys [table-name field-definitions rows]}]
   (when (seq rows)
     (let [qualified-name  (tx/db-qualified-table-name database-name table-name)
-          qualified-table (t2/select-one :model/Table :db_id db-id :name qualified-name)
+          ;; Use case-insensitive lookup to handle databases that normalize names differently
+          qualified-table (t2/select-one :model/Table :db_id db-id :%lower.name (u/lower-case-en qualified-name))
           fingerprints    (compute-fingerprints-from-rows field-definitions rows)
           version         @(requiring-resolve 'metabase.sync.interface/*latest-fingerprint-version*)]
       (when qualified-table
