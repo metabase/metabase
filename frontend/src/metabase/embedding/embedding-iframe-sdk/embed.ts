@@ -29,7 +29,7 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 /** list of active embeds, used to know which embeds to update when the global config changes */
 const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
-/** counter that used as a parameter in the iframe src to force parallel loading */
+/** counter used as a parameter in the iframe src to force parallel loading */
 let _iframeCounter = 0;
 
 // Setup a proxy to watch for changes to window.metabaseConfig and update all
