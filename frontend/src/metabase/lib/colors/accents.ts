@@ -59,7 +59,7 @@ export function mapChartColorsToAccents(
  * Derives a tint (lighter) variant of a color.
  * Matches the alias logic in palette.ts tint().
  */
-function deriveChartTintColor(hexColor: string): string {
+export function deriveChartTintColor(hexColor: string): string {
   const value = Color(hexColor);
 
   return value
@@ -71,7 +71,7 @@ function deriveChartTintColor(hexColor: string): string {
  * Derives a shade (darker) variant of a color.
  * Matches the alias logic in palette.ts shade().
  */
-function deriveChartShadeColor(hexColor: string): string {
+export function deriveChartShadeColor(hexColor: string): string {
   const value = Color(hexColor);
 
   return value
