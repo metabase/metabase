@@ -63,7 +63,6 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         widgets={widgets}
         onChange={handleChangeSettings}
         className={className}
-        initial={{ section: "Axes" }}
       />
     </ErrorBoundary>
   );

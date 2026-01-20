@@ -547,7 +547,11 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerDashboardCard(dashcard)}
-            onEditVisualization={onEditVisualization}
+            onEditVisualization={
+              isVisualizerDashboardCard(dashcard)
+                ? onEditVisualization
+                : undefined
+            }
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
