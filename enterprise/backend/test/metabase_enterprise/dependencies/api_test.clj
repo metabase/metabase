@@ -1581,28 +1581,28 @@
         (mbc/ensure-audit-db-installed!)
         (is (=? {:data   []
                  :total  0}
-                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
-    (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
-      (mt/with-premium-features #{:dependencies}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification"))))))
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
+    (mt/with-premium-features #{:dependencies}
         ;; Use a filter referencing a non-existent field ID (999999) to create a "broken" segment
-        (mt/with-temp [:model/Segment {broken-segment-id :id} {:name "Broken Segment - archivedbrokentest"
-                                                               :table_id (mt/id :products)
-                                                               :definition {:filter [:> [:field 999999 nil] 50]}}
-                       :model/Segment {archived-broken-segment-id :id} {:name "Archived Broken Segment - archivedbrokentest"
-                                                                        :table_id (mt/id :products)
-                                                                        :definition {:filter [:> [:field 999999 nil] 50]}
-                                                                        :archived true}]
-          (while (> (dependencies.findings/analyze-batch! :segment 50) 0))
-          (testing "archived=false (default) excludes archived broken segment"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest")
-                  segment-ids (set (map :id (:data response)))]
-              (is (contains? segment-ids broken-segment-id))
-              (is (not (contains? segment-ids archived-broken-segment-id)))))
-          (testing "archived=true includes archived broken segment"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest&archived=true")
-                  segment-ids (set (map :id (:data response)))]
-              (is (contains? segment-ids broken-segment-id))
-              (is (contains? segment-ids archived-broken-segment-id))))))))
+      (mt/with-temp [:model/Segment {broken-segment-id :id} {:name "Broken Segment - archivedbrokentest"
+                                                             :table_id (mt/id :products)
+                                                             :definition {:filter [:> [:field 999999 nil] 50]}}
+                     :model/Segment {archived-broken-segment-id :id} {:name "Archived Broken Segment - archivedbrokentest"
+                                                                      :table_id (mt/id :products)
+                                                                      :definition {:filter [:> [:field 999999 nil] 50]}
+                                                                      :archived true}]
+        (while (> (dependencies.findings/analyze-batch! :segment 50) 0))
+        (testing "archived=false (default) excludes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest")
+                segment-ids (set (map :id (:data response)))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (not (contains? segment-ids archived-broken-segment-id)))))
+        (testing "archived=true includes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest&archived=true")
+                segment-ids (set (map :id (:data response)))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (contains? segment-ids archived-broken-segment-id))))))))
 
 (deftest ^:sequential broken-entities-returns-source-of-errors-test
   (testing "GET /api/ee/dependencies/graph/broken - returns entities that are SOURCE of downstream errors"
