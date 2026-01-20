@@ -355,17 +355,25 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature    :sso-slack
   :audit      :no-value)
 
+(def slack-connect-auth-mode-sso
+  "Authentication mode for full SSO login."
+  "sso")
+
+(def slack-connect-auth-mode-link-only
+  "Authentication mode for account linking only (no session creation)."
+  "link-only")
+
 (defsetting slack-connect-authentication-mode
   (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
   :type       :string
   :export?    false
-  :default    "sso"
+  :default    slack-connect-auth-mode-sso
   :feature    :sso-slack
   :audit      :getter
   :encryption :no
   :setter     (fn [new-value]
                 (when (and new-value
-                           (not (contains? #{"sso" "link-only"} new-value)))
+                           (not (contains? #{slack-connect-auth-mode-sso slack-connect-auth-mode-link-only} new-value)))
                   (throw (ex-info (tru "Invalid authentication mode. Must be \"sso\" or \"link-only\"")
                                   {:status-code 400})))
                 (setting/set-value-of-type! :string :slack-connect-authentication-mode new-value)))
@@ -377,9 +385,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default true
   :feature :sso-slack
   :getter  (fn []
-             (if (or (scim/scim-enabled)
-                     (= (slack-connect-authentication-mode) "link"))
-               ;; Disable Slack provisioning automatically when SCIM is enabled
+             (if (= (slack-connect-authentication-mode) slack-connect-auth-mode-link-only)
                false
                (setting/get-value-of-type :boolean :slack-connect-user-provisioning-enabled)))
   :audit   :getter)

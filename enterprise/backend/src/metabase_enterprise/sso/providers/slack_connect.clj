@@ -16,6 +16,20 @@
 
 (derive :provider/slack-connect :provider/oidc)
 
+;;; -------------------------------------------------- Constants --------------------------------------------------
+
+(def provider-name
+  "Provider name for Slack Connect authentication."
+  "slack-connect")
+
+(def slack-issuer-uri
+  "Slack's OIDC issuer URI."
+  "https://slack.com")
+
+(def slack-team-image-claim
+  "Claim key for Slack team image in ID token."
+  "https://slack.com/team_image_230")
+
 ;;; -------------------------------------------------- Slack-Specific Utilities --------------------------------------------------
 
 (defn- extract-slack-claims
@@ -34,8 +48,8 @@
       (:sub id-token-claims)
       (assoc "slack-user-id" (:sub id-token-claims))
 
-      (get id-token-claims "https://slack.com/team_image_230")
-      (assoc "slack-team-image" (get id-token-claims "https://slack.com/team_image_230"))
+      (get id-token-claims slack-team-image-claim)
+      (assoc "slack-team-image" (get id-token-claims slack-team-image-claim))
 
       (:email_verified id-token-claims)
       (assoc "slack-email-verified" (str (:email_verified id-token-claims)))
@@ -51,7 +65,7 @@
              (sso-settings/slack-connect-client-secret))
     {:client-id (sso-settings/slack-connect-client-id)
      :client-secret (sso-settings/slack-connect-client-secret)
-     :issuer-uri "https://slack.com"
+     :issuer-uri slack-issuer-uri
      :scopes ["openid" "profile" "email"]
      :redirect-uri (get request :redirect-uri)}))
 
@@ -75,7 +89,7 @@
      :error :slack-connect-not-configured
      :message (tru "Slack Connect is not configured")}
 
-    (and (= "link-only" (sso-settings/slack-connect-authentication-mode))
+    (and (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
          (not (:code request))
          (not (some-> (:authenticated-user request) deref)))
     {:success? false
@@ -116,21 +130,21 @@
   (when (and user-id provider-id)
     (when-not (t2/exists? :model/AuthIdentity
                           :user_id user-id
-                          :provider "slack-connect")
+                          :provider provider-name)
       (t2/insert! :model/AuthIdentity
                   {:user_id user-id
-                   :provider "slack-connect"
+                   :provider provider-name
                    :provider_id provider-id}))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user user-data] :as request}]
-  (case (sso-settings/slack-connect-authentication-mode)
-    "sso"
+  (condp = (sso-settings/slack-connect-authentication-mode)
+    sso-settings/slack-connect-auth-mode-sso
     (do (when-not user
-          (sso-utils/check-user-provisioning :slack-connect))
+          (sso-utils/check-user-provisioning (keyword provider-name)))
         (next-method provider request))
 
-    "link-only"
+    sso-settings/slack-connect-auth-mode-link-only
     ;; In link-only mode, create AuthIdentity for the authenticated user
     ;; but don't create a session or new user
     (do
@@ -139,6 +153,6 @@
 
 (methodical/defmethod auth-identity/login! :after :provider/slack-connect
   [_provider result]
-  (if (= "link-only" (sso-settings/slack-connect-authentication-mode))
+  (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))
