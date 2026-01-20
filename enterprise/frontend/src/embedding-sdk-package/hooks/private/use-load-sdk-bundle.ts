@@ -14,8 +14,18 @@ const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
 
 const waitForScriptLoading = (script: HTMLScriptElement) => {
   return new Promise<void>((resolve, reject) => {
-    script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
+    // Wait for the custom event that's dispatched when all chunks are loaded
+    const onBundleLoaded = () => {
+      document.removeEventListener("metabase-sdk-bundle-loaded", onBundleLoaded);
+      resolve();
+    };
+
+    document.addEventListener("metabase-sdk-bundle-loaded", onBundleLoaded);
+
+    script.addEventListener("error", () => {
+      document.removeEventListener("metabase-sdk-bundle-loaded", onBundleLoaded);
+      reject(new Error(ERROR_MESSAGE));
+    });
   });
 };
 
