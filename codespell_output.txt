@@ -1,0 +1,37 @@
+[0;34m[INFO][0m Babashka not found or version doesn't match, installing...
+[0;34m[INFO][0m Detected platform: linux-amd64
+[0;34m[INFO][0m Download URL: https://github.com/babashka/babashka/releases/download/v1.12.212/babashka-1.12.212-linux-amd64.tar.gz
+#=#=#                                                                          ####################################################                      72.6%######################################################################## 100.0%
+[0;34m[INFO][0m Download complete. Extracting archive...
+babashka v1.12.212
+[0;32m[SUCCESS][0m Babashka 1.12.212 successfully installed at /home/runner/work/metabase/metabase/bin/bb
+Clojure tools not yet in expected location: /home/runner/.deps.clj/1.12.3.1577/ClojureTools/clojure-tools-1.12.3.1577.jar
+Downloading https://github.com/clojure/brew-install/releases/download/1.12.3.1577/clojure-tools.zip to /home/runner/.deps.clj/1.12.3.1577/ClojureTools/clojure-tools.zip
+Unzipping /home/runner/.deps.clj/1.12.3.1577/ClojureTools/clojure-tools.zip ...
+Successfully installed clojure tools!
+Downloading: metosin/malli/0.17.0/malli-0.17.0.pom from clojars
+Downloading: dev/weavejester/cljfmt/0.15.3/cljfmt-0.15.3.pom from clojars
+Downloading: io/github/paintparty/bling/0.8.8/bling-0.8.8.pom from clojars
+Downloading: medley/medley/1.3.0/medley-1.3.0.pom from clojars
+Downloading: table/table/0.5.0/table-0.5.0.pom from clojars
+Downloading: org/babashka/json/0.1.6/json-0.1.6.pom from clojars
+Downloading: com/googlecode/java-diff-utils/diffutils/1.3.0/diffutils-1.3.0.pom from central
+Downloading: io/github/paintparty/fireworks/0.12.6/fireworks-0.12.6.pom from clojars
+Downloading: borkdude/edamame/1.4.27/edamame-1.4.27.pom from clojars
+Downloading: org/clojure/data.json/2.5.0/data.json-2.5.0.pom from central
+Downloading: org/clojure/core.rrb-vector/0.1.2/core.rrb-vector-0.1.2.pom from central
+Downloading: io/github/paintparty/lasertag/0.11.5/lasertag-0.11.5.pom from clojars
+Downloading: org/clojure/data.json/2.5.0/data.json-2.5.0.jar from central
+Downloading: io/github/paintparty/fireworks/0.12.6/fireworks-0.12.6.jar from clojars
+Downloading: dev/weavejester/cljfmt/0.15.3/cljfmt-0.15.3.jar from clojars
+Downloading: io/github/paintparty/lasertag/0.11.5/lasertag-0.11.5.jar from clojars
+Downloading: fipp/fipp/0.6.27/fipp-0.6.27.jar from clojars
+Downloading: com/googlecode/java-diff-utils/diffutils/1.3.0/diffutils-1.3.0.jar from central
+Downloading: metosin/malli/0.17.0/malli-0.17.0.jar from clojars
+Downloading: borkdude/edamame/1.4.27/edamame-1.4.27.jar from clojars
+Downloading: org/clojure/core.rrb-vector/0.1.2/core.rrb-vector-0.1.2.jar from central
+Downloading: table/table/0.5.0/table-0.5.0.jar from clojars
+Downloading: io/github/paintparty/bling/0.8.8/bling-0.8.8.jar from clojars
+Downloading: medley/medley/1.3.0/medley-1.3.0.jar from clojars
+Downloading: org/babashka/json/0.1.6/json-0.1.6.jar from clojars
+frontend/src/metabase/search/components/filters/TypeFilter/TypeFilterContent.tsx:16: whic ==> which
