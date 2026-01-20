@@ -65,6 +65,10 @@ const countTransforms = (node: TreeNode): number => {
   }, 0);
 };
 
+const isRowDisabled = (row: Row<TreeNode>) => {
+  return row.original.source_readable === false;
+};
+
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
   transform: "brand",
@@ -162,9 +166,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             iconColor={getNodeIconColor(row.original)}
             name={row.original.name}
             ellipsifiedProps={
-              row.original.source_readable
-                ? undefined
-                : unreadableTransformEllipsifiedProps
+              isRowDisabled(row)
+                ? unreadableTransformEllipsifiedProps
+                : undefined
             }
           />
         ),
@@ -267,6 +271,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
   }, []);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
+    if (isRowDisabled(row)) {
+      return null;
+    }
     if (row.original.nodeType === "transform" && row.original.transformId) {
       return Urls.transform(row.original.transformId);
     }
@@ -288,10 +295,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     globalFilterFn,
     isFilterable,
   });
-
-  const isRowDisabled = useCallback((row: Row<TreeNode>) => {
-    return row.original.source_readable === false;
-  }, []);
 
   const handleRowClick = useCallback((row: Row<TreeNode>) => {
     // Navigation for leaf nodes (transforms, library) is handled by the link
