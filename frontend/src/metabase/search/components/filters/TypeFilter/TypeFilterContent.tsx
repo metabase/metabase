@@ -13,7 +13,7 @@ const EMPTY_SEARCH_QUERY = {
   limit: 1,
   calculate_available_models: true as const,
 };
-// This is intentional typo whic should trigger a warning
+
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
   ({ value, onChange, width }) => {
     const { metadata, isLoading } = useSearchListQuery({
