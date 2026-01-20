@@ -120,6 +120,10 @@ function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
+
+        if (isEditMode) {
+          dispatch(push(Urls.transform(transform.id)));
+        }
       }
     },
   });
@@ -149,11 +153,8 @@ function TransformQueryPageBody({
         return;
       }
     }
-    await handleInitialSave({ id: transform.id, source });
 
-    if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
-    }
+    await handleInitialSave({ id: transform.id, source });
   };
 
   const handleCancel = () => {
