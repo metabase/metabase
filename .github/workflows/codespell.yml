@@ -16,9 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
       - name: Install codespell
         run: pip install codespell
 
@@ -62,7 +59,7 @@ jobs:
             ```
 
             ## Instructions
-            1. **Review the codespell output** - Each line shows a file path, line number, the misspelled word, and suggested corrections
+            1. **Review the codespell output and identify reported spelling errors** - The usual format codespell uses is `typo ==> correction`
             2. **Fix every spelling error** - Use the Edit tool to fix each misspelling with the suggested correction
                - If codespell suggests multiple corrections, choose the most appropriate one based on context
 
@@ -70,6 +67,10 @@ jobs:
           claude_args: |
             --allowedTools "Write,Read,Glob,Grep,Edit,MultiEdit,Bash(cat*),Bash(ls*)"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
+
+      - name: Clean up temporary files
+        if: steps.codespell_check.outcome == 'failure'
+        run: rm -f codespell_output.txt
 
       - name: Create Pull Request
         if: steps.codespell_check.outcome == 'failure'
