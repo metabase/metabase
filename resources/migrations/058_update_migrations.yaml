@@ -4940,9 +4940,9 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-          - columnExists:
-              tableName: workspace_transform
-              columnName: last_run_status
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_status
       changes:
         - addColumn:
             tableName: workspace_transform

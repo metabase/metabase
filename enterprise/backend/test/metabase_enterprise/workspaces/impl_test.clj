@@ -601,22 +601,6 @@
       (testing "ext cannot be returned as it's external"
         (is (not (contains? (set (ws.impl/downstream-descendants graph "t1")) 100)))))))
 
-(deftest any-ancestor-stale?-test
-  (testing "compute-any-ancestor-stale? checks staleness in staleness-map"
-    (let [staleness-map {"t1" {:definition_changed true :input_data_changed false}
-                         "t2" {:definition_changed false :input_data_changed false}
-                         "t3" {:definition_changed false :input_data_changed true}}]
-      (testing "returns true when any ancestor has definition_changed"
-        (is (true? (ws.impl/any-ancestor-stale? #{"t1" "t2"} staleness-map))))
-      (testing "returns true when any ancestor has input_data_changed"
-        (is (true? (ws.impl/any-ancestor-stale? #{"t2" "t3"} staleness-map))))
-      (testing "returns false when no ancestor is stale"
-        (is (false? (ws.impl/any-ancestor-stale? #{"t2"} staleness-map))))
-      (testing "returns false for empty ancestor set"
-        (is (false? (ws.impl/any-ancestor-stale? #{} staleness-map))))
-      (testing "returns false when ancestors not in staleness-map"
-        (is (false? (ws.impl/any-ancestor-stale? #{"t99"} staleness-map)))))))
-
 (deftest downstream-descendants-empty-graph-test
   (testing "Empty graph returns nil"
     (is (nil? (ws.impl/downstream-descendants {:entities [] :dependencies nil} "t1")))))

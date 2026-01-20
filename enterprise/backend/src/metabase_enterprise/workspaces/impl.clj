@@ -173,8 +173,6 @@
 
 (declare get-or-calculate-graph!)
 
-;;;; Pure functions for staleness marking (exposed for testing)
-
 (defn upstream-ancestors
   "Given a graph and a ref-id, find all upstream workspace transform ancestors.
    Returns ancestor ref-ids (not including the starting node).
@@ -194,21 +192,6 @@
     (let [forward-edges (ws.dag/reverse-graph deps-map)]
       (workspace-transform-ids (ws.dag/bfs-traverse forward-edges {:node-type :workspace-transform :id ref-id})))))
 
-(defn any-ancestor-stale?
-  "Check if any ancestor in the given set is stale according to the staleness-map.
-   Returns true if any ancestor has definition_changed or input_data_changed set to true.
-
-   staleness-map: {ref-id -> {:definition_changed bool, :input_data_changed bool}}"
-  [ancestor-ids staleness-map]
-  (boolean
-   (some (fn [ancestor-id]
-           (let [staleness (get staleness-map ancestor-id)]
-             (or (:definition_changed staleness)
-                 (:input_data_changed staleness))))
-         ancestor-ids)))
-
-;;;; Private functions that use the database
-
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
    Returns true if any ancestor had its definition or input data changed since it last ran.
@@ -222,7 +205,7 @@
                          [:= :definition_changed true]
                          [:= :input_data_changed true]]})))
 
-(defn- mark-descendants-stale!
+(defn- mark-descendants-input-datastale!
   "Mark all transitive downstream workspace transforms as input_data_changed.
    Traverses the dependency graph downward from the given transform."
   [workspace ref-id]
@@ -256,7 +239,6 @@
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
        (let [succeeded? (= :succeeded (:status result))]
-         ;; Update staleness flags
          (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
                      (cond-> {:last_run_at      (:end_time result)
                               :last_run_status  (some-> (:status result) name)
@@ -268,7 +250,7 @@
          ;; Always mark transitive downstream as stale when we run successfully
          ;; (their input data may have changed even if nothing was "stale")
          (when succeeded?
-           (mark-descendants-stale! workspace ref-id))))
+           (mark-descendants-input-datastale! workspace ref-id))))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform
@@ -566,11 +548,10 @@
    Returns a map of ref-id -> {:definition_changed bool, :input_data_changed bool}."
   [ws-id ref-ids]
   (when (seq ref-ids)
-    (into {}
-          (map (fn [t] [(:ref_id t) (select-keys t [:definition_changed :input_data_changed])]))
-          (t2/select :model/WorkspaceTransform
-                     :workspace_id ws-id
-                     :ref_id [:in ref-ids]))))
+    (t2/select-fn->fn :ref_id #(select-keys % [:definition_changed :input_data_changed])
+                      :model/WorkspaceTransform
+                      :workspace_id ws-id
+                      :ref_id [:in ref-ids])))
 
 (defn- workspace-transform? [entity]
   (= :workspace-transform (:node-type entity)))
@@ -622,21 +603,17 @@
   ([workspace]
    (get-or-calculate-graph! workspace nil))
   ([{ws-id :id, graph-version :graph_version :as workspace} & {:keys [with-staleness?]}]
-   (when-let [graph (or (fully-persisted-graph ws-id graph-version)
-                        (calculate-and-persist-graph! workspace graph-version))]
+   (when-let [{:keys [entities] :as graph} (or (fully-persisted-graph ws-id graph-version)
+                                               (calculate-and-persist-graph! workspace graph-version))]
      (if with-staleness?
-       (let [ws-tx-ids (workspace-transform-ids (:entities graph))]
-         (with-staleness graph (fetch-staleness-map ws-id ws-tx-ids)))
+       (with-staleness graph (->> entities workspace-transform-ids (fetch-staleness-map ws-id)))
        graph))))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
   [{ws-id :id :as workspace} & {:keys [stale-only?]}]
-  ;; Use staleness-aware graph if we need to filter by staleness
   (let [graph        (get-or-calculate-graph! workspace :with-staleness? stale-only?)
         entities     (:entities graph)
-        ;; Filter entities to only stale if stale-only? is true
-        ;; Uses computed :stale field which accounts for transitive staleness
         entities     (if stale-only?
                        (filter :stale entities)
                        entities)

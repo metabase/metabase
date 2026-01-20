@@ -162,14 +162,11 @@
     (is (= {:a [:b], :b [:c], :c [:d]}
            (ws.dag/reverse-graph {:b [:a], :c [:b], :d [:c]}))))
 
-  (testing "diamond graph"
-    ;; Original:  a -> b -> d
-    ;;            a -> c -> d
+  (testing "diamond graph - a -> b -> d, a -> c -> d"
     (is (= {:a [:b :c], :b [:d], :c [:d]}
            (ws.dag/reverse-graph {:b [:a], :c [:a], :d [:b :c]}))))
 
-  (testing "multiple parents become multiple children"
-    ;; x has parents [a b c] => a, b, c each get child x
+  (testing "multiple parents become multiple children - x has parents [a b c] => a, b, c each get child x"
     (is (= {:a [:x], :b [:x], :c [:x]}
            (ws.dag/reverse-graph {:x [:a :b :c]})))))
 
@@ -191,9 +188,7 @@
       (is (= [:d] (ws.dag/bfs-traverse graph :c)))
       (is (= [] (ws.dag/bfs-traverse graph :d)))))
 
-  (testing "diamond graph - no duplicates"
-    ;; a -> b -> d
-    ;; a -> c -> d
+  (testing "diamond graph - no duplicates (a -> b -> d, a -> c -> d)"
     (let [graph {:a [:b :c], :b [:d], :c [:d], :d []}]
       (is (= [:b :c :d] (ws.dag/bfs-traverse graph :a)))))
 
@@ -206,10 +201,8 @@
       (is (= [tx2 tbl tx3] (ws.dag/bfs-traverse graph tx1)))
       (is (= [tx3] (ws.dag/bfs-traverse graph tx2)))))
 
-  (testing "handles cycles gracefully (visited check)"
-    ;; a -> b -> c -> a (cycle)
+  (testing "handles cycles gracefully - a -> b -> c -> a (cycle), should not infinite loop"
     (let [graph {:a [:b], :b [:c], :c [:a]}]
-      ;; Should not infinite loop, should return all unique nodes
       (is (= [:b :c :a] (ws.dag/bfs-traverse graph :a)))))
 
   (testing "include-start? option"
@@ -228,12 +221,12 @@
           ext {:node-type :external-transform :id "ext"}
           graph {tx1 [ext], ext [tx2], tx2 []}
           ws-only? #(= :workspace-transform (:node-type %))]
-      ;; Without filter: traverses through ext to reach tx2
-      (is (= [ext tx2] (ws.dag/bfs-traverse graph tx1)))
-      ;; With filter: stops at ext, doesn't reach tx2
-      (is (= [] (ws.dag/bfs-traverse graph tx1 :node-filter ws-only?)))
-      ;; With filter and include-start
-      (is (= [tx1] (ws.dag/bfs-traverse graph tx1 :include-start? true :node-filter ws-only?))))))
+      (testing "without filter: traverses through ext to reach tx2"
+        (is (= [ext tx2] (ws.dag/bfs-traverse graph tx1))))
+      (testing "with filter: stops at ext, doesn't reach tx2"
+        (is (= [] (ws.dag/bfs-traverse graph tx1 :node-filter ws-only?))))
+      (testing "with filter and include-start"
+        (is (= [tx1] (ws.dag/bfs-traverse graph tx1 :include-start? true :node-filter ws-only?)))))))
 
 (deftest collapse-test
   (is (= {:x1 [:x2 :x3]

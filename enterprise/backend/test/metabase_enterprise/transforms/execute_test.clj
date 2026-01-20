@@ -267,4 +267,3 @@
                  #"Transforms are not supported on databases with DB routing enabled."
                  (mt/with-current-user (mt/user->id :crowberto)
                    (transforms.execute/execute! transform {:run-method :manual}))))))))))
-
