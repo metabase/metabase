@@ -216,7 +216,7 @@
   "Asserts that incoming Slack request has a valid signature."
   [request]
   (when-not (:slack/validated? request)
-    (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status 401, :body "Invalid request signature."}))))
+    (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
 
 ;; ------------------------- EVENT HANDLING ------------------------------
 
