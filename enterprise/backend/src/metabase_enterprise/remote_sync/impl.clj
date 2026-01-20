@@ -46,7 +46,8 @@
   [timestamp imported-entities-by-model table-paths field-paths]
   (t2/delete! :model/RemoteSyncObject)
   (let [;; Standard models use entity_id UUIDs (excluding Segment which needs special handling)
-        standard-inserts (->> (dissoc imported-entities-by-model "Segment")
+        ;; TODO(edpaget 2026-01-19): Actions are not dirty tracked
+        standard-inserts (->> (dissoc imported-entities-by-model "Segment" "Action")
                               (mapcat (fn [[model entity-ids]]
                                         (when (seq entity-ids)
                                           (let [fields (model-fields-for-sync model)
@@ -225,7 +226,7 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"databases/.*"]})
+            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"databases/.*" #"actions/.*"]})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
