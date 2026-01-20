@@ -129,11 +129,13 @@
      view-log})
 
 (defn- affected-modules
-  "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them."
+  "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
+   Includes the changed modules themselves (a module is always affected by its own changes)."
   [deps modules]
-  (into (sorted-set)
-        (mapcat (partial indirect-dependents deps))
-        modules))
+  (let [sorted-modules (into (sorted-set) modules)]
+    (into sorted-modules
+          (mapcat (partial indirect-dependents deps))
+          modules)))
 
 (defn- unaffected-modules
   "Return the set of modules that are unaffected "
@@ -201,13 +203,17 @@
                     filename)))
         files))
 
-(defn- driver-deps-affected?
-  "Returns true if the driver module is affected by the changed modules."
+(defn driver-deps-affected?
+  "Returns true if the driver module or enterprise/transforms module is affected by the changed modules.
+   These are the two 'roots' that trigger driver tests - driver for core driver functionality,
+   and transforms because it has extensive driver-specific tests (using mt/test-drivers)."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
-     (not (contains? unaffected 'driver)))))
+     (boolean
+      (or (not (contains? unaffected 'driver))
+          (not (contains? unaffected 'enterprise/transforms)))))))
 
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
