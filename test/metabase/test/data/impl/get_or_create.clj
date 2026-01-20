@@ -153,7 +153,9 @@
                            (tx/fake-sync-database-type driver base-type))
         actual-base-type (if (map? base-type)
                            (or effective-type :type/*)
-                           base-type)
+                           ;; Use fake-sync-base-type to get what the database actually reports
+                           ;; E.g., Snowflake: :type/Integer -> :type/Number (since INTEGER->NUMBER)
+                           (tx/fake-sync-base-type driver base-type))
         semantic-type    (cond
                            pk?        :type/PK
                            (some? fk) :type/FK

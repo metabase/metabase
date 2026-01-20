@@ -421,3 +421,13 @@
     :type/BigInteger     "NUMBER"
     ;; For types that don't change, use the creation type
     (sql.tx/field-base-type->sql-type :snowflake base-type)))
+
+(defmethod tx/fake-sync-base-type :snowflake
+  [_driver base-type]
+  ;; Snowflake normalizes INTEGER/BIGINT to NUMBER, which maps to :type/Number.
+  ;; Real sync sees NUMBER and returns :type/Number, so fake-sync must match.
+  (case base-type
+    :type/Integer    :type/Number
+    :type/BigInteger :type/Number
+    ;; Other types are unchanged
+    base-type))

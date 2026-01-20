@@ -557,6 +557,20 @@
   ;; Default: use the DDL type (what we create columns with)
   ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
 
+(defmulti fake-sync-base-type
+  "Return the base_type for fake sync Field rows.
+   By default returns the base-type from the test definition unchanged.
+   Drivers where the reported type differs (like Snowflake where INTEGER columns
+   are reported as NUMBER with base_type :type/Number) should override."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-base-type ::test-extensions
+  [_driver base-type]
+  ;; Default: use the base-type from the test definition unchanged
+  base-type)
+
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
    Detection methods (in priority order):
