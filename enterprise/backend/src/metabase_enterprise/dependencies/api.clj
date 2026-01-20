@@ -675,7 +675,7 @@
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :table.display_name)
         dependents-errors-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                                 [:concat :error_type [:inline "-"] :error_detail]
+                                                                 [:concat :error_type [:inline "-"] [:coalesce :error_detail [:inline ""]]]
                                                                  [:composite :error_type :error_detail])]]]]
                                   :from [:analysis_finding_error]
                                   :where [:and
