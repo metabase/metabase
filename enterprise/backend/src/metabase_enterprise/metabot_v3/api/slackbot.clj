@@ -75,14 +75,14 @@
 (defn post-image
   "Upload a PNG image and send in a message"
   [client image-bytes filename channel thread-ts]
-  (let [{:keys [ok upload-url file-id] :as res} (get-upload-url client {:filename filename
+  (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
     (when ok
-      (http/post upload-url
+      (http/post upload_url
                  {:headers {"Content-Type" "image/png"}
                   :body image-bytes})
       (slack-post-json client "/files.completeUploadExternal"
-                       {:files [{:id file-id
+                       {:files [{:id file_id
                                  :title filename}]
                         :channel_id channel
                         :thread_ts thread-ts})
@@ -94,13 +94,6 @@
   (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
 
 ;; -------------------- PNG GENERATION ---------------------------
-
-(defn extract-card-id-from-url
-  "Extract card ID from preview_card_png URL"
-  [url]
-  (some-> (re-find #".*/api/pulse/preview_card_png/(\d+)" url)
-          second
-          parse-long))
 
 (defn- pulse-card-query-results
   {:arglists '([card])}
@@ -249,20 +242,21 @@
   [client event]
   (let [admin-user (t2/select-one :model/User :is_superuser true)]
     ;; Bind admin user context for the entire operation
-    (binding [api/*current-user* admin-user
+    (binding [api/*current-user* (delay admin-user)
               api/*current-user-id* (:id admin-user)]
       (let [prompt (:text event)
             thread (fetch-thread client event)
             message-ctx {:channel (:channel event) :thread_ts (or (:thread_ts event) (:ts event))}
             thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
             {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
+
         (delete-message client thinking-message)
         (post-message client (merge message-ctx {:text text}))
 
         ;; Process visualization images
         (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
           (doseq [viz vizs]
-            (when-let [card-id (extract-card-id-from-url (get-in viz [:value :url]))]
+            (when-let [card-id (get-in viz [:value :entity_id])]
               (let [png-bytes (generate-card-png card-id)
                     filename (str "chart-" card-id ".png")]
                 (post-image client png-bytes filename
@@ -329,7 +323,7 @@
 
   (def user (t2/select-one :model/User :is_superuser true))
   (def response-stream
-    (binding [api/*current-user* (t2/select-one :model/User :is_superuser true)
+    (binding [api/*current-user* (delay (t2/select-one :model/User :is_superuser true))
               api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
       (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
   (log/debug "Response stream:" response-stream)
