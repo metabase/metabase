@@ -497,6 +497,8 @@
                                               :col 0
                                               :size_x 4
                                               :size_y 4})
+            ;; Backfill dependencies to create dashboard -> card dependency
+            (while (#'dependencies.backfill/backfill-dependencies!))
             (testing "single dependent_types value (backward compatibility)"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
                                                    :id card-id-1
@@ -1580,112 +1582,6 @@
         (is (=? {:data   []
                  :total  0}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
-
-;; =============================================================================
-;; Original /graph/broken tests (old behavior - returns broken entities directly)
-;; These tests are commented out because the endpoint now returns entities that
-;; are SOURCES of downstream errors rather than the broken entities themselves.
-;; =============================================================================
-
-#_(deftest ^:sequential broken-questions-test
-    (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
-      (mt/with-premium-features #{:dependencies}
-        (let [mp (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))]
-          (mt/with-temp [:model/Card _ {:name "Good Card - brokentest"
-                                        :type :question
-                                        :dataset_query (lib/query mp products)}
-                         :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
-                                                           :type :question
-                                                           :dataset_query (broken-mbql-query)}]
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
-              (is (=? {:data [{:id broken-card-id
-                               :type "card"
-                               :data {:name "Broken Card - brokentest"}}]}
-                      response))))))))
-
-#_(deftest ^:sequential broken-transforms-test
-    (testing "GET /api/ee/dependencies/broken - only broken transforms are returned"
-      (mt/with-premium-features #{:dependencies}
-        (let [mp (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))]
-          (mt/with-temp [:model/Transform {broken-transform-id :id} {:name "Broken Transform - brokentest"
-                                                                     :source {:type :query
-                                                                              :query (broken-mbql-query)}
-                                                                     :target {:schema "PUBLIC"
-                                                                              :name "broken_transform_table"}}
-                         :model/Transform _ {:name "Good Transform - brokentest"
-                                             :source {:type :query
-                                                      :query (lib/query mp products)}
-                                             :target {:schema "PUBLIC"
-                                                      :name "referenced_transform_table"}}]
-            (while (> (dependencies.findings/analyze-batch! :transform 50) 0))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=transform&query=brokentest")]
-              (is (=? {:data [{:id broken-transform-id
-                               :type "transform"
-                               :data {:name "Broken Transform - brokentest"}}]}
-                      response))))))))
-
-#_(deftest ^:sequential broken-card-types-test
-    (testing "GET /api/ee/dependencies/broken - broken models and metrics are filtered by card_types and pagination"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
-                                                          :type :model
-                                                          :dataset_query (broken-mbql-query)}
-                       :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
-                                                           :type :metric
-                                                           :dataset_query (broken-mbql-query)}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (testing "filtering by model only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
-              (is (=? {:data [{:id broken-model-id
-                               :type "card"
-                               :data {:name "A - Broken Model - cardtype"
-                                      :type "model"}}]}
-                      response))))
-          (testing "filtering by metric only"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
-              (is (=? {:data [{:id broken-metric-id
-                               :type "card"
-                               :data {:name "B - Broken Metric - cardtype"
-                                      :type "metric"}}]}
-                      response))))
-          (testing "filtering by model and metric as the default card types"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
-              (is (=? {:data [{:id broken-model-id
-                               :type "card"
-                               :data {:name "A - Broken Model - cardtype"
-                                      :type "model"}}
-                              {:id broken-metric-id
-                               :type "card"
-                               :data {:name "B - Broken Metric - cardtype"
-                                      :type "metric"}}]}
-                      response))))))))
-
-#_(deftest ^:sequential broken-archived-card-test
-    (testing "GET /api/ee/dependencies/graph/broken with archived parameter"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
-                                                         :type :question
-                                                         :dataset_query (broken-mbql-query)}
-                       :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
-                                                                  :type :question
-                                                                  :archived true
-                                                                  :dataset_query (broken-mbql-query)}]
-          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-          (testing "archived=false (default) excludes archived broken card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
-                  card-ids (set (map :id (:data response)))]
-              (is (contains? card-ids broken-card-id))
-              (is (not (contains? card-ids archived-broken-card-id)))))
-          (testing "archived=true includes archived broken card"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
-                  card-ids (set (map :id (:data response)))]
-              (is (contains? card-ids broken-card-id))
-              (is (contains? card-ids archived-broken-card-id))))))))
-
-#_(deftest ^:sequential broken-archived-segment-test
     (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
       (mt/with-premium-features #{:dependencies}
         ;; Use a filter referencing a non-existent field ID (999999) to create a "broken" segment
@@ -1707,12 +1603,6 @@
                   segment-ids (set (map :id (:data response)))]
               (is (contains? segment-ids broken-segment-id))
               (is (contains? segment-ids archived-broken-segment-id))))))))
-
-;; =============================================================================
-;; New /graph/broken tests (new behavior - returns entities that CAUSE errors)
-;; These tests verify that the endpoint returns entities that are SOURCES of
-;; downstream errors (breaking entities) rather than the broken entities.
-;; =============================================================================
 
 (deftest ^:sequential broken-entities-returns-source-of-errors-test
   (testing "GET /api/ee/dependencies/graph/broken - returns entities that are SOURCE of downstream errors"
@@ -2178,80 +2068,6 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
-#_(deftest ^:sequential broken-sort-by-name-test
-    (testing "GET /api/ee/dependencies/graph/broken - sorting by name"
-      (mt/with-premium-features #{:dependencies}
-        (let [broken-query (broken-mbql-query)]
-          (mt/with-temp [:model/Card _ {:name "A Card sorttest"
-                                        :dataset_query broken-query}
-                         :model/Card _ {:name "B Card sorttest"
-                                        :dataset_query broken-query}]
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (doseq [sort-direction [:asc :desc]]
-              (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
-                                                   :query "sorttest"
-                                                   :sort_column :name
-                                                   :sort_direction sort-direction)
-                    names (mapv #(get-in % [:data :name]) (:data response))]
-                (is (= (cond-> ["A Card sorttest"
-                                "B Card sorttest"]
-                         (= sort-direction :desc) reverse)
-                       names)))))))))
-
-#_(deftest ^:sequential broken-sort-by-location-test
-    (testing "GET /api/ee/dependencies/graph/broken - sorting by location"
-      (mt/with-premium-features #{:dependencies}
-        (let [broken-query (broken-mbql-query)]
-          (mt/with-temp [:model/Collection {collection1-id :id} {:name "B Collection"}
-                         :model/Collection {collection2-id :id} {:name "A Collection"}
-                         :model/Card _ {:name           "Card with Collection 1 sorttest"
-                                        :dataset_query broken-query
-                                        :collection_id collection1-id}
-                         :model/Card _ {:name          "Card with Collection 2 sorttest"
-                                        :dataset_query broken-query
-                                        :collection_id collection2-id}]
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (doseq [sort-direction [:asc :desc]]
-              (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
-                                                   :query "sorttest"
-                                                   :sort_column :location
-                                                   :sort_direction sort-direction)
-                    names (mapv #(get-in % [:data :name]) (:data response))]
-                (is (= (cond-> ["Card with Collection 2 sorttest"
-                                "Card with Collection 1 sorttest"]
-                         (= sort-direction :desc) reverse)
-                       names)))))))))
-
-#_(deftest ^:sequential broken-sort-by-dependents-count-test
-    (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents count"
-      (mt/with-premium-features #{:dependencies}
-        (let [broken-query (broken-mbql-query)]
-          (mt/with-temp [:model/Card card1 {:name           "Card 1 sorttest"
-                                            :dataset_query broken-query}
-                         :model/Card card2 {:name          "Card 2 sorttest"
-                                            :dataset_query broken-query}
-                         :model/Card _     {:name          "Card 1.1 sorttest"
-                                            :dataset_query (wrap-card-query card1)}
-                         :model/Card _     {:name          "Card 1.2 sorttest"
-                                            :dataset_query (wrap-card-query card1)}
-                         :model/Card _     {:name          "Card 2.1 sorttest"
-                                            :dataset_query (wrap-card-query card2)}]
-            (while (#'dependencies.backfill/backfill-dependencies!))
-            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
-            (doseq [sort-direction [:asc :desc]]
-              (let [response (mt/user-http-request :crowberto :get 200
-                                                   "ee/dependencies/graph/broken"
-                                                   :query "sorttest"
-                                                   :sort_column :dependents-count
-                                                   :sort_direction sort-direction)
-                    names (mapv #(get-in % [:data :name]) (:data response))]
-                (is (= (cond-> ["Card 2 sorttest"
-                                "Card 1 sorttest"]
-                         (= sort-direction :desc) reverse)
-                       names)))))))))
-
 (deftest ^:sequential broken-entities-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/broken - sorting by name"
     (mt/with-premium-features #{:dependencies}
@@ -2324,8 +2140,8 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential broken-entities-sort-by-dependents-count-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents count"
+(deftest ^:sequential broken-entities-sort-by-dependents-with-errors-count-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2354,7 +2170,7 @@
                                                    "ee/dependencies/graph/broken"
                                                    :types "card"
                                                    :query "sortdepstest"
-                                                   :sort_column :dependents-count
+                                                   :sort_column :dependents-with-errors
                                                    :sort_direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 (is (= (cond-> ["Card 2 sortdepstest"
