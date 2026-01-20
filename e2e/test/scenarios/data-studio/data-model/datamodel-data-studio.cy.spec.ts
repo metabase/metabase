@@ -2201,6 +2201,56 @@ describe("scenarios > data studio > datamodel", () => {
           },
         );
       });
+
+      it("should allow analysts to change the foreign key target without data access", () => {
+        H.setUserAsAnalyst(NODATA_USER_ID);
+        cy.signIn("nodata");
+
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: ORDERS.USER_ID,
+        });
+
+        FieldSection.getSemanticTypeFkTarget()
+          .should("have.value", "People → ID")
+          .click();
+        H.popover().within(() => {
+          cy.findByText("Reviews → ID").should("be.visible");
+          cy.findByText("Products → ID").click();
+        });
+        cy.wait("@updateField");
+        H.undoToast().should(
+          "contain.text",
+          "Semantic type of User ID updated",
+        );
+        FieldSection.getSemanticTypeFkTarget().should(
+          "have.value",
+          "Products → ID",
+        );
+
+        cy.log("verify preview is blocked without data permissions");
+        FieldSection.getPreviewButton().click();
+        cy.wait("@dataset");
+        PreviewSection.get()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+
+        cy.log("verify FK target change works in query builder as normal user");
+        cy.signInAsNormalUser();
+        H.openTable({
+          database: SAMPLE_DB_ID,
+          table: ORDERS_ID,
+          mode: "notebook",
+        });
+        cy.icon("join_left_outer").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Products").click();
+        });
+        cy.findByLabelText("Left column").should("contain.text", "User ID");
+      });
     });
 
     describe("Behavior", () => {
@@ -2895,6 +2945,105 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findAllByTestId("cell-data")
             .eq(10) // 1st data row, 2nd column (User ID)
             .should("have.text", "2023-10-07T01:34:35.462-07:00");
+        });
+
+        it("should allow analysts to change display values to use foreign key without data access", () => {
+          H.setUserAsAnalyst(NODATA_USER_ID);
+          cy.signIn("nodata");
+
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.PRODUCT_ID,
+          });
+
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Use foreign key").click();
+          H.popover().findByText("Title").click();
+          cy.wait("@updateFieldDimension");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Product ID updated",
+          );
+
+          FieldSection.getDisplayValuesInput().should(
+            "have.value",
+            "Use foreign key",
+          );
+          FieldSection.getDisplayValuesFkTargetInput().should(
+            "have.value",
+            "Title",
+          );
+
+          cy.log("verify preview is blocked without data permissions");
+          FieldSection.getPreviewButton().click();
+          cy.wait("@dataset");
+          PreviewSection.get()
+            .findByText("Sorry, you don’t have permission to see that.")
+            .should("be.visible");
+
+          cy.log("verify display value change works as normal user");
+          cy.signInAsNormalUser();
+          H.openReviewsTable({ limit: 1 });
+          H.main().findByText("Rustic Paper Wallet").should("be.visible");
+        });
+
+        it("should disable custom mapping for analysts without data access", () => {
+          H.setUserAsAnalyst(NODATA_USER_ID);
+          cy.signIn("nodata");
+
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+
+          cy.log("verify custom mapping is disabled without data access");
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use original value/ })
+              .should("be.visible")
+              .and("not.have.attr", "data-combobox-disabled");
+            cy.findByRole("option", { name: /Custom mapping/ })
+              .should("be.visible")
+              .and("have.attr", "data-combobox-disabled", "true");
+          });
+
+          cy.log("verify admin can set up custom mapping");
+          cy.signInAsAdmin();
+          H.DataModel.visitDataStudio({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.RATING,
+          });
+          FieldSection.getDisplayValuesInput().click();
+          H.popover().findByText("Custom mapping").click();
+          cy.wait("@updateFieldValues");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Rating updated",
+          );
+          H.undoToast().icon("close").click({ force: true });
+
+          H.modal().within(() => {
+            cy.findByDisplayValue("1").click().clear().type("Terrible");
+            cy.findByDisplayValue("5").click().clear().type("Amazing");
+            cy.button("Save").click();
+          });
+          cy.wait("@updateFieldValues");
+          H.undoToast().should(
+            "contain.text",
+            "Display values of Rating updated",
+          );
+
+          cy.log("verify custom mapping works as normal user");
+          cy.signInAsNormalUser();
+          H.openReviewsTable();
+          H.main().findByText("Terrible").should("be.visible");
+          H.main().findAllByText("Amazing").should("be.visible");
         });
       });
 

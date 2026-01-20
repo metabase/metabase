@@ -82,7 +82,7 @@ export function buildSnippetTree(
   return [{ ...rootNode, name: t`SQL snippets`, children }];
 }
 
-export function getCollection(
+export function getAccessibleCollection(
   rootCollection: Collection,
   type: CollectionType,
 ) {
@@ -95,17 +95,8 @@ export function getWritableCollection(
   rootCollection: Collection,
   type: CollectionType,
 ) {
-  const collection = getCollection(rootCollection, type);
+  const collection = getAccessibleCollection(rootCollection, type);
   return collection?.can_write ? collection : undefined;
-}
-
-export function getAccessibleCollection(
-  rootCollection: Collection,
-  type: CollectionType,
-) {
-  return rootCollection.children?.find(
-    (collection) => collection.type === type,
-  );
 }
 
 type EmptyStateConfig = {
