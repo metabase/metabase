@@ -214,12 +214,12 @@
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
-  (when (capabilities :tasks)
+  (when (capabilities :capabilities/task)
     (log/warn "in task mode, so checking database health")
     (database/check-health!))
   (startup/run-startup-logic!)
   (init-status/set-progress! 0.95)
-  (when (capabilities :tasks)
+  (when (capabilities :capabilities/task)
     (log/warn "in task mode so starting task scheduler")
     (task/start-scheduler!))
   (queue/start-listeners!)
@@ -244,24 +244,24 @@
   ([] (start-normally {}))
   ([options]
    (log/info "Starting Metabase in STANDALONE mode")
-   (let [capabilities     (case (:mode options)
-                            "server" #{:server}
-                            "task" #{:tasks}
-                            #{:server :tasks})]
+   (let [capabilities (case (:mode options)
+                        "server"   #{:capabilities/webserver}
+                        "task"     #{:capabilities/task}
+                        "monolith" #{:capabilities/task :capabilities/webserver}
+                        #{:capabilities/task :capabilities/webserver})]
      (try
        ;; launch embedded webserver
-       (when (capabilities :server)
+       (when (capabilities :capabilities/webserver)
          (let [server-routes (server/make-routes #'api-routes/routes)
                handler       (server/make-handler server-routes)]
            (server/start-web-server! handler)))
        ;; run our initialization process
        (init! {:capabilities capabilities})
        ;; Ok, now block forever while Jetty does its thing
-       (when (capabilities :server)
+       (when (capabilities :capabilities/webserver)
          (when (config/config-bool :mb-jetty-join)
            (.join (server/instance))))
-       (when (capabilities :task)
-         (log/warn "waiting on an empty promise")
+       (when (capabilities :capabilities/task)
          @(promise))
        (catch Throwable e
          (log/error e "Metabase Initialization FAILED")
