@@ -54,7 +54,8 @@ export type ClickBehaviorType =
   | "action"
   | "actionMenu"
   | "crossfilter"
-  | "link";
+  | "link"
+  | "singleClickDrilldown";
 
 export type CustomDestinationClickBehaviorLinkType =
   | EntityCustomDestinationClickBehavior["linkType"]
@@ -142,6 +143,14 @@ export type ActionMenuClickBehavior = {
   type: "actionMenu";
 };
 
+/**
+ * Automatically executes the first available drill action on single click,
+ * bypassing the drill-through menu.
+ */
+export type SingleClickDrilldownClickBehavior = {
+  type: "singleClickDrilldown";
+};
+
 export type CustomDestinationClickBehavior =
   | EntityCustomDestinationClickBehavior
   | ArbitraryCustomDestinationClickBehavior;
@@ -150,4 +159,5 @@ export type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior
-  | ActionClickBehavior;
+  | ActionClickBehavior
+  | SingleClickDrilldownClickBehavior;
