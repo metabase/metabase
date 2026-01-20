@@ -259,10 +259,6 @@ function OwnerSection({ transform }: OwnerSectionProps) {
   };
 
   const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
-    if (userId == null) {
-      return;
-    }
-
     const { error } = await updateTransform({
       id: transform.id,
       owner_email: null,

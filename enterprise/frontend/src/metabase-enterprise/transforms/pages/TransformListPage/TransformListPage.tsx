@@ -165,7 +165,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         enableSorting: true,
         cell: ({ row }) => {
           const owner = row.original.owner;
-          const hasUserName = owner?.first_name ?? owner?.last_name;
+          const hasUserName = owner?.first_name || owner?.last_name;
 
           if (hasUserName) {
             const displayName = getUserName(owner as NamedUser);
