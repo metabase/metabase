@@ -548,29 +548,32 @@
 (defn- workspace-transform? [entity]
   (= :workspace-transform (:node-type entity)))
 
-(defn- hydrate-staleness
+(defn compute-staleness
   "Compute transitive staleness for graph entities.
    An entity is stale if:
    - Its definition_changed is true (definition changed since last run), OR
    - Its input_data_changed is true (input data changed since last run), OR
    - Any of its ancestors are stale (transitively)
 
-   This propagates staleness down the graph using a BFS from all initially stale nodes."
-  [ws-id graph]
-  (let [ws-tx-ids      (workspace-transform-ids (:entities graph))
-        staleness-map  (fetch-staleness-map ws-id ws-tx-ids)
-        locally-stale? (fn [entity]
+   Takes a graph and a staleness-map: {entity-id -> {:definition_changed bool, :input_data_changed bool}}
+   Returns updated graph with :stale, :definition_changed, :input_data_changed on each workspace transform entity.
+
+   This propagates staleness down the graph using a BFS from all initially stale nodes.
+   Note: staleness propagates THROUGH external transforms but only marks workspace transforms as stale."
+  [graph staleness-map]
+  (let [locally-stale? (fn [entity]
                          (let [staleness (get staleness-map (:id entity))]
                            (or (:definition_changed staleness)
                                (:input_data_changed staleness))))
         init-stale     (filter (every-pred workspace-transform? locally-stale?)
                                (:entities graph))
         forward-edges  (some-> (:dependencies graph) ws.dag/reverse-graph)
-        all-stale      (if forward-edges
-                         (set (ws.dag/bfs-traverse forward-edges init-stale
-                                                   :include-start? true
-                                                   :node-filter workspace-transform?))
+        ;; BFS traverses through ALL nodes (including external transforms) to find reachable workspace transforms
+        all-reachable  (if forward-edges
+                         (set (ws.dag/bfs-traverse forward-edges init-stale :include-start? true))
                          (set init-stale))
+        ;; Filter to only workspace transforms for the stale set
+        all-stale      (set (filter workspace-transform? all-reachable))
         annotate       (fn [entity]
                          (if (workspace-transform? entity)
                            (-> entity
@@ -595,7 +598,8 @@
    (when-let [graph (or (fully-persisted-graph ws-id graph-version)
                         (calculate-and-persist-graph! workspace graph-version))]
      (if with-staleness?
-       (hydrate-staleness ws-id graph)
+       (let [ws-tx-ids (workspace-transform-ids (:entities graph))]
+         (compute-staleness graph (fetch-staleness-map ws-id ws-tx-ids)))
        graph))))
 
 (defn- transforms-to-execute
