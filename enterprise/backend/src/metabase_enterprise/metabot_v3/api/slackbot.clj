@@ -112,21 +112,37 @@
        :card-id     card-id}))))
 
 (defn generate-card-png
-  "Generate PNG for a card using pulse rendering functionality."
-  [card-id & {:keys [width]
-              :or {width 400}}]
-  (let [card (t2/select-one :model/Card :id card-id)]
-    (when-not card
-      (throw (ex-info "Card not found" {:card-id card-id})))
-      ;; TODO; is this even needed, we're binding higher up in the call stack i think?
-    (binding [api/*is-superuser?* true
-              api/*current-user-permissions-set* (atom #{"/"})]
-      ;; TODO: should we use the user's timezone for this?
-      (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                               card
-                                               (pulse-card-query-results card)
-                                               width
-                                               {:channel.render/include-title? true}))))
+  "Generate PNG for a card. Accepts either:
+   - card-id (integer) - fetches saved card from database
+   - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
+  [card-or-id & {:keys [width padding-x padding-y]
+                 :or {width 400 padding-x 32 padding-y 32}}]
+  (let [options {:channel.render/include-title? true
+                 :channel.render/padding-x padding-x
+                 :channel.render/padding-y padding-y}]
+    (if (integer? card-or-id)
+      ;; Saved card path
+      (let [card (t2/select-one :model/Card :id card-or-id)]
+        (when-not card
+          (throw (ex-info "Card not found" {:card-id card-or-id})))
+        ;; TODO; is this even needed, we're binding higher up in the call stack i think?
+        (binding [api/*is-superuser?* true
+                  api/*current-user-permissions-set* (atom #{"/"})]
+          ;; TODO: should we use the user's timezone for this?
+          (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                   card
+                                                   (pulse-card-query-results card)
+                                                   width
+                                                   options)))
+      ;; Ad-hoc card path
+      (let [{:keys [display visualization_settings results name]} card-or-id]
+        (channel.render/render-adhoc-card-to-png
+         {:display display
+          :visualization_settings visualization_settings
+          :name name}
+         results
+         width
+         options)))))
 
 ;; -------------------- AI SERVICE ---------------------------
 
