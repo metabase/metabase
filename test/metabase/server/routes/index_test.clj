@@ -85,3 +85,10 @@
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters false {})))))))
+
+(deftest embed-sdk-cache-header-test
+  (testing "embed-sdk endpoint returns Cache-Control header with 60 minute max-age"
+    (let [response (promise)]
+      (index/embed-sdk {:uri "/embed/sdk/v1"} #(deliver response %) identity)
+      (is (= "public, max-age=3600"
+             (get-in @response [:headers "Cache-Control"]))))))

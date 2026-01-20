@@ -125,4 +125,11 @@
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
-(def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
+
+(defn embed-sdk
+  "/embed/sdk/v1 index.html entrypoint with caching."
+  [request respond raise]
+  (entrypoint "embed-sdk" :embeddable request
+              (fn [resp]
+                (respond (response/header resp "Cache-Control" "public, max-age=3600")))
+              raise))
