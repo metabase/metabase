@@ -155,7 +155,8 @@
   (check-job-edit-permissions (t2/select-fn-set :tag_id [:model/TransformJobTransformTag :tag_id] :job_id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.jobs/run-job! job-id {:run-method :manual})
+     (transforms.jobs/run-job! job-id {:run-method :manual
+                                       :user-id api/*current-user-id*})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))

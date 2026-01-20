@@ -9,6 +9,7 @@ import {
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
+import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -20,8 +21,9 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
+import type { Transform, UserId } from "metabase-types/api";
 
+import { useUpdateTransformMutation } from "../../../../api/transform";
 import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
@@ -38,6 +40,7 @@ export const TransformSettingsSection = ({
   readOnly,
 }: TransformSettingsSectionProps) => (
   <Stack gap="2.5rem">
+    <OwnerSection transform={transform} />
     <TitleSection
       label={t`Transform target`}
       description={t`Change what this transform generates and where.`}
@@ -233,5 +236,62 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
     >
       {t`Edit this table's metadata`}
     </Button>
+  );
+}
+
+type OwnerSectionProps = {
+  transform: Transform;
+};
+
+function OwnerSection({ transform }: OwnerSectionProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  const showResultToast = (error: unknown) => {
+    if (error) {
+      sendErrorToast(t`Failed to update transform owner`);
+    } else {
+      sendSuccessToast(t`Transform owner updated`);
+    }
+  };
+
+  const handleOwnerEmailChange = async (email: string | null) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      owner_email: email,
+      owner_user_id: null,
+    });
+    showResultToast(error);
+  };
+
+  const handleOwnerUserIdChange = async (userId: UserId | "unknown" | null) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      owner_email: null,
+      owner_user_id: userId === "unknown" ? null : userId,
+    });
+    showResultToast(error);
+  };
+
+  return (
+    <TitleSection
+      label={t`Ownership`}
+      description={t`Specify who is responsible for this transform.`}
+    >
+      <Group p="lg">
+        <UserInput
+          email={transform.owner_email ?? null}
+          label={t`Owner`}
+          userId={
+            !transform.owner_email && !transform.owner_user_id
+              ? "unknown"
+              : (transform.owner_user_id ?? null)
+          }
+          unknownUserLabel={t`No owner`}
+          onEmailChange={handleOwnerEmailChange}
+          onUserIdChange={handleOwnerUserIdChange}
+        />
+      </Group>
+    </TitleSection>
   );
 }

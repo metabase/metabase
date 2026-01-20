@@ -15,7 +15,10 @@ module.exports = {
     "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
     "prettier --write",
   ],
-  "**/*.{clj,cljc,cljs,bb}": ["./bin/mage cljfmt-files"],
+  "**/*.{clj,cljc,cljs,bb}": [
+    "./bin/mage cljfmt-files",
+    "./bin/mage fix-unused-requires",
+  ],
   "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
     "node e2e/validate-e2e-test-files.js",
   ],

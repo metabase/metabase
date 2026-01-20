@@ -1,18 +1,50 @@
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { Transform } from "metabase-types/api";
-
+import type { IncrementalSettingsFormValues } from "metabase-enterprise/transforms/components/IncrementalTransform";
 import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
-} from "../../../components/IncrementalTransform";
+} from "metabase-enterprise/transforms/components/IncrementalTransform";
+import { useQueryComplexityChecks } from "metabase-enterprise/transforms/components/QueryComplexityWarning";
+import type { Transform } from "metabase-types/api";
 
 type UpdateIncrementalSettingsProps = {
   transform: Transform;
   readOnly?: boolean;
+};
+
+const IncrementalTransformSettingsWrapper = ({
+  transform,
+}: UpdateIncrementalSettingsProps) => {
+  const { values, setFieldValue } =
+    useFormikContext<IncrementalSettingsFormValues>();
+  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
+
+  const handleIncrementalChange = async (value: boolean) => {
+    if (value) {
+      const confirmed = await confirmIfQueryIsComplex(transform.source);
+      if (!confirmed) {
+        return;
+      }
+    }
+    setFieldValue("incremental", value);
+  };
+
+  return (
+    <>
+      <IncrementalTransformSettings
+        source={transform.source}
+        incremental={values.incremental}
+        onIncrementalChange={handleIncrementalChange}
+        variant="standalone"
+      />
+      {modal}
+    </>
+  );
 };
 
 export const UpdateIncrementalSettings = ({
@@ -20,14 +52,15 @@ export const UpdateIncrementalSettings = ({
   readOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const { initialValues, validationSchema, updateIncrementalSettings } =
-    useUpdateIncrementalSettings(transform);
 
   const showSuccessToast = () =>
     sendSuccessToast(t`Incremental transformation settings updated`);
 
   const showErrorToast = () =>
     sendErrorToast(t`Failed to update incremental transformation settings`);
+
+  const { initialValues, validationSchema, updateIncrementalSettings } =
+    useUpdateIncrementalSettings(transform);
 
   return (
     <FormProvider
@@ -42,10 +75,8 @@ export const UpdateIncrementalSettings = ({
           onSuccess={showSuccessToast}
           onError={showErrorToast}
         />
-        <IncrementalTransformSettings
-          source={transform.source}
-          checkOnMount
-          variant="standalone"
+        <IncrementalTransformSettingsWrapper
+          transform={transform}
           readOnly={readOnly}
         />
       </Form>

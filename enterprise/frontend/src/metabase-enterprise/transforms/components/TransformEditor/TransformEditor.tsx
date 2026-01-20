@@ -25,6 +25,7 @@ type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onBlur?: () => void;
   isEditMode?: boolean;
   readOnly?: boolean;
   transformId?: TransformId;
@@ -39,6 +40,7 @@ export function TransformEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  onBlur,
   isEditMode,
   readOnly,
   transformId,
@@ -80,6 +82,7 @@ export function TransformEditor({
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
+      onBlur={onBlur}
       topBarInnerContent={
         !readOnly &&
         !isEditMode &&

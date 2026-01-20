@@ -11,6 +11,7 @@ type MeasureEditorProps = {
   description: string;
   onQueryChange: (query: Lib.Query) => void;
   onDescriptionChange: (description: string) => void;
+  readOnly?: boolean;
 };
 
 export function MeasureEditor({
@@ -18,12 +19,17 @@ export function MeasureEditor({
   description,
   onQueryChange,
   onDescriptionChange,
+  readOnly,
 }: MeasureEditorProps) {
   return (
     <Card withBorder p="xl">
       <Stack flex={1} gap="xl" p={0} className={S.scrollable}>
         {query && (
-          <MeasureAggregationPicker query={query} onChange={onQueryChange} />
+          <MeasureAggregationPicker
+            onChange={onQueryChange}
+            query={query}
+            readOnly={readOnly}
+          />
         )}
         <TextInput
           label={t`Give it a description`}
@@ -34,6 +40,7 @@ export function MeasureEditor({
           classNames={{
             label: S.descriptionLabel,
           }}
+          readOnly={readOnly}
         />
       </Stack>
     </Card>
