@@ -455,8 +455,7 @@
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
-    (u/with-timeout response-timeout-ms
-      (-mock-client parsed))))
+    (-mock-client parsed)))
 
 (defn client-real-response
   "Identical to `real-client` except returns the full HTTP response map, not just the body of the response."
