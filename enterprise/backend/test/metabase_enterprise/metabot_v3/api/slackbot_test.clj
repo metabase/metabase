@@ -3,8 +3,10 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (def ^:private test-signing-secret "test-slack-signing-secret-12345")
@@ -81,3 +83,44 @@
                                              (mt/client :post 402 "ee/metabot-v3/slack/events"
                                                         {:type "url_verification"
                                                          :challenge "test"}))))))
+
+(deftest user-message-triggers-response-test
+  (testing "POST /events with user message triggers AI response via Slack"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                         metabot.settings/metabot-slack-bot-token "test-token"]
+        (let [post-calls (atom [])
+              delete-calls (atom [])
+              mock-ai-text "Here is your answer"
+              event-body {:type "event_callback"
+                          :event {:type "message"
+                                  :text "Hello!"
+                                  :user "U123"
+                                  :channel "C123"
+                                  :ts "1234567890.000001"}}]
+          (mt/with-dynamic-fn-redefs
+            [slackbot/fetch-thread (constantly {:ok true :messages []})
+             slackbot/post-message (fn [_ msg]
+                                     (swap! post-calls conj msg)
+                                     {:ok true :ts "123" :channel (:channel msg) :message msg})
+             slackbot/delete-message (fn [_ msg]
+                                       (swap! delete-calls conj msg)
+                                       {:ok true})
+             slackbot/make-ai-request (constantly {:text mock-ai-text :data-parts []})]
+
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              ;; Immediate ack
+              (is (= "ok" response))
+
+              ;; Wait for async processing
+              (u/poll {:thunk #(>= (count @post-calls) 2)
+                       :done? true?
+                       :timeout-ms 5000})
+
+              ;; Verify calls
+              (is (= "_Thinking..._" (:text (first @post-calls))))
+              (is (= mock-ai-text (:text (second @post-calls))))
+              (is (= 1 (count @delete-calls)))
+              (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
