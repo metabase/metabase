@@ -342,7 +342,7 @@ export abstract class MetabaseEmbedElement
     // Random query param is needed to allow parallel EmbedJS iframes loading.
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
-    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?v=${Date.now()}`;
+    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?v=${_activeEmbeds.size}`;
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";

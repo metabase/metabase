@@ -189,7 +189,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).not.toThrow();
   });
 
-  it("should include a random query parameter in the iframe src for cache busting", () => {
+  it("should include a counter as a query parameter in the iframe src for parallel loading", () => {
     defineMetabaseConfig({
       instanceUrl: "https://example.com",
     });
