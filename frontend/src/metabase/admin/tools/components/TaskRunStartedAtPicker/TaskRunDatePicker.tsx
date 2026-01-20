@@ -17,6 +17,10 @@ export const TaskRunDatePicker = ({
   onChange,
   ...props
 }: TaskRunDatePickerProps) => {
+  /**
+   * Using a simple version of TimeFilterWidget here in order to align with a design of admin page.
+   * That means no custom date ranges.
+   */
   const data: SelectData<TaskRunDateFilterOption> = [
     { label: t`Today`, value: "thisday" },
     { label: t`Yesterday`, value: "past1days" },
