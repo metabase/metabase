@@ -637,15 +637,19 @@ export function getErrorTypeLabel(
 ): string {
   switch (type) {
     case "missing-column":
-      return count === 1 ? t`Missing column` : t`Missing columns`;
+      return ngettext(msgid`Missing column`, "Missing columns", count);
     case "missing-table-alias":
-      return count === 1 ? t`Missing table alias` : t`Missing table aliases`;
+      return ngettext(
+        msgid`Missing table alias`,
+        "Missing table aliases",
+        count,
+      );
     case "duplicate-column":
-      return count === 1 ? t`Duplicate column` : t`Duplicate columns`;
+      return ngettext(msgid`Duplicate column`, "Duplicate columns", count);
     case "syntax-error":
-      return count === 1 ? t`Syntax error` : t`Syntax errors`;
+      return ngettext(msgid`Syntax error`, "Syntax errors", count);
     case "validation-error":
-      return count === 1 ? t`Unknown problem` : t`Unknown problems`;
+      return ngettext(msgid`Unknown problem`, "Unknown problems", count);
   }
 }
 
@@ -685,6 +689,10 @@ export function getErrorTypeLabelWithCount(
         count,
       );
   }
+}
+
+export function getDependentErrorNodesLabel(count = 0): string {
+  return ngettext(msgid`Broken dependent`, "Broken dependents", count);
 }
 
 export function getDependencyErrors(

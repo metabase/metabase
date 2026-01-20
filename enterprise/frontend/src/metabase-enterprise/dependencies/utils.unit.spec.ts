@@ -47,6 +47,7 @@ import {
   getDependencyType,
   getDependencyTypes,
   getDependentErrorNodesCount,
+  getDependentErrorNodesLabel,
   getDependentGroupLabel,
   getDependentGroups,
   getErrorTypeLabel,
@@ -941,5 +942,20 @@ describe("getSearchQuery", () => {
     { value: "   ", expected: undefined },
   ])("should process '$value'", ({ value, expected }) => {
     expect(getSearchQuery(value)).toBe(expected);
+  });
+});
+
+describe("getDependentErrorNodesLabel", () => {
+  it.each<{ count: number; expected: string }>([
+    { count: 0, expected: "Broken dependents" },
+    { count: 1, expected: "Broken dependent" },
+    { count: 2, expected: "Broken dependents" },
+    { count: 10, expected: "Broken dependents" },
+  ])("should return '$expected' for count $count", ({ count, expected }) => {
+    expect(getDependentErrorNodesLabel(count)).toBe(expected);
+  });
+
+  it("should default to plural form when called without arguments", () => {
+    expect(getDependentErrorNodesLabel()).toBe("Broken dependents");
   });
 });
