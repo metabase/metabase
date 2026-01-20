@@ -2362,8 +2362,8 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential broken-entities-sort-by-dependents-errors-test
-  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents errors count"
+(deftest ^:sequential broken-entities-sort-by-dependents-with-errors-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2393,7 +2393,7 @@
                                                    "ee/dependencies/graph/broken"
                                                    :types "card"
                                                    :query "sorterrorstest"
-                                                   :sort_column :dependents-errors
+                                                   :sort_column :dependents-with-errors
                                                    :sort_direction sort-direction)
                     names (mapv #(get-in % [:data :name]) (:data response))]
                 ;; Card 2 has 1 broken dependent, Card 1 has 2 broken dependents
