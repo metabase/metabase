@@ -1360,12 +1360,20 @@
 
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        ;; Grant SELECT on each specific table only - no schema-level grants
-        sqls     (for [{s :schema, t :name} tables]
-                   (if (str/blank? s)
-                     (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
-                     (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username)))]
+  (let [username       (-> workspace :database_details :user)
+        ;; Collect all unique source schemas that contain the tables we need to grant access to
+        source-schemas (into #{} (keep :schema) tables)
+        ;; Grant USAGE on source schemas, then SELECT on each table
+        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
+        sqls           (concat
+                        ;; USAGE on each source schema containing tables we're granting access to
+                        (for [s source-schemas]
+                          (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+                        ;; SELECT on each table
+                        (for [{s :schema, t :name} tables]
+                          (if (str/blank? s)
+                            (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                            (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
