@@ -29,7 +29,7 @@
             (is (= perms-group/data-analyst-magic-group-type
                    (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id)))))))))
 
-(defmacro with-reset-data-analyst-group [& body]
+(defmacro with-reset-data-analyst-group! [& body]
   `(let [original# (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
      (try
        (mt/with-model-cleanup [:model/PermissionsGroup]
@@ -39,7 +39,7 @@
 (deftest sync-data-analyst-group-for-oss!-converts-with-members-test
   (testing "Without the premium feature, sync-data-analyst-group-for-oss! converts the Data Analysts group when it has members"
     (mt/with-premium-features #{}
-      (with-reset-data-analyst-group
+      (with-reset-data-analyst-group!
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           (mt/with-temp [:model/User {user-id :id} {}]
             (perms/add-user-to-group! user-id original-group-id)
@@ -62,7 +62,7 @@
 (deftest sync-data-analyst-group-for-oss!-idempotent-empty-test
   (testing "In OSS, sync-data-analyst-group-for-oss! is idempotent when magic group is empty"
     (mt/with-premium-features #{}
-      (with-reset-data-analyst-group
+      (with-reset-data-analyst-group!
         (let [group-count-before (t2/count :model/PermissionsGroup)
               data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Ensure no members in the group
