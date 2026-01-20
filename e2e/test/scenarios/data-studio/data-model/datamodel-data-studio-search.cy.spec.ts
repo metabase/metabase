@@ -118,6 +118,7 @@ describe("Search", () => {
   it("should select/deselect databases and schemas", () => {
     H.DataModel.visitDataStudio();
     TablePicker.getSearchInput().type("a");
+    TablePicker.getTables().should("have.length", 4);
     const postgres = "Writable Postgres12";
     const sampleDatabaseName = "Sample Database";
     const domesticSchema = "Domestic";
