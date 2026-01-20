@@ -123,20 +123,35 @@
 
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
-  ^bytes [{:keys [content]} :- ::body/RenderedPartCard
-          width]
-  (try
-    (let [html (html [:html
-                      [:body {:style (style/style
-                                      {:font-family      "Lato, 'Helvetica Neue', 'Lucida Grande', sans-serif"
-                                       :margin           0
-                                       :padding          0
-                                       :background-color :white})}
-                       (wrap-non-lato-chars content)]])]
-      (with-open [os (ByteArrayOutputStream.)]
-        (-> (render-to-png html width)
-            (write-image! "png" os))
-        (.toByteArray os)))
-    (catch Throwable e
-      (log/error e "Error rendering Pulse")
-      (throw e))))
+  (^bytes [{:keys [content]} :- ::body/RenderedPartCard
+           width]
+   (render-html-to-png {:content content} width nil))
+
+  (^bytes [{:keys [content]} :- ::body/RenderedPartCard
+           width
+           options]
+   (try
+     (let [padding-x (or (:channel.render/padding-x options) 0)
+           padding-y (or (:channel.render/padding-y options) 0)
+           padding-css (str padding-y "px " padding-x "px")
+           ;; Wrap content in a container div with padding to ensure padding is included in content-width
+           ;; calculation (body padding gets cropped off by render-to-png)
+           padded-content (if (or (pos? padding-x) (pos? padding-y))
+                            [:div {:style (style/style {:padding padding-css
+                                                        :box-sizing :border-box})}
+                             content]
+                            content)
+           html (html [:html
+                       [:body {:style (style/style
+                                       {:font-family      "Lato, 'Helvetica Neue', 'Lucida Grande', sans-serif"
+                                        :margin           0
+                                        :padding          0
+                                        :background-color :white})}
+                        (wrap-non-lato-chars padded-content)]])]
+       (with-open [os (ByteArrayOutputStream.)]
+         (-> (render-to-png html width)
+             (write-image! "png" os))
+         (.toByteArray os)))
+     (catch Throwable e
+       (log/error e "Error rendering Pulse")
+       (throw e)))))
