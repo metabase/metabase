@@ -3,17 +3,27 @@ import { Route } from "react-router";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings, Measure, Table } from "metabase-types/api";
-import { createMockMeasure, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockMeasure,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { MeasureList } from "./MeasureList";
 
 type SetupOpts = {
   measures?: Measure[];
   table?: Partial<Table>;
+  isAdmin?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
-function setup({ measures = [], table = {}, remoteSyncType }: SetupOpts = {}) {
+function setup({
+  measures = [],
+  table = {},
+  isAdmin = true,
+  remoteSyncType,
+}: SetupOpts = {}) {
   const mockTable = createMockTable({
     id: 1,
     db_id: 1,
@@ -27,6 +37,7 @@ function setup({ measures = [], table = {}, remoteSyncType }: SetupOpts = {}) {
     {
       withRouter: true,
       storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: mockSettings({
           "remote-sync-type": remoteSyncType,
           "remote-sync-enabled": !!remoteSyncType,
@@ -81,8 +92,18 @@ describe("MeasureList", () => {
     ).toBeInTheDocument();
   });
 
+  it("should not render 'New measure' button when user cannot create measures", () => {
+    setup({ measures: [], isAdmin: false });
+
+    expect(screen.getByText("No measures yet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /New measure/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should not render 'New measure' button when remote sync is set to read-only", () => {
-    setup({ remoteSyncType: "read-only" });
+    setup({ isAdmin: true, remoteSyncType: "read-only" });
+
     expect(
       screen.queryByRole("link", { name: /New measure/i }),
     ).not.toBeInTheDocument();

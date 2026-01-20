@@ -4,6 +4,7 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getUserCanWriteMeasures } from "metabase/selectors/user";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
@@ -15,6 +16,7 @@ type MeasureListProps = {
 };
 
 export function MeasureList({ table }: MeasureListProps) {
+  const canCreateMeasure = useSelector(getUserCanWriteMeasures);
   const measures = table.measures ?? [];
   const getMeasureHref = (measureId: number) =>
     Urls.dataStudioDataModelMeasure({
@@ -27,7 +29,7 @@ export function MeasureList({ table }: MeasureListProps) {
 
   return (
     <Stack gap="md" data-testid="table-measures-page">
-      {!remoteSyncReadOnly && (
+      {canCreateMeasure && !remoteSyncReadOnly && (
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}

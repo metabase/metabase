@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -64,7 +65,10 @@ export const MembershipSelect = ({
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
   const selectedGroupIds = Array.from(memberships.keys());
-  const { pinnedGroups, regularGroups } = getGroupSections(groups);
+  const { pinnedGroups, regularGroups } = useMemo(
+    () => getGroupSections(groups),
+    [groups],
+  );
 
   const handleToggleMembership = (groupId: number) => {
     if (memberships.has(groupId)) {

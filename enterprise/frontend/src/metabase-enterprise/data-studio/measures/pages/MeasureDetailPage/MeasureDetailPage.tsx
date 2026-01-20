@@ -8,6 +8,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUserCanWriteMeasures } from "metabase/selectors/user";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
@@ -35,9 +36,12 @@ export function MeasureDetailPage({
   breadcrumbs,
   onRemove,
 }: MeasureDetailPageProps) {
+  const canWriteMeasures = useSelector(getUserCanWriteMeasures);
   const metadata = useSelector(getMetadata);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const canEditMeasures = canWriteMeasures && !remoteSyncReadOnly;
 
   const [description, setDescription] = useState(measure.description ?? "");
   const [definition, setDefinition] = useState(measure.definition);
@@ -102,9 +106,10 @@ export function MeasureDetailPage({
         measure={measure}
         tabUrls={tabUrls}
         previewUrl={previewUrl}
-        onRemove={onRemove}
+        onRemove={canEditMeasures ? onRemove : undefined}
         breadcrumbs={breadcrumbs}
         actions={
+          canEditMeasures &&
           isDirty && (
             <Group gap="sm">
               <Button onClick={handleReset}>{t`Cancel`}</Button>
@@ -119,20 +124,22 @@ export function MeasureDetailPage({
             </Group>
           )
         }
-        readOnly={remoteSyncReadOnly}
+        readOnly={!canEditMeasures}
       />
       <MeasureEditor
         query={query}
         description={description}
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
-        readOnly={remoteSyncReadOnly}
+        readOnly={!canEditMeasures}
       />
-      <LeaveRouteConfirmModal
-        key={measure.id}
-        route={route}
-        isEnabled={isDirty && !isSaving}
-      />
+      {canEditMeasures && (
+        <LeaveRouteConfirmModal
+          key={measure.id}
+          route={route}
+          isEnabled={isDirty && !isSaving}
+        />
+      )}
     </PageContainer>
   );
 }

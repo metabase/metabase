@@ -3,15 +3,16 @@ import { Route } from "react-router";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
+import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
 import { TableMeasures } from "./TableMeasures";
 
 type SetupOpts = {
+  isAdmin?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
-const setup = ({ remoteSyncType }: SetupOpts = {}) => {
+const setup = ({ isAdmin = true, remoteSyncType }: SetupOpts = {}) => {
   const mockTable = createMockTable({
     id: 1,
     db_id: 1,
@@ -27,6 +28,7 @@ const setup = ({ remoteSyncType }: SetupOpts = {}) => {
           "remote-sync-type": remoteSyncType,
           "remote-sync-enabled": !!remoteSyncType,
         }),
+        currentUser: createMockUser({ is_superuser: isAdmin }),
       },
     },
   );
@@ -46,6 +48,13 @@ describe("TablesMeasures", () => {
 
   it("does not render the new measure button if remote sync is set to read-only", () => {
     setup({ remoteSyncType: "read-only" });
+    expect(
+      screen.queryByRole("link", { name: /New measure/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the new measure button if the user is not an admin", () => {
+    setup({ isAdmin: false });
     expect(
       screen.queryByRole("link", { name: /New measure/ }),
     ).not.toBeInTheDocument();
