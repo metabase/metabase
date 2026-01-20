@@ -417,6 +417,10 @@ export function getNodeViewCount(node: DependencyNode): number | null {
   }
 }
 
+export function getNodeViewCountLabel(viewCount: number): string {
+  return ngettext(msgid`${viewCount} view`, `${viewCount} views`, viewCount);
+}
+
 export function getNodeTransform(node: DependencyNode): Transform | null {
   if (node.type === "table") {
     return node.data.transform ?? null;

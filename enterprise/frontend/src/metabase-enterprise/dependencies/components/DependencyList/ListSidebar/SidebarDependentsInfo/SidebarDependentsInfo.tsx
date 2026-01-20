@@ -25,6 +25,8 @@ import {
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeViewCount,
+  getNodeViewCountLabel,
 } from "../../../../utils";
 
 import S from "./SidebarDependentsInfo.module.css";
@@ -81,6 +83,7 @@ function DependentItem({ node }: DependentItemProps) {
   const link = getNodeLink(node);
   const icon = getNodeIcon(node);
   const location = getNodeLocationInfo(node);
+  const viewCount = getNodeViewCount(node);
 
   return (
     <Menu opened={isOpened} onChange={setIsOpened}>
@@ -91,11 +94,18 @@ function DependentItem({ node }: DependentItemProps) {
           gap="sm"
           aria-label={label}
         >
-          <Group gap="sm">
-            <FixedSizeIcon name={icon} />
-            <Box className={CS.textWrap} lh="1rem">
-              {label}
-            </Box>
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <FixedSizeIcon name={icon} />
+              <Box className={CS.textWrap} lh="1rem">
+                {label}
+              </Box>
+            </Group>
+            {viewCount != null && (
+              <Box c="text-secondary" fz="sm" lh="1rem">
+                {getNodeViewCountLabel(viewCount)}
+              </Box>
+            )}
           </Group>
           {location != null && (
             <Breadcrumbs
