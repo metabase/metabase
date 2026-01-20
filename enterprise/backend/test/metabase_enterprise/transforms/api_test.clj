@@ -1054,7 +1054,7 @@
                                                    (format "collection/%d/items" collection-id)))]
             (is (empty? items))))))))
 
-(deftest native-incremental-column-type-validated-on-create
+(deftest native-incremental-column-type-validated-on-create-test
   (testing "POST /api/ee/transform column type validation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
       (mt/with-premium-features #{:transforms}

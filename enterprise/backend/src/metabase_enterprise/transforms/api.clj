@@ -454,11 +454,8 @@
   (api/check-superuser)
   (simple-native-query? query))
 
-;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/extract-columns"
+  :- [:map [:columns [:maybe [:sequential :string]]]]
   "Extract column names suitable for incremental transform checkpoint filtering.
 
   This endpoint is specifically for populating the checkpoint column dropdown in
