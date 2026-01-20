@@ -944,6 +944,7 @@
    :uses #{api
            app-db
            audit-app
+           config
            events
            permissions
            premium-features
