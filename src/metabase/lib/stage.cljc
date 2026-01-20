@@ -262,10 +262,16 @@
    stage-number                                        :- :int
    {:keys [include-implicitly-joinable?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
   (let [existing-columns (existing-visible-columns query stage-number options)]
-    (into (vec existing-columns)
-          ;; add implicitly joinable columns if desired
-          (when include-implicitly-joinable?
-            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns)))))
+    (into
+     []
+     (comp cat
+           ;; make sure all desired aliases are removed here because they only make sense in the context of the
+           ;; RETURNED COLUMNS; don't propagate incorrect ones which might cause people to use them by mistake
+           (map #(dissoc % :lib/desired-column-alias)))
+     [existing-columns
+      ;; add implicitly joinable columns if desired
+      (when include-implicitly-joinable?
+        (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns))])))
 
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need

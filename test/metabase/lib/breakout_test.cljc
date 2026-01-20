@@ -10,7 +10,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -802,4 +805,102 @@
              (map (comp
                    (juxt #(get-in % [:table :long-display-name]) :long-display-name)
                    #(lib/display-info query %))
+                  (lib/breakoutable-columns query)))))))
+
+(deftest ^:parallel x-test
+  (testing "#66843"
+    (let [mp          meta/metadata-provider
+          model-query (-> (lib/query mp (meta/table-metadata :accounts))
+                          (lib/with-fields [(meta/field-metadata :accounts :id)])
+                          (lib/join (-> (lib/join-clause (meta/table-metadata :analytic-events))
+                                        (lib/with-join-alias "Analytic Events")
+                                        (lib/with-join-conditions [(lib/= (-> (meta/field-metadata :analytic-events :account-id)
+                                                                              (lib/with-join-alias "Analytic Events"))
+                                                                          2)])
+                                        (lib/with-join-fields [(meta/field-metadata :analytic-events :id)
+                                                               (meta/field-metadata :analytic-events :account-id)])))
+                          #_(lib/join (-> (lib/join-clause (meta/table-metadata :invoices))
+                                          (lib/with-join-alias "Invoices")
+                                          (lib/with-join-conditions [(lib/= (-> (meta/field-metadata :invoices :account-id)
+                                                                                (lib/with-join-alias "Invoices"))
+                                                                            3)])
+                                          (lib/with-join-fields [(meta/field-metadata :invoices :id)
+                                                                 (meta/field-metadata :invoices :account-id)])))
+                          (lib/limit 10))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :type          :model
+                                 :name          "M1"
+                                 :dataset-query model-query}]})
+          query       (-> (lib/query mp (lib.metadata/card mp 1))
+                          (lib/aggregate (lib/count))
+                          (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                             $query
+                                                             (lib/breakoutable-columns $query)
+                                                             {:display-name "M1"}
+                                                             {:display-name "ID"})))
+                          (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                             $query
+                                                             (lib/breakoutable-columns $query)
+                                                             {:display-name "Analytic Events → Account"}
+                                                             {:display-name "ID"}))))]
+      (is (= [{:id                      (meta/id :accounts :id)
+               :lib/source-column-alias "ID"
+               :breakout-positions      [0]}
+              {:id                      (meta/id :analytic-events :id)
+               :lib/source-column-alias "Analytic Events__ID"}
+              {:id                      (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "Analytic Events__ACCOUNT_ID"}
+              ;; first implicit join
+              {:id                      (meta/id :accounts :id)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "ID"
+               :breakout-positions      [1]}
+              {:id                      (meta/id :accounts :email)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "EMAIL"}
+              {:id                      (meta/id :accounts :first-name)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "FIRST_NAME"}
+              {:id                      (meta/id :accounts :last-name)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "LAST_NAME"}
+              {:id                      (meta/id :accounts :plan)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "PLAN"}
+              {:id                      (meta/id :accounts :source)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "SOURCE"}
+              {:id                      (meta/id :accounts :seats)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "SEATS"}
+              {:id                      (meta/id :accounts :created-at)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "CREATED_AT"}
+              {:id                      (meta/id :accounts :trial-ends-at)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "TRIAL_ENDS_AT"}
+              {:id                      (meta/id :accounts :canceled-at)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "CANCELED_AT"}
+              {:id                      (meta/id :accounts :trial-converted)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "TRIAL_CONVERTED"}
+              {:id                      (meta/id :accounts :active-subscription)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "ACTIVE_SUBSCRIPTION"}
+              {:id                      (meta/id :accounts :legacy-plan)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "LEGACY_PLAN"}
+              {:id                      (meta/id :accounts :latitude)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "LATITUDE"}
+              {:id                      (meta/id :accounts :longitude)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "LONGITUDE"}
+              {:id                      (meta/id :accounts :country)
+               :fk-field-id             (meta/id :analytic-events :account-id)
+               :lib/source-column-alias "COUNTRY"}]
+             (map #(select-keys % [:id :fk-field-id :lib/source-column-alias :breakout-positions])
                   (lib/breakoutable-columns query)))))))
