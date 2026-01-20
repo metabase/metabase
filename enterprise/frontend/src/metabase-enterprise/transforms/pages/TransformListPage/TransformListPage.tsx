@@ -21,11 +21,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
-  Avatar,
   Card,
   EntityNameCell,
   Flex,
@@ -42,6 +40,7 @@ import { PageContainer } from "metabase-enterprise/data-studio/common/components
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
@@ -187,45 +186,10 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         header: t`Owner`,
         minWidth: 160,
         enableSorting: true,
-        cell: ({ row }) => {
-          const owner = row.original.owner;
-          const hasUserName = owner?.first_name || owner?.last_name;
-
-          if (hasUserName) {
-            const displayName = getUserName(owner as NamedUser);
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" name={displayName} />
-                <Ellipsified>{displayName}</Ellipsified>
-              </Flex>
-            );
-          }
-
-          const ownerEmail = row.original.owner_email ?? owner?.email;
-          if (ownerEmail) {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="initials" name="emails">
-                  <Icon name="mail" />
-                </Avatar>
-                <Ellipsified>{ownerEmail}</Ellipsified>
-              </Flex>
-            );
-          }
-
-          if (row.original.nodeType === "transform") {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="background-secondary" name="unknown">
-                  <Icon name="person" c="text-secondary" />
-                </Avatar>
-                <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>
-              </Flex>
-            );
-          }
-
-          return null;
-        },
+        cell: ({ row }) =>
+          row.original.nodeType !== "transform" ? null : (
+            <TransformOwnerAvatar transform={row.original} />
+          ),
       },
       {
         id: "updated_at",

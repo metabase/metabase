@@ -21,6 +21,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import type { Transform, UserId } from "metabase-types/api";
 
 import { useUpdateTransformMutation } from "../../../../api/transform";
@@ -40,7 +41,7 @@ export const TransformSettingsSection = ({
   readOnly,
 }: TransformSettingsSectionProps) => (
   <Stack gap="2.5rem">
-    <OwnerSection transform={transform} />
+    <OwnerSection transform={transform} readOnly={readOnly} />
     <TitleSection
       label={t`Transform target`}
       description={t`Change what this transform generates and where.`}
@@ -241,9 +242,10 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
 
 type OwnerSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function OwnerSection({ transform }: OwnerSectionProps) {
+function OwnerSection({ transform, readOnly }: OwnerSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
@@ -279,18 +281,25 @@ function OwnerSection({ transform }: OwnerSectionProps) {
       description={t`Specify who is responsible for this transform.`}
     >
       <Group p="lg">
-        <UserInput
-          email={transform.owner_email ?? null}
-          label={t`Owner`}
-          userId={
-            !transform.owner_email && !transform.owner_user_id
-              ? "unknown"
-              : (transform.owner_user_id ?? null)
-          }
-          unknownUserLabel={t`No owner`}
-          onEmailChange={handleOwnerEmailChange}
-          onUserIdChange={handleOwnerUserIdChange}
-        />
+        {readOnly ? (
+          <>
+            <Text fw="bold">{t`Owner`}</Text>
+            <TransformOwnerAvatar transform={transform} />
+          </>
+        ) : (
+          <UserInput
+            email={transform.owner_email ?? null}
+            label={t`Owner`}
+            userId={
+              !transform.owner_email && !transform.owner_user_id
+                ? "unknown"
+                : (transform.owner_user_id ?? null)
+            }
+            unknownUserLabel={t`No owner`}
+            onEmailChange={handleOwnerEmailChange}
+            onUserIdChange={handleOwnerUserIdChange}
+          />
+        )}
       </Group>
     </TitleSection>
   );
