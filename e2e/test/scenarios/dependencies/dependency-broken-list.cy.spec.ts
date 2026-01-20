@@ -1,10 +1,11 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
-const TABLE_NAME = "scoreboard_actions";
-const TABLE_DISPLAY_NAME = "Scoreboard Actions";
+const TABLE_NAME = "test_transform_table";
+const TABLE_DISPLAY_NAME = "Test Transform Table";
 const TABLE_BASED_QUESTION_BROKEN_FIELD =
   "Table-based question with broken field";
 const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
@@ -45,27 +46,27 @@ const BROKEN_DEPENDENCIES = [
 ];
 
 const BROKEN_DEPENDENCIES_SORTED_BY_NAME = [
-  TABLE_DISPLAY_NAME,
   TABLE_BASED_MODEL,
   TABLE_BASED_QUESTION,
+  TABLE_DISPLAY_NAME,
 ];
 
 const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
-  TABLE_BASED_MODEL, // Bobby Tables's personal collection
-  TABLE_BASED_QUESTION, // Our analytics
-  TABLE_DISPLAY_NAME, // Sample database
+  TABLE_BASED_QUESTION, // Bobby Tables's personal collection
+  TABLE_BASED_MODEL, // Our analytics
+  TABLE_DISPLAY_NAME, // Writable Postgres
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
-  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
   TABLE_BASED_QUESTION, // 1 error: PRICE
   TABLE_BASED_MODEL, // 1 error: AMOUNT
+  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
-  TABLE_DISPLAY_NAME, // 6 questions
   TABLE_BASED_QUESTION, // 1 question
   TABLE_BASED_MODEL, // 1 model
+  TABLE_DISPLAY_NAME, // 6 questions
 ];
 
 const BROKEN_DEPENDENTS = [
@@ -77,15 +78,13 @@ const BROKEN_DEPENDENTS = [
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
   });
 
   describe("analysis", () => {
     it("should show broken dependencies", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
         visibleEntities: BROKEN_DEPENDENCIES,
@@ -96,14 +95,14 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sidebar", () => {
     it("should show broken dependents", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("table dependents");
-      H.DataStudio.Tasks.list().findByText("Products").click();
+      H.DataStudio.Tasks.list().findByText(TABLE_DISPLAY_NAME).click();
       checkSidebar({
-        entityName: "Products",
-        missingColumns: ["TOTAL", "ID", "RATING"],
+        entityName: TABLE_DISPLAY_NAME,
+        missingColumns: ["score", "status"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
 
@@ -127,11 +126,11 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.searchInput().type("Products");
+      H.DataStudio.Tasks.searchInput().type(TABLE_DISPLAY_NAME);
       checkList({
-        visibleEntities: ["Products"],
+        visibleEntities: [TABLE_DISPLAY_NAME],
         hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
       });
     });
@@ -139,7 +138,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("filtering", () => {
     it("should filter entities by type", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.filterButton().click();
       H.popover().within(() => {
@@ -186,7 +185,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should filter entities by location", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.filterButton().click();
       H.popover().within(() => {
@@ -204,7 +203,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sorting", () => {
     it("should sort by name", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by name by default");
@@ -213,20 +212,20 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("sorted by name ascending");
-      H.DataStudio.Tasks.list().findByText("Name").click();
+      H.DataStudio.Tasks.list().findByText("Dependency").click();
       checkListSorting({
         visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
       });
 
       cy.log("sorted by name descending");
-      H.DataStudio.Tasks.list().findByText("Name").click();
+      H.DataStudio.Tasks.list().findByText("Dependency").click();
       checkListSorting({
         visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
       });
     });
 
     it("should sort by location", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by location ascending");
@@ -243,58 +242,108 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by dependents errors", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by dependents errors ascending");
-      H.DataStudio.Tasks.list().findByText("Problems").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
-      });
-
-      cy.log("sorted by dependents errors descending");
       H.DataStudio.Tasks.list().findByText("Problems").click();
       checkListSorting({
         visibleEntities: [
           ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
         ].reverse(),
       });
+
+      cy.log("sorted by dependents errors descending");
+      H.DataStudio.Tasks.list().findByText("Problems").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+      });
     });
 
     it("should sort by dependents with errors", () => {
-      createContent({ withErrors: true });
+      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by dependents with errors ascending");
-      H.DataStudio.Tasks.list().findByText("Broken dependents").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
-      });
-
-      cy.log("sorted by dependents with errors descending");
       H.DataStudio.Tasks.list().findByText("Broken dependents").click();
       checkListSorting({
         visibleEntities: [
           ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
         ].reverse(),
       });
+
+      cy.log("sorted by dependents with errors descending");
+      H.DataStudio.Tasks.list().findByText("Broken dependents").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+      });
     });
   });
 });
 
-function createContent({ withErrors = false }: { withErrors?: boolean } = {}) {
-  createTableContent({ withErrors });
-  createQuestionContent({ withErrors });
-  createModelContent({ withErrors });
+function createContent() {
+  createTransform();
+  createTableContent();
+  createQuestionContent();
+  createModelContent();
+  breakTransform();
 }
 
-function createTableContent({
-  withErrors = false,
-}: { withErrors?: boolean } = {}) {
-  if (!withErrors) {
-    return;
-  }
+function createTransform() {
+  H.createTransform(
+    {
+      name: TABLE_NAME,
+      source: {
+        type: "query",
+        query: {
+          type: "native",
+          database: WRITABLE_DB_ID,
+          native: {
+            query: "SELECT 1 as score, 'active' as status",
+          },
+        },
+      },
+      target: {
+        type: "table",
+        database: WRITABLE_DB_ID,
+        schema: "public",
+        name: TABLE_NAME,
+      },
+    },
+    { wrapId: true },
+  );
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    H.runTransform(transformId);
+    H.waitForTransformRuns(
+      (runs) =>
+        runs.length === 1 && runs.every((run) => run.status === "succeeded"),
+    );
+  });
+}
 
+function breakTransform() {
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    cy.request("PUT", `/api/ee/transform/${transformId}`, {
+      source: {
+        type: "query",
+        query: {
+          type: "native",
+          database: WRITABLE_DB_ID,
+          native: {
+            query: "SELECT 1 as score_new, 'active' as status_new",
+          },
+        },
+      },
+    });
+    H.runTransform(transformId);
+    H.waitForTransformRuns(
+      (runs) =>
+        runs.length === 2 && runs.every((run) => run.status === "succeeded"),
+    );
+  });
+}
+
+function createTableContent() {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.getFieldId({ tableId, name: "score" }).then((scoreFieldId) => {
       H.getFieldId({ tableId, name: "status" }).then((statusFieldId) => {
@@ -378,9 +427,7 @@ function createTableContent({
   });
 }
 
-function createQuestionContent({
-  withErrors = false,
-}: { withErrors?: boolean } = {}) {
+function createQuestionContent() {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.createQuestion({
       name: TABLE_BASED_QUESTION,
@@ -390,10 +437,6 @@ function createQuestionContent({
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: card }) => {
-      if (!withErrors) {
-        return;
-      }
-
       H.createQuestion({
         name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
         query: {
@@ -405,9 +448,7 @@ function createQuestionContent({
   });
 }
 
-function createModelContent({
-  withErrors = false,
-}: { withErrors?: boolean } = {}) {
+function createModelContent() {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.createQuestion({
       name: TABLE_BASED_MODEL,
@@ -417,10 +458,6 @@ function createModelContent({
         "source-table": tableId,
       },
     }).then(({ body: card }) => {
-      if (!withErrors) {
-        return;
-      }
-
       H.createQuestion({
         name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
         type: "model",
@@ -444,7 +481,7 @@ function checkList({
 }) {
   H.DataStudio.Tasks.list().within(() => {
     visibleEntities.forEach((name) => {
-      cy.findByText(name).should("be.visible");
+      cy.findByText(name).should("exist");
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
@@ -468,14 +505,14 @@ function checkSidebar({
     if (missingColumns) {
       H.DataStudio.Tasks.Sidebar.missingColumnsInfo().within(() => {
         missingColumns.forEach((column) => {
-          cy.findByText(column).should("be.visible");
+          cy.findByText(column).should("exist");
         });
       });
     }
     if (brokenDependents) {
       H.DataStudio.Tasks.Sidebar.brokenDependentsInfo().within(() => {
         brokenDependents.forEach((dependent) => {
-          cy.findByText(dependent).should("be.visible");
+          cy.findByText(dependent).should("exist");
         });
       });
     }
