@@ -30,6 +30,7 @@ export interface QueryBuilderUIControls {
   isShowingNewbModal: boolean;
   isRunning: boolean;
   isShowingSummarySidebar: boolean;
+  isShowingAISummarySidebar: boolean;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;

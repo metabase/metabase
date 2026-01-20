@@ -45,6 +45,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingNewbModal,
     isShowingTimelineSidebar,
     isShowingAIQuestionAnalysisSidebar,
+    isShowingAISummarySidebar,
     queryBuilderMode,
     closeQbNewbModal,
     onDismissToast,
@@ -165,6 +166,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
   const showRightSidebar =
     isShowingAIQuestionAnalysisSidebar ||
+    isShowingAISummarySidebar ||
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
     isShowingQuestionSettingsSidebar ||
@@ -178,10 +180,12 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingAISummarySidebar,
   })
     .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
     .with({ isShowingQuestionInfoSidebar: true }, () => 0)
     .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
+    .with({ isShowingAISummarySidebar: true }, () => SIDEBAR_SIZES.NORMAL)
     .otherwise(() => SIDEBAR_SIZES.NORMAL);
   return (
     <div className={CS.fullHeight} ref={ref}>

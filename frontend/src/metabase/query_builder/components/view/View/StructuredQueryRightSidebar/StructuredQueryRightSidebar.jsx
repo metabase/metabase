@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
+import { AISummarySidebar } from "metabase/query_builder/components/view/sidebars/AISummarySidebar/AISummarySidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 
@@ -12,11 +13,13 @@ export const StructuredQueryRightSidebar = ({
   isShowingQuestionInfoSidebar,
   isShowingQuestionSettingsSidebar,
   isShowingAIQuestionAnalysisSidebar,
+  isShowingAISummarySidebar,
   isShowingSummarySidebar,
   isShowingTimelineSidebar,
   onCloseQuestionInfo,
   onCloseSummary,
   onCloseAIQuestionAnalysisSidebar,
+  onCloseAISummarySidebar,
   onCloseTimelines,
   onOpenModal,
   onSave,
@@ -37,6 +40,7 @@ export const StructuredQueryRightSidebar = ({
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
     isShowingAIQuestionAnalysisSidebar,
+    isShowingAISummarySidebar,
   })
     .with(
       {
@@ -50,6 +54,12 @@ export const StructuredQueryRightSidebar = ({
           onClose={onCloseAIQuestionAnalysisSidebar}
         />
       ),
+    )
+    .with(
+      {
+        isShowingAISummarySidebar: true,
+      },
+      () => <AISummarySidebar question={question} onClose={onCloseAISummarySidebar} />,
     )
     .with(
       {

@@ -11,9 +11,11 @@ export const ViewRightSidebarContainer = (props) => {
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
     isShowingAIQuestionAnalysisSidebar,
+    isShowingAISummarySidebar,
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
     onCloseAIQuestionAnalysisSidebar,
+    onCloseAISummarySidebar,
     onCloseQuestionInfo,
     onCloseSummary,
     onCloseTimelines,
@@ -39,9 +41,11 @@ export const ViewRightSidebarContainer = (props) => {
       isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
       isShowingAIQuestionAnalysisSidebar={isShowingAIQuestionAnalysisSidebar}
+      isShowingAISummarySidebar={isShowingAISummarySidebar}
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
       onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
+      onCloseAISummarySidebar={onCloseAISummarySidebar}
       onCloseQuestionInfo={onCloseQuestionInfo}
       onCloseSummary={onCloseSummary}
       onCloseTimelines={onCloseTimelines}

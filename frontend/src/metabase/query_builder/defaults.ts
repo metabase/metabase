@@ -12,6 +12,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingNewbModal: false,
   isRunning: false,
   isShowingSummarySidebar: false,
+  isShowingAISummarySidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
@@ -52,6 +53,7 @@ export const DEFAULT_QUERY_STATUS: QueryBuilderQueryStatus = "idle";
 
 export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
+  isShowingAISummarySidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingAIQuestionAnalysisSidebar: false,
@@ -66,4 +68,5 @@ export const CLOSED_NATIVE_EDITOR_SIDEBARS: Partial<QueryBuilderUIControls> = {
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
   isShowingTimelineSidebar: false,
+  isShowingAISummarySidebar: false,
 };
