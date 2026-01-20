@@ -68,15 +68,25 @@
       (when (int? table-id)
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
-      ;; add sensible constraints for results limits on our query
-        (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
+    ;; add sensible constraints for results limits on our query
+    (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card    (when source-card-id
                            (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
                            (= (:type source-card) :model)
-                           (assoc :metadata/model-metadata (:result_metadata source-card)))]))
+                           (assoc :metadata/model-metadata (:result_metadata source-card)))]
+      (qp.streaming/streaming-response [rff export-format]
+        (if was-pivot
+          (let [constraints (if (= export-format :api)
+                              (qp.constraints/default-query-constraints)
+                              (:constraints query))]
+            (qp.pivot/run-pivot-query (-> query
+                                          (assoc :constraints constraints)
+                                          (update :info merge info))
+                                      rff))
+          (qp/process-query (update query :info merge info) rff))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
