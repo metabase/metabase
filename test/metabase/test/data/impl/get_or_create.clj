@@ -275,12 +275,18 @@
           qualified-table (t2/select-one :model/Table :db_id db-id :%lower.name (u/lower-case-en qualified-name))
           fingerprints    (compute-fingerprints-from-rows field-definitions rows)
           version         @(requiring-resolve 'metabase.sync.interface/*latest-fingerprint-version*)]
+      (log/debugf "Fake fingerprinting table %s: found=%s, fingerprint-count=%d"
+                  qualified-name (boolean qualified-table) (count fingerprints))
       (when qualified-table
         (doseq [[field-def fp] (map vector field-definitions fingerprints)
                 :when fp] ; PKs return nil fingerprints - skip them
           (when-let [db-field (t2/select-one :model/Field
                                              :table_id (:id qualified-table)
                                              :%lower.name (u/lower-case-en (:field-name field-def)))]
+            (log/debugf "Saving fingerprint for %s.%s: min=%s max=%s"
+                        table-name (:field-name field-def)
+                        (get-in fp [:type :type/Number :min])
+                        (get-in fp [:type :type/Number :max]))
             (t2/update! :model/Field (:id db-field)
                         {:fingerprint         fp
                          :fingerprint_version version
