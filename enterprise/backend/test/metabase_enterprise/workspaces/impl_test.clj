@@ -502,13 +502,12 @@
                                 t3 [t2]}}]
       (testing "t3 has t1 and t2 as ancestors"
         (is (= #{"t1" "t2"}
-               (ws.impl/upstream-ancestors graph "t3"))))
+               (set (ws.impl/upstream-ancestors graph "t3")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (ws.impl/upstream-ancestors graph "t2"))))
+               (set (ws.impl/upstream-ancestors graph "t2")))))
       (testing "t1 has no ancestors"
-        (is (= #{}
-               (ws.impl/upstream-ancestors graph "t1")))))))
+        (is (empty? (ws.impl/upstream-ancestors graph "t1")))))))
 
 (deftest upstream-ancestors-diamond-test
   (testing "Diamond graph: computes all paths"
@@ -527,10 +526,10 @@
                                 t4 [t2 t3]}}]
       (testing "t4 has all transforms as ancestors"
         (is (= #{"t1" "t2" "t3"}
-               (ws.impl/upstream-ancestors graph "t4"))))
+               (set (ws.impl/upstream-ancestors graph "t4")))))
       (testing "t2 has only t1 as ancestor"
         (is (= #{"t1"}
-               (ws.impl/upstream-ancestors graph "t2")))))))
+               (set (ws.impl/upstream-ancestors graph "t2"))))))))
 
 (deftest upstream-ancestors-with-external-transforms-test
   (testing "External transforms are traversed but not included"
@@ -543,9 +542,9 @@
                                 t2  [ext]}}]
       (testing "t2 can reach through external transform to t1"
         (is (= #{"t1"}
-               (ws.impl/upstream-ancestors graph "t2"))))
+               (set (ws.impl/upstream-ancestors graph "t2")))))
       (testing "ext cannot be returned as it's external"
-        (is (not (contains? (ws.impl/upstream-ancestors graph "t2") 100)))))))
+        (is (not (contains? (set (ws.impl/upstream-ancestors graph "t2")) 100)))))))
 
 (deftest downstream-descendants-linear-chain-test
   (testing "Linear chain: computes all downstream descendants"
@@ -558,13 +557,12 @@
                                 t3 [t2]}}]
       (testing "t1 has t2 and t3 as descendants"
         (is (= #{"t2" "t3"}
-               (ws.impl/downstream-descendants graph "t1"))))
+               (set (ws.impl/downstream-descendants graph "t1")))))
       (testing "t2 has only t3 as descendant"
         (is (= #{"t3"}
-               (ws.impl/downstream-descendants graph "t2"))))
+               (set (ws.impl/downstream-descendants graph "t2")))))
       (testing "t3 has no descendants"
-        (is (= #{}
-               (ws.impl/downstream-descendants graph "t3")))))))
+        (is (empty? (ws.impl/downstream-descendants graph "t3")))))))
 
 (deftest downstream-descendants-diamond-test
   (testing "Diamond graph: computes all downstream paths"
@@ -583,10 +581,10 @@
                                 t4 [t2 t3]}}]
       (testing "t1 has all transforms as descendants"
         (is (= #{"t2" "t3" "t4"}
-               (ws.impl/downstream-descendants graph "t1"))))
+               (set (ws.impl/downstream-descendants graph "t1")))))
       (testing "t2 has only t4 as descendant"
         (is (= #{"t4"}
-               (ws.impl/downstream-descendants graph "t2")))))))
+               (set (ws.impl/downstream-descendants graph "t2"))))))))
 
 (deftest downstream-descendants-with-external-transforms-test
   (testing "External transforms are traversed but not included"
@@ -599,9 +597,9 @@
                                 t2  [ext]}}]
       (testing "t1 can reach through external transform to t2"
         (is (= #{"t2"}
-               (ws.impl/downstream-descendants graph "t1"))))
+               (set (ws.impl/downstream-descendants graph "t1")))))
       (testing "ext cannot be returned as it's external"
-        (is (not (contains? (ws.impl/downstream-descendants graph "t1") 100)))))))
+        (is (not (contains? (set (ws.impl/downstream-descendants graph "t1")) 100)))))))
 
 (deftest any-ancestor-stale?-test
   (testing "compute-any-ancestor-stale? checks staleness in staleness-map"
