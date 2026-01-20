@@ -109,7 +109,7 @@ export const AgentSuggestionMessage = ({
   const metadata = useSelector(getMetadata);
   const isWorkspace = useSelector(getIsWorkspace);
   const suggestionActions = useMetabotSuggestionActions();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
@@ -156,9 +156,6 @@ export const AgentSuggestionMessage = ({
         const result = await suggestionActions.applySuggestion(message.payload);
         if (result.status === "applied") {
           setHasAppliedInContext(true);
-          if (isNew) {
-            sendSuccessToast(t`Transform created`);
-          }
         } else {
           sendErrorToast(result.message);
         }

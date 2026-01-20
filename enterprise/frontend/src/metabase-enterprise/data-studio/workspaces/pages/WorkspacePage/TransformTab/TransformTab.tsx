@@ -12,6 +12,10 @@ import {
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
+import {
+  getInitialNativeSource,
+  getInitialPythonSource,
+} from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -211,8 +215,22 @@ export const TransformTab = ({
   const handleRejectProposed = useCallback(() => {
     if (suggestedTransform) {
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+
+      // For unsaved transforms, clear the source back to empty state when rejecting
+      if (isUnsavedTransform(transform)) {
+        const emptySource = createEmptySourceForType(editedTransform.source);
+        if (emptySource) {
+          onChange({ source: emptySource });
+        }
+      }
     }
-  }, [dispatch, suggestedTransform]);
+  }, [
+    dispatch,
+    suggestedTransform,
+    transform,
+    editedTransform.source,
+    onChange,
+  ]);
 
   const handleTargetUpdate = useCallback(
     (updatedTransform?: WorkspaceTransform) => {
@@ -309,3 +327,36 @@ export const TransformTab = ({
     </Stack>
   );
 };
+
+/**
+ * Creates an empty source based on the type of the current source.
+ * Used when rejecting a metabot suggestion on an unsaved transform.
+ */
+function createEmptySourceForType(
+  currentSource: DraftTransformSource,
+): DraftTransformSource | null {
+  if (currentSource.type === "query") {
+    const emptySource = getInitialNativeSource();
+    // Preserve the database ID from the current source
+    const databaseId =
+      "database" in currentSource.query ? currentSource.query.database : null;
+    if (databaseId) {
+      return {
+        ...emptySource,
+        query: { ...emptySource.query, database: databaseId },
+      };
+    }
+    return emptySource;
+  }
+
+  if (currentSource.type === "python") {
+    const emptySource = getInitialPythonSource();
+    // Preserve the database ID from the current source
+    return {
+      ...emptySource,
+      "source-database": currentSource["source-database"],
+    };
+  }
+
+  return null;
+}
