@@ -47,3 +47,29 @@ export const trackDataStudioTablePickerFiltersCleared = () => {
     event: "data_studio_table_picker_filters_cleared",
   });
 };
+
+export const trackDataStudioTableUnpublished = (
+  id: TableId | null | undefined,
+) => {
+  trackSimpleEvent({
+    event: "data_studio_table_unpublished",
+    target_id: id !== null && id !== undefined ? Number(id) : null,
+  });
+};
+
+export const trackDataStudioBulkSyncSettingsClicked = () => {
+  trackSimpleEvent({
+    event: "data_studio_bulk_sync_settings_clicked",
+  });
+};
+
+export const trackDataStudioBulkAttributeUpdated = (
+  attributeType: "owner" | "layer" | "entity_type" | "data_source",
+  result: "success" | "failure",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_bulk_attribute_updated",
+    event_detail: attributeType,
+    result,
+  });
+};

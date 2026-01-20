@@ -553,6 +553,21 @@ export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
   event: "data_studio_table_picker_filters_cleared";
 }>;
 
+export type DataStudioTableUnpublishedEvent = ValidateEvent<{
+  event: "data_studio_table_unpublished";
+  target_id: number | null;
+}>;
+
+export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
+  event: "data_studio_bulk_sync_settings_clicked";
+}>;
+
+export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
+  event: "data_studio_bulk_attribute_updated";
+  event_detail: "owner" | "layer" | "entity_type" | "data_source";
+  result: "success" | "failure";
+}>;
+
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
@@ -560,7 +575,10 @@ export type DataStudioEvent =
   | DataStudioGlossaryEditedEvent
   | DataStudioGlossaryDeletedEvent
   | DataStudioTablePickerFiltersAppliedEvent
-  | DataStudioTablePickerFiltersClearedEvent;
+  | DataStudioTablePickerFiltersClearedEvent
+  | DataStudioTableUnpublishedEvent
+  | DataStudioBulkSyncSettingsClickedEvent
+  | DataStudioBulkAttributeUpdatedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
