@@ -94,7 +94,6 @@ export function TableAttributesEditBulk({
 
     const result = error ? "failure" : "success";
 
-    // Track which attribute was updated
     if (email !== undefined || userId !== undefined) {
       trackDataStudioBulkAttributeUpdated("owner", result);
     }
