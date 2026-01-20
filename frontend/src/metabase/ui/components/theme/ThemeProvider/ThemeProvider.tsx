@@ -30,10 +30,9 @@ import {
 } from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { getSetting } from "metabase/selectors/settings";
+import type { ColorSettings, SettingKey } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -58,11 +57,11 @@ interface ThemeProviderProps {
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
   const { resolvedColorScheme } = useColorScheme();
-  const [themeCacheBuster, setThemeCacheBuster] = useState(1);
 
-  // We cannot use `useSetting` here due to circular dependencies.
-  const whitelabelColors = useSelector((state) =>
-    getSetting(state, "application-colors"),
+  // We cannot use `useSetting` here due to circular dependencies,
+  // and `useSelector` throws as the redux provider is not always wrapped
+  const [whitelabelColors, setWhitelabelColors] = useState(
+    MetabaseSettings.get("application-colors" as SettingKey) as ColorSettings,
   );
 
   // Merge default theme overrides with user-provided theme overrides
@@ -76,9 +75,9 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       ...theme,
       other: {
         ...theme.other,
-        updateColorSettings: (newValue) => {
-          mutateColors(newValue);
-          setThemeCacheBuster(themeCacheBuster + 1);
+        updateColorSettings: (nextWhitelabeledColors) => {
+          mutateColors(nextWhitelabeledColors);
+          setWhitelabelColors(nextWhitelabeledColors);
         },
       },
       fn: {
@@ -91,7 +90,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
     } as MantineTheme;
-  }, [props.theme, resolvedColorScheme, themeCacheBuster, whitelabelColors]);
+  }, [props.theme, resolvedColorScheme, whitelabelColors]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
