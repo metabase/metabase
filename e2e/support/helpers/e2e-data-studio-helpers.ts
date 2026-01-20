@@ -64,6 +64,7 @@ export const DataStudio = {
     definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
     dependenciesTab: () =>
       DataStudio.Metrics.header().findByText("Dependencies"),
+    cachingTab: () => DataStudio.Metrics.header().findByText("Caching"),
   },
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
@@ -133,7 +134,6 @@ export const DataStudio = {
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
   Tasks: {
-    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
     visitUnreferencedEntities: () =>
       cy.visit("/data-studio/tasks/unreferenced"),
     list: () => cy.findByTestId("dependency-list"),

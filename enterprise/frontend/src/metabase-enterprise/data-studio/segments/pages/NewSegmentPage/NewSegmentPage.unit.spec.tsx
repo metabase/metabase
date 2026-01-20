@@ -252,4 +252,35 @@ describe("NewSegmentPage", () => {
       screen.queryByText("Add filters to narrow your answer"),
     ).not.toBeInTheDocument();
   });
+
+  it("does not show discard changes modal after successful save", async () => {
+    const createdSegment = createMockSegment({
+      id: 123,
+      name: "High Value Orders",
+      table_id: TEST_TABLE.id,
+    });
+
+    fetchMock.post("path:/api/segment", createdSegment);
+
+    const { history, successUrl } = setup();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("New segment"),
+      "High Value Orders",
+    );
+
+    await addFilter();
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe(
+        `${successUrl}/${createdSegment.id}`,
+      );
+    });
+
+    // The "Discard your changes?" modal should NOT appear after a successful save
+    expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
+  });
 });

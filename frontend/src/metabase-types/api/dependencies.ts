@@ -7,6 +7,7 @@ import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
@@ -56,8 +57,8 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  errors?: DependencyError[] | null;
   dependents_count?: DependentsCount | null;
+  dependents_errors?: DependencyError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
@@ -99,8 +100,10 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "view_count"
->;
+> & {
+  view_count?: number | null;
+  query_type?: "native" | "query";
+};
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
@@ -218,45 +221,18 @@ export type DependencyNode =
   | MeasureDependencyNode;
 
 export const DEPENDENCY_ERROR_TYPES = [
-  "validate/missing-column",
-  "validate/missing-table-alias",
-  "validate/duplicate-column",
-  "validate/syntax-error",
-  "validate/validation-error",
+  "missing-column",
+  "missing-table-alias",
+  "duplicate-column",
+  "syntax-error",
+  "validation-error",
 ] as const;
 export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
 
-type BaseDependencyError<TType extends DependencyErrorType> = {
-  type: TType;
+export type DependencyError = {
+  type: DependencyErrorType;
+  detail?: string | null;
 };
-
-export type MissingColumnDependencyError =
-  BaseDependencyError<"validate/missing-column"> & {
-    name: string;
-  };
-
-export type MissingTableAliasDependencyError =
-  BaseDependencyError<"validate/missing-table-alias"> & {
-    name: string;
-  };
-
-export type DuplicateColumnDependencyError =
-  BaseDependencyError<"validate/duplicate-column"> & {
-    name: string;
-  };
-
-export type SyntaxErrorDependencyError =
-  BaseDependencyError<"validate/syntax-error">;
-
-export type ValidationErrorDependencyError =
-  BaseDependencyError<"validate/validation-error">;
-
-export type DependencyError =
-  | MissingColumnDependencyError
-  | MissingTableAliasDependencyError
-  | DuplicateColumnDependencyError
-  | SyntaxErrorDependencyError
-  | ValidationErrorDependencyError;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;
@@ -298,14 +274,44 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type ListBrokenGraphNodesRequest = {
-  types?: DependencyType[];
-  card_types?: CardType[];
-  query?: string;
+export const DEPENDENCY_SORT_COLUMNS = [
+  "name",
+  "location",
+  "dependents-count",
+] as const;
+export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
+
+export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type DependencySortDirection =
+  (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
+
+export type DependencySortingOptions = {
+  column: DependencySortColumn;
+  direction: DependencySortDirection;
 };
 
-export type ListUnreferencedGraphNodesRequest = {
+export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
+};
+
+export type ListBrokenGraphNodesResponse = PaginationResponse & {
+  data: DependencyNode[];
+};
+
+export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
+  types?: DependencyType[];
+  card_types?: CardType[];
+  query?: string;
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
+};
+
+export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
+  data: DependencyNode[];
 };

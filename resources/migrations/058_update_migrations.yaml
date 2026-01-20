@@ -4462,6 +4462,36 @@ databaseChangeLog:
                   name: workspace_id
       rollback: # will be removed along the table
 
+  - changeSet:
+      id: v58.2025-12-30T22:48:02
+      author: edpaget
+      comment: Add remote_sync_object.model_table_id for parent table reference
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_id
+                  type: int
+                  remarks: Parent table ID for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-12-30T22:48:03
+      author: edpaget
+      comment: Add remote_sync_object.model_table_name for parent table name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+                  remarks: Parent table name for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
   # Denormalize workspace_dependency into workspace_input by adding ref_id column
   # This allows direct lookup of inputs per transform without a join table
 

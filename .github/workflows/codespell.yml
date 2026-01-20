@@ -3,17 +3,21 @@ name: Codespell
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
 
 jobs:
   codespell:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: codespell-project/actions-codespell@v1
+      - uses: actions/checkout@v4
+      - uses: codespell-project/actions-codespell@v2
         with:
-          # keep this list in sync with the list in `mage/src/mage/codespell.yml`
+          # keep this list in sync with the list in `mage/src/mage/codespell.clj`
           path: >-
             docs
+            enterprise
+            frontend
+            modules/drivers
+            src

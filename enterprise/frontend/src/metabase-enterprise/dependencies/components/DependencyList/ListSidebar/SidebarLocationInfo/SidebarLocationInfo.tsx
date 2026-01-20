@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Anchor, Box, Card, Group, Icon, Stack, Title } from "metabase/ui";
+import { Anchor, Card, Group, Icon, Stack, Title } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
@@ -25,8 +25,8 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
       <Card p="md" shadow="none" withBorder>
         {locationInfo.links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
-            {linkIndex > 0 && <Box>/</Box>}
-            <Anchor component={Link} to={link.url}>
+            {linkIndex > 0 && <span>/</span>}
+            <Anchor component={Link} to={link.url} target="_blank">
               <Group gap="sm" wrap="nowrap">
                 {linkIndex === 0 && <Icon name={locationInfo.icon} />}
                 {link.label}

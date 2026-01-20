@@ -1,36 +1,49 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
+import type * as Urls from "metabase/lib/urls";
 import { Checkbox, Stack } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
 
 import { getDependencyGroupTypeInfo } from "../../../../../utils";
+import type { DependencyListMode } from "../../../types";
+import { getAvailableGroupTypes } from "../../../utils";
 
 type TypeFilterPickerProps = {
-  groupTypes: DependencyGroupType[];
-  availableGroupTypes: DependencyGroupType[];
-  onChange: (groupTypes: DependencyGroupType[]) => void;
+  mode: DependencyListMode;
+  params: Urls.DependencyListParams;
+  onParamsChange: (params: Urls.DependencyListParams) => void;
 };
 
 export function TypeFilterPicker({
-  groupTypes,
-  availableGroupTypes,
-  onChange,
+  mode,
+  params,
+  onParamsChange,
 }: TypeFilterPickerProps) {
-  const groupOptions = useMemo(
-    () =>
-      availableGroupTypes.map((groupType) => ({
-        value: groupType,
-        label: getDependencyGroupTypeInfo(groupType).label,
-      })),
-    [availableGroupTypes],
+  const availableGroupTypes = getAvailableGroupTypes(mode);
+
+  // preserve selected options in state to allow to deselect all types
+  // until the popover is closed
+  const [groupTypes, setGroupTypes] = useState(
+    params.groupTypes ?? availableGroupTypes,
   );
 
-  const handleChange = (value: string[]) => {
+  const groupOptions = availableGroupTypes.map((groupType) => ({
+    value: groupType,
+    label: getDependencyGroupTypeInfo(groupType).label,
+  }));
+
+  const handleChange = (newValue: string[]) => {
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
-      value.includes(groupType),
+      newValue.includes(groupType),
     );
-    onChange(newGroupTypes);
+    setGroupTypes(newGroupTypes);
+    onParamsChange({
+      ...params,
+      groupTypes:
+        newGroupTypes.length === availableGroupTypes.length
+          ? undefined
+          : newGroupTypes,
+    });
   };
 
   return (

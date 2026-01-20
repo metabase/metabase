@@ -29,15 +29,13 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import {
-  TransformEditor,
-  type TransformEditorProps,
-} from "../../components/TransformEditor";
+import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
+import { TransformEditor, type TransformEditorProps } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { EditTransformMenu } from "../../components/TransformHeader/EditTransformMenu";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 
@@ -118,6 +116,8 @@ function TransformQueryPageBody({
   const isEditMode = !!route.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
 
+  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
+
   const {
     checkData,
     isCheckingDependencies,
@@ -152,15 +152,19 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   const handleSave = async () => {
-    if (isNotDraftSource(source)) {
-      await handleInitialSave({
-        id: transform.id,
-        source,
-      });
-
-      if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+    if (!isCompleteSource(source)) {
+      return;
+    }
+    if ("source-incremental-strategy" in source) {
+      const confirmed = await confirmIfQueryIsComplex(source);
+      if (!confirmed) {
+        return;
       }
+    }
+    await handleInitialSave({ id: transform.id, source });
+
+    if (isEditMode) {
+      dispatch(push(Urls.transform(transform.id)));
     }
   };
 
@@ -212,7 +216,8 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode={isEditMode}
+              transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
@@ -248,6 +253,7 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
+      {modal}
     </>
   );
 }

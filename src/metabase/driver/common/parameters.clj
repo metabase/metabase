@@ -14,7 +14,7 @@
 ;;
 ;; `value`" is either:
 ;; * `no-value`
-;; *  A map contianing the value and type info for the value, e.g.
+;; *  A map containing the value and type info for the value, e.g.
 ;;
 ;;    {:type   :date/single
 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}

@@ -1,14 +1,23 @@
 import { IndexRedirect, IndexRoute, Route } from "react-router";
 
-import { BrokenDependencyListPage } from "./pages/BrokenDependencyListPage";
+import { isCypressActive } from "metabase/env";
+
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
-import { UnreferencedDependencyListPage } from "./pages/UnreferencedDependencyListPage";
+import {
+  BrokenDependencyListPage,
+  UnreferencedDependencyListPage,
+} from "./pages/DependencyListPage";
 
 export function getDataStudioDependencyRoutes() {
   return <IndexRoute component={DependencyGraphPage} />;
 }
 
 export function getDataStudioTasksRoutes() {
+  /* TODO (Alex P 01/15/2026): remove isCypressActive once we are ready to release this feature */
+  if (!isCypressActive) {
+    return null;
+  }
+
   return (
     <>
       <IndexRedirect to="broken" />

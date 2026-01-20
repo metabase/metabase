@@ -5,7 +5,10 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
-import { useImportChangesMutation } from "metabase-enterprise/api";
+import {
+  useGetHasRemoteChangesQuery,
+  useImportChangesMutation,
+} from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
@@ -41,8 +44,19 @@ export const GitSyncControls = () => {
 
   const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
 
+  const { data: hasRemoteChangesData, isLoading: isFetchingRemoteChanges } =
+    useGetHasRemoteChangesQuery(undefined, {
+      refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
+      skip: !combobox.dropdownOpened,
+    });
+  const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
+
   const isSwitchingBranch = !!nextBranch;
-  const isLoading = isSyncTaskRunning || isSwitchingBranch || isImporting;
+  const isLoading =
+    isSyncTaskRunning ||
+    isSwitchingBranch ||
+    isImporting ||
+    isFetchingRemoteChanges;
 
   const changeBranch = useCallback(
     async (branch: string | null, isNewBranch?: boolean) => {
@@ -188,6 +202,7 @@ export const GitSyncControls = () => {
 
         {dropdownView === "options" ? (
           <GitSyncOptionsDropdown
+            isPullDisabled={!hasRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
             onPullClick={handlePullClick}
             onPushClick={handlePushClick}

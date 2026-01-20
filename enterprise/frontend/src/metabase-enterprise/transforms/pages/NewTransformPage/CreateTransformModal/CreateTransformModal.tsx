@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useFormikContext } from "formik";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import type * as Yup from "yup";
 
@@ -19,7 +20,12 @@ import {
 } from "metabase/forms";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import {
+  QueryComplexityWarning,
+  useQueryComplexityChecks,
+} from "metabase-enterprise/transforms/components/QueryComplexityWarning";
 import type {
+  QueryComplexity,
   SchemaName,
   Transform,
   TransformSource,
@@ -51,65 +57,18 @@ type CreateTransformModalProps = {
   validateOnMount?: boolean;
 };
 
+const defaultSchemasFilter = () => true;
+
 export function CreateTransformModal({
   source,
   defaultValues,
   onCreate,
   onClose,
-  schemasFilter,
-  showIncrementalSettings = true,
+  schemasFilter = defaultSchemasFilter,
   validationSchemaExtension,
   handleSubmit,
-  targetDescription,
   validateOnMount,
 }: CreateTransformModalProps) {
-  return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <CreateTransformForm
-        source={source}
-        defaultValues={defaultValues}
-        onCreate={onCreate}
-        onClose={onClose}
-        schemasFilter={schemasFilter}
-        showIncrementalSettings={showIncrementalSettings}
-        validationSchemaExtension={validationSchemaExtension}
-        handleSubmit={handleSubmit}
-        targetDescription={targetDescription}
-        validateOnMount={validateOnMount}
-      />
-    </Modal>
-  );
-}
-
-type CreateTransformFormProps = {
-  source: TransformSource;
-  defaultValues: Partial<NewTransformValues>;
-  onCreate?: (transform: Transform) => void;
-  onClose: () => void;
-  schemasFilter?: SchemasFilter;
-  showIncrementalSettings?: boolean;
-  validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (
-    values: NewTransformValues,
-  ) => Promise<Transform | WorkspaceTransform>;
-  targetDescription?: string;
-  validateOnMount?: boolean;
-};
-
-const defaultSchemasFilter = () => true;
-
-function CreateTransformForm({
-  source,
-  defaultValues,
-  onCreate,
-  onClose,
-  schemasFilter = defaultSchemasFilter,
-  showIncrementalSettings = true,
-  handleSubmit,
-  targetDescription,
-  validationSchemaExtension,
-  validateOnMount,
-}: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
 
@@ -162,46 +121,94 @@ function CreateTransformForm({
   };
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={validationSchema}
-      onSubmit={handleSubmit || defaultHandleSubmit}
-      validateOnMount={validateOnMount}
-    >
-      <Form>
-        <Stack gap="lg" mt="sm">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My Great Transform`}
-            data-autofocus
+    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit || defaultHandleSubmit}
+        validateOnMount={validateOnMount}
+      >
+        <CreateTransformForm
+          source={source}
+          supportsSchemas={supportsSchemas}
+          schemas={schemas}
+          onClose={onClose}
+        />
+      </FormProvider>
+    </Modal>
+  );
+}
+
+type CreateTransformFormFieldsProps = {
+  source: TransformSource;
+  supportsSchemas: boolean | undefined;
+  schemas: string[];
+  onClose: () => void;
+};
+
+function CreateTransformForm({
+  source,
+  supportsSchemas,
+  schemas,
+  onClose,
+}: CreateTransformFormFieldsProps) {
+  const { values, setFieldValue } = useFormikContext<NewTransformValues>();
+  const { checkComplexity } = useQueryComplexityChecks();
+  const [complexity, setComplexity] = useState<QueryComplexity | undefined>();
+
+  const handleIncrementalChange = async (value: boolean) => {
+    setFieldValue("incremental", value);
+    if (value) {
+      const complexity = await checkComplexity(source);
+      setComplexity(complexity);
+    } else {
+      setComplexity(undefined);
+    }
+  };
+
+  return (
+    <Form>
+      <Stack gap="lg" mt="sm">
+        <FormTextInput
+          name="name"
+          label={t`Name`}
+          placeholder={t`My Great Transform`}
+          data-autofocus
+        />
+        {supportsSchemas && (
+          <SchemaFormSelect
+            name="targetSchema"
+            label={t`Schema`}
+            data={schemas}
           />
-          {supportsSchemas && (
-            <SchemaFormSelect
-              name="targetSchema"
-              label={t`Schema`}
-              data={schemas}
-            />
-          )}
-          <TargetNameInput description={targetDescription} />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Collection`}
-            type="transform-collections"
-            style={{ marginBottom: 0 }}
+        )}
+        <TargetNameInput />
+        <FormCollectionPicker
+          name="collection_id"
+          title={t`Collection`}
+          type="transform-collections"
+          style={{ marginBottom: 0 }}
+        />
+        <IncrementalTransformSettings
+          source={source}
+          incremental={values.incremental}
+          onIncrementalChange={handleIncrementalChange}
+        />
+        {complexity && (
+          <QueryComplexityWarning complexity={complexity} variant="standout" />
+        )}
+        <Group>
+          <Box flex={1}>
+            <FormErrorMessage />
+          </Box>
+          <Button onClick={onClose}>{t`Back`}</Button>
+          <FormSubmitButton
+            label={complexity ? t`Save anyway` : t`Save`}
+            variant="filled"
+            color={complexity ? "saturated-red" : undefined}
           />
-          {showIncrementalSettings && (
-            <IncrementalTransformSettings source={source} />
-          )}
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Back`}</Button>
-            <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+        </Group>
+      </Stack>
+    </Form>
   );
 }

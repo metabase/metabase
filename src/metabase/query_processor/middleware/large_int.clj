@@ -65,7 +65,7 @@
    rf))
 
 (defn- maybe-integer-column?
-  "Checks if the column might have large interger values."
+  "Checks if the column might have large integer values."
   [{:keys [base_type] :as _column-metadata}]
   (or (isa? base_type :type/Integer)
       (isa? base_type :type/Decimal)))

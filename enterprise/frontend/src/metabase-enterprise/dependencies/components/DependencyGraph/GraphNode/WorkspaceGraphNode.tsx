@@ -33,7 +33,7 @@ import { GraphContext } from "../GraphContext";
 import type { GraphSelection, NodeType } from "../types";
 
 import S from "./GraphNode.module.css";
-import type { DependentGroup } from "./types";
+import type { DependentGroup } from "../../../types";
 import {
   getDependencyGroupTitle,
   getDependentGroupLabel,

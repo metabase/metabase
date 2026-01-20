@@ -90,7 +90,7 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      H.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@total", { vertical: -100 });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -104,7 +104,7 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+      H.moveDnDKitElementByAlias("@title", { vertical: 15 });
 
       cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -159,7 +159,7 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      H.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
+      H.moveDnDKitElementByAlias("@prod-category", { vertical: -360 });
 
       refreshResultsInHeader();
 
@@ -188,7 +188,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      H.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@user-address", { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 
