@@ -21,6 +21,7 @@ import type { DependencyNode } from "metabase-types/api";
 
 import {
   getDependentErrorNodesCount,
+  getDependentErrorNodesLabel,
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
@@ -37,7 +38,7 @@ type SidebarDependentsInfoProps = {
 
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
-  const title = count > 1 ? t`Broken dependents` : t`Broken dependent`;
+  const title = getDependentErrorNodesLabel(count);
 
   const { data: dependents = [] } = useListNodeDependentsQuery(
     {
@@ -55,7 +56,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   }
 
   return (
-    <Stack role="region" aria-label={t`Broken dependents`}>
+    <Stack role="region" aria-label={getDependentErrorNodesLabel()}>
       <Group gap="sm">
         <Badge c="text-selected" bg="error">
           {count}
