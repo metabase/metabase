@@ -97,29 +97,17 @@
                        user)))
 
 (defn- create-dependent-card-on-model!
-  "Create a card that depends on a model card by filtering on the TOTAL column.
-   This creates a card that will break if the model's query changes to a table without TOTAL."
-  [user model-card card-name & {:keys [collection-id]}]
+  [user model-card card-name & {:keys [collection-id table] :or {table :orders}}]
   (let [mp (mt/metadata-provider)
         model-meta (lib.metadata/card mp (:id model-card))
         q (lib/query mp model-meta)
         cols (lib/filterable-columns q)
-        total-col (m/find-first #(= (:id %) (mt/id :orders :total)) cols)
-        dependent-query (lib/filter q (lib/> total-col 100))]
-    (card/create-card! (cond-> (card-with-query card-name dependent-query)
-                         collection-id (assoc :collection_id collection-id))
-                       user)))
+        filter-col-name (case table
+                          :products :price
+                          :total)
 
-(defn- create-dependent-card-on-products-model!
-  "Create a card that depends on a model card by filtering on the PRICE column.
-   This creates a card that will break if the model's query changes to a table without PRICE"
-  [user model-card card-name & {:keys [collection-id]}]
-  (let [mp (mt/metadata-provider)
-        model-meta (lib.metadata/card mp (:id model-card))
-        q (lib/query mp model-meta)
-        cols (lib/filterable-columns q)
-        total-col (m/find-first #(= (:id %) (mt/id :products :price)) cols)
-        dependent-query (lib/filter q (lib/> total-col 50))]
+        filter-col (m/find-first #(= (:id %) (mt/id table filter-col-name)) cols)
+        dependent-query (lib/filter q (lib/> filter-col 100))]
     (card/create-card! (cond-> (card-with-query card-name dependent-query)
                          collection-id (assoc :collection_id collection-id))
                        user)))
@@ -490,14 +478,12 @@
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
           (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - multi") user)
                 _dependent-card (card/create-card! (wrap-card dependency-card) user)]
-            ;; Add the dependent card to a dashboard to create a dashboard dependent
             (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
                                               :card_id card-id-1
                                               :row 0
                                               :col 0
                                               :size_x 4
                                               :size_y 4})
-            ;; Backfill dependencies to create dashboard -> card dependency
             (while (#'dependencies.backfill/backfill-dependencies!))
             (testing "single dependent_types value (backward compatibility)"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
@@ -527,12 +513,12 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency]
         (mt/with-temp [:model/User user {:email "test@test.com"}]
-          (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - cardtypes") user)
+          (let [{dependency-card-id :id :as dependency-card} (card/create-card! (basic-card "Base card - cardtypes") user)
                 _question-card (card/create-card! (assoc (wrap-card dependency-card) :name "Question card") user)
                 _model-card (card/create-card! (assoc (wrap-card dependency-card) :name "Model card" :type :model) user)]
             (testing "single dependent_card_types value"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
-                                                   :id card-id-1
+                                                   :id dependency-card-id
                                                    :type "card"
                                                    :dependent_types "card"
                                                    :dependent_card_types "question")]
@@ -540,7 +526,7 @@
                 (is (= "question" (-> response first :data :type)))))
             (testing "multiple dependent_card_types via repeated params"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
-                                                   :id card-id-1
+                                                   :id dependency-card-id
                                                    :type "card"
                                                    :dependent_types "card"
                                                    :dependent_card_types "question"
@@ -549,18 +535,17 @@
                 (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
             (testing "no dependent_card_types returns all card types"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
-                                                   :id card-id-1
+                                                   :id dependency-card-id
                                                    :type "card"
                                                    :dependent_types "card")]
                 (is (= 2 (count response)))
                 (is (= #{"question" "model"} (set (map #(-> % :data :type) response))))))
             (testing "dependent_card_types ignored when dependent_types doesn't include card"
               (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
-                                                   :id card-id-1
+                                                   :id dependency-card-id
                                                    :type "card"
                                                    :dependent_types "dashboard"
                                                    :dependent_card_types "question")]
-                ;; Should return only dashboards, not cards
                 (is (every? #(= "dashboard" (:type %)) response))))))))))
 
 (deftest graph-archived-card-test
@@ -627,7 +612,7 @@
             ;; Run analysis in a fresh metadata provider cache session to detect the broken reference
             (lib-be/with-metadata-provider-cache
               (break-model-card! model-card)
-              (let [next-card (create-dependent-card-on-products-model! user model-card "Another Dependent Card - brokentest")]
+              (let [next-card (create-dependent-card-on-model! user model-card "Another Dependent Card - brokentest" {:table :products})]
                 (while (#'dependencies.backfill/backfill-dependencies!))
                 (run-analysis-for-card! (:id next-card))
                 (run-analysis-for-card! (:id dependent-card))
@@ -1618,142 +1603,6 @@
                  :total  0}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
 
-(deftest ^:sequential broken-entities-returns-source-of-errors-test
-  (testing "GET /api/ee/dependencies/graph/broken - returns entities that are SOURCE of downstream errors"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[model-card dependent-card]
-                (lib-be/with-metadata-provider-cache
-                  (let [model-card (create-model-card! user "Model Card - brokentest")
-                        dependent-card (create-dependent-card-on-model! user model-card "Dependent Card - brokentest")]
-                    [model-card dependent-card]))]
-            ;; Break the model by changing it to query products table (no TOTAL column)
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! model-card))
-            ;; Run analysis in a fresh metadata provider cache session to detect the broken reference
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card)))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=brokentest")]
-              (is (= [(:id model-card)] (mapv :id (:data response)))
-                  "Model card should appear as a breaking entity"))))))))
-
-(deftest ^:sequential broken-entities-card-as-source-test
-  (testing "GET /api/ee/dependencies/graph/broken - cards can be source of errors"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[model-card dependent-card]
-                (lib-be/with-metadata-provider-cache
-                  (let [model-card (create-model-card! user "Model Card - cardassourcetest")
-                        dependent-card (create-dependent-card-on-model! user model-card "Dependent Card - cardassourcetest")]
-                    [model-card dependent-card]))]
-            ;; Break the model by changing it to query products table (no TOTAL column)
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! model-card))
-            ;; Run analysis in a fresh metadata provider cache session to detect the broken reference
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card)))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardassourcetest")]
-              (is (some #(= (:id %) (:id model-card)) (:data response))
-                  "Model card should appear as a breaking entity"))))))))
-
-(deftest ^:sequential broken-entities-types-filtering-test
-  (testing "GET /api/ee/dependencies/graph/broken - types parameter filters results"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[model-card-1 model-card-2 dependent-card-1 dependent-card-2]
-                (lib-be/with-metadata-provider-cache
-                  (let [model-card-1 (create-model-card! user "Model Card 1 - typesfiltertest")
-                        model-card-2 (create-model-card! user "Model Card 2 - typesfiltertest")
-                        dependent-card-1 (create-dependent-card-on-model! user model-card-1 "Dependent Card 1 - typesfiltertest")
-                        dependent-card-2 (create-dependent-card-on-model! user model-card-2 "Dependent Card 2 - typesfiltertest")]
-                    [model-card-1 model-card-2 dependent-card-1 dependent-card-2]))]
-            ;; Break both models
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! model-card-1)
-              (break-model-card! model-card-2))
-            ;; Run analysis in a fresh metadata provider cache session to detect broken references
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card-1))
-              (run-analysis-for-card! (:id dependent-card-2)))
-            (testing "filtering by card returns only card sources"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=typesfiltertest")
-                    ids (set (map :id (:data response)))]
-                (is (contains? ids (:id model-card-1)) "Model card 1 should be in results")
-                (is (contains? ids (:id model-card-2)) "Model card 2 should be in results")))
-            (testing "filtering by table returns empty (no table sources in this test)"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=table&query=typesfiltertest")
-                    ids (set (map :id (:data response)))]
-                (is (empty? ids) "No tables should be in results")))))))))
-
-(deftest ^:sequential broken-entities-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for source cards"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[active-model archived-model dependent-card-1 dependent-card-2]
-                (lib-be/with-metadata-provider-cache
-                  (let [active-model (create-model-card! user "Active Model - archivedbrokentestcard")
-                        archived-model (create-model-card! user "Archived Model - archivedbrokentestcard")
-                        dependent-card-1 (create-dependent-card-on-model! user active-model "Dependent of Active - archivedbrokentestcard")
-                        dependent-card-2 (create-dependent-card-on-model! user archived-model "Dependent of Archived - archivedbrokentestcard")]
-                    [active-model archived-model dependent-card-1 dependent-card-2]))]
-            ;; Archive the second model
-            (card/update-card! {:card-before-update archived-model
-                                :card-updates {:archived true}})
-            ;; Break both models
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! active-model)
-              (break-model-card! (t2/select-one :model/Card :id (:id archived-model))))
-            ;; Run analysis in a fresh metadata provider cache session to detect broken references
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card-1))
-              (run-analysis-for-card! (:id dependent-card-2)))
-            (testing "archived=false (default) excludes archived source card"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard")
-                    card-ids (set (map :id (:data response)))]
-                (is (contains? card-ids (:id active-model)))
-                (is (not (contains? card-ids (:id archived-model))))))
-            (testing "archived=true includes archived source card"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard&archived=true")
-                    card-ids (set (map :id (:data response)))]
-                (is (contains? card-ids (:id active-model)))
-                (is (contains? card-ids (:id archived-model)))))))))))
-
-(deftest ^:sequential broken-entities-multiple-dependents-test
-  (testing "GET /api/ee/dependencies/graph/broken - model breaking multiple dependents appears once"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[model-card dependent-card-1 dependent-card-2]
-                (lib-be/with-metadata-provider-cache
-                  (let [model-card (create-model-card! user "Model Card - multipledependents")
-                        dependent-card-1 (create-dependent-card-on-model! user model-card "Dependent 1 - multipledependents")
-                        dependent-card-2 (create-dependent-card-on-model! user model-card "Dependent 2 - multipledependents")]
-                    [model-card dependent-card-1 dependent-card-2]))]
-            ;; Break the model
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! model-card))
-            ;; Run analysis in a fresh metadata provider cache session to detect broken references
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card-1))
-              (run-analysis-for-card! (:id dependent-card-2)))
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=multipledependents")
-                  model-ids (filter #(= (:id %) (:id model-card)) (:data response))]
-              (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
-
 (deftest ^:sequential unreferenced-archived-measure-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
     (mt/with-premium-features #{:dependencies}
@@ -1841,77 +1690,6 @@
                   dashboard-ids (set (map :id (:data response)))]
               (is (contains? dashboard-ids dash-in-personal))
               (is (contains? dashboard-ids dash-regular)))))))))
-
-(deftest ^:sequential broken-entities-personal-collection-card-test
-  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
-    (mt/with-premium-features #{:dependencies}
-      (binding [collection/*allow-deleting-personal-collections* true]
-        (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User creator {:email "creator@test.com"}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-            ;; Create cards in one metadata provider cache session
-            (let [[model-in-personal model-regular dependent-card-1 dependent-card-2]
-                  (lib-be/with-metadata-provider-cache
-                    (let [model-in-personal (create-model-card! creator "Model in Personal - personalcollbrokentest"
-                                                                :collection-id personal-coll-id)
-                          model-regular (create-model-card! creator "Model Regular - personalcollbrokentest")
-                          dependent-card-1 (create-dependent-card-on-model! creator model-in-personal "Dependent of Personal - personalcollbrokentest")
-                          dependent-card-2 (create-dependent-card-on-model! creator model-regular "Dependent of Regular - personalcollbrokentest")]
-                      [model-in-personal model-regular dependent-card-1 dependent-card-2]))]
-              ;; Break both models
-              (lib-be/with-metadata-provider-cache
-                (break-model-card! model-in-personal)
-                (break-model-card! model-regular))
-              ;; Run analysis in a fresh metadata provider cache session to detect broken references
-              (lib-be/with-metadata-provider-cache
-                (while (#'dependencies.backfill/backfill-dependencies!))
-                (run-analysis-for-card! (:id dependent-card-1))
-                (run-analysis-for-card! (:id dependent-card-2)))
-              (testing "include_personal_collections=false (default) excludes source cards in personal collections"
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest")
-                      card-ids (set (map :id (:data response)))]
-                  (is (not (contains? card-ids (:id model-in-personal))))
-                  (is (contains? card-ids (:id model-regular)))))
-              (testing "include_personal_collections=true includes source cards in personal collections"
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest&include_personal_collections=true")
-                      card-ids (set (map :id (:data response)))]
-                  (is (contains? card-ids (:id model-in-personal)))
-                  (is (contains? card-ids (:id model-regular))))))))))))
-
-(deftest ^:sequential broken-entities-pagination-test
-  (testing "GET /api/ee/dependencies/graph/broken - should paginate results"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/User user {:email "test@test.com"}]
-        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
-          ;; Create cards in one metadata provider cache session
-          (let [[model-card-1 model-card-2 dependent-card-1 dependent-card-2]
-                (lib-be/with-metadata-provider-cache
-                  (let [model-card-1 (create-model-card! user "A Model Card - paginationtest")
-                        model-card-2 (create-model-card! user "B Model Card - paginationtest")
-                        dependent-card-1 (create-dependent-card-on-model! user model-card-1 "Dependent Card 1 - paginationtest")
-                        dependent-card-2 (create-dependent-card-on-model! user model-card-2 "Dependent Card 2 - paginationtest")]
-                    [model-card-1 model-card-2 dependent-card-1 dependent-card-2]))]
-            ;; Break both models
-            (lib-be/with-metadata-provider-cache
-              (break-model-card! model-card-1)
-              (break-model-card! model-card-2))
-            ;; Run analysis in a fresh metadata provider cache session to detect broken references
-            (lib-be/with-metadata-provider-cache
-              (while (#'dependencies.backfill/backfill-dependencies!))
-              (run-analysis-for-card! (:id dependent-card-1))
-              (run-analysis-for-card! (:id dependent-card-2)))
-            (is (=? {:data   [{:id (:id model-card-1)}]
-                     :total  2
-                     :offset 0
-                     :limit  1}
-                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=0&limit=1")))
-            (is (=? {:data   [{:id (:id model-card-2)}]
-                     :total  2
-                     :offset 1
-                     :limit  1}
-                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=1&limit=1")))))))))
 
 (deftest ^:sequential unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
@@ -2034,6 +1812,190 @@
                             "Transforms sorttest"]
                      (= sort-direction :desc) reverse)
                    names))))))))
+
+(deftest ^:sequential broken-entities-returns-source-of-errors-test
+  (testing "GET /api/ee/dependencies/graph/broken - returns entities that are SOURCE of downstream errors"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[model-card dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card (create-model-card! user "Model Card - brokentest")
+                        dependent-card (create-dependent-card-on-model! user model-card "Dependent Card - brokentest")]
+                    [model-card dependent-card]))]
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card))
+            ;; Run analysis in a fresh metadata provider cache session to detect the broken reference
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card)))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=brokentest")]
+              (is (= [(:id model-card)] (mapv :id (:data response)))
+                  "Model card should appear as a breaking entity"))))))))
+
+(deftest ^:sequential broken-entities-types-filtering-test
+  (testing "GET /api/ee/dependencies/graph/broken - types parameter filters results"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[model-card-1 model-card-2 dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-1 (create-model-card! user "Model Card 1 - typesfiltertest")
+                        model-card-2 (create-model-card! user "Model Card 2 - typesfiltertest")
+                        dependent-card-1 (create-dependent-card-on-model! user model-card-1 "Dependent Card 1 - typesfiltertest")
+                        dependent-card-2 (create-dependent-card-on-model! user model-card-2 "Dependent Card 2 - typesfiltertest")]
+                    [model-card-1 model-card-2 dependent-card-1 dependent-card-2]))]
+            ;; Break both models
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-1)
+              (break-model-card! model-card-2))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (testing "filtering by card returns only card sources"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=typesfiltertest")
+                    ids (set (map :id (:data response)))]
+                (is (contains? ids (:id model-card-1)) "Model card 1 should be in results")
+                (is (contains? ids (:id model-card-2)) "Model card 2 should be in results")))
+            (testing "filtering by table returns empty (no table sources in this test)"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=table&query=typesfiltertest")
+                    ids (set (map :id (:data response)))]
+                (is (empty? ids) "No tables should be in results")))))))))
+
+(deftest ^:sequential broken-entities-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for source cards"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[active-model archived-model dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [active-model (create-model-card! user "Active Model - archivedbrokentestcard")
+                        archived-model (create-model-card! user "Archived Model - archivedbrokentestcard")
+                        dependent-card-1 (create-dependent-card-on-model! user active-model "Dependent of Active - archivedbrokentestcard")
+                        dependent-card-2 (create-dependent-card-on-model! user archived-model "Dependent of Archived - archivedbrokentestcard")]
+                    [active-model archived-model dependent-card-1 dependent-card-2]))]
+            ;; Archive the second model
+            (card/update-card! {:card-before-update archived-model
+                                :card-updates {:archived true}})
+            ;; Break both models
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! active-model)
+              (break-model-card! (t2/select-one :model/Card :id (:id archived-model))))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (testing "archived=false (default) excludes archived source card"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard")
+                    card-ids (set (map :id (:data response)))]
+                (is (contains? card-ids (:id active-model)))
+                (is (not (contains? card-ids (:id archived-model))))))
+            (testing "archived=true includes archived source card"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=archivedbrokentestcard&archived=true")
+                    card-ids (set (map :id (:data response)))]
+                (is (contains? card-ids (:id active-model)))
+                (is (contains? card-ids (:id archived-model)))))))))))
+
+(deftest ^:sequential broken-entities-multiple-dependents-test
+  (testing "GET /api/ee/dependencies/graph/broken - model breaking multiple dependents appears once"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[model-card dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card (create-model-card! user "Model Card - multipledependents")
+                        dependent-card-1 (create-dependent-card-on-model! user model-card "Dependent 1 - multipledependents")
+                        dependent-card-2 (create-dependent-card-on-model! user model-card "Dependent 2 - multipledependents")]
+                    [model-card dependent-card-1 dependent-card-2]))]
+            ;; Break the model
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=multipledependents")
+                  model-ids (filter #(= (:id %) (:id model-card)) (:data response))]
+              (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
+
+(deftest ^:sequential broken-entities-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User creator {:email "creator@test.com"}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+            ;; Create cards in one metadata provider cache session
+            (let [[model-in-personal model-regular dependent-card-1 dependent-card-2]
+                  (lib-be/with-metadata-provider-cache
+                    (let [model-in-personal (create-model-card! creator "Model in Personal - personalcollbrokentest"
+                                                                :collection-id personal-coll-id)
+                          model-regular (create-model-card! creator "Model Regular - personalcollbrokentest")
+                          dependent-card-1 (create-dependent-card-on-model! creator model-in-personal "Dependent of Personal - personalcollbrokentest")
+                          dependent-card-2 (create-dependent-card-on-model! creator model-regular "Dependent of Regular - personalcollbrokentest")]
+                      [model-in-personal model-regular dependent-card-1 dependent-card-2]))]
+              ;; Break both models
+              (lib-be/with-metadata-provider-cache
+                (break-model-card! model-in-personal)
+                (break-model-card! model-regular))
+              ;; Run analysis in a fresh metadata provider cache session to detect broken references
+              (lib-be/with-metadata-provider-cache
+                (while (#'dependencies.backfill/backfill-dependencies!))
+                (run-analysis-for-card! (:id dependent-card-1))
+                (run-analysis-for-card! (:id dependent-card-2)))
+              (testing "include_personal_collections=false (default) excludes source cards in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest")
+                      card-ids (set (map :id (:data response)))]
+                  (is (not (contains? card-ids (:id model-in-personal))))
+                  (is (contains? card-ids (:id model-regular)))))
+              (testing "include_personal_collections=true includes source cards in personal collections"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=personalcollbrokentest&include_personal_collections=true")
+                      card-ids (set (map :id (:data response)))]
+                  (is (contains? card-ids (:id model-in-personal)))
+                  (is (contains? card-ids (:id model-regular))))))))))))
+
+(deftest ^:sequential broken-entities-pagination-test
+  (testing "GET /api/ee/dependencies/graph/broken - should paginate results"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[model-card-1 model-card-2 dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-1 (create-model-card! user "A Model Card - paginationtest")
+                        model-card-2 (create-model-card! user "B Model Card - paginationtest")
+                        dependent-card-1 (create-dependent-card-on-model! user model-card-1 "Dependent Card 1 - paginationtest")
+                        dependent-card-2 (create-dependent-card-on-model! user model-card-2 "Dependent Card 2 - paginationtest")]
+                    [model-card-1 model-card-2 dependent-card-1 dependent-card-2]))]
+            ;; Break both models
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card-1)
+              (break-model-card! model-card-2))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
+            (lib-be/with-metadata-provider-cache
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (is (=? {:data   [{:id (:id model-card-1)}]
+                     :total  2
+                     :offset 0
+                     :limit  1}
+                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=0&limit=1")))
+            (is (=? {:data   [{:id (:id model-card-2)}]
+                     :total  2
+                     :offset 1
+                     :limit  1}
+                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=paginationtest&offset=1&limit=1")))))))))
 
 (deftest ^:sequential broken-entities-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/broken - sorting by name"

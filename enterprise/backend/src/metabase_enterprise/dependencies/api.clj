@@ -475,9 +475,9 @@
                 children-map)))
 
 (defn- node-downstream-errors
-  "Fetches errors caused BY the given source entities (what downstream entities they're breaking).
-   Unlike `node-errors` which fetches errors ON an entity, this fetches errors that
-   the entity is CAUSING in other entities that depend on it."
+  "Fetches errors caused by the given source entities (what downstream entities they're breaking).
+   Unlike `node-errors` which fetches errors on an entity, this fetches errors that
+   the entity is causing in other entities that depend on it."
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
@@ -625,7 +625,6 @@
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (-> (graph/children-of downstream-graph [[type id]])
                     (get [type id]))
-          ;; Normalize to sets for efficient lookup
           dep-types-set (cond
                           (nil? dependent_types) deps.dependency-types/dependency-types
                           (sequential? dependent_types) (set dependent_types)
@@ -741,11 +740,7 @@
                                  :filter-joins #{:collection}}))
                             nil))
         filter-results (keep identity
-                             [card-type-filter
-                              query-filter
-                              database-filter
-                              archived-filter
-                              personal-filter])]
+                             [card-type-filter query-filter database-filter archived-filter personal-filter])]
     {:filters (keep :filter filter-results)
      :filter-joins (reduce set/union #{} (map :filter-joins filter-results))}))
 
@@ -938,14 +933,12 @@
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
-        ;; Fetch errors caused BY these source entities
         nodes-by-type (u/group-by first second all-ids)
         downstream-errors (node-downstream-errors nodes-by-type)
         total (-> (t2/query {:select [[:%count.* :total]]
                              :from [[union-query :subquery]]})
                   first
                   :total)
-        ;; Build response with downstream errors attached
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
                        (let [model (deps.dependency-types/dependency-type->model entity-type)
