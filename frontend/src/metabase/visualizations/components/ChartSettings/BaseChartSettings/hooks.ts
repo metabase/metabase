@@ -45,6 +45,7 @@ export const useChartSettingsSections = ({
       "display",
       "axes",
       "ranges",
+      "formatting",
       // include all section names so any forgotten sections are sorted to the end
       ...names.map((x) => x.toLowerCase()),
     ];
