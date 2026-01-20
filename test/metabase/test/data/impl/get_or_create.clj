@@ -267,7 +267,13 @@
 
 (defn- fake-fingerprint-table!
   "Compute and save fingerprints for a single table using in-memory test data.
-   Skips tables with no rows. PKs return nil fingerprints (by design) and are skipped."
+   Skips tables with no rows. PKs return nil fingerprints (by design) and are skipped.
+
+   Important: The dbdef rows don't include the auto-generated 'id' PK column, but fingerprint-fields
+   uses col-wise which expects positional alignment. We DON'T need to add a fake PK column because:
+   1. The dbdef field-definitions don't include 'id', so we fingerprint only the user-defined fields
+   2. The row values are already aligned with field-definitions (both exclude the auto-PK)
+   3. The PK fingerprinter returns nil anyway, so skipping it is correct"
   [db-id database-name {:keys [table-name field-definitions rows]}]
   (when (seq rows)
     (let [qualified-name  (tx/db-qualified-table-name database-name table-name)
@@ -275,18 +281,17 @@
           qualified-table (t2/select-one :model/Table :db_id db-id :%lower.name (u/lower-case-en qualified-name))
           fingerprints    (compute-fingerprints-from-rows field-definitions rows)
           version         @(requiring-resolve 'metabase.sync.interface/*latest-fingerprint-version*)]
-      (log/debugf "Fake fingerprinting table %s: found=%s, fingerprint-count=%d"
-                  qualified-name (boolean qualified-table) (count fingerprints))
+      (log/infof "Fake fingerprinting table %s: found=%s, fingerprint-count=%d"
+                 qualified-name (boolean qualified-table) (count fingerprints))
       (when qualified-table
         (doseq [[field-def fp] (map vector field-definitions fingerprints)
                 :when fp] ; PKs return nil fingerprints - skip them
           (when-let [db-field (t2/select-one :model/Field
                                              :table_id (:id qualified-table)
                                              :%lower.name (u/lower-case-en (:field-name field-def)))]
-            (log/debugf "Saving fingerprint for %s.%s: min=%s max=%s"
-                        table-name (:field-name field-def)
-                        (get-in fp [:type :type/Number :min])
-                        (get-in fp [:type :type/Number :max]))
+            (log/infof "Saving fingerprint for %s.%s: %s"
+                       table-name (:field-name field-def)
+                       (pr-str fp))
             (t2/update! :model/Field (:id db-field)
                         {:fingerprint         fp
                          :fingerprint_version version
