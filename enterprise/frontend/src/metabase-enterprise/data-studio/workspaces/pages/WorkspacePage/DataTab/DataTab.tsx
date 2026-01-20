@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
+import { useTransformDryRunPreview } from "./useTransformDryRunPreview";
 
 interface DataTabProps {
   workspaceId: number;
@@ -36,9 +37,11 @@ export function DataTab({
   query,
   pythonPreviewResult,
 }: DataTabProps) {
-  const { data: table } = useGetTableQuery(
-    tableId && !query ? { id: tableId } : skipToken,
-  );
+  const {
+    data: table,
+    error: tableError,
+    isLoading: tableIsLoading,
+  } = useGetTableQuery(tableId && !query ? { id: tableId } : skipToken);
   const { data: transform } = useGetWorkspaceTransformQuery(
     transformId ? { workspaceId, transformId } : skipToken,
   );
@@ -59,35 +62,40 @@ export function DataTab({
     [table],
   );
 
+  // we want to use /dataset for table preview
+  const shouldUseDryRunPreview = Boolean(query && transformId && workspaceId);
   const tablePreviewResult = useTablePreview({
     databaseId,
-    tableId,
+    tableId: shouldUseDryRunPreview ? null : tableId,
     metadata,
     last_transform_run_time: transform?.last_run_at,
-    query,
+    query: shouldUseDryRunPreview ? undefined : query,
   });
-  const { rawSeries, isFetching, error } = tablePreviewResult;
+  const dryRunPreviewResult = useTransformDryRunPreview({
+    workspaceId,
+    transformId: shouldUseDryRunPreview ? transformId : undefined,
+    query: shouldUseDryRunPreview ? query : undefined,
+  });
+  const previewResult = shouldUseDryRunPreview
+    ? dryRunPreviewResult
+    : tablePreviewResult;
+  const { rawSeries, isFetching, error: previewResultError } = previewResult;
+
+  const error = tableError || previewResultError;
+  const isLoading = tableIsLoading || isFetching;
 
   if (pythonPreviewResult) {
     return <PythonPreviewResults executionResult={pythonPreviewResult} />;
+  }
+
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
   if (!databaseId || (!tableId && !query)) {
     return (
       <Stack h="100%" align="center" justify="center">
         <Text c="text-medium">{t`Select a table to view its data`}</Text>
-      </Stack>
-    );
-  }
-
-  if (isFetching) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  if (error) {
-    return (
-      <Stack h="100%" align="center" justify="center">
-        <Text c="error">{t`Error loading data`}</Text>
       </Stack>
     );
   }
@@ -127,8 +135,8 @@ function PythonPreviewResults({
         <Tabs
           value={tab}
           onChange={(value) => {
-            if (value) {
-              setTab(value as ResultsTab);
+            if (value === "output" || value === "results") {
+              setTab(value);
             }
           }}
         >
@@ -152,7 +160,6 @@ function PythonPreviewResults({
         <Box
           fz="sm"
           p="md"
-          bg="background-secondary"
           h="100%"
           style={{
             whiteSpace: "pre",

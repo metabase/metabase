@@ -1,8 +1,6 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,6 +20,7 @@ import {
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
+  SchemaName,
   TaggedTransform,
   TransformSource,
   WorkspaceId,
@@ -34,10 +33,16 @@ import {
   isWorkspaceTransform,
 } from "metabase-types/api";
 
-import type { AnyWorkspaceTransform, EditedTransform } from "../WorkspaceProvider";
+import type {
+  AnyWorkspaceTransform,
+  EditedTransform,
+} from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { useTransformValidation } from "./useTransformValidation";
+
+const schemasFilter = (schema: SchemaName) =>
+  !schema.startsWith("mb__isolation");
 
 type SaveTransformButtonProps = {
   databaseId: DatabaseId;
@@ -90,18 +95,6 @@ export const SaveTransformButton = ({
     transform.target.name !== editedTransform.target.name;
   const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
-  // Fetch schemas for CreateTransformModal
-  const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId && isNewTransform
-      ? { id: databaseId, include_hidden: false }
-      : skipToken,
-  );
-  const allowedSchemas = useMemo(
-    () =>
-      fetchedSchemas.filter((schema) => !schema.startsWith("mb__isolation")),
-    [fetchedSchemas],
-  );
-
   const validationSchemaExtension = useTransformValidation({
     databaseId,
     target: isUnsavedTransform(transform) ? undefined : transform.target,
@@ -121,23 +114,27 @@ export const SaveTransformButton = ({
       throw new Error(t`This is not a workspace transform`);
     }
 
-    const updated = await updateTransform({
-      workspaceId,
-      transformId: transform.ref_id,
-      source: editedTransform.source as TransformSource,
-      name: editedTransform.name,
-      target: {
-        type: "table",
-        name:
-          "target" in editedTransform
-            ? editedTransform.target.name
-            : transform.target.name,
-        schema: transform.target.schema,
-        database: databaseId,
-      },
-    }).unwrap();
+    try {
+      const updated = await updateTransform({
+        workspaceId,
+        transformId: transform.ref_id,
+        source: editedTransform.source as TransformSource,
+        name: editedTransform.name,
+        target: {
+          type: "table",
+          name:
+            "target" in editedTransform
+              ? editedTransform.target.name
+              : transform.target.name,
+          schema: transform.target.schema,
+          database: databaseId,
+        },
+      }).unwrap();
 
-    updateTransformState(updated);
+      updateTransformState(updated);
+    } catch (error) {
+      sendErrorToast(t`Failed to save transform`);
+    }
   };
 
   // Handler for creating new transform via modal (scenario 2)
@@ -253,7 +250,7 @@ export const SaveTransformButton = ({
     // External transform
     return {
       disabled: isDisabled,
-      variant: (hasChanges ? "filled" : "default") as "filled" | "default",
+      variant: hasChanges ? ("filled" as const) : ("default" as const),
       onClick: handleSaveExternalTransform,
     };
   };
@@ -269,7 +266,7 @@ export const SaveTransformButton = ({
           source={editedTransform.source as TransformSource}
           defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
-          schemas={allowedSchemas}
+          schemasFilter={schemasFilter}
           showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
           validateOnMount

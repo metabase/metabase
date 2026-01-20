@@ -24,7 +24,7 @@
                          target
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
-                 (nil? (:schema target))
+                 (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
                  (assoc :schema (driver.sql/default-schema driver)))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
@@ -41,7 +41,8 @@
   (if (map? table-name-prefix)
     ;; table-name-prefix is a whole target, randomize the name
     (update table-name-prefix :name gen-table-name)
-    (let [table-name (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))]
+    ;; Strip off some of the randomness, so that less tests run afoul of the length limit.
+    (let [table-name (str table-name-prefix \_ (subs (str/replace (str (random-uuid)) \- \_) 0 26))]
       ;; this caught me out when testing, was annoying to debug - hence assert
       (assert (< (count table-name) (driver/table-name-length-limit driver/*driver*))
               "chosen identifier prefix should not cause identifiers longer than the driver/table-name-length-limit")

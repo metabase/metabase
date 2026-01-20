@@ -14,8 +14,10 @@ import type {
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
+import { areSourceTablesEqual } from "../utils";
 
-import { TransformTargetDiff } from "./TransformTargetDiff";
+import { TableDiff } from "./TableDiff";
+import { TransformSourceTablesDiff } from "./TransformSourceTablesDiff";
 
 type DiffViewProps = {
   transform: WorkspaceTransformListItem;
@@ -23,8 +25,16 @@ type DiffViewProps = {
 };
 
 export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
-  const { oldSource, newSource, oldTarget, newTarget, isLoading, hasError } =
-    useTransformSources(workspaceId, transform);
+  const {
+    oldSource,
+    oldSourceTables,
+    oldTarget,
+    newSource,
+    newSourceTables,
+    newTarget,
+    isLoading,
+    hasError,
+  } = useTransformSources(workspaceId, transform);
 
   const extensions = useMemo(
     () =>
@@ -64,20 +74,51 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
   const schemaChanged = oldTarget?.schema !== newTarget?.schema;
   const tableChanged = oldTarget?.name !== newTarget?.name;
   const targetChanged = schemaChanged || tableChanged;
+  const sourceTablesChanged = !areSourceTablesEqual(
+    oldSourceTables,
+    newSourceTables,
+  );
 
   return (
     <Stack gap={0} h="100%">
       {oldTarget && newTarget && targetChanged && (
         <Stack
+          data-testid="transform-target-diff"
+          gap="xs"
           px="md"
           py="sm"
           style={{
             borderBottom: "1px solid var(--mb-color-border)",
           }}
         >
-          <TransformTargetDiff newTarget={newTarget} oldTarget={oldTarget} />
+          <Text component="label" fw="bold">{t`Transform target`}</Text>
+          <TableDiff
+            newSchema={newTarget.schema}
+            newTable={newTarget.name}
+            oldSchema={oldTarget.schema}
+            oldTable={oldTarget.name}
+          />
         </Stack>
       )}
+
+      {oldSourceTables && newSourceTables && sourceTablesChanged && (
+        <Stack
+          data-testid="source-tables-diff"
+          gap="xs"
+          px="md"
+          py="sm"
+          style={{
+            borderBottom: "1px solid var(--mb-color-border)",
+          }}
+        >
+          <Text component="label" fw="bold">{t`Source tables`}</Text>
+          <TransformSourceTablesDiff
+            newSourceTables={newSourceTables}
+            oldSourceTables={oldSourceTables}
+          />
+        </Stack>
+      )}
+
       <CodeMirror
         className={cx(EditorS.editor, S.diffEditor)}
         extensions={extensions}

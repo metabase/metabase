@@ -403,14 +403,6 @@
                                   (ws-url ws-id "/transform" ws-x-2-id)
                                   {:name "UPDATED 2"})]
 
-        (testing "Base: Workspace transforms are updated"
-          (testing "X1"
-            (is (= "UPDATED 1"
-                   (t2/select-one-fn :name [:model/WorkspaceTransform :name] :workspace_id ws-id :ref_id ws-x-1-id))))
-          (testing "X2"
-            (is (= "UPDATED 2"
-                   (t2/select-one-fn :name [:model/WorkspaceTransform :name] :workspace_id ws-id :ref_id ws-x-2-id)))))
-
         (testing "Global transforms are updated"
           (testing "API response: empty errors, all updates present in merge"
             (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]

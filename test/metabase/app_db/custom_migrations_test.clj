@@ -2699,7 +2699,8 @@
           ;; rollback
           (migrate! :down 56)
           ;; assert pre conditions
-          (assert-pre-conditions))))))
+          (testing "everything back to normal after downgrade"
+            (assert-pre-conditions)))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"

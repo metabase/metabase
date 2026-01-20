@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -32,7 +33,8 @@ import { getMetabotVisible, metabotReducer } from "./state";
  */
 PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
 PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-PLUGIN_METABOT.MetabotContext = MetabotContext;
+PLUGIN_METABOT.MetabotContext =
+  MetabotContext as React.Context<MetabotContextType>;
 
 PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 

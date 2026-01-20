@@ -19,6 +19,7 @@ import { t } from "ttag";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -45,6 +46,7 @@ import { isWorkspaceUninitialized } from "../../utils";
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
+import { GraphTab } from "./GraphTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
@@ -86,6 +88,7 @@ function WorkspacePageContent({
     activeTransform,
     activeEditedTransform,
     activeTable,
+    activeTab,
     setActiveTab,
     setActiveTable,
     setActiveTransform,
@@ -108,16 +111,17 @@ function WorkspacePageContent({
   const {
     workspace,
     workspaceTransforms,
-    workspaceTables,
-    refetchWorkspaceTables,
     availableTransforms,
     allTransforms,
-    dbTransforms,
-    sourceDb,
+    setupStatus,
+    error,
     isLoading,
     isLoadingWorkspace,
+    isLoadingWorkspaceTransforms,
     isArchived,
+    isPending,
   } = useWorkspaceData({ workspaceId, unsavedTransforms });
+  const databaseId = workspace?.database_id;
 
   // Workspace actions
   const {
@@ -132,7 +136,6 @@ function WorkspacePageContent({
   } = useWorkspaceActions({
     workspaceId,
     workspace,
-    refetchWorkspaceTables,
     onOpenTab: setTab,
     workspaceTransforms,
     availableTransforms,
@@ -162,7 +165,9 @@ function WorkspacePageContent({
     }
 
     (async () => {
-      await handleNavigateToTransform(Number(transformId));
+      const parsedId = parseInt(transformId, 10);
+      await handleNavigateToTransform(isNaN(parsedId) ? transformId : parsedId);
+
       dispatch(replace(Urls.dataStudioWorkspace(workspaceId)));
     })();
   }, [
@@ -258,29 +263,22 @@ function WorkspacePageContent({
       if (newTab) {
         setTab(newTab);
       }
-      if (
-        newTab === "setup" ||
-        (newTab === "metabot" && (activeTransform || activeTable))
-      ) {
-        setActiveTab(undefined);
-      }
     },
     [
       activeTransform,
       activeEditedTransform,
-      activeTable,
       setTab,
-      setActiveTab,
       setMetabotContextTransform,
       setMetabotContextSource,
     ],
   );
 
-  if (isLoadingWorkspace) {
+  if (error || isLoadingWorkspace || isLoadingWorkspaceTransforms) {
     return (
-      <Box p="lg">
-        <Text>{t`Loading...`}</Text>
-      </Box>
+      <LoadingAndErrorWrapper
+        error={error}
+        loading={isLoadingWorkspace || isLoadingWorkspaceTransforms}
+      />
     );
   }
 
@@ -290,6 +288,7 @@ function WorkspacePageContent({
 
   return (
     <Stack
+      bg="background-primary"
       className={classNames({
         [styles.resizing]: isResizing,
       })}
@@ -328,6 +327,7 @@ function WorkspacePageContent({
             loading={isMerging}
             disabled={
               isArchived ||
+              isPending ||
               hasUnsavedChanges ||
               workspaceTransforms.length === 0
             }
@@ -397,6 +397,12 @@ function WorkspacePageContent({
                         </Group>
                       </Tabs.Tab>
                     )}
+                    <Tabs.Tab value="graph">
+                      <Group gap="xs" wrap="nowrap">
+                        <Icon name="dependencies" aria-hidden />
+                        {t`Graph`}
+                      </Group>
+                    </Tabs.Tab>
 
                     {openedTabs.map((tab, index) => (
                       <Sortable
@@ -457,9 +463,20 @@ function WorkspacePageContent({
               }}
             >
               <Tabs.Panel value="setup" h="100%" p="md">
-                <SetupTab databaseId={sourceDb?.id} workspace={workspace} />
+                <SetupTab
+                  databaseId={databaseId}
+                  workspace={workspace}
+                  setupStatus={setupStatus}
+                />
               </Tabs.Panel>
-
+              <Tabs.Panel
+                bg="background-secondary"
+                value="graph"
+                h="100%"
+                p="md"
+              >
+                <GraphTab workspaceId={workspace?.id} />
+              </Tabs.Panel>
               {isMetabotAvailable && (
                 <Tabs.Panel
                   value="metabot"
@@ -475,8 +492,8 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              {activeTable && activeTable.tableId != null && (
-                <Tabs.Panel value={`table-${activeTable.tableId}`} h="100%">
+              {activeTable && activeTab?.type === "table" && (
+                <Tabs.Panel value={activeTab.id} h="100%">
                   <DataTab
                     workspaceId={workspace?.id}
                     databaseId={workspace?.database_id ?? null}
@@ -505,7 +522,7 @@ function WorkspacePageContent({
                       editedTransform={activeEditedTransform}
                       workspaceId={workspaceId}
                       workspaceTransforms={workspaceTransforms}
-                      isDisabled={isArchived}
+                      isDisabled={isArchived || isPending}
                       onChange={handleTransformChange}
                       onSaveTransform={(transform) => {
                         // After adding first transform to a workspace,
@@ -548,22 +565,22 @@ function WorkspacePageContent({
                   <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
                   <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
                 </Tabs.List>
-                {sourceDb && (
+                {databaseId && (
                   <AddTransformMenu
-                    databaseId={sourceDb.id}
+                    databaseId={databaseId}
                     disabled={isArchived}
                   />
                 )}
               </Flex>
               <Tabs.Panel value="code" p="md">
                 <CodeTab
-                  readOnly={isArchived}
+                  readOnly={isArchived || isPending}
                   activeTransformId={
                     activeTransform
                       ? getTransformId(activeTransform)
                       : undefined
                   }
-                  availableTransforms={availableTransforms}
+                  databaseId={databaseId}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
                   onTransformClick={(transform) => {
@@ -577,11 +594,12 @@ function WorkspacePageContent({
               </Tabs.Panel>
               <Tabs.Panel value="data" p="md">
                 <DataTabSidebar
-                  tables={workspaceTables}
+                  readOnly={isArchived || isPending}
                   workspaceTransforms={workspaceTransforms}
-                  dbTransforms={dbTransforms}
+                  databaseId={databaseId}
                   selectedTableId={activeTable?.tableId}
                   runningTransforms={runningTransforms}
+                  workspaceId={workspace.id}
                   onTransformClick={handleTransformClick}
                   onTableSelect={handleTableSelect}
                   onRunTransform={handleRunTransformAndShowPreview}
@@ -597,6 +615,7 @@ function WorkspacePageContent({
           onClose={() => setIsMergeModalOpen(false)}
           onSubmit={handleMergeWorkspace}
           isLoading={isMerging}
+          isDisabled={isPending}
           workspaceId={workspaceId}
           workspaceName={workspace?.name ?? ""}
           workspaceTransforms={workspaceTransforms}
@@ -642,9 +661,8 @@ function useWorkspaceUiTabs() {
   useEffect(() => {
     // Scroll to active tab on change.
     if (tabsListRef.current && tab) {
-      const activeTabElement = tabsListRef.current.querySelector(
-        `[data-active="true"]`,
-      ) as HTMLElement;
+      const activeTabElement =
+        tabsListRef.current.querySelector(`[data-active="true"]`);
 
       if (activeTabElement) {
         activeTabElement.scrollIntoView({

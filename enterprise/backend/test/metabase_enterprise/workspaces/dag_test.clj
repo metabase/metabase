@@ -114,9 +114,9 @@
                            :x11 [:m10]
                            :m12 [:t11]
                            :m13 [:t11 :m12]
-                           :x3  []
-                           :x4  [:t3]
-                           :m6  [:t4])}
+                           :x3 []
+                           :x4 [:t3]
+                           :m6 [:t4])}
            (dag-abstract/path-induced-subgraph
             {:check-outs   #{:x3 :m6 :m10 :m13}
              :dependencies (dag-abstract/expand-shorthand example-graph)})))))
@@ -131,19 +131,19 @@
 (deftest unsupported-dependency-mbql-card-test
   #_(testing "transform with card dependencies are unsupported"
       (let [tx-with-no-dependencies               1
-            ;; These tests transforms must seem pretty redundant - but it's intentional: we may relax them one case at
-            ;; at time in the future.
-            ;; ----------------------
-            ;; We don't allow MBQL card dependencies, as we do not support re-mapping their references on execution.
-            ;; This is only a problem if the card depends on a table that is shadowed in the isolated schema, but we
-            ;; want to keep the semantics simple.
+             ;; These tests transforms must seem pretty redundant - but it's intentional: we may relax them one case at
+             ;; at time in the future.
+             ;; ----------------------
+             ;; We don't allow MBQL card dependencies, as we do not support re-mapping their references on execution.
+             ;; This is only a problem if the card depends on a table that is shadowed in the isolated schema, but we
+             ;; want to keep the semantics simple.
             tx-with-direct-mbql-card-dependency   2
-            ;; Even a transitive dependency would need to be remapped.
+             ;; Even a transitive dependency would need to be remapped.
             tx-with-indirect-mbql-card-dependency 3
-            ;; In fact, we don't allow *any* card dependency for two reasons:
-            ;; 1. We don't yet support reference re-mapping across entity references.
-            ;; 2. It's an anti-pattern to build transforms on models, the relationship is intended to be the other way
-            ;;    around.
+             ;; In fact, we don't allow *any* card dependency for two reasons:
+             ;; 1. We don't yet support reference re-mapping across entity references.
+             ;; 2. It's an anti-pattern to build transforms on models, the relationship is intended to be the other way
+             ;;    around.
             tx-with-sql-card-dependency           4]
         (is (= nil (ws.dag/unsupported-dependency? {:transforms [1]})))
         (is (= {:transforms [2 3 4]} (ws.dag/unsupported-dependency? {:transforms [1 2 3 4]}))))))
@@ -174,7 +174,7 @@
   (let [tx-nodes (filter ws.tu/transform? init-nodes)
         tables   (map tx->table tx-nodes)]
     (#'ws.dag/path-induced-subgraph*
-     ;; Include all changeset targets in the init-nodes
+      ;; Include all changeset targets in the init-nodes
      (distinct (into init-nodes tables))
      {:node-parents (dag-abstract/expand-shorthand graph)
       :table?       ws.tu/table?

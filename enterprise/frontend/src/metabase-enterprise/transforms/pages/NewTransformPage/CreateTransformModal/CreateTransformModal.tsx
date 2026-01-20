@@ -20,6 +20,7 @@ import {
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import type {
+  SchemaName,
   Transform,
   TransformSource,
   WorkspaceTransform,
@@ -33,12 +34,14 @@ import { useCreateTransform } from "./hooks";
 
 export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
 
+type SchemasFilter = (schema: SchemaName) => boolean;
+
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
   onCreate?: (transform: Transform) => void;
   onClose: () => void;
-  schemas?: string[] | null;
+  schemasFilter?: SchemasFilter;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (
@@ -53,7 +56,7 @@ export function CreateTransformModal({
   defaultValues,
   onCreate,
   onClose,
-  schemas,
+  schemasFilter,
   showIncrementalSettings = true,
   validationSchemaExtension,
   handleSubmit,
@@ -67,7 +70,7 @@ export function CreateTransformModal({
         defaultValues={defaultValues}
         onCreate={onCreate}
         onClose={onClose}
-        schemas={schemas}
+        schemasFilter={schemasFilter}
         showIncrementalSettings={showIncrementalSettings}
         validationSchemaExtension={validationSchemaExtension}
         handleSubmit={handleSubmit}
@@ -83,7 +86,7 @@ type CreateTransformFormProps = {
   defaultValues: Partial<NewTransformValues>;
   onCreate?: (transform: Transform) => void;
   onClose: () => void;
-  schemas?: string[] | null;
+  schemasFilter?: SchemasFilter;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (
@@ -93,12 +96,14 @@ type CreateTransformFormProps = {
   validateOnMount?: boolean;
 };
 
+const defaultSchemasFilter = () => true;
+
 function CreateTransformForm({
   source,
   defaultValues,
   onCreate,
   onClose,
-  schemas: schemasProp,
+  schemasFilter = defaultSchemasFilter,
   showIncrementalSettings = true,
   handleSubmit,
   targetDescription,
@@ -107,9 +112,6 @@ function CreateTransformForm({
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
-
-  const shouldFetchSchemas = schemasProp === undefined;
-  const showSchemaField = schemasProp !== null;
 
   const {
     data: database,
@@ -122,18 +124,14 @@ function CreateTransformForm({
     isLoading: isSchemasLoading,
     error: schemasError,
   } = useListDatabaseSchemasQuery(
-    shouldFetchSchemas && databaseId
-      ? { id: databaseId, include_hidden: true }
-      : skipToken,
+    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
 
-  const schemas = useMemo(
-    () => schemasProp ?? fetchedSchemas ?? [],
-    [schemasProp, fetchedSchemas],
-  );
-  const isLoading =
-    isDatabaseLoading || (shouldFetchSchemas && isSchemasLoading);
-  const error = databaseError ?? (shouldFetchSchemas ? schemasError : null);
+  const schemas = useMemo(() => {
+    return (fetchedSchemas ?? []).filter(schemasFilter);
+  }, [schemasFilter, fetchedSchemas]);
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
@@ -178,7 +176,7 @@ function CreateTransformForm({
             placeholder={t`My Great Transform`}
             data-autofocus
           />
-          {showSchemaField && supportsSchemas && (
+          {supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
               label={t`Schema`}

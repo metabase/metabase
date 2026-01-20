@@ -14,7 +14,7 @@ type TransformEditorProps = {
   proposedSource?: DraftTransformSource;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
 };
 

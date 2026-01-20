@@ -8,7 +8,6 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
-   [java-time.api :as t]
    [macaw.core :as macaw]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -105,13 +104,12 @@
 (defn- run-sql-preview
   "Run SQL transform query and return first 2000 rows without persisting.
    Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
-  [{:keys [source target]} remapping]
+  [{:keys [source]} remapping]
   (let [s-type          (transforms/transform-source-type source)
         table-mapping   (:tables remapping no-mapping)
         field-mapping   (:fields remapping no-mapping)
         remapped-source (remap-source table-mapping field-mapping s-type source)
-        query           (:query remapped-source)
-        start-time      (t/offset-date-time)]
+        query           (:query remapped-source)]
     (try
       (let [result (qp/process-query
                     (assoc query :constraints {:max-results           preview-row-limit
@@ -119,25 +117,13 @@
             data (:data result)]
         (if (= :completed (:status result))
           {:status     :succeeded
-           :start_time start-time
-           :end_time   (t/offset-date-time)
-           :table      {:name   (:name target)
-                        :schema (:schema target)}
            :data       (select-keys data [:rows :cols :results_metadata])}
           {:status     :failed
-           :start_time start-time
-           :end_time   (t/offset-date-time)
-           :message    (or (:error result) "Query execution failed")
-           :table      {:name   (:name target)
-                        :schema (:schema target)}}))
+           :message    (or (:error result) "Query execution failed")}))
       (catch Exception e
         {:status     :failed
-         :start_time start-time
-         :end_time   (t/offset-date-time)
          :message    (ex-message e)
-         :ex-data    (ex-data e)
-         :table      {:name   (:name target)
-                      :schema (:schema target)}}))))
+         :ex-data    (ex-data e)}))))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.

@@ -19,6 +19,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
@@ -184,7 +186,7 @@
    _query-params]
   (let [workspace        (api/check-404 (t2/select-one :model/Workspace :id id))
         ;; Trigger creation of the Workspace*External entries
-        _                (ws.impl/get-or-calculate-graph workspace)
+        _                (ws.impl/get-or-calculate-graph! workspace)
         order-by         {:order-by [:db_id :global_schema :global_table]}
         outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
@@ -502,14 +504,17 @@
 
 (defn- table-ids-by-target
   "Batch lookup table IDs for transform targets.
-   Returns {[db_id schema name] -> table-record}."
-  [transforms]
+   Returns {[db_id normalized_schema normalized_name] -> table-record}.
+   Schema and table names are normalized per database driver to match how tables are stored in metabase_table."
+  [db-id driver transforms]
   (when (seq transforms)
-    (let [table-keys (into #{}
-                           (keep (fn [{:keys [target]}]
-                                   (when-let [db-id (:database target)]
-                                     [db-id (:schema target) (:name target)])))
-                           transforms)
+    (let [table-keys     (into #{}
+                               (keep (fn [{:keys [target]}]
+                                       (when (:database target)
+                                         [db-id
+                                          (sql.normalize/normalize-name driver (:schema target))
+                                          (sql.normalize/normalize-name driver (:name target))])))
+                               transforms)
           with-schema    (filter second table-keys)
           without-schema (keep (fn [[db-id schema table-name]]
                                  (when-not schema [db-id table-name]))
@@ -525,9 +530,11 @@
                                             [:in [:composite :db_id :name] without-schema]])]})]
           (m/index-by (juxt :db_id :schema :name) tables))))))
 
-(defn- target->spec [{:keys [target] :as tx} table-id-map]
-  (let [table-key [(:database target) (:schema target) (:name target)]
-        table-id (:id (get table-id-map table-key))]
+(defn- target->spec [driver table-id-map {:keys [target] :as tx}]
+  (let [table-key [(:database target)
+                   (sql.normalize/normalize-name driver (:schema target))
+                   (sql.normalize/normalize-name driver (:name target))]
+        table-id  (:id (get table-id-map table-key))]
     (assoc tx :target {:db       (:database target)
                        :schema   (:schema target)
                        :table    (:name target)
@@ -546,33 +553,34 @@
     {:external external-txs
      :workspace workspace-txs}))
 
-(defn- node-data [{:keys [node-type id]} transforms-map table-id-map]
+(defn- node-data [driver transforms-map table-id-map {:keys [node-type id]}]
   (case node-type
     :table id
-    :external-transform (some-> (get-in transforms-map [:external id])
-                                (target->spec table-id-map))
-    :workspace-transform (some-> (get-in transforms-map [:workspace id])
-                                 (target->spec table-id-map))))
+    :external-transform (some->> (get-in transforms-map [:external id])
+                                 (target->spec driver table-id-map))
+    :workspace-transform (some->> (get-in transforms-map [:workspace id])
+                                  (target->spec driver table-id-map))))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
+  (let [workspace      (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+        db-id          (:database_id workspace)
+        driver         (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
+        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph! workspace)
         ;; Batch fetch all transforms and build table-id lookup map
         transforms-map (fetch-transforms-for-graph entities)
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
-        table-id-map   (table-ids-by-target all-transforms)
-        ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
-        ;;      It could be cheaper to build it as we go.
-        inverted (reduce
-                  (fn [inv [c parents]]
-                    (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
-                  {}
-                  dependencies)
-        dep-count #(frequencies (map node-type (get inverted %)))]
+        table-id-map   (table-ids-by-target db-id driver all-transforms)
+        ;; We may want to cache this inverted graph in the database JSON to avoid recalculating it each time.
+        inverted       (reduce
+                        (fn [inv [c parents]]
+                          (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
+                        {}
+                        dependencies)
+        dep-count      #(frequencies (map node-type (get inverted %)))]
 
     {:nodes (concat (for [i inputs]
                       {:type             :input-table
@@ -583,7 +591,7 @@
                     (for [e entities]
                       {:type             (node-type e)
                        :id               (:id e)
-                       :data             (node-data e transforms-map table-id-map)
+                       :data             (node-data driver transforms-map table-id-map e)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
               {:to_entity_type   (name (node-type parent))
@@ -607,7 +615,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        graph     (ws.impl/get-or-calculate-graph workspace)]
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))
@@ -791,14 +799,15 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    ;; If source or target changed, mark as stale in the same update
-    (let [source-or-target-changed? (or (:source body) (:target body))
-          update-body (cond-> body
-                        source-or-target-changed? (assoc :analysis_stale true))]
-      (t2/update! :model/WorkspaceTransform tx-id update-body)
-      ;; Mark workspace as stale too if source/target changed
+    (let [source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform tx-id body)
+      ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
-        (ws.impl/mark-workspace-stale! ws-id)))
+        (ws.impl/increment-analysis-version! ws-id tx-id)
+        ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
+        ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
+        ;; serialize the fields in the body, but the increment requires using an SQL expression.
+        (ws.impl/increment-graph-version! ws-id)))
     (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
@@ -806,7 +815,8 @@
    For provisional transforms we will skip even creating it in the first place."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at [:now]})))
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is leaving the graph
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
@@ -814,8 +824,11 @@
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
                                    {:ref_id tx-id :workspace_id id}
-                                   {:archived_at nil, :analysis_stale true})))
-  (ws.impl/mark-workspace-stale! id)
+                                   {:archived_at nil})))
+  ;; Increment both versions - transform re-enters graph and needs re-analysis
+  (ws.impl/increment-analysis-version! id tx-id)
+  ;; We could merge this with the initial WorkspaceTransform update to save a statement, but it adds complexity.
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil
@@ -823,8 +836,8 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
-  ;; Mark workspace as stale since the graph has changed
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is potentially leaving the graph, or reverting to the global definition.
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
@@ -888,33 +901,33 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform          (api/check-404
-                            (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
-                                           :id transform-id))
-        db-id              (:target_db_id transform)
-        workspaces         (t2/select [:model/Workspace :id :name :base_status :db_status]
-                                      :database_id db-id
-                                      :base_status [:not= :archived]
-                                      {:order-by [[:name :asc]]})
-        checkouts          (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
-                                      :global_id transform-id)
-        checkouts-by-ws-id (into {} (map (juxt :workspace_id identity) checkouts))
-        workspaces-by-id   (into {} (map (juxt :id identity) workspaces))]
+  (let [transform        (api/check-404
+                          (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
+                                         :id transform-id))
+        db-id            (:target_db_id transform)
+        workspaces       (t2/select [:model/Workspace :id :name :base_status :db_status]
+                                    :database_id db-id
+                                    :base_status [:not= :archived]
+                                    {:order-by [[:name :asc]]})
+        checkouts        (t2/select [:model/WorkspaceTransform :ref_id :name :workspace_id]
+                                    :global_id transform-id)
+        ws-id->checkouts (into {} (map (juxt :workspace_id identity) checkouts))
+        id->workspace    (into {} (map (juxt :id identity) workspaces))]
     {:checkout_disabled (checkout-disabled-reason transform)
-     :workspaces        (vec (for [{:keys [id name] :as ws} workspaces
-                                   :let [checkout (get checkouts-by-ws-id id)]]
-                               {:id       id
-                                :name     name
-                                :status   (ws.model/computed-status ws)
-                                :existing (when checkout
-                                            {:ref_id (:ref_id checkout)
-                                             :name   (:name checkout)})}))
-     :transforms        (vec (for [{:keys [ref_id name workspace_id]} checkouts
-                                   :let [ws (get workspaces-by-id workspace_id)]
-                                   :when ws]
-                               {:id        ref_id
-                                :name      name
-                                :workspace {:id (:id ws) :name (:name ws)}}))}))
+     :workspaces        (for [{:keys [id name] :as ws} workspaces
+                              :let [checkout (get ws-id->checkouts id)]]
+                          {:id       id
+                           :name     name
+                           :status   (ws.model/computed-status ws)
+                           :existing (when checkout
+                                       {:ref_id (:ref_id checkout)
+                                        :name   (:name checkout)})})
+     :transforms        (for [{:keys [ref_id name workspace_id]} checkouts
+                              :let [ws (get id->workspace workspace_id)]
+                              :when ws]
+                          {:id        ref_id
+                           :name      name
+                           :workspace {:id (:id ws) :name (:name ws)}})}))
 
 (api.macros/defendpoint :post "/:ws-id/merge"
   :- [:or

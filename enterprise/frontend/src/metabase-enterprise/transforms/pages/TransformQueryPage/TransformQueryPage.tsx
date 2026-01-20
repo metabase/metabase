@@ -179,9 +179,9 @@ function TransformQueryPageBody({
           transform={transform}
           actions={
             <Group gap="sm">
-              {showEditWorkspaceMenu && hasPremiumFeature("workspaces") && (
-                <EditTransformMenu transform={transform} />
-              )}
+              {showEditWorkspaceMenu &&
+                hasPremiumFeature("workspaces") &&
+                !isEditMode && <EditTransformMenu transform={transform} />}
               <TransformPaneHeaderActions
                 source={source}
                 isSaving={isSaving}
@@ -267,7 +267,7 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
 };
 

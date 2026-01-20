@@ -1,26 +1,36 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Select, Stack, Text, Title } from "metabase/ui";
 import {
   useGetWorkspaceAllowedDatabasesQuery,
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import type { Workspace } from "metabase-types/api";
+import type { DatabaseId, Workspace } from "metabase-types/api";
 
 import { isWorkspaceUninitialized } from "../../utils";
 
 import { SetupLog } from "./SetupLog";
+import type { SetupStatus } from "./useWorkspaceData";
 
 interface SetupTabProps {
-  databaseId?: number;
+  databaseId?: DatabaseId | null;
   workspace: Workspace;
+  setupStatus: SetupStatus;
 }
 
-export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
-  const { data: allowedDatabases, isLoading } =
-    useGetWorkspaceAllowedDatabasesQuery();
+export const SetupTab = ({
+  databaseId,
+  workspace,
+  setupStatus,
+}: SetupTabProps) => {
+  const {
+    data: allowedDatabases,
+    isLoading,
+    error,
+  } = useGetWorkspaceAllowedDatabasesQuery();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const workspaceId = workspace.id;
@@ -49,13 +59,16 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
     ],
   );
 
-  const databaseOptions =
-    allowedDatabases?.databases
-      ?.filter((db) => db.supported)
-      ?.map((db) => ({
-        value: db.id.toString(),
-        label: db.name,
-      })) ?? [];
+  const databaseOptions = useMemo(
+    () =>
+      allowedDatabases?.databases
+        ?.filter((db) => db.supported)
+        ?.map((db) => ({
+          value: db.id.toString(),
+          label: db.name,
+        })) ?? [],
+    [allowedDatabases?.databases],
+  );
 
   return (
     <Stack gap="lg">
@@ -69,9 +82,8 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
 
       <Stack gap="xs">
         <Text fw="bold">{t`Data warehouse`}</Text>
-        {isLoading ? (
-          <Text>{t`Loading databases...`}</Text>
-        ) : (
+
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <Select
             data={databaseOptions}
             value={databaseId?.toString() ?? ""}
@@ -80,7 +92,7 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
             disabled={!isWorkspaceUninitialized(workspace)}
             maw="20rem"
           />
-        )}
+        </LoadingAndErrorWrapper>
 
         <Text c="text-light" size="sm">
           {t`Data warehouse selection is locked after adding transforms to the workspace`}
@@ -91,10 +103,7 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
         <Stack gap="xs">
           <Text fw="bold">{t`Setup log`}</Text>
 
-          <SetupLog
-            key={workspaceId} // avoid showing status of other workspaces (forces RTK query hook remount)
-            workspaceId={workspaceId}
-          />
+          {setupStatus && <SetupLog setupStatus={setupStatus} />}
         </Stack>
       )}
     </Stack>

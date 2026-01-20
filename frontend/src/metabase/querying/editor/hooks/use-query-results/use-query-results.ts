@@ -12,7 +12,7 @@ export function useQueryResults(
   question: Question,
   uiState: QueryEditorUiState,
   onChangeUiState: (newUiState: QueryEditorUiState) => void,
-  onRunQueryStart?: (query: DatasetQuery) => void,
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void,
 ) {
   const { lastRunResult, lastRunQuery } = uiState;
   const [runAdhocQuery, { isFetching: isRunning = false }] =
@@ -50,7 +50,11 @@ export function useQueryResults(
 
   const runQuery = async () => {
     const lastRunQuery = question.datasetQuery();
-    onRunQueryStart?.(lastRunQuery);
+    const shouldRunQuery = onRunQueryStart?.(lastRunQuery) !== false;
+    if (!shouldRunQuery) {
+      onChangeUiState({ ...uiState, lastRunResult: null, lastRunQuery });
+      return;
+    }
     const action = runAdhocQuery({
       ...lastRunQuery,
       parameters: normalizeParameters(question.parameters()),
