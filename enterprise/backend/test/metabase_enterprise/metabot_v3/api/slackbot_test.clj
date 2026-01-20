@@ -68,4 +68,16 @@
                             {:request-options {:headers {"x-slack-signature" "v0=invalid"
                                                          "x-slack-request-timestamp" "1234567890"}}}
                             {:type "url_verification"
-                             :challenge "test"})))))))))
+                             :challenge "test"}))))))))
+
+(deftest feature-flag-test
+  (testing "Endpoints require metabot-v3 premium feature"
+    (mt/with-premium-features #{}
+      (testing "GET /api/ee/metabot-v3/slack/manifest"
+        (mt/assert-has-premium-feature-error "MetaBot"
+                                             (mt/user-http-request :crowberto :get 402 "ee/metabot-v3/slack/manifest")))
+      (testing "POST /api/ee/metabot-v3/slack/events"
+        (mt/assert-has-premium-feature-error "MetaBot"
+                                             (mt/client :post 402 "ee/metabot-v3/slack/events"
+                                                        {:type "url_verification"
+                                                         :challenge "test"}))))))
