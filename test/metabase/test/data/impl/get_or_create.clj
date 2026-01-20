@@ -152,7 +152,10 @@
                            ;; E.g., Snowflake: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
                            (tx/fake-sync-database-type driver base-type))
         actual-base-type (if (map? base-type)
-                           (or effective-type :type/*)
+                           ;; For native types, use effective-type if provided,
+                           ;; otherwise ask the driver what base_type sync would produce
+                           (or effective-type
+                               (tx/fake-sync-native-base-type driver database-type))
                            ;; Use fake-sync-base-type to get what the database actually reports
                            ;; E.g., Snowflake: :type/Integer -> :type/Number (since INTEGER->NUMBER)
                            (tx/fake-sync-base-type driver base-type))

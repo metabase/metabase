@@ -431,3 +431,26 @@
     :type/BigInteger :type/Number
     ;; Other types are unchanged
     base-type))
+
+(defmethod tx/fake-sync-native-base-type :snowflake
+  [_driver native-type]
+  ;; Map native Snowflake type strings to their base_type.
+  ;; These must match what sql-jdbc.sync/database-type->base-type returns for Snowflake.
+  ;; See metabase.driver.snowflake for the full mapping.
+  (case (some-> native-type str/upper-case)
+    ;; Timestamp types
+    "TIMESTAMPTZ"  :type/DateTimeWithLocalTZ
+    "TIMESTAMPLTZ" :type/DateTimeWithTZ
+    "TIMESTAMPNTZ" :type/DateTime
+    "TIMESTAMP"    :type/DateTime
+    ;; Other common types
+    "VARCHAR"      :type/Text
+    "TEXT"         :type/Text
+    "NUMBER"       :type/Number
+    "FLOAT"        :type/Float
+    "DOUBLE"       :type/Float
+    "BOOLEAN"      :type/Boolean
+    "DATE"         :type/Date
+    "TIME"         :type/Time
+    ;; Default: unknown types get :type/*
+    :type/*))

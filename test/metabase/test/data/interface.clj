@@ -571,6 +571,21 @@
   ;; Default: use the base-type from the test definition unchanged
   base-type)
 
+(defmulti fake-sync-native-base-type
+  "Return the base_type for fake sync Field rows when using native database types.
+   Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
+   is specified. By default returns :type/*, but drivers should override this to
+   return the base_type that sync would actually produce for that native type.
+   For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
+  {:arglists '([driver native-type-string]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-native-base-type ::test-extensions
+  [_driver _native-type]
+  ;; Default: return :type/* for unknown native types
+  :type/*)
+
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
    Detection methods (in priority order):
