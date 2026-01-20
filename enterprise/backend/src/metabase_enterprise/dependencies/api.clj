@@ -674,20 +674,16 @@
                           (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :table.display_name)
-        dependents-count-column {:select [[:%count.*]]
-                                 :from [:dependency]
+        dependents-count-column {:select [[[:count [:distinct :analysis_finding_error.analyzed_entity_id :analysis_finding_error.analyzed_entity_type]]]]
+                                 :from [:analysis_finding_error]
                                  :where [:and
-                                         [:= :dependency.to_entity_id :entity.id]
-                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]
-                                         (visible-entities-filter-clause
-                                          :dependency.from_entity_type
-                                          :dependency.from_entity_id
-                                          {:include-archived-items include-archived-items})]}
-        dependents-errors-count-column {:select [[[:count [:distinct :analysis_finding_error.analyzed_entity_id]]]]
-                                        :from [:analysis_finding_error]
-                                        :where [:and
-                                                [:= :analysis_finding_error.source_entity_id :entity.id]
-                                                [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
+                                         [:= :analysis_finding_error.source_entity_id :entity.id]
+                                         [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
+        dependents-errors-column {:select [[[:count [:distinct :analysis_finding_error.error_type :analysis_finding_error.error_detail]]]]
+                                  :from [:analysis_finding_error]
+                                  :where [:and
+                                          [:= :analysis_finding_error.source_entity_id :entity.id]
+                                          [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
@@ -738,7 +734,7 @@
         sort-key-column (case sort-column
                           :location location-column
                           :dependents-count dependents-count-column
-                          :dependents-errors dependents-errors-count-column
+                          :dependents-errors dependents-errors-column
                           name-column)
         sort-by-location? (= sort-column :location)
         ;; Need location joins when sorting by location OR when query filter uses location

@@ -2,10 +2,10 @@ import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
 import type { TreeTableColumnDef } from "metabase/ui";
-import type {
-  DependencyNode,
-  DependencySortColumn,
-  DependencySortingOptions,
+import {
+  DEPENDENCY_SORT_COLUMNS,
+  type DependencyNode,
+  type DependencySortingOptions,
 } from "metabase-types/api";
 
 import {
@@ -58,7 +58,7 @@ function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
     id: "dependents-errors",
     header: t`Problems`,
     minWidth: 100,
-    enableSorting: false,
+    enableSorting: true,
     accessorFn: (node) => node.dependents_errors?.length ?? 0,
     cell: ({ row }) => {
       const node = row.original;
@@ -71,7 +71,7 @@ function getDependentsErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-function getBrokenDependentsColumn(): TreeTableColumnDef<DependencyNode> {
+function getDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
     header: t`Broken dependents`,
@@ -93,7 +93,7 @@ export function getColumns(
     getNameColumn(mode),
     getLocationColumn(),
     ...(mode === "broken" ? [getDependentsErrorsColumn()] : []),
-    ...(mode === "broken" ? [getBrokenDependentsColumn()] : []),
+    ...(mode === "broken" ? [getDependentsCountColumn()] : []),
   ];
 }
 
@@ -119,9 +119,15 @@ export function getSortingOptions(
   if (sortingState.length === 0) {
     return undefined;
   }
+
   const { id, desc } = sortingState[0];
+  const column = DEPENDENCY_SORT_COLUMNS.find((column) => column === id);
+  if (column == null) {
+    return undefined;
+  }
+
   return {
-    column: id as DependencySortColumn,
+    column,
     direction: desc ? "desc" : "asc",
   };
 }

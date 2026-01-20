@@ -265,8 +265,8 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
-  "dependents-count",
   "dependents-errors",
+  "dependents-count",
 ] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
@@ -287,7 +287,8 @@ export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
 export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
 
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
-  types?: BreakingEntityType[];
+  types?: DependencyType[];
+  card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
   sort_column?: DependencySortColumn;
