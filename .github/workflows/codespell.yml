@@ -1,7 +1,6 @@
 name: Codespell
 
 on:
-  push:
   schedule:
     # Run weekly on Saturday at 6:00 AM UTC
     - cron: "0 6 * * 6"
