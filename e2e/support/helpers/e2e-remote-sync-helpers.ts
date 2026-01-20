@@ -201,12 +201,12 @@ export const waitForTask = (
   if (retries > 3) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  cy.wait("@currentTask").then(({ response }) => {
-    const { body } = response;
-    if (body.sync_task_type !== taskName) {
-      waitForTask({ taskName });
-    } else if (body.status !== "successful") {
-      waitForTask({ taskName }, retries + 1);
+  return cy.wait("@currentTask").then(({ response }) => {
+    const { body } = response || {};
+    if (body?.sync_task_type !== taskName) {
+      return waitForTask({ taskName });
+    } else if (body?.status !== "successful") {
+      return waitForTask({ taskName }, retries + 1);
     }
   });
 };
