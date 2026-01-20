@@ -8,10 +8,13 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+const { IS_ENTERPRISE } = Cypress.env();
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
-const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
+// EE has one extra group (Data Analysts) compared to OSS
+const TOTAL_GROUPS =
+  Object.entries(USER_GROUPS).length + (IS_ENTERPRISE ? 1 : 0);
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;
 
@@ -110,7 +113,7 @@ describe("scenarios > admin > people", () => {
 
       cy.findByRole("link", { name: /group/i }).click();
 
-      cy.findByRole("table").findByRole("link", { name: /data/i }).click();
+      cy.findByRole("table").findByRole("link", { name: /data$/i }).click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1 member");

@@ -1,6 +1,7 @@
 const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
+const { IS_ENTERPRISE } = Cypress.env();
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
@@ -235,6 +236,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     H.assertPermissionTable([
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
+      ...(IS_ENTERPRISE ? [["Data Analysts", "No"]] : []),
       ["collection", "No"],
       ["data", "Query builder and native"],
       ["nosql", "Query builder only"],
@@ -250,6 +252,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     const finalPermissions = [
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
+      ...(IS_ENTERPRISE ? [["Data Analysts", "No"]] : []),
       ["collection", "No"],
       ["data", "Query builder and native"],
       ["nosql", "Query builder only"],
@@ -536,6 +539,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     H.assertPermissionTable([
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
+      ...(IS_ENTERPRISE ? [["Data Analysts", "No"]] : []),
       ["collection", "No"],
       ["data", "Query builder and native"],
       ["nosql", "Query builder only"],
@@ -551,6 +555,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     const finalPermissions = [
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
+      ...(IS_ENTERPRISE ? [["Data Analysts", "No"]] : []),
       ["collection", "No"],
       ["data", "Query builder and native"],
       ["nosql", "Query builder only"],
