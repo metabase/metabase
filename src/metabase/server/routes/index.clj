@@ -131,5 +131,5 @@
   [request respond raise]
   (entrypoint "embed-sdk" :embeddable request
               (fn [resp]
-                (respond (response/header resp "Cache-Control" "public, max-age=3600")))
+                (respond (response/header resp "Cache-Control" "public, max-age=60")))
               raise))
