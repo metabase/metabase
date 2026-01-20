@@ -190,7 +190,7 @@
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
-         (when-not config/ee-available?
+         (when-not (premium-features/enable-data-studio?)
            [:or
             [:= nil :magic_group_type]
             [:not= "data-analyst" :magic_group_type]])]
@@ -302,7 +302,7 @@
                                                    :where  [:and
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]
-                                                            (when-not config/ee-available?
+                                                            (when-not (premium-features/enable-data-studio?)
                                                               [:or
                                                                [:= nil :magic_group_type]
                                                                [:not= "data-analyst" :magic_group_type]])]}])))))

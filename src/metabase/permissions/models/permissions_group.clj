@@ -241,7 +241,7 @@
     (t2/insert! :model/Permissions
                 (for [coll-id collection-ids]
                   {:group_id group-id
-                   :object   (str "/collection/" coll-id "/write/")}))))
+                   :object   (str "/collection/" coll-id "/")}))))
 
 (defn sync-data-analyst-group-for-oss!
   "On OSS startup, convert the Data Analysts group to a normal visible group and create a new empty magic group.
@@ -253,7 +253,7 @@
 
   This is idempotent: if the magic group has no members, nothing happens."
   []
-  (when-not config/ee-available?
+  (when-not (premium-features/enable-data-studio?)
     (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
       (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
         (log/info "Converting Data Analysts group to normal group for OSS")
