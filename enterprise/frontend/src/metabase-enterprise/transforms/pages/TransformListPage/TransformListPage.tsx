@@ -1,7 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -14,7 +13,6 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -80,7 +78,6 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
-  const dispatch = useDispatch();
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -191,23 +188,15 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     [],
   );
 
-  const navigateToTransform = useCallback(
-    (transformId: number) => {
-      dispatch(push(Urls.transform(transformId)));
-    },
-    [dispatch],
-  );
-
-  const handleRowActivate = useCallback(
-    (row: Row<TreeNode>) => {
-      if (row.original.nodeType === "transform" && row.original.transformId) {
-        navigateToTransform(row.original.transformId);
-      } else if (row.original.nodeType === "library" && row.original.url) {
-        dispatch(push(row.original.url));
-      }
-    },
-    [navigateToTransform, dispatch],
-  );
+  const getRowHref = useCallback((row: Row<TreeNode>) => {
+    if (row.original.nodeType === "transform" && row.original.transformId) {
+      return Urls.transform(row.original.transformId);
+    }
+    if (row.original.nodeType === "library" && row.original.url) {
+      return row.original.url;
+    }
+    return null;
+  }, []);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -220,24 +209,14 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     onGlobalFilterChange: setSearchQuery,
     globalFilterFn,
     isFilterable,
-    onRowActivate: handleRowActivate,
   });
 
-  const handleRowClick = useCallback(
-    (row: Row<TreeNode>) => {
-      if (row.getCanExpand()) {
-        row.toggleExpanded();
-      } else if (
-        row.original.nodeType === "transform" &&
-        row.original.transformId
-      ) {
-        navigateToTransform(row.original.transformId);
-      } else if (row.original.nodeType === "library" && row.original.url) {
-        dispatch(push(row.original.url));
-      }
-    },
-    [navigateToTransform, dispatch],
-  );
+  const handleRowClick = useCallback((row: Row<TreeNode>) => {
+    // Navigation for leaf nodes (transforms, library) is handled by the link
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
 
   useEffect(() => {
     if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
@@ -292,6 +271,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
                 emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
               }
               onRowClick={handleRowClick}
+              getRowHref={getRowHref}
             />
           )}
         </Card>
