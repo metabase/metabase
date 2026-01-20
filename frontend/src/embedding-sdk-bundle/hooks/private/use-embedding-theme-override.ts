@@ -6,6 +6,7 @@ import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import {
   type MetabaseEmbeddingTheme,
+  getEmbeddingComponentOverrides,
   isEmbeddingThemeV1,
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
@@ -36,6 +37,9 @@ export function useEmbeddingThemeOverride(
       return getEmbeddingThemeOverride(themeWithPreset || {}, font);
     }
 
+    // We must include Modular Embedding specific overrides for portals (e.g. popover and modal) to target the correct portal id
+    const components = getEmbeddingComponentOverrides();
+
     if (isEmbeddingThemeV2(theme)) {
       const derivedTheme = deriveFullMetabaseTheme({
         colorScheme: "light",
@@ -51,7 +55,10 @@ export function useEmbeddingThemeOverride(
         ]),
       );
 
-      return { colors, fontFamily: font ?? DEFAULT_FONT };
+      return { colors, fontFamily: font ?? DEFAULT_FONT, components };
     }
+
+    // No theme provided: just return the component overrides for portals
+    return { components };
   }, [appColors, theme, font]);
 }
