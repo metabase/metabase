@@ -4,9 +4,10 @@ import { t } from "ttag";
 import { createMockMetadata } from "__support__/metadata";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
+import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Box, Group, Icon, Stack, Tabs, Text } from "metabase/ui";
+import { Box, Group, Icon, Stack, Tabs } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import { ExecutionOutputTable } from "metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonEditorResults/ExecutionOutputTable";
@@ -94,16 +95,16 @@ export function DataTab({
 
   if (!databaseId || (!tableId && !query)) {
     return (
-      <Stack h="100%" align="center" justify="center">
-        <Text c="text-medium">{t`Select a table to view its data`}</Text>
+      <Stack p="md">
+        <EmptyState message={t`Select a table to view its data`} />
       </Stack>
     );
   }
 
   if (!rawSeries) {
     return (
-      <Stack h="100%" align="center" justify="center">
-        <Text c="text-medium">{t`No data available`}</Text>
+      <Stack p="md">
+        <EmptyState message={t`No data available`} />
       </Stack>
     );
   }
@@ -170,11 +171,7 @@ function PythonPreviewResults({
           {executionResult?.logs ? (
             <AnsiLogs>{executionResult.logs}</AnsiLogs>
           ) : (
-            <Text
-              c="text-tertiary"
-              fz="sm"
-              fs="italic"
-            >{t`No logs to display`}</Text>
+            <EmptyState message={t`No logs to display`} />
           )}
         </Box>
       )}
