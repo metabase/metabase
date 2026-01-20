@@ -300,7 +300,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("should be able to check out existing transform into a new workspace from the transform page", () => {
+    it("should be able to check out existing SQL transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTableSql = `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`;
@@ -470,6 +470,75 @@ describe("scenarios > data studio > workspaces", () => {
       H.tableInteractiveBody().findByText("Cow").should("not.exist");
       H.tableInteractiveBody().findByText("30").should("not.exist");
     });
+
+    it(
+      "should be able to check out existing Python transform with multiple input tables into a new workspace",
+      { tags: ["@python"] },
+      () => {
+        cy.log("Create Python transform with 2 input tables");
+        H.getTableId({
+          name: "Animals",
+          databaseId: WRITABLE_DB_ID,
+          schema: "Schema A",
+        }).then((id1) => {
+          H.getTableId({
+            name: "Animals",
+            databaseId: WRITABLE_DB_ID,
+            schema: "Schema B",
+          }).then((id2) => {
+            createPythonTransform({
+              body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
+              sourceTables: { animals_a: id1, animals_b: id2 },
+              visitTransform: true,
+            });
+          });
+        });
+
+        cy.log("Create a workspace and check out the transform");
+        cy.findByRole("button", { name: /Edit transform/ }).click();
+        H.popover().findByText("New workspace").click();
+
+        cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
+
+        cy.log("Update the Python transform code");
+        H.PythonEditor.clear().paste(TEST_PYTHON_TRANSFORM_MULTI_TABLE_UPDATED);
+        Workspaces.getSaveTransformButton().click();
+
+        cy.log("Run the transform");
+        Workspaces.getRunTransformButton().click();
+        Workspaces.getRunTransformButton().should(
+          "have.text",
+          "Ran successfully",
+        );
+
+        cy.log("Merge the workspace");
+        Workspaces.getMergeWorkspaceButton().click();
+        Workspaces.getMergeCommitInput().type("Merge Python transform");
+        H.modal().within(() => {
+          cy.findByText("1 transform will be merged").should("exist");
+          cy.findByRole("button", { name: /Merge/ }).click();
+        });
+        verifyAndCloseToast("merged successfully");
+
+        cy.log("Verify the merged transform runs correctly");
+        Transforms.list()
+          .findByRole("row", { name: /Python transform/ })
+          .click();
+        Transforms.runTab().click();
+        runTransformAndWaitForSuccessOnTransformsPage();
+        Transforms.settingsTab().click();
+        getTableLink().should("contain.text", TARGET_TABLE_PYTHON).click();
+
+        H.assertTableData({
+          columns: ["Name", "Total Score"],
+          firstRows: [
+            ["Duck", "20"],
+            ["Horse", "40"],
+            ["Cow", "60"],
+          ],
+        });
+      },
+    );
   });
 
   describe("should show tabs UI correctly", () => {
@@ -1901,6 +1970,27 @@ const TEST_PYTHON_TRANSFORM = dedent`
   def transform(foo):
       return pd.DataFrame([{"foo": 42 }])
 `;
+
+const TEST_PYTHON_TRANSFORM_MULTI_TABLE = dedent`
+  import pandas as pd
+
+  def transform(animals_a, animals_b):
+      return pd.DataFrame([{"name": "test", "total_score": 0}])
+`;
+
+const TEST_PYTHON_TRANSFORM_MULTI_TABLE_UPDATED = dedent`
+  import pandas as pd
+
+  def transform(animals_a, animals_b):
+      # Combine scores from both tables by name
+      merged = animals_a.merge(animals_b, on="name", suffixes=("_a", "_b"))
+      result = pd.DataFrame({
+          "name": merged["name"],
+          "total_score": merged["score_a"] + merged["score_b"]
+      })
+      return result
+`;
+
 function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE_MBQL,
