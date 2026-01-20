@@ -2,6 +2,7 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
@@ -86,13 +87,21 @@ export const TaskRunsTable = ({
                   </Ellipsified>
                 </td>
                 <td>
-                  <Ellipsified style={{ maxWidth: 150 }}>
-                    {taskRun.started_at}
+                  <Ellipsified
+                    style={{ maxWidth: 180 }}
+                    alwaysShowTooltip
+                    tooltip={taskRun.started_at}
+                  >
+                    <DateTime value={taskRun.started_at} unit="minute" />
                   </Ellipsified>
                 </td>
                 <td>
-                  <Ellipsified style={{ maxWidth: 150 }}>
-                    {taskRun.ended_at}
+                  <Ellipsified
+                    style={{ maxWidth: 180 }}
+                    alwaysShowTooltip={Boolean(taskRun.ended_at)}
+                    tooltip={taskRun.ended_at}
+                  >
+                    <DateTime value={taskRun.ended_at ?? "—"} unit="minute" />
                   </Ellipsified>
                 </td>
                 <td>
