@@ -127,6 +127,7 @@
    "WorkspaceLog"
    "WorkspaceMerge"
    "WorkspaceMergeTransform"
+   "WorkspaceGraph"
    "WorkspaceOutput"
    "WorkspaceOutputExternal"
    "WorkspaceTransform"])
