@@ -218,27 +218,32 @@
 
    Returns a vector of reachable nodes in BFS order (no duplicates)."
   [edges-map start & {:keys [include-start? node-filter]
-                      :or   {include-start? false node-filter (constantly true)}}]
-  (let [start-nodes (if (or (sequential? start) (set? start)) start [start])
-        init-nodes  (filterv node-filter start-nodes)
-        init-set    (set init-nodes)]
-    (loop [queue   (if include-start?
-                     init-nodes
-                     (vec (filter node-filter (mapcat edges-map start-nodes))))
+                      :or   {include-start? false}}]
+  (let [start-nodes   (if (or (sequential? start) (set? start)) start [start])
+        init-nodes    (if node-filter (filterv node-filter start-nodes) (vec start-nodes))
+        init-set      (set init-nodes)
+        get-children  (if node-filter
+                        #(filterv node-filter (get edges-map % []))
+                        #(get edges-map % []))
+        ;; Queue always starts with children of start nodes (excluding start nodes themselves)
+        init-children (into [] (comp (mapcat get-children) (remove init-set)) init-nodes)]
+    (loop [queue   init-children
            idx     0
-           visited (if include-start? init-set #{})
-           result  (if include-start? init-nodes [])]
+           ;; Only mark start nodes as visited if we're including them in result
+           ;; This allows cycles back to start to be detected when include-start? is false
+           visited (transient (if include-start? init-set #{}))
+           result  (transient (if include-start? init-nodes []))]
       (if (>= idx (count queue))
-        result
+        (persistent! result)
         (let [current (nth queue idx)]
           (if (visited current)
             (recur queue (inc idx) visited result)
-            (let [children  (filter node-filter (get edges-map current []))
+            (let [children  (get-children current)
                   new-nodes (remove visited children)]
               (recur (into queue new-nodes)
                      (inc idx)
-                     (conj visited current)
-                     (conj result current)))))))))
+                     (conj! visited current)
+                     (conj! result current)))))))))
 
 (defn path-induced-subgraph
   "Given a list of internal entities, compute the path-induced subgraph.
