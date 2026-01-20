@@ -240,15 +240,19 @@
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 
+(defn- mode->capabilities
+  [mode]
+  (case mode
+    "server"   #{:capabilities/webserver}
+    "task"     #{:capabilities/task}
+    "monolith" #{:capabilities/task :capabilities/webserver}
+    #{:capabilities/task :capabilities/webserver}))
+
 (defn- start-normally
   ([] (start-normally {}))
   ([options]
    (log/info "Starting Metabase in STANDALONE mode")
-   (let [capabilities (case (:mode options)
-                        "server"   #{:capabilities/webserver}
-                        "task"     #{:capabilities/task}
-                        "monolith" #{:capabilities/task :capabilities/webserver}
-                        #{:capabilities/task :capabilities/webserver})]
+   (let [capabilities (-> options :mode mode->capabilities)]
      (try
        ;; launch embedded webserver
        (when (capabilities :capabilities/webserver)
@@ -289,7 +293,7 @@
   "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.core.bootstrap/-main]].)"
   [& [cmd & args :as cli-args]]
   (maybe-enable-tracing)
-  (let [{:keys [options arguments] :as parsed} (cli/parse-opts cli-args [["-m" "--mode MODE" "the mode to run metabase in"]])]
+  (let [{:keys [options arguments] :as _parsed} (cli/parse-opts cli-args [["-m" "--mode MODE" "the mode to run metabase in"]])]
     (if (seq arguments)
       ;; run a command like `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks` or
       ;; `clojure -M:run migrate release-locks`
@@ -305,6 +309,10 @@
 
   (cli/parse-opts ["--mode" "task"]
                   [["-m" "--mode MODE" "the mode to run metabase in"]])
+
+  (-> (cli/parse-opts ["--mode" "monolith"]
+                      [["-m" "--mode MODE" "the mode to run metabase in"]])
+      :options :mode mode->capabilities)
 
   (cli/parse-opts ["foo" "--arg" "value"]
                   [["-m" "--mode MODE" "the mode to run metabase in"]]
