@@ -205,23 +205,40 @@
           {}
           deps-map))
 
-(defn bfs-descendants
-  "Return all descendant nodes reachable from start-node via adjacency-fn (excluding start).
-   adjacency-fn should take a node and return its neighbors (e.g., a map or function)."
-  [adjacency-fn start-node]
-  (loop [queue   (vec (adjacency-fn start-node))
-         idx     0
-         visited #{}
-         result  []]
-    (if (>= idx (count queue))
-      result
-      (let [current (nth queue idx)]
-        (if (visited current)
-          (recur queue (inc idx) visited result)
-          (recur (into queue (adjacency-fn current))
-                 (inc idx)
-                 (conj visited current)
-                 (conj result current)))))))
+(defn bfs-traverse
+  "BFS traversal from start node(s) through an edge map.
+
+   edges-map - adjacency map from node to its neighbors
+   start     - a single node or collection of start nodes
+
+   Options:
+   - :include-start? - include start node(s) in result (default: false)
+   - :node-filter    - predicate controlling which nodes are visited and included
+                       (default: all nodes). Nodes failing filter are ignored entirely.
+
+   Returns a vector of reachable nodes in BFS order (no duplicates)."
+  [edges-map start & {:keys [include-start? node-filter]
+                      :or   {include-start? false node-filter (constantly true)}}]
+  (let [start-nodes (if (or (sequential? start) (set? start)) start [start])
+        init-nodes  (filterv node-filter start-nodes)
+        init-set    (set init-nodes)]
+    (loop [queue   (if include-start?
+                     init-nodes
+                     (vec (filter node-filter (mapcat edges-map start-nodes))))
+           idx     0
+           visited (if include-start? init-set #{})
+           result  (if include-start? init-nodes [])]
+      (if (>= idx (count queue))
+        result
+        (let [current (nth queue idx)]
+          (if (visited current)
+            (recur queue (inc idx) visited result)
+            (let [children  (filter node-filter (get edges-map current []))
+                  new-nodes (remove visited children)]
+              (recur (into queue new-nodes)
+                     (inc idx)
+                     (conj visited current)
+                     (conj result current)))))))))
 
 (defn path-induced-subgraph
   "Given a list of internal entities, compute the path-induced subgraph.

@@ -791,14 +791,11 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    ;; If source or target changed, mark as stale.
-    ;; We set both definition_stale and analysis_stale explicitly here rather than
-    ;; relying solely on the before-update hook. See: https://github.com/metabase/metabase/pull/67974
     (let [source-or-target-changed? (or (:source body) (:target body))
           update-body (cond-> body
                         source-or-target-changed? (assoc :definition_stale true))]
       (t2/update! :model/WorkspaceTransform tx-id update-body)
-      ;; Mark workspace as stale too if source/target changed
+      ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
         ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier

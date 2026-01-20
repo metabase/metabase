@@ -12,9 +12,6 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-;; Forward declarations for functions defined later but needed earlier
-(declare get-or-calculate-graph)
-
 (defn- query-ungranted-external-inputs
   "Query for external inputs in a workspace that haven't been granted access yet.
    External inputs are tables that are not shadowed by any output tables.
@@ -174,14 +171,16 @@
   [nodes]
   (ids-for-type :workspace-transform nodes))
 
+(declare get-or-calculate-graph!)
+
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
    Returns true if any ancestor had its definition or input data changed since it last ran.
    Note: external transforms are not checked here, their staleness must be checked separately."
   [workspace ref-id]
-  (let [graph (get-or-calculate-graph workspace)]
+  (let [graph (get-or-calculate-graph! workspace)]
     (when-let [deps-map (:dependencies graph)]
-      (let [upstream     (ws.dag/bfs-descendants deps-map {:node-type :workspace-transform :id ref-id})
+      (let [upstream     (ws.dag/bfs-traverse deps-map {:node-type :workspace-transform :id ref-id})
             upstream-ids (workspace-transform-ids upstream)]
         (and (seq upstream-ids)
              (t2/exists? :model/WorkspaceTransform
@@ -195,10 +194,10 @@
   "Mark all transitive downstream workspace transforms as input_data_stale.
    Traverses the dependency graph downward from the given transform."
   [workspace ref-id]
-  (let [graph (get-or-calculate-graph workspace)]
+  (let [graph (get-or-calculate-graph! workspace)]
     (when-let [deps-map (:dependencies graph)]
       (let [forward-edges   (ws.dag/reverse-graph deps-map)
-            downstream      (ws.dag/bfs-descendants forward-edges {:node-type :workspace-transform :id ref-id})
+            downstream      (ws.dag/bfs-traverse forward-edges {:node-type :workspace-transform :id ref-id})
             downstream-ids  (workspace-transform-ids downstream)]
         (when (seq downstream-ids)
           (t2/update! :model/WorkspaceTransform
@@ -535,6 +534,20 @@
     ;; This decreases the chance of returning a graph with transient corruption.
     (or (graph-with-minimum-version ws-id (inc version)) graph)))
 
+(defn- fetch-staleness-map
+  "Fetch staleness flags for workspace transforms from the database.
+   Returns a map of ref-id -> {:definition_stale bool, :input_data_stale bool}."
+  [ws-id ref-ids]
+  (when (seq ref-ids)
+    (into {}
+          (map (fn [t] [(:ref_id t) (select-keys t [:definition_stale :input_data_stale])]))
+          (t2/select :model/WorkspaceTransform
+                     :workspace_id ws-id
+                     :ref_id [:in ref-ids]))))
+
+(defn- workspace-transform? [entity]
+  (= :workspace-transform (:node-type entity)))
+
 (defn- compute-transitive-staleness
   "Compute transitive staleness for graph entities.
    An entity is stale if:
@@ -545,86 +558,51 @@
    This propagates staleness down the graph using a BFS from all initially stale nodes."
   [ws-id graph]
   (let [ws-tx-ids      (workspace-transform-ids (:entities graph))
-        ;; Fetch local staleness state from DB
-        staleness-map  (when (seq ws-tx-ids)
-                         (into {}
-                               (map (fn [t] [(:ref_id t) (select-keys t [:definition_stale :input_data_stale])]))
-                               (t2/select :model/WorkspaceTransform
-                                          :workspace_id ws-id
-                                          :ref_id [:in ws-tx-ids])))
-        ;; Helper to check if a node is locally stale
+        staleness-map  (fetch-staleness-map ws-id ws-tx-ids)
         locally-stale? (fn [entity]
                          (let [staleness (get staleness-map (:id entity))]
                            (or (:definition_stale staleness)
                                (:input_data_stale staleness))))
-        ;; Find all initially stale nodes
-        init-stale     (into #{}
-                             (comp (filter #(= :workspace-transform (:node-type %)))
-                                   (filter locally-stale?)
-                                   (map identity))
-                             (:entities graph))
-        ;; Propagate staleness down the graph using BFS
-        deps-map       (:dependencies graph)
-        forward-edges  (when deps-map (ws.dag/reverse-graph deps-map))
-        ;; BFS from all initially stale nodes to find all transitively stale nodes
-        all-stale      (if (and forward-edges (seq init-stale))
-                         (loop [queue   (vec init-stale)
-                                idx     0
-                                visited init-stale]
-                           (if (>= idx (count queue))
-                             visited
-                             (let [current    (nth queue idx)
-                                   children   (get forward-edges current [])
-                                   ;; Only include workspace transforms in staleness propagation
-                                   ws-children (filter #(= :workspace-transform (:node-type %)) children)
-                                   new-nodes  (remove visited ws-children)]
-                               (recur (into queue new-nodes)
-                                      (inc idx)
-                                      (into visited new-nodes)))))
-                         init-stale)
-        ;; Build updated entities with staleness info
-        updated-entities (mapv (fn [entity]
-                                 (if (= :workspace-transform (:node-type entity))
-                                   (let [staleness (get staleness-map (:id entity)
-                                                        {:definition_stale false
-                                                         :input_data_stale false})]
-                                     (-> entity
-                                         (merge staleness)
-                                         ;; Add computed :stale field for the overall staleness
-                                         (assoc :stale (contains? all-stale entity))))
-                                   entity))
-                               (:entities graph))]
-    (assoc graph :entities updated-entities)))
+        init-stale     (filter (every-pred workspace-transform? locally-stale?)
+                               (:entities graph))
+        forward-edges  (some-> (:dependencies graph) ws.dag/reverse-graph)
+        all-stale      (if forward-edges
+                         (set (ws.dag/bfs-traverse forward-edges init-stale
+                                                   :include-start? true
+                                                   :node-filter workspace-transform?))
+                         (set init-stale))
+        annotate       (fn [entity]
+                         (if (workspace-transform? entity)
+                           (-> entity
+                               (merge (get staleness-map (:id entity)
+                                           {:definition_stale false :input_data_stale false}))
+                               (assoc :stale (contains? all-stale entity)))
+                           entity))]
+    (update graph :entities #(mapv annotate %))))
 
-(defn get-or-calculate-graph
+(defn get-or-calculate-graph!
   "Return the dependency graph for a workspace.
    Uses cached graph if version matches, otherwise recalculates it.
    Thread-safe via epochal versioning.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating.
 
-   Note: Staleness is NOT computed by default. Use `get-or-calculate-graph-with-staleness`
-   when you need staleness information, as computing it can be expensive."
-  [{ws-id :id, graph-version :graph_version :as workspace}]
-  (or (fully-persisted-graph ws-id graph-version)
-      (calculate-and-persist-graph! workspace graph-version)))
-
-(defn get-or-calculate-graph-with-staleness
-  "Return the dependency graph for a workspace with staleness information computed.
-   Computes transitive staleness: an entity is stale if it or any of its ancestors changed.
-
-   Use this when you need staleness info (e.g., for running stale transforms).
-   For other uses, prefer `get-or-calculate-graph` which skips the staleness computation."
-  [{ws-id :id :as workspace}]
-  (when-let [graph (get-or-calculate-graph workspace)]
-    (compute-transitive-staleness ws-id graph)))
+   Options:
+   - :with-staleness? - when true, computes transitive staleness for each entity.
+     An entity is stale if it or any of its ancestors changed. Default: false."
+  ([workspace]
+   (get-or-calculate-graph! workspace nil))
+  ([{ws-id :id, graph-version :graph_version :as workspace} {:keys [with-staleness?]}]
+   (when-let [graph (or (fully-persisted-graph ws-id graph-version)
+                        (calculate-and-persist-graph! workspace graph-version))]
+     (if with-staleness?
+       (compute-transitive-staleness ws-id graph)
+       graph))))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
   [{ws-id :id :as workspace} & {:keys [stale-only?]}]
   ;; Use staleness-aware graph if we need to filter by staleness
-  (let [graph        (if stale-only?
-                       (get-or-calculate-graph-with-staleness workspace)
-                       (get-or-calculate-graph workspace))
+  (let [graph        (get-or-calculate-graph! workspace {:with-staleness? stale-only?})
         entities     (:entities graph)
         ;; Filter entities to only stale if stale-only? is true
         ;; Uses computed :stale field which accounts for transitive staleness
