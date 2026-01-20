@@ -11,7 +11,10 @@ import { Notebook as QBNotebook } from "metabase/querying/notebook/components/No
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+
+import { QueryEditorAndResults } from "./QueryEditorAndResults";
 
 /**
  * @interface
@@ -70,28 +73,43 @@ export const Editor = ({
     getSetting(state, "report-timezone-long"),
   );
 
-  return (
-    question && (
-      <ScrollArea w="100%" h="100%">
-        <QBNotebook
-          question={question}
-          isDirty={isDirty}
-          isRunnable={isRunnable}
-          // the visualization button relies on this boolean
-          isResultDirty={true}
-          reportTimezone={reportTimezone}
-          readOnly={false}
-          updateQuestion={async (nextQuestion: Question) =>
-            await updateQuestion(nextQuestion, { run: false })
-          }
-          runQuestionQuery={async () => {
-            onApply();
-            await queryQuestion();
-          }}
-          setQueryBuilderMode={() => {}}
-          hasVisualizeButton={hasVisualizeButton}
-        />
-      </ScrollArea>
-    )
+  if (!question) {
+    return null;
+  }
+
+  return Lib.queryDisplayInfo(question.query()).isNative ? (
+    <QueryEditorAndResults
+      question={question}
+      hasVisualizeButton={hasVisualizeButton}
+      isDirty={isDirty}
+      updateQuestion={async (nextQuestion: Question) =>
+        await updateQuestion(nextQuestion, { run: false })
+      }
+      runQuestionQuery={async () => {
+        onApply();
+        await queryQuestion();
+      }}
+    />
+  ) : (
+    <ScrollArea w="100%" h="100%">
+      <QBNotebook
+        question={question}
+        isDirty={isDirty}
+        isRunnable={isRunnable}
+        // the visualization button relies on this boolean
+        isResultDirty={true}
+        reportTimezone={reportTimezone}
+        readOnly={false}
+        updateQuestion={async (nextQuestion: Question) =>
+          await updateQuestion(nextQuestion, { run: false })
+        }
+        runQuestionQuery={async () => {
+          onApply();
+          await queryQuestion();
+        }}
+        setQueryBuilderMode={() => {}}
+        hasVisualizeButton={hasVisualizeButton}
+      />
+    </ScrollArea>
   );
 };

@@ -321,3 +321,26 @@
   {:pre [(= (count bindings) 2)]}
   `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))
+
+;;;; Malli schema for StreamingResponse
+
+(defn streaming-response-schema
+  "Malli schema for a streaming HTTP response that will contain JSON matching `content-schema`.
+
+  At runtime, validates that the response is a StreamingResponse instance.
+  WARNING: DOES NOT VALIDATE the actual data being streamed at runtime. For OpenAPI documentation, uses `content-schema`
+  to describe the JSON response body.
+
+  Example:
+    (api.macros/defendpoint :post \"/query\"
+      :- (server/streaming-response-schema
+           [:map
+            [:data [:map [:cols sequential?] [:rows sequential?]]]
+            [:row_count :int]])
+      ...)"
+  [content-schema]
+  [:fn
+   {:openapi/response-schema content-schema
+    :description             "Streaming JSON response"
+    :error/message           "Non-streaming response returned from streaming endpoint"}
+   #(instance? StreamingResponse %)])

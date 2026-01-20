@@ -1,4 +1,5 @@
 name: Prepare front-end environment
+description: "Prepare the front-end environment for the CI build"
 inputs:
   node-version:
     description: "The version of Node.js to use, overriding .nvmrc"

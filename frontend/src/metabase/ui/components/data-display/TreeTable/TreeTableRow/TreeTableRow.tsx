@@ -3,6 +3,7 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
+import { Link } from "react-router";
 
 import { Flex } from "metabase/ui";
 
@@ -218,8 +219,34 @@ export function TreeTableRow<TData extends TreeNodeData>({
   classNames,
   styles,
   getRowProps,
+  href,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
+
+  const content = (
+    <TreeTableRowContent
+      row={row}
+      rowIndex={rowIndex}
+      table={table}
+      columnWidths={columnWidths}
+      showCheckboxes={showCheckboxes}
+      showExpandButtons={showExpandButtons}
+      indentWidth={indentWidth}
+      activeRowId={activeRowId ?? null}
+      selectedRowId={selectedRowId ?? null}
+      isDisabled={isDisabled}
+      isChildrenLoading={isChildrenLoading}
+      isExpanded={isExpanded}
+      canExpand={canExpand}
+      getSelectionState={getSelectionState}
+      onCheckboxClick={onCheckboxClick}
+      onRowClick={onRowClick}
+      onRowDoubleClick={onRowDoubleClick}
+      classNames={classNames}
+      styles={styles}
+      rowProps={rowProps}
+    />
+  );
 
   return (
     <div
@@ -228,28 +255,13 @@ export function TreeTableRow<TData extends TreeNodeData>({
       className={S.root}
       style={{ transform: `translateY(${virtualItem.start}px)` }}
     >
-      <TreeTableRowContent
-        row={row}
-        rowIndex={rowIndex}
-        table={table}
-        columnWidths={columnWidths}
-        showCheckboxes={showCheckboxes}
-        showExpandButtons={showExpandButtons}
-        indentWidth={indentWidth}
-        activeRowId={activeRowId ?? null}
-        selectedRowId={selectedRowId ?? null}
-        isDisabled={isDisabled}
-        isChildrenLoading={isChildrenLoading}
-        isExpanded={isExpanded}
-        canExpand={canExpand}
-        getSelectionState={getSelectionState}
-        onCheckboxClick={onCheckboxClick}
-        onRowClick={onRowClick}
-        onRowDoubleClick={onRowDoubleClick}
-        classNames={classNames}
-        styles={styles}
-        rowProps={rowProps}
-      />
+      {href ? (
+        <Link to={href} className={S.link}>
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </div>
   );
 }

@@ -3,7 +3,6 @@ import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -90,8 +89,5 @@ export function shouldRunCardQuery({
     return true;
   }
 
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-
-  return question.canRun() && (question.isSaved() || !isNative);
+  return question.canRun();
 }

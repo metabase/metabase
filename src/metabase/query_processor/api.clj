@@ -26,6 +26,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -88,11 +89,8 @@
                                       rff))
           (qp/process-query (update query :info merge info) rff))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
@@ -123,11 +121,8 @@
     json-key
     (keyword json-key)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
                                [:export-format ::qp.schema/export-format]]
@@ -212,11 +207,8 @@
       (cond-> compiled
         pretty (update :query prettify)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params

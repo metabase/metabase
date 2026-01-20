@@ -28,6 +28,8 @@ type QueryEditorProps = {
   onRejectProposed?: () => void;
   onBlur?: () => void;
   topBarInnerContent?: ReactNode;
+  height?: string | number;
+  extraEditorButton?: ReactNode;
 };
 
 export function QueryEditor({
@@ -41,6 +43,8 @@ export function QueryEditor({
   onRejectProposed,
   onBlur,
   topBarInnerContent,
+  height = "100%",
+  extraEditorButton,
 }: QueryEditorProps) {
   const {
     question,
@@ -78,7 +82,7 @@ export function QueryEditor({
 
   if (isLoading || error != null) {
     return (
-      <Center h="100%">
+      <Center h={height}>
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
@@ -86,7 +90,7 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h="100%" mih={0}>
+      <Flex flex={1} h={height} mih={0}>
         <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
           <QueryEditorBody
             question={question}
@@ -116,6 +120,7 @@ export function QueryEditor({
             onRejectProposed={onRejectProposed}
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
+            extraButton={extraEditorButton}
           />
           <QueryEditorVisualization
             question={question}

@@ -54,3 +54,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}

@@ -7,8 +7,7 @@ import type { FilterItem } from "./types";
 
 export function getFilterItems(): FilterItem[] {
   const allLabels: Record<FilterOption, string> = {
-    "in-dashboard": t`In a dashboard`,
-    "not-in-personal-collection": t`Not in personal collection`,
+    "include-in-personal-collections": t`Include items in personal collections`,
   };
 
   return FILTER_OPTIONS.map((option) => ({

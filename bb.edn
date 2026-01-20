@@ -83,6 +83,15 @@
    :requires [[mage.kondo :as kondo]]
    :task (task! (kondo/kondo-updated (:arguments parsed)))}
 
+  fix-unused-requires
+  {:doc "Removes unused requires flagged by clj-kondo"
+   :examples [["./bin/mage fix-unused-requires src/metabase/lib/validate.cljc" "Fix unused requires in a specific file"]
+              ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
+   :requires [[mage.fix-unused-requires :as fix]]
+   :arg-schema [:sequential [:string {:name "file-or-directory"
+                                      :description "Files or directories to fix unused requires in"}]]
+   :task (task! (fix/fix-files parsed))}
+
   check
   {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
    :examples [["./bin/mage check"]]

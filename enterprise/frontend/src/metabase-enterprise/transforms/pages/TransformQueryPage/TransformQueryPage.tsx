@@ -157,8 +157,6 @@ function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
-    setSourceAndRejectProposed(transform.source);
-
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
     }

@@ -135,7 +135,8 @@
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.jobs/run-job! job-id {:run-method :manual})
+     (transforms.jobs/run-job! job-id {:run-method :manual
+                                       :user-id api/*current-user-id*})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))

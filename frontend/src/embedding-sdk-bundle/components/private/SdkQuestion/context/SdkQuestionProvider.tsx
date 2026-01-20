@@ -77,7 +77,7 @@ export const SdkQuestionProvider = ({
 
   useSetupContentTranslations({ token });
 
-  const isNewQuestion = questionId === "new";
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
 
   const error = useSdkSelector(getError);
 

@@ -129,6 +129,25 @@
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
+(methodical/defmethod t2/batched-hydrate [:model/Transform :owner]
+  "Add owner (user) to a transform. If owner_user_id is set, fetches the user.
+   If owner_email is set instead, returns a map with just the email."
+  [_model _k transforms]
+  (if-not (seq transforms)
+    transforms
+    (let [owner-user-ids (into #{} (keep :owner_user_id) transforms)
+          id->owner (when (seq owner-user-ids)
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in owner-user-ids]))]
+      (for [transform transforms]
+        (assoc transform :owner
+               (cond
+                 (:owner_user_id transform)
+                 (get id->owner (:owner_user_id transform))
+
+                 (:owner_email transform)
+                 {:email (:owner_email transform)}))))))
+
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
   transform)
@@ -239,15 +258,16 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy      [:name :description :entity_id]
+  {:copy      [:name :description :entity_id :owner_email]
    :skip      [:dependency_analysis_version :source_type]
-   :transform {:created_at    (serdes/date)
-               :creator_id    (serdes/fk :model/User)
-               :collection_id (serdes/fk :model/Collection)
-               :source        {:export #(update % :query serdes/export-mbql)
-                               :import #(update % :query serdes/import-mbql)}
-               :target        {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+   :transform {:created_at     (serdes/date)
+               :creator_id     (serdes/fk :model/User)
+               :owner_user_id  (serdes/fk :model/User)
+               :collection_id  (serdes/fk :model/Collection)
+               :source         {:export #(update % :query serdes/export-mbql)
+                                :import #(update % :query serdes/import-mbql)}
+               :target         {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags           (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]

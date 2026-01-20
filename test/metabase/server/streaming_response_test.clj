@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [compojure.response]
+   [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.instance :as server.instance]
@@ -13,7 +14,8 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
@@ -330,3 +332,14 @@
                 "Response should not contain :via key")
             (is (= "preserve-me" (:custom-data error-response))
                 "Response should still include custom data")))))))
+
+(deftest ^:parallel streaming-response-schema-error-test
+  (testing "streaming-response-schema correctly validates responses"
+    (let [schema (streaming-response/streaming-response-schema [:map [:data :any]])]
+      (testing "StreamingResponse instances pass validation"
+        (is (mr/validate schema
+                         (streaming-response/-streaming-response (fn [_ _]) {}))))
+      (testing "Non-StreamingResponse values fail with a clear error"
+        (is (not (mr/validate schema {:data "not a streaming response"})))
+        (is (= ["Non-streaming response returned from streaming endpoint"]
+               (me/humanize (mr/explain schema {:data "not a streaming response"}))))))))

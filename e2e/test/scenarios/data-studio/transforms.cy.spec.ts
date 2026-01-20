@@ -747,6 +747,49 @@ LIMIT
     });
   });
 
+  describe("ownership", () => {
+    it("should be able to view and manage transform ownership", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("verify the ownership section is displayed");
+      getTransformsTargetContent().within(() => {
+        cy.findByText("Ownership").should("be.visible");
+        cy.findByText("Specify who is responsible for this transform.").should(
+          "be.visible",
+        );
+        cy.findByText("Owner").should("be.visible");
+      });
+
+      cy.log("change the owner to another user");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Robert Tableton").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("set an external email as owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+        cy.findByLabelText("Owner").clear().type("external@example.com");
+      });
+      H.popover().findByText("external@example.com").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("clear the owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("No owner").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+    });
+  });
+
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
@@ -954,7 +997,7 @@ LIMIT
 
       // Make a second change while first is still in progress
       // Select any available checkpoint field
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
       getFieldPicker().click();
 
       // Click the first available option in the popover
@@ -989,7 +1032,7 @@ LIMIT
       // The source strategy select should be visible
       // (Currently only one option "checkpoint" is available, so select might not be shown)
       // The checkpoint field select should be visible
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
 
       cy.log("Select a checkpoint field");
       getFieldPicker().click();

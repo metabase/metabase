@@ -279,10 +279,6 @@ For advanced theme configuration options, you can configure the `theme` object i
 }
 ```
 
-## Example app with theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a question or dashboard, and play around with changing colors.
-
 ## Limitations
 
 - CSS variables aren't yet supported. If you'd like Metabase to support CSS variables, please upvote this [feature request](https://github.com/metabase/metabase/issues/59237).
@@ -1623,10 +1619,6 @@ Guest embeds can't take advantage of:
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 
-## Example app with guest embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.
-
 ## Further reading
 
 - [Parameters for guest embeds](./static-embedding-parameters.md).
@@ -1943,12 +1935,6 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 
 
 For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
-
-## Example app with SSO embed and theming
-
-
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.
 
 ---
 
@@ -2890,7 +2876,17 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
+### Embed the visual query builder
+
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+
+```tsx
+
+```
+
+### Embed the SQL editor
+
+You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
 
 ```tsx
 
