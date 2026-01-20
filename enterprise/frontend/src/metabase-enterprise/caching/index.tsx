@@ -1,4 +1,5 @@
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { MetricCachingPage } from "metabase-enterprise/data-studio/metrics/pages/MetricCachingPage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
@@ -40,6 +41,7 @@ export function initializePlugin() {
     PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
       StrategyEditorForQuestionsAndDashboards;
     PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
+    PLUGIN_CACHING.MetricCachingPage = MetricCachingPage;
   }
 
   if (hasPremiumFeature("cache_preemptive")) {

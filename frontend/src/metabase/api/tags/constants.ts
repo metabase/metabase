@@ -41,6 +41,7 @@ export const TAG_TYPES = [
   "transform",
   "table",
   "task",
+  "task-run",
   "timeline",
   "timeline-event",
   "transform",

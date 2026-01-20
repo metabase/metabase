@@ -34,6 +34,22 @@
   ;; (fn [_k _schema _value] nil)
   nil)
 
+(defn- deref-entry [ref-box value-thunk]
+  #?(:clj  (or (.get ^java.lang.ref.SoftReference @ref-box)
+               (let [v        (value-thunk)
+                     soft-ref (java.lang.ref.SoftReference. v)]
+                 (vreset! ref-box soft-ref)
+                 v))
+     :cljs (or (.deref @ref-box)
+               (let [v        (value-thunk)
+                     weak-ref (js/WeakRef. v)]
+                 (vreset! ref-box weak-ref)
+                 v))))
+
+(defn- cache-entry [value]
+  #?(:clj  (volatile! (java.lang.ref.SoftReference. value))
+     :cljs (volatile! (js/WeakRef. value))))
+
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
   with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
@@ -43,11 +59,11 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+    (or (some-> (get (get @cache k) schema-key) (deref-entry value-thunk)) ; get-in is terribly inefficient
         (let [v (value-thunk)]
           (when *cache-miss-hook*
             (*cache-miss-hook* k schema v))
-          (swap! cache assoc-in [k schema-key] v)
+          (swap! cache assoc-in [k schema-key] (cache-entry v))
           v))))
 
 (defn validator
