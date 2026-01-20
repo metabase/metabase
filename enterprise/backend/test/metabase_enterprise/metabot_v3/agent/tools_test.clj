@@ -1,7 +1,9 @@
 (ns metabase-enterprise.metabot-v3.agent.tools-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]))
+   [metabase-enterprise.metabot-v3.agent.tools :as agent-tools]
+   [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
+   [metabase-enterprise.metabot-v3.tools.filters :as filter-tools]))
 
 (deftest all-tools-test
   (testing "all-tools registry contains expected tools"
@@ -9,6 +11,7 @@
     (is (contains? agent-tools/all-tools "search"))
     (is (contains? agent-tools/all-tools "query_metric"))
     (is (contains? agent-tools/all-tools "query_model"))
+    (is (contains? agent-tools/all-tools "construct_notebook_query"))
     (is (contains? agent-tools/all-tools "get_field_values"))
     (is (contains? agent-tools/all-tools "get_entity_details"))
     (is (contains? agent-tools/all-tools "get_metric_details"))
@@ -97,6 +100,7 @@
       (is (contains? tools "search"))
       (is (contains? tools "query_metric"))
       (is (contains? tools "query_model"))
+      (is (contains? tools "construct_notebook_query"))
       (is (contains? tools "get_field_values"))
       (is (contains? tools "show_results_to_user"))))
 
@@ -133,7 +137,8 @@
       (is (map? tools))
       (is (contains? tools "search"))
       (is (contains? tools "query_metric"))
-      (is (contains? tools "query_model"))))
+      (is (contains? tools "query_model"))
+      (is (contains? tools "construct_notebook_query"))))
 
   (testing "returns empty map for unknown profile"
     (let [tools (agent-tools/get-tools-for-profile :unknown-profile #{})]
@@ -169,6 +174,74 @@
     ;; This verifies the pattern: LLM sends snake_case -> wrapper -> kebab-case handler
     ;; Structural verification only - actual calls require integration tests
     (is (>= (count agent-tools/all-tools) 13))))
+
+(deftest query-model-ai-tool-normalizes-field-ids-test
+  (testing "query_model AI tool normalizes nested keys to kebab-case"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-model (fn [args]
+                                               (reset! captured args)
+                                               {:structured-output {:type :query}})]
+        (agent-tools/query-model-ai-tool
+         {:model_id 1
+          :fields [{:field_id "c1-0"}]
+          :filters [{:field_id "c1-1" :operation "equals" :value 1}]
+          :group_by [{:field_id "c1-2"}]
+          :order_by [{:field {:field_id "c1-3"} :direction "descending"}]}))
+      (is (some? @captured))
+      (is (= "c1-0" (get-in @captured [:fields 0 :field-id])))
+      (is (= "c1-1" (get-in @captured [:filters 0 :field-id])))
+      (is (= :equals (get-in @captured [:filters 0 :operation])))
+      (is (= "c1-2" (get-in @captured [:group-by 0 :field-id])))
+      (is (= "c1-3" (get-in @captured [:order-by 0 :field :field-id])))
+      (is (= :desc (get-in @captured [:order-by 0 :direction]))))))
+
+(deftest query-model-ai-tool-rejects-table-field-ids-test
+  (testing "query_model AI tool rejects table field ids"
+    (let [result (agent-tools/query-model-ai-tool
+                  {:model_id 6
+                   :fields [{:field_id "t6-1"}]
+                   :order_by [{:field {:field_id "t6-1"} :direction "descending"}]
+                   :limit 10})]
+      (is (string? (:output result)))
+      (is (re-find #"create_sql_query" (:output result))))))
+
+(deftest construct-notebook-query-tool-raw-table-test
+  (testing "construct_notebook_query maps raw table query args"
+    (let [captured (atom nil)
+          chart-called (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [args]
+                                                      (reset! chart-called args)
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :query-id (:query-id args)
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "check seats"
+                       :query {:query_type "raw"
+                               :source {:table_id 6}
+                               :filters [{:filter_type "multi_value"
+                                          :field_id "t6-1"
+                                          :operation "equals"
+                                          :values ["a" "b"]}]
+                               :fields [{:field_id "t6-1"}]
+                               :order_by [{:field {:field_id "t6-1"} :direction "desc"}]
+                               :limit 10}
+                       :visualization {:chart_type "table"}})]
+          (is (= 6 (:table-id @captured)))
+          (is (= "t6-1" (get-in @captured [:fields 0 :field-id])))
+          (is (= ["a" "b"] (get-in @captured [:filters 0 :values])))
+          (is (= :desc (get-in @captured [:order-by 0 :direction])))
+          (is (= "c-1" (get-in result [:structured-output :chart-id])))
+          (is (= "q-1" (get-in result [:structured-output :query-id])))
+          (is (= :table (get-in @chart-called [:chart-type])))
+          (is (seq (:data-parts result))))))))
 
 ;;; wrap-tools-with-state tests
 
