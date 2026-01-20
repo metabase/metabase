@@ -4,9 +4,8 @@ import type {
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/lib/colors";
+import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
-
-import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -102,7 +101,7 @@ export function getEmbeddingColorPalette(
   );
 
   const chartColors =
-    sdkColors.charts && getEmbeddingChartColors(sdkColors.charts);
+    sdkColors.charts && mapChartColorsToAccents(sdkColors.charts);
 
   return {
     ...originalColors,
