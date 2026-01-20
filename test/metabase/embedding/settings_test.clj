@@ -20,8 +20,8 @@
             (embed.settings/show-static-embed-terms! false)
             (is (not (embed.settings/show-static-embed-terms))))))
       (when config/ee-available?
-        (testing "should return false when a self-hosted EE user has a valid token"
-          (mt/with-premium-features #{}
+        (testing "should return false when a self-hosted EE user has a valid token with :embedding feature"
+          (mt/with-premium-features #{:embedding}
             (mt/with-random-premium-token! [_token]
               (is (not (embed.settings/show-static-embed-terms)))
               (mt/with-temporary-setting-values [show-static-embed-terms nil]
@@ -34,14 +34,15 @@
             (testing "should return false when the user has already accepted licensing terms"
               (embed.settings/show-static-embed-terms! false)
               (is (not (embed.settings/show-static-embed-terms))))))
-        (testing "Starter should respect the setting value"
-          (with-redefs [premium-features/plan-alias (constantly "starter")]
-            (mt/with-temporary-setting-values [show-static-embed-terms nil]
-              (testing "should return true when user has not accepted licensing terms"
-                (is (embed.settings/show-static-embed-terms)))
-              (testing "should return false when user has already accepted licensing terms"
-                (embed.settings/show-static-embed-terms! false)
-                (is (not (embed.settings/show-static-embed-terms)))))))))))
+        (testing "Starter (no :embedding feature) should respect the setting value"
+          (mt/with-premium-features #{}
+            (mt/with-random-premium-token! [_token]
+              (mt/with-temporary-setting-values [show-static-embed-terms nil]
+                (testing "should return true when user has not accepted licensing terms"
+                  (is (embed.settings/show-static-embed-terms)))
+                (testing "should return false when user has already accepted licensing terms"
+                  (embed.settings/show-static-embed-terms! false)
+                  (is (not (embed.settings/show-static-embed-terms))))))))))))
 
 (defn- embedding-event?
   "Used to make sure we only test against embedding-events in `snowplow-test/pop-event-data-and-user-id!`."
