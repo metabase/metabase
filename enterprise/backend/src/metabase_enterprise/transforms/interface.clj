@@ -37,6 +37,11 @@
      Expected to be either `:cron` (for scheduled runs) or `:manual` (for ad-hoc or test runs)
      Used for instrumentation / metadata purposes.
 
+  - `:user-id`
+     Optional user ID to attribute the run to. For manual runs, this should be the ID of the user who
+     triggered the run. For cron/scheduled runs, this is typically nil, and the run will be attributed
+     to the transform's owner (if set) or creator.
+
   Do not use this directly. Use [[metabase-enterprise.transforms.execute/execute!]] instead."
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
