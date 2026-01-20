@@ -51,7 +51,7 @@
   - The collected parts vector on success
   - An exception object on failure (caller should check with instance?)"
   [messages tools profile]
-  (let [model (get profile :model "claude-sonnet-4-5-20250929")
+  (let [model (get profile :model "claude-haiku-4-5")
         ;; Claude API takes system message separately, not in the messages array
         ;; Extract the system message content and filter it from input messages
         system-msg (first (filter #(= (:role %) "system") messages))
@@ -142,8 +142,8 @@
    (fn [mem part]
      (if-let [structured (get-structured-output (:result part))]
        ;; Chart results have :chart-id and :query-id (from create-chart-tool)
-       ;; Distinguish from queries which have :query-id and :query
-       (if (and (:chart-id structured) (:query-id structured) (not (:query structured)))
+       ;; Some tools may include :query as well; still store the chart.
+       (if (and (:chart-id structured) (:query-id structured))
          (do
            (log/debug "Storing chart in memory" {:chart-id (:chart-id structured)
                                                  :query-id (:query-id structured)})
