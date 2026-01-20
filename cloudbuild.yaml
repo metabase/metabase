@@ -1,0 +1,45 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:$COMMIT_SHA'
+      - '-t'
+      - 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:latest'
+      - '.'
+    timeout: '3600s'
+
+  # Push both tags
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update'
+      - 'metabase'
+      - '--image=australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:$COMMIT_SHA'
+      - '--region=australia-southeast1'
+
+images:
+  - 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:$COMMIT_SHA'
+  - 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '7200s'
+```
+
+### `.gcloudignore` (to speed up builds)
+```
+.git
+.gitignore
+node_modules/
+*.md
+.github/
