@@ -674,16 +674,20 @@
                           (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
                           :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                           (:segment :measure) :table.display_name)
-        dependents-count-column {:select [[[:count [:distinct :analysis_finding_error.analyzed_entity_id :analysis_finding_error.analyzed_entity_type]]]]
+        dependents-count-column {:select [[[:count [:distinct [:concat [:cast :analyzed_entity_id :text]
+                                                               [:inline ":"]
+                                                               :analyzed_entity_type]]]]]
                                  :from [:analysis_finding_error]
                                  :where [:and
-                                         [:= :analysis_finding_error.source_entity_id :entity.id]
-                                         [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
-        dependents-errors-column {:select [[[:count [:distinct :analysis_finding_error.error_detail :analysis_finding_error.error_type]]]]
+                                         [:= :source_entity_id :entity.id]
+                                         [:= :source_entity_type [:inline (name entity-type)]]]}
+        dependents-errors-column {:select [[[:count [:distinct [:concat :error_type
+                                                                [:inline ":"]
+                                                                [:coalesce :error_detail [:inline ""]]]]]]]
                                   :from [:analysis_finding_error]
                                   :where [:and
-                                          [:= :analysis_finding_error.source_entity_id :entity.id]
-                                          [:= :analysis_finding_error.source_entity_type [:inline (name entity-type)]]]}
+                                          [:= :source_entity_id :entity.id]
+                                          [:= :source_entity_type [:inline (name entity-type)]]]}
         dependency-join (case query-type
                           :unreferenced [:dependency [:and
                                                       [:= :dependency.to_entity_id :entity.id]
