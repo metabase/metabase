@@ -604,6 +604,47 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
     ]);
   });
+
+  it("should display formatted datetime for started_at and ended_at", async () => {
+    setup({
+      tasksResponse: createMockTasksResponse({
+        data: [
+          createMockTask({
+            started_at: "2023-03-04T01:45:26.005475-08:00",
+            ended_at: "2023-03-04T01:46:26.518597-08:00",
+          }),
+        ],
+      }),
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    const row = screen.getByTestId("task");
+    const dateElements = within(row).getAllByText(/March 4, 2023/);
+    expect(dateElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should show raw ISO timestamp in tooltip on hover", async () => {
+    const rawTimestamp = "2023-03-04T01:45:26.005475-08:00";
+    setup({
+      tasksResponse: createMockTasksResponse({
+        data: [
+          createMockTask({
+            started_at: rawTimestamp,
+            ended_at: "2023-03-04T01:46:26.518597-08:00",
+          }),
+        ],
+      }),
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    const row = screen.getByTestId("task");
+    const dateTimeElements = within(row).getAllByText(/March 4, 2023/);
+    await userEvent.hover(dateTimeElements[0]);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
+  });
 });
 
 function createMockTasksResponse(
