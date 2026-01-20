@@ -147,10 +147,10 @@
                            (get-in base-type [:natives driver])
 
                            :else
-                           ;; Use the SQL type from sql.tx/field-base-type->sql-type to get
-                           ;; the actual database type (e.g., "TIMESTAMPTZ" instead of "DateTimeWithTZ").
-                           ;; Use requiring-resolve to avoid cyclic dependency.
-                           ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+                           ;; Use fake-sync-database-type to get the type the database reports
+                           ;; (which may differ from the DDL type used to create columns).
+                           ;; E.g., Snowflake: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+                           (tx/fake-sync-database-type driver base-type))
         actual-base-type (if (map? base-type)
                            (or effective-type :type/*)
                            base-type)

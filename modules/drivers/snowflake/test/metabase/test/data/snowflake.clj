@@ -409,3 +409,15 @@
   ;; with the database name. Unlike Redshift (which uses test_data_venues), Snowflake
   ;; tables are just "venues" within the sha_xxx_test_data database.
   table-name)
+
+(defmethod tx/fake-sync-database-type :snowflake
+  [_driver base-type]
+  ;; Snowflake normalizes types internally, so what we create differs from what it reports.
+  ;; E.g., we create TEXT but Snowflake reports VARCHAR in INFORMATION_SCHEMA.
+  (case base-type
+    :type/Text           "VARCHAR"
+    :type/Float          "DOUBLE"
+    :type/Integer        "NUMBER"
+    :type/BigInteger     "NUMBER"
+    ;; For types that don't change, use the creation type
+    (sql.tx/field-base-type->sql-type :snowflake base-type)))

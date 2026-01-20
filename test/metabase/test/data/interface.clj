@@ -542,6 +542,21 @@
   [_driver database-name table-name]
   (db-qualified-table-name database-name table-name))
 
+(defmulti fake-sync-database-type
+  "Return the database_type string for fake sync Field rows.
+   By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
+   Drivers where the reported type differs from the creation type (like Snowflake where
+   TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
+   database actually reports in INFORMATION_SCHEMA."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-database-type ::test-extensions
+  [driver base-type]
+  ;; Default: use the DDL type (what we create columns with)
+  ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+
 (defn on-master-or-release-branch?
   "Returns true if running on master or a release-* branch.
    Detection methods (in priority order):
