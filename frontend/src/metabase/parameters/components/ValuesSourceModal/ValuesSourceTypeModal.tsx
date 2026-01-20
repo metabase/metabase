@@ -18,8 +18,8 @@ import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Flex, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
@@ -32,6 +32,7 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  Field,
   Parameter,
   ParameterValue,
   ParameterValues,
@@ -291,7 +292,7 @@ const CardSourceModal = ({
     (event: SelectChangeEvent<Field>) => {
       onChangeSourceConfig({
         ...sourceConfig,
-        value_field: event.target.value.reference(),
+        value_field: event.target.value.field_ref,
       });
     },
     [sourceConfig, onChangeSourceConfig],
@@ -327,11 +328,7 @@ const CardSourceModal = ({
                 onChange={handleFieldChange}
               >
                 {fields.map((field, index) => (
-                  <Option
-                    key={index}
-                    name={field.displayName()}
-                    value={field}
-                  />
+                  <Option key={index} name={field.display_name} value={field} />
                 ))}
               </Select>
             ) : (
@@ -471,21 +468,21 @@ const getSourceValues = (values: ParameterValue[] = []) => {
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find((field) => _.isEqual(field.reference(), fieldReference));
+  return fields.find((field) => _.isEqual(field.field_ref, fieldReference));
 };
 
 const getFieldFilter = (parameter: Parameter) => {
   const type = getParameterType(parameter);
   if (type === "number") {
-    return (field: Field) => field.isNumeric();
+    return (field: Field) => Lib.isNumeric(Lib.legacyColumnTypeInfo(field));
   }
-  return (field: Field) => field.isString();
+  return (field: Field) =>
+    Lib.isStringOrStringLike(Lib.legacyColumnTypeInfo(field));
 };
 
 const getSupportedFields = (question: Question, parameter: Parameter) => {
   const fieldFilter = getFieldFilter(parameter);
-  const fields =
-    question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
+  const fields = question.getResultMetadata();
   return fields.filter(fieldFilter);
 };
 

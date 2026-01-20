@@ -47,12 +47,16 @@ describe("ValuesSourceModal", () => {
       fields: [
         createMockField({
           id: 1,
+          field_ref: ["field", 1, null],
           base_type: "type/Text",
+          effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
         createMockField({
           id: 2,
+          field_ref: ["field", 2, null],
           base_type: "type/Text",
+          effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
       ],
@@ -213,14 +217,18 @@ describe("ValuesSourceModal", () => {
               result_metadata: [
                 createMockField({
                   id: 1,
+                  field_ref: ["field", 1, null],
                   display_name: "ID",
                   base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
                 createMockField({
                   id: 2,
+                  field_ref: ["field", 2, null],
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -264,8 +272,10 @@ describe("ValuesSourceModal", () => {
               result_metadata: [
                 createMockField({
                   id: 2,
+                  field_ref: ["field", 2, null],
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -331,8 +341,10 @@ describe("ValuesSourceModal", () => {
               result_metadata: [
                 createMockField({
                   id: 2,
+                  field_ref: ["field", 2, null],
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -365,8 +377,10 @@ describe("ValuesSourceModal", () => {
               result_metadata: [
                 createMockField({
                   id: 2,
+                  field_ref: ["field", 2, null],
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -480,11 +494,15 @@ describe("ValuesSourceModal", () => {
       fields: [
         createMockField({
           id: 1,
+          field_ref: ["field", 1, null],
           base_type: "type/Integer",
+          effective_type: "type/Integer",
         }),
         createMockField({
           id: 2,
+          field_ref: ["field", 2, null],
           base_type: "type/Integer",
+          effective_type: "type/Integer",
         }),
       ],
     });
