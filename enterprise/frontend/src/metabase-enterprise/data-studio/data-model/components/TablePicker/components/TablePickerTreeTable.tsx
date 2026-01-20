@@ -498,10 +498,9 @@ function handleRangeCheckboxSelection(params: {
     return memo;
   }, []);
 
-  const nextSelection: NodeSelection = rangeRows
-    .entries()
-    .reduce((memo, [rowIndex, rangeRow]) => {
-      const originalNode = nodeKeyToOriginal.get(rangeRow.original.nodeKey);
+  const nextSelection: NodeSelection = rangeRows.reduce(
+    (memo, row, rowIndex) => {
+      const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
       if (indexesToSkip.includes(rowIndex) || !originalNode) {
         return memo;
       }
@@ -514,7 +513,9 @@ function handleRangeCheckboxSelection(params: {
           addDatabaseToSelection(databaseNode, memo),
         )
         .otherwise(() => memo);
-    }, cloneSelection(baseSelection));
+    },
+    cloneSelection(baseSelection),
+  );
 
   return {
     selection: nextSelection,
