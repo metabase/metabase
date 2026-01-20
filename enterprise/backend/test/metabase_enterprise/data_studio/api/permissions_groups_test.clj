@@ -8,9 +8,14 @@
    [toucan2.core :as t2]))
 
 (deftest fetch-groups-test
-  (testing "GET /api/permissions/group - Data Analysts group is always visible on EE"
-    (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
-                   (:id (perms-group/data-analyst))))))
+  (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"
+    (mt/with-premium-features #{:data-studio}
+      (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
+                     (:id (perms-group/data-analyst))))))
+  (testing "GET /api/permissions/group - Data Analysts group is not visible without the feature"
+    (mt/with-premium-features #{}
+      (is (not (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
+                          (:id (perms-group/data-analyst))))))))
 
 ;;; ---------------------------------------- sync-data-analyst-group-for-oss! tests ----------------------------------------
 
