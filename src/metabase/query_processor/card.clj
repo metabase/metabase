@@ -334,24 +334,24 @@
         card-viz   (:visualization_settings card)
         merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp (if (= :pivot (:display card))
-             qp.pivot/run-pivot-query
-             (or qp process-query-for-card-default-qp))
-        runner (make-run qp export-format)
-        query (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                  (assoc :viz-settings merged-viz)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                         middleware))))
-        info (cond-> {:executed-by api/*current-user-id*
-                      :context context
-                      :card-id card-id
-                      :card-name (:name card)
-                      :dashboard-id dashboard-id
-                      :visualization-settings merged-viz}
-               (and (= (:type card) :model) (seq (:result_metadata card)))
-               (assoc :metadata/model-metadata (:result_metadata card)))]
+        qp         (if (= :pivot (:display card))
+                     qp.pivot/run-pivot-query
+                     (or qp process-query-for-card-default-qp))
+        runner     (make-run qp export-format)
+        query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                       (assoc :viz-settings merged-viz)
+                       (update :middleware (fn [middleware]
+                                             (merge
+                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                              middleware))))
+        info       (cond-> {:executed-by            api/*current-user-id*
+                            :context                context
+                            :card-id                card-id
+                            :card-name              (:name card)
+                            :dashboard-id           dashboard-id
+                            :visualization-settings merged-viz}
+                     (and (= (:type card) :model) (seq (:result_metadata card)))
+                     (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
       (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
