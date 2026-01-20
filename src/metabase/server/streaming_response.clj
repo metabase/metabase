@@ -328,7 +328,8 @@
   "Malli schema for a streaming HTTP response that will contain JSON matching `content-schema`.
 
   At runtime, validates that the response is a StreamingResponse instance.
-  For OpenAPI documentation, uses `content-schema` to describe the JSON response body.
+  WARNING: DOES NOT VALIDATE the actual data being streamed at runtime. For OpenAPI documentation, uses `content-schema`
+  to describe the JSON response body.
 
   Example:
     (api.macros/defendpoint :post \"/query\"
@@ -340,5 +341,6 @@
   [content-schema]
   [:fn
    {:openapi/response-schema content-schema
-    :description             "Streaming JSON response"}
+    :description             "Streaming JSON response"
+    :error/message           "Non-streaming response returned from streaming endpoint"}
    #(instance? StreamingResponse %)])
