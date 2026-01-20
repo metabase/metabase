@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();
@@ -31,7 +30,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={<Icon name="info" size={16} c="text-primary" />}
+        icon={<Icon name="info" size={16} />}
         color="brand"
         withCloseButton
         onClose={handleDismiss}
@@ -43,7 +42,6 @@ export const PermissionsEditorSplitPermsMessage = () => {
             fw="bold"
             target="_blank"
             href={docsUrl}
-            style={{ color: color("accent7") }}
           >{t`Learn more`}</Anchor>
         </Text>
       </Alert>
