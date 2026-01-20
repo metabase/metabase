@@ -19,6 +19,7 @@ type UpdateIncrementalSettingsProps = {
 
 const IncrementalTransformSettingsWrapper = ({
   transform,
+  readOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { values, setFieldValue } =
     useFormikContext<IncrementalSettingsFormValues>();
@@ -41,6 +42,7 @@ const IncrementalTransformSettingsWrapper = ({
         incremental={values.incremental}
         onIncrementalChange={handleIncrementalChange}
         variant="standalone"
+        readOnly={readOnly}
       />
       {modal}
     </>
