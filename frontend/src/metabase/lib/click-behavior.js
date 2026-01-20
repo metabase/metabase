@@ -26,6 +26,9 @@ export function getClickBehaviorDescription(dashcard) {
   if (clickBehavior == null) {
     return noBehaviorMessage;
   }
+  if (clickBehavior.type === "singleClickDrill") {
+    return t`Drill down on single click`;
+  }
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;
     return linkType == null

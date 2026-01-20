@@ -566,6 +566,7 @@ class Visualization extends PureComponent<
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
       },
+      clicked,
     );
 
     if (didPerformDefaultAction) {

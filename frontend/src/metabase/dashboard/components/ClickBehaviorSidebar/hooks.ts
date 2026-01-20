@@ -15,6 +15,9 @@ export function useClickBehaviorOptionName(
       ? t`Open the ${applicationName} drill-through menu`
       : t`Do nothing`;
   }
+  if (value === "singleClickDrill") {
+    return t`Drill down on single click`;
+  }
   if (value === "link") {
     return t`Go to a custom destination`;
   }

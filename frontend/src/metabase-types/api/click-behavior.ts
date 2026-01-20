@@ -54,7 +54,8 @@ export type ClickBehaviorType =
   | "action"
   | "actionMenu"
   | "crossfilter"
-  | "link";
+  | "link"
+  | "singleClickDrill";
 
 export type CustomDestinationClickBehaviorLinkType =
   | EntityCustomDestinationClickBehavior["linkType"]
@@ -142,6 +143,16 @@ export type ActionMenuClickBehavior = {
   type: "actionMenu";
 };
 
+/**
+ * Single-click drill-down behavior.
+ * When enabled, clicking on a visualization element will automatically
+ * execute the primary drill action (zoom, filter, etc.) without showing
+ * the drill-through menu.
+ */
+export type SingleClickDrillBehavior = {
+  type: "singleClickDrill";
+};
+
 export type CustomDestinationClickBehavior =
   | EntityCustomDestinationClickBehavior
   | ArbitraryCustomDestinationClickBehavior;
@@ -150,4 +161,5 @@ export type ClickBehavior =
   | ActionMenuClickBehavior
   | CrossFilterClickBehavior
   | CustomDestinationClickBehavior
-  | ActionClickBehavior;
+  | ActionClickBehavior
+  | SingleClickDrillBehavior;

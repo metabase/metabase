@@ -13,6 +13,7 @@ type ClickBehaviorOption = {
 
 export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "actionMenu", icon: "popover" },
+  { value: "singleClickDrill", icon: "bolt" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
 ];
