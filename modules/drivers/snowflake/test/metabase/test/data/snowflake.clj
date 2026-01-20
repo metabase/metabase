@@ -428,11 +428,14 @@
   ;; so fake-sync must match what sync would produce:
   ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
   ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
+  ;; - DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
   (case base-type
-    :type/Integer            :type/Number
-    :type/BigInteger         :type/Number
-    :type/TimeWithLocalTZ    :type/Time
-    :type/TimeWithZoneOffset :type/Time
+    :type/Integer               :type/Number
+    :type/BigInteger            :type/Number
+    :type/TimeWithLocalTZ       :type/Time
+    :type/TimeWithZoneOffset    :type/Time
+    :type/DateTimeWithZoneID    :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneOffset :type/DateTimeWithLocalTZ
     ;; Other types are unchanged
     base-type))
 
