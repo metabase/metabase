@@ -33,6 +33,7 @@ const CUSTOM_MAPPING_ERROR =
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
@@ -574,6 +575,9 @@ describe("scenarios > data studio > datamodel", () => {
         openFilterPopover();
         selectFilterOption("Visibility type", "Gold");
         applyFilters();
+        H.expectUnstructuredSnowplowEvent({
+          event: "data_studio_table_picker_filters_applied",
+        });
 
         cy.get<TableId>("@goldTableId").then(expectTableVisible);
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
