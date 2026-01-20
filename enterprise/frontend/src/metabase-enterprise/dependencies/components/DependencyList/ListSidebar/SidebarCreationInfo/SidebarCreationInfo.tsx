@@ -42,7 +42,7 @@ export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
       )}
       {editedBy != null && editedAt != null && (
         <UserSection
-          label={t`Created by`}
+          label={t`Last edited by`}
           name={getUserName(editedBy)}
           date={editedAt}
         />
