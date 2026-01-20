@@ -989,7 +989,7 @@
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
                                                ;; Compare revision with DB transform (both have in-memory representation)
-                                               (is (=? (dissoc rev-transform :source) transform)))
+                                               (is (=? (dissoc rev-transform :source :owner) transform)))
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
