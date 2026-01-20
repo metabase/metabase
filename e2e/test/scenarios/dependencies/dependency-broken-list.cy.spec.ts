@@ -87,7 +87,7 @@ describe("scenarios > dependencies > broken list", () => {
   });
 
   describe("analysis", () => {
-    it("should show broken dependencies and not dependents", () => {
+    it("should show broken dependencies", () => {
       createContent({ withErrors: true });
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
