@@ -33,7 +33,7 @@
   :getter  (fn []
              (if (or (not config/ee-available?)
                      (not (:valid (premium-features/token-status)))
-                     (= "starter" (premium-features/plan-alias)))
+                     (premium-features/starter-plan?))
                (setting/get-value-of-type :boolean :show-static-embed-terms)
                false)))
 

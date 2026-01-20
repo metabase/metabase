@@ -26,6 +26,7 @@
   ee-feature-error
   has-any-features?
   has-feature?
+  starter-plan?
   log-enabled?
   max-users-allowed
   plan-alias

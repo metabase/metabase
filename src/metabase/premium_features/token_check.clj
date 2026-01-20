@@ -550,6 +550,12 @@
   []
   (boolean (seq (*token-features*))))
 
+(defn starter-plan?
+  "Is this a Starter plan instance? (hosted but no premium features)"
+  []
+  (and (premium-features.settings/is-hosted?)
+       (not (has-any-features?))))
+
 (defn has-feature?
   "Does this instance's premium token have `feature`?
 

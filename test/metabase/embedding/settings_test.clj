@@ -35,7 +35,7 @@
               (embed.settings/show-static-embed-terms! false)
               (is (not (embed.settings/show-static-embed-terms))))))
         (testing "Starter should respect the setting value"
-          (with-redefs [premium-features/plan-alias (constantly "starter")]
+          (with-redefs [premium-features/starter-plan? (constantly true)]
             (mt/with-temporary-setting-values [show-static-embed-terms nil]
               (testing "should return true when user has not accepted licensing terms"
                 (is (embed.settings/show-static-embed-terms)))

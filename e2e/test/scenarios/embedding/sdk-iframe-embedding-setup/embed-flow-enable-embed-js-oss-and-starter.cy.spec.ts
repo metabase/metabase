@@ -69,14 +69,14 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
           .should("be.visible")
           .should("be.disabled");
 
-        // Going to the next step and selecting "Orders in a dashboard" explicitely
+        // Going to the next step and selecting "Orders in a dashboard" explicitly
         // because sometimes it selects another one that's been used recently
         // see EMB-1106
         cy.log(
           "Navigating to embed flow step 2 and selecting an item to embed",
         );
         cy.findByRole("button", { name: "Next" }).click();
-        cy.get('[data-testid="embed-recent-item-card"]')
+        cy.findAllByTestId("embed-recent-item-card")
           .should("have.length.greaterThan", 0)
           .contains("Orders in a dashboard")
           .click();
@@ -143,7 +143,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
     });
 
     describe("Metabase account (sso)", () => {
-      it("does not show the Enable to Continue button and disables item", () => {
+      it("does not show the Enable to Continue button and disables Metabase account option", () => {
         H.updateSetting("enable-embedding-simple", false);
         H.updateSetting("show-simple-embed-terms", true);
 
