@@ -427,7 +427,7 @@
                               ;; For float/temporal, just verify checkpoint exists
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
 
-(deftest native-query-without-template-tag-test
+(deftest ^:sequential native-query-without-template-tag-test
   (testing "Native query without template tags uses automatic checkpoint wrapping"
     (doseq [checkpoint-type [:integer :float :temporal]]
       (testing (format "with %s checkpoint" (name checkpoint-type))
