@@ -27,6 +27,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "useExistingUserSession",
     "isGuest",
     "jwtProviderUri",
+    "handleLink",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",

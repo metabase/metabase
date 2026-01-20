@@ -1,3 +1,6 @@
+import { requestHandleLinkFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-handle-link";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
 
 type HandleLinkFn = (url: string) => { handled: boolean };
@@ -18,8 +21,17 @@ export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
 
 /**
  * Invokes the handleLink plugin if configured in the host app and returns an object with a 'handled' property, indicating if the host app handled the link.
+ * For iframe SDK, this sends a postMessage to the parent window and awaits the response.
  */
-export function handleLinkSdkPlugin(url: string): { handled: boolean } {
+export async function handleLinkSdkPlugin(
+  url: string,
+): Promise<{ handled: boolean }> {
+  // In iframe SDK mode, send a message to the parent window
+  if (isEmbeddingEajs()) {
+    return requestHandleLinkFromEmbedJs(url);
+  }
+
+  // React SDK mode - use the global plugins
   const globalPlugins = getSdkGlobalPlugins();
 
   if (!globalPlugins?.handleLink) {

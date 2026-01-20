@@ -433,6 +433,30 @@ export abstract class MetabaseEmbedElement
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
+
+    // Note: if we wrap other functions like this, let's come up with a generic utility function
+    if (event.data.type === "metabase.embed.handleLink") {
+      const { url, requestId } = event.data.data;
+      const handleLink = this.globalSettings.handleLink;
+
+      let handled = false;
+      if (typeof handleLink === "function") {
+        try {
+          const result = handleLink(url);
+          handled = result?.handled ?? false;
+        } catch (e) {
+          console.error("[metabase.embed] handleLink error:", e);
+        }
+      }
+
+      this._iframe?.contentWindow?.postMessage(
+        {
+          type: "metabase.embed.handleLinkResponse",
+          data: { requestId, handled },
+        },
+        "*",
+      );
+    }
   };
 
   sendMessage<Message extends SdkIframeEmbedMessage>(
