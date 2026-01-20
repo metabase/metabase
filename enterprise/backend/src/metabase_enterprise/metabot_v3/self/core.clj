@@ -190,7 +190,7 @@
          :usage       (do
                         ;; Accumulate usage - format: {model-name {:prompt X :completion Y}}
                         (let [{:keys [usage id]} part
-                              model (or id "claude-sonnet-4-5-20250929")]
+                              model (or id "claude-haiku-4-5")]
                           (vswap! usage-acc assoc model
                                   {:prompt (:promptTokens usage 0)
                                    :completion (:completionTokens usage 0)}))
