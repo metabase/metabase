@@ -1,9 +1,10 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
+const TABLE_NAME = "scoreboard_actions";
+const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_BASED_QUESTION_BROKEN_FIELD =
   "Table-based question with broken field";
 const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
@@ -47,9 +48,7 @@ const BROKEN_DEPENDENCIES = [
 ];
 
 const BROKEN_DEPENDENCIES_SORTED_BY_NAME = [
-  "People",
-  "Products",
-  "Reviews",
+  TABLE_DISPLAY_NAME,
   TABLE_BASED_MODEL,
   TABLE_BASED_QUESTION,
 ];
@@ -57,17 +56,17 @@ const BROKEN_DEPENDENCIES_SORTED_BY_NAME = [
 const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
   TABLE_BASED_MODEL, // Bobby Tables's personal collection
   TABLE_BASED_QUESTION, // Our analytics
-  "Products", // Sample database
+  TABLE_DISPLAY_NAME, // Sample database
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
-  "Products", // 3 errors: TOTAL, ID, RATING
+  TABLE_DISPLAY_NAME, // 3 errors: TOTAL, ID, RATING
   TABLE_BASED_QUESTION, // 1 error: PRICE
   TABLE_BASED_MODEL, // 1 error: AMOUNT
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
-  "Products", // 7 questions
+  TABLE_DISPLAY_NAME, // 7 questions
   TABLE_BASED_QUESTION, // 1 question
   TABLE_BASED_MODEL, // 1 model
 ];
@@ -80,10 +79,11 @@ const BROKEN_DEPENDENTS = [
 
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.viewport(1600, 1400);
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
   });
 
   describe("analysis", () => {
@@ -298,104 +298,112 @@ function createTableContent({
     return;
   }
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_FIELD,
-    query: {
-      "source-table": PRODUCTS_ID,
-      fields: [["field", ORDERS.TOTAL, null]],
-    },
-  });
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    H.getFieldId({ tableId, name: "score" }).then((scoreFieldId) => {
+      H.getFieldId({ tableId, name: "status" }).then((statusFieldId) => {
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_FIELD,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            fields: [["field", statusFieldId, null]],
+          },
+        });
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
-    query: {
-      "source-table": PRODUCTS_ID,
-      expressions: {
-        Expression: ["+", ["field", ORDERS.TOTAL, null], 0],
-      },
-    },
-  });
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            expressions: {
+              Expression: ["+", ["field", scoreFieldId, null], 0],
+            },
+          },
+        });
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_FILTER,
-    query: {
-      "source-table": PRODUCTS_ID,
-      filter: ["=", ["field", ORDERS.TOTAL, null], 0],
-    },
-  });
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_FILTER,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            filter: ["=", ["field", scoreFieldId, null], 0],
+          },
+        });
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
-    query: {
-      "source-table": PRODUCTS_ID,
-      breakout: [["field", ORDERS.TOTAL, null]],
-    },
-  });
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            breakout: [["field", scoreFieldId, null]],
+          },
+        });
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_AGGREGATION,
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
-    },
-  });
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_AGGREGATION,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            aggregation: [["avg", ["field", scoreFieldId, null]]],
+          },
+        });
 
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_IMPLICIT_JOIN,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        ["min", ["field", REVIEWS.ID, { "source-field": ORDERS.PRODUCT_ID }]],
-        [
-          "avg",
-          ["field", REVIEWS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-      ],
-    },
-  });
-
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN,
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          "source-table": PRODUCTS_ID,
-          alias: "Products",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-        },
-      ],
-      aggregation: [
-        ["max", ["field", REVIEWS.ID, { "join-alias": "Products" }]],
-      ],
-    },
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            joins: [
+              {
+                "source-table": tableId,
+                alias: TABLE_DISPLAY_NAME,
+                condition: [
+                  "=",
+                  ["field", statusFieldId, null],
+                  [
+                    "field",
+                    statusFieldId,
+                    { "join-alias": TABLE_DISPLAY_NAME },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [
+              [
+                "max",
+                ["field", scoreFieldId, { "join-alias": TABLE_DISPLAY_NAME }],
+              ],
+            ],
+          },
+        });
+      });
+    });
   });
 }
 
 function createQuestionContent({
   withErrors = false,
 }: { withErrors?: boolean } = {}) {
-  H.createQuestion({
-    name: TABLE_BASED_QUESTION,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-    collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-  }).then(({ body: card }) => {
-    if (!withErrors) {
-      return;
-    }
-
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.createQuestion({
-      name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
+      name: TABLE_BASED_QUESTION,
+      database: WRITABLE_DB_ID,
       query: {
-        "source-table": `card__${card.id}`,
-        filter: [">", ["field", "PRICE", { "base-type": "type/Float" }], 10],
+        "source-table": tableId,
       },
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    }).then(({ body: card }) => {
+      if (!withErrors) {
+        return;
+      }
+
+      H.createQuestion({
+        name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
+        query: {
+          "source-table": `card__${card.id}`,
+          filter: [">", ["field", "PRICE", { "base-type": "type/Float" }], 10],
+        },
+      });
     });
   });
 }
@@ -403,26 +411,29 @@ function createQuestionContent({
 function createModelContent({
   withErrors = false,
 }: { withErrors?: boolean } = {}) {
-  H.createQuestion({
-    name: TABLE_BASED_MODEL,
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }).then(({ body: card }) => {
-    if (!withErrors) {
-      return;
-    }
-
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.createQuestion({
-      name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
+      name: TABLE_BASED_MODEL,
       type: "model",
+      database: WRITABLE_DB_ID,
       query: {
-        "source-table": `card__${card.id}`,
-        aggregation: [
-          ["distinct", ["field", "AMOUNT", { "base-type": "type/Integer" }]],
-        ],
+        "source-table": tableId,
       },
+    }).then(({ body: card }) => {
+      if (!withErrors) {
+        return;
+      }
+
+      H.createQuestion({
+        name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
+        type: "model",
+        query: {
+          "source-table": `card__${card.id}`,
+          aggregation: [
+            ["distinct", ["field", "AMOUNT", { "base-type": "type/Integer" }]],
+          ],
+        },
+      });
     });
   });
 }
