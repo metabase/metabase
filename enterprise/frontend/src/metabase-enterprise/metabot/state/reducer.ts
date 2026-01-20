@@ -253,6 +253,21 @@ export const metabot = createSlice({
         }
       });
     },
+    updateSuggestedTransformId: (
+      state,
+      action: PayloadAction<{
+        suggestionId: string;
+        newId: number | undefined;
+      }>,
+    ) => {
+      const { suggestionId, newId } = action.payload;
+      const transform = state.reactions.suggestedTransforms.find(
+        (t) => t.suggestionId === suggestionId,
+      );
+      if (transform) {
+        transform.id = newId;
+      }
+    },
     addSuggestedCodeEdit: (
       state,
       { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,

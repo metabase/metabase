@@ -148,11 +148,10 @@ function WorkspacePageContent({
     metabotContextSource,
     setMetabotContextTransform,
     setMetabotContextSource,
+    suggestionActions,
   } = useWorkspaceMetabot({
     workspaceId,
     databaseId: workspace?.database_id,
-    transformId,
-    isLoading,
     allTransforms,
     setTab,
     handleNavigateToTransform,
@@ -488,6 +487,7 @@ function WorkspacePageContent({
                   <MetabotTab
                     transform={metabotContextTransform}
                     source={metabotContextSource}
+                    suggestionActions={suggestionActions}
                   />
                 </Tabs.Panel>
               )}

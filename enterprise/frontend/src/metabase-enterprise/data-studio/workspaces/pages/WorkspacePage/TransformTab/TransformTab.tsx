@@ -24,7 +24,7 @@ import type {
   WorkspaceTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
-import { isWorkspaceTransform } from "metabase-types/api";
+import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
@@ -84,8 +84,6 @@ export const TransformTab = ({
     transform.source,
   );
   const hasChanges = hasSourceChanged;
-  const dryRunTransformId =
-    wsTransform && !hasChanges ? wsTransform.ref_id : undefined;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -100,21 +98,25 @@ export const TransformTab = ({
       // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
 
+      // Always use query preview when we have a query, regardless of whether the transform
+      // is saved or not. The query represents the current state of the editor (which may
+      // have unsaved changes), and we want to preview what the current query will produce.
+      // The dry run API uses the saved transform's source, not the current query.
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: transformId,
+          tableId: null, // Always null for preview - use query instead
           name: t`Preview (${transform.name})`,
           query,
-          transformId: dryRunTransformId,
+          transformId: undefined, // Always undefined - use query preview, not dry run
         },
       };
       addOpenedTab(tableTab);
       return false;
     },
-    [transformId, transform.name, addOpenedTab, dryRunTransformId],
+    [transformId, transform.name, addOpenedTab],
   );
 
   const handleRunTransform = useCallback(
@@ -162,9 +164,11 @@ export const TransformTab = ({
     [metadata],
   );
 
+  // Show proposed source when there's an active suggested transform
+  // Even if sources are the same (e.g., when transform was created with suggested source),
+  // we still want to show the buttons so user can reject the suggestion
   const proposedSource: DraftTransformSource | undefined =
-    suggestedTransform?.source &&
-    !isSameSource(suggestedTransform.source, editedTransform.source)
+    suggestedTransform?.source
       ? normalizeSource(suggestedTransform.source)
       : undefined;
 
@@ -182,7 +186,10 @@ export const TransformTab = ({
       return;
     }
 
-    if (!isSaved) {
+    // Allow applying suggestions to both saved workspace transforms and unsaved transforms
+    // Only block if it's a tagged transform (external transform) that hasn't been checked out
+    const isUnsaved = isUnsavedTransform(transform);
+    if (!isSaved && !isUnsaved) {
       sendErrorToast(
         t`Add this transform to the workspace before applying Metabot changes.`,
       );
@@ -197,6 +204,7 @@ export const TransformTab = ({
     dispatch,
     suggestedTransform?.id,
     isSaved,
+    transform,
     sendErrorToast,
   ]);
 

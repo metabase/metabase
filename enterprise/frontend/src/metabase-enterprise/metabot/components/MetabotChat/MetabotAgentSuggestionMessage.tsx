@@ -15,6 +15,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import {
   Button,
   Collapse,
@@ -106,6 +107,7 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const isWorkspace = useSelector(getIsWorkspace);
   const suggestionActions = useMetabotSuggestionActions();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
@@ -123,9 +125,11 @@ export const AgentSuggestionMessage = ({
   const [opened, { toggle }] = useDisclosure(true);
 
   const url = useLocation();
-  const isViewing = url.pathname?.startsWith(
-    getTransformUrl(suggestedTransform),
-  );
+  // In workspace context, we don't use URL-based navigation, so isViewing should be false
+  // This ensures suggestions always show properly in workspace
+  const isViewing = isWorkspace
+    ? false
+    : (url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false);
 
   const canApply = suggestionActions
     ? !hasAppliedInContext && !isApplying
@@ -161,6 +165,16 @@ export const AgentSuggestionMessage = ({
       } finally {
         setIsApplying(false);
       }
+      return;
+    }
+
+    // In workspace context, don't redirect - the suggestion actions should handle it
+    // If we get here, it means suggestionActions is not available, which shouldn't happen
+    // in workspace context, but we'll prevent the redirect anyway
+    if (isWorkspace) {
+      sendErrorToast(
+        t`Unable to apply suggestion. Please try again or refresh the page.`,
+      );
       return;
     }
 
