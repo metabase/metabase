@@ -759,7 +759,7 @@ export function parseString(value: unknown): string | undefined {
 }
 
 export function parseNumber(value: unknown): number | undefined {
-  if (typeof value === "string") {
+  if (typeof value === "string" && value.trim() !== "") {
     const number = Number(value);
     return Number.isFinite(number) ? number : undefined;
   }

@@ -874,11 +874,12 @@ describe("parseString", () => {
 });
 
 describe("parseNumber", () => {
-  it.each([
+  it.each<{ value: unknown; expected: number | undefined }>([
     { value: "123", expected: 123 },
     { value: "3.14", expected: 3.14 },
     { value: "abc", expected: undefined },
-    { value: "", expected: 0 }, // Number("") === 0
+    { value: "", expected: undefined },
+    { value: "   ", expected: undefined },
     { value: 123, expected: undefined },
   ])("should parse $value", ({ value, expected }) => {
     expect(parseNumber(value)).toBe(expected);
