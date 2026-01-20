@@ -20,3 +20,9 @@ export const ACCENT_COLOR_NAMES_MAP = [
 export const ALL_ACCENT_COLOR_NAMES = ACCENT_COLOR_NAMES_MAP.flatMap(
   ({ base, tint, shade }) => [base, tint, shade],
 );
+
+/**
+ * How much to tint and shade the light and dark chart color variants for.
+ * Matches the default factor of tint() and shade() used for legacy colors.
+ */
+export const CHART_TINT_SHADE_FACTOR = 0.125;
