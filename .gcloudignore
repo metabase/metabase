@@ -1,0 +1,5 @@
+.git
+.gitignore
+node_modules/
+*.md
+.github/
