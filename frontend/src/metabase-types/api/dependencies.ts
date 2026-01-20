@@ -67,7 +67,6 @@ export type TableDependencyNodeData = Pick<
   | "schema"
   | "db"
   | "fields"
-  | "transform_id"
   | "transform"
 >;
 
