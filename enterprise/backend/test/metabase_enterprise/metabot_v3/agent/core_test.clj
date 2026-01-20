@@ -323,8 +323,9 @@
           updated-memory (#'agent/extract-charts-from-parts memory parts)]
       (is (= chart-data (get-in updated-memory [:state :charts "c-456"])))))
 
-  (testing "distinguishes charts from queries (charts have chart-id, queries have query)"
-    (let [query-data {:query-id "q-789"
+  (testing "stores charts even when query details are included"
+    (let [query-data {:chart-id "c-789"
+                      :query-id "q-789"
                       :query {:database 1}
                       :result-columns []}
           parts [{:type :tool-output
@@ -333,8 +334,7 @@
                   :result {:structured-output query-data}}]
           memory {:state {:queries {} :charts {}}}
           updated-memory (#'agent/extract-charts-from-parts memory parts)]
-      ;; Should NOT be extracted as a chart since it has :query
-      (is (empty? (get-in updated-memory [:state :charts])))))
+      (is (= query-data (get-in updated-memory [:state :charts "c-789"])))))
 
   (testing "ignores parts without chart-id"
     (let [parts [{:type :tool-output

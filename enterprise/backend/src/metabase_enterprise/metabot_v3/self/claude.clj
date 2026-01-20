@@ -127,7 +127,7 @@
 (mu/defn claude-raw
   "Perform a request to Claude API"
   [{:keys [model system input tools schema]
-    :or   {model "claude-sonnet-4-5-20250929"
+    :or   {model "claude-haiku-4-5"
            input [{:role "user" :content "Hello"}]}}
    :- [:map
        [:model {:optional true} :string]

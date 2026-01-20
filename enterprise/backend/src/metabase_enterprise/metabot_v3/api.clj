@@ -92,7 +92,7 @@
                 :start       (write-line! (self.core/format-start-line part))
                 :finish      nil ;; Will emit finish at the end
                 :usage       (let [{:keys [usage id]} part
-                                   model (or id "claude-sonnet-4-5-20250929")]
+                                   model (or id "claude-haiku-4-5")]
                                (vswap! usage-acc assoc model
                                        {:prompt (:promptTokens usage 0)
                                         :completion (:completionTokens usage 0)}))
