@@ -308,10 +308,15 @@
   ;; constants for hacking
   (def channel "XXXXXXXXXXX")
   (def thread-ts "XXXXXXXXXXXXXXXXX")
-  ;; you can make your local env available publicly for testing via something like `cloudflared tunnel --url http://localhost:3000`
-  (def public-mb-url "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
-  (json/encode (slackbot-manifest public-mb-url))
+  ;; create a tunnel via `cloudflared tunnel --url http://localhost:3000` copy tunnel url
+  ;; to clipboard and execute to get a manifest file you can paste into the app manifest
+  ;; page of your app settings (remember to verify the url after saving -- a warning w/
+  ;; link appears at the top of the page after saving)
+  (require '[clojure.java.shell :refer [sh]])
+  (let [clipboard-content (:out (sh "pbpaste"))
+        manifest (slackbot-manifest clipboard-content)]
+    (sh "pbcopy" :in (json/encode manifest {:pretty true})))
 
   (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
 
@@ -329,4 +334,3 @@
       (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
   (log/debug "Response stream:" response-stream)
   (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
-
