@@ -25,7 +25,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
       H.mockEmbedJsToDevServer();
     });
 
-    it("allows selecting the `guest` item even when static embedding setting is disabled", () => {
+    it("allows to select the `guest` item even when static embedding setting is disabled", () => {
       H.updateSetting("enable-embedding-static", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
@@ -35,7 +35,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
       cy.findByLabelText("Guest").should("be.enabled");
     });
 
-    it("does not allow selecting the `Metabase Account`, when token feature is missing (oss)", () => {
+    it("does not allow to select the `Metabase Account`, when token feature is missing (oss)", () => {
       H.updateSetting("enable-embedding-simple", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);

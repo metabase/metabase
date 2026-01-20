@@ -7,7 +7,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
-   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
@@ -373,21 +372,3 @@
       (is (contains? stats :domains))
       (is (contains? stats :embedding-dashboard-count))
       (is (contains? stats :embedding-question-count)))))
-
-(deftest starter-plan?-test
-  (testing "returns true when hosted and has no premium features (Starter plan)"
-    (with-redefs [premium-features.settings/is-hosted? (constantly true)
-                  token-check/has-any-features?        (constantly false)]
-      (is (true? (token-check/starter-plan?)))))
-  (testing "returns false when hosted but has premium features (Pro/Enterprise cloud)"
-    (with-redefs [premium-features.settings/is-hosted? (constantly true)
-                  token-check/has-any-features?        (constantly true)]
-      (is (false? (token-check/starter-plan?)))))
-  (testing "returns false when not hosted (self-hosted)"
-    (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                  token-check/has-any-features?        (constantly false)]
-      (is (false? (token-check/starter-plan?)))))
-  (testing "returns false when not hosted with premium features (self-hosted EE)"
-    (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                  token-check/has-any-features?        (constantly true)]
-      (is (false? (token-check/starter-plan?))))))
