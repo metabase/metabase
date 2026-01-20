@@ -152,7 +152,7 @@
     (t2/update! :model/TaskHistory th-id updated-info)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
-  "The java.time.Clock used for captured log message `:timestamp` values. Can be overriden for tests."
+  "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
   (Clock/systemUTC))
 
 (def ^:private log-capture-truncation-threshold 100)

@@ -106,8 +106,7 @@ export const UserInput = ({
               </Avatar>
             )}
 
-            {option.type === "unknown" && <i>{item.option.label}</i>}
-            {option.type !== "unknown" && <span>{item.option.label}</span>}
+            <span>{item.option.label}</span>
           </Group>
         );
       }}
