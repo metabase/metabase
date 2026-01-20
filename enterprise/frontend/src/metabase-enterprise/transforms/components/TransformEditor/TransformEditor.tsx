@@ -28,7 +28,7 @@ export type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   readOnly?: boolean;
   transformId?: TransformId;
 };

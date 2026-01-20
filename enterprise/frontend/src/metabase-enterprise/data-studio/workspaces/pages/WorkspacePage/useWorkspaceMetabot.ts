@@ -1,10 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
+import { slugify } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  useCreateWorkspaceTransformMutation,
+  useLazyGetTransformQuery,
+} from "metabase-enterprise/api";
+import {
+  type ApplySuggestionPayload,
+  type ApplySuggestionResult,
+  type MetabotSuggestionActions,
+  useRegisterMetabotSuggestionActions,
+} from "metabase-enterprise/metabot/context";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import type {
@@ -15,15 +28,50 @@ import type {
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DraftTransformSource,
+  TaggedTransform,
+  Transform,
   UnsavedTransform,
+  WorkspaceTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 import { isUnsavedTransform } from "metabase-types/api";
 
-import { type AnyWorkspaceTransform, getTransformId, useWorkspace } from "./WorkspaceProvider";
+import {
+  type AnyWorkspaceTransform,
+  getTransformId,
+  useWorkspace,
+} from "./WorkspaceProvider";
+import { isSavedTransformInfo } from "./utils/guards";
+
+const normalizeSource = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+): DraftTransformSource => {
+  if (source.type !== "query") {
+    return source;
+  }
+
+  const question = Question.create({
+    dataset_query: source.query,
+    metadata,
+  });
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  const normalizedQuery = isNative
+    ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
+    : query;
+
+  return {
+    type: "query",
+    query: question.setQuery(normalizedQuery).datasetQuery(),
+  };
+};
 
 type MetabotConversationSnapshot = Pick<
   MetabotConverstationState,
@@ -65,7 +113,9 @@ export function useWorkspaceMetabot({
   handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
   const dispatch = useDispatch();
-  const { openedTabs, setActiveTab } = useWorkspace();
+  const metadata = useEnterpriseSelector(getMetadata);
+  const { openedTabs, setActiveTab, addOpenedTransform, setActiveTransform } =
+    useWorkspace();
 
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
@@ -73,6 +123,9 @@ export function useWorkspaceMetabot({
     resetConversation: resetMetabotConversation,
     visible: isMetabotVisible,
   } = useMetabotAgent();
+
+  const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
+  const [getTransform] = useLazyGetTransformQuery();
 
   const metabotState = useEnterpriseSelector(getMetabotState);
   const metabotStateRef = useRef<MetabotState>(metabotState);
@@ -86,6 +139,176 @@ export function useWorkspaceMetabot({
   const [metabotContextSource, setMetabotContextSource] = useState<
     DraftTransformSource | undefined
   >();
+
+  const openTaggedTransformInWorkspace = useCallback(
+    (nextTransform: Transform) => {
+      const taggedTransform: TaggedTransform = {
+        ...nextTransform,
+        type: "transform",
+      };
+      addOpenedTransform(taggedTransform);
+      setActiveTransform(taggedTransform);
+    },
+    [addOpenedTransform, setActiveTransform],
+  );
+
+  const openWorkspaceTransformInWorkspace = useCallback(
+    (nextTransform: WorkspaceTransform) => {
+      addOpenedTransform(nextTransform);
+      setActiveTransform(nextTransform);
+    },
+    [addOpenedTransform, setActiveTransform],
+  );
+
+  const applySuggestion = useCallback(
+    async ({
+      editorTransform,
+      suggestedTransform,
+    }: ApplySuggestionPayload): Promise<ApplySuggestionResult> => {
+      const existingTransformId =
+        typeof suggestedTransform.id === "number"
+          ? suggestedTransform.id
+          : undefined;
+
+      // If editing an existing transform, fetch and open it
+      if (existingTransformId != null) {
+        const targetTransform = isSavedTransformInfo(editorTransform)
+          ? editorTransform
+          : isSavedTransformInfo(suggestedTransform)
+            ? suggestedTransform
+            : undefined;
+
+        if (targetTransform) {
+          openTaggedTransformInWorkspace(targetTransform);
+          return { status: "applied" };
+        }
+
+        // Try to fetch the transform if we only have an ID
+        try {
+          const fetchedTransform =
+            await getTransform(existingTransformId).unwrap();
+          openTaggedTransformInWorkspace(fetchedTransform);
+          return { status: "applied" };
+        } catch {
+          return {
+            status: "error",
+            message: t`Failed to load transform`,
+          };
+        }
+      }
+
+      // Creating a new transform
+      if (!suggestedTransform.target) {
+        return {
+          status: "error",
+          message: t`Suggestion is missing a target table`,
+        };
+      }
+
+      const normalizedSource = normalizeSource(
+        suggestedTransform.source,
+        metadata,
+      );
+
+      const targetWithDatabase =
+        suggestedTransform.target.type === "table"
+          ? {
+              ...suggestedTransform.target,
+              database:
+                suggestedTransform.target.database ??
+                (normalizedSource.type === "query"
+                  ? normalizedSource.query.database
+                  : normalizedSource.type === "python"
+                    ? normalizedSource["source-database"]
+                    : undefined),
+            }
+          : suggestedTransform.target;
+
+      if (
+        targetWithDatabase.type === "table" &&
+        targetWithDatabase.database == null
+      ) {
+        return {
+          status: "error",
+          message: t`Suggestion is missing a target database to create the transform.`,
+        };
+      }
+
+      const sanitizedTarget =
+        targetWithDatabase.type === "table"
+          ? (() => {
+              const fallbackName = slugify(suggestedTransform.name);
+              const trimmedName =
+                targetWithDatabase.name?.trim() || fallbackName;
+
+              if (!trimmedName) {
+                return null;
+              }
+
+              return {
+                ...targetWithDatabase,
+                name: trimmedName,
+                schema:
+                  targetWithDatabase.schema &&
+                  targetWithDatabase.schema.trim() !== ""
+                    ? targetWithDatabase.schema.trim()
+                    : null,
+              };
+            })()
+          : targetWithDatabase;
+
+      if (sanitizedTarget === null) {
+        return {
+          status: "error",
+          message: t`Suggestion is missing a target table name to create the transform.`,
+        };
+      }
+
+      try {
+        const transform = await createWorkspaceTransform({
+          id: workspaceId,
+          name: suggestedTransform.name,
+          description: suggestedTransform.description ?? null,
+          source: normalizedSource,
+          target: sanitizedTarget,
+        }).unwrap();
+
+        openWorkspaceTransformInWorkspace(transform);
+        return { status: "applied" };
+      } catch {
+        return {
+          status: "error",
+          message: t`Failed to create transform from suggestion`,
+        };
+      }
+    },
+    [
+      metadata,
+      workspaceId,
+      createWorkspaceTransform,
+      getTransform,
+      openTaggedTransformInWorkspace,
+      openWorkspaceTransformInWorkspace,
+    ],
+  );
+
+  const openTransform = useCallback(
+    (nextTransform: { type: "transform" } & Transform) => {
+      addOpenedTransform(nextTransform);
+      setActiveTransform(nextTransform);
+    },
+    [addOpenedTransform, setActiveTransform],
+  );
+
+  const suggestionActions = useMemo<MetabotSuggestionActions>(
+    () => ({
+      openTransform,
+      applySuggestion,
+    }),
+    [openTransform, applySuggestion],
+  );
+
+  useRegisterMetabotSuggestionActions(suggestionActions);
 
   // Keep metabotStateRef in sync
   useEffect(() => {

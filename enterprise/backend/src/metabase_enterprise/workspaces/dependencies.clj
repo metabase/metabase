@@ -45,7 +45,6 @@
    [metabase-enterprise.workspaces.models.workspace-input]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
@@ -207,49 +206,32 @@
 
 ;;; ---------------------------------------- Write helpers ----------------------------------------
 
-(defn- upsert-workspace-output!
-  "Upsert a workspace_output record for the transform's target table.
+(defn- insert-workspace-output!
+  "Insert a workspace_output record for the transform's target table with the given transform_version.
    Stores both global (original) and isolated (workspace-specific) table identifiers.
-   Returns the workspace_output id."
-  [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql]
-  (app-db/update-or-insert! :model/WorkspaceOutput
-                            {:workspace_id workspace-id
-                             :ref_id       ref-id}
-                            (fn [existing]
-                              (let [isolated-table (ws.u/isolated-table-name schema table)
-                                    qry-table-id   (fn [schema table]
-                                                     (t2/select-one-fn :id [:model/Table :id]
-                                                                       :db_id db_id
-                                                                       :schema (normalize-sql schema)
-                                                                       :name (normalize-sql table)))
-                                    id-if-match    (fn [schema-key schema table-key table id-key]
-                                                     (when (and (= schema (get existing schema-key))
-                                                                (= table (get existing table-key)))
-                                                       (get existing id-key)))
-                                    id-or-fallback (fn [schema-key schema table-key table id-key]
-                                                     (or (id-if-match schema-key schema table-key table id-key)
-                                                         (qry-table-id schema table)))]
-                                {:db_id             db_id
-                                 :global_schema     schema
-                                 :global_table      table
-                                 :global_table_id   (id-or-fallback
-                                                     :global_schema schema
-                                                     :global_table table
-                                                     :global_table_id)
-                                 :isolated_schema   isolated-schema
-                                 :isolated_table    isolated-table
-                                 :isolated_table_id (id-or-fallback
-                                                     :isolated_schema isolated-schema
-                                                     :isolated_table isolated-table
-                                                     :isolated_table_id)}))))
-
-(defn- build-output-lookup
-  "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.
-   Single query to fetch all outputs for the workspace."
-  [workspace-id]
-  (t2/select-fn->fn (juxt :db_id :global_schema :global_table) :id
-                    :model/WorkspaceOutput
-                    :workspace_id workspace-id))
+   With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
+   Silently ignores constraint violations from concurrent inserts."
+  [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql transform-version]
+  (let [isolated-table    (ws.u/isolated-table-name schema table)
+        qry-table-id      (fn [s t]
+                            (t2/select-one-fn :id [:model/Table :id]
+                                              :db_id db_id
+                                              :schema (normalize-sql s)
+                                              :name (normalize-sql t)))
+        global-table-id   (qry-table-id schema table)
+        isolated-table-id (qry-table-id isolated-schema isolated-table)]
+    (ws.u/ignore-constraint-violation
+     (t2/insert! :model/WorkspaceOutput
+                 {:workspace_id      workspace-id
+                  :ref_id            ref-id
+                  :transform_version transform-version
+                  :db_id             db_id
+                  :global_schema     schema
+                  :global_table      table
+                  :global_table_id   global-table-id
+                  :isolated_schema   isolated-schema
+                  :isolated_table    isolated-table
+                  :isolated_table_id isolated-table-id}))))
 
 (defn- normalize-input-schema
   "Normalize an input's schema: replace nil with the driver's default schema.
@@ -257,26 +239,34 @@
   [default-schema input]
   (update input :schema #(or % default-schema)))
 
-(defn- ensure-workspace-inputs!
-  "Ensure workspace_input records exist for the given inputs.
-   Deletes old inputs for this transform and inserts the new ones.
-   Each input row is linked to a specific transform via ref_id."
-  [workspace-id ref-id inputs]
-  ;; Delete old inputs for this transform
-  (t2/delete! :model/WorkspaceInput :workspace_id workspace-id :ref_id ref-id)
-  ;; Insert new inputs
+(defn- insert-workspace-inputs!
+  "Insert workspace_input records for the given inputs with the given transform_version.
+   Each input row is linked to a specific transform via ref_id.
+   With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
+   Silently ignores constraint violations from concurrent inserts."
+  [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
-    (t2/insert! :model/WorkspaceInput
-                (for [{:keys [db_id schema table table_id]} inputs]
-                  {:workspace_id workspace-id
-                   :ref_id       ref-id
-                   :db_id        db_id
-                   :schema       schema
-                   :table        table
-                   :table_id     table_id})))
+    (ws.u/ignore-constraint-violation
+     (t2/insert! :model/WorkspaceInput
+                 (for [{:keys [db_id schema table table_id]} inputs]
+                   {:workspace_id      workspace-id
+                    :ref_id            ref-id
+                    :transform_version transform-version
+                    :db_id             db_id
+                    :schema            schema
+                    :table             table
+                    :table_id          table_id}))))
   nil)
 
-(mu/defn write-dependencies! :- :nil
+(defn transform-output-exists-for-version?
+  "Check if workspace_output exists for a transform at the given version or later."
+  [ws-id ref-id transform-version]
+  (t2/exists? :model/WorkspaceOutput
+              :workspace_id ws-id
+              :ref_id ref-id
+              :transform_version [:>= transform-version]))
+
+(mu/defn write-entity-analysis! :- :nil
   "Persist dependency analysis for a workspace entity.
 
    Arguments:
@@ -285,29 +275,30 @@
    - entity-type: keyword, must be :transform
    - ref-id: string, the workspace_transform.ref_id
    - analysis: result from analyze-entity
+   - transform-version: long, the analysis_version to write (for epochal versioning)
 
    Side effects:
-   - Upserts workspace_output for this transform (with both global and isolated identifiers)
-   - Replaces workspace_input records for this transform's external dependencies"
-  [workspace-id    :- :int
-   isolated-schema :- :string
-   entity-type     :- :keyword
-   ref-id          :- :string
-   {:keys [output inputs]} :- ::analysis]
+   - Inserts workspace_output for this transform (with both global and isolated identifiers)
+   - Inserts workspace_input records for this transform's external dependencies
+   - Old version cleanup happens separately in impl.clj"
+  [workspace-id      :- :int
+   isolated-schema   :- :string
+   entity-type       :- :keyword
+   ref-id            :- :string
+   {:keys [output inputs]} :- ::analysis
+   transform-version :- :int]
   (ws.u/assert-transform! entity-type)
   (t2/with-transaction [_conn]
-    (let [output-lookup (build-output-lookup workspace-id)
-          driver        (t2/select-one-fn :engine [:model/Database :engine]
-                                          :id [:in {:select [:database_id]
-                                                    :from   [:workspace]
-                                                    :where  [:= :id workspace-id]}])
-          normalize     (partial sql.normalize/normalize-name driver)]
-      (upsert-workspace-output! workspace-id ref-id isolated-schema output normalize)
-      ;; Filter out internal inputs (those matching workspace outputs) - they don't need tracking
-      (let [external-inputs (remove (fn [{:keys [db_id schema table]}]
-                                      (contains? output-lookup [db_id schema table]))
-                                    inputs)
-            default-schema (driver.sql/default-schema driver)
+    (when-not (transform-output-exists-for-version? workspace-id ref-id transform-version)
+      (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
+                                                :id [:in {:select [:database_id]
+                                                          :from   [:workspace]
+                                                          :where  [:= :id workspace-id]}])
+            normalize         (partial sql.normalize/normalize-name driver)
+            default-schema    (driver.sql/default-schema driver)
             ;; Normalize external inputs so schemas are consistent
-            normalized-external-inputs (map (partial normalize-input-schema default-schema) external-inputs)]
-        (ensure-workspace-inputs! workspace-id ref-id normalized-external-inputs)))))
+            normalized-inputs (map (partial normalize-input-schema default-schema) inputs)]
+        ;; Insert inputs first, then output - output row acts as "commit marker" for version check
+        (insert-workspace-inputs! workspace-id ref-id normalized-inputs transform-version)
+        (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)
+        nil))))

@@ -27,7 +27,7 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   topBarInnerContent?: ReactNode;
 };
 

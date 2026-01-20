@@ -301,7 +301,10 @@ export function dataStudioWorkspaceList() {
   return `${ROOT_URL}/workspaces`;
 }
 
-export function dataStudioWorkspace(workspaceId: number, transformId?: number) {
+export function dataStudioWorkspace(
+  workspaceId: number,
+  transformId?: number | string,
+) {
   if (transformId) {
     return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
   }

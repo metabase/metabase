@@ -109,6 +109,8 @@ const getDefaultMetabotContextValue = (): MetabotContext => ({
   promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
+  suggestionActions: null,
+  setSuggestionActions: () => {},
 });
 
 const defaultMetabotContextValue: MetabotContext =

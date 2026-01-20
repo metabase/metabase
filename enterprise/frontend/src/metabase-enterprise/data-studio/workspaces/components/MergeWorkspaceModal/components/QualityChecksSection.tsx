@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Collapse, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
@@ -28,8 +29,11 @@ type QualityChecksSectionProps = {
 export const QualityChecksSection = ({
   workspaceId,
 }: QualityChecksSectionProps) => {
-  const { data: problems = [], isLoading } =
-    useGetWorkspaceProblemsQuery(workspaceId);
+  const {
+    data: problems = [],
+    error,
+    isLoading,
+  } = useGetWorkspaceProblemsQuery(workspaceId);
   const grouped = useMemo(() => groupProblemsByCategory(problems), [problems]);
   const [expandedChecks, setExpandedChecks] = useState<
     Set<ProblemCheckCategory>
@@ -50,70 +54,76 @@ export const QualityChecksSection = ({
   return (
     <Stack gap="sm">
       <Text fw="bold">{t`Quality Checks`}</Text>
-      <Stack gap="sm">
-        {CHECK_CATEGORIES.map((category) => {
-          const categoryProblems = grouped[category];
-          const checkStatus =
-            category === "unused-outputs"
-              ? getCheckStatusWithUnused(categoryProblems)
-              : getCheckStatus(categoryProblems);
-          const isExpanded = expandedChecks.has(category);
-          const hasProblems = checkStatus.count > 0;
 
-          return (
-            <Box key={category}>
-              <Group
-                justify="space-between"
-                style={{ cursor: hasProblems ? "pointer" : "default" }}
-                onClick={() => hasProblems && toggleCheck(category)}
-              >
-                <Text>{getCheckTitle(category)}</Text>
-                {isLoading ? (
-                  <Loader size="xs" aria-label={t`Loading`} />
-                ) : (
-                  <Group gap="xs">
-                    {checkStatus.status === "passed" && (
-                      <Icon name="check" size={14} c="success" />
-                    )}
-                    <Text
-                      c={
-                        checkStatus.status === "passed"
-                          ? "success"
-                          : checkStatus.problems.some(
-                                (p) => p.severity === "error",
-                              )
-                            ? "error"
-                            : "warning"
-                      }
-                    >
-                      {checkStatus.status === "passed"
-                        ? category === "unused-outputs" && checkStatus.count > 0
-                          ? t`${checkStatus.count} info`
-                          : t`Passed`
-                        : checkStatus.count === 1
-                          ? t`Failed`
-                          : t`${checkStatus.count} issues`}
-                    </Text>
-                  </Group>
+      <LoadingAndErrorWrapper error={error}>
+        <Stack gap="sm">
+          {CHECK_CATEGORIES.map((category) => {
+            const categoryProblems = grouped[category];
+            const checkStatus =
+              category === "unused-outputs"
+                ? getCheckStatusWithUnused(categoryProblems)
+                : getCheckStatus(categoryProblems);
+            const isExpanded = expandedChecks.has(category);
+            const hasProblems = checkStatus.count > 0;
+
+            return (
+              <Box key={category}>
+                <Group
+                  justify="space-between"
+                  style={{ cursor: hasProblems ? "pointer" : "default" }}
+                  onClick={() => hasProblems && toggleCheck(category)}
+                >
+                  <Text>{getCheckTitle(category)}</Text>
+
+                  {isLoading ? (
+                    <Loader size="xs" aria-label={t`Loading`} />
+                  ) : (
+                    <Group gap="xs">
+                      {checkStatus.status === "passed" && (
+                        <Icon name="check" size={14} c="success" />
+                      )}
+
+                      <Text
+                        c={
+                          checkStatus.status === "passed"
+                            ? "success"
+                            : checkStatus.problems.some(
+                                  (p) => p.severity === "error",
+                                )
+                              ? "error"
+                              : "warning"
+                        }
+                      >
+                        {checkStatus.status === "passed"
+                          ? category === "unused-outputs" &&
+                            checkStatus.count > 0
+                            ? t`${checkStatus.count} info`
+                            : t`Passed`
+                          : checkStatus.count === 1
+                            ? t`Failed`
+                            : t`${checkStatus.count} issues`}
+                      </Text>
+                    </Group>
+                  )}
+                </Group>
+                {hasProblems && (
+                  <Collapse in={isExpanded}>
+                    <Stack gap="xs" mt="xs" pl="md">
+                      {checkStatus.problems.map((problem, idx) => (
+                        <Box key={idx}>
+                          <Text size="sm" c="text-medium">
+                            {formatProblemDetails(problem)}
+                          </Text>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Collapse>
                 )}
-              </Group>
-              {hasProblems && (
-                <Collapse in={isExpanded}>
-                  <Stack gap="xs" mt="xs" pl="md">
-                    {checkStatus.problems.map((problem, idx) => (
-                      <Box key={idx}>
-                        <Text size="sm" c="text-medium">
-                          {formatProblemDetails(problem)}
-                        </Text>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Collapse>
-              )}
-            </Box>
-          );
-        })}
-      </Stack>
+              </Box>
+            );
+          })}
+        </Stack>
+      </LoadingAndErrorWrapper>
     </Stack>
   );
 };

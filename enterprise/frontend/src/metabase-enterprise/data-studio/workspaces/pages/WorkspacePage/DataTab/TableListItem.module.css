@@ -13,6 +13,10 @@
   &:hover {
     background-color: var(--mb-color-background-secondary);
   }
+
+  &.noResults .name {
+    opacity: 0.6;
+  }
 }
 
 .clickable {
@@ -22,6 +26,7 @@
 .selected {
   background-color: var(--mb-color-background-tertiary);
 }
+
 .name {
   flex: 1;
   min-width: 0;

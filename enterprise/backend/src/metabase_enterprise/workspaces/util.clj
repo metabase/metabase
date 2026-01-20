@@ -1,7 +1,8 @@
 (ns metabase-enterprise.workspaces.util
   (:require
    [clojure.string :as str]
-   [metabase.system.core :as system]))
+   [metabase.system.core :as system]
+   [metabase.util.log :as log]))
 
 (defn assert-transform!
   "Test whether we support the given entity type within workspaces yet.
@@ -165,3 +166,25 @@
    Format: adjective-animal-xxxx (where xxxx is a random 4-char hex suffix)"
   []
   (str (generate-name) "-" (format "%04x" (rand-int 65536))))
+
+;;; -------------------------------- Epochal Versioning Helpers ------------------------------------------
+
+(defmacro ignore-constraint-violation
+  "Execute body and silently return nil if a unique constraint violation occurs.
+   Used in epochal versioning where concurrent processes may race to insert the same version.
+   If the exception is not a constraint violation, it is rethrown."
+  [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       ;; Check if this is a constraint violation (database-specific messages)
+       ;; H2:         "Unique index or primary key violation"
+       ;; PostgreSQL: "duplicate key value violates unique constraint"
+       ;; MySQL:      "Duplicate entry"
+       (let [msg#       (or (ex-message e#) "")
+             cause-msg# (or (some-> e# ex-cause ex-message) "")]
+         (if (or (re-find #"(?i)unique|duplicate|constraint" msg#)
+                 (re-find #"(?i)unique|duplicate|constraint" cause-msg#))
+           ;; It's good to keep these visible, as they should be rare and can cause transient consistency issues.
+           (log/info "Ignoring constraint violation (concurrent insert race):" msg#)
+           (throw e#))))))

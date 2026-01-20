@@ -493,20 +493,17 @@ export const WorkspaceProvider = ({
   const updateTab = useCallback(
     <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => {
       updateWorkspaceState((state) => {
-        const newOpenedTabs = state.openedTabs.map((tab) => {
+        const newOpenedTabs = state.openedTabs.map((tab): WorkspaceTab => {
           if (tab.id === tabId) {
-            return {
-              ...tab,
-              ...patch,
-            } as WorkspaceTab;
+            return { ...tab, ...patch };
           }
           return tab;
         });
 
         // Also update activeTab if it's the tab being updated
-        const newActiveTab =
+        const newActiveTab: WorkspaceTab | undefined =
           state.activeTab?.id === tabId
-            ? ({ ...state.activeTab, ...patch } as WorkspaceTab)
+            ? { ...state.activeTab, ...patch }
             : state.activeTab;
 
         return {
@@ -685,7 +682,7 @@ export const WorkspaceProvider = ({
 
   const activeEditedTransform = activeTransform
     ? (currentState.editedTransforms.get(getTransformId(activeTransform)) ??
-        activeTransform)
+      activeTransform)
     : activeTransform;
 
   const value = useMemo(

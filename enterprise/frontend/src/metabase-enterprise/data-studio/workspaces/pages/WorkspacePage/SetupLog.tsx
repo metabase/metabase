@@ -1,40 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { Group, Icon, Loader, Stack, Tooltip } from "metabase/ui";
-import { useGetWorkspaceLogQuery } from "metabase-enterprise/api";
-import type { WorkspaceId, WorkspaceLogStatus } from "metabase-types/api";
+import type { WorkspaceLogStatus } from "metabase-types/api";
 
-interface SetupTabProps {
-  workspaceId: WorkspaceId;
-}
+import type { SetupStatus } from "./useWorkspaceData";
 
-const LOGS_POLLING_INTERVAL = 1000;
-
-export const SetupLog = ({ workspaceId }: SetupTabProps) => {
-  const [shouldPoll, setShouldPoll] = useState(true);
-  const {
-    data: workspace,
-    error,
-    isLoading,
-  } = useGetWorkspaceLogQuery(workspaceId, {
-    pollingInterval: LOGS_POLLING_INTERVAL,
-    refetchOnMountOrArgChange: true,
-    skip: !shouldPoll,
-  });
-  useEffect(() => {
-    if (
-      workspace?.status === "ready" ||
-      workspace?.status === "archived" ||
-      workspace?.status === "uninitialized"
-    ) {
-      setShouldPoll(false);
-    }
-  }, [workspace?.status]);
-
-  const logs = useMemo(() => workspace?.logs ?? [], [workspace]);
+type SetupLogProps = {
+  setupStatus: SetupStatus;
+};
+export const SetupLog = ({ setupStatus }: SetupLogProps) => {
+  const { workspace, error, isLoading, logs } = setupStatus;
 
   if (error || isLoading) {
     return <LoadingAndGenericErrorWrapper error={error} loading={isLoading} />;
@@ -54,7 +31,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
 
       {logs.map((log) => {
         return (
-          <Group gap="xs" key={log.id}>
+          <Group gap="xs" key={log.id} wrap="nowrap">
             <Tooltip disabled={!log.message} label={log.message}>
               <Group>
                 <LogIcon status={log.status} />
@@ -70,7 +47,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
       })}
 
       {workspace?.status === "ready" && (
-        <Group gap="xs">
+        <Group gap="xs" wrap="nowrap">
           <LogIcon status="success" />
 
           {t`Workspace ready!`}
@@ -78,7 +55,7 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
       )}
 
       {workspace?.status === "archived" && (
-        <Group gap="xs">
+        <Group gap="xs" wrap="nowrap">
           <Icon c="text-light" name="archive" />
 
           {t`Workspace is archived`}

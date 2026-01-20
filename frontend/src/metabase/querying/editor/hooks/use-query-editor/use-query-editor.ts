@@ -14,7 +14,7 @@ type UseQueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
 };
 
 export function useQueryEditor({

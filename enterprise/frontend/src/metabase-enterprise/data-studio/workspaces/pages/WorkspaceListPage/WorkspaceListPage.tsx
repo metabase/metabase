@@ -10,12 +10,7 @@ import { useGetWorkspacesQuery } from "metabase-enterprise/api";
 
 export function WorkspaceListPage() {
   const dispatch = useDispatch();
-  const {
-    data: workspacesData,
-    error,
-    isLoading,
-    isFetching,
-  } = useGetWorkspacesQuery();
+  const { data: workspacesData, error, isFetching } = useGetWorkspacesQuery();
 
   const workspaces = useMemo(
     () => workspacesData?.items ?? [],
@@ -40,10 +35,8 @@ export function WorkspaceListPage() {
     return null;
   }
 
-  if (isLoading || isFetching) {
-    return (
-      <LoadingAndErrorWrapper error={error} loading={isLoading || isFetching} />
-    );
+  if (isFetching) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
   }
 
   return (

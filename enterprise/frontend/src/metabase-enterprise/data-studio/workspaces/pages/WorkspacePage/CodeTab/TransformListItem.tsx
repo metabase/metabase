@@ -37,7 +37,7 @@ export const TransformListItem = ({
   const label = (
     <Box className={cx(S.label, { [S.cursorPointer]: !tooltipLabel })}>
       <Icon name={icon} size={14} c="brand" />
-      <Text c={isActive ? "brand" : "text-dark"} truncate>
+      <Text c={isActive ? "brand" : "text-primary"} truncate>
         {name}
       </Text>
       {isEdited && <StatusDot data-testid="status-dot" />}

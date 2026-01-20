@@ -1142,13 +1142,11 @@
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [_driver database workspace tables]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        username  (-> workspace :database_details :user)
-        schemas   (distinct (map :schema tables))]
+        username  (-> workspace :database_details :user)]
     (when-not username
       (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
                       {:workspace-id (:id workspace) :step :grant})))
-    (doseq [schema schemas]
-      (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
+    ;; Grant SELECT on each specific table only - no schema-level grants
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
                                         (:schema table) (:name table) username)]))))

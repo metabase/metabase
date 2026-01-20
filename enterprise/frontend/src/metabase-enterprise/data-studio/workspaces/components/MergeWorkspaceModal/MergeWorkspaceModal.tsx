@@ -7,7 +7,10 @@ import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Flex, Icon, Modal, Text, Title } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
-import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
+import type {
+  WorkspaceId,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
 
 import S from "./MergeWorkspaceModal.module.css";
 import { DiffView } from "./components/DiffView";
@@ -18,6 +21,7 @@ type MergeWorkspaceModalProps = {
   onClose: VoidFunction;
   onSubmit: (commitMessage: string) => Promise<void>;
   isLoading?: boolean;
+  isDisabled?: boolean;
   workspaceId: WorkspaceId;
   workspaceName: string;
   workspaceTransforms: WorkspaceTransformListItem[];
@@ -44,6 +48,7 @@ export const MergeWorkspaceModal = ({
   onClose,
   onSubmit,
   isLoading = false,
+  isDisabled = false,
   workspaceId,
   workspaceName,
   workspaceTransforms,
@@ -51,8 +56,10 @@ export const MergeWorkspaceModal = ({
   const { sendErrorToast } = useMetadataToasts();
   const validationSchema = useMemo(() => getMergeWorkspaceSchema(), []);
 
-  const { data: workspaceProblems = [] } =
-    useGetWorkspaceProblemsQuery(workspaceId);
+  const {
+    data: workspaceProblems = [],
+    isFetching: isLoadingWorkspaceProblems,
+  } = useGetWorkspaceProblemsQuery(workspaceId);
   const hasBlockingProblems = useMemo(
     () => workspaceProblems.some((p) => p.block_merge === true),
     [workspaceProblems],
@@ -221,7 +228,9 @@ export const MergeWorkspaceModal = ({
                 disabled={
                   !values.commit_message?.trim() ||
                   (touched.commit_message && !!errors.commit_message) ||
-                  hasBlockingProblems
+                  hasBlockingProblems ||
+                  isLoadingWorkspaceProblems ||
+                  isDisabled
                 }
                 label={t`Merge`}
                 loading={isLoading}

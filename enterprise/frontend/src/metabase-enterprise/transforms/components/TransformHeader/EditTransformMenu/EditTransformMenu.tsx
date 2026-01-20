@@ -15,12 +15,14 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
+import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
@@ -41,7 +43,8 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useGetWorkspaceCheckoutQuery(transform.id);
 
   const workspaces = useMemo(
-    () => workspacesData?.items ?? [],
+    () =>
+      workspacesData?.items.filter((item) => item?.status !== "archived") ?? [],
     [workspacesData],
   );
 
@@ -51,26 +54,39 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
         ?.filter((item) => item.database_id === sourceDatabaseId)
         ?.map((item) => item.id) ?? [];
 
+    const workspacesMap = new Map(workspaces.map((w) => [w.id, w]));
+
     // Workspaces which already include this transform.
-    const checkedWorkspaceIds =
-      checkoutData?.transforms?.map((item) => item.workspace?.id) ?? [];
+    const checkedWorkspaceIds = new Set(
+      checkoutData?.workspaces
+        ?.toSorted((a, b) => {
+          if (a.existing && !b.existing) {
+            return -1;
+          }
+          if (!a.existing && b.existing) {
+            return 1;
+          }
+          return 0;
+        })
+        ?.map((item) => item?.id),
+    );
 
     return Array.from(
       new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
     )
       .map((id) => {
-        const workspace = workspaces.find((ws) => ws.id === id);
+        const workspace = workspacesMap.get(id);
         if (!workspace) {
           return null;
         }
         return {
           id,
-          isChecked: checkedWorkspaceIds.includes(id),
+          isChecked: checkedWorkspaceIds.has(id),
           name: workspace.name,
         };
       })
       .filter((workspace) => !!workspace);
-  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
+  }, [checkoutData?.workspaces, workspaces, sourceDatabaseId]);
 
   const isBusy =
     isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
@@ -110,15 +126,19 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   return (
     <Menu position="bottom-end" width={280}>
       <Menu.Target>
-        <Button
-          size="sm"
-          variant="filled"
-          leftSection={<Icon name="pencil" />}
-          rightSection={<Icon name="chevrondown" />}
-          loading={isBusy}
+        <Tooltip
+          label={getCheckoutDisabledMessage(checkoutData?.checkout_disabled)}
+          disabled={!checkoutData?.checkout_disabled}
         >
-          {t`Edit transform`}
-        </Button>
+          <Button
+            leftSection={<Icon name="pencil" />}
+            rightSection={<Icon name="chevrondown" />}
+            loading={isBusy}
+            disabled={!!checkoutData?.checkout_disabled}
+          >
+            {t`Edit transform`}
+          </Button>
+        </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{t`Add to workspace`}</Menu.Label>
