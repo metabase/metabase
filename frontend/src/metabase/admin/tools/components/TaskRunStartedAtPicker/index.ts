@@ -1,4 +1,1 @@
-export {
-  TaskRunDatePicker,
-  type TaskRunDatePickerRange,
-} from "./TaskRunDatePicker";
+export { TaskRunDatePicker } from "./TaskRunDatePicker";
