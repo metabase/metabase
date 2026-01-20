@@ -28,7 +28,6 @@ interface TreeTableRowContentProps<TData extends TreeNodeData>
   showCheckboxes: boolean;
   showExpandButtons: boolean;
   indentWidth: number;
-  rowHeight?: number;
   activeRowId: string | null;
   selectedRowId: string | null;
   isDisabled?: boolean;
@@ -53,7 +52,6 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   showCheckboxes,
   showExpandButtons,
   indentWidth,
-  rowHeight = DEFAULT_ROW_HEIGHT,
   activeRowId,
   selectedRowId,
   isDisabled,
@@ -96,7 +94,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
         [classNames?.rowDisabled ?? ""]: isDisabled && classNames?.rowDisabled,
       })}
       align="stretch"
-      h={rowHeight}
+      h={DEFAULT_ROW_HEIGHT}
       fz="0.875rem"
       lh="1.25rem"
       c="text-primary"
@@ -206,7 +204,6 @@ export function TreeTableRow<TData extends TreeNodeData>({
   showCheckboxes,
   showExpandButtons,
   indentWidth,
-  rowHeight,
   activeRowId,
   selectedRowId,
   isExpanded,
@@ -239,7 +236,6 @@ export function TreeTableRow<TData extends TreeNodeData>({
         showCheckboxes={showCheckboxes}
         showExpandButtons={showExpandButtons}
         indentWidth={indentWidth}
-        rowHeight={rowHeight}
         activeRowId={activeRowId ?? null}
         selectedRowId={selectedRowId ?? null}
         isDisabled={isDisabled}

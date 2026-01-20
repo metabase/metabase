@@ -28,6 +28,7 @@ import type {
   PermissionSectionConfig,
   PermissionSubject,
   RawGroupRouteParams,
+  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
 import {
@@ -46,6 +47,17 @@ import { buildFieldsPermissions } from "./fields";
 import { getOrderedGroups } from "./groups";
 import { buildSchemasPermissions } from "./schemas";
 import { buildTablesPermissions } from "./tables";
+
+const getGroupHint = (groupType: SpecialGroupType): string | null => {
+  switch (groupType) {
+    case "admin":
+      return t`The Administrators group is special, and always has Unrestricted access.`;
+    case "analyst":
+      return t`The Data Analysts group always has full access to edit table metadata.`;
+    default:
+      return null;
+  }
+};
 
 export const getIsLoadingDatabaseTables = (
   state: State,
@@ -450,24 +462,13 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           );
         }
 
-        const getHint = () => {
-          switch (groupType) {
-            case "admin":
-              return t`The Administrators group is special, and always has Unrestricted access.`;
-            case "analyst":
-              return t`The Data Analysts group always has full access to edit table metadata.`;
-            default:
-              return null;
-          }
-        };
-
         return {
           id: group.id,
           name: group.name,
           icon: isTenantGroup ? (
             <PLUGIN_TENANTS.TenantGroupHintIcon />
           ) : undefined,
-          hint: getHint(),
+          hint: getGroupHint(groupType),
           entityId: params,
           permissions: groupPermissions,
         };
