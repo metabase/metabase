@@ -38,6 +38,17 @@
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
+(def ^:private internal-join-alias-keys
+  "Keys that track internal join information. These should not leak through the model abstraction
+   boundary to downstream queries. See #65532."
+  [:lib/original-join-alias :source-alias :source_alias])
+
+(defn- strip-internal-join-aliases
+  "Remove internal join alias keys from model result_metadata columns. Models should present a 'flat table'
+   abstraction, so internal joins shouldn't affect how columns are displayed in downstream queries."
+  [result-metadata]
+  (mapv #(apply dissoc % internal-join-alias-keys) result-metadata))
+
 (defn- query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
   `:card-id` context can be passed along with the query so Collections perms checking is done if appropriate. This fn
@@ -70,13 +81,13 @@
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
-          source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
-          info           (cond-> {:executed-by api/*current-user-id*
-                                  :context     context
-                                  :card-id     source-card-id}
-                           (= (:type source-card) :model)
-                           (assoc :metadata/model-metadata (:result_metadata source-card)))]
+          source-card (when source-card-id
+                        (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+          info (cond-> {:executed-by api/*current-user-id*
+                        :context context
+                        :card-id source-card-id}
+                 (= (:type source-card) :model)
+                 (assoc :metadata/model-metadata (strip-internal-join-aliases (:result_metadata source-card))))]
       (qp.streaming/streaming-response [rff export-format]
         (if was-pivot
           (let [constraints (if (= export-format :api)
@@ -133,9 +144,9 @@
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
-    format-rows                   :format_rows
-    pivot-results                 :pivot_results
-    visualization-settings        :visualization_settings}
+    format-rows :format_rows
+    pivot-results :pivot_results
+    visualization-settings :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
