@@ -15,6 +15,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   MetabotChartConfig,
   MetabotColumnType,
+  MetabotDisplayType,
   MetabotSeriesConfig,
   RawSeries,
   TimelineEvent,
@@ -172,6 +173,16 @@ function getVisualizationDataUri(question: Question) {
     .exhaustive();
 }
 
+const getDisplayType = (
+  question: Question,
+  visualizationSettings: ComputedVisualizationSettings | undefined,
+): MetabotDisplayType => {
+  if (visualizationSettings?.["graph.x_axis.scale"] === "histogram") {
+    return "histogram";
+  }
+  return question.display();
+};
+
 const getChartConfigs = async ({
   question,
   series,
@@ -192,7 +203,7 @@ const getChartConfigs = async ({
         series: processSeriesData(series, visualizationSettings),
         timeline_events: processTimelineEvents(timelineEvents),
         query: question.datasetQuery(),
-        display_type: question.display(),
+        display_type: getDisplayType(question, visualizationSettings),
       },
     ];
   } catch (err) {

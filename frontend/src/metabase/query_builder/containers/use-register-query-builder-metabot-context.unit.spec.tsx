@@ -251,6 +251,49 @@ describe("registerQueryBuilderMetabotContextFn", () => {
       },
     });
   });
+
+  it("should set display_type to histogram when graph.x_axis.scale is histogram", async () => {
+    const card = createMockCard({
+      name: "Value distribution",
+      display: "bar",
+      visualization_settings: createMockVisualizationSettings({
+        "graph.dimensions": ["value"],
+        "graph.metrics": ["count"],
+        "graph.x_axis.scale": "histogram",
+      }),
+    });
+    const data = createMockData({
+      question: new Question(card),
+      series: [
+        createMockSingleSeries(card, {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "value",
+                display_name: "Value",
+                base_type: "type/Integer",
+              }),
+              createMockColumn({
+                name: "count",
+                display_name: "Count",
+                base_type: "type/Integer",
+                source: "aggregation",
+              }),
+            ],
+            rows: [
+              [10, 5],
+              [20, 8],
+              [30, 3],
+            ],
+          },
+        }),
+      ],
+    });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.display_type).toEqual("histogram");
+  });
 });
 
 it("should return empty result when metabot is disabled", async () => {
