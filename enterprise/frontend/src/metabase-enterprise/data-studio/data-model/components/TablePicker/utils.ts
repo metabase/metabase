@@ -26,6 +26,14 @@ export function getTables(tree: RootNode): TableNode[] {
   return getSchemas(tree).flatMap((schema) => schema.children);
 }
 
+export function getTreeMap(tree: RootNode): Map<string, TreeNode> {
+  return new Map(
+    [...getDatabases(tree), ...getSchemas(tree), ...getTables(tree)].map(
+      (n) => [n.key, n],
+    ),
+  );
+}
+
 // Returns a new state object with all the nodes along the path expanded.
 // Note: This only expands parent containers (database, schema) but NOT tables,
 // to prevent unwanted expansion when navigating via checkbox selection.
