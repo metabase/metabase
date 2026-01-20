@@ -49,8 +49,6 @@ type CodeTabProps = {
   onTransformClick: (transform: TaggedTransform | WorkspaceTransform) => void;
 };
 
-const DEFAULT_AVAILABLE_TRANFORMS: ExternalTransform[] = [];
-
 export const CodeTab = ({
   activeTransformId,
   databaseId,
@@ -63,7 +61,7 @@ export const CodeTab = ({
   const { sendErrorToast } = useMetadataToasts();
 
   const {
-    data: availableTransforms = DEFAULT_AVAILABLE_TRANFORMS,
+    data: availableTransforms,
     error,
     isLoading,
   } = useGetExternalTransformsQuery(
@@ -197,23 +195,24 @@ export const CodeTab = ({
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
 
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          {availableTransforms.map((transform) => (
-            <TransformListItem
-              key={transform.id}
-              name={transform.name}
-              isActive={activeTransformId === transform.id}
-              isEdited={editedTransforms.has(transform.id)}
-              onClick={() => {
-                handleExternalTransformClick(transform);
-              }}
-              opacity={transform.checkout_disabled ? 0.5 : 1}
-              tooltipLabel={getCheckoutDisabledMessage(
-                transform.checkout_disabled,
-              )}
-            />
-          ))}
+          {availableTransforms &&
+            availableTransforms.map((transform) => (
+              <TransformListItem
+                key={transform.id}
+                name={transform.name}
+                isActive={activeTransformId === transform.id}
+                isEdited={editedTransforms.has(transform.id)}
+                onClick={() => {
+                  handleExternalTransformClick(transform);
+                }}
+                opacity={transform.checkout_disabled ? 0.5 : 1}
+                tooltipLabel={getCheckoutDisabledMessage(
+                  transform.checkout_disabled,
+                )}
+              />
+            ))}
 
-          {availableTransforms.length === 0 && (
+          {availableTransforms && availableTransforms.length === 0 && (
             <EmptyState message={t`No available transforms`} />
           )}
         </LoadingAndErrorWrapper>
