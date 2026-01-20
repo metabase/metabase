@@ -791,10 +791,8 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (let [source-or-target-changed? (or (:source body) (:target body))
-          update-body (cond-> body
-                        source-or-target-changed? (assoc :definition_changed true))]
-      (t2/update! :model/WorkspaceTransform tx-id update-body)
+    (let [source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform tx-id body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
