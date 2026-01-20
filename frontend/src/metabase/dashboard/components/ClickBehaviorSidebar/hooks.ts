@@ -24,5 +24,8 @@ export function useClickBehaviorOptionName(
   if (value === "action") {
     return t`Perform action`;
   }
+  if (value === "singleClickDrilldown") {
+    return t`Single click to drill down`;
+  }
   return t`Unknown`;
 }

@@ -40,7 +40,10 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-import { performDefaultAction } from "metabase/visualizations/lib/action";
+import {
+  performDefaultAction,
+  performSingleClickDrilldown,
+} from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -553,19 +556,34 @@ class Visualization extends PureComponent<
   };
 
   handleVisualizationClick = (clicked: ClickObject | null) => {
-    const { handleVisualizationClick } = this.props;
+    const { handleVisualizationClick, dashcard } = this.props;
 
     if (typeof handleVisualizationClick === "function") {
       handleVisualizationClick(clicked);
       return;
     }
 
+    const clickActions = this.getClickActions(clicked);
+    const actionProps = {
+      dispatch: this.props.dispatch,
+      onChangeCardAndRun: this.handleOnChangeCardAndRun,
+    };
+
+    // Check if single-click drilldown is enabled
+    const clickBehavior = dashcard?.visualization_settings?.click_behavior;
+    if (clickBehavior?.type === "singleClickDrilldown") {
+      const didPerformDrilldown = performSingleClickDrilldown(
+        clickActions,
+        actionProps,
+      );
+      if (didPerformDrilldown) {
+        return;
+      }
+    }
+
     const didPerformDefaultAction = performDefaultAction(
-      this.getClickActions(clicked),
-      {
-        dispatch: this.props.dispatch,
-        onChangeCardAndRun: this.handleOnChangeCardAndRun,
-      },
+      clickActions,
+      actionProps,
     );
 
     if (didPerformDefaultAction) {

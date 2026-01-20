@@ -89,7 +89,7 @@ export function TypeSelector({
             ? undefined
             : ({ type: value } as ClickBehavior),
         );
-      } else if (value !== "actionMenu") {
+      } else if (value !== "actionMenu" && value !== "singleClickDrilldown") {
         moveToNextPage();
       }
     },
@@ -107,7 +107,7 @@ export function TypeSelector({
             disabled={value === "crossfilter" && parameters.length === 0}
             onClick={() => handleSelect(value)}
             icon={icon}
-            hasNextStep={value !== "actionMenu"}
+            hasNextStep={value !== "actionMenu" && value !== "singleClickDrilldown"}
           />
         </div>
       ))}

@@ -96,3 +96,26 @@ export function performDefaultAction(actions, props) {
 
   return false;
 }
+
+/**
+ * Performs the first available drill action (single-click drilldown).
+ * This bypasses the action menu and directly executes a drill action.
+ * Priority: 1) Actions with url/question 2) First available action
+ */
+export function performSingleClickDrilldown(actions, props) {
+  if (!actions || actions.length === 0) {
+    return false;
+  }
+
+  // Prefer actions that have a url or question (navigation/drill actions)
+  const drillAction = actions.find(
+    (action) => action.url || action.question || action.onClick,
+  );
+
+  if (drillAction) {
+    return performAction(drillAction, props);
+  }
+
+  // Fall back to first action if no drill-specific action found
+  return performAction(actions[0], props);
+}
