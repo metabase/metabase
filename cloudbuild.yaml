@@ -3,6 +3,8 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+                  - '--build-arg'
+                  - 'VERSION=v0.54.3'
       - '-t'
       - 'australia-southeast1-docker.pkg.dev/crowdmcp/crowdit/metabase-crowdit:$COMMIT_SHA'
       - '-t'
