@@ -65,3 +65,16 @@ export function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
 export function getGroupNameLocalized(group: Pick<GroupInfo, "name">) {
   return SPECIAL_GROUP_NAMES.get(group.name) ?? group.name;
 }
+
+export function getGroupSortOrder(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return 0;
+  }
+  if (isDefaultGroup(group)) {
+    return 1;
+  }
+  if (isDataAnalystGroup(group)) {
+    return 2;
+  }
+  return 3;
+}

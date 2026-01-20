@@ -17,6 +17,7 @@ import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import {
   getGroupNameLocalized,
+  getGroupSortOrder,
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/lib/groups";
@@ -214,7 +215,11 @@ const getToggleLabel = (namespace?: CollectionNamespace) =>
 const getCollectionDisabledTooltip = (
   groupType: SpecialGroupType,
   isLibrary: boolean,
+  isIACollection: boolean,
 ): string | null => {
+  if (groupType === "admin" && isIACollection) {
+    return PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE;
+  }
   if (groupType === "analyst" && isLibrary) {
     return Messages.UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS;
   }
@@ -267,7 +272,11 @@ export const getCollectionsPermissionEditor = createSelector(
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
-    const entities = groups
+    const sortedGroups = [...groups].sort(
+      (a, b) => getGroupSortOrder(a) - getGroupSortOrder(b),
+    );
+
+    const entities = sortedGroups
       .map((group: GroupType) => {
         const isExternalUsersGroup = PLUGIN_TENANTS.isExternalUsersGroup(group);
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
@@ -312,9 +321,11 @@ export const getCollectionsPermissionEditor = createSelector(
                 COLLECTION_OPTIONS.none,
               ];
 
-        const disabledTooltip = isIACollection
-          ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-          : getCollectionDisabledTooltip(groupType, isLibrary);
+        const disabledTooltip = getCollectionDisabledTooltip(
+          groupType,
+          isLibrary,
+          isIACollection,
+        );
 
         const isDisabled =
           (!isTenantCollection && isExternal) || disabledTooltip !== null;
