@@ -317,11 +317,11 @@ function SearchItemList({ query }: { query: string }) {
 
   return (
     <ItemList>
-      <Box>
-        {!isFetchingDebounced && searchResults.length === 0 && (
+      {!isFetchingDebounced && searchResults.length === 0 && (
+        <Box>
           <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
-        )}
-      </Box>
+        </Box>
+      )}
       {isFetchingDebounced && <MiniPickerListLoader />}
       {!isFetchingDebounced &&
         searchResults.map((item) => {
@@ -342,13 +342,11 @@ function SearchItemList({ query }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <>
-    <Repeat times={3}>
-      <Box px="sm" py="2px">
-        <Skeleton height={35} />
-      </Box>
-    </Repeat>
-  </>
+  <Repeat times={3}>
+    <Box px="sm" py="2px">
+      <Skeleton height="2rem" />
+    </Box>
+  </Repeat>
 );
 
 const isTableInDb = (
