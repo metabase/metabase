@@ -5,6 +5,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { AISummarySidebar } from "metabase/query_builder/components/view/sidebars/AISummarySidebar/AISummarySidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
@@ -40,7 +41,9 @@ interface NativeQueryRightSidebarProps {
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
   isShowingAIQuestionAnalysisSidebar: boolean;
+  isShowingAISummarySidebar: boolean;
   onCloseAIQuestionAnalysisSidebar: () => void;
+  onCloseAISummarySidebar: () => void;
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
   databases: Database[];
@@ -76,7 +79,9 @@ export const NativeQueryRightSidebar = (
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
     isShowingAIQuestionAnalysisSidebar,
+    isShowingAISummarySidebar,
     onCloseAIQuestionAnalysisSidebar,
+    onCloseAISummarySidebar,
   } = props;
 
   return match({
@@ -87,6 +92,7 @@ export const NativeQueryRightSidebar = (
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
     isShowingAIQuestionAnalysisSidebar,
+    isShowingAISummarySidebar,
   })
     .with({ isShowingTemplateTagsEditor: true }, () => {
       const query = question.legacyNativeQuery();
@@ -119,6 +125,9 @@ export const NativeQueryRightSidebar = (
     ))
     .with({ isShowingQuestionSettingsSidebar: true }, () => (
       <QuestionSettingsSidebar question={question} />
+    ))
+    .with({ isShowingAISummarySidebar: true }, () => (
+      <AISummarySidebar question={question} onClose={onCloseAISummarySidebar} />
     ))
     .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
       <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar

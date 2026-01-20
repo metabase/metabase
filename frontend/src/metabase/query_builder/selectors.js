@@ -75,6 +75,7 @@ const SIDEBARS = [
   "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
+  "isShowingAISummarySidebar",
 
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",

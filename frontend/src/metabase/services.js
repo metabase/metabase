@@ -19,6 +19,10 @@ export const ActivityApi = {
   ),
 };
 
+export const AiApi = {
+  summary: POST("/api/ai/summary/card/:cardId"),
+};
+
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),

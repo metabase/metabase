@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -15,7 +16,7 @@ import { canExploreResults } from "metabase/query_builder/components/view/ViewHe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
-import { Box, Button, Flex, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -40,6 +41,7 @@ interface ViewTitleHeaderRightSideProps {
   isRunning: boolean;
   isNativeEditorOpen: boolean;
   isShowingSummarySidebar: boolean;
+  isShowingAISummarySidebar: boolean;
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
@@ -52,6 +54,8 @@ interface ViewTitleHeaderRightSideProps {
   onOpenModal: (modalType: QueryModalType) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
+  onOpenAISummarySidebar: () => void;
+  onCloseAISummarySidebar: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
@@ -80,6 +84,7 @@ export function ViewTitleHeaderRightSide({
   isRunning,
   isNativeEditorOpen,
   isShowingSummarySidebar,
+  isShowingAISummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
@@ -88,6 +93,8 @@ export function ViewTitleHeaderRightSide({
   onOpenModal,
   onEditSummary,
   onCloseSummary,
+  onOpenAISummarySidebar,
+  onCloseAISummarySidebar,
   setQueryBuilderMode,
   areFiltersExpanded,
   onExpandFilters,
@@ -100,6 +107,7 @@ export function ViewTitleHeaderRightSide({
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const isAiSummaryAvailable = Boolean(useSetting("ai-openai-available?"));
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -127,6 +135,14 @@ export function ViewTitleHeaderRightSide({
       onOpenQuestionInfo();
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
+
+  const handleAISummaryClick = useCallback(() => {
+    if (isShowingAISummarySidebar) {
+      onCloseAISummarySidebar();
+    } else {
+      onOpenAISummarySidebar();
+    }
+  }, [isShowingAISummarySidebar, onCloseAISummarySidebar, onOpenAISummarySidebar]);
 
   const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
   const getRunButtonLabel = useCallback(() => {
@@ -227,6 +243,29 @@ export function ViewTitleHeaderRightSide({
       )}
       {!isShowingNotebook && (hasSaveButton || isSaved) && (
         <QuestionSharingMenu question={question} />
+      )}
+      {isSaved && !isShowingNotebook && (
+        <Tooltip
+          label={
+            isAiSummaryAvailable
+              ? t`Summarize this question with AI.`
+              : t`Set MB_AI_OPENAI_API_KEY to enable AI summaries.`
+          }
+          disabled={isAiSummaryAvailable}
+          position="bottom"
+        >
+          <Box>
+            <Button
+              variant={isShowingAISummarySidebar ? "filled" : "default"}
+              leftSection={<Icon name="sparkles" />}
+              size="sm"
+              onClick={handleAISummaryClick}
+              disabled={!isAiSummaryAvailable}
+            >
+              {t`AI Summary`}
+            </Button>
+          </Box>
+        </Tooltip>
       )}
       {!isShowingNotebook &&
       PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question) ? (

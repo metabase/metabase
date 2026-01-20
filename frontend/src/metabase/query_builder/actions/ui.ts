@@ -57,6 +57,13 @@ export const setQueryBuilderMode =
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
 
+export const onOpenAISummarySidebar = createAction(
+  "metabase/qb/OPEN_AI_SUMMARY_SIDEBAR",
+);
+export const onCloseAISummarySidebar = createAction(
+  "metabase/qb/CLOSE_AI_SUMMARY_SIDEBAR",
+);
+
 export const onOpenAIQuestionAnalysisSidebar = createAction(
   "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR",
 );

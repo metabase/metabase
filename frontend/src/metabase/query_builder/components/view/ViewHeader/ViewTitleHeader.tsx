@@ -43,6 +43,7 @@ interface ViewTitleHeaderProps {
   isRunning: boolean;
   isNativeEditorOpen: boolean;
   isShowingSummarySidebar: boolean;
+  isShowingAISummarySidebar: boolean;
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
@@ -55,6 +56,8 @@ interface ViewTitleHeaderProps {
   onOpenModal: (modalType: QueryModalType) => void;
   onEditSummary: () => void;
   onCloseSummary: () => void;
+  onOpenAISummarySidebar: () => void;
+  onCloseAISummarySidebar: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
@@ -92,6 +95,7 @@ export function ViewTitleHeader({
   isRunning,
   isNativeEditorOpen,
   isShowingSummarySidebar,
+  isShowingAISummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
@@ -99,6 +103,8 @@ export function ViewTitleHeader({
   cancelQuery,
   onEditSummary,
   onCloseSummary,
+  onOpenAISummarySidebar,
+  onCloseAISummarySidebar,
   setQueryBuilderMode,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
@@ -182,6 +188,7 @@ export function ViewTitleHeader({
           isRunning={isRunning}
           isNativeEditorOpen={isNativeEditorOpen}
           isShowingSummarySidebar={isShowingSummarySidebar}
+          isShowingAISummarySidebar={isShowingAISummarySidebar}
           isDirty={isDirty}
           isResultDirty={isResultDirty}
           isActionListVisible={isActionListVisible}
@@ -190,6 +197,8 @@ export function ViewTitleHeader({
           onOpenModal={onOpenModal}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
+          onOpenAISummarySidebar={onOpenAISummarySidebar}
+          onCloseAISummarySidebar={onCloseAISummarySidebar}
           setQueryBuilderMode={setQueryBuilderMode}
           toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
