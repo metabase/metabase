@@ -210,8 +210,8 @@
                                             :user_id          (:id new-user)
                                             :is_group_manager true})))))
 
-          (testing "Admin can could view all groups"
-            (is (= (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)
+          (testing "Admin can view all groups with members"
+            (is (= (t2/select-fn-set :group_id :model/PermissionsGroupMembership)
                    (membership->groups-ids (get-membership :crowberto 200))))))))))
 
 (deftest get-users-api-test

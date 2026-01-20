@@ -5,10 +5,6 @@
    [metabase.test :as mt]))
 
 (deftest fetch-groups-test
-  (testing "GET /api/permissions/group"
-    (mt/with-premium-features #{}
-      (is (not (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
-                          (:id (perms-group/data-analyst))))))
-    (mt/with-premium-features #{:data-studio}
-      (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
-                     (:id (perms-group/data-analyst)))))))
+  (testing "GET /api/permissions/group - Data Analysts group is always visible on EE"
+    (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))
+                   (:id (perms-group/data-analyst))))))

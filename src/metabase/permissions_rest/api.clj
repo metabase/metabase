@@ -7,6 +7,7 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
@@ -189,7 +190,7 @@
                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
-         (when-not (premium-features/enable-data-studio?)
+         (when-not config/ee-available?
            [:or
             [:= nil :magic_group_type]
             [:not= "data-analyst" :magic_group_type]])]
@@ -300,7 +301,11 @@
                                                    :from   [:permissions_group_membership]
                                                    :where  [:and
                                                             [:= :user_id api/*current-user-id*]
-                                                            [:= :is_group_manager true]]}])))))
+                                                            [:= :is_group_manager true]
+                                                            (when-not config/ee-available?
+                                                              [:or
+                                                               [:= nil :magic_group_type]
+                                                               [:not= "data-analyst" :magic_group_type]])]}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
