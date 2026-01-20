@@ -23,22 +23,24 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <Breadcrumbs lh="1rem" aria-label={title}>
-      {locationInfo.links.map((link, linkIndex) => (
-        <Anchor
-          key={linkIndex}
-          component={Link}
-          className={cx(CS.textWrap, S.link)}
-          lh="1rem"
-          to={link.url}
-          target="_blank"
-        >
-          <Group gap="sm" wrap="nowrap">
-            {linkIndex === 0 && <Icon name={locationInfo.icon} />}
-            {link.label}
-          </Group>
-        </Anchor>
-      ))}
-    </Breadcrumbs>
+    <div role="region" aria-label={title}>
+      <Breadcrumbs lh="1rem">
+        {locationInfo.links.map((link, linkIndex) => (
+          <Anchor
+            key={linkIndex}
+            component={Link}
+            className={cx(CS.textWrap, S.link)}
+            lh="1rem"
+            to={link.url}
+            target="_blank"
+          >
+            <Group gap="sm" wrap="nowrap">
+              {linkIndex === 0 && <Icon name={locationInfo.icon} />}
+              {link.label}
+            </Group>
+          </Anchor>
+        ))}
+      </Breadcrumbs>
+    </div>
   );
 }
