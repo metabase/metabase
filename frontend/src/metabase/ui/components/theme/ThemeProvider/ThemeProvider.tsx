@@ -32,7 +32,6 @@ import { mutateColors } from "metabase/lib/colors/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import type { ColorSettings, SettingKey } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -61,7 +60,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
   // We cannot use `useSetting` here due to circular dependencies,
   // and `useSelector` throws as the redux provider is not always wrapped
   const [whitelabelColors, setWhitelabelColors] = useState(
-    MetabaseSettings.get("application-colors" as SettingKey) as ColorSettings,
+    MetabaseSettings.applicationColors(),
   );
 
   // Merge default theme overrides with user-provided theme overrides
