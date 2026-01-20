@@ -326,7 +326,7 @@
           (is (false? (t2/select-one-fn :definition_changed :model/WorkspaceTransform :ref_id t2-ref)))
           (is (false? (t2/select-one-fn :input_data_changed :model/WorkspaceTransform :ref_id t2-ref))))))))
 
-;;;; Static graph tests for compute-staleness
+;;;; Static graph tests for with-staleness
 
 (defn- workspace-transform
   "Create a workspace transform entity for testing."
@@ -346,7 +346,7 @@
           {true #{} false #{}}
           entities))
 
-(deftest compute-staleness-linear-chain-test
+(deftest with-staleness-linear-chain-test
   (testing "Linear chain: staleness propagates downstream"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -357,23 +357,23 @@
                                 t3 [t2]}}]
       (testing "stale root propagates to all descendants"
         (let [staleness {"t1" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"t1" "t2" "t3"} false #{}}
                  (stale->id (:entities result))))))
 
       (testing "stale middle only propagates downstream"
         (let [staleness {"t2" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"t2" "t3"} false #{"t1"}}
                  (stale->id (:entities result))))))
 
       (testing "stale leaf doesn't propagate upstream"
         (let [staleness {"t3" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"t3"} false #{"t1" "t2"}}
                  (stale->id (:entities result)))))))))
 
-(deftest compute-staleness-diamond-graph-test
+(deftest with-staleness-diamond-graph-test
   (testing "Diamond graph: staleness propagates through all paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -390,17 +390,17 @@
                                 t4 [t2 t3]}}]
       (testing "stale root propagates through all paths"
         (let [staleness {"t1" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"t1" "t2" "t3" "t4"} false #{}}
                  (stale->id (:entities result))))))
 
       (testing "stale on one branch only propagates through that path"
         (let [staleness {"t2" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"t2" "t4"} false #{"t1" "t3"}}
                  (stale->id (:entities result)))))))))
 
-(deftest compute-staleness-independent-subgraphs-test
+(deftest with-staleness-independent-subgraphs-test
   (testing "Independent subgraphs: staleness doesn't cross between them"
     (let [a1 (workspace-transform "a1")
           a2 (workspace-transform "a2")
@@ -413,11 +413,11 @@
                                 b2 [b1]}}]
       (testing "staleness in subgraph A doesn't affect subgraph B"
         (let [staleness {"a1" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           (is (= {true #{"a1" "a2"} false #{"b1" "b2"}}
                  (stale->id (:entities result)))))))))
 
-(deftest compute-staleness-wide-graph-test
+(deftest with-staleness-wide-graph-test
   (testing "Wide graph: stale root propagates to all children"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -433,11 +433,11 @@
                                 t4 [t1]
                                 t5 [t1]}}]
       (let [staleness {"t1" {:definition_changed true :input_data_changed false}}
-            result    (ws.impl/compute-staleness graph staleness)]
+            result    (ws.impl/with-staleness graph staleness)]
         (is (= {true #{"t1" "t2" "t3" "t4" "t5"} false #{}}
                (stale->id (:entities result))))))))
 
-(deftest compute-staleness-mixed-transforms-test
+(deftest with-staleness-mixed-transforms-test
   (testing "Mixed transforms: staleness propagates through external transforms"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
@@ -448,43 +448,181 @@
                                 t2  [ext]}}]
       (testing "staleness propagates through external transform to downstream workspace transform"
         (let [staleness {"t1" {:definition_changed true :input_data_changed false}}
-              result    (ws.impl/compute-staleness graph staleness)]
+              result    (ws.impl/with-staleness graph staleness)]
           ;; ext is not a workspace-transform, so it's not in the staleness output
           ;; but t2 should be stale because t1 is stale
           (is (= {true #{"t1" "t2"} false #{}}
                  (stale->id (filter #(= :workspace-transform (:node-type %)) (:entities result))))))))))
 
-(deftest compute-staleness-empty-stale-set-test
+(deftest with-staleness-empty-stale-set-test
   (testing "Empty stale set: nothing is marked stale"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
           graph {:entities     [t1 t2]
                  :dependencies {t2 [t1]}}
           staleness {}
-          result    (ws.impl/compute-staleness graph staleness)]
+          result    (ws.impl/with-staleness graph staleness)]
       (is (= {true #{} false #{"t1" "t2"}}
              (stale->id (:entities result)))))))
 
-(deftest compute-staleness-input-data-changed-test
+(deftest with-staleness-input-data-changed-test
   (testing "input_data_changed triggers staleness just like definition_changed"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
           graph {:entities     [t1 t2]
                  :dependencies {t2 [t1]}}
           staleness {"t1" {:definition_changed false :input_data_changed true}}
-          result    (ws.impl/compute-staleness graph staleness)]
+          result    (ws.impl/with-staleness graph staleness)]
       (is (= {true #{"t1" "t2"} false #{}}
              (stale->id (:entities result)))))))
 
-(deftest compute-staleness-preserves-other-fields-test
+(deftest with-staleness-preserves-other-fields-test
   (testing "compute-staleness preserves other entity fields"
     (let [t1 {:node-type :workspace-transform :id "t1" :extra-field "preserved"}
           graph {:entities     [t1]
                  :dependencies {}}
           staleness {"t1" {:definition_changed true :input_data_changed false}}
-          result    (ws.impl/compute-staleness graph staleness)
+          result    (ws.impl/with-staleness graph staleness)
           entity    (first (:entities result))]
       (is (= "preserved" (:extra-field entity)))
       (is (true? (:stale entity)))
       (is (true? (:definition_changed entity)))
       (is (false? (:input_data_changed entity))))))
+
+;;;; Static graph tests for marking functions (upstream-ancestors, downstream-descendants, any-ancestor-stale?)
+
+(deftest upstream-ancestors-linear-chain-test
+  (testing "Linear chain: computes all upstream ancestors"
+    (let [t1 (workspace-transform "t1")
+          t2 (workspace-transform "t2")
+          t3 (workspace-transform "t3")
+          ;; t1 -> t2 -> t3
+          graph {:entities     [t1 t2 t3]
+                 :dependencies {t2 [t1]
+                                t3 [t2]}}]
+      (testing "t3 has t1 and t2 as ancestors"
+        (is (= #{"t1" "t2"}
+               (ws.impl/upstream-ancestors graph "t3"))))
+      (testing "t2 has only t1 as ancestor"
+        (is (= #{"t1"}
+               (ws.impl/upstream-ancestors graph "t2"))))
+      (testing "t1 has no ancestors"
+        (is (= #{}
+               (ws.impl/upstream-ancestors graph "t1")))))))
+
+(deftest upstream-ancestors-diamond-test
+  (testing "Diamond graph: computes all paths"
+    (let [t1 (workspace-transform "t1")
+          t2 (workspace-transform "t2")
+          t3 (workspace-transform "t3")
+          t4 (workspace-transform "t4")
+          ;;     t1
+          ;;    /  \
+          ;;   t2  t3
+          ;;    \  /
+          ;;     t4
+          graph {:entities     [t1 t2 t3 t4]
+                 :dependencies {t2 [t1]
+                                t3 [t1]
+                                t4 [t2 t3]}}]
+      (testing "t4 has all transforms as ancestors"
+        (is (= #{"t1" "t2" "t3"}
+               (ws.impl/upstream-ancestors graph "t4"))))
+      (testing "t2 has only t1 as ancestor"
+        (is (= #{"t1"}
+               (ws.impl/upstream-ancestors graph "t2")))))))
+
+(deftest upstream-ancestors-with-external-transforms-test
+  (testing "External transforms are traversed but not included"
+    (let [t1 (workspace-transform "t1")
+          ext (global-transform 100)
+          t2 (workspace-transform "t2")
+          ;; t1 -> ext -> t2
+          graph {:entities     [t1 ext t2]
+                 :dependencies {ext [t1]
+                                t2  [ext]}}]
+      (testing "t2 can reach through external transform to t1"
+        (is (= #{"t1"}
+               (ws.impl/upstream-ancestors graph "t2"))))
+      (testing "ext cannot be returned as it's external"
+        (is (not (contains? (ws.impl/upstream-ancestors graph "t2") 100)))))))
+
+(deftest downstream-descendants-linear-chain-test
+  (testing "Linear chain: computes all downstream descendants"
+    (let [t1 (workspace-transform "t1")
+          t2 (workspace-transform "t2")
+          t3 (workspace-transform "t3")
+          ;; t1 -> t2 -> t3
+          graph {:entities     [t1 t2 t3]
+                 :dependencies {t2 [t1]
+                                t3 [t2]}}]
+      (testing "t1 has t2 and t3 as descendants"
+        (is (= #{"t2" "t3"}
+               (ws.impl/downstream-descendants graph "t1"))))
+      (testing "t2 has only t3 as descendant"
+        (is (= #{"t3"}
+               (ws.impl/downstream-descendants graph "t2"))))
+      (testing "t3 has no descendants"
+        (is (= #{}
+               (ws.impl/downstream-descendants graph "t3")))))))
+
+(deftest downstream-descendants-diamond-test
+  (testing "Diamond graph: computes all downstream paths"
+    (let [t1 (workspace-transform "t1")
+          t2 (workspace-transform "t2")
+          t3 (workspace-transform "t3")
+          t4 (workspace-transform "t4")
+          ;;     t1
+          ;;    /  \
+          ;;   t2  t3
+          ;;    \  /
+          ;;     t4
+          graph {:entities     [t1 t2 t3 t4]
+                 :dependencies {t2 [t1]
+                                t3 [t1]
+                                t4 [t2 t3]}}]
+      (testing "t1 has all transforms as descendants"
+        (is (= #{"t2" "t3" "t4"}
+               (ws.impl/downstream-descendants graph "t1"))))
+      (testing "t2 has only t4 as descendant"
+        (is (= #{"t4"}
+               (ws.impl/downstream-descendants graph "t2")))))))
+
+(deftest downstream-descendants-with-external-transforms-test
+  (testing "External transforms are traversed but not included"
+    (let [t1 (workspace-transform "t1")
+          ext (global-transform 100)
+          t2 (workspace-transform "t2")
+          ;; t1 -> ext -> t2
+          graph {:entities     [t1 ext t2]
+                 :dependencies {ext [t1]
+                                t2  [ext]}}]
+      (testing "t1 can reach through external transform to t2"
+        (is (= #{"t2"}
+               (ws.impl/downstream-descendants graph "t1"))))
+      (testing "ext cannot be returned as it's external"
+        (is (not (contains? (ws.impl/downstream-descendants graph "t1") 100)))))))
+
+(deftest any-ancestor-stale?-test
+  (testing "compute-any-ancestor-stale? checks staleness in staleness-map"
+    (let [staleness-map {"t1" {:definition_changed true :input_data_changed false}
+                         "t2" {:definition_changed false :input_data_changed false}
+                         "t3" {:definition_changed false :input_data_changed true}}]
+      (testing "returns true when any ancestor has definition_changed"
+        (is (true? (ws.impl/any-ancestor-stale? #{"t1" "t2"} staleness-map))))
+      (testing "returns true when any ancestor has input_data_changed"
+        (is (true? (ws.impl/any-ancestor-stale? #{"t2" "t3"} staleness-map))))
+      (testing "returns false when no ancestor is stale"
+        (is (false? (ws.impl/any-ancestor-stale? #{"t2"} staleness-map))))
+      (testing "returns false for empty ancestor set"
+        (is (false? (ws.impl/any-ancestor-stale? #{} staleness-map))))
+      (testing "returns false when ancestors not in staleness-map"
+        (is (false? (ws.impl/any-ancestor-stale? #{"t99"} staleness-map)))))))
+
+(deftest downstream-descendants-empty-graph-test
+  (testing "Empty graph returns nil"
+    (is (nil? (ws.impl/downstream-descendants {:entities [] :dependencies nil} "t1")))))
+
+(deftest upstream-ancestors-empty-graph-test
+  (testing "Empty graph returns nil"
+    (is (nil? (ws.impl/upstream-ancestors {:entities [] :dependencies nil} "t1")))))

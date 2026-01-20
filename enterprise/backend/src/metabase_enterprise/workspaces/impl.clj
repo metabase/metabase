@@ -173,37 +173,68 @@
 
 (declare get-or-calculate-graph!)
 
+;;;; Pure functions for staleness marking (exposed for testing)
+
+(defn upstream-ancestors
+  "Given a graph and a ref-id, find all upstream workspace transform ancestors.
+   Returns a set of ancestor ref-ids (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents) and traverses upstream."
+  [graph ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (let [upstream (ws.dag/bfs-traverse deps-map {:node-type :workspace-transform :id ref-id})]
+      (set (workspace-transform-ids upstream)))))
+
+(defn downstream-descendants
+  "Given a graph and a ref-id, find all downstream workspace transform descendants.
+   Returns a set of descendant ref-ids (not including the starting node).
+
+   Takes a graph with :dependencies map (child->parents), reverses it for downstream traversal."
+  [graph ref-id]
+  (when-let [deps-map (:dependencies graph)]
+    (let [forward-edges (ws.dag/reverse-graph deps-map)
+          downstream    (ws.dag/bfs-traverse forward-edges {:node-type :workspace-transform :id ref-id})]
+      (set (workspace-transform-ids downstream)))))
+
+(defn any-ancestor-stale?
+  "Check if any ancestor in the given set is stale according to the staleness-map.
+   Returns true if any ancestor has definition_changed or input_data_changed set to true.
+
+   staleness-map: {ref-id -> {:definition_changed bool, :input_data_changed bool}}"
+  [ancestor-ids staleness-map]
+  (boolean
+   (some (fn [ancestor-id]
+           (let [staleness (get staleness-map ancestor-id)]
+             (or (:definition_changed staleness)
+                 (:input_data_changed staleness))))
+         ancestor-ids)))
+
+;;;; Private functions that use the database
+
 (defn- any-internal-ancestor-stale?
   "Check if any in-workspace entity ancestor is stale.
    Returns true if any ancestor had its definition or input data changed since it last ran.
    Note: external transforms are not checked here, their staleness must be checked separately."
   [workspace ref-id]
   (let [graph (get-or-calculate-graph! workspace)]
-    (when-let [deps-map (:dependencies graph)]
-      (let [upstream     (ws.dag/bfs-traverse deps-map {:node-type :workspace-transform :id ref-id})
-            upstream-ids (workspace-transform-ids upstream)]
-        (and (seq upstream-ids)
-             (t2/exists? :model/WorkspaceTransform
-                         :workspace_id (:id workspace)
-                         :ref_id [:in upstream-ids]
-                         {:where [:or
-                                  [:= :definition_changed true]
-                                  [:= :input_data_changed true]]}))))))
+    (when-let [upstream-ids (seq (upstream-ancestors graph ref-id))]
+      (t2/exists? :model/WorkspaceTransform
+                  :workspace_id (:id workspace)
+                  :ref_id [:in upstream-ids]
+                  {:where [:or
+                           [:= :definition_changed true]
+                           [:= :input_data_changed true]]}))))
 
 (defn- mark-descendants-stale!
   "Mark all transitive downstream workspace transforms as input_data_changed.
    Traverses the dependency graph downward from the given transform."
   [workspace ref-id]
   (let [graph (get-or-calculate-graph! workspace)]
-    (when-let [deps-map (:dependencies graph)]
-      (let [forward-edges   (ws.dag/reverse-graph deps-map)
-            downstream      (ws.dag/bfs-traverse forward-edges {:node-type :workspace-transform :id ref-id})
-            downstream-ids  (workspace-transform-ids downstream)]
-        (when (seq downstream-ids)
-          (t2/update! :model/WorkspaceTransform
-                      {:workspace_id (:id workspace)
-                       :ref_id [:in downstream-ids]}
-                      {:input_data_changed true}))))))
+    (when-let [downstream-ids (seq (downstream-descendants graph ref-id))]
+      (t2/update! :model/WorkspaceTransform
+                  {:workspace_id (:id workspace)
+                   :ref_id [:in downstream-ids]}
+                  {:input_data_changed true}))))
 
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
@@ -548,8 +579,8 @@
 (defn- workspace-transform? [entity]
   (= :workspace-transform (:node-type entity)))
 
-(defn compute-staleness
-  "Compute transitive staleness for graph entities.
+(defn with-staleness
+  "Annotate graph entities with transitive staleness.
    An entity is stale if:
    - Its definition_changed is true (definition changed since last run), OR
    - Its input_data_changed is true (input data changed since last run), OR
@@ -599,7 +630,7 @@
                         (calculate-and-persist-graph! workspace graph-version))]
      (if with-staleness?
        (let [ws-tx-ids (workspace-transform-ids (:entities graph))]
-         (compute-staleness graph (fetch-staleness-map ws-id ws-tx-ids)))
+         (with-staleness graph (fetch-staleness-map ws-id ws-tx-ids)))
        graph))))
 
 (defn- transforms-to-execute
