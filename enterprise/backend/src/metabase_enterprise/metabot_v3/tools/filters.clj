@@ -13,7 +13,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -299,6 +300,10 @@
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        _ (log/debug "query_model field-id expectations"
+                     {:model-id model-id
+                      :field-id-prefix field-id-prefix
+                      :field-ids (vec (keep :field-id (concat fields filters group-by)))})
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
