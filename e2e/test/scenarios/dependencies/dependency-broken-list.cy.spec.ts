@@ -6,6 +6,7 @@ const { H } = cy;
 
 const TABLE_NAME = "test_transform_table";
 const TABLE_DISPLAY_NAME = "Test Transform Table";
+const TABLE_TRANSFORM = "Test Transform";
 const TABLE_BASED_QUESTION_BROKEN_FIELD =
   "Table-based question with broken field";
 const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
@@ -80,11 +81,15 @@ describe("scenarios > dependencies > broken list", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    createContent();
+  });
+
+  afterEach(() => {
+    dropTransformTable();
   });
 
   describe("analysis", () => {
     it("should show broken dependencies", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       checkList({
         visibleEntities: BROKEN_DEPENDENCIES,
@@ -95,13 +100,13 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sidebar", () => {
     it("should show broken dependents", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("table dependents");
       H.DataStudio.Tasks.list().findByText(TABLE_DISPLAY_NAME).click();
       checkSidebar({
         entityName: TABLE_DISPLAY_NAME,
+        transformName: TABLE_TRANSFORM,
         missingColumns: ["score", "status"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
@@ -126,7 +131,6 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.searchInput().type(TABLE_DISPLAY_NAME);
       checkList({
@@ -138,7 +142,6 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("filtering", () => {
     it("should filter entities by type", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.filterButton().click();
       H.popover().within(() => {
@@ -185,7 +188,6 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should filter entities by location", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
       H.DataStudio.Tasks.filterButton().click();
       H.popover().within(() => {
@@ -203,7 +205,6 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sorting", () => {
     it("should sort by name", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by name by default");
@@ -225,7 +226,6 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by location", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by location ascending");
@@ -242,7 +242,6 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by dependents errors", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by dependents errors ascending");
@@ -261,7 +260,6 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by dependents with errors", () => {
-      createContent();
       H.DataStudio.Tasks.visitBrokenEntities();
 
       cy.log("sorted by dependents with errors ascending");
@@ -289,10 +287,16 @@ function createContent() {
   breakTransform();
 }
 
+function dropTransformTable() {
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    cy.request("DELETE", `/api/ee/transform/${transformId}/table`);
+  });
+}
+
 function createTransform() {
   H.createTransform(
     {
-      name: TABLE_NAME,
+      name: TABLE_TRANSFORM,
       source: {
         type: "query",
         query: {
@@ -491,10 +495,12 @@ function checkList({
 
 function checkSidebar({
   entityName,
+  transformName,
   missingColumns,
   brokenDependents,
 }: {
   entityName: string;
+  transformName?: string;
   missingColumns?: string[];
   brokenDependents?: string[];
 }) {
@@ -502,6 +508,11 @@ function checkSidebar({
     H.DataStudio.Tasks.Sidebar.header()
       .findByText(entityName)
       .should("be.visible");
+    if (transformName) {
+      H.DataStudio.Tasks.Sidebar.transformInfo()
+        .findByText(transformName)
+        .should("exist");
+    }
     if (missingColumns) {
       H.DataStudio.Tasks.Sidebar.missingColumnsInfo().within(() => {
         missingColumns.forEach((column) => {
