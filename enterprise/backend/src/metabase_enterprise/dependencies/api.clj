@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.api
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
@@ -641,82 +642,88 @@
                               (nil? card-types-set)
                               (contains? card-types-set (-> node :data :type))))))))))
 
-(defn- dependency-items-query
-  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections sort-column]}]
-  (let [table-name (case entity-type
-                     :card :report_card
-                     :table :metabase_table
-                     :transform :transform
-                     :snippet :native_query_snippet
-                     :dashboard :report_dashboard
-                     :document :document
-                     :sandbox :sandboxes
-                     :segment :segment
-                     :measure :measure)
-        name-column (case entity-type
-                      :table :entity.display_name
-                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)
-        root-collection (collection.root/root-collection-with-ui-details (case entity-type
-                                                                           :transform :transforms
-                                                                           :snippet :snippets
-                                                                           nil))
-        location-column (case entity-type
-                          :card [:case
-                                 [:not= :entity.dashboard_id nil] :dashboard.name
-                                 [:not= :entity.document_id nil] :document.name
-                                 :else [:coalesce :collection.name [:inline (:name root-collection)]]]
-                          :table :database.name
-                          (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
-                          :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                          (:segment :measure) :table.display_name)
-        dependents-errors-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                                 [:concat :error_type [:inline "-"] [:coalesce :error_detail [:inline ""]]]
-                                                                 [:composite :error_type :error_detail])]]]]
-                                  :from [:analysis_finding_error]
-                                  :where [:and
-                                          [:= :source_entity_id :entity.id]
-                                          [:= :source_entity_type (name entity-type)]]}
+(defn- entity-type-config
+  [entity-type]
+  (let [root-collection (collection.root/root-collection-with-ui-details
+                         (case entity-type
+                           :transform :transforms
+                           :snippet :snippets
+                           nil))]
+    {:table-name (case entity-type
+                   :card :report_card
+                   :table :metabase_table
+                   :transform :transform
+                   :snippet :native_query_snippet
+                   :dashboard :report_dashboard
+                   :document :document
+                   :sandbox :sandboxes
+                   :segment :segment
+                   :measure :measure)
+     :name-column (case entity-type
+                    :table :entity.display_name
+                    :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                    :entity.name)
+     :location-column (case entity-type
+                        :card [:case
+                               [:not= :entity.dashboard_id nil] :dashboard.name
+                               [:not= :entity.document_id nil] :document.name
+                               :else [:coalesce :collection.name [:inline (:name root-collection)]]]
+                        :table :database.name
+                        (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
+                        :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                        (:segment :measure) :table.display_name)}))
 
-        dependents-with-errors-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                                      [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
-                                                                      [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
-                                       :from [:analysis_finding_error]
-                                       :where [:and
-                                               [:= :source_entity_id :entity.id]
-                                               [:= :source_entity_type (name entity-type)]]}
-        dependency-join (case query-type
-                          :unreferenced [:dependency [:and
-                                                      [:= :dependency.to_entity_id :entity.id]
-                                                      [:= :dependency.to_entity_type (name entity-type)]]]
-                          :broken [:analysis_finding [:and
-                                                      [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                                      [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                          :breaking [:analysis_finding_error [:and
-                                                              [:= :analysis_finding_error.source_entity_id :entity.id]
-                                                              [:= :analysis_finding_error.source_entity_type (name entity-type)]]])
-        dependency-filter (case query-type
-                            :unreferenced [:= :dependency.id nil]
-                            :broken [:= :analysis_finding.result false]
-                            :breaking [:!= :analysis_finding_error.id nil])
-        card-type-filter (when (and (= entity-type :card)
+(defn- query-type-join-and-filter
+  [query-type entity-type]
+  (case query-type
+    :unreferenced {:join [:dependency [:and
+                                       [:= :dependency.to_entity_id :entity.id]
+                                       [:= :dependency.to_entity_type (name entity-type)]]]
+                   :filter [:= :dependency.id nil]}
+    :broken {:join [:analysis_finding [:and
+                                       [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                       [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+             :filter [:= :analysis_finding.result false]}
+    :breaking {:join [:analysis_finding_error [:and
+                                               [:= :analysis_finding_error.source_entity_id :entity.id]
+                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]]]
+               :filter [:!= :analysis_finding_error.id nil]}))
+
+(defn- location-joins-for-entity
+  "Returns the set of join keywords needed for location-based operations."
+  [entity-type]
+  (case entity-type
+    :card #{:collection :dashboard :document}
+    (:transform :snippet :dashboard :document) #{:collection}
+    (:segment :measure) #{:table}
+    :table #{:database}
+    #{}))
+
+(defn- build-optional-filters
+  [{:keys [entity-type card-types query include-archived-items include-personal-collections]}
+   {:keys [name-column location-column]}]
+  (let [card-type-filter (when (and (= entity-type :card)
                                     (seq card-types))
-                           [:in :entity.type (mapv name card-types)])
+                           {:filter [:in :entity.type (mapv name card-types)]
+                            :filter-joins #{}})
         query-filter (when (and query (not= entity-type :sandbox))
-                       [:or
-                        [:like [:lower name-column] (str "%" (t2.util/lower-case-en query) "%")]
-                        [:like [:lower location-column] (str "%" (t2.util/lower-case-en query) "%")]])
+                       {:filter [:or
+                                 [:like [:lower name-column] (str "%" (t2.util/lower-case-en query) "%")]
+                                 [:like [:lower location-column] (str "%" (t2.util/lower-case-en query) "%")]]
+                        :filter-joins (location-joins-for-entity entity-type)})
         database-filter (when (= entity-type :table)
-                          [:and [:not :database.is_sample] [:not :database.is_audit]])
+                          {:filter [:and [:not :database.is_sample] [:not :database.is_audit]]
+                           :filter-joins #{:database}})
         archived-filter (when (= include-archived-items :exclude)
-                          (case entity-type
-                            (:card :dashboard :document :snippet :segment :measure)
-                            [:= :entity.archived false]
-                            :table
-                            [:and
-                             [:= :entity.active true]
-                             [:= :entity.visibility_type nil]]
-                            nil))
+                          {:filter (case entity-type
+                                     (:card :dashboard :document :snippet :segment :measure)
+                                     [:= :entity.archived false]
+                                     :table
+                                     [:and
+                                      [:= :entity.active true]
+                                      [:= :entity.visibility_type nil]]
+                                     nil)
+                           :filter-joins #{}})
         personal-filter (when-not include-personal-collections
                           (case entity-type
                             (:card :dashboard :document :snippet)
@@ -724,45 +731,71 @@
                                                                   :personal_owner_id [:not= nil]
                                                                   :location "/")]
                               (when (seq personal-ids)
-                                [:or
-                                 [:= :entity.collection_id nil]
-                                 [:and
-                                  [:= :collection.personal_owner_id nil]
-                                  (into [:and]
-                                        (for [pid personal-ids]
-                                          [:not-like :collection.location (str "/" pid "/%")]))]]))
+                                {:filter [:or
+                                          [:= :entity.collection_id nil]
+                                          [:and
+                                           [:= :collection.personal_owner_id nil]
+                                           (into [:and]
+                                                 (for [pid personal-ids]
+                                                   [:not-like :collection.location (str "/" pid "/%")]))]]
+                                 :filter-joins #{:collection}}))
                             nil))
-        sort-key-column (case sort-column
-                          :location location-column
-                          :dependents-errors dependents-errors-column
-                          :dependents-with-errors dependents-with-errors-column
-                          name-column)
-        sort-by-location? (= sort-column :location)
-        ;; Need location joins when sorting by location OR when query filter uses location
-        needs-location-joins? (or sort-by-location? query)
-        needs-database-join? (= entity-type :table)
-        needs-collection-join? (or (and (not include-personal-collections)
-                                        (#{:card :dashboard :document :snippet} entity-type))
-                                   (and needs-location-joins?
-                                        (#{:card :transform :snippet :dashboard :document} entity-type)))
-        needs-dashboard-join? (and needs-location-joins? (= entity-type :card))
-        needs-document-join? (and needs-location-joins? (= entity-type :card))
-        needs-table-join? (and needs-location-joins? (#{:segment :measure} entity-type))
+        filter-results (keep identity
+                             [card-type-filter
+                              query-filter
+                              database-filter
+                              archived-filter
+                              personal-filter])]
+    {:filters (keep :filter filter-results)
+     :filter-joins (reduce set/union #{} (map :filter-joins filter-results))}))
+
+(defn- sort-key-cols-and-joins
+  [sort-column entity-type name-column location-column]
+  (case sort-column
+    :location {:sort-column location-column
+               :sort-joins (location-joins-for-entity entity-type)}
+    :dependents-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                                     [:concat :error_type [:inline "-"] [:coalesce :error_detail [:inline ""]]]
+                                                                     [:composite :error_type :error_detail])]]]]
+                                      :from [:analysis_finding_error]
+                                      :where [:and
+                                              [:= :source_entity_id :entity.id]
+                                              [:= :source_entity_type (name entity-type)]]}
+                        :sort-joins #{}}
+    :dependents-with-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                                          [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
+                                                                          [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
+                                           :from [:analysis_finding_error]
+                                           :where [:and
+                                                   [:= :source_entity_id :entity.id]
+                                                   [:= :source_entity_type (name entity-type)]]}
+                             :sort-joins #{}}
+    {:sort-column name-column
+     :sort-joins #{}}))
+
+(defn- build-left-joins
+  [base-join joins]
+  (cond-> base-join
+    (:database joins) (conj [:metabase_database :database] [:= :entity.db_id :database.id])
+    (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
+    (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
+    (:document joins) (conj :document [:= :entity.document_id :document.id])
+    (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
+
+(defn- dependency-items-query
+  [{:keys [query-type entity-type sort-column] :as params}]
+  (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
+        {:keys [join filter]} (query-type-join-and-filter query-type entity-type)
+        {:keys [filters filter-joins]} (build-optional-filters params config)
+        {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
+        all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
-                       [sort-key-column :sort_key]]]
+                       [sort-column :sort_key]]]
     {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
-     :left-join (cond-> dependency-join
-                  needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
-                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id])
-                  needs-dashboard-join? (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
-                  needs-document-join? (conj :document [:= :entity.document_id :document.id])
-                  needs-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
-
-     :where (into [:and dependency-filter]
-                  (keep identity)
-                  [card-type-filter query-filter database-filter archived-filter personal-filter])}))
+     :left-join (build-left-joins join all-required-joins)
+     :where (into [:and filter] (keep identity) filters)}))
 
 (def ^:private sort-columns
   "Valid sort columns for dependency item endpoints."
