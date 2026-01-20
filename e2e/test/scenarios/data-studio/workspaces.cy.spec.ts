@@ -280,7 +280,7 @@ describe("scenarios > data studio > workspaces", () => {
         Workspaces.getWorkspaceTransforms()
           .findByLabelText("More actions")
           .should("not.exist");
-        //H.NativeEditor.should("be.disabled");
+        H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
 
         cy.log("Unarchive the workspace");
         Workspaces.getWorkspaceItemActions(workspaceName).click();
