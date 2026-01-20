@@ -33,7 +33,6 @@ export function SidebarTransformInfo({ node }: SidebarTransformInfoProps) {
             component={Link}
             className={cx(CS.textWrap, S.link)}
             to={Urls.transform(transform.id)}
-            target="_blank"
           >
             <Group gap="sm" wrap="nowrap">
               <FixedSizeIcon name="transform" />
