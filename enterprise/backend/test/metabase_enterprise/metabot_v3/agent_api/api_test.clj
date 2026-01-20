@@ -298,9 +298,9 @@
             response (client/client :post 200 "agent/v1/construct-query"
                                     {:request-options {:headers (auth-headers)}}
                                     {:table_id table-id
-                                     :limit    10})]
-        (let [decoded (decode-query response)]
-          (is (= 10 (get-in decoded [:stages 0 :limit]))))))
+                                     :limit    10})
+            decoded  (decode-query response)]
+        (is (= 10 (get-in decoded [:stages 0 :limit])))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "No table found with table_id 999999"
@@ -332,4 +332,92 @@
           (is (seq cols) "Should have column metadata")
           (is (every? :name cols) "Each column should have a name")
           (is (every? :base_type cols) "Each column should have a base_type"))))))
+
+(deftest get-metric-field-values-test
+  (with-agent-api-setup!
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]})}]
+      (testing "Returns field statistics for a metric's queryable dimension"
+        ;; Get the metric details to find a valid field_id
+        (let [metric-details (client/client :get 200 (str "agent/v1/metric/" (:id metric))
+                                            {:request-options {:headers (auth-headers)}})
+              field-id       (-> metric-details :queryable_dimensions first :field_id)]
+          (when field-id
+            (is (=? {:statistics map?}
+                    (client/client :get 200 (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)
+                                   {:request-options {:headers (auth-headers)}}))))))
+
+      (testing "Returns 404 for non-existent metric"
+        (is (= "Not found."
+               (client/client :get 404 "agent/v1/metric/999999/field/c999999-0/values"
+                              {:request-options {:headers (auth-headers)}})))))))
+
+(deftest construct-metric-query-test
+  (with-agent-api-setup!
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:aggregation [[:count]]})}]
+      (testing "Constructs a query from a metric"
+        (let [response (client/client :post 200 "agent/v1/construct-query"
+                                      {:request-options {:headers (auth-headers)}}
+                                      {:metric_id (:id metric)})]
+          (is (string? (:query response)) "Response should contain a query string")
+          (let [decoded (decode-query response)]
+            (is (= "mbql/query" (:lib/type decoded)))
+            (is (= (mt/id) (:database decoded))))))
+
+      (testing "Returns 404 for non-existent metric"
+        (is (= "No metric found with metric_id 999999"
+               (client/client :post 404 "agent/v1/construct-query"
+                              {:request-options {:headers (auth-headers)}}
+                              {:metric_id 999999})))))))
+
+(deftest construct-query-with-filters-test
+  (with-agent-api-setup!
+    (testing "Constructs a query with filters"
+      (let [table-id (mt/id :orders)
+            ;; Get table details to find a valid field_id
+            table    (client/client :get 200 (str "agent/v1/table/" table-id)
+                                    {:request-options {:headers (auth-headers)}})
+            field-id (-> table :fields first :field_id)
+            response (client/client :post 200 "agent/v1/construct-query"
+                                    {:request-options {:headers (auth-headers)}}
+                                    {:table_id table-id
+                                     :filters  [{:field_id  field-id
+                                                 :operation "is-not-null"}]
+                                     :limit    10})]
+        (is (string? (:query response)))
+        (let [decoded (decode-query response)]
+          (is (some? (get-in decoded [:stages 0 :filters])) "Query should have filters"))))))
+
+(deftest search-finds-metrics-test
+  (with-agent-api-setup!
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
+                                            :type          :metric
+                                            :database_id   (mt/id)
+                                            :dataset_query (mt/mbql-query orders
+                                                             {:aggregation [[:count]]})}]
+          (testing "Returns metrics in search results"
+            (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
+                     :total_count 1}
+                    (client/client :post 200 "agent/v1/search"
+                                   {:request-options {:headers (auth-headers)}}
+                                   {:term_queries ["AgentSearchTestMetric"]})))))))))
+
+(deftest jwt-inactive-user-test
+  (with-agent-api-setup!
+    (testing "Returns 401 for inactive user"
+      (mt/with-temp [:model/User inactive-user {:email     "inactive@example.com"
+                                                :is_active false}]
+        (let [token (sign-jwt {:sub (:email inactive-user)})]
+          (is (= "Unauthenticated"
+                 (client/client :get 401 "agent/v1/ping"
+                                {:request-options {:headers {"authorization" (str "Bearer " token)}}}))))))))
 

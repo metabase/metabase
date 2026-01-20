@@ -50,15 +50,9 @@
   (when m
     (update-keys m u/->snake_case_en)))
 
-(defn- keyword->string
-  "Convert a keyword to its name string, or return non-keywords as-is."
-  [x]
-  (if (keyword? x) (name x) x))
-
 (mr/def ::field-type
   "A data type for a field derived from Metabase's type hierarchy."
-  [:enum {:encode/api keyword->string}
-   :boolean :date :datetime :time :number :string])
+  [:enum :boolean :date :datetime :time :number :string])
 
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
@@ -73,14 +67,13 @@
 
 (mr/def ::entity-type
   "The type of queryable entity."
-  [:enum {:encode/api keyword->string}
-   :table :metric])
+  [:enum :table :metric])
 
 (mr/def ::metric-summary
   "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
-   [:type [:= {:encode/api keyword->string} :metric]]
+   [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
@@ -97,7 +90,7 @@
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
-   [:type ::entity-type]
+   [:type [:= :table]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
@@ -127,7 +120,7 @@
   "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts."
   [:map {:encode/api ->snake_case-keys}
    [:id :int]
-   [:type [:= {:encode/api keyword->string} :metric]]
+   [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
    [:default_time_dimension_field_id {:optional true} [:maybe :string]]
