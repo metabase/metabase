@@ -9,7 +9,6 @@ module.exports = {
   meta: {
     name: pkg.name,
     version: pkg.version,
-    namespace: "metabase-custom",
   },
   rules: {
     "jtag-missing-key": require("./jtag-missing-key"),
