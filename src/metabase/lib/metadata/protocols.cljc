@@ -19,7 +19,7 @@
   `:id` and `:name` are mutually exclusive.
 
   When fetching metadata that can be inactive/archived/hidden, only active/unarchived/unhidden objects are fetched
-  unless `:id` or `:name` is specifed."
+  unless `:id` or `:name` is specified."
   [:and
    [:map
     {:closed true}
