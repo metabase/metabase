@@ -55,7 +55,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   type: TType;
   data: TData;
   dependents_count?: DependentsCount | null;
-  dependents_errors?: AnalyzingFindingError[] | null;
+  dependents_errors?: AnalysisFindingError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
@@ -211,7 +211,7 @@ export const ANALYSIS_FINDING_ERROR_TYPES = [
 export type AnalysisFindingErrorType =
   (typeof ANALYSIS_FINDING_ERROR_TYPES)[number];
 
-export type AnalyzingFindingError = {
+export type AnalysisFindingError = {
   id: AnalysisFindingErrorId;
   analyzed_entity_id: DependencyId;
   analyzed_entity_type: DependencyType;

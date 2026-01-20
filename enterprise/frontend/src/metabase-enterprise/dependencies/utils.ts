@@ -4,8 +4,8 @@ import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  AnalysisFindingError,
   AnalysisFindingErrorType,
-  AnalyzingFindingError,
   CardType,
   DependencyEntry,
   DependencyGroupType,
@@ -680,7 +680,7 @@ export function getErrorTypeLabelWithCount(
 }
 
 export function getDependencyErrors(
-  errors: AnalyzingFindingError[],
+  errors: AnalysisFindingError[],
 ): DependencyError[] {
   const errorByKey = new Map<string, DependencyError>();
   for (const error of errors) {
@@ -743,7 +743,7 @@ export function getDependencyErrorInfo(
 }
 
 export function getDependentErrorNodesCount(
-  errors: AnalyzingFindingError[],
+  errors: AnalysisFindingError[],
 ): number {
   const nodeIds = new Set();
   errors.forEach((error) => {
