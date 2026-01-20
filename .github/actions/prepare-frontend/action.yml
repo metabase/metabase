@@ -49,8 +49,12 @@ runs:
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
     - name: Clean install
-      run: yarn install --frozen-lockfile --prefer-offline
-      shell: bash
+      uses: nick-fields/retry@v3
+      with:
+        timeout_minutes: 10
+        max_attempts: 3
+        retry_wait_seconds: 10
+        command: yarn install --frozen-lockfile --prefer-offline
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
       run: yarn patch-package
