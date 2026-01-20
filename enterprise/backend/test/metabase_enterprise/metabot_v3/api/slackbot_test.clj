@@ -84,43 +84,123 @@
                                                         {:type "url_verification"
                                                          :challenge "test"}))))))
 
+(defn- with-slackbot-mocks
+  "Helper to set up common mocks for slackbot tests.
+   Options:
+   - :ai-text - The text response from make-ai-request
+   - :data-parts - The data-parts returned from make-ai-request (default [])
+
+   Calls body-fn with a map containing tracking atoms:
+   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :fake-png-bytes}"
+  [{:keys [ai-text data-parts]
+    :or {data-parts []}}
+   body-fn]
+  (let [post-calls (atom [])
+        delete-calls (atom [])
+        image-calls (atom [])
+        generate-png-calls (atom [])
+        fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])]
+    (mt/with-dynamic-fn-redefs
+      [slackbot/fetch-thread (constantly {:ok true :messages []})
+       slackbot/post-message (fn [_ msg]
+                               (swap! post-calls conj msg)
+                               {:ok true :ts "123" :channel (:channel msg) :message msg})
+       slackbot/delete-message (fn [_ msg]
+                                 (swap! delete-calls conj msg)
+                                 {:ok true})
+       slackbot/make-ai-request (constantly {:text ai-text :data-parts data-parts})
+       slackbot/generate-card-png (fn [card-id & _opts]
+                                    (swap! generate-png-calls conj card-id)
+                                    fake-png-bytes)
+       slackbot/post-image (fn [_client image-bytes filename channel thread-ts]
+                             (swap! image-calls conj {:image-bytes image-bytes
+                                                      :filename filename
+                                                      :channel channel
+                                                      :thread-ts thread-ts})
+                             {:ok true :file_id "F123"})]
+      (body-fn {:post-calls post-calls
+                :delete-calls delete-calls
+                :image-calls image-calls
+                :generate-png-calls generate-png-calls
+                :fake-png-bytes fake-png-bytes}))))
+
 (deftest user-message-triggers-response-test
   (testing "POST /events with user message triggers AI response via Slack"
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret
                                          metabot.settings/metabot-slack-bot-token "test-token"]
-        (let [post-calls (atom [])
-              delete-calls (atom [])
-              mock-ai-text "Here is your answer"
+        (let [mock-ai-text "Here is your answer"
               event-body {:type "event_callback"
                           :event {:type "message"
                                   :text "Hello!"
                                   :user "U123"
                                   :channel "C123"
                                   :ts "1234567890.000001"}}]
-          (mt/with-dynamic-fn-redefs
-            [slackbot/fetch-thread (constantly {:ok true :messages []})
-             slackbot/post-message (fn [_ msg]
-                                     (swap! post-calls conj msg)
-                                     {:ok true :ts "123" :channel (:channel msg) :message msg})
-             slackbot/delete-message (fn [_ msg]
-                                       (swap! delete-calls conj msg)
-                                       {:ok true})
-             slackbot/make-ai-request (constantly {:text mock-ai-text :data-parts []})]
+          (with-slackbot-mocks
+            {:ai-text mock-ai-text}
+            (fn [{:keys [post-calls delete-calls]}]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk #(>= (count @post-calls) 2)
+                         :done? true?
+                         :timeout-ms 5000})
+                (is (= "_Thinking..._" (:text (first @post-calls))))
+                (is (= mock-ai-text (:text (second @post-calls))))
+                (is (= 1 (count @delete-calls)))
+                (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text])))))))))))
 
-            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
-                                      (slack-request-options event-body)
-                                      event-body)]
-              ;; Immediate ack
-              (is (= "ok" response))
+(deftest user-message-with-visualizations-test
+  (testing "POST /events with visualizations uploads multiple images to Slack"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                         metabot.settings/metabot-slack-bot-token "test-token"]
+        (let [mock-ai-text "Here are your charts"
+              ;; Multiple static_viz data parts
+              mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
+                               {:type "static_viz" :value {:entity_id 202}}
+                               ;; Include a non-viz data part to verify filtering
+                               {:type "other_type" :value {:foo "bar"}}]
+              event-body {:type "event_callback"
+                          :event {:type "message"
+                                  :text "Show me charts"
+                                  :user "U123"
+                                  :channel "C456"
+                                  :ts "1234567890.000002"
+                                  :thread_ts "1234567890.000000"}}]
+          (with-slackbot-mocks
+            {:ai-text mock-ai-text
+             :data-parts mock-data-parts}
+            (fn [{:keys [post-calls delete-calls image-calls generate-png-calls fake-png-bytes]}]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
 
-              ;; Wait for async processing
-              (u/poll {:thunk #(>= (count @post-calls) 2)
-                       :done? true?
-                       :timeout-ms 5000})
+                ;; Wait for text messages AND image uploads
+                (u/poll {:thunk #(and (>= (count @post-calls) 2)
+                                      (>= (count @image-calls) 2))
+                         :done? true?
+                         :timeout-ms 5000})
 
-              ;; Verify calls
-              (is (= "_Thinking..._" (:text (first @post-calls))))
-              (is (= mock-ai-text (:text (second @post-calls))))
-              (is (= 1 (count @delete-calls)))
-              (is (= "_Thinking..._" (get-in (first @delete-calls) [:message :text]))))))))))
+                (testing "text message flow works"
+                  (is (= "_Thinking..._" (:text (first @post-calls))))
+                  (is (= mock-ai-text (:text (second @post-calls))))
+                  (is (= 1 (count @delete-calls))))
+
+                (testing "PNG generation called for each static_viz"
+                  (is (= 2 (count @generate-png-calls)))
+                  (is (= #{101 202} (set @generate-png-calls))))
+
+                (testing "images uploaded with correct parameters"
+                  (is (= 2 (count @image-calls)))
+                  ;; Check channel and thread
+                  (is (every? #(= "C456" (:channel %)) @image-calls))
+                  (is (every? #(= "1234567890.000000" (:thread-ts %)) @image-calls))
+                  ;; Check filenames
+                  (is (= #{"chart-101.png" "chart-202.png"}
+                         (set (map :filename @image-calls))))
+                  ;; Check image bytes match fake PNG
+                  (is (every? #(java.util.Arrays/equals fake-png-bytes ^bytes (:image-bytes %))
+                              @image-calls)))))))))))
