@@ -86,8 +86,7 @@
           (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
+            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))))))))
 
 ;;;; Two-flag staleness tests
 
@@ -108,7 +107,7 @@
                                                                            :inputs       []
                                                                            :outputs      []}}]
         (testing "initial read shows transform as definition_stale"
-          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))
+          (let [graph (ws.impl/get-or-calculate-graph-with-staleness (t2/select-one :model/Workspace ws-id))
                 entity (first (:entities graph))]
             (is (true? (:definition_stale entity)))
             (is (false? (:input_data_stale entity)))))
@@ -116,7 +115,7 @@
         (t2/update! :model/WorkspaceTransform t1-ref {:definition_stale false :input_data_stale true})
 
         (testing "after updating flags in DB, graph read reflects the change"
-          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))
+          (let [graph (ws.impl/get-or-calculate-graph-with-staleness (t2/select-one :model/Workspace ws-id))
                 entity (first (:entities graph))]
             (is (false? (:definition_stale entity)))
             (is (true? (:input_data_stale entity)))))))))

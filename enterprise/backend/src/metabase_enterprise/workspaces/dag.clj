@@ -191,19 +191,21 @@
           {}
           deps-map))
 
-(defn bfs-reachable
-  "Return all nodes reachable from start-node via adjacency-fn (excluding start).
+(defn bfs-descendants
+  "Return all descendant nodes reachable from start-node via adjacency-fn (excluding start).
    adjacency-fn should take a node and return its neighbors (e.g., a map or function)."
   [adjacency-fn start-node]
   (loop [queue   (vec (adjacency-fn start-node))
+         idx     0
          visited #{}
          result  []]
-    (if (empty? queue)
+    (if (>= idx (count queue))
       result
-      (let [[current & rest-q] queue]
+      (let [current (nth queue idx)]
         (if (visited current)
-          (recur (vec rest-q) visited result)
-          (recur (into (vec rest-q) (adjacency-fn current))
+          (recur queue (inc idx) visited result)
+          (recur (into queue (adjacency-fn current))
+                 (inc idx)
                  (conj visited current)
                  (conj result current)))))))
 
