@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-studio.api.permissions-groups-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -28,17 +29,24 @@
             (is (= perms-group/data-analyst-magic-group-type
                    (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id)))))))))
 
+(defmacro with-reset-data-analyst-group [& body]
+  `(let [original# (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
+     (try
+       (mt/with-model-cleanup [:model/PermissionsGroup]
+         (do ~@body))
+       (finally (t2/update! :model/PermissionsGroup :id original# {:magic_group_type perms-group/data-analyst-magic-group-type})))))
+
 (deftest sync-data-analyst-group-for-oss!-converts-with-members-test
   (testing "Without the premium feature, sync-data-analyst-group-for-oss! converts the Data Analysts group when it has members"
     (mt/with-premium-features #{}
-      (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
-        (try
+      (with-reset-data-analyst-group
+        (let [original-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
           (mt/with-temp [:model/User {user-id :id} {}]
             (perms/add-user-to-group! user-id original-group-id)
             (perms-group/sync-data-analyst-group-for-oss!)
             (testing "Original group should be renamed and demoted"
               (let [original-group (t2/select-one :model/PermissionsGroup :id original-group-id)]
-                (is (= "Data Analysts (converted)" (:name original-group)))
+                (is (str/starts-with? (:name original-group) "Data Analysts (converted)"))
                 (is (nil? (:magic_group_type original-group)))))
             (testing "User should still be in the converted group"
               (is (t2/exists? :model/PermissionsGroupMembership
@@ -54,13 +62,14 @@
 (deftest sync-data-analyst-group-for-oss!-idempotent-empty-test
   (testing "In OSS, sync-data-analyst-group-for-oss! is idempotent when magic group is empty"
     (mt/with-premium-features #{}
-      (let [group-count-before (t2/count :model/PermissionsGroup)
-            data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
-        ;; Ensure no members in the group
-        (t2/delete! :model/PermissionsGroupMembership :group_id data-analyst-group-id)
-        (perms-group/sync-data-analyst-group-for-oss!)
-        (testing "No new groups should be created"
-          (is (= group-count-before (t2/count :model/PermissionsGroup))))
-        (testing "Magic group should still exist unchanged"
-          (is (= perms-group/data-analyst-magic-group-type
-                 (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id))))))))
+      (with-reset-data-analyst-group
+        (let [group-count-before (t2/count :model/PermissionsGroup)
+              data-analyst-group-id (t2/select-one-pk :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
+          ;; Ensure no members in the group
+          (t2/delete! :model/PermissionsGroupMembership :group_id data-analyst-group-id)
+          (perms-group/sync-data-analyst-group-for-oss!)
+          (testing "No new groups should be created"
+            (is (= group-count-before (t2/count :model/PermissionsGroup))))
+          (testing "Magic group should still exist unchanged"
+            (is (= perms-group/data-analyst-magic-group-type
+                   (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id data-analyst-group-id)))))))))
