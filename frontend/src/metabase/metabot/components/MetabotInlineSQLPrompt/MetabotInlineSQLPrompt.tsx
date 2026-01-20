@@ -66,9 +66,12 @@ export const MetabotInlineSQLPrompt = ({
     );
   }, [disabled, handleSubmit, handleClose]);
 
+  const isTableBarEnabled = true;
+
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
       <Box className={S.inputContainer}>
+        {isTableBarEnabled && <Box className={S.tableBar}>testing</Box>}
         <MetabotPromptInput
           ref={inputRef}
           value={value}
@@ -83,37 +86,36 @@ export const MetabotInlineSQLPrompt = ({
           }}
         />
       </Box>
-      <Flex justify="flex-start" align="center" gap="xs" mt="xs">
-        <Button
-          data-testid="metabot-inline-sql-generate"
-          size="xs"
-          px="sm"
-          variant="filled"
-          onClick={handleSubmit}
-          disabled={disabled}
-          leftSection={
-            isLoading ? (
+      <Flex justify="space-between" align="center" gap="sm" mt="xs">
+        <Box data-testid="metabot-inline-sql-error" w="100%" fz="sm" c="error">
+          {error}
+        </Box>
+        <Flex gap="xs" flex="1 0 auto">
+          <Button
+            data-testid="metabot-inline-sql-cancel"
+            size="xs"
+            variant="subtle"
+            onClick={handleClose}
+          >
+            {t`Cancel`}
+          </Button>
+          <Button
+            data-testid="metabot-inline-sql-generate"
+            size="xs"
+            variant="filled"
+            px="0"
+            w="1.875rem"
+            styles={{ label: { display: "flex" } }}
+            onClick={handleSubmit}
+            disabled={disabled}
+          >
+            {isLoading ? (
               <Loader size="xs" color="text-tertiary" />
             ) : (
-              <Icon name="insight" />
-            )
-          }
-        >
-          {isLoading ? t`Generating...` : t`Generate`}
-        </Button>
-        <Button
-          data-testid="metabot-inline-sql-cancel"
-          size="xs"
-          variant="subtle"
-          onClick={handleClose}
-        >
-          {t`Cancel`}
-        </Button>
-        {error && (
-          <Box data-testid="metabot-inline-sql-error" fz="sm" c="error" ml="sm">
-            {error}
-          </Box>
-        )}
+              <Icon name="send" />
+            )}
+          </Button>
+        </Flex>
       </Flex>
     </Box>
   );
