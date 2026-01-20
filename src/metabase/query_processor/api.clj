@@ -50,21 +50,6 @@
     (api/read-check :model/Card source-card-id)
     source-card-id))
 
-(defn- source-model-metadata [card]
-  (loop [card card
-         remaining 10] ;; only go 10 cards deep
-    (let [source-card-id (some-> card :dataset_query lib/source-card-id)]
-      (cond
-        (not (pos? remaining))
-        nil
-
-        (= :model (:type card))
-        (:result_metadata card)
-
-        source-card-id
-        (recur (t2/select-one [:model/Card :result_metadata :type :dataset_query] :id source-card-id)
-               (dec remaining))))))
-
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format was-pivot]
@@ -85,14 +70,12 @@
       ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card (when source-card-id
-                        (t2/select-one [:model/Card :result_metadata :type :dataset_query] :id source-card-id))
-          source-model-md (when source-card
-                            (source-model-metadata source-card))
-          info           (cond-> {:executed-by api/*current-user-id*
-                                  :context     context
-                                  :card-id     source-card-id}
-                           source-model-md
-                           (assoc :metadata/model-metadata source-model-md))]
+                        (t2/select-one [:model/Card :result_metadata :type] :id source-card-id))
+          info (cond-> {:executed-by api/*current-user-id*
+                        :context context
+                        :card-id source-card-id}
+                 (= (:type source-card) :model)
+                 (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
         (if was-pivot
           (let [constraints (if (= export-format :api)

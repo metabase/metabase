@@ -624,3 +624,37 @@
             ["Product__RATING" true]]
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
+
+(deftest ^:parallel model-strips-internal-join-aliases-test
+  (testing "Models should not leak internal join aliases to downstream queries (#65532)"
+    (let [;; Create a query with a join (orders joined to products)
+          base-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          join-clause (-> (lib/join-clause (meta/table-metadata :products)
+                                           [(lib/= (meta/field-metadata :orders :product-id)
+                                                   (meta/field-metadata :products :id))])
+                          (lib/with-join-alias "Products")
+                          (lib/with-join-fields [(meta/field-metadata :products :id)]))
+          model-query (-> base-query
+                          (lib/join join-clause)
+                          (lib/with-fields [(meta/field-metadata :orders :id)]))
+          model-cols  (lib/returned-columns model-query)
+          ;; Create a metadata provider with this as a model
+          mp          (lib.tu/mock-metadata-provider
+                       meta/metadata-provider
+                       {:cards [{:id              1
+                                 :name            "Model with Join"
+                                 :database-id     (meta/id)
+                                 :dataset-query   model-query
+                                 :result-metadata model-cols
+                                 :type            :model}]})
+          ;; Get the model card
+          model-card    (lib.metadata/card mp 1)
+          ;; Call card-returned-columns - this is what downstream queries use
+          returned-cols (lib.card/card-returned-columns mp model-card)]
+      (testing "Model columns should not have :lib/original-join-alias or :source-alias"
+        (doseq [col returned-cols]
+          (testing (str "column " (:name col))
+            (is (nil? (:lib/original-join-alias col))
+                "Models should not leak :lib/original-join-alias to downstream queries")
+            (is (nil? (:source-alias col))
+                "Models should not leak :source-alias to downstream queries")))))))
