@@ -295,7 +295,12 @@
             (t2/update! :model/Field (:id db-field)
                         {:fingerprint         fp
                          :fingerprint_version version
-                         :last_analyzed       (t/offset-date-time)})))))))
+                         :last_analyzed       (t/offset-date-time)})
+            ;; Verify the fingerprint was saved correctly (debug assertion)
+            (let [saved-field (t2/select-one :model/Field :id (:id db-field))]
+              (when-not (= fp (:fingerprint saved-field))
+                (log/errorf "FINGERPRINT MISMATCH! Expected: %s, Got: %s"
+                            (pr-str fp) (pr-str (:fingerprint saved-field))))))))))))
 
 (defn- fake-fingerprint-database!
   "Compute and save fingerprints for all tables in a database definition using in-memory test data."
