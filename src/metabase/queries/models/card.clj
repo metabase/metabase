@@ -202,7 +202,7 @@
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe ::queries.schema/query]]
-  (some-> query not-empty lib/source-card-id))
+  (some-> query not-empty lib/primary-source-card-id))
 
 (mu/defn- card->integer-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."

@@ -740,7 +740,7 @@
   ; dataset_query can be empty in tests
   (when-let [query (not-empty query)]
     (when (and (mbql? model) (no-joins? query))
-      (lib/source-table-id query))))
+      (lib/primary-source-table-id query))))
 
 (defn- invalidate-cached-models!
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
