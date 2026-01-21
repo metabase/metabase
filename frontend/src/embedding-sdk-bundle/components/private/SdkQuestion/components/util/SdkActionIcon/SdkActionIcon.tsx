@@ -22,7 +22,7 @@ type OwnSdkActionIconProps = {
       tooltip?: ReactElement;
     }
   | {
-      // Allow `aria-label` to be optional if `tooltipLabel` is provided as a string, so we don't need to provide the same string twice.
+      // When tooltip is a string, use it as both the label and aria-label, so we don't need to provide the same string twice.
       tooltipAriaLabel?: string;
       tooltip: string;
     }
