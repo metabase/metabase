@@ -126,7 +126,7 @@ export const TasksTable = ({
                     </Ellipsified>
                   </td>
                   <td>
-                    {task.ended_at && (
+                    {task.ended_at ? (
                       <Ellipsified
                         style={{ maxWidth: 180 }}
                         alwaysShowTooltip={Boolean(task.ended_at)}
@@ -138,6 +138,8 @@ export const TasksTable = ({
                           data-testid="ended-at"
                         />
                       </Ellipsified>
+                    ) : (
+                      "—"
                     )}
                   </td>
                   <td>{task.duration}</td>
