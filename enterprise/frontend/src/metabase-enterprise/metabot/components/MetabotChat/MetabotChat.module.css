@@ -64,7 +64,7 @@
 }
 
 .messageContainerUser :global(.smart-link) {
-  border: 1px solid var(--mb-color-brand-light);
+  border: 1px solid var(--mb-color-border-brand);
   position: relative;
   bottom: -2px;
 }

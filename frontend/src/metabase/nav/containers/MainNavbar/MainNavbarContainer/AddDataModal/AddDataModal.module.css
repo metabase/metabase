@@ -4,7 +4,7 @@
 
   &[data-active="true"] {
     color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-selected);
   }
 }
 
@@ -43,7 +43,7 @@
   flex: 1;
 
   &.isActive {
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-hover);
     border-color: var(--mb-color-background-selected);
   }
 }

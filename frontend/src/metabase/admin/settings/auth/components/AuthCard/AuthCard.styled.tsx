@@ -38,7 +38,7 @@ export const CardBadge = styled.div<CardBadgeProps>`
   color: ${(props) => (props.isEnabled ? color("brand") : color("danger"))};
   background-color: ${(props) =>
     props.isEnabled
-      ? "var(--mb-color-brand-lighter)"
+      ? "var(--mb-color-background-brand)"
       : "var(--mb-color-background-secondary)"};
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;

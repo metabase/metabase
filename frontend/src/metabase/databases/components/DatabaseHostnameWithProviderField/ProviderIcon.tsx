@@ -26,7 +26,7 @@ export function ProviderIcon({
 }) {
   if (!provider) {
     return (
-      <Icon name="database" size={ICON_SIZE} c="icon-primary" opacity={0.25} />
+      <Icon name="database" size={ICON_SIZE} c="icon-brand" opacity={0.25} />
     );
   }
 
