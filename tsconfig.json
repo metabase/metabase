@@ -14,7 +14,17 @@
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "docs/*": ["./docs/*"],
-      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
+      "e2e/*": ["./e2e/*"],
+      "metabase-dev": ["./frontend/src/dev-noop.js"],
+      "ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "ee-overrides": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-specific-imports": ["./frontend/src/metabase/lib/noop"],
+      "sdk-iframe-embedding-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-iframe-embedding-script-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "assets/*": ["./resources/frontend_client/app/assets/*"],
+      "img/*": ["./resources/frontend_client/app/img/*"],
+      "fonts/*": ["./resources/frontend_client/app/fonts/*"]
     },
     "plugins": [
       {

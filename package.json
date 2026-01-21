@@ -151,6 +151,7 @@
   "devDependencies": {
     "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.3",
+    "@babel/eslint-parser": "^7.25.9",
     "@babel/node": "^7.22.19",
     "@babel/preset-env": "^7.24.8",
     "@babel/preset-react": "^7.23.3",
@@ -242,7 +243,6 @@
     "@types/underscore": "^1.11.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@babel/eslint-parser": "^7.25.9",
     "babel-loader": "^9.1.2",
     "babel-plugin-ttag": "^1.7.26",
     "chalk": "^4",
@@ -263,6 +263,7 @@
     "cypress-terminal-report": "^6.1.2",
     "esbuild": "^0.25.0",
     "eslint": "8.57.1",
+    "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-import-resolver-webpack": "^0.13.10",
     "eslint-module-utils": "^2.12.1",
     "eslint-plugin-cypress": "^2.12.1",
