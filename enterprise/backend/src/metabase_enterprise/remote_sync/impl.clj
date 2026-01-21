@@ -132,6 +132,22 @@
 
        :details {:error-type (type e)}})))
 
+(defn- get-conflicts [ingestable]
+  (let [local-has-library? (t2/exists? :model/Collection :type collection/library-collection-type)
+        local-has-transforms? (t2/exists? :model/Transform)
+        local-has-snippets? (t2/exists? :model/NativeQuerySnippet)
+        ingest-list (serialization/ingest-list ingestable)]
+    (->> ingest-list
+         (keep (fn [[item]]
+                 (or (when (and local-has-library?
+                                (= item {:model "Collection" :id collection/library-entity-id}))
+                       "Library")
+                     (when (and local-has-transforms? (transform-models (:model item)))
+                       "Transforms")
+                     (when (and local-has-snippets? (= "NativeQuerySnippet" (:model item)))
+                       "Snippets"))))
+         (into #{}))))
+
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
@@ -150,18 +166,30 @@
     (if snapshot
       (try
         (let [snapshot-version (source.p/version snapshot)
-              last-imported-version (remote-sync.task/last-version)]
-          (if (and (not force?) (= last-imported-version snapshot-version))
+              last-imported-version (remote-sync.task/last-version)
+              path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
+                            #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
+              base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+              has-transforms? (snapshot-has-transforms? base-ingestable)
+              conflicts (get-conflicts base-ingestable)
+              ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
+
+          (cond
+            (and (nil? last-imported-version) (not force?) (seq conflicts))
+            (u/prog1 {:status :conflict
+                      :version (source.p/version snapshot)
+                      :conflicts conflicts
+                      :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+              (log/infof (:message <>)))
+
+            (and (not force?) (= last-imported-version snapshot-version))
             (u/prog1 {:status :success
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
-                                #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
-                  base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                  has-transforms? (snapshot-has-transforms? base-ingestable)
-                  ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
-                  load-result (serdes/with-cache
+
+            :else
+            (let [load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
                   seen-paths (:seen load-result)
                   imported-data (spec/extract-imported-entities seen-paths)]
