@@ -19,7 +19,10 @@ export type SearchOptions = {
   sortOptions: SortOptions;
 };
 
-export type FilterCallback = (node: DependencyNode) => boolean;
+export type FilterCallback = (
+  node: DependencyNode,
+  isEnabled: boolean,
+) => boolean;
 
 export type SortCallback = (
   node1: DependencyNode,

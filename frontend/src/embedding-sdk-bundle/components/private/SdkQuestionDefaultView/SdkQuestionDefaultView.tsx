@@ -125,12 +125,12 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new";
+    const isNewQuestion = originalId === "new" || originalId === "new-native";
     const isExistingQuestion =
       question &&
       !isQuestionLoading &&
       question?.isSaved() &&
-      originalId !== "new" &&
+      !isNewQuestion &&
       queryResults;
 
     const onNavigate = onNavigateBack ?? onReset ?? undefined;
@@ -138,7 +138,7 @@ export const SdkQuestionDefaultView = ({
     if (isNewQuestion) {
       reportLocation({
         type: "question",
-        id: "new",
+        id: originalId,
         name: "New exploration",
         onNavigate,
       });
