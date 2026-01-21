@@ -415,6 +415,8 @@
   ;; Return the database_type as Snowflake's query processor expects it.
   ;; The QP uses lowercase types without precision (e.g., "time" not "TIME(3)").
   ;; Snowflake normalizes types: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+  ;;
+  ;; For timezone columns: :type/DateTimeWithTZ -> TIMESTAMP_TZ DDL -> reports as TIMESTAMPTZ
   (case base-type
     :type/Text                   "VARCHAR"
     :type/Float                  "DOUBLE"
@@ -424,7 +426,7 @@
     :type/Boolean                "BOOLEAN"
     :type/Date                   "date"
     :type/DateTime               "timestampntz"
-    :type/DateTimeWithTZ         "timestampltz"
+    :type/DateTimeWithTZ         "timestamptz"   ; TIMESTAMP_TZ -> reports as TIMESTAMPTZ
     :type/DateTimeWithLocalTZ    "timestamptz"
     :type/DateTimeWithZoneID     "timestamptz"
     :type/DateTimeWithZoneOffset "timestamptz"
@@ -440,13 +442,15 @@
   ;; so fake-sync must match what sync would produce:
   ;; - INTEGER/BIGINT -> NUMBER -> :type/Number
   ;; - TimeWithLocalTZ/TimeWithZoneOffset -> TIME -> :type/Time (Snowflake only has one TIME type)
-  ;; - DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
+  ;; - DateTimeWithTZ/DateTimeWithZoneID/DateTimeWithZoneOffset -> TIMESTAMP_TZ -> :type/DateTimeWithLocalTZ
+  ;;   (Note: :type/DateTimeWithTZ -> TIMESTAMP_TZ -> sync as TIMESTAMPTZ -> :type/DateTimeWithLocalTZ)
   (case base-type
-    :type/Integer               :type/Number
-    :type/BigInteger            :type/Number
-    :type/TimeWithLocalTZ       :type/Time
-    :type/TimeWithZoneOffset    :type/Time
-    :type/DateTimeWithZoneID    :type/DateTimeWithLocalTZ
+    :type/Integer                :type/Number
+    :type/BigInteger             :type/Number
+    :type/TimeWithLocalTZ        :type/Time
+    :type/TimeWithZoneOffset     :type/Time
+    :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneID     :type/DateTimeWithLocalTZ
     :type/DateTimeWithZoneOffset :type/DateTimeWithLocalTZ
     ;; Other types are unchanged
     base-type))
