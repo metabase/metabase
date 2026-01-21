@@ -15,6 +15,7 @@ export const ACCENT_COLOR_NAMES_MAP = [
   { base: "accent5", tint: "accent5-light", shade: "accent5-dark" },
   { base: "accent6", tint: "accent6-light", shade: "accent6-dark" },
   { base: "accent7", tint: "accent7-light", shade: "accent7-dark" },
+  { base: "accent-gray", tint: "accent-gray-light", shade: "accent-gray-dark" },
 ] as const satisfies ChartColorV2[];
 
 export const ALL_ACCENT_COLOR_NAMES = ACCENT_COLOR_NAMES_MAP.flatMap(

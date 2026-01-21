@@ -22,7 +22,7 @@ export function mapChartColorsToAccents(
 ): Partial<Record<MetabaseAccentColorKey, string>> {
   const mappedColors: Partial<Record<MetabaseAccentColorKey, string>> = {};
 
-  chartColors.slice(0, 8).forEach((color, index) => {
+  chartColors.slice(0, 9).forEach((color, index) => {
     if (!color) {
       return;
     }

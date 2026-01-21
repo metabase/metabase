@@ -1,6 +1,6 @@
 /* eslint-disable no-color-literals */
 import type { MetabaseThemeV2 } from "../../types";
-import { DEFAULT_ACCENT_COLORS } from "../accent-colors";
+import { LIGHT_THEME_ACCENT_COLORS } from "../accent-colors";
 import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
@@ -10,11 +10,8 @@ const baseColors = getBaseColorsForThemeDefinitionOnly();
  */
 export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
   version: 2,
-  chartColors: DEFAULT_ACCENT_COLORS,
+  chartColors: LIGHT_THEME_ACCENT_COLORS,
   colors: {
-    "accent-gray-dark": baseColors.orion[20],
-    "accent-gray-light": baseColors.orion[5],
-    "accent-gray": baseColors.orion[10],
     "admin-navbar": baseColors.octopus[60],
     "admin-navbar-secondary": baseColors.octopus[40],
     "admin-navbar-inverse": baseColors.octopus[80],

@@ -103,7 +103,4 @@ export type ProtectedColorKey =
   | "accent4"
   | "accent5"
   | "accent6"
-  | "accent7"
-  | "accent-gray"
-  | "accent-gray-dark"
-  | "accent-gray-light";
+  | "accent7";
