@@ -224,7 +224,7 @@ describe("scenarios > admin > transforms", () => {
       "should be possible to create and run a Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new transform");
         visitTransformListPage();
         cy.button("Create a transform").click();
@@ -1496,7 +1496,7 @@ LIMIT
     });
 
     it("should be able to update a Python query", { tags: ["@python"] }, () => {
-      setPythonRunnerSettings();
+      H.setPythonRunnerSettings();
       cy.log("create a new transform");
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (id) => {
@@ -1834,7 +1834,7 @@ LIMIT
       "should be possible to use the common library",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         createPythonLibrary(
           "common.py",
           dedent`
@@ -3061,7 +3061,7 @@ describe(
       H.activateToken("bleeding-edge");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      setPythonRunnerSettings();
+      H.setPythonRunnerSettings();
     });
 
     afterEach(() => {
@@ -3405,28 +3405,6 @@ function createPythonLibrary(path: string, source: string) {
   cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
     source,
   });
-}
-
-function setPythonRunnerSettings() {
-  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
-  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-endpoint",
-    "http://localhost:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-bucket",
-    "metabase-python-runner",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
-  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
-  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-container-endpoint",
-    "http://localstack:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }
 
 function runPythonScriptAndWaitForSuccess() {

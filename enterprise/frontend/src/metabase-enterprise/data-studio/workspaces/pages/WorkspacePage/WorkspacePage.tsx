@@ -47,7 +47,6 @@ import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { GraphTab } from "./GraphTab";
-import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
@@ -61,7 +60,6 @@ import {
 } from "./WorkspaceProvider";
 import { useWorkspaceActions } from "./useWorkspaceActions";
 import { useWorkspaceData } from "./useWorkspaceData";
-import { useWorkspaceMetabot } from "./useWorkspaceMetabot";
 
 const DEFAULT_SIDEBAR_WIDTH = 400;
 
@@ -139,23 +137,6 @@ function WorkspacePageContent({
     onOpenTab: setTab,
     workspaceTransforms,
     availableTransforms,
-  });
-
-  // Metabot
-  const {
-    isMetabotAvailable,
-    metabotContextTransform,
-    metabotContextSource,
-    setMetabotContextTransform,
-    setMetabotContextSource,
-  } = useWorkspaceMetabot({
-    workspaceId,
-    databaseId: workspace?.database_id,
-    transformId,
-    isLoading,
-    allTransforms,
-    setTab,
-    handleNavigateToTransform,
   });
 
   useEffect(() => {
@@ -248,29 +229,11 @@ function WorkspacePageContent({
 
   const handleTabChange = useCallback(
     (newTab: string | null) => {
-      if (newTab === "metabot") {
-        if (activeTransform) {
-          setMetabotContextTransform(activeTransform);
-          setMetabotContextSource(
-            activeEditedTransform?.source ?? activeTransform.source,
-          );
-        } else {
-          setMetabotContextTransform(undefined);
-          setMetabotContextSource(undefined);
-        }
-      }
-
       if (newTab) {
         setTab(newTab);
       }
     },
-    [
-      activeTransform,
-      activeEditedTransform,
-      setTab,
-      setMetabotContextTransform,
-      setMetabotContextSource,
-    ],
+    [setTab],
   );
 
   if (error || isLoadingWorkspace || isLoadingWorkspaceTransforms) {
@@ -389,14 +352,6 @@ function WorkspacePageContent({
                         {t`Setup`}
                       </Group>
                     </Tabs.Tab>
-                    {isMetabotAvailable && (
-                      <Tabs.Tab value="metabot">
-                        <Group gap="xs" wrap="nowrap">
-                          <Icon name="message_circle" aria-hidden />
-                          {t`Agent Chat`}
-                        </Group>
-                      </Tabs.Tab>
-                    )}
                     <Tabs.Tab value="graph">
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="dependencies" aria-hidden />
@@ -455,13 +410,7 @@ function WorkspacePageContent({
               </DndContext>
             </Flex>
 
-            <Box
-              flex={1}
-              mih={0}
-              style={{
-                overflow: tab === "metabot" ? "auto" : undefined,
-              }}
-            >
+            <Box flex={1} mih={0}>
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab
                   databaseId={databaseId}
@@ -477,20 +426,6 @@ function WorkspacePageContent({
               >
                 <GraphTab workspaceId={workspace?.id} />
               </Tabs.Panel>
-              {isMetabotAvailable && (
-                <Tabs.Panel
-                  value="metabot"
-                  h="100%"
-                  mah="100%"
-                  pos="relative"
-                  style={{ overflow: "auto" }}
-                >
-                  <MetabotTab
-                    transform={metabotContextTransform}
-                    source={metabotContextSource}
-                  />
-                </Tabs.Panel>
-              )}
 
               {activeTable && activeTab?.type === "table" && (
                 <Tabs.Panel value={activeTab.id} h="100%">

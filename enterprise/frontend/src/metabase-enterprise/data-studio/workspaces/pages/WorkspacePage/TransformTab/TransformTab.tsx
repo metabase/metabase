@@ -12,6 +12,10 @@ import {
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
+import {
+  getInitialNativeSource,
+  getInitialPythonSource,
+} from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -24,7 +28,7 @@ import type {
   WorkspaceTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
-import { isWorkspaceTransform } from "metabase-types/api";
+import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
@@ -84,8 +88,6 @@ export const TransformTab = ({
     transform.source,
   );
   const hasChanges = hasSourceChanged;
-  const dryRunTransformId =
-    wsTransform && !hasChanges ? wsTransform.ref_id : undefined;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -100,21 +102,25 @@ export const TransformTab = ({
       // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
 
+      // Always use query preview when we have a query, regardless of whether the transform
+      // is saved or not. The query represents the current state of the editor (which may
+      // have unsaved changes), and we want to preview what the current query will produce.
+      // The dry run API uses the saved transform's source, not the current query.
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: transformId,
+          tableId: null, // Always null for preview - use query instead
           name: t`Preview (${transform.name})`,
           query,
-          transformId: dryRunTransformId,
+          transformId: undefined, // Always undefined - use query preview, not dry run
         },
       };
       addOpenedTab(tableTab);
       return false;
     },
-    [transformId, transform.name, addOpenedTab, dryRunTransformId],
+    [transformId, transform.name, addOpenedTab],
   );
 
   const handleRunTransform = useCallback(
@@ -162,9 +168,11 @@ export const TransformTab = ({
     [metadata],
   );
 
+  // Show proposed source when there's an active suggested transform
+  // Even if sources are the same (e.g., when transform was created with suggested source),
+  // we still want to show the buttons so user can reject the suggestion
   const proposedSource: DraftTransformSource | undefined =
-    suggestedTransform?.source &&
-    !isSameSource(suggestedTransform.source, editedTransform.source)
+    suggestedTransform?.source
       ? normalizeSource(suggestedTransform.source)
       : undefined;
 
@@ -182,7 +190,10 @@ export const TransformTab = ({
       return;
     }
 
-    if (!isSaved) {
+    // Allow applying suggestions to both saved workspace transforms and unsaved transforms
+    // Only block if it's a tagged transform (external transform) that hasn't been checked out
+    const isUnsaved = isUnsavedTransform(transform);
+    if (!isSaved && !isUnsaved) {
       sendErrorToast(
         t`Add this transform to the workspace before applying Metabot changes.`,
       );
@@ -197,14 +208,29 @@ export const TransformTab = ({
     dispatch,
     suggestedTransform?.id,
     isSaved,
+    transform,
     sendErrorToast,
   ]);
 
   const handleRejectProposed = useCallback(() => {
     if (suggestedTransform) {
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+
+      // For unsaved transforms, clear the source back to empty state when rejecting
+      if (isUnsavedTransform(transform)) {
+        const emptySource = createEmptySourceForType(editedTransform.source);
+        if (emptySource) {
+          onChange({ source: emptySource });
+        }
+      }
     }
-  }, [dispatch, suggestedTransform]);
+  }, [
+    dispatch,
+    suggestedTransform,
+    transform,
+    editedTransform.source,
+    onChange,
+  ]);
 
   const handleTargetUpdate = useCallback(
     (updatedTransform?: WorkspaceTransform) => {
@@ -301,3 +327,36 @@ export const TransformTab = ({
     </Stack>
   );
 };
+
+/**
+ * Creates an empty source based on the type of the current source.
+ * Used when rejecting a metabot suggestion on an unsaved transform.
+ */
+function createEmptySourceForType(
+  currentSource: DraftTransformSource,
+): DraftTransformSource | null {
+  if (currentSource.type === "query") {
+    const emptySource = getInitialNativeSource();
+    // Preserve the database ID from the current source
+    const databaseId =
+      "database" in currentSource.query ? currentSource.query.database : null;
+    if (databaseId) {
+      return {
+        ...emptySource,
+        query: { ...emptySource.query, database: databaseId },
+      };
+    }
+    return emptySource;
+  }
+
+  if (currentSource.type === "python") {
+    const emptySource = getInitialPythonSource();
+    // Preserve the database ID from the current source
+    return {
+      ...emptySource,
+      "source-database": currentSource["source-database"],
+    };
+  }
+
+  return null;
+}

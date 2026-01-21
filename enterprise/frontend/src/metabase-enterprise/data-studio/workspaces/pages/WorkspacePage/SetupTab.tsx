@@ -88,7 +88,11 @@ export const SetupTab = ({
             data={databaseOptions}
             value={databaseId?.toString() ?? ""}
             onChange={handleDatabaseChange}
-            placeholder={t`Select a database`}
+            placeholder={
+              allowedDatabases != null && databaseOptions.length === 0
+                ? t`No database supports workspaces`
+                : t`Select a database`
+            }
             disabled={!isWorkspaceUninitialized(workspace)}
             maw="20rem"
           />

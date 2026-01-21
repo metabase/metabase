@@ -89,7 +89,6 @@
   &.selected {
     background-color: var(--mb-color-brand-lighter);
     border-color: var(--mb-color-brand);
-    color: var(--mb-color-brand);
   }
 
   &.selected .workspaceMenuButton {

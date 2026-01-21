@@ -178,7 +178,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
               ) : (
                 <Icon name="add" size={16} />
               )}
-              <Text size="sm" fw={500}>
+              <Text c="inherit" size="sm" fw={500}>
                 {t`New workspace`}
               </Text>
             </Flex>
