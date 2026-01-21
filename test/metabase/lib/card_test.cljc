@@ -625,8 +625,8 @@
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
 
-(deftest ^:parallel model-strips-internal-join-aliases-test
-  (testing "Models should not leak internal join aliases to downstream queries (#65532)"
+(deftest ^:parallel model-display-names-dont-include-internal-join-prefixes-test
+  (testing "Model display names should not include internal join prefixes (#65532)"
     (let [;; Create a query with a join (orders joined to products)
           base-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
           join-clause (-> (lib/join-clause (meta/table-metadata :products)
@@ -638,23 +638,28 @@
                           (lib/join join-clause)
                           (lib/with-fields [(meta/field-metadata :orders :id)]))
           model-cols  (lib/returned-columns model-query)
-          ;; Create a metadata provider with this as a model
+          ;; Create a metadata provider with this as a model, with custom display names
+          ;; The joined column should show its model display name, not "Products → ID"
           mp          (lib.tu/mock-metadata-provider
                        meta/metadata-provider
                        {:cards [{:id              1
                                  :name            "Model with Join"
                                  :database-id     (meta/id)
                                  :dataset-query   model-query
-                                 :result-metadata model-cols
+                                 :result-metadata (mapv (fn [col]
+                                                          (if (= (:name col) "ID_2")
+                                                            (assoc col :display-name "Product ID")
+                                                            col))
+                                                        model-cols)
                                  :type            :model}]})
-          ;; Get the model card
-          model-card    (lib.metadata/card mp 1)
-          ;; Call card-returned-columns - this is what downstream queries use
-          returned-cols (lib.card/card-returned-columns mp model-card)]
-      (testing "Model columns should not have :lib/original-join-alias or :source-alias"
-        (doseq [col returned-cols]
-          (testing (str "column " (:name col))
-            (is (nil? (:lib/original-join-alias col))
-                "Models should not leak :lib/original-join-alias to downstream queries")
-            (is (nil? (:source-alias col))
-                "Models should not leak :source-alias to downstream queries")))))))
+          ;; Create a query that uses this model as source
+          query         (lib/query mp (lib.metadata/card mp 1))
+          returned-cols (lib/returned-columns query)]
+      (testing "Model columns with custom display names should not have join prefix"
+        (let [product-id-col (m/find-first #(= (:name %) "ID_2") returned-cols)]
+          (is (some? product-id-col)
+              "Should find the joined ID column")
+          (when product-id-col
+            (is (= "Product ID"
+                   (lib.metadata.calculation/display-name query -1 product-id-col :long))
+                "Joined column with custom model display name should not have join prefix")))))))
