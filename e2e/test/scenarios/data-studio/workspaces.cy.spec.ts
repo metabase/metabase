@@ -473,7 +473,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should be able to check out existing Python transform with multiple input tables into a new workspace",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("Create Python transform with 2 input tables");
         H.getTableId({
           name: "Animals",
@@ -543,7 +543,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should be able to create new SQL and Python transforms in a workspace and merge them to global list",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("Create a new workspace");
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -928,7 +928,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should display multiple transforms and their connections",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1526,7 +1526,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should show ad-hoc results for Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1583,7 +1583,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1613,7 +1613,7 @@ describe("scenarios > data studio > workspaces", () => {
 
   describe("run all transforms", () => {
     it("should run all transforms", { tags: ["@python"] }, () => {
-      setPythonRunnerSettings();
+      H.setPythonRunnerSettings();
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1676,7 +1676,6 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should run all stale transforms", { tags: ["@python"] }, () => {
-      setPythonRunnerSettings();
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -2278,19 +2277,4 @@ function verifyRemovedText(text: string) {
   cy.findByText(text)
     .should("have.css", "text-decoration-line", "line-through")
     .and("have.css", "color", COLOR_DANGER);
-}
-
-function setPythonRunnerSettings() {
-  cy.request("PUT", "/api/setting", {
-    "python-runner-url": "http://localhost:5001",
-    "python-runner-api-token": "dev-token-12345",
-    "python-storage-s-3-endpoint": "http://localhost:4566",
-    "python-storage-s-3-region": "us-east-1",
-    "python-storage-s-3-bucket": "metabase-python-runner",
-    "python-storage-s-3-prefix": "test-prefix",
-    "python-storage-s-3-access-key": "test",
-    "python-storage-s-3-secret-key": "test",
-    "python-storage-s-3-container-endpoint": "http://localstack:4566",
-    "python-storage-s-3-path-style-access": true,
-  });
 }
