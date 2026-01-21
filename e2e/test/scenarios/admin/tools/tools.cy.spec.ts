@@ -882,7 +882,7 @@ describe("scenarios > admin > tools > task runs filtering", () => {
     getFilterByEntity().should("be.disabled");
 
     cy.log("Should show tooltip 'Select a start time' when hovering");
-    assertFilterByEntityTooltipText("Select a start time");
+    assertFilterByEntityTooltipText("Select a start time first");
 
     getFilterByStartedAt().click();
     H.popover().findByText("Previous 30 days").click();
