@@ -94,9 +94,6 @@
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
-(defn- find-outliers-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/find-outliers"))
-
 (defn- fix-sql-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
 
@@ -238,21 +235,6 @@
         (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e))
-                      {}
-                      e)))))
-
-(mu/defn find-outliers-request
-  "Make a request to AI Service to find outliers"
-  [values :- [:sequential [:map [:dimension :any] [:value :any]]]]
-  (try
-    (let [url (find-outliers-endpoint-url)
-          body {:values values}
-          options (build-request-options body)
-          response (post! url options)]
-      (u/prog1 (check-response! response body)
-        (log/debugf "Response:\n%s" (u/pprint-to-str <>))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI service: %s" (ex-message e))
                       {}
                       e)))))
 
