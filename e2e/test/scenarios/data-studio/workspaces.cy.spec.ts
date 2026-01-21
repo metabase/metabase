@@ -83,7 +83,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getWorkspaceContent().within(() => {
         cy.log("Starts on setup tab, and has only 2 tabs");
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
+        H.tabsShouldBe("Setup", ["Setup", "Graph"]);
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
@@ -212,7 +212,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Second workspace should start with default tabs");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
+        H.tabsShouldBe("Setup", ["Setup", "Graph"]);
       });
 
       cy.log("Navigate back to first workspace");
@@ -224,12 +224,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("First workspace should preserve its tabs state");
         Workspaces.getWorkspaceContent().within(() => {
-          H.tabsShouldBe(sourceTable, [
-            "Setup",
-            "Agent Chat",
-            "Graph",
-            "SQL transform",
-          ]);
+          H.tabsShouldBe(sourceTable, ["Setup", "Graph", "SQL transform"]);
         });
 
         H.NativeEditor.value().should("contain", "LIMIT 2");
@@ -335,12 +330,7 @@ describe("scenarios > data studio > workspaces", () => {
         .click();
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
       cy.log("UI Controls are hidden/disabled until changes are made");
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
@@ -371,7 +361,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(sourceTable, [
           "Setup",
-          "Agent Chat",
           "Graph",
           "SQL transform",
           sourceTable,
@@ -392,7 +381,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(targetTableSql, [
           "Setup",
-          "Agent Chat",
           "Graph",
           "SQL transform",
           sourceTable,
@@ -475,7 +463,7 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
+        H.tabsShouldBe("Setup", ["Setup", "Graph"]);
       });
 
       cy.log("Open transform tabs");
@@ -486,7 +474,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
-          "Agent Chat",
           "Graph",
           "Python transform",
           "SQL transform",
@@ -495,7 +482,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Reorder and close tabs");
       Workspaces.getWorkspaceContent().within(() => {
-        cy.findAllByRole("tab").eq(4).as("sqlTransformTab");
+        cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
         H.moveDnDKitElementByAlias("@sqlTransformTab", {
           horizontal: -150,
         });
@@ -511,25 +498,16 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findAllByRole("tab")
           .eq(2)
           .findByLabelText("close icon")
-          .should("not.exist");
-        cy.findAllByRole("tab")
-          .eq(3)
-          .findByLabelText("close icon")
           .should("exist");
         cy.findAllByRole("tab")
-          .eq(4)
+          .eq(3)
           .findByLabelText("close icon")
           .should("exist")
           .click();
       });
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
     });
 
@@ -554,7 +532,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(TARGET_TABLE_SQL, [
           "Setup",
-          "Agent Chat",
           "Graph",
           "SQL transform",
           "transform_table",
@@ -575,7 +552,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify both transform tab and table tab have been closed");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("Setup", ["Setup", "Agent Chat", "Graph"]);
+        H.tabsShouldBe("Setup", ["Setup", "Graph"]);
       });
     });
   });
@@ -785,12 +762,7 @@ describe("scenarios > data studio > workspaces", () => {
         .findByLabelText("View this workspace transform")
         .click();
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
     });
   });
@@ -895,12 +867,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Check that it opens new empty tab");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("New transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "New transform",
-        ]);
+        H.tabsShouldBe("New transform", ["Setup", "Graph", "New transform"]);
         H.NativeEditor.value().should("be.empty");
         Workspaces.getSaveTransformButton().should("be.disabled");
       });
@@ -938,12 +905,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("New transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "New transform",
-        ]);
+        H.tabsShouldBe("New transform", ["Setup", "Graph", "New transform"]);
       });
 
       cy.log(
@@ -998,12 +960,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Check that it opens new empty tab");
       Workspaces.getWorkspaceTabs().within(() => {
-        H.tabsShouldBe("New transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "New transform",
-        ]);
+        H.tabsShouldBe("New transform", ["Setup", "Graph", "New transform"]);
       });
       H.PythonEditor.value().should("not.be.empty");
 
@@ -1049,12 +1006,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("New transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "New transform",
-        ]);
+        H.tabsShouldBe("New transform", ["Setup", "Graph", "New transform"]);
       });
 
       cy.log(
@@ -1193,7 +1145,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceTabs().within(() => {
         H.tabsShouldBe(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`, [
           "Setup",
-          "Agent Chat",
           "Graph",
           `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
         ]);
@@ -1210,7 +1161,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceTabs().within(() => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
-          "Agent Chat",
           "Graph",
           `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
           "SQL transform",
@@ -1269,7 +1219,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
           "Setup",
-          "Agent Chat",
           "Graph",
           "SQL transform",
           "Preview (SQL transform)",
@@ -1302,7 +1251,6 @@ describe("scenarios > data studio > workspaces", () => {
         Workspaces.getWorkspaceTabs().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
             "Setup",
-            "Agent Chat",
             "Graph",
             "Python transform",
             "Preview (Python transform)",
@@ -1330,7 +1278,6 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
           "Setup",
-          "Agent Chat",
           "Graph",
           "SQL transform",
           "Preview (SQL transform)",
@@ -1360,7 +1307,6 @@ describe("scenarios > data studio > workspaces", () => {
         Workspaces.getWorkspaceContent().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
             "Setup",
-            "Agent Chat",
             "Graph",
             "Python transform",
             "Preview (Python transform)",
@@ -1539,12 +1485,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
       Workspaces.getWorkspaceTransforms()
         .findByText("SQL transform")
@@ -1588,12 +1529,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
       H.NativeEditor.value().should("contain", " LIMIT 2");
       Workspaces.getWorkspaceTransforms().findByText("SQL transform").click();
@@ -1601,12 +1537,7 @@ describe("scenarios > data studio > workspaces", () => {
         "Tabs state should stay the same, because this transform is already checked and its tab should be opened after redirect",
       );
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "SQL transform",
-        ]);
+        H.tabsShouldBe("SQL transform", ["Setup", "Graph", "SQL transform"]);
       });
     });
 
@@ -2045,16 +1976,11 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByText("New workspace").click();
       H.undoToast().should("not.exist");
       Workspaces.getWorkspaceTabs().within(() => {
-        H.tabsShouldBe("My transform", [
-          "Setup",
-          "Agent Chat",
-          "Graph",
-          "My transform",
-        ]);
+        H.tabsShouldBe("My transform", ["Setup", "Graph", "My transform"]);
       });
     });
 
-    it("should detect changes after closing and reopening a transform tab (GDGT-1535)", () => {
+    it("should detect changes after closing and reopening a transform tab (GDGT-1535, GDGT-1551)", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -2086,6 +2012,42 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Verify the edited content is preserved");
       H.NativeEditor.value().should("contain", "LIMIT 2;");
+
+      cy.log("Create a new unsaved transform in the workspace");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      cy.log("Verify the unsaved transform tab is opened");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Graph",
+          "SQL transform",
+          "New transform",
+        ]);
+      });
+
+      cy.log("Close the unsaved transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "New transform" })
+          .findByLabelText("close icon")
+          .click();
+      });
+
+      cy.log("Reopen the unsaved transform tab by clicking in Code tab");
+      Workspaces.getWorkspaceTransforms().findByText("New transform").click();
+
+      cy.log("Verify the unsaved transform tab is reopened");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Graph",
+          "SQL transform",
+          "New transform",
+        ]);
+      });
     });
 
     it("should show empty state after creating, archiving, and deleting a workspace", () => {
