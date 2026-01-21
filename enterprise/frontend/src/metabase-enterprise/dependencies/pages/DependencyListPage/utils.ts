@@ -1,8 +1,9 @@
 import type * as Urls from "metabase/lib/urls";
 import {
-  DEPENDENCY_GROUP_TYPES,
+  CARD_TYPES,
   DEPENDENCY_SORT_COLUMNS,
   DEPENDENCY_SORT_DIRECTIONS,
+  DEPENDENCY_TYPES,
 } from "metabase-types/api";
 
 import {
@@ -25,13 +26,18 @@ export function parseParams(
   );
 
   return {
-    query: parseString(params.query),
-    groupTypes: parseList(params["group-types"], (item) =>
-      parseEnum(item, DEPENDENCY_GROUP_TYPES),
-    ),
-    includePersonalCollections: parseBoolean(
-      params["include-personal-collections"],
-    ),
+    filters: {
+      query: parseString(params.query),
+      types: parseList(params.types, (item) =>
+        parseEnum(item, DEPENDENCY_TYPES),
+      ),
+      cardTypes: parseList(params["card-types"], (item) =>
+        parseEnum(item, CARD_TYPES),
+      ),
+      includePersonalCollections: parseBoolean(
+        params["include-personal-collections"],
+      ),
+    },
     sorting:
       sortColumn != null && sortDirection != null
         ? { column: sortColumn, direction: sortDirection }

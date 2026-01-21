@@ -9,10 +9,11 @@ import {
 } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
+  DependencyFilterOptions,
   DependencySortingOptions,
 } from "metabase-types/api";
 
-import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
+import { isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
@@ -22,7 +23,7 @@ import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
-import { getAvailableGroupTypes } from "./utils";
+import { getAvailableCardTypes, getAvailableTypes } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -42,19 +43,13 @@ export function DependencyList({
       ? useListBrokenGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
 
-  const {
-    query,
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = true,
-    sorting,
-    page = 0,
-  } = params;
+  const { page = 0, filters = {}, sorting } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    query,
-    types: getDependencyTypes(groupTypes),
-    card_types: getCardTypes(groupTypes),
-    include_personal_collections: includePersonalCollections,
+    types: filters.types ?? getAvailableTypes(mode),
+    card_types: filters.cardTypes ?? getAvailableCardTypes(mode),
+    query: filters.query,
+    include_personal_collections: filters.includePersonalCollections ?? true,
     sort_column: sorting?.column,
     sort_direction: sorting?.direction,
     offset: page * PAGE_SIZE,
@@ -69,10 +64,18 @@ export function DependencyList({
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
+  const handleFiltersChange = (filters: DependencyFilterOptions) => {
+    onParamsChange({ ...params, filters });
+  };
+
   const handleSortingChange = (
     sorting: DependencySortingOptions | undefined,
   ) => {
     onParamsChange({ ...params, sorting });
+  };
+
+  const handlePageChange = (page: number) => {
+    onParamsChange({ ...params, page });
   };
 
   useLayoutEffect(() => {
@@ -87,9 +90,9 @@ export function DependencyList({
         <ListHeader />
         <ListSearchBar
           mode={mode}
-          params={params}
+          filters={filters}
           hasLoader={isFetching && !isLoading}
-          onParamsChange={onParamsChange}
+          onFiltersChange={handleFiltersChange}
         />
         {error != null ? (
           <Center flex={1}>
@@ -107,10 +110,10 @@ export function DependencyList({
         )}
         {!isLoading && error == null && (
           <ListPaginationControls
-            params={params}
+            page={page}
             pageNodesCount={nodes.length}
             totalNodesCount={totalNodesCount}
-            onParamsChange={onParamsChange}
+            onPageChange={handlePageChange}
           />
         )}
       </Stack>

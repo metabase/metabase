@@ -129,6 +129,7 @@ function DependentItem({ node }: DependentItemProps) {
           <Menu.Item
             component={ForwardRefLink}
             to={link.url}
+            target="_blank"
             leftSection={<FixedSizeIcon name="external" />}
           >
             {t`Go to this`}
@@ -137,6 +138,7 @@ function DependentItem({ node }: DependentItemProps) {
         <Menu.Item
           component={ForwardRefLink}
           to={Urls.dependencyGraph({ entry: node })}
+          target="_blank"
           leftSection={<FixedSizeIcon name="dependencies" />}
         >
           {t`View in dependency graph`}

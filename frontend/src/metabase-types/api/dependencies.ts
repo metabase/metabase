@@ -269,6 +269,13 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
+export type DependencyFilterOptions = {
+  query?: string;
+  types?: DependencyType[];
+  cardTypes?: CardType[];
+  includePersonalCollections?: boolean;
+};
+
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",

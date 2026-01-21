@@ -1,6 +1,6 @@
 import type {
   DependencyEntry,
-  DependencyGroupType,
+  DependencyFilterOptions,
   DependencySortingOptions,
 } from "metabase-types/api";
 
@@ -31,42 +31,46 @@ export function dependencyTasks() {
 }
 
 export type DependencyListParams = {
-  query?: string;
-  groupTypes?: DependencyGroupType[];
-  includePersonalCollections?: boolean;
-  sorting?: DependencySortingOptions;
   page?: number;
+  filters?: DependencyFilterOptions;
+  sorting?: DependencySortingOptions;
 };
 
 function dependencyListQueryString({
-  query,
-  groupTypes,
-  includePersonalCollections,
-  sorting,
   page,
+  filters,
+  sorting,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
 
-  if (query != null) {
-    searchParams.set("query", query);
+  if (page != null) {
+    searchParams.set("page", String(page));
   }
-  if (groupTypes != null) {
-    groupTypes.forEach((groupType) => {
-      searchParams.append("group-types", groupType);
-    });
-  }
-  if (includePersonalCollections != null) {
-    searchParams.set(
-      "include-personal-collections",
-      String(includePersonalCollections),
-    );
+  if (filters != null) {
+    const { query, types, cardTypes, includePersonalCollections } = filters;
+    if (query != null) {
+      searchParams.set("query", query);
+    }
+    if (types != null) {
+      types.forEach((type) => {
+        searchParams.append("types", type);
+      });
+    }
+    if (cardTypes != null) {
+      cardTypes.forEach((cardType) => {
+        searchParams.append("card-types", cardType);
+      });
+    }
+    if (includePersonalCollections != null) {
+      searchParams.set(
+        "include-personal-collections",
+        String(includePersonalCollections),
+      );
+    }
   }
   if (sorting != null) {
     searchParams.set("sort-column", sorting.column);
     searchParams.set("sort-direction", sorting.direction);
-  }
-  if (page != null) {
-    searchParams.set("page", String(page));
   }
 
   const queryString = searchParams.toString();

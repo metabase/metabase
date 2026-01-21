@@ -1,31 +1,41 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type * as Urls from "metabase/lib/urls";
 import { Checkbox, Stack } from "metabase/ui";
+import type {
+  CardType,
+  DependencyFilterOptions,
+  DependencyType,
+} from "metabase-types/api";
 
-import { getDependencyGroupTypeInfo } from "../../../../../utils";
-import type { DependencyListMode } from "../../../types";
-import { getAvailableGroupTypes } from "../../../utils";
+import {
+  getCardTypes,
+  getDependencyGroupTypeInfo,
+  getDependencyGroupTypes,
+  getDependencyTypes,
+} from "../../../utils";
 
 type TypeFilterPickerProps = {
-  mode: DependencyListMode;
-  params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  filters: DependencyFilterOptions;
+  availableTypes: DependencyType[];
+  availableCardTypes: CardType[];
+  onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export function TypeFilterPicker({
-  mode,
-  params,
-  onParamsChange,
+  filters,
+  availableTypes,
+  availableCardTypes,
+  onFiltersChange,
 }: TypeFilterPickerProps) {
-  const availableGroupTypes = getAvailableGroupTypes(mode);
+  const availableGroupTypes = getDependencyGroupTypes(
+    availableTypes,
+    availableCardTypes,
+  );
 
   // preserve selected options in state to allow to deselect all types
   // until the popover is closed
-  const [groupTypes, setGroupTypes] = useState(
-    params.groupTypes ?? availableGroupTypes,
-  );
+  const [groupTypes, setGroupTypes] = useState(availableGroupTypes);
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
     value: groupType,
@@ -36,13 +46,12 @@ export function TypeFilterPicker({
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
       newValue.includes(groupType),
     );
+
     setGroupTypes(newGroupTypes);
-    onParamsChange({
-      ...params,
-      groupTypes:
-        newGroupTypes.length === availableGroupTypes.length
-          ? undefined
-          : newGroupTypes,
+    onFiltersChange({
+      ...filters,
+      types: getDependencyTypes(newGroupTypes),
+      cardTypes: getCardTypes(newGroupTypes),
     });
   };
 

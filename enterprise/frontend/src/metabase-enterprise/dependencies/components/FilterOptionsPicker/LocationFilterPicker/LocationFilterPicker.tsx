@@ -1,27 +1,27 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import type * as Urls from "metabase/lib/urls";
 import { Checkbox, Input, Stack } from "metabase/ui";
+import type { DependencyFilterOptions } from "metabase-types/api";
 
 type LocationFilterPickerProps = {
-  params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  filters: DependencyFilterOptions;
+  onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export function LocationFilterPicker({
-  params,
-  onParamsChange,
+  filters,
+  onFiltersChange,
 }: LocationFilterPickerProps) {
-  const { includePersonalCollections = true } = params;
+  const { includePersonalCollections = true } = filters;
 
   const handleIncludeInPersonalCollectionsChange = (
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const newValue = event.target.checked;
-    onParamsChange({
-      ...params,
-      includePersonalCollections: newValue ? undefined : false,
+    onFiltersChange({
+      ...filters,
+      includePersonalCollections: newValue,
     });
   };
 

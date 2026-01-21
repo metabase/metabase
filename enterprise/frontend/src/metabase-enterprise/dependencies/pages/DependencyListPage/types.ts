@@ -1,13 +1,9 @@
-import type {
-  DependencySortColumn,
-  DependencySortDirection,
-} from "metabase-types/api";
-
 export type DependencyListQueryParams = {
-  page?: string;
-  query?: string;
-  "group-types"?: string | string[];
-  "include-personal-collections"?: string;
-  "sort-column"?: DependencySortColumn;
-  "sort-direction"?: DependencySortDirection;
+  types?: unknown;
+  "card-types"?: unknown;
+  query?: unknown;
+  "include-personal-collections"?: unknown;
+  "sort-column"?: unknown;
+  "sort-direction"?: unknown;
+  page?: unknown;
 };
