@@ -75,6 +75,28 @@
   }
 }
 
+.workspacesSection {
+  border-top: 1px solid var(--mb-color-border);
+  padding-top: 0.75rem;
+}
+
+.workspacesSectionHeader {
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-brand);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-brand);
+  }
+}
+
 .workspaceItem {
   background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-primary);

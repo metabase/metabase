@@ -116,7 +116,6 @@ export function QueryEditor({
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
-            resizable={!uiOptions?.hidePreview}
             onChange={setQuestion}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
