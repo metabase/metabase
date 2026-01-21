@@ -4,7 +4,7 @@ import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import { useSyncTablesSchemasMutation } from "metabase-enterprise/api";
-import { trackDataStudioTableSchemaSynced } from "metabase-enterprise/data-studio/analytics";
+import { trackDataStudioTableSchemaSyncStarted } from "metabase-enterprise/data-studio/analytics";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
@@ -37,10 +37,10 @@ export function SyncTableSchemaButton({
 
     if (error) {
       sendErrorToast(t`Failed to start sync`);
-      trackDataStudioTableSchemaSynced("failure");
+      trackDataStudioTableSchemaSyncStarted("failure");
     } else {
       setStarted(true);
-      trackDataStudioTableSchemaSynced("success");
+      trackDataStudioTableSchemaSyncStarted("success");
     }
   };
 

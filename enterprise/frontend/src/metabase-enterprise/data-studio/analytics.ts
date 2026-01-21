@@ -80,29 +80,29 @@ export const trackDataStudioBulkAttributeUpdated = (
   });
 };
 
-export const trackDataStudioTableSchemaSynced = (
+export const trackDataStudioTableSchemaSyncStarted = (
   result: "success" | "failure",
 ) => {
   trackSimpleEvent({
-    event: "data_studio_table_schema_synced",
+    event: "data_studio_table_schema_sync_started",
     result,
   });
 };
 
-export const trackDataStudioTableFieldsRescanned = (
+export const trackDataStudioTableFieldsRescanStarted = (
   result: "success" | "failure",
 ) => {
   trackSimpleEvent({
-    event: "data_studio_table_fields_rescanned",
+    event: "data_studio_table_fields_rescan_started",
     result,
   });
 };
 
-export const trackDataStudioTableFieldValuesDiscarded = (
+export const trackDataStudioTableFieldValuesDiscardStarted = (
   result: "success" | "failure",
 ) => {
   trackSimpleEvent({
-    event: "data_studio_table_field_values_discarded",
+    event: "data_studio_table_field_values_discard_started",
     result,
   });
 };

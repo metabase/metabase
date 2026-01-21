@@ -78,7 +78,7 @@ describe("bulk table operations", () => {
       );
     });
     H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_schema_synced",
+      event: "data_studio_table_schema_sync_started",
       result: "success",
     });
 
@@ -94,7 +94,7 @@ describe("bulk table operations", () => {
       );
     });
     H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_fields_rescanned",
+      event: "data_studio_table_fields_rescan_started",
       result: "success",
     });
 
@@ -111,7 +111,7 @@ describe("bulk table operations", () => {
       });
     });
     H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_table_field_values_discarded",
+      event: "data_studio_table_field_values_discard_started",
       result: "success",
     });
   });
