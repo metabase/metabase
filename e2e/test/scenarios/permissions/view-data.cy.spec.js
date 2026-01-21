@@ -3,7 +3,6 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { IS_ENTERPRISE } = Cypress.env();
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
@@ -622,9 +621,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "No",
       ],
-      ...(IS_ENTERPRISE
-        ? [["Data Analysts", "Can view", "No", "1 million rows", "No"]]
-        : []),
+      ["Data Analysts", "Blocked", "No", "No", "Yes"],
       ["collection", "Can view", "No", "1 million rows", "No"],
       ["data", "Can view", "Query builder and native", "1 million rows", "No"],
       ["nosql", "Can view", "Query builder only", "1 million rows", "No"],

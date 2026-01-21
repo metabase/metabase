@@ -372,14 +372,14 @@ export const getCollectionsPermissionEditor = createSelector(
             },
           ],
         };
-      }).filter(isNotNull)
-
+      })
+      .filter(isNotNull);
 
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
       columns: [{ name: t`Group name` }, { name: t`Collection access` }],
-      entities
+      entities,
     };
   },
 );
@@ -434,5 +434,5 @@ function getCollectionWarning(
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 
-  return null
+  return null;
 }
