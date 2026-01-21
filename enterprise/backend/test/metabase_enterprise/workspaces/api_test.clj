@@ -1325,12 +1325,13 @@
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api_badcol"]
       (ws.tu/with-workspaces! [ws {:name "Workspace for bad column test"}]
-        (let [bad-transform {:name   "Bad Column Transform"
+        (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))
+              bad-transform {:name   "Bad Column Transform"
                              :source {:type  "query"
                                       :query (mt/native-query {:query "SELECT nocolumn FROM orders"})}
                              :target {:type     "table"
                                       :database (mt/id)
-                                      :schema   "public"
+                                      :schema   target-schema
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
@@ -1343,7 +1344,7 @@
                        :start_time some?
                        :end_time   some?
                        :table      {:schema (:schema ws)
-                                    :name   (str "public__" output-table)}}
+                                    :name   (str target-schema "__" output-table)}}
                       result))))
           (testing "transform has last_run_message mentioning the bad column"
             (is (=? {:last_run_at      some?
