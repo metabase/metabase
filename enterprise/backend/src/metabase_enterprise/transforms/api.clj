@@ -362,6 +362,10 @@
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
   (try
+    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
+    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. That may result
+    ;;         in failure to parse e.g. `select final from final` because without opts parser considers the final
+    ;;         reserved.
     (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
       (cond
         (not (instance? PlainSelect parsed))
