@@ -572,7 +572,7 @@ describe("scenarios > data studio > workspaces", () => {
         });
         verifyAndCloseToast("Transform saved successfully");
 
-        cy.log("Create a new Python transform");
+        cy.log("Create a new Python transform with 2 input tables");
         Workspaces.getWorkspaceSidebar()
           .findByLabelText("Add transform")
           .click();
@@ -580,14 +580,25 @@ describe("scenarios > data studio > workspaces", () => {
           .findByRole("menuitem", { name: /Python Script/ })
           .click();
 
-        H.PythonEditor.clear().paste(TEST_PYTHON_TRANSFORM);
+        H.PythonEditor.clear().paste(TEST_PYTHON_TRANSFORM_MULTI_TABLE);
         Workspaces.getWorkspaceContent().within(() => {
+          cy.findByTestId("python-data-picker")
+            .findAllByText("Select a table…")
+            .first()
+            .click();
+        });
+        H.entityPickerModal().within(() => {
+          cy.findByText("Schema a").click();
+          cy.findByText("Animals").click();
+        });
+        Workspaces.getWorkspaceContent().within(() => {
+          cy.button(/Add a table/).click();
           cy.findByTestId("python-data-picker")
             .findByText("Select a table…")
             .click();
         });
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema B").click();
           cy.findByText("Animals").click();
         });
 
@@ -620,6 +631,35 @@ describe("scenarios > data studio > workspaces", () => {
         Transforms.list()
           .findByRole("row", { name: /python_table/ })
           .should("exist");
+
+        cy.log("Run SQL transform and verify results");
+        Transforms.list()
+          .findByRole("row", { name: /sql_table/ })
+          .click();
+        Transforms.runTab().click();
+        runTransformAndWaitForSuccessOnTransformsPage();
+        Transforms.settingsTab().click();
+        getTableLink().should("contain.text", "sql_table").click();
+
+        H.assertTableData({
+          columns: ["Name", "Score"],
+          firstRows: [["Duck", "10"]],
+        });
+
+        cy.log("Run Python transform and verify results");
+        Workspaces.visitTransformListPage();
+        Transforms.list()
+          .findByRole("row", { name: /python_table/ })
+          .click();
+        Transforms.runTab().click();
+        runTransformAndWaitForSuccessOnTransformsPage();
+        Transforms.settingsTab().click();
+        getTableLink().should("contain.text", "python_table").click();
+
+        H.assertTableData({
+          columns: ["Name", "Total Score"],
+          firstRows: [["test", "0"]],
+        });
       },
     );
   });
