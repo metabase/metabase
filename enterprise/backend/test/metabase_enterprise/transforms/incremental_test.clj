@@ -632,7 +632,7 @@
             (testing "target table has expected data"
               (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
             (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
-              (is (nil? (transforms.u/next-checkpoint transform))))
+              (is (nil? (transforms-base.u/next-checkpoint transform))))
             ;; Maybe this is unrealistic - you cannot select a column that does not exist
             ;; But the source tables schema can change, e.g. rename: you change event_time to event_ts or something
             ;; so one would have to be careful to disable or delete transforms ahead of a schema change like this

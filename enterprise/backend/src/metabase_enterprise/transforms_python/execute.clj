@@ -100,35 +100,35 @@
   [transform {:keys [run-method start-promise user-id]}]
   (assert (transforms-base.util/python-transform? transform) "Transform must be a python transform")
   (let [*run-id (atom nil)]
-  (try
-    (let [{:keys [owner_user_id creator_id] transform-id :id} transform
-          ;; For manual runs, use the triggering user; for cron, use owner/creator
-          run-user-id (if (and (= run-method :manual) user-id)
-                        user-id
-                        (or owner_user_id creator_id))
-          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
+    (try
+      (let [{:keys [owner_user_id creator_id] transform-id :id} transform
+            ;; For manual runs, use the triggering user; for cron, use owner/creator
+            run-user-id  (if (and (= run-method :manual) user-id)
+                           user-id
+                           (or owner_user_id creator_id))
+            {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
         (reset! *run-id run-id)
 
-      (some-> start-promise (deliver [:started run-id]))
-      (log/info "Executing Python transform" transform-id)
+        (some-> start-promise (deliver [:started run-id]))
+        (log/info "Executing Python transform" transform-id)
 
-      ;; Start log polling loop for immediate feedback during execution
-      (with-open [_log-poller (open-python-message-update-future! run-id)]
-        ;; Call the base execution - it handles all the work and returns results
-        (let [result (transforms.util/run-cancelable-transform!
-                      run-id transform
-                      {:ex-message-fn (fn [ex]
-                                        (or (:transform-message (ex-data ex))
-                                            (ex-message ex)))})]
-          ;; Save final logs (this overwrites the polled logs with the complete log)
-          (when-let [logs (:logs result)]
-            (save-log-to-transform-run-message! run-id logs))
-          {:run_id run-id
+        ;; Start log polling loop for immediate feedback during execution
+        (with-open [_log-poller (open-python-message-update-future! run-id)]
+          ;; Call the base execution - it handles all the work and returns results
+          (let [result (transforms.util/run-cancelable-transform!
+                        run-id transform
+                        {:ex-message-fn (fn [ex]
+                                          (or (:transform-message (ex-data ex))
+                                              (ex-message ex)))})]
+            ;; Save final logs (this overwrites the polled logs with the complete log)
+            (when-let [logs (:logs result)]
+              (save-log-to-transform-run-message! run-id logs))
+            {:run_id run-id
              :result result})))
       (catch Throwable t
         ;; Save logs from exception data if available
         (when @*run-id
-        (when-let [logs (:logs (ex-data t))]
+          (when-let [logs (:logs (ex-data t))]
             (save-log-to-transform-run-message! @*run-id logs)))
         (log/error t "Error executing Python transform")
         (throw t)))))

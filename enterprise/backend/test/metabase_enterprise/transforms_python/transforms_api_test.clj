@@ -471,35 +471,35 @@
                               {:keys [messages last-run]} scenario-result]
                           (is (= (name expect-status) (:status last-run)))
 
-                        (when (some? expect-script)
-                          (if expect-script
-                            (testing "script should have started"
-                              (is (some #(str/includes? % "script started") messages)))
-                            (testing "script should not have started"
-                              (is (not-any? #(str/includes? % "script started") messages))
-                              (is (not (str/includes? (str (:message last-run)) "script started"))))))
+                          (when (some? expect-script)
+                            (if expect-script
+                              (testing "script should have started"
+                                (is (some #(str/includes? % "script started") messages)))
+                              (testing "script should not have started"
+                                (is (not-any? #(str/includes? % "script started") messages))
+                                (is (not (str/includes? (str (:message last-run)) "script started"))))))
 
-                        (when (some? expect-write)
-                          (testing "table existence"
-                            (is (= expect-write (driver/table-exists? driver/*driver* (mt/db) target))))))))
+                          (when (some? expect-write)
+                            (testing "table existence"
+                              (is (= expect-write (driver/table-exists? driver/*driver* (mt/db) target))))))))
 
                   ; todo We have not yet covered the case where we rerun the same transform while there might be some hangover.
                   ;      Cancellation addresses the transform and not the run, there is shared mutable state and races on it are possible
-                  (testing "the runner is not blocked for a new run"
-                    (with-transform-cleanup! [target {:type   "table"
-                                                      :schema schema
-                                                      :name   "result"}]
-                      (let [{transform-id :id} (create-transform {:desc "normal run", :program non-blocking-script} target)
-                            _          (transforms.tu/test-run! transform-id)
-                            {:keys [status start_time end_time]} (get-last-run transform-id)
-                            start-inst (some-> start_time Instant/parse)
-                            end-inst   (some-> end_time Instant/parse)
-                            duration   (when (and start-inst end-inst) (Duration/between start-inst end-inst))]
-                        (is (= "succeeded" status))
-                        (when duration
+                    (testing "the runner is not blocked for a new run"
+                      (with-transform-cleanup! [target {:type   "table"
+                                                        :schema schema
+                                                        :name   "result"}]
+                        (let [{transform-id :id} (create-transform {:desc "normal run", :program non-blocking-script} target)
+                              _          (transforms.tu/test-run! transform-id)
+                              {:keys [status start_time end_time]} (get-last-run transform-id)
+                              start-inst (some-> start_time Instant/parse)
+                              end-inst   (some-> end_time Instant/parse)
+                              duration   (when (and start-inst end-inst) (Duration/between start-inst end-inst))]
+                          (is (= "succeeded" status))
+                          (when duration
                           ;; 10 seconds is an estimate of the maximum time we should expect the normal run to take.
                           ;; if the runner was blocked for 30 seconds, and only then did the new run get scheduled - we would exceed this time.
-                          (is (< (.toSeconds duration) 10))))))))))))))))
+                            (is (< (.toSeconds duration) 10))))))))))))))))
 
 (deftest python-transform-schema-change-integration-test!
   (testing "Python transform handles schema changes using appropriate rename strategy"
