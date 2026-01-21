@@ -28,14 +28,21 @@ export function TypeFilterPicker({
   availableCardTypes,
   onFiltersChange,
 }: TypeFilterPickerProps) {
+  const [isEmpty, setIsEmpty] = useState(false);
+
+  const selectedGroupTypes = getDependencyGroupTypes(
+    filters.types == null || filters.types.length === 0
+      ? availableTypes
+      : filters.types,
+    filters.cardTypes == null || filters.cardTypes.length === 0
+      ? availableCardTypes
+      : filters.cardTypes,
+  );
+
   const availableGroupTypes = getDependencyGroupTypes(
     availableTypes,
     availableCardTypes,
   );
-
-  // preserve selected options in state to allow to deselect all types
-  // until the popover is closed
-  const [groupTypes, setGroupTypes] = useState(availableGroupTypes);
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
     value: groupType,
@@ -46,8 +53,7 @@ export function TypeFilterPicker({
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
       newValue.includes(groupType),
     );
-
-    setGroupTypes(newGroupTypes);
+    setIsEmpty(newGroupTypes.length === 0);
     onFiltersChange({
       ...filters,
       types: getDependencyTypes(newGroupTypes),
@@ -58,7 +64,7 @@ export function TypeFilterPicker({
   return (
     <Checkbox.Group
       label={t`Entity type`}
-      value={groupTypes}
+      value={isEmpty ? [] : selectedGroupTypes}
       onChange={handleChange}
     >
       <Stack gap="sm" mt="sm">

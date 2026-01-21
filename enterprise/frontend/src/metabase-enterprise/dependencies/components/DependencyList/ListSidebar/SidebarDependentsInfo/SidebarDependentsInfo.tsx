@@ -46,7 +46,6 @@ type SidebarDependentsInfoProps = {
 
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
-  const title = getDependentErrorNodesLabel(count);
   const [filters, setFilters] = useState<DependencyFilterOptions>({});
 
   const { data: dependents = [] } = useListNodeDependentsQuery(
@@ -72,9 +71,11 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm">
           <Badge c="text-selected" bg="error">
-            {count}
+            {dependents.length}
           </Badge>
-          <Title order={5}>{title}</Title>
+          <Title order={5}>
+            {getDependentErrorNodesLabel(dependents.length)}
+          </Title>
         </Group>
         <FilterOptionsPicker
           filters={filters}

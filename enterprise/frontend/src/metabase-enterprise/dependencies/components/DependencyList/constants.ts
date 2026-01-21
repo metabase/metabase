@@ -23,7 +23,6 @@ export const BROKEN_DEPENDENTS_TYPES: DependencyType[] = [
   "transform",
   "segment",
   "measure",
-  "sandbox",
 ];
 
 export const BROKEN_DEPENDENTS_CARD_TYPES: CardType[] = [
