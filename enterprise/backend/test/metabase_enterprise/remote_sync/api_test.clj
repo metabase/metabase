@@ -508,12 +508,10 @@
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :read-write]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-url "https://github.com/test/repo.git"
-                                                                  :remote-sync-branch "main"})
-                task (wait-for-task-completion task_id)]
-            (is (=? {:success true} resp))
-            (is (remote-sync.task/successful? task))))))))
+          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-url "https://github.com/test/repo.git"
+                                            :remote-sync-branch "main"})]
+            (is (= {:success true} resp))))))))
 
 (deftest settings-update-triggers-import-in-read-only-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
