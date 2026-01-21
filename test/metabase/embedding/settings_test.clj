@@ -5,7 +5,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
