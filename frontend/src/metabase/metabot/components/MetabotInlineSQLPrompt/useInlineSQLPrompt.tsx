@@ -16,7 +16,12 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  GenerateSqlResponse,
+  TableId,
+} from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -78,6 +83,15 @@ export function useInlineSQLPrompt(
 
   const databaseId = question.databaseId();
 
+  const handleGenerated = useCallback((result: GenerateSqlResponse) => {
+    const tableIds = (result.referenced_entities ?? [])
+      .filter((e) => e.model === "table")
+      .map((e) => e.id);
+    if (tableIds.length > 0) {
+      setSelectedTableIds(tableIds);
+    }
+  }, []);
+
   const {
     source: generatedSource,
     isLoading,
@@ -88,7 +102,11 @@ export function useInlineSQLPrompt(
     reset: resetSuggestionState,
     reject,
     suggestionModels,
-  } = PLUGIN_METABOT.useMetabotSQLSuggestion(databaseId, bufferId);
+  } = PLUGIN_METABOT.useMetabotSQLSuggestion({
+    databaseId,
+    bufferId,
+    onGenerated: handleGenerated,
+  });
 
   const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });

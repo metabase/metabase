@@ -9,3 +9,8 @@
 .root [data-combobox-option] {
   padding: 0.25rem 0.5rem;
 }
+
+.root [data-combobox-option][data-combobox-selected] {
+  background-color: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-primary);
+}

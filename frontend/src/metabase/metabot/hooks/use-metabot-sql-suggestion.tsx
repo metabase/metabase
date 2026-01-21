@@ -3,19 +3,37 @@ import { t } from "ttag";
 
 import { useGenerateSqlMutation } from "metabase/api";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type { DatabaseId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  GenerateSqlResponse,
+  ReferencedEntity,
+} from "metabase-types/api";
 
-export function useMetabotSQLSuggestion(
-  databaseId: DatabaseId | null,
-  _bufferId: string,
-) {
+export interface UseMetabotSQLSuggestionOptions {
+  databaseId: DatabaseId | null;
+  bufferId: string;
+  onGenerated?: (result: GenerateSqlResponse) => void;
+}
+
+export function useMetabotSQLSuggestion({
+  databaseId,
+  onGenerated,
+}: UseMetabotSQLSuggestionOptions) {
   const [source, setSource] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [generateSql, { isLoading }] = useGenerateSqlMutation();
   const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
 
   const generate = useCallback(
-    async (prompt: string, sourceSql?: string) => {
+    async ({
+      prompt,
+      sourceSql,
+      referencedEntities,
+    }: {
+      prompt: string;
+      sourceSql?: string;
+      referencedEntities?: ReferencedEntity[];
+    }) => {
       if (!databaseId) {
         setError(t`No database selected.`);
         return;
@@ -26,6 +44,7 @@ export function useMetabotSQLSuggestion(
           prompt,
           database_id: databaseId,
           source_sql: sourceSql,
+          referenced_entities: referencedEntities,
         });
         requestRef.current = request;
         const result = await request.unwrap();
@@ -34,6 +53,7 @@ export function useMetabotSQLSuggestion(
         const codeEdit = result.parts.find((p) => p.type === "code_edit");
         if (codeEdit?.value?.value) {
           setSource(codeEdit.value.value);
+          onGenerated?.(result);
         } else {
           setError(t`Something went wrong. Please try again.`);
         }
@@ -41,7 +61,7 @@ export function useMetabotSQLSuggestion(
         setError(t`Something went wrong. Please try again.`);
       }
     },
-    [generateSql, databaseId],
+    [generateSql, databaseId, onGenerated],
   );
 
   const cancelRequest = useCallback(() => {

@@ -99,15 +99,10 @@ export function TablePillsInput({
     combobox.closeDropdown();
   };
 
-  const placeholder = match({ databaseId, isLoading, error: !!error })
-    .with({ databaseId: null }, () => t`Select a database first`)
-    .with({ isLoading: true }, () => t`Loading tables...`)
-    .with({ error: true }, () => t`Error loading tables`)
-    .otherwise(() =>
-      selectedTableIds.length > 0
-        ? ""
-        : t`First, tell Metabot which tables to use`,
-    );
+  const placeholder =
+    selectedTableIds.length > 0
+      ? ""
+      : t`First, tell Metabot which tables to use`;
 
   const pills = selectedTableIds.map((tableId) => {
     const table = tableMap[tableId];
@@ -118,7 +113,7 @@ export function TablePillsInput({
         key={tableId}
         fz="xs"
         bg={isSelected ? "background-brand" : "background-secondary"}
-        c={isSelected ? "brand" : "text-primary"}
+        c="text-primary"
         bd={
           isSelected
             ? "1px solid var(--mb-color-brand)"
@@ -152,7 +147,7 @@ export function TablePillsInput({
   const isDisabled = !databaseId || isLoading || !!error;
 
   return (
-    <Flex className={S.root} align="center" gap="xs">
+    <Flex className={S.root} align="center" gap="sm">
       <Icon name="table" c="text-tertiary" size={14} />
       <Box flex="1">
         <Combobox
@@ -220,11 +215,21 @@ export function TablePillsInput({
 
           <Combobox.Dropdown key={selectedTableIds.join("-")}>
             <Combobox.Options>
-              {options.length > 0 ? (
-                options
-              ) : (
-                <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
-              )}
+              {match({
+                isLoading,
+                error: !!error,
+                hasOptions: options.length > 0,
+              })
+                .with({ hasOptions: true }, () => options)
+                .with({ isLoading: true }, () => (
+                  <Combobox.Empty>{t`Loading tables...`}</Combobox.Empty>
+                ))
+                .with({ error: true }, () => (
+                  <Combobox.Empty>{t`Error loading tables`}</Combobox.Empty>
+                ))
+                .otherwise(() => (
+                  <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
+                ))}
             </Combobox.Options>
           </Combobox.Dropdown>
         </Combobox>
