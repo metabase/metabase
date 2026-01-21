@@ -66,6 +66,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
@@ -140,7 +141,15 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = parseTimestamp(datum[X_AXIS_DATA_KEY]);
+    let dimensionValue = datum[X_AXIS_DATA_KEY];
+
+    if (isDate(dimensionColumn) && dimensionValue != null) {
+      const parsed = parseTimestamp(dimensionValue);
+      if (parsed.isValid()) {
+        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
+      }
+    }
+
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
