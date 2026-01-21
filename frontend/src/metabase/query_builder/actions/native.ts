@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 
 import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -91,10 +92,17 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
-  type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen, isShowingDataReference: isNativeEditorOpen },
-});
+export const setIsNativeEditorOpen =
+  (isNativeEditorOpen: boolean) => (dispatch: Dispatch, getState: GetState) =>
+    dispatch({
+      type: SET_UI_CONTROLS,
+      payload: {
+        isNativeEditorOpen,
+        isShowingDataReference:
+          isNativeEditorOpen &&
+          !PLUGIN_METABOT.getMetabotVisible(getState(), "omnibot"),
+      },
+    });
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
