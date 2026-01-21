@@ -284,32 +284,38 @@
    :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
               ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
+   :requires [[clojure.string :as str]
+              [table.core :as table]
+              [mage.modules]]
    :usage-fn
-   (fn [_]
-     (->>
-      ["# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       " | Priority | Condition                           | Result | Reason                                    |"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       " | 1        | Global skip (no backend changes)    | SKIP   | workflow skip (no backend changes)        |"
-       " | 2        | Driver is :h2                       | RUN    | H2 always runs                            |"
-       " | 3        | Driver is quarantined               | SKIP   | driver is quarantined                     |"
-       " | 3(a)     | ...and has break-quarantine-X label | RUN    | anti-quarantine label present             |"
-       " | 4        | On master or release branch         | RUN    | master/release branch                     |"
-       " | 5        | Cloud driver + ci:all-cloud-drivers | RUN    | ci:all-cloud-drivers label                |"
-       " | 6        | Cloud driver + its files changed    | RUN    | driver files changed                      |"
-       " | 7        | Cloud driver, no relevant changes   | SKIP   | no relevant changes for cloud driver      |"
-       " | 8        | Driver deps affected by changes     | RUN    | driver module affected by shared code     |"
-       " | 9        | Self-hosted driver, not affected    | SKIP   | driver module not affected                |"
-       " |----------|-------------------------------------|--------|-------------------------------------------|"
-       ""] (str/join "\n")))
+   (fn [_current-task]
+     (let [mwtd (vec (sort mage.modules/default-modules-which-trigger-drivers))]
+       (str
+        "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
+        (with-out-str
+          (table/table [["Priority" "Condition" "Result" "Reason"]
+                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["2"    "Driver is :h2"                           "RUN"  "H2 always runs"]
+                        ["3"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["3(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
+                        ["4"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
+                        ["6"
+                         "Cloud driver + its files changed"
+                         "RUN"
+                         (str "any of " (pr-str mwtd) " affected by cloud-driver module changes")]
+                        ["7"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["8"
+                         (str (pr-str mwtd) " module deps affected")
+                         "RUN"
+                         (str "any of " (pr-str mwtd) " affected by module changes")]
+                        ["9"    "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]])))))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
              [nil "--is-master-or-release MASTER_OR_RELEASE"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
              [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
-   :requires [[clojure.string :as str]
-              [mage.modules]]
+
    :task (task! (mage.modules/-main parsed))}
 
   -install-merge-drivers

@@ -12,6 +12,10 @@
 
 (def ^:dynamic ^:private *github-output-only?* false)
 
+(def default-modules-which-trigger-drivers
+  "Modules that, when affected by changes, should trigger driver tests."
+  ['driver 'enterprise/transforms])
+
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
 (defn- file->module [filename]
@@ -204,16 +208,16 @@
         files))
 
 (defn driver-deps-affected?
-  "Returns true if the driver module or enterprise/transforms module is affected by the changed modules.
-   These are the two 'roots' that trigger driver tests - driver for core driver functionality,
-   and transforms because it has extensive driver-specific tests (using mt/test-drivers)."
+  "Returns true if any of `trigger-modules` are affected by the changed modules.
+   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
+   (driver-deps-affected? deps modules default-modules-which-trigger-drivers))
+  ([deps modules trigger-modules]
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
-      (or (not (contains? unaffected 'driver))
-          (not (contains? unaffected 'enterprise/transforms)))))))
+      (some #(not (contains? unaffected %)) trigger-modules)))))
 
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
