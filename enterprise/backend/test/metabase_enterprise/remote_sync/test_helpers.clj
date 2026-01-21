@@ -582,3 +582,23 @@ serdes/meta:
             table-name
             eid
             (str/replace (u/lower-case-en measure-name) #"\s+" "_"))))
+
+(defn generate-snippet-yaml
+  "Generates YAML content for a NativeQuerySnippet."
+  [entity-id name content & {:keys [collection-id]}]
+  (format "name: %s
+description: null
+entity_id: %s
+content: '%s'
+archived: false
+template_tags: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+collection_id: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: NativeQuerySnippet
+"
+          name entity-id content (or collection-id "null")
+          entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

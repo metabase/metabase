@@ -454,10 +454,11 @@ is_sample: false
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
                                         (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id coll-entity-id)}}
-                    mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
-                (is (= :success (:status result))
-                    (str "Import should succeed. Result: " result))
+                    mock-source (test-helpers/create-mock-source :initial-files test-files)]
+                (testing "fails with `conflict` status because local transforms will be deleted"
+                  (is (= :conflict (:status (impl/import! (source.p/snapshot mock-source) task-id)))))
+                (testing "passing `force? true` allows overriding the conflict."
+                  (is (= :success (:status (impl/import! (source.p/snapshot mock-source) task-id :force? true)))))
                 (is (t2/exists? :model/Collection :id coll-id)
                     "Transforms collection should still exist")
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
@@ -726,7 +727,9 @@ serdes/meta:
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result-without-force (impl/import! (source.p/snapshot mock-source) task-id)
+                    result (impl/import! (source.p/snapshot mock-source) task-id {:force? true})]
+                (is (= :conflict (:status result-without-force)))
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (settings/remote-sync-transforms)
