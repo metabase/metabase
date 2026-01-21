@@ -38,16 +38,16 @@
         (testing "metabot-id mapping takes third precedence"
           (is (= "internal"
                  (metabot-v3.config/resolve-dynamic-profile-id nil metabot-v3.config/internal-metabot-id)))
-          (is (= "embedding"
+          (is (= "embedding_next"
                  (metabot-v3.config/resolve-dynamic-profile-id nil metabot-v3.config/embedded-metabot-id))))
 
         (testing "falls back to default when no matches"
-          (is (= "default"
+          (is (= "embedding_next"
                  (metabot-v3.config/resolve-dynamic-profile-id nil "unknown-metabot-id"))))
 
         (testing "single arity version uses dynamic metabot resolution"
           (mt/with-temporary-setting-values [metabot-v3.settings/metabot-id metabot-v3.config/embedded-metabot-id]
-            (is (= "embedding"
+            (is (= "embedding_next"
                    (metabot-v3.config/resolve-dynamic-profile-id nil)))))))))
 
 (deftest integrated-resolution-test
