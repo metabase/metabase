@@ -2,7 +2,7 @@
 
 import type { ChartColorV2 } from "../types";
 
-export const DEFAULT_CHART_COLORS: ChartColorV2[] = [
+export const DEFAULT_ACCENT_COLORS: ChartColorV2[] = [
   "#509EE3", // accent0 - blue
   "#88BF4D", // accent1 - green
   "#A989C5", // accent2 - purple
