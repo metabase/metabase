@@ -272,17 +272,6 @@
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
 
-(def ^:private internal-join-alias-keys
-  "Keys that track internal join information. These should not leak through the model abstraction
-   boundary to downstream queries. See #65532."
-  [:lib/original-join-alias :source-alias :source_alias])
-
-(defn- strip-internal-join-aliases
-  "Remove internal join alias keys from model result_metadata columns. Models should present a 'flat table'
-   abstraction, so internal joins shouldn't affect how columns are displayed in downstream queries."
-  [result-metadata]
-  (mapv #(apply dissoc % internal-join-alias-keys) result-metadata))
-
 (defn- card-read-context
   "The context to use for tracking the view. Return nil if the view should not be tracked"
   [{:keys [context]}]
@@ -345,24 +334,24 @@
         card-viz   (:visualization_settings card)
         merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp (if (= :pivot (:display card))
-             qp.pivot/run-pivot-query
-             (or qp process-query-for-card-default-qp))
-        runner (make-run qp export-format)
-        query (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                  (assoc :viz-settings merged-viz)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                         middleware))))
-        info (cond-> {:executed-by api/*current-user-id*
-                      :context context
-                      :card-id card-id
-                      :card-name (:name card)
-                      :dashboard-id dashboard-id
-                      :visualization-settings merged-viz}
-               (and (= (:type card) :model) (seq (:result_metadata card)))
-               (assoc :metadata/model-metadata (strip-internal-join-aliases (:result_metadata card))))]
+        qp         (if (= :pivot (:display card))
+                     qp.pivot/run-pivot-query
+                     (or qp process-query-for-card-default-qp))
+        runner     (make-run qp export-format)
+        query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                       (assoc :viz-settings merged-viz)
+                       (update :middleware (fn [middleware]
+                                             (merge
+                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                              middleware))))
+        info       (cond-> {:executed-by            api/*current-user-id*
+                            :context                context
+                            :card-id                card-id
+                            :card-name              (:name card)
+                            :dashboard-id           dashboard-id
+                            :visualization-settings merged-viz}
+                     (and (= (:type card) :model) (seq (:result_metadata card)))
+                     (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
       (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
