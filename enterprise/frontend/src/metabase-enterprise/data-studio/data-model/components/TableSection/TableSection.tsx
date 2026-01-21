@@ -313,7 +313,11 @@ const TableSectionBase = ({
               </Group>
 
               {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
+                />
               )}
 
               {hasFields && (
