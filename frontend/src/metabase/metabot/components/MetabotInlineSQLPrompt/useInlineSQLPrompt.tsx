@@ -16,7 +16,7 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -64,6 +64,8 @@ export function useInlineSQLPrompt(
 ): UseInlineSqlEditResult {
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+  const [promptValue, setPromptValue] = useState("");
+  const [selectedTableIds, setSelectedTableIds] = useState<TableId[]>([]);
 
   // TODO: this should get moved into the EE implementation
   // PLUGIN_METABOT.useMetabotSQLSuggestion should take the portalTarget?.view thing
@@ -96,6 +98,15 @@ export function useInlineSQLPrompt(
   const getSourceSql = useCallback(() => {
     return portalTarget?.view.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
+
+  const prevDatabaseIdRef = useRef(databaseId);
+  useEffect(() => {
+    if (prevDatabaseIdRef.current !== databaseId) {
+      setPromptValue("");
+      setSelectedTableIds([]);
+      prevDatabaseIdRef.current = databaseId;
+    }
+  }, [databaseId]);
 
   const hideInputRef = useRef(hideInput);
   useLayoutEffect(() => {
@@ -169,7 +180,9 @@ export function useInlineSQLPrompt(
               {
                 key: `Mod-Shift-i`,
                 run: (view) => {
-                  resetInputRef.current();
+                  if (generatedSqlRef.current) {
+                    resetInputRef.current();
+                  }
                   view.dispatch({ effects: toggleEffect.of({ view }) });
                   return true;
                 },
@@ -209,6 +222,10 @@ export function useInlineSQLPrompt(
               cancelRequest={cancelRequest}
               suggestionModels={suggestionModels}
               getSourceSql={getSourceSql}
+              value={promptValue}
+              onValueChange={setPromptValue}
+              selectedTableIds={selectedTableIds}
+              onSelectedTableIdsChange={setSelectedTableIds}
             />,
             portalTarget.container,
           )

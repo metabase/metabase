@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
@@ -21,6 +21,10 @@ interface MetabotInlineSQLPromptProps {
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
   getSourceSql?: () => string;
+  value: string;
+  onValueChange: (value: string) => void;
+  selectedTableIds: TableId[];
+  onSelectedTableIdsChange: (tableIds: TableId[]) => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
@@ -32,10 +36,12 @@ export const MetabotInlineSQLPrompt = ({
   cancelRequest,
   suggestionModels,
   getSourceSql,
+  value,
+  onValueChange,
+  selectedTableIds,
+  onSelectedTableIdsChange,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
-  const [value, setValue] = useState("");
-  const [selectedTableIds, setSelectedTableIds] = useState<TableId[]>([]);
 
   const disabled = !value.trim() || isLoading;
 
@@ -70,6 +76,8 @@ export const MetabotInlineSQLPrompt = ({
   }, [disabled, handleSubmit, handleClose]);
 
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
+  const shouldAutoFocusTableBar =
+    isTableBarEnabled && selectedTableIds.length === 0;
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
@@ -79,8 +87,8 @@ export const MetabotInlineSQLPrompt = ({
             <TablePillsInput
               databaseId={databaseId}
               selectedTableIds={selectedTableIds}
-              onChange={setSelectedTableIds}
-              autoFocus={isTableBarEnabled}
+              onChange={onSelectedTableIdsChange}
+              autoFocus={shouldAutoFocusTableBar}
             />
           </Box>
         )}
@@ -92,9 +100,9 @@ export const MetabotInlineSQLPrompt = ({
               ? t`Then, ask for what you'd like to see.`
               : t`Describe what SQL you want...`
           }
-          autoFocus={!isTableBarEnabled}
+          autoFocus={!shouldAutoFocusTableBar}
           disabled={isLoading}
-          onChange={setValue}
+          onChange={onValueChange}
           onStop={handleClose}
           suggestionConfig={{
             suggestionModels,
