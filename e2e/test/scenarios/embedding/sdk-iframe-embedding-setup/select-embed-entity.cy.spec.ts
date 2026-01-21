@@ -3,7 +3,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  mockEmbedJsToDevServer,
+} from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -221,7 +224,11 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Browser").click();
       cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
@@ -304,7 +311,11 @@ describe(suiteTitle, () => {
     it("can open a collection picker from browser empty state", () => {
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Metabase account (SSO)").click();
+      });
 
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
 

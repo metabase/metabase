@@ -30,7 +30,10 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
-import { TransformEditor, type TransformEditorProps } from "../../components/TransformEditor";
+import {
+  TransformEditor,
+  type TransformEditorProps,
+} from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { EditTransformMenu } from "../../components/TransformHeader/EditTransformMenu";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -132,6 +135,10 @@ function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
+
+        if (isEditMode) {
+          dispatch(push(Urls.transform(transform.id)));
+        }
       }
     },
   });
@@ -161,16 +168,11 @@ function TransformQueryPageBody({
         return;
       }
     }
-    await handleInitialSave({ id: transform.id, source });
 
-    if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
-    }
+    await handleInitialSave({ id: transform.id, source });
   };
 
   const handleCancel = () => {
-    setSourceAndRejectProposed(transform.source);
-
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
     }
