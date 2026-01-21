@@ -276,7 +276,7 @@ export function useWorkspaceMetabot({
   useEffect(() => {
     if (isMetabotAvailable && isMetabotVisible) {
       setTab("metabot");
-      setActiveTab(undefined);
+      setActiveTab(null);
     }
   }, [isMetabotAvailable, isMetabotVisible, setActiveTab, setTab]);
 
