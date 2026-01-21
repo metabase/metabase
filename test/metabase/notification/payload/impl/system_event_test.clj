@@ -169,12 +169,30 @@
                 #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
                nil)))
 
-    (testing "with custom application logo"
+    (testing "with custom application logo (external URL)"
       (mt/with-premium-features #{:whitelabel}
         (check false
                "You're invited to join SuperStar's Metabase"
                [#"<img[^>]*src=\"https://metabase\.com/superstar\.png\"[^>]*>"]
-               "Ngoc")))))
+               "Ngoc")))
+
+    (testing "with custom application logo (data URI - embedded as attachment)"
+      (mt/with-premium-features #{:whitelabel}
+        (let [email (mt/with-temporary-setting-values
+                      [site-url  "https://metabase.com"
+                       site-name "SuperStar"
+                       application-logo-url "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="]
+                      (-> (notification.tu/with-captured-channel-send!
+                            (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
+                                                         {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                         false))
+                          :channel/email first))]
+                  ;; The logo should be embedded as an attachment with a cid: reference
+          (is (re-find #"<img[^>]*src=\"cid:[^\"]+@metabase\"[^>]*>" (-> email :message first :content)))
+                  ;; There should be an attachment for the logo
+          (is (some #(and (= (:type %) :inline)
+                          (= (:content-type %) "image/png"))
+                    (rest (:message email)))))))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
