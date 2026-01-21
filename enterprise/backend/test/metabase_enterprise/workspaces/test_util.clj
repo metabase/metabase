@@ -9,7 +9,12 @@
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -32,6 +37,15 @@
   "Extract numeric id from shorthand keyword (e.g., :x1 -> 1, :t2 -> 2)."
   [kw]
   (parse-long (subs (name kw) 1)))
+
+;;;; Query helpers
+
+(defn mbql->native
+  "Convert an MBQL query to a native query map suitable for use in transform tests.
+   This generates driver-specific SQL with properly qualified table names."
+  [query]
+  (qp.store/with-metadata-provider (mt/id)
+    (sql.qp/mbql->native driver/*driver* (qp.preprocess/preprocess query))))
 
 ;;;; Building blocks for test resource creation
 
