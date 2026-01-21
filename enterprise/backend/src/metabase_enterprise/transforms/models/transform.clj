@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
@@ -47,6 +48,11 @@
    (mi/can-write? instance))
   ([model pk]
    (mi/can-query? model pk)))
+
+(defmethod mi/can-create? :model/Transform
+  [_model _instance]
+  (and (mi/superuser?)
+       (remote-sync/transforms-editable?)))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
@@ -293,18 +299,29 @@
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
-  [{:keys [source tags source_database_id]}]
+  [{:keys [collection_id source tags source_database_id]}]
   (set
    (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
     (when source_database_id
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
     (serdes/mbql-deps source))))
 
-(defmethod serdes/storage-path "Transform" [transform _ctx]
-  (let [{:keys [id label]} (-> transform serdes/path last)]
-    ["transforms" (serdes/storage-leaf-file-name id label)]))
+(defmethod serdes/storage-path "Transform" [transform ctx]
+  ;; Path: ["collections" "<nested ... collections>" "transforms" "<entity_id_name>"]
+  ;; Use default collection path, then restructure similar to NativeQuerySnippet
+  (let [basis (serdes/storage-default-collection-path transform ctx)
+        file  (last basis)
+        colls (->> basis rest (drop-last 2))] ; Drop "collections" at start, and last two elements
+    (concat ["collections"] colls ["transforms" file])))
+
+(defmethod serdes/required "Transform"
+  [_model id]
+  (when-let [collection-id (t2/select-one-fn :collection_id :model/Transform :id id)]
+    {["Collection" collection-id] {"Transform" id}}))
 
 (defn- maybe-extract-transform-query-text
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
