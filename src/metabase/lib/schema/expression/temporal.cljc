@@ -17,7 +17,6 @@
      (:import
       (java.time ZoneId))))
 
-
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
   ::temporal-bucketing/unit.date-time.interval)
