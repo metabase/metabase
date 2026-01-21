@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
-import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
-import { Card, Stack, Title } from "metabase/ui";
+import DateTime from "metabase/common/components/DateTime";
+import CS from "metabase/css/core/index.css";
+import { getUserName } from "metabase/lib/user";
+import { Box, Card, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import {
@@ -10,36 +12,68 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
 } from "../../../../utils";
+import S from "../ListSidebar.module.css";
 
 type SidebarCreationInfoProps = {
   node: DependencyNode;
 };
 
 export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
-  const title = t`Creator and last editor`;
-  const createdAt = getNodeCreatedAt(node);
   const createdBy = getNodeCreatedBy(node);
-  const editedAt = getNodeLastEditedAt(node);
+  const createdAt = getNodeCreatedAt(node);
   const editedBy = getNodeLastEditedBy(node);
-  const hasCreatedInfo = createdAt != null && createdBy != null;
-  const hasEditedInfo = editedAt != null && editedBy != null;
+  const editedAt = getNodeLastEditedAt(node);
+  const hasCreatedInfo = createdBy != null && createdAt != null;
+  const hasEditedInfo = editedBy != null && editedAt != null;
 
   if (!hasCreatedInfo && !hasEditedInfo) {
     return null;
   }
 
   return (
-    <Stack gap="sm" role="region" aria-label={title}>
-      <Title order={4}>{title}</Title>
-      <Card p="md" shadow="none" withBorder>
-        <EntityCreationInfo
-          createdAt={createdAt}
-          creator={createdBy}
-          lastEditedAt={editedAt}
-          lastEditor={editedBy}
-          withTitle={false}
+    <Card
+      p={0}
+      shadow="none"
+      withBorder
+      role="region"
+      aria-label={t`Creator and last editor`}
+    >
+      {createdBy != null && createdAt != null && (
+        <UserSection
+          label={t`Created by`}
+          name={getUserName(createdBy)}
+          date={createdAt}
         />
-      </Card>
+      )}
+      {editedBy != null && editedAt != null && (
+        <UserSection
+          label={t`Last edited by`}
+          name={getUserName(editedBy)}
+          date={editedAt}
+        />
+      )}
+    </Card>
+  );
+}
+
+type UserSectionProps = {
+  label: string;
+  name: string | undefined;
+  date: string;
+};
+
+function UserSection({ label, name, date }: UserSectionProps) {
+  return (
+    <Stack className={S.section} c="text-secondary" p="md" gap="xs">
+      <Box className={CS.textWrap} fz="sm" lh="h5">
+        {label}
+      </Box>
+      <Group lh="h4" justify="space-between" wrap="nowrap">
+        <Box className={CS.textWrap} c="text-primary">
+          {name}
+        </Box>
+        <DateTime value={date} unit="day" />
+      </Group>
     </Stack>
   );
 }
