@@ -7,15 +7,10 @@
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
-    :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
-   [metabase-enterprise.metabot-v3.tools.dependencies :as metabot-v3.tools.dependencies]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
-   [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
    [metabase-enterprise.metabot-v3.tools.transforms :as metabot-v3.tools.transforms]
@@ -474,45 +469,6 @@
    :result-schema  ::search-result
    :handler        metabot-v3.tools.search/search-tool})
 
-;;; ----------------------------------------------------- Actions -----------------------------------------------------
-
-(mr/def ::subscription-schedule
-  (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
-    [:and
-     [:or
-      [:map
-       [:frequency [:= {:encode/tool-api-request keyword} "hourly"]]]
-      [:map
-       [:frequency [:= {:encode/tool-api-request keyword} "daily"]]
-       [:hour :int]]
-      [:map
-       [:frequency [:= {:encode/tool-api-request keyword} "weekly"]]
-       [:hour :int]
-       [:day_of_week (into [:enum {:encode/tool-api-request keyword}] days)]]
-      [:map
-       [:frequency [:= {:encode/tool-api-request keyword} "monthly"]]
-       [:hour :int]
-       [:day_of_month (into [:enum {:encode/tool-api-request keyword}
-                             "first-calendar-day" "middle-of-month" "last-calendar-day"]
-                            (for [fl ["first" "last"]
-                                  day days]
-                              (str fl "-" day)))]]]
-     [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]))
-
-(mr/def ::create-dashboard-subscription-arguments
-  [:and
-   [:map
-    [:dashboard_id :int]
-    [:email :string]
-    [:schedule ::subscription-schedule]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
-
-(deftool "/create-dashboard-subscription"
-  "Create a dashboard subscription."
-  {:args-schema   ::create-dashboard-subscription-arguments
-   :result-schema [:map [:output :string]]
-   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
-
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
 (mr/def ::field-values-arguments
@@ -530,8 +486,9 @@
     [:structured_output
      [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
       [:field_id :string]
-      [:statistics {:optional true} [:maybe ::statistics]]
-      [:values {:optional true} [:maybe [:sequential :any]]]]]]
+      [:value_metadata [:map
+                        [:field_values {:optional true} [:maybe [:sequential :any]]]
+                        [:statistics {:optional true} [:maybe ::statistics]]]]]]]
    [:map
     [:output :string]]])
 
@@ -540,60 +497,6 @@
   {:args-schema   ::field-values-arguments
    :result-schema ::field-values-result
    :handler       metabot-v3.tools.field-stats/field-values})
-
-(mr/def ::find-outliers-arguments
-  [:and
-   [:map
-    [:data_source [:and
-                   [:or
-                    [:map
-                     [:query [:map
-                              [:database :int]]]
-                     [:query_id {:optional true} :string]
-                     [:result_field_id :string]]
-                    [:map
-                     [:metric_id :int]]
-                    [:map
-                     [:report_id :int]
-                     [:result_field_id :string]]
-                    [:map
-                     [:table_id :string]
-                     [:result_field_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
-
-(mr/def ::find-outliers-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential
-                         [:map
-                          [:dimension :any]
-                          [:value [:or :int :double]]]]]]
-   [:map [:output :string]]])
-
-(deftool "/find-outliers"
-  "Find outliers in the values provided by a data source for a given column."
-  {:args-schema   ::find-outliers-arguments
-   :result-schema ::find-outliers-result
-   :handler       metabot-v3.tools.find-outliers/find-outliers})
-
-(mr/def ::generate-insights-arguments
-  [:map
-   ;; query should not be changed to kebab-case
-   {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}
-   [:for [:or
-          [:map [:metric_id :int]]
-          [:map [:table_id :string]]
-          [:map [:report_id :int]]
-          [:map [:query :map]]]]])
-
-(deftool "/generate-insights"
-  "Generate insights."
-  {:args-schema   ::generate-insights-arguments
-   :result-schema [:map
-                   [:output :string]
-                   [:reactions [:sequential :metabot.reaction/redirect]]]
-   :handler       metabot-v3.tools.generate-insights/generate-insights})
 
 ;;; -------------------------------------------------- Entity Details -------------------------------------------------
 
@@ -870,41 +773,6 @@
   {:args-schema   ::get-transform-python-library-details-arguments
    :result-schema ::get-transform-python-library-details-result
    :handler       metabot-v3.tools.transforms/get-transform-python-library-details})
-
-(mr/def ::check-transform-dependencies-arguments
-  [:and
-   [:map
-    [:transform_id :int]
-    [:source ::metabot-v3.tools.transforms/transform-source]]
-   [:map {:encode/tool-api-request
-          #(set/rename-keys % {:transform_id :id})}]])
-
-(mr/def ::broken-question
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]])
-
-(mr/def ::broken-transform
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:name :string]])
-
-(mr/def ::check-transform-dependencies-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map
-                         [:success :boolean]
-                         [:bad_transform_count :int]
-                         [:bad_transforms [:sequential ::broken-transform]]
-                         [:bad_question_count :int]
-                         [:bad_questions [:sequential ::broken-question]]]]]
-   [:map [:output :string]]])
-
-(deftool "/check-transform-dependencies"
-  "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
-  {:args-schema   ::check-transform-dependencies-arguments
-   :result-schema ::check-transform-dependencies-result
-   :handler       metabot-v3.tools.dependencies/check-transform-dependencies})
 
 ;;; ----------------------------------------------------- Querying ----------------------------------------------------
 
