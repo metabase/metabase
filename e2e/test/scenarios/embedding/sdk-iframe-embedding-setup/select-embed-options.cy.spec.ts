@@ -576,7 +576,7 @@ describe(suiteTitle, () => {
     cy.log("snippet should show alerts as false");
     getEmbedSidebar().findByText("Get code").click();
 
-    // TODO: (Kelvin 2025-01-16) Uncomment this assertion after (metabase#68285) is fixed
+    // TODO: (Kelvin 2026-01-16) Uncomment this assertion after (metabase#68285) is fixed
     // H.expectUnstructuredSnowplowEvent({
     //   event: "embed_wizard_options_completed",
     //   event_detail: "settings=default",
@@ -669,7 +669,7 @@ describe(suiteTitle, () => {
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
 
-    // TODO: (Kelvin 2025-01-16) Uncomment this assertion when working on (EMB-1166)
+    // TODO: (Kelvin 2026-01-16) Uncomment this assertion when working on (EMB-1166)
     // H.expectUnstructuredSnowplowEvent({
     //   event: "embed_wizard_options_completed",
     //   event_detail:
