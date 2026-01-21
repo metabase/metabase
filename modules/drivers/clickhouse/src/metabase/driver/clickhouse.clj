@@ -67,8 +67,10 @@
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]
-  [_driver _feature db]
-  (boolean (:enable-multiple-db (:details db))))
+  [_driver _feature _db]
+  #_(boolean (:enable-multiple-db (:details db)))
+  ;; we sync all schemas after 65984
+  true)
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
