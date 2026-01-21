@@ -74,6 +74,10 @@ export type PythonTransformsPlugin = {
   getTransformsNavLinks: () => ReactNode;
 };
 
+type QuestionDependenciesSectionProps = {
+  question: Question;
+};
+
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
@@ -83,6 +87,7 @@ type DependenciesPlugin = {
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
+  QuestionDependenciesSection: ComponentType<QuestionDependenciesSectionProps>;
   useCheckCardDependencies: (
     props: UseCheckDependenciesProps<Question>,
   ) => UseCheckDependenciesResult<Question>;
@@ -174,6 +179,7 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
+  QuestionDependenciesSection: PluginPlaceholder,
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,

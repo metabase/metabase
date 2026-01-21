@@ -4,31 +4,36 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
 export function useGetDependenciesCount(args: GetDependencyGraphRequest) {
+  const entityId = args.id != null ? Number(args.id) : null;
+  const entityType = args.type;
+
   const { data: dependencyGraphData } = useGetDependencyGraphQuery(
-    args.id != null ? { id: Number(args.id), type: args.type } : skipToken,
+    entityId != null ? { id: entityId, type: entityType } : skipToken,
   );
 
   if (!dependencyGraphData) {
     return { dependenciesCount: 0, dependentsCount: 0 };
   }
 
-  const thisTable = dependencyGraphData.nodes.find(
-    (node) => node.id === args.id,
+  const thisNode = dependencyGraphData.nodes.find(
+    (node) => node.id === entityId && node.type === entityType,
   );
 
   const dependentsCount = Object.values(
-    thisTable?.dependents_count ?? {},
+    thisNode?.dependents_count ?? {},
   ).reduce((acc, curr) => acc + curr, 0);
 
   if (!dependencyGraphData?.edges) {
     return { dependenciesCount: 0, dependentsCount };
   }
 
-  // Dependencies: edges pointing TO this table (things this table depends on)
-  const dependencies = dependencyGraphData.edges.filter(
+  // Dependencies: edges where this entity is the SOURCE (this -> to_entity)
+  // Edge direction is dependent -> dependency, so from_entity is the dependent
+  // and to_entity is what it depends on (the upstream dependency)
+  const dependenciesCount = dependencyGraphData.edges.filter(
     (edge) =>
-      edge.to_entity_id === args.id && edge.to_entity_type === args.type,
+      edge.from_entity_id === entityId && edge.from_entity_type === entityType,
   ).length;
 
-  return { dependenciesCount: dependencies, dependentsCount };
+  return { dependenciesCount, dependentsCount };
 }
