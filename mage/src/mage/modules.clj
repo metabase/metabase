@@ -482,11 +482,8 @@
 
     (u/exit 0)))
 
-#_(defn -main
-    "See [[cli-driver-decisions]]."
-    [{:keys [options] :as parsed}]
-    (binding [*github-output-only?* (:github-output-only options)]
-      (cli-driver-decisions parsed)))
-
-(defn -main [_]
-  (pr-str (current-task)))
+(defn -main
+  "See [[cli-driver-decisions]]."
+  [{:keys [options] :as parsed}]
+  (binding [*github-output-only?* (:github-output-only options)]
+    (cli-driver-decisions parsed)))
