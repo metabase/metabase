@@ -8,6 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
@@ -534,25 +535,36 @@
     (create-index-test-impl! "flibble")))
 
 (deftest parse-final-identifier-test
-  (mt/test-driver
-    (mt/normal-driver-select {:+feature [:final-non-reserved]
+  (mt/test-drivers
+    (mt/normal-driver-select {:+features [:final-non-reserved :dependencies/native]
                               :+parent :sql})
     (testing "`final` is allowed as identifier and parsed correctly"
-      (mt/with-temp [:model/Database db {:name "final"
-                                         :initial_sync_status "complete"}
-                     :model/Table t {:name "final"
-                                     :schema "public"
-                                     :db_id (:id db)}
-                     :model/Field _ {:name "final"
-                                     :table_id (:id t)}]
-        (mt/with-db
-          db
-          (let [mp (mt/metadata-provider)
-                query (lib/native-query mp "select final from final")
-                broken-query (lib/native-query mp "select final, xix from final")]
-            (is (=? #{{:table (:id t)}}
-                    (driver/native-query-deps driver/*driver* query)))
-            (is (=? [{:name "final" :display-name "Final" :lib/desired-column-alias "final"}]
-                    (driver/native-result-metadata driver/*driver* query)))
-            (is (=? #{{:type :validate/missing-column, :name "xix"}}
-                    (driver/validate-native-query-fields driver/*driver* broken-query)))))))))
+      (let [normalized-name (driver.sql.normalize/normalize-name driver/*driver* "final")
+            normalized-schema (driver.sql.normalize/normalize-name driver/*driver* "public")
+            normalized-broken (driver.sql.normalize/normalize-name driver/*driver* "xix")]
+        (mt/with-temp [:model/Database db {:engine (name driver/*driver*)
+                                           :name normalized-name
+                                           :initial_sync_status "complete"}
+                       :model/Table t {:name normalized-name
+                                       :schema normalized-schema
+                                       :db_id (:id db)}
+                       :model/Field _ {:name normalized-name
+                                       :table_id (:id t)}]
+          (mt/with-db
+            db
+            (let [mp (mt/metadata-provider)
+                  query (lib/native-query mp (format "select %s from %s"
+                                                     normalized-name
+                                                     normalized-name))
+                  broken-query (lib/native-query mp (format "select %s, %s from %s"
+                                                            normalized-name
+                                                            normalized-broken
+                                                            normalized-name))]
+              (is (=? #{{:table (:id t)}}
+                      (driver/native-query-deps driver/*driver* query)))
+              (is (=? [{:name normalized-name
+                        :lib/desired-column-alias normalized-name}]
+                      (driver/native-result-metadata driver/*driver* query)))
+              (is (=? {:type :validate/missing-column
+                       :name normalized-broken}
+                      (first (driver/validate-native-query-fields driver/*driver* broken-query)))))))))))
