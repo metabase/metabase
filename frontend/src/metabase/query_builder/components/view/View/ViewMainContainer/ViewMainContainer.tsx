@@ -30,7 +30,6 @@ import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
-import { useHeightAboveFold } from "./utils";
 
 interface ViewMainContainerProps {
   question: Question;
@@ -107,7 +106,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
-  const { ref: mainRef, height: mainHeight } = useHeightAboveFold();
+  const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
   if (queryBuilderMode === "notebook") {
