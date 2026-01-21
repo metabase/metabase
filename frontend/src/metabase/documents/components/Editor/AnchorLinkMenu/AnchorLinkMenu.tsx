@@ -2,7 +2,7 @@ import cx from "classnames";
 import { type CSSProperties, forwardRef } from "react";
 import { createPortal } from "react-dom";
 
-import { Box, rem } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { AnchorLinkButton } from "./AnchorLinkButton";
 import S from "./AnchorLinkMenu.module.css";
@@ -23,7 +23,6 @@ export const AnchorLinkMenu = forwardRef<HTMLDivElement, Props>(
         contentEditable={false}
         data-testid="anchor-link-menu"
         draggable={false}
-        mt={rem(-2)}
         pr="lg"
         ref={ref}
         style={style}

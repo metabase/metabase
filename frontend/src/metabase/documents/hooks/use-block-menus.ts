@@ -64,7 +64,7 @@ export function useBlockMenus({
 
   const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
     useFloating({
-      placement: "left-start",
+      placement: "left",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",
       open: rendered,
