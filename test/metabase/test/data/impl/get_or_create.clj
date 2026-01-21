@@ -308,6 +308,34 @@
   (doseq [table-def table-definitions]
     (fake-fingerprint-table! db-id database-name table-def)))
 
+(defn- database-needs-fake-fingerprints?
+  "Check if the database needs fingerprints to be computed.
+   Returns true if this is a test-data database using fake sync that has fields without fingerprints."
+  [driver {:keys [database-name]} db]
+  (and (= database-name "test-data")
+       (driver/database-supports? driver :test/use-fake-sync nil)
+       ;; Check if any numeric fields are missing fingerprints
+       (let [fields-without-fingerprints (t2/count :model/Field
+                                                   {:select [:field.*]
+                                                    :from   [[:metabase_field :field]]
+                                                    :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                                    :where  [:and
+                                                             [:= :table.db_id (:id db)]
+                                                             [:= :field.active true]
+                                                             [:in :field.base_type ["type/Float" "type/Integer" "type/Decimal" "type/BigInteger"]]
+                                                             [:= :field.fingerprint nil]]})]
+         (pos? fields-without-fingerprints))))
+
+(defn- ensure-fake-fingerprints!
+  "Ensure fingerprints exist for a database that uses fake sync.
+   This handles the case where the database was created before fake fingerprinting was implemented,
+   or when the database exists from a previous test session."
+  [driver dbdef db]
+  (when (database-needs-fake-fingerprints? driver dbdef db)
+    (log/infof "Database %s needs fake fingerprints - computing from in-memory test data"
+               (:database-name dbdef))
+    (fake-fingerprint-database! (:id db) (tx/get-dataset-definition dbdef))))
+
 ;; ---------------------- Main Entry Point ----------------------
 
 (defn- fake-sync-database!
@@ -555,5 +583,8 @@
     (or
      (when-let [existing-database (get-existing-database-with-read-lock driver dbdef)]
        (reload-data-if-needed! driver dbdef existing-database)
+       ;; Ensure fingerprints exist for drivers using fake sync - handles databases
+       ;; created before fake fingerprinting was implemented
+       (ensure-fake-fingerprints! driver dbdef existing-database)
        existing-database)
      (create-and-sync-database-with-write-lock! driver dbdef))))
