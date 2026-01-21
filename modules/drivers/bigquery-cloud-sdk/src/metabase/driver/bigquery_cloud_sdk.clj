@@ -36,6 +36,7 @@
    (com.google.cloud.bigquery
     Acl Acl$Role Acl$User
     BigQuery
+    BigQuery$DatasetDeleteOption
     BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$IAMOption
@@ -64,7 +65,7 @@
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.common.collect ImmutableMap)
    (com.google.gson JsonParser)
-   (com.google.iam.admin.v1 CreateServiceAccountRequest ServiceAccount)
+   (com.google.iam.admin.v1 CreateServiceAccountRequest DeleteServiceAccountRequest ServiceAccount)
    (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)
    (java.io ByteArrayInputStream)
    (java.util Iterator)))
@@ -1173,6 +1174,20 @@
           (log/infof "Created service account: %s" sa-email))))
     sa-email))
 
+(defn- ws-delete-service-account!
+  "Delete a service account for a workspace. Idempotent - does nothing if SA doesn't exist."
+  [^IAMClient iam-client ^String project-id workspace]
+  (let [sa-id    (ws-service-account-id workspace)
+        sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+        sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
+    (when (ws-service-account-exists? iam-client project-id sa-email)
+      (log/infof "Deleting service account %s" sa-email)
+      (let [request (-> (DeleteServiceAccountRequest/newBuilder)
+                        (.setName sa-name)
+                        (.build))]
+        (.deleteServiceAccount iam-client request)
+        (log/infof "Deleted service account: %s" sa-email)))))
+
 (defn- ws-has-role-binding?
   "Check if a policy already has a binding for the given role and member."
   [^Policy policy ^String role ^String member]
@@ -1459,3 +1474,31 @@
         (try
           (driver/destroy-workspace-isolation! driver database test-workspace)
           (catch Exception _ nil))))))
+
+(defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
+  [_driver database workspace]
+  (let [details      (:details database)
+        client       (ws-database-details->client details)
+        iam-client   (ws-database-details->iam-client details)
+        project-id   (get-project-id details)
+        dataset-name (driver.u/workspace-isolation-namespace-name workspace)
+        dataset-id   (DatasetId/of project-id dataset-name)]
+    (try
+      (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
+
+      ;; Delete the dataset if it exists (deleteContents=true removes all tables)
+      (when (.getDataset client dataset-id
+                         ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                         (into-array BigQuery$DatasetOption []))
+        (log/infof "Deleting dataset %s" dataset-name)
+        (.delete client dataset-id
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
+                 (into-array BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)]))
+        (log/infof "Deleted dataset %s" dataset-name))
+
+      ;; Delete the service account (this also removes its IAM bindings)
+      (ws-delete-service-account! iam-client project-id workspace)
+
+      {:success true}
+      (finally
+        (.close iam-client)))))
