@@ -131,9 +131,17 @@
 (mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
   "Convert a Malli schema to an OpenAPI response schema.
 
-  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema."
+  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema.
+
+  If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
+  is used for documentation instead of the actual schema. This allows streaming endpoints to document the
+  JSON content they return while validating that the return value is a StreamingResponse instance."
   [schema]
-  (let [jss-schema (mjs-collect-definitions schema)]
+  (let [resolved-schema (mr/resolve-schema schema)
+        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
+        content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
+                            schema)
+        jss-schema      (mjs-collect-definitions content-schema)]
     {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
                (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
 
