@@ -8314,6 +8314,10 @@
         "description" : "Options that tweak the behavior of the query processor.",
         "type" : "object",
         "properties" : {
+          "include-sensitive-fields" : {
+            "description" : "Whether to include fields with visibility_type :sensitive when fetching query metadata.",
+            "type" : "boolean"
+          },
           "report-timezone" : {
             "description" : "The timezone the query should be ran in, overriding the default report timezone for the instance.",
             "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
@@ -16128,7 +16132,7 @@
     "/api/dataset/query_metadata" : {
       "post" : {
         "summary" : "POST /api/dataset/query_metadata",
-        "description" : "Get all of the required query metadata for an ad-hoc query.",
+        "description" : "Get all of the required query metadata for an ad-hoc query.\n\n  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with\n  visibility_type :sensitive in the response.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -16151,6 +16155,14 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
+                  },
+                  "settings" : {
+                    "type" : "object",
+                    "properties" : {
+                      "include_sensitive_fields" : {
+                        "type" : "boolean"
+                      }
+                    }
                   }
                 },
                 "required" : [ "database" ]
