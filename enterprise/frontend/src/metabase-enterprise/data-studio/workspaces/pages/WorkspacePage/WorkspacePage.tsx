@@ -193,7 +193,7 @@ function WorkspacePageContent({
         setActiveTab(fallback);
         setTab(fallback.id);
       } else {
-        setActiveTab(undefined);
+        setActiveTab(null);
         setTab("setup");
       }
     },
@@ -346,13 +346,13 @@ function WorkspacePageContent({
                     className={styles.tabsPanel}
                     data-testid="workspace-tabs"
                   >
-                    <Tabs.Tab value="setup">
+                    <Tabs.Tab value="setup" onClick={() => setActiveTab(null)}>
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />
                         {t`Setup`}
                       </Group>
                     </Tabs.Tab>
-                    <Tabs.Tab value="graph">
+                    <Tabs.Tab value="graph" onClick={() => setActiveTab(null)}>
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="dependencies" aria-hidden />
                         {t`Graph`}
@@ -522,7 +522,7 @@ function WorkspacePageContent({
                     addOpenedTransform(transform);
                     setTab(getTransformTabId(transform));
                     if (activeTable) {
-                      setActiveTable(undefined);
+                      setActiveTable(null);
                     }
                   }}
                 />
@@ -589,7 +589,7 @@ function useWorkspaceUiTabs() {
     if (activeTab) {
       setTab(activeTab.id);
     } else {
-      setTab("setup");
+      setTab((tab) => (["setup", "graph"].includes(tab) ? tab : "setup"));
     }
   }, [activeTab, setTab]);
 
