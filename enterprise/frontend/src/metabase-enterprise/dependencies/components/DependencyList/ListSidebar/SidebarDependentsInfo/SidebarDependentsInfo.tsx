@@ -17,7 +17,10 @@ import {
   Title,
 } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
-import type { DependencyNode } from "metabase-types/api";
+import type {
+  DependencyFilterOptions,
+  DependencyNode,
+} from "metabase-types/api";
 
 import {
   getDependentErrorNodesCount,
@@ -29,6 +32,11 @@ import {
   getNodeViewCount,
   getNodeViewCountLabel,
 } from "../../../../utils";
+import { FilterOptionsPicker } from "../../../FilterOptionsPicker";
+import {
+  BROKEN_DEPENDENTS_CARD_TYPES,
+  BROKEN_DEPENDENTS_TYPES,
+} from "../../constants";
 
 import S from "./SidebarDependentsInfo.module.css";
 
@@ -39,12 +47,16 @@ type SidebarDependentsInfoProps = {
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const title = getDependentErrorNodesLabel(count);
+  const [filters, setFilters] = useState<DependencyFilterOptions>({});
 
   const { data: dependents = [] } = useListNodeDependentsQuery(
     {
       id: node.id,
       type: node.type,
       broken: true,
+      dependent_types: filters.types,
+      dependent_card_types: filters.cardTypes,
+      include_personal_collections: filters.includePersonalCollections,
     },
     {
       skip: count === 0,
@@ -57,11 +69,20 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
 
   return (
     <Stack role="region" aria-label={getDependentErrorNodesLabel()}>
-      <Group gap="sm">
-        <Badge c="text-selected" bg="error">
-          {count}
-        </Badge>
-        <Title order={5}>{title}</Title>
+      <Group justify="space-between" wrap="nowrap">
+        <Group gap="sm">
+          <Badge c="text-selected" bg="error">
+            {count}
+          </Badge>
+          <Title order={5}>{title}</Title>
+        </Group>
+        <FilterOptionsPicker
+          filters={filters}
+          availableTypes={BROKEN_DEPENDENTS_TYPES}
+          availableCardTypes={BROKEN_DEPENDENTS_CARD_TYPES}
+          compact
+          onFiltersChange={setFilters}
+        />
       </Group>
       {dependents.length > 0 && (
         <Card p={0} shadow="none" withBorder>

@@ -251,6 +251,7 @@ export type ListNodeDependentsRequest = {
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
   broken?: boolean;
+  include_personal_collections?: boolean;
   archived?: boolean;
 };
 
