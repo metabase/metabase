@@ -1,5 +1,4 @@
 import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
-import type { PROTECTED_COLORS } from "../constants/protected-colors";
 
 /**
  * All color keys available in Metabase themes.
@@ -11,12 +10,7 @@ import type { PROTECTED_COLORS } from "../constants/protected-colors";
  */
 export type MetabaseColorKey =
   | MetabaseAccentColorKey
-  | "accent-gray"
-  | "accent-gray-dark"
-  | "accent-gray-light"
-  | "admin-navbar"
-  | "admin-navbar-inverse"
-  | "admin-navbar-secondary"
+  | ProtectedColorKey
   | "background-brand"
   | "background-disabled"
   | "background-disabled-inverse"
@@ -34,7 +28,6 @@ export type MetabaseColorKey =
   | "background-tertiary"
   | "background-tertiary-inverse"
   | "background-warning"
-  | "bg-ocean-alpha-light"
   | "border"
   | "border-strong"
   | "border-subtle"
@@ -56,7 +49,6 @@ export type MetabaseColorKey =
   | "icon-primary"
   | "icon-secondary"
   | "info"
-  | "metabase-brand"
   | "overlay"
   | "saturated-blue"
   | "saturated-green"
@@ -96,7 +88,22 @@ export type MetabaseAccentColorKey = (typeof ALL_ACCENT_COLOR_NAMES)[number];
 /**
  * Color keys that are protected and should not be exposed to embedding.
  *
- * @inline
- * @category Theming
+ * Do not derive this from `PROTECTED_COLORS` or doc generation will fail.
  */
-export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];
+export type ProtectedColorKey =
+  | "metabase-brand"
+  | "admin-navbar"
+  | "admin-navbar-secondary"
+  | "admin-navbar-inverse"
+  | "bg-ocean-alpha-light"
+  | "accent0"
+  | "accent1"
+  | "accent2"
+  | "accent3"
+  | "accent4"
+  | "accent5"
+  | "accent6"
+  | "accent7"
+  | "accent-gray"
+  | "accent-gray-dark"
+  | "accent-gray-light";

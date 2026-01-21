@@ -134,9 +134,6 @@ export type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 
-// Needed for doc generation
-export { PROTECTED_COLORS } from "metabase/lib/colors";
-
 export type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";

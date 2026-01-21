@@ -3,9 +3,6 @@ import type { MetabaseColorKey } from "../types/color-keys";
 /**
  * Colors that should not be exposed to modular embedding.
  * For example, the Metabase brand color must not be modifiable.
- *
- * @inline
- * @category Theming
  */
 export const PROTECTED_COLORS = [
   // Metabase's own brand
