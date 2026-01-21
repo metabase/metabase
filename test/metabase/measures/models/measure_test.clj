@@ -3,7 +3,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.request.session :as session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -192,3 +196,71 @@
                                        :type :query
                                        :query {:source-table (mt/id :venues)
                                                :aggregation [[:count]]}}})))))))
+
+;;; ------------------------------------------------ Permission Tests ------------------------------------------------
+
+(deftest can-write?-test
+  (testing "Superusers can write measures"
+    (mt/with-temp [:model/Measure measure {:name "Test Measure"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition (measure-definition (lib/count))}]
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-write? measure))))))
+  (testing "Data analysts with unrestricted view-data can write measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {analyst-id :id} {:is_data_analyst true}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! analyst-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user analyst-id
+          (is (mi/can-write? measure))))))
+  (testing "Data analysts without unrestricted view-data cannot write measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (session/with-current-user analyst-id
+          (is (false? (mi/can-write? measure)))))))
+  (testing "Non-data-analysts cannot write measures"
+    (mt/with-temp [:model/Measure measure {:name "Test Measure"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition (measure-definition (lib/count))}]
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-write? measure)))))))
+
+(deftest can-create?-test
+  (testing "Superusers can create measures"
+    (mt/with-test-user :crowberto
+      (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                 :table_id (mt/id :venues)
+                                                 :definition (measure-definition (lib/count))})))))
+  (testing "Data analysts with unrestricted view-data can create measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {analyst-id :id} {:is_data_analyst true}]
+        (perms/add-user-to-group! analyst-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user analyst-id
+          (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                     :table_id (mt/id :venues)
+                                                     :definition (measure-definition (lib/count))})))))))
+  (testing "Data analysts without unrestricted view-data cannot create measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
+        (session/with-current-user analyst-id
+          (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                      :table_id (mt/id :venues)
+                                                      :definition (measure-definition (lib/count))})))))))
+  (testing "Non-data-analysts cannot create measures"
+    (mt/with-test-user :rasta
+      (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
+                                                  :table_id (mt/id :venues)
+                                                  :definition (measure-definition (lib/count))}))))))
