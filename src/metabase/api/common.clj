@@ -386,9 +386,9 @@
   "Check that the `object` exists and is not `:archived`, or throw a `404`. Returns `object` as-is if check passes."
   [object]
   (u/prog1 object
-           (check-404 object)
-           (check (not (:archived object))
-                  [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+    (check-404 object)
+    (check (not (:archived object))
+           [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
