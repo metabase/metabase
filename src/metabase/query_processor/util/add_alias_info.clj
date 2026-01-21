@@ -207,15 +207,11 @@
      :source/aggregations
      :source/native)              ::none))
 
-(defn- add-source-to-field-ref [query path field-ref col]
+(defn- add-source-to-field-ref [query path [_type {source-field :source-field} _id-or-name :as field-ref] col]
   (let [join-alias (:metabase.lib.join/join-alias col)
         ;; For implicit joins, use the original column name since that's what exists
         ;; in the actual database table (#67002).
-        implicit-join? (when join-alias
-                         (when-let [join (m/find-first #(= (:alias %) join-alias)
-                                                       (:joins (get-in query path)))]
-                           (:qp/is-implicit-join join)))
-        source-col-alias (if implicit-join?
+        source-col-alias (if source-field
                            ((some-fn :lib/original-name :name) col)
                            (:lib/source-column-alias col))]
     (lib/update-options
@@ -226,7 +222,7 @@
                     ;; integer table ID. We need to explicitly enable coercion since the SQL QP checks
                     ;; for (pos-int? ::source-table) to determine if coercion should be applied. This
                     ;; follows the same pattern used by the SparkSQL driver. See #67704.
-                    (cond-> implicit-join?
+                    (cond-> source-field
                       (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
                     (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
 
@@ -400,7 +396,7 @@
                                                    :col  col})))
         ;; if we have an implicit join, we will be joining with the table directly instead of renaming things, so we
         ;; need to use the original name of the field instead of our remapped/deduplicated version
-        source-alias          (if (:qp/is-implicit-join join)
+        source-alias          (if (:qp/is-implicit-join opts)
                                 ((some-fn :lib/original-name :name) col)
                                 (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias))
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]

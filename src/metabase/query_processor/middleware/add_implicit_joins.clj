@@ -91,7 +91,9 @@
                                                                :join-alias fk-join-alias)
                                                  (or fk-field-name fk-field-id)]
                                                 [:field
-                                                 {:lib/uuid (str (random-uuid)), :join-alias alias-for-join}
+                                                 {:lib/uuid (str (random-uuid)),
+                                                  :join-alias alias-for-join,
+                                                  :qp/is-implicit-join true}
                                                  pk-id])])
               (lib/with-join-strategy :left-join)
               (lib/with-join-fields :none)
