@@ -90,7 +90,7 @@ describe("useScrollToAnchor", () => {
 
     expect(mockScrollIntoView).toHaveBeenCalledWith({
       behavior: "smooth",
-      block: "center",
+      block: "start",
     });
     expect(targetElement).toHaveClass("highlighted");
   });
@@ -113,7 +113,7 @@ describe("useScrollToAnchor", () => {
     await waitFor(() => {
       expect(mockScrollIntoView).toHaveBeenCalledWith({
         behavior: "smooth",
-        block: "center",
+        block: "start",
       });
     });
     expect(targetElement).toHaveClass("highlighted");
