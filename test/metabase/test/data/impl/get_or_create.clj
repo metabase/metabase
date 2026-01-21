@@ -300,7 +300,7 @@
             (let [saved-field (t2/select-one :model/Field :id (:id db-field))]
               (when-not (= fp (:fingerprint saved-field))
                 (log/errorf "FINGERPRINT MISMATCH! Expected: %s, Got: %s"
-                            (pr-str fp) (pr-str (:fingerprint saved-field))))))))))))
+                            (pr-str fp) (pr-str (:fingerprint saved-field)))))))))))
 
 (defn- fake-fingerprint-database!
   "Compute and save fingerprints for all tables in a database definition using in-memory test data."
