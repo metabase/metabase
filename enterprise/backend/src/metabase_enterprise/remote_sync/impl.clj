@@ -357,7 +357,7 @@
   are unsaved changes and force? is false."
   [branch force? import-args]
   (let [source (source/source-from-settings branch)
-        has-dirty? (remote-sync.object/dirty-global?)]
+        has-dirty? (remote-sync.object/dirty?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400

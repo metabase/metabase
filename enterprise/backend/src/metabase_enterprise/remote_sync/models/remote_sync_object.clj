@@ -31,11 +31,6 @@
                   :status [:not= "synced"]
                   :model_type [:not-in excluded]))))
 
-;; Keep deprecated name for backwards compatibility
-(def dirty-global?
-  "Alias for dirty? for backwards compatibility."
-  dirty?)
-
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
    Returns a sequence of model maps that have changed since the last remote sync,
@@ -61,8 +56,3 @@
                                      :status :sync_status})
                    (update :model u/lower-case-en)))
          (into []))))
-
-;; Keep deprecated name for backwards compatibility
-(def dirty-for-global
-  "Alias for dirty-objects for backwards compatibility."
-  dirty-objects)
