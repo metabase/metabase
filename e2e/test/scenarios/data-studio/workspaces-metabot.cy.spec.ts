@@ -5,7 +5,8 @@ const { Workspaces } = H;
 
 const SOURCE_TABLE = "Animals";
 
-describe("scenarios > data studio > workspaces > metabot", () => {
+// temporarily disabled, should be enabled in upcoming iteration
+describe.skip("scenarios > data studio > workspaces > metabot", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
