@@ -67,7 +67,7 @@
   &[data-variant="subtle"] {
     &:hover {
       color: alpha(var(--button-color), 0.88);
-      background-color: transparent;
+      background-color: var(--mb-color-background-hover);
     }
 
     &:disabled,
