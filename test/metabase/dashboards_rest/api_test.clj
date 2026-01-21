@@ -4809,7 +4809,7 @@
       (mt/with-temp
         [:model/Table         {inactive-table-id :id} {:active false}
          :model/Table         {active-table-id :id}   {}
-         :model/Field         {}                      {:table_id active-table-id}
+         :model/Field         _                       {:table_id active-table-id}
          :model/Card          {card-id-1 :id}         {:dataset_query (lib/query mp (lib.metadata/table mp inactive-table-id))}
          :model/Card          {card-id-2 :id}         {:dataset_query (lib/query mp (lib.metadata/table mp active-table-id))}
          :model/Dashboard     {dashboard-id :id}      {}
