@@ -33,7 +33,7 @@ export function useScrollToAnchor({
     const container = editorContainerRef.current;
 
     const scrollToElement = (element: Element) => {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
       element.classList.add(styles.highlighted);
       highlightedElementRef.current = element;
 
