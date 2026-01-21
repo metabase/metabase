@@ -1960,6 +1960,143 @@ describe("scenarios > data studio > workspaces", () => {
       Transforms.settingsTab().click();
       getTableLink({ isActive: false }).should("contain.text", "renamed_table");
     });
+
+    it("should merge a chain of 3 dependent transforms created in workspace", () => {
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Create Transform 1: Base transform selecting from Animals");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      H.NativeEditor.type('SELECT name, score FROM "Schema A"."Animals";');
+      Workspaces.getSaveTransformButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/)
+          .clear()
+          .type("chain_step_1");
+        cy.findByLabelText("Schema").click();
+        cy.document()
+          .findByRole("option", { name: /Schema A/ })
+          .click();
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+      verifyAndCloseToast("Transform saved successfully");
+
+      cy.log("Run Transform 1 to create the output table");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should(
+        "have.text",
+        "Ran successfully",
+      );
+
+      cy.log("Create Transform 2: Depends on Transform 1");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      H.NativeEditor.type(
+        'SELECT name, score * 2 as score FROM "Schema A"."chain_step_1";',
+      );
+      Workspaces.getSaveTransformButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/)
+          .clear()
+          .type("chain_step_2");
+        cy.findByLabelText("Schema").click();
+        cy.document()
+          .findByRole("option", { name: /Schema A/ })
+          .click();
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+      verifyAndCloseToast("Transform saved successfully");
+
+      cy.log("Run Transform 2");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should(
+        "have.text",
+        "Ran successfully",
+      );
+
+      cy.log("Create Transform 3: Depends on Transform 2");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      H.NativeEditor.type(
+        'SELECT name, score * 2 as score FROM "Schema A"."chain_step_2";',
+      );
+      Workspaces.getSaveTransformButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/)
+          .clear()
+          .type("chain_step_3");
+        cy.findByLabelText("Schema").click();
+        cy.document()
+          .findByRole("option", { name: /Schema A/ })
+          .click();
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+      verifyAndCloseToast("Transform saved successfully");
+
+      cy.log("Run Transform 3");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should(
+        "have.text",
+        "Ran successfully",
+      );
+
+      cy.log("Merge the workspace with all 3 transforms");
+      Workspaces.getMergeWorkspaceButton().click();
+      Workspaces.getMergeCommitInput().type("Merge transform chain");
+      H.modal().within(() => {
+        cy.findByText("3 transforms will be merged").should("exist");
+        cy.findByRole("button", { name: /Merge/ }).click();
+      });
+      verifyAndCloseToast("merged successfully");
+
+      cy.log("Run chain_step_1 (first in chain)");
+      Transforms.list()
+        .findByRole("row", { name: /chain_step_1/ })
+        .click();
+      Transforms.runTab().click();
+      runTransformAndWaitForSuccessOnTransformsPage();
+
+      DataStudio.nav().findByRole("link", { name: "Transforms" }).click();
+
+      cy.log("Run chain_step_2 (second in chain)");
+      Transforms.list()
+        .findByRole("row", { name: /chain_step_2/ })
+        .click();
+      Transforms.runTab().click();
+      runTransformAndWaitForSuccessOnTransformsPage();
+
+      DataStudio.nav().findByRole("link", { name: "Transforms" }).click();
+
+      cy.log("Run chain_step_3 (final in chain) and verify results");
+      Transforms.list()
+        .findByRole("row", { name: /chain_step_3/ })
+        .click();
+      Transforms.runTab().click();
+      runTransformAndWaitForSuccessOnTransformsPage();
+      Transforms.settingsTab().click();
+      getTableLink().should("contain.text", "chain_step_3").click();
+
+      // Original scores: Duck=10, Horse=20, Cow=30
+      // After 2 doublings (x2 x2 = x4): Duck=40, Horse=80, Cow=120
+      H.assertTableData({
+        columns: ["Name", "Score"],
+        firstRows: [
+          ["Duck", "40"],
+          ["Horse", "80"],
+          ["Cow", "120"],
+        ],
+      });
+    });
   });
 
   describe("repros", () => {
