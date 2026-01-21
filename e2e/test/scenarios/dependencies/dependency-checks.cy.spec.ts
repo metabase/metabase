@@ -193,10 +193,6 @@ describe("scenarios > dependencies > dependency checks", () => {
       });
       cy.get("@updateTransform.all").should("have.length", 0);
 
-      H.DataStudio.Transforms.editDefinition().click();
-      H.getNotebookStep("data").findByLabelText("Pick columns").click();
-      H.popover().findByLabelText("Score").click();
-
       cy.log("confirm breaking changes");
       H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
