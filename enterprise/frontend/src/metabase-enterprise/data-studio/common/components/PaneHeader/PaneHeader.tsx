@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
+import { ModeSwitcher } from "metabase/nav/components/ModeSwitcher/ModeSwitcher";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -44,13 +45,13 @@ export const PaneHeader = ({
   return (
     <Stack gap={0} pt="xs" {...rest}>
       {(breadcrumbs || showMetabotButton) && (
-        <Flex mb="lg" mt="md" h="2rem" w="100%">
+        <Flex mb="lg" mt="md" w="100%">
           {breadcrumbs}
-          {showMetabotButton && (
-            <Box ml="auto">
-              <PLUGIN_METABOT.MetabotDataStudioButton />
-            </Box>
-          )}
+
+          <Group ml="auto" gap="md">
+            {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
+            <ModeSwitcher />
+          </Group>
         </Flex>
       )}
       <Group

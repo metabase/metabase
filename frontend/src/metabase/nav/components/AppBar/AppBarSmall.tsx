@@ -8,14 +8,13 @@ import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { ProfileLink } from "../ProfileLink";
+import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
-  AppBarProfileLinkContainer,
   AppBarSearchContainer,
   AppBarSubheader,
   AppBarToggleContainer,
@@ -93,11 +92,7 @@ const AppBarSmall = ({
                 ))}
             </AppBarSearchContainer>
             {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
-            {isProfileLinkVisible && (
-              <AppBarProfileLinkContainer>
-                <ProfileLink />
-              </AppBarProfileLinkContainer>
-            )}
+            {isProfileLinkVisible && <ModeSwitcher />}
           </Flex>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo
