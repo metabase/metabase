@@ -83,6 +83,7 @@ export interface Database extends DatabaseData {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  workspace_permissions_status: "ok" | "failed" | "unknown";
 }
 
 export interface DatabaseData {

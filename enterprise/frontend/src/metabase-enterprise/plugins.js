@@ -49,6 +49,7 @@ import { initializePlugin as initializeTransformsPython } from "./transforms-pyt
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
+import { initializePlugin as initializeWorkspaces } from "./workspaces";
 
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.
@@ -95,4 +96,5 @@ export function initializePlugins() {
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();
+  initializeWorkspaces();
 }

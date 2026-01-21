@@ -266,6 +266,18 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    checkWorkspacePermissions: builder.mutation<
+      { status: string; checked_at?: string; error?: string },
+      { id: DatabaseId; cached?: boolean }
+    >({
+      query: ({ id, cached = true }) => ({
+        method: "POST",
+        url: `/api/database/${id}/permission/workspace/check`,
+        body: { cached },
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -323,6 +335,7 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,
