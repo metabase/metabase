@@ -353,10 +353,10 @@
     {:should-run false
      :reason "workflow skip (no backend changes)"}
 
-    ;; Priority 2: H2 always runs when backend tests run
-    (= driver :h2)
+    ;; Priority 2: H2 and Postgres always run when backend tests run
+    (#{:h2 :postgres} driver)
     {:should-run true
-     :reason "H2 always runs"}
+     :reason "H2/Postgres always run"}
 
     ;; Priority 3: Quarantined drivers (respected even on master/release)
     (contains? quarantined-drivers driver)

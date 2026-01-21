@@ -295,7 +295,7 @@
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
-                        ["2"    "Driver is :h2"                           "RUN"  "H2 always runs"]
+                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
                         ["3(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
                         ["4"    "On master or release branch"             "RUN"  "master/release branch"]

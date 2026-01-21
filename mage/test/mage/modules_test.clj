@@ -24,28 +24,28 @@
 
 (deftest quarantined-driver-skips
   (testing "Quarantined driver is skipped"
-    (let [result (mage.modules/driver-decision :postgres
+    (let [result (mage.modules/driver-decision :mysql
                                                (make-ctx {})
                                                false ; driver-module-affected?
-                                               #{:postgres})] ; quarantined
+                                               #{:mysql})] ; quarantined
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
 
 (deftest quarantined-driver-with-break-label-runs
   (testing "Quarantined driver runs when break-quarantine label is present"
-    (let [result (mage.modules/driver-decision :postgres
-                                               (make-ctx {:pr-labels #{"break-quarantine-postgres"}})
+    (let [result (mage.modules/driver-decision :mysql
+                                               (make-ctx {:pr-labels #{"break-quarantine-mysql"}})
                                                false
-                                               #{:postgres})]
+                                               #{:mysql})]
       (is (true? (:should-run result)))
       (is (re-find #"anti-quarantine label" (:reason result))))))
 
 (deftest quarantine-respected-on-master
   (testing "Quarantined driver is skipped even on master/release"
-    (let [result (mage.modules/driver-decision :postgres
+    (let [result (mage.modules/driver-decision :mysql
                                                (make-ctx {:is-master-or-release true})
                                                true ; driver-deps-affected?
-                                               #{:postgres})] ; quarantined
+                                               #{:mysql})] ; quarantined
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
 
@@ -55,7 +55,7 @@
 
 (deftest global-skip-skips-all-drivers
   (testing "Global skip (no backend changes) skips all drivers"
-    (doseq [driver [:postgres :mysql :mongo :athena :bigquery]]
+    (doseq [driver [:h2 :postgres :mysql :mongo :athena :bigquery]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:skip true})
                                                  true ; even if affected
@@ -66,34 +66,38 @@
 
 (deftest global-skip-beats-quarantine
   (testing "Global skip takes priority over quarantine"
-    (let [result (mage.modules/driver-decision :postgres
+    (let [result (mage.modules/driver-decision :mysql
                                                (make-ctx {:skip true})
                                                false
-                                               #{:postgres})]
+                                               #{:mysql})]
       (is (false? (:should-run result)))
       (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 2: H2 always runs
+;;; Priority 2: H2 and Postgres always run
 ;;; =============================================================================
 
-(deftest h2-always-runs
-  (testing "H2 always runs when not globally skipped"
-    (let [result (mage.modules/driver-decision :h2
-                                               (make-ctx {:is-master-or-release false})
-                                               false ; driver module not affected
-                                               #{})]
-      (is (true? (:should-run result)))
-      (is (= "H2 always runs" (:reason result))))))
+(deftest h2-and-postgres-always-run
+  (testing "H2 and Postgres always run when not globally skipped"
+    (doseq [driver [:h2 :postgres]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {:is-master-or-release false})
+                                                 false ; driver module not affected
+                                                 #{})]
+        (is (true? (:should-run result))
+            (str driver " should always run"))
+        (is (= "H2/Postgres always run" (:reason result)))))))
 
-(deftest h2-skipped-on-global-skip
-  (testing "H2 is skipped when global skip is true"
-    (let [result (mage.modules/driver-decision :h2
-                                               (make-ctx {:skip true})
-                                               false
-                                               #{})]
-      (is (false? (:should-run result)))
-      (is (= "workflow skip (no backend changes)" (:reason result))))))
+(deftest h2-and-postgres-skipped-on-global-skip
+  (testing "H2 and Postgres are skipped when global skip is true"
+    (doseq [driver [:h2 :postgres]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {:skip true})
+                                                 false
+                                                 #{})]
+        (is (false? (:should-run result))
+            (str driver " should be skipped on global skip"))
+        (is (= "workflow skip (no backend changes)" (:reason result)))))))
 
 ;;; =============================================================================
 ;;; Priority 4: Master/release branch
@@ -101,7 +105,8 @@
 
 (deftest master-branch-runs-all-drivers
   (testing "All drivers run on master/release branch"
-    (doseq [driver [:postgres :mysql :mongo :athena :bigquery :snowflake]]
+    ;; H2/Postgres hit priority 2 first, others hit priority 4
+    (doseq [driver [:mysql :mongo :athena :bigquery :snowflake]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:is-master-or-release true})
                                                  false ; even if not affected
@@ -116,7 +121,8 @@
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    (doseq [driver [:postgres :mysql :mongo :oracle :sqlserver]]
+    ;; H2/Postgres hit priority 2 first, others hit priority 8
+    (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  true ; driver-deps-affected
@@ -166,7 +172,8 @@
 
 (deftest self-hosted-driver-not-affected-skips
   (testing "Self-hosted driver skips when driver module not affected"
-    (doseq [driver [:postgres :mysql :mongo :oracle :sqlserver]]
+    ;; H2/Postgres always run (priority 2), so test other self-hosted drivers
+    (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  false ; not affected
