@@ -17,6 +17,7 @@ import { SearchButton } from "../search/SearchButton/SearchButton";
 import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
+import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
@@ -108,7 +109,7 @@ const AppBarLarge = ({
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
             <Box c="text-primary" aria-label={t`Settings menu`}>
-              <ProfileLink />
+              <ModeSwitcher />
             </Box>
           )}
         </Flex>

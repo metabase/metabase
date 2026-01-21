@@ -308,6 +308,8 @@ import metabot_sad_component from "./metabot_sad.svg?component";
 import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
+import mode_component from "./mode.svg?component";
+import mode_source from "./mode.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -1145,6 +1147,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: metric_component,
       source: metric_source,
     },
+    mode: {
+      component: mode_component,
+      source: mode_source,
+    },
     model: {
       component: model_component,
       source: model_source,
@@ -1812,6 +1818,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "mode"
   | "model"
   | "model_with_badge"
   | "moon"

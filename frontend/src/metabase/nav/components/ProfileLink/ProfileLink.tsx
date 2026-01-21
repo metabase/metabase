@@ -31,6 +31,7 @@ import type { MetabaseInfo } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
 
 import { useHelpLink } from "./useHelpLink";
+import { AboutModal } from "../AboutModal/AboutModal";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
@@ -249,7 +250,8 @@ function ProfileLinkInner({
         </Menu.Dropdown>
       </Menu>
 
-      {modalOpen === "about" ? (
+      <AboutModal opened={modalOpen === "about"} onClose={closeModal} />
+      {modalOpen === "aboutttt" ? (
         <Modal small onClose={closeModal}>
           <div
             className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
