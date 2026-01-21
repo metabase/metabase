@@ -1,5 +1,7 @@
 import { type ReactNode, createContext, useCallback, useState } from "react";
 
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { canNavigateBack } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbsContextType,
@@ -21,6 +23,7 @@ export const SdkBreadcrumbsProvider = ({
   children,
 }: SdkBreadcrumbsProviderProps) => {
   const [breadcrumbs, setBreadcrumbs] = useState<SdkBreadcrumbItem[]>([]);
+  const isInInternalNavigation = useSdkSelector(canNavigateBack);
 
   const reportLocation = useCallback((item: SdkBreadcrumbItem) => {
     setBreadcrumbs((prevBreadcrumbs) =>
@@ -44,7 +47,7 @@ export const SdkBreadcrumbsProvider = ({
     breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : null;
 
   const value: SdkBreadcrumbsContextType = {
-    isBreadcrumbEnabled: true,
+    isBreadcrumbEnabled: !isInInternalNavigation,
     breadcrumbs,
     currentLocation,
     navigateTo,
