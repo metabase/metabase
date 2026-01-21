@@ -38,7 +38,7 @@ export function MeasureDetailPage({
   const metadata = useSelector(getMetadata);
   const table = metadata.tables[measure.table_id];
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table?.is_published),
+    getUserCanWriteMeasures(state, !!table?.is_published),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -105,9 +105,11 @@ export function MeasureDetailPage({
         measure={measure}
         tabUrls={tabUrls}
         previewUrl={previewUrl}
-        onRemove={onRemove}
+        onRemove={canWriteMeasures ? onRemove : undefined}
+        readOnly={!canWriteMeasures}
         breadcrumbs={breadcrumbs}
         actions={
+          canWriteMeasures &&
           isDirty && (
             <Group gap="sm">
               <Button onClick={handleReset}>{t`Cancel`}</Button>
@@ -122,7 +124,6 @@ export function MeasureDetailPage({
             </Group>
           )
         }
-        readOnly={!canWriteMeasures}
       />
       <MeasureEditor
         query={query}
@@ -131,11 +132,13 @@ export function MeasureDetailPage({
         onDescriptionChange={setDescription}
         readOnly={!canWriteMeasures}
       />
-      <LeaveRouteConfirmModal
-        key={measure.id}
-        route={route}
-        isEnabled={isDirty && !isSaving}
-      />
+      {canWriteMeasures && (
+        <LeaveRouteConfirmModal
+          key={measure.id}
+          route={route}
+          isEnabled={isDirty && !isSaving}
+        />
+      )}
     </PageContainer>
   );
 }
