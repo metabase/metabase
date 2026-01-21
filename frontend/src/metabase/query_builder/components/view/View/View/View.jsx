@@ -17,6 +17,7 @@ import Questions from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
@@ -290,6 +291,9 @@ const mapDispatchToProps = (dispatch) => ({
   onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
+  },
+  runQuery: () => {
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   },
 });
 
