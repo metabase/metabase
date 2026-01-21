@@ -377,8 +377,7 @@ export const WorkspaceProvider = ({
         const activeTransform = checkNotNull(state.activeTransform);
         const currentTransform =
           state.editedTransforms.get(transformId) ?? activeTransform;
-        const newEditedTransform = {
-          ...activeTransform,
+        const newEditedTransform: EditedTransform = {
           name: patch.name ? patch.name : currentTransform.name,
           source: patch.source ? patch.source : currentTransform.source,
           target: patch.target ? patch.target : currentTransform.target,
