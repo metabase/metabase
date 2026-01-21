@@ -87,7 +87,7 @@ export const TaskRunEntityPicker = ({
   }
 
   if (!startedAt) {
-    return <Tooltip label={t`Select a start time`}>{select}</Tooltip>;
+    return <Tooltip label={t`Select a start time first`}>{select}</Tooltip>;
   }
 
   if (!isLoading && data.length === 0) {
