@@ -111,12 +111,12 @@ export const guardTaskRunStartedAtRange = (
   (
     [
       "thisday",
-      "past1days",
-      "past1weeks",
-      "past7days",
-      "past30days",
-      "past1months",
-      "past3months",
-      "past12months",
+      "past1days~",
+      "past1weeks~",
+      "past7days~",
+      "past30days~",
+      "past1months~",
+      "past3months~",
+      "past12months~",
     ] satisfies TaskRunDateFilterOption[]
   ).includes(value as TaskRunDateFilterOption);

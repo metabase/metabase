@@ -23,13 +23,13 @@ export const TaskRunDatePicker = ({
    */
   const data: SelectData<TaskRunDateFilterOption> = [
     { label: t`Today`, value: "thisday" },
-    { label: t`Yesterday`, value: "past1days" },
-    { label: t`Previous week`, value: "past1weeks" },
-    { label: t`Previous 7 days`, value: "past7days" },
-    { label: t`Previous 30 days`, value: "past30days" },
-    { label: t`Previous month`, value: "past1months" },
-    { label: t`Previous 3 months`, value: "past3months" },
-    { label: t`Previous 12 months`, value: "past12months" },
+    { label: t`Yesterday`, value: "past1days~" },
+    { label: t`Previous week`, value: "past1weeks~" },
+    { label: t`Previous 7 days`, value: "past7days~" },
+    { label: t`Previous 30 days`, value: "past30days~" },
+    { label: t`Previous month`, value: "past1months~" },
+    { label: t`Previous 3 months`, value: "past3months~" },
+    { label: t`Previous 12 months`, value: "past12months~" },
   ];
 
   return (

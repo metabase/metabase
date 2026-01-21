@@ -69,13 +69,13 @@ export type TaskRunEntityType = "database" | "card" | "dashboard";
 export type TaskRunStatus = "started" | "success" | "failed" | "abandoned";
 export type TaskRunDateFilterOption =
   | "thisday"
-  | "past1days"
-  | "past1weeks"
-  | "past7days"
-  | "past30days"
-  | "past1months"
-  | "past3months"
-  | "past12months";
+  | "past1days~"
+  | "past1weeks~"
+  | "past7days~"
+  | "past30days~"
+  | "past1months~"
+  | "past3months~"
+  | "past12months~";
 
 export interface TaskRun {
   id: number;
