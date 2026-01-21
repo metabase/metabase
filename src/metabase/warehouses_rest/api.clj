@@ -1229,7 +1229,7 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
-(api.macros/defendpoint :post "/:id/permission/workspace"
+(api.macros/defendpoint :post "/:id/permission/workspace/check"
   :- [:map
       [:status :string]
       [:checked_at :string]
