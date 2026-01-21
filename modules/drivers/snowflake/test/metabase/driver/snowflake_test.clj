@@ -297,30 +297,31 @@
 (deftest describe-database-test
   ;; This test calls driver/describe-database which queries Snowflake directly.
   ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
+  ;; Uses subset? instead of = because the shared Snowflake test database may
+  ;; contain tables from parallel CI test runs.
   (mt/test-driver :snowflake
     (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
       (testing "describe-database"
-        (let [expected {:tables
-                        #{{:name "users",      :schema "PUBLIC", :description nil}
-                          {:name "venues",     :schema "PUBLIC", :description nil}
-                          {:name "checkins",   :schema "PUBLIC", :description nil}
-                          {:name "categories", :schema "PUBLIC", :description nil}
-                          {:name "orders",     :schema "PUBLIC", :description nil}
-                          {:name "people",     :schema "PUBLIC", :description nil}
-                          {:name "products",   :schema "PUBLIC", :description nil}
-                          {:name "reviews",    :schema "PUBLIC", :description nil}}}]
+        (let [expected-tables #{{:name "users",      :schema "PUBLIC", :description nil}
+                                {:name "venues",     :schema "PUBLIC", :description nil}
+                                {:name "checkins",   :schema "PUBLIC", :description nil}
+                                {:name "categories", :schema "PUBLIC", :description nil}
+                                {:name "orders",     :schema "PUBLIC", :description nil}
+                                {:name "people",     :schema "PUBLIC", :description nil}
+                                {:name "products",   :schema "PUBLIC", :description nil}
+                                {:name "reviews",    :schema "PUBLIC", :description nil}}]
           (testing "should work with normal details"
-            (is (= expected
-                   (driver/describe-database :snowflake (mt/db)))))
+            (is (set/subset? expected-tables
+                             (:tables (driver/describe-database :snowflake (mt/db))))))
           (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-            (is (= expected
-                   (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
+            (is (set/subset? expected-tables
+                             (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname}))))))
           (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
             (is (thrown? Exception
                          (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
           (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-            (is (= expected
-                   (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))
+            (is (set/subset? expected-tables
+                             (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -1429,10 +1430,20 @@
 (deftest snowflake-with-dbname-in-details-gets-synced-test
   ;; This test calls driver/describe-database which queries Snowflake directly.
   ;; Requires real sync (not fake-sync) so tables actually exist in Snowflake.
+  ;; Uses subset? instead of = because the shared Snowflake test database may
+  ;; contain tables from parallel CI test runs.
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
     (mt/test-driver :snowflake
       (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
-        (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
+        (let [priv-key-val      (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+              expected-tables   #{{:name "users",      :schema "PUBLIC", :description nil}
+                                  {:name "venues",     :schema "PUBLIC", :description nil}
+                                  {:name "checkins",   :schema "PUBLIC", :description nil}
+                                  {:name "categories", :schema "PUBLIC", :description nil}
+                                  {:name "orders",     :schema "PUBLIC", :description nil}
+                                  {:name "people",     :schema "PUBLIC", :description nil}
+                                  {:name "products",   :schema "PUBLIC", :description nil}
+                                  {:name "reviews",    :schema "PUBLIC", :description nil}}]
           (mt/with-temp [:model/Database db {:engine :snowflake
                                              :details (-> (:details (mt/db))
                                                           (dissoc :private-key-id)
@@ -1440,16 +1451,8 @@
                                                           (assoc :private-key-value priv-key-val)
                                                           (assoc :use-password false)
                                                           (assoc :dbname nil))}]
-            (is (= {:tables
-                    #{{:name "users",      :schema "PUBLIC", :description nil}
-                      {:name "venues",     :schema "PUBLIC", :description nil}
-                      {:name "checkins",   :schema "PUBLIC", :description nil}
-                      {:name "categories", :schema "PUBLIC", :description nil}
-                      {:name "orders",     :schema "PUBLIC", :description nil}
-                      {:name "people",     :schema "PUBLIC", :description nil}
-                      {:name "products",   :schema "PUBLIC", :description nil}
-                      {:name "reviews",    :schema "PUBLIC", :description nil}}}
-                   (driver/describe-database :snowflake db)))))))))
+            (is (set/subset? expected-tables
+                             (:tables (driver/describe-database :snowflake db)))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
