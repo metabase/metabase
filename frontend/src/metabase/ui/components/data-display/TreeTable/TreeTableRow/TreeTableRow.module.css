@@ -9,6 +9,21 @@
   }
 }
 
+.pinned {
+  position: relative;
+  background-color: var(--mb-color-background-primary);
+
+  --border-style: 1px solid var(--mb-color-border);
+
+  &[data-position="top"] {
+    border-bottom: var(--border-style);
+  }
+
+  &[data-position="bottom"] {
+    border-top: var(--border-style);
+  }
+}
+
 .content {
   display: flex;
   cursor: pointer;

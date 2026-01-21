@@ -199,7 +199,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
 export function TreeTableRow<TData extends TreeNodeData>({
   row,
   rowIndex,
-  virtualItem,
+  virtualItemOrPinnedPosition,
   table,
   columnWidths,
   showCheckboxes,
@@ -247,21 +247,35 @@ export function TreeTableRow<TData extends TreeNodeData>({
       rowProps={rowProps}
     />
   );
+  const renderContent = () =>
+    href ? (
+      <Link to={href} className={S.link}>
+        {content}
+      </Link>
+    ) : (
+      content
+    );
 
+  if (typeof virtualItemOrPinnedPosition === "string") {
+    return (
+      <div
+        data-position={virtualItemOrPinnedPosition}
+        className={cx(S.root, S.pinned)}
+      >
+        {renderContent()}
+      </div>
+    );
+  }
   return (
     <div
       ref={measureElement}
-      data-index={virtualItem.index}
+      data-index={virtualItemOrPinnedPosition.index}
       className={S.root}
-      style={{ transform: `translateY(${virtualItem.start}px)` }}
+      style={{
+        transform: `translateY(${virtualItemOrPinnedPosition.start}px)`,
+      }}
     >
-      {href ? (
-        <Link to={href} className={S.link}>
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
+      {renderContent()}
     </div>
   );
 }

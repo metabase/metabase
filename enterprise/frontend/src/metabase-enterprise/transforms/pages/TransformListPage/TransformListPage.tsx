@@ -16,7 +16,6 @@ import type { ColorName } from "metabase/lib/colors/types";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Avatar,
   Card,
@@ -26,6 +25,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
@@ -62,6 +62,8 @@ const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   transform: "brand",
   library: "text-primary",
 };
+
+const COMMON_PYTHON_LIBRARY_ID = "library";
 
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
 const globalFilterFn = (
@@ -113,7 +115,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     const data = buildTreeData(collections, transforms);
     if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
       data.push({
-        id: "library",
+        id: COMMON_PYTHON_LIBRARY_ID,
         name: t`Python library`,
         nodeType: "library",
         icon: "snippet",
@@ -265,6 +267,16 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     onGlobalFilterChange: setSearchQuery,
     globalFilterFn,
     isFilterable,
+    ...(PLUGIN_TRANSFORMS_PYTHON.isEnabled
+      ? {
+          enableRowPinning: true,
+          initialState: {
+            rowPinning: {
+              bottom: [COMMON_PYTHON_LIBRARY_ID],
+            },
+          },
+        }
+      : undefined),
   });
 
   const handleRowClick = useCallback((row: Row<TreeNode>) => {
