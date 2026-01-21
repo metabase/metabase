@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
+import { TablePillsInput } from "./TablePillsInput";
 
 interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
@@ -33,6 +35,7 @@ export const MetabotInlineSQLPrompt = ({
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
+  const [selectedTableIds, setSelectedTableIds] = useState<TableId[]>([]);
 
   const disabled = !value.trim() || isLoading;
 
@@ -66,17 +69,30 @@ export const MetabotInlineSQLPrompt = ({
     );
   }, [disabled, handleSubmit, handleClose]);
 
-  const isTableBarEnabled = true;
+  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
       <Box className={S.inputContainer}>
-        {isTableBarEnabled && <Box className={S.tableBar}>testing</Box>}
+        {isTableBarEnabled && (
+          <Box className={S.tableBar}>
+            <TablePillsInput
+              databaseId={databaseId}
+              selectedTableIds={selectedTableIds}
+              onChange={setSelectedTableIds}
+              autoFocus={isTableBarEnabled}
+            />
+          </Box>
+        )}
         <MetabotPromptInput
           ref={inputRef}
           value={value}
-          placeholder={t`Describe what SQL you want...`}
-          autoFocus
+          placeholder={
+            isTableBarEnabled
+              ? t`Then, ask for what you'd like to see.`
+              : t`Describe what SQL you want...`
+          }
+          autoFocus={!isTableBarEnabled}
           disabled={isLoading}
           onChange={setValue}
           onStop={handleClose}

@@ -1,0 +1,11 @@
+/* TODO: remove this file somehow... */
+.root :global(.mb-mantine-PillsInput-input) {
+  border: none;
+  min-height: 1.25rem;
+  font-size: var(--mantine-font-size-sm);
+  padding: 0;
+}
+
+.root [data-combobox-option] {
+  padding: 0.25rem 0.5rem;
+}
