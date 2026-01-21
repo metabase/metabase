@@ -84,6 +84,7 @@
     :model/QueryExecution                    metabase.queries.models.query-execution
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
+    :model/QueueMessage                      metabase.queue.models.queue-message
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
@@ -128,8 +129,8 @@
   [x]
   (when (and (keyword? x)
              (= (namespace x) "model")
-             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
-             ;; been required
+          ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
+          ;; been required
              (not (isa? x :metabase/model)))
     ;; [[classloader/require]] for thread safety
     (classloader/require (model->namespace x)))

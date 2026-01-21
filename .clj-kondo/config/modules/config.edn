@@ -1187,6 +1187,10 @@
            users
            util}}
 
+  queue
+  {:api  #{metabase.queue.core}
+   :uses #{models util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
