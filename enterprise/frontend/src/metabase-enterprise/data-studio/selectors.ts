@@ -1,4 +1,7 @@
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -11,6 +14,7 @@ export function canAccessDataStudio(state: State) {
   }
   return (
     getUserIsAdmin(state) ||
+    PLUGIN_TRANSFORMS.canAccessTransforms(state) ||
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
   );
 }
