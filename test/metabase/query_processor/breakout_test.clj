@@ -336,17 +336,26 @@
                                              :condition    [:= $product_id &Products.products.id]
                                              :fields       [&Products.products.price]}]
                                    :fields [[:field %id {:base-type :type/BigInteger}]]})]
-          ;; DEBUG: Check if longitude field has fingerprint in metadata provider
+          ;; DEBUG: Verify fingerprints exist at each stage of the flow
           (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                     [source-card-query])
-                longitude-field (lib.metadata/field mp (mt/id :people :longitude))]
-            (log/infof "DEBUG: longitude field fingerprint from metadata provider: %s"
-                       (pr-str (:fingerprint longitude-field)))
-            ;; DEBUG: Check card result-metadata
-            (let [card (lib.metadata/card mp 1)]
-              (log/infof "DEBUG: card result-metadata fingerprints: %s"
-                         (pr-str (map #(select-keys % [:name :fingerprint])
-                                      (:result-metadata card))))))
+                longitude-field (lib.metadata/field mp (mt/id :people :longitude))
+                card (lib.metadata/card mp 1)
+                longitude-in-card (m/find-first #(= (:name %) "LONGITUDE")
+                                                (:result-metadata card))]
+            ;; Assert 1: Field from metadata provider should have fingerprint
+            (testing "longitude field from metadata provider has fingerprint with min/max"
+              (is (some? (get-in (:fingerprint longitude-field) [:type :type/Number :min]))
+                  (format "Field fingerprint: %s" (pr-str (:fingerprint longitude-field))))
+              (is (some? (get-in (:fingerprint longitude-field) [:type :type/Number :max]))
+                  (format "Field fingerprint: %s" (pr-str (:fingerprint longitude-field)))))
+            ;; Assert 2: Card result-metadata should include fingerprint
+            (testing "card result-metadata includes longitude with fingerprint"
+              (is (some? longitude-in-card)
+                  (format "Card result-metadata: %s" (pr-str (map :name (:result-metadata card)))))
+              (when longitude-in-card
+                (is (some? (get-in (:fingerprint longitude-in-card) [:type :type/Number :min]))
+                    (format "Longitude in card fingerprint: %s" (pr-str (:fingerprint longitude-in-card)))))))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [source-card-query])
             (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
