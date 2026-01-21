@@ -17,7 +17,7 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 The path to embedding settings depends on your Metabase version:
 
-- **OSS*: **Admin settings > Embedding**
+- **OSS**: **Admin settings > Embedding**
 - **Starter/Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
 
 Toggle **Enable guest embeds**.
@@ -127,7 +127,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can also find a list of embedded items in **Admin settings > Embedding** (if you're on Enterprise Edition, the list is under the **Guest embeds** tab).
+Admins can find a list of embedded items in **Admin settings > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -139,7 +139,7 @@ The banner appears on guest embeds created with Metabase's open-source version. 
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
-1. Go to your **Admin settings > Embedding**. If you're on Enterprise Edition, the key generator is in the **Guest embeds** tab in the sidebar.
+1. Go to **Admin settings > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
 2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
