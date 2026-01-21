@@ -107,7 +107,8 @@
                                     :target {:database (mt/id)
                                              :schema   "analytics"
                                              :name     "table_a"}})
-      (let [database (mt/db)]
+      (let [workspace (ws.tu/ws-ready workspace)
+            database  (mt/db)]
         (testing "resources are creeated during workspace initialization"
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? true? (vals resources)))))
@@ -157,9 +158,9 @@
       (let [database   (mt/db)
             test-table {:schema (mt/format-name "public")
                         :name   (mt/format-name "orders")}]
-        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
-                                    (fn [_driver _database _workspace]
-                                      (throw (ex-info "permission denied" {:step :init})))]
+        (with-redefs [driver/init-workspace-isolation!
+                      (fn [_driver _database _workspace]
+                        (throw (ex-info "permission denied" {:step :init})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -172,9 +173,9 @@
       (let [database   (mt/db)
             test-table {:schema (mt/format-name "public")
                         :name   (mt/format-name "orders")}]
-        (mt/with-dynamic-fn-redefs [driver/grant-workspace-read-access!
-                                    (fn [_driver _database _workspace _tables]
-                                      (throw (ex-info "permission denied" {:step :grant})))]
+        (with-redefs [driver/grant-workspace-read-access!
+                      (fn [_driver _database _workspace _tables]
+                        (throw (ex-info "permission denied" {:step :grant})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
@@ -187,9 +188,9 @@
       (let [database   (mt/db)
             test-table {:schema (mt/format-name "public")
                         :name   (mt/format-name "orders")}]
-        (mt/with-dynamic-fn-redefs [driver/destroy-workspace-isolation!
-                                    (fn [_driver _database _workspace]
-                                      (throw (ex-info "permission denied" {:step :destroy})))]
+        (with-redefs [driver/destroy-workspace-isolation!
+                      (fn [_driver _database _workspace]
+                        (throw (ex-info "permission denied" {:step :destroy})))]
           (is (some? (driver/check-isolation-permissions
                       (driver/the-driver (:engine database))
                       database
