@@ -1320,7 +1320,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO permissions (group_id, object)
-              SELECT pg.id, '/collection/' || c.id || '/write/'
+              SELECT pg.id, '/collection/' || c.id || '/'
               FROM permissions_group pg, collection c
               WHERE pg.magic_group_type = 'data-analyst'
                 AND c.type IN ('library', 'library-data', 'library-metrics')
