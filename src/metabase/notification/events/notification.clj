@@ -15,7 +15,8 @@
 (def ^:private supported-topics #{:event/user-invited
                                   :event/notification-create
                                   :event/slack-token-invalid
-                                  :event/comment-created})
+                                  :event/comment-created
+                                  :event/transform-failed})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
