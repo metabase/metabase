@@ -2352,8 +2352,10 @@
            app-db
            config
            driver
+           events
            lib
            lib-be
+           models
            query-processor
            settings
            util

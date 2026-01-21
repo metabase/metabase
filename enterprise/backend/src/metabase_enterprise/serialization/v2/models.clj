@@ -27,8 +27,7 @@
    "Document"
    "Glossary"
    "NativeQuerySnippet"
-   "Timeline"
-   "Transform"])
+   "Timeline"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -36,7 +35,9 @@
           content
           ["FieldValues"
            "Metabot"
+           "PythonLibrary"
            "Setting"
+           "Transform"
            "TransformJob"
            "TransformTag"]))
 
@@ -96,7 +97,6 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
-   "PythonLibrary"
    "Pulse"
    "PulseCard"
    "PulseChannel"

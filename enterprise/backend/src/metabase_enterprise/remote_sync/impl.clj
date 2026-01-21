@@ -144,7 +144,7 @@
               (log/infof (:message <>)))
             (let [path-filters (cond-> [#"collections/.*" #"databases/.*" #"actions/.*"]
                                  (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*")
+                                 (conj #"transforms/.*" #"python-libraries/.*")
                                  (settings/library-is-remote-synced?)
                                  (conj #"snippets/.*"))
                   ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
