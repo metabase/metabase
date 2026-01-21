@@ -44,6 +44,10 @@ export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
 };
 
+export type HasRemoteChangesResponse = {
+  has_changes: boolean;
+};
+
 export type ExportChangesRequest = {
   message?: string;
   branch?: string;

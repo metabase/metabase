@@ -7,7 +7,7 @@
 ;; IMPORTANT: If you add a new permission type, `:values` must be ordered from *most* permissive to *least* permissive.
 ;;
 ;;  - When fetching a user's permissions, the default behavior is to return the *most* permissive value from any group the
-;;    user is in. This can be overridden by definding a custom implementation of `coalesce`.
+;;    user is in. This can be overridden by defining a custom implementation of `coalesce`.
 ;;
 ;;  - If a user does not have any value for the permission when it is fetched, the *least* permissive value is used as a
 ;;    fallback.

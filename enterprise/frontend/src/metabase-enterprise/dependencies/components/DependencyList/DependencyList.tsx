@@ -7,7 +7,10 @@ import {
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencySortingOptions,
+} from "metabase-types/api";
 
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
@@ -38,14 +41,23 @@ export function DependencyList({
     mode === "broken"
       ? useListBrokenGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
-  const availableGroupTypes = getAvailableGroupTypes(mode);
+
+  const {
+    query,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = true,
+    sorting,
+    page = 0,
+  } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    query: params.query,
-    types: getDependencyTypes(params.groupTypes ?? availableGroupTypes),
-    card_types: getCardTypes(params.groupTypes ?? availableGroupTypes),
-    include_personal_collections: params.includePersonalCollections ?? true,
-    offset: (params.page ?? 0) * PAGE_SIZE,
+    query,
+    types: getDependencyTypes(groupTypes),
+    card_types: getCardTypes(groupTypes),
+    include_personal_collections: includePersonalCollections,
+    sort_column: sorting?.column,
+    sort_direction: sorting?.direction,
+    offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });
 
@@ -56,6 +68,12 @@ export function DependencyList({
     selectedEntry != null
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
+
+  const handleSortingChange = (
+    sorting: DependencySortingOptions | undefined,
+  ) => {
+    onParamsChange({ ...params, sorting });
+  };
 
   return (
     <Flex h="100%">
@@ -75,8 +93,10 @@ export function DependencyList({
           <ListBody
             nodes={nodes}
             mode={mode}
+            sorting={sorting}
             isLoading={isLoading}
             onSelect={setSelectedEntry}
+            onSortingChange={handleSortingChange}
           />
         )}
         {!isLoading && error == null && (

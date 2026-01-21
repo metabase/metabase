@@ -25,11 +25,12 @@ import { PageContainer } from "metabase-enterprise/data-studio/common/components
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Database, Transform } from "metabase-types/api";
 
+import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 
@@ -106,6 +107,8 @@ function TransformQueryPageBody({
 
   useRegisterMetabotTransformContext(transform, source);
 
+  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
+
   const {
     checkData,
     isCheckingDependencies,
@@ -140,21 +143,23 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   const handleSave = async () => {
-    if (isNotDraftSource(source)) {
-      await handleInitialSave({
-        id: transform.id,
-        source,
-      });
-
-      if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+    if (!isCompleteSource(source)) {
+      return;
+    }
+    if ("source-incremental-strategy" in source) {
+      const confirmed = await confirmIfQueryIsComplex(source);
+      if (!confirmed) {
+        return;
       }
+    }
+    await handleInitialSave({ id: transform.id, source });
+
+    if (isEditMode) {
+      dispatch(push(Urls.transform(transform.id)));
     }
   };
 
   const handleCancel = () => {
-    setSourceAndRejectProposed(transform.source);
-
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
     }
@@ -204,11 +209,12 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode={isEditMode}
+              readOnly={readOnly}
+              transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
-              readOnly={readOnly}
             />
           ) : (
             <TransformEditor
@@ -242,6 +248,7 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
+      {modal}
     </>
   );
 }

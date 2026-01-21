@@ -102,7 +102,7 @@
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (check-any-transforms-permission)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
-    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator)
+    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
                (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                      (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -144,7 +144,9 @@
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
   (api/check-403 (transforms.util/has-db-transforms-permission? api/*current-user-id* (transforms.i/source-db-id body)))
   (check-database-feature body)
   (check-feature-enabled! body)
@@ -154,15 +156,19 @@
              (deferred-tru "A table with that name already exists."))
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
+                          ;; Set owner_user_id to current user if not explicitly provided
+                          owner-user-id (when-not (:owner_email body)
+                                          (or (:owner_user_id body) api/*current-user-id*))
                           transform (t2/insert-returning-instance!
                                      :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
-                                            :creator_id api/*current-user-id*))]
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id :owner_email])
+                                            :creator_id api/*current-user-id*
+                                            :owner_user_id owner-user-id))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
                       ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
+                      (t2/hydrate transform :transform_tag_ids :creator :owner)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
     (-> transform
         python-source-table-ref->table-id
@@ -175,7 +181,7 @@
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
         python-source-table-ref->table-id
@@ -205,7 +211,7 @@
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator)
+    (->> (t2/hydrate dependencies :creator :owner)
          (mapv python-source-table-ref->table-id)
          transforms.util/add-source-readable)))
 
@@ -252,7 +258,9 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -275,7 +283,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         python-source-table-ref->table-id
@@ -340,7 +348,8 @@
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
-                                             :run-method :manual}))
+                                             :run-method :manual
+                                             :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

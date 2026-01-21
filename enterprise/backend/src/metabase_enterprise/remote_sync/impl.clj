@@ -46,7 +46,8 @@
   [timestamp imported-entities-by-model table-paths field-paths]
   (t2/delete! :model/RemoteSyncObject)
   (let [;; Standard models use entity_id UUIDs (excluding Segment which needs special handling)
-        standard-inserts (->> (dissoc imported-entities-by-model "Segment")
+        ;; TODO(edpaget 2026-01-19): Actions are not dirty tracked
+        standard-inserts (->> (dissoc imported-entities-by-model "Segment" "Action")
                               (mapcat (fn [[model entity-ids]]
                                         (when (seq entity-ids)
                                           (let [fields (model-fields-for-sync model)
@@ -225,7 +226,7 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"databases/.*"]})
+            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"databases/.*" #"actions/.*"]})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
@@ -388,19 +389,86 @@
       (assoc task :existing? true)
       (remote-sync.task/create-sync-task! task-type api/*current-user-id*))))
 
+;;; ------------------------------------------- Remote Changes Check -------------------------------------------
+
+(def ^:private remote-changes-cache
+  "Cache for remote changes check to avoid frequent git operations.
+   Structure: {:last-checked <instant>
+               :branch <branch-name>
+               :remote-version <git-sha>
+               :local-version <git-sha or nil>
+               :has-changes? <boolean>}"
+  (atom nil))
+
+(defn invalidate-remote-changes-cache!
+  "Invalidate the remote changes cache. Call this after import/export."
+  []
+  (reset! remote-changes-cache nil))
+
+(defn- cache-expired?
+  "Check if the cache has expired based on TTL setting."
+  [last-checked]
+  (let [ttl-seconds (settings/remote-sync-check-changes-cache-ttl-seconds)
+        expiry-time (t/plus last-checked (t/seconds ttl-seconds))]
+    (t/after? (t/instant) expiry-time)))
+
+(defn has-remote-changes?
+  "Check if remote has new changes compared to last imported version.
+   Uses cache to avoid frequent git operations. Returns map with:
+   - :has-changes? boolean
+   - :remote-version string (git SHA)
+   - :local-version string (git SHA of last import, or nil)
+   - :cached? boolean (whether result came from cache)
+
+   Cache is invalidated if:
+   - TTL has expired
+   - Branch setting has changed
+   - force-refresh? is true"
+  ([]
+   (has-remote-changes? nil))
+  ([{:keys [force-refresh?]}]
+   (let [cache-state @remote-changes-cache
+         current-branch (settings/remote-sync-branch)
+         cache-valid? (and cache-state
+                           (not force-refresh?)
+                           (= current-branch (:branch cache-state))
+                           (not (cache-expired? (:last-checked cache-state))))]
+     (if cache-valid?
+       (assoc cache-state :cached? true)
+       (let [last-imported (remote-sync.task/last-version)
+             source (source/source-from-settings current-branch)
+             snapshot (source.p/snapshot source)
+             current-remote (source.p/version snapshot)
+             ;; has-changes? is true if:
+             ;; - never imported (last-imported is nil), OR
+             ;; - remote version differs from local version
+             has-changes? (or (nil? last-imported)
+                              (not= last-imported current-remote))
+             result {:last-checked (t/instant)
+                     :branch current-branch
+                     :remote-version current-remote
+                     :local-version last-imported
+                     :has-changes? has-changes?}]
+         (reset! remote-changes-cache result)
+         (assoc result :cached? false))))))
+
+;;; ------------------------------------------- Task Result Handling -------------------------------------------
+
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
   Takes a result map with a :status key (either :success or :error) and optional :message key, a RemoteSyncTask ID,
-  and an optional branch name. On success, updates the remote-sync-branch setting (if branch provided) and marks the
-  task complete. On error, marks the task as failed with the error message. For any other status, marks the task as
-  failed with 'Unexpected Error'."
+  and an optional branch name. On success, updates the remote-sync-branch setting (if branch provided), marks the
+  task complete, and invalidates the remote changes cache. On error, marks the task as failed with the error message.
+  For any other status, marks the task as failed with 'Unexpected Error'."
   [result task-id & [branch]]
   (case (:status result)
-    :success (t2/with-transaction [_conn]
-               (when branch
-                 (settings/remote-sync-branch! branch))
-               (remote-sync.task/complete-sync-task! task-id))
+    :success (do
+               (t2/with-transaction [_conn]
+                 (when branch
+                   (settings/remote-sync-branch! branch))
+                 (remote-sync.task/complete-sync-task! task-id))
+               (invalidate-remote-changes-cache!))
     :error (remote-sync.task/fail-sync-task! task-id (:message result))
     (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))
 

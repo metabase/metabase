@@ -45,11 +45,12 @@ export type TransformsPlugin = {
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isDirty: boolean;
+  isEditMode?: boolean;
+  readOnly?: boolean;
+  transformId?: TransformId;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
-  readOnly?: boolean;
 };
 
 export type PythonTransformSourceSectionProps = {

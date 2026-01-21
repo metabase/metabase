@@ -57,6 +57,7 @@
 (def excluded-models
   "List of models which are not going to be serialized ever."
   ["AnalysisFinding"
+   "AnalysisFindingError"
    "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
@@ -117,6 +118,7 @@
    "Session"
    "SupportAccessGrantLog"
    "TaskHistory"
+   "TaskRun"
    "Tenant"
    "TransformJobRun"
    "TransformRun"

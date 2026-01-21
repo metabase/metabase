@@ -619,3 +619,64 @@ describe("issue 55853", () => {
     });
   });
 });
+
+describe("issue 10493", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should display bar chart for binned column distribution after applying filter (metabase#10493)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    cy.log("Click on Quantity column header and select Distribution");
+    H.tableHeaderClick("Quantity");
+    H.popover().findByText("Distribution").click();
+
+    cy.log("Verify bar chart is displayed with binned quantity as dimension");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
+
+    cy.log("Apply filter: count >= 20");
+    cy.findByTestId("qb-header-action-panel").findByText("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
+    });
+    H.selectFilterOperator("Greater than or equal to");
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("20");
+      cy.button("Apply filter").click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.log(
+      "Verify bar chart is still displayed (binned column should still be treated as dimension)",
+    );
+    cy.findByTestId("query-builder-main")
+      .findByText(/^Doing science/)
+      .should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("not.exist");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
+  });
+});

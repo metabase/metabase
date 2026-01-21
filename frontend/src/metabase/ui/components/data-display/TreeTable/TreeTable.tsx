@@ -30,6 +30,7 @@ export function TreeTable<TData extends TreeNodeData>({
   isChildrenLoading,
   isRowDisabled,
   getRowProps,
+  getRowHref,
   classNames,
   styles,
   ariaLabel,
@@ -193,6 +194,7 @@ export function TreeTable<TData extends TreeNodeData>({
                     classNames={classNames}
                     styles={styles}
                     getRowProps={getRowProps}
+                    href={getRowHref?.(row)}
                   />
                 );
               })}
