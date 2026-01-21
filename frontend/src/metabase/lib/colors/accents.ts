@@ -33,7 +33,7 @@ export function mapChartColorsToAccents(
       mappedColors[accentKeys.base] = color;
 
       // Derive tint and shade when only base color is provided.
-      // Previously, we relied on the color aliases in `lib/colors.palette.ts`,
+      // Previously, we relied on the color aliases in `lib/colors/palette.ts`,
       // but this color is defined directly in Mantine now.
       mappedColors[accentKeys.tint] = deriveChartTintColor(color);
       mappedColors[accentKeys.shade] = deriveChartShadeColor(color);
