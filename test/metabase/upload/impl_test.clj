@@ -489,12 +489,12 @@
                     (testing "both tables have the same display name"
                       (is (= "Some File Prefix"
                              (:display_name table-1)
-                             (:display_name table-2))
-                          (testing "tables are different between the two uploads"
-                            (is (some? (:id table-1)))
-                            (is (some? (:id table-2)))
-                            (is (not= (:id table-1)
-                                      (:id table-2)))))))))))))))))
+                             (:display_name table-2))))
+                    (testing "tables are different between the two uploads"
+                      (is (some? (:id table-1)))
+                      (is (some? (:id table-2)))
+                      (is (not= (:id table-1)
+                                (:id table-2)))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id

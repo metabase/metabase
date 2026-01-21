@@ -299,7 +299,8 @@
     "snippet"
     "no_models"
     "timeline"
-    "table"})
+    "table"
+    "transform"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -489,7 +490,11 @@
    :from   [[:transform :transform]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]]})
+            [:= :collection_id (:id collection)]
+            (when-not api/*is-superuser?*
+              [:=
+               [:inline 0]
+               [:inline 1]])]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -961,9 +966,9 @@
   [select-columns necessary-columns]
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
-           (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(h2x/cast typpe nil) col-name]
+           (let [[col-name type'] (u/one-or-many col)]
+             (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
+                                     [(h2x/cast type' nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 
@@ -1099,7 +1104,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document  :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
                                       ;; Tables in collections are an EE feature (data-studio)
                                       (premium-features/has-feature? :data-studio) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty

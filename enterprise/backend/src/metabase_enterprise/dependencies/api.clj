@@ -24,6 +24,7 @@
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -87,7 +88,7 @@
                  (cond-> #_card
                   (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
         edits {:card [card]}
-        breakages (dependencies/errors-from-proposed-edits base-provider edits)]
+        breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
     (broken-cards-response breakages)))
 
 (mr/def ::transform-body
@@ -118,7 +119,7 @@
                         (cond-> #_transform source (assoc :source source))
                         (cond-> #_transform target (assoc :target target)))
           edits {:transform [transform]}
-          breakages (dependencies/errors-from-proposed-edits base-provider edits)]
+          breakages (dependencies/errors-from-proposed-edits edits :base-provider base-provider)]
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
@@ -130,7 +131,7 @@
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
    _query-params
-   {:keys [id content], snippet-name :name}
+   {:keys [id], snippet-name :name}
    :- [:map
        [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
@@ -141,14 +142,8 @@
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))
             (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))
-        snippet (cond-> (m/assoc-some original
-                                      :lib/type :metadata/native-query-snippet
-                                      :name snippet-name
-                                      :content content)
-                  content native-query-snippets/add-template-tags)
-        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
-    (broken-cards-response breakages)))
+                            {:status-code 400})))]
+    (broken-cards-response {})))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields]
@@ -176,12 +171,10 @@
     :model/Document   (select-keys entity [:id :name])
     entity))
 
-(mr/def ::entity-id pos-int?)
-
 (mr/def ::usages
   [:map-of
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
-   ::entity-id])
+   ::deps.dependency-types/entity-id])
 
 (mr/def ::base-entity
   [:map
@@ -289,15 +282,15 @@
 ;; (See CardDependencyNodeData, DashboardDependencyNodeData, etc.)
 ;;
 ;; Note: Some fields (like :creator, :collection) are added via t2/hydrate,
-;; and others (like :last-edit-info, :view_count) are computed/added separately.
+;; and others (like :last-edit-info) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
   {:card      [:id :name :description :type :display :database_id :query_type :collection_id :dashboard_id :document_id :result_metadata
-               :created_at :creator_id
+               :created_at :creator_id :view_count
                ;; :card_schema always has to be selected
                :card_schema]
-   :dashboard [:id :name :description :created_at :creator_id :collection_id]
-   :document  [:id :name :created_at :creator_id :collection_id]
+   :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
+   :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
@@ -454,16 +447,42 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- node-errors [nodes-by-type]
-  (-> (into {}
-            (mapcat (fn [[type ids]]
-                      (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
-                                      :analyzed_entity_type type
-                                      :analyzed_entity_id [:in ids])
-                           (map (fn [{:keys [analyzed_entity_id finding_details]}]
-                                  [[type analyzed_entity_id] finding_details])))))
-            nodes-by-type)
-      not-empty))
+(defn- node-errors
+  "Fetches and normalizes AnalysisFindingErrors for the given entities.
+   Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
+  [nodes-by-type]
+  (letfn [(normalize-finding-error
+            [{:keys [error_type error_detail]}]
+            ;; error_type is stored without namespace (e.g. :missing-column)
+            ;; but API schema expects :validate/missing-column
+            (case error_type
+                ;; These error types use :name
+              (:validate/missing-column
+               :validate/missing-table-alias
+               :validate/duplicate-column)
+              {:type error_type :name error_detail}
+                ;; validation-exception-error uses :message
+              :validate/validation-exception-error
+              {:type error_type :message error_detail}
+                ;; syntax-error has no additional fields
+              :validate/syntax-error
+              {:type error_type}
+                ;; Default: use :name if detail exists
+              (cond-> {:type error_type}
+                error_detail (assoc :name error_detail))))
+          (normalize-entity-errors [[[entity-type entity-id] errors]]
+            (let [normalized-errors (into #{} (map normalize-finding-error) errors)]
+              [[entity-type entity-id] normalized-errors]))
+          (errors-by-entity-type-and-id [[type ids]]
+            (let [finding-errors (t2/select :model/AnalysisFindingError
+                                            :analyzed_entity_type type
+                                            :analyzed_entity_id [:in ids])]
+              (->> finding-errors
+                   (group-by (juxt :analyzed_entity_type :analyzed_entity_id))
+                   (map normalize-entity-errors))))]
+    (->> nodes-by-type
+         (into {} (mapcat errors-by-entity-type-and-id))
+         not-empty)))
 
 (defn- hydrate-entities [entity-type entities]
   (case entity-type
@@ -472,7 +491,9 @@
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
     :table (t2/hydrate entities :fields :db)
-    :transform (t2/hydrate entities :creator :table-with-db-and-fields :last_run)
+    :transform (-> entities
+                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection)
+                   (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
                    (t2/hydrate :creator [:collection :is_personal])
                    (->> (map collection.root/hydrate-root-collection))
@@ -482,7 +503,7 @@
                   (->> (map collection.root/hydrate-root-collection)))
     :sandbox (t2/hydrate entities [:table :db :fields])
     :snippet (-> entities
-                 (t2/hydrate :creator)
+                 (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
     (:segment :measure) (t2/hydrate entities :creator [:table :db])))
 
@@ -510,9 +531,9 @@
    [:nodes [:sequential ::entity]]
    [:edges [:sequential [:map
                          [:from_entity_type ::deps.dependency-types/dependency-types]
-                         [:from_entity_id ::entity-id]
+                         [:from_entity_id ::deps.dependency-types/entity-id]
                          [:to_entity_type ::deps.dependency-types/dependency-types]
-                         [:to_entity_id ::entity-id]]]]])
+                         [:to_entity_id ::deps.dependency-types/entity-id]]]]])
 
 (api.macros/defendpoint :get "/graph" :- ::graph-response
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
@@ -570,28 +591,8 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(defn- personal-collection-filter
-  "Returns a HoneySQL WHERE clause to exclude items in personal collections.
-   Only applies to collection-based entities (card, dashboard, document, snippet).
-   Returns nil for non-collection entities or when include-personal-collections is true."
-  [entity-type include-personal-collections]
-  (when-not include-personal-collections
-    (case entity-type
-      (:card :dashboard :document :snippet)
-      (let [personal-ids (t2/select-pks-vec :model/Collection
-                                            :personal_owner_id [:not= nil]
-                                            :location "/")]
-        (when (seq personal-ids)
-          [:or
-           [:= :entity.collection_id nil]
-           [:and
-            [:= :collection.personal_owner_id nil]
-            (into [:and]
-                  (for [pid personal-ids]
-                    [:not-like :collection.location (str "/" pid "/%")]))]]))
-      nil)))
-
-(defn- unreferenced-query [entity-type card-types query include-archived-items include-personal-collections]
+(defn- dependency-items-query
+  [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections sort-column]}]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -606,6 +607,45 @@
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
+        root-collection (collection.root/root-collection-with-ui-details (case entity-type
+                                                                           :transform :transforms
+                                                                           :snippet :snippets
+                                                                           nil))
+        location-column (case entity-type
+                          :card [:case
+                                 [:not= :entity.dashboard_id nil] :dashboard.name
+                                 [:not= :entity.document_id nil] :document.name
+                                 :else [:coalesce :collection.name [:inline (:name root-collection)]]]
+                          :table :database.name
+                          (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
+                          :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                          (:segment :measure) :table.display_name)
+        dependents-count-column {:select [[:%count.*]]
+                                 :from [:dependency]
+                                 :where [:and
+                                         [:= :dependency.to_entity_id :entity.id]
+                                         [:= :dependency.to_entity_type [:inline (name entity-type)]]
+                                         (visible-entities-filter-clause
+                                          :dependency.from_entity_type
+                                          :dependency.from_entity_id
+                                          {:include-archived-items include-archived-items})]}
+        dependency-join (case query-type
+                          :unreferenced [:dependency [:and
+                                                      [:= :dependency.to_entity_id :entity.id]
+                                                      [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+                          :broken [:analysis_finding [:and
+                                                      [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                                      [:= :analysis_finding.analyzed_entity_type (name entity-type)]]])
+        dependency-filter (case query-type
+                            :unreferenced [:= :dependency.id nil]
+                            :broken [:= :analysis_finding.result false])
+        card-type-filter (when (and (= entity-type :card)
+                                    (seq card-types))
+                           [:in :entity.type (mapv name card-types)])
+        query-filter (when (and query (not= entity-type :sandbox))
+                       [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")])
+        database-filter (when (= entity-type :table)
+                          [:and [:not :database.is_sample] [:not :database.is_audit]])
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
                             (:card :dashboard :document :snippet :segment :measure)
@@ -615,25 +655,53 @@
                              [:= :entity.active true]
                              [:= :entity.visibility_type nil]]
                             nil))
-        personal-filter (personal-collection-filter entity-type include-personal-collections)
-        needs-collection-join? (and (not include-personal-collections)
-                                    (#{:card :dashboard :document :snippet} entity-type))]
+        personal-filter (when-not include-personal-collections
+                          (case entity-type
+                            (:card :dashboard :document :snippet)
+                            (let [personal-ids (t2/select-pks-vec :model/Collection
+                                                                  :personal_owner_id [:not= nil]
+                                                                  :location "/")]
+                              (when (seq personal-ids)
+                                [:or
+                                 [:= :entity.collection_id nil]
+                                 [:and
+                                  [:= :collection.personal_owner_id nil]
+                                  (into [:and]
+                                        (for [pid personal-ids]
+                                          [:not-like :collection.location (str "/" pid "/%")]))]]))
+                            nil))
+        sort-key-column (case sort-column
+                          :location location-column
+                          :dependents-count dependents-count-column
+                          name-column)
+        sort-by-location? (= sort-column :location)
+        needs-database-join? (= entity-type :table)
+        needs-collection-join? (or (and (not include-personal-collections)
+                                        (#{:card :dashboard :document :snippet} entity-type))
+                                   (and sort-by-location?
+                                        (#{:card :transform :snippet :dashboard :document} entity-type)))
+        needs-dashboard-join? (and sort-by-location? (= entity-type :card))
+        needs-document-join? (and sort-by-location? (= entity-type :card))
+        needs-table-join? (and sort-by-location? (#{:segment :measure} entity-type))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
-              [name-column :sort_key]]
+              [sort-key-column :sort_key]]
      :from [[table-name :entity]]
-     :left-join (cond-> [:dependency [:and
-                                      [:= :dependency.to_entity_id :entity.id]
-                                      [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
-                  needs-collection-join?
-                  (conj :collection [:= :entity.collection_id :collection.id]))
-     :where (cond->> [:= :dependency.id nil]
-              (and (= entity-type :card)
-                   (seq card-types))
-              (conj [:and [:in :entity.type (mapv name card-types)]])
+     :left-join (cond-> dependency-join
+                  needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
+                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id])
+                  needs-dashboard-join? (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
+                  needs-document-join? (conj :document [:= :entity.document_id :document.id])
+                  needs-table-join? (conj [:metabase_table :table] [:= :entity.table_id :table.id]))
+     :where (cond->> dependency-filter
+              card-type-filter
+              (conj [:and card-type-filter])
 
-              (and query (not= entity-type :sandbox))
-              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+              query-filter
+              (conj [:and query-filter])
+
+              database-filter
+              (conj [:and database-filter])
 
               archived-filter
               (conj [:and archived-filter])
@@ -641,7 +709,15 @@
               personal-filter
               (conj [:and personal-filter]))}))
 
-(def ^:private unreferenced-items-args
+(def ^:private sort-columns
+  "Valid sort columns for dependency item endpoints."
+  #{:name :location :dependents-count})
+
+(def ^:private sort-directions
+  "Valid sort directions for dependency item endpoints."
+  #{:asc :desc})
+
+(def ^:private dependency-items-args
   [:map
    [:types {:optional true} [:or
                              ::deps.dependency-types/dependency-types
@@ -651,103 +727,78 @@
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]])
+   [:include_personal_collections {:optional true} :boolean]
+   [:sort_column {:optional true} (ms/enum-decode-keyword sort-columns)]
+   [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
-(api.macros/defendpoint :get "/graph/unreferenced" :- [:sequential ::entity]
+(def ^:private dependency-items-response
+  [:map
+   [:data [:sequential ::entity]]
+   [:total nat-int?]
+   [:offset nat-int?]
+   [:limit ms/PositiveInt]])
+
+(api.macros/defendpoint :get "/graph/unreferenced" :- dependency-items-response
   "Returns a list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
    Accepts optional parameters for filtering:
-   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
-   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
-   - query: Search string to filter by name or location
-   - archived: Controls whether archived entities are included
-   - include_personal_collections: Controls whether items in personal collections are included (default: false)
+   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
+   - `card_types`: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - `query`: Search string to filter by name or location
+   - `archived`: Controls whether archived entities are included
+   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)
+   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
+   - `offset`: Default 0
+   - `limit`: Default 50
 
-   Returns a list of unreferenced items, each with :id, :type, and :data fields."
+   Returns a map with:
+   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields
+   - `total`: Total count of matched items
+   - `offset`: Applied offset
+   - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- unreferenced-items-args]
-  (let [include-archived-items (if archived :all :exclude)
+         include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- dependency-items-args]
+  (let [offset (or (request/offset) 0)
+        limit (or (request/limit) 50)
+        include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(unreferenced-query % card-types query include-archived-items include_personal_collections)
+        union-queries (map #(dependency-items-query {:query-type :unreferenced
+                                                     :entity-type %
+                                                     :card-types card-types
+                                                     :query query
+                                                     :include-archived-items include-archived-items
+                                                     :include-personal-collections include_personal_collections
+                                                     :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+        all-ids (->> (t2/query (assoc union-query
+                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
+                                      :offset offset
+                                      :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
-    (expanded-nodes downstream-graph all-ids {:include-errors? false})))
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
+        total (-> (t2/query {:select [[:%count.* :total]]
+                             :from [[union-query :subquery]]})
+                  first
+                  :total)]
+    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? false})
+     :limit  limit
+     :offset offset
+     :total  total}))
 
-(def ^:private broken-items-args
-  [:map
-   [:types {:optional true} [:or
-                             ::deps.dependency-types/dependency-types
-                             [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
-                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]])
-
-(defn- broken-query [entity-type card-types query include-archived-items include-personal-collections]
-  (let [table-name (case entity-type
-                     :card :report_card
-                     :table :metabase_table
-                     :transform :transform
-                     :snippet :native_query_snippet
-                     :dashboard :report_dashboard
-                     :document :document
-                     :sandbox :sandboxes
-                     :segment :segment
-                     :measure :measure)
-        name-column (case entity-type
-                      :table :entity.display_name
-                      :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)
-        archived-filter (when (= include-archived-items :exclude)
-                          (case entity-type
-                            (:card :dashboard :document :snippet :segment :measure)
-                            [:= :entity.archived false]
-                            :table
-                            [:and
-                             [:= :entity.active true]
-                             [:= :entity.visibility_type nil]]
-                            nil))
-        personal-filter (personal-collection-filter entity-type include-personal-collections)
-        needs-collection-join? (and (not include-personal-collections)
-                                    (#{:card :dashboard :document :snippet} entity-type))]
-    {:select [[[:inline (name entity-type)] :entity_type]
-              [:entity.id :entity_id]
-              [name-column :sort_key]]
-     :from [[table-name :entity]]
-     :left-join (cond-> [:analysis_finding [:and
-                                            [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                            [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                  needs-collection-join?
-                  (conj :collection [:= :entity.collection_id :collection.id]))
-     :where (cond->> [:= :analysis_finding.result false]
-              (and (= entity-type :card)
-                   (seq card-types))
-              (conj [:and [:in :entity.type (mapv name card-types)]])
-
-              (and query (not= entity-type :sandbox))
-              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
-
-              archived-filter
-              (conj [:and archived-filter])
-
-              personal-filter
-              (conj [:and personal-filter]))}))
-
-(api.macros/defendpoint :get "/graph/broken" :- [:sequential ::entity]
+(api.macros/defendpoint :get "/graph/broken" :- dependency-items-response
   "Returns a list of all items with broken queries.
 
    Accepts optional parameters for filtering:
@@ -756,27 +807,55 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `sort_column`: Sort column - `:name`, `:location`, or `:dependents-count` (default: `:name`)
+   - `sort_direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)
+   - `offset`: Default 0
+   - `limit`: Default 50
 
-   Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields."
+   Returns a map with:
+   - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields
+   - `total`: Total count of matched items
+   - `offset`: Applied offset
+   - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections sort_column sort_direction]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- broken-items-args]
-  (let [include-archived-items (if archived :all :exclude)
+         include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- dependency-items-args]
+  (let [offset (or (request/offset) 0)
+        limit (or (request/limit) 50)
+        include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(broken-query % card-types query include-archived-items include_personal_collections)
+        union-queries (map #(dependency-items-query {:query-type :broken
+                                                     :entity-type %
+                                                     :card-types card-types
+                                                     :query query
+                                                     :include-archived-items include-archived-items
+                                                     :include-personal-collections include_personal_collections
+                                                     :sort-column sort_column})
                            selected-types)
         union-query {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+        all-ids (->> (t2/query (assoc union-query
+                                      :order-by [[:sort_key sort_direction] [:entity_id sort_direction] [:entity_type sort_direction]]
+                                      :offset offset
+                                      :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
-    (expanded-nodes downstream-graph all-ids {:include-errors? true})))
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
+        total (-> (t2/query {:select [[:%count.* :total]]
+                             :from [[union-query :subquery]]})
+                  first
+                  :total)]
+    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true})
+     :offset offset
+     :limit  limit
+     :total  total}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

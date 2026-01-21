@@ -1,7 +1,13 @@
+import type {
+  DependencySortColumn,
+  DependencySortDirection,
+} from "metabase-types/api";
+
 export type DependencyListQueryParams = {
-  query?: unknown;
-  groupTypes?: unknown;
-  selectedId?: unknown;
-  selectedType?: unknown;
-  includePersonalCollections?: unknown;
+  page?: string;
+  query?: string;
+  "group-types"?: string | string[];
+  "include-personal-collections"?: string;
+  "sort-column"?: DependencySortColumn;
+  "sort-direction"?: DependencySortDirection;
 };

@@ -36,7 +36,7 @@ describe("scenarios > data studio > datamodel", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
@@ -1346,7 +1346,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1390,7 +1391,8 @@ describe("scenarios > data studio > datamodel", () => {
           .findByDisplayValue("database")
           .should("be.checked");
 
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -1429,7 +1431,8 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-        H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        TableSection.getSortableField("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 50,
         });
         cy.wait("@updateFieldOrder");
@@ -3570,7 +3573,8 @@ describe("scenarios > data studio > datamodel", () => {
       verifyAndCloseToast("Failed to update field order");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyAndCloseToast("Failed to update field order");
@@ -3716,7 +3720,8 @@ describe("scenarios > data studio > datamodel", () => {
         .should("be.checked");
 
       cy.log("custom field order");
-      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+      TableSection.getSortableField("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
       verifyToastAndUndo("Field order updated");

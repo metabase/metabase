@@ -429,6 +429,124 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(defn collect-all-props-by-name
+  "Recursively collect all properties into a flat map by name, including nested group fields.
+  This creates a complete lookup map keyed by property name.
+
+  Groups have :type :group and contain a :fields array with nested properties. This function
+  flattens the structure to make all properties available for lookups and filtering.
+
+  Properties without a :name are skipped."
+  [props]
+  (reduce (fn [acc prop]
+            (cond
+              ;; Group with nested fields - recursively collect from nested fields
+              (= :group (:type prop))
+              (merge acc (collect-all-props-by-name (:fields prop)))
+
+              ;; Regular fields
+              (:name prop)
+              (assoc acc (:name prop) prop)
+
+              ;; This should not happen but let's leave it as a fallback
+              :else
+              acc))
+          {}
+          props))
+
+(defn- resolve-transitive-visible-if
+  "Resolves transitive visible-if dependencies for a property.
+
+  If property x depends on y having a value, but y itself depends on z having a value,
+  then x should be hidden if y is. This function computes the full transitive closure
+  of visible-if dependencies.
+
+  Throws an exception if a cycle is detected in the dependency graph."
+  [prop props-by-name driver]
+  (let [v-ifs*
+        (loop [props* [prop]
+               acc    {}]
+          (if (seq props*)
+            (let [all-visible-ifs  (reduce
+                                    #(reduce-kv (fn [acc prop-name v]
+                                                  (if (or (contains? props-by-name (->str prop-name))
+                                                          ;; If v is false then this depended on a removed :checked-section
+                                                          ;; and the dependency should be dropped.
+                                                          (not (false? v)))
+                                                    (assoc acc prop-name v)
+                                                    acc))
+                                                %1 (:visible-if %2))
+                                    {} props*)
+                  visible-keys     (keys all-visible-ifs)
+                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  next-acc         (into acc all-visible-ifs)]
+              (if-not (perf/some #(contains? acc %) visible-keys)
+                (recur transitive-props next-acc)
+                (let [cyclic-props (set/intersection (set visible-keys)
+                                                     (set (keys acc)))]
+                  (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                           driver cyclic-props)
+                      (ex-info {:type               qp.error-type/driver
+                                :driver             driver
+                                :cyclic-visible-ifs cyclic-props})
+                      throw))))
+            acc))]
+    (cond-> prop
+      (seq v-ifs*) (assoc :visible-if v-ifs*)
+      (empty? v-ifs*) (dissoc :visible-if))))
+
+(defn- resolve-transitive-visible-if-recursive
+  "Recursively resolve transitive visible-if for properties, including nested groups.
+
+  Groups are processed recursively to maintain their structure while resolving dependencies
+  for all nested fields. This allows dependencies to cross group boundaries - top-level fields
+  can depend on nested fields and vice versa."
+  [prop props-by-name driver]
+  (cond
+    ;; If it's a group, recursively process its nested fields while preserving group structure
+    (= :group (:type prop))
+    (update prop :fields
+            (fn [fields]
+              (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver)
+                    fields)))
+
+    ;; Regular property - resolve its transitive visible-if dependencies
+    :else
+    (resolve-transitive-visible-if prop props-by-name driver)))
+
+(defn- process-connection-prop
+  "Recursively processes a single connection property, handling special types like :secret, :info, :group, etc.
+
+  For :group types, this function:
+  - Flattens any vectors in the :fields array (e.g., ssh-tunnel-preferences)
+  - Recursively processes each nested field
+
+  Returns a vector of processed properties (most types return a single property, some like :secret may expand to multiple)."
+  [conn-prop]
+  (case (keyword (:type conn-prop))
+    :secret
+    (expand-secret-conn-prop conn-prop)
+
+    :info
+    (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+      [conn-prop']
+      [])
+
+    :checked-section
+    (resolve-checked-section-conn-prop conn-prop)
+
+    :schema-filters
+    (expand-schema-filters-prop conn-prop)
+
+    :group
+    (let [processed-fields (into []
+                                 (comp (mapcat u/one-or-many)
+                                       (mapcat process-connection-prop))
+                                 (:fields conn-prop))]
+      [(assoc conn-prop :fields processed-fields)])
+
+    [conn-prop]))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -440,66 +558,13 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props
-        (persistent!
-         (reduce (fn [acc conn-prop]
-                   ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
-                   (let [expanded-props (case (keyword (:type conn-prop))
-                                          :secret
-                                          (expand-secret-conn-prop conn-prop)
-
-                                          :info
-                                          (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
-                                            [conn-prop']
-                                            [])
-
-                                          :checked-section
-                                          (resolve-checked-section-conn-prop conn-prop)
-
-                                          :schema-filters
-                                          (expand-schema-filters-prop conn-prop)
-
-                                          [conn-prop])]
-                     (reduce conj! acc expanded-props)))
-                 (transient [])
-                 conn-props))
-        props-by-name (reduce #(assoc %1 (:name %2) %2) {} final-props)]
+  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+        ;; Build complete props-by-name map including nested fields from groups
+        props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
-    ;; should be hidden if y is)
-    (mapv (fn [prop]
-            (let [v-ifs*
-                  (loop [props* [prop]
-                         acc    {}]
-                    (if (seq props*)
-                      (let [all-visible-ifs  (reduce
-                                              #(reduce-kv (fn [acc prop-name v]
-                                                            (if (or (contains? props-by-name (->str prop-name))
-                                                                    ;; If v is false then this depended on a removed :checked-section
-                                                                    ;; and the dependency should be dropped.
-                                                                    (not (false? v)))
-                                                              (assoc acc prop-name v)
-                                                              acc))
-                                                          %1 (:visible-if %2))
-                                              {} props*)
-                            visible-keys     (keys all-visible-ifs)
-                            transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
-                            next-acc         (into acc all-visible-ifs)]
-                        (if-not (perf/some #(contains? acc %) visible-keys)
-                          (recur transitive-props next-acc)
-                          (let [cyclic-props (set/intersection (set visible-keys)
-                                                               (set (keys acc)))]
-                            (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     driver cyclic-props)
-                                (ex-info {:type               qp.error-type/driver
-                                          :driver             driver
-                                          :cyclic-visible-ifs cyclic-props})
-                                throw))))
-                      acc))]
-              (cond-> prop
-                (seq v-ifs*) (assoc :visible-if v-ifs*)
-                (empty? v-ifs*) (dissoc :visible-if))))
-          final-props)))
+    ;; should be hidden if y is). This works recursively to handle nested groups.
+    (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver) final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"

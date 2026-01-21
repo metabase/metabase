@@ -880,8 +880,7 @@
   "Does the given `engine` have an `:ssl` setting?"
   [driver]
   {:pre [(driver/available? driver)]}
-  (let [driver-props (set (for [field (driver/connection-properties driver)]
-                            (:name field)))]
+  (let [driver-props (driver.u/collect-all-props-by-name (driver/connection-properties driver))]
     (contains? driver-props "ssl")))
 
 (mu/defn test-connection-details :- :map
@@ -1006,7 +1005,7 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overriden in the PUT with the original values"
+  "Replace any sensitive values not overridden in the PUT with the original values"
   [database details]
   (when details
     (merge (:details database)
