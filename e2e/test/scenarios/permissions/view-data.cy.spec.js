@@ -621,7 +621,6 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
         "1 million rows",
         "No",
       ],
-      ["Data Analysts", "Blocked", "No", "No", "Yes"],
       ["collection", "Can view", "No", "1 million rows", "No"],
       ["data", "Can view", "Query builder and native", "1 million rows", "No"],
       ["nosql", "Can view", "Query builder only", "1 million rows", "No"],
