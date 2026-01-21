@@ -11,10 +11,13 @@
    :charts {chart-id chart-map}
    :todos [...]
    :transforms {...}}"
-  [messages state]
-  {:input-messages messages
-   :steps-taken []
-   :state (or state {:queries {} :charts {} :todos [] :transforms {}})})
+  ([messages state]
+   (initialize messages state nil))
+  ([messages state context]
+   {:input-messages messages
+    :steps-taken []
+    :context context
+    :state (or state {:queries {} :charts {} :todos [] :transforms {}})}))
 
 (defn add-step
   "Add a completed agent step to memory.
