@@ -136,7 +136,7 @@ module.exports = {
         "**/*.stories.{ts,tsx,js,jsx}",
       ],
       rules: {
-        "no-external-references-for-sdk-package-code": [
+        "metabase-custom/no-external-references-for-sdk-package-code": [
           "error",
           {
             allowedPaths: [
