@@ -25,8 +25,6 @@ const setup = ({
   taskRunsResponse = createMockTaskRunsResponse(),
   error,
 }: SetupOpts = {}) => {
-  fetchMock.get("path:/api/task/runs/entities", []);
-
   if (error) {
     fetchMock.get("path:/api/task/runs", { status: 500 });
   } else {
@@ -57,8 +55,10 @@ describe("TaskRunsPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const row = screen.getByTestId("task-run");
-    expect(row).toHaveTextContent(/March 4, 2023/);
+    const startedAtElement = screen.getByTestId("started-at");
+    const endedAtElement = screen.getByTestId("ended-at");
+    expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
+    expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
   });
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {
@@ -76,8 +76,8 @@ describe("TaskRunsPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const dateTimeElements = screen.getAllByText(/March 4, 2023/);
-    await userEvent.hover(dateTimeElements[0]);
+    const startedAtElement = screen.getByTestId("started-at");
+    await userEvent.hover(startedAtElement);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });

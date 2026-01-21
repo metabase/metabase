@@ -31,6 +31,7 @@ export function setupTaskRunsEndpoints(
   options?: UserRouteConfig,
 ) {
   fetchMock.get("path:/api/task/runs", response, options);
+  fetchMock.get("path:/api/task/runs/entities", []);
 }
 
 export function setupTaskRunEndpoint(

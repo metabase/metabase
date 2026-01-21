@@ -118,17 +118,27 @@ export const TasksTable = ({
                       alwaysShowTooltip
                       tooltip={task.started_at}
                     >
-                      <DateTime value={task.started_at} unit="minute" />
+                      <DateTime
+                        value={task.started_at}
+                        unit="minute"
+                        data-testid="started-at"
+                      />
                     </Ellipsified>
                   </td>
                   <td>
-                    <Ellipsified
-                      style={{ maxWidth: 180 }}
-                      alwaysShowTooltip={Boolean(task.ended_at)}
-                      tooltip={task.ended_at}
-                    >
-                      <DateTime value={task.ended_at ?? "—"} unit="minute" />
-                    </Ellipsified>
+                    {task.ended_at && (
+                      <Ellipsified
+                        style={{ maxWidth: 180 }}
+                        alwaysShowTooltip={Boolean(task.ended_at)}
+                        tooltip={task.ended_at}
+                      >
+                        <DateTime
+                          value={task.ended_at}
+                          unit="minute"
+                          data-testid="ended-at"
+                        />
+                      </Ellipsified>
+                    )}
                   </td>
                   <td>{task.duration}</td>
                   <td>

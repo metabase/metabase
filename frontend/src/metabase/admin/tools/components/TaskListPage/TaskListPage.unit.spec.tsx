@@ -620,8 +620,10 @@ describe("TaskListPage", () => {
     await waitForLoaderToBeRemoved();
 
     const row = screen.getByTestId("task");
-    const dateElements = within(row).getAllByText(/March 4, 2023/);
-    expect(dateElements.length).toBeGreaterThanOrEqual(1);
+    const startedAtElement = within(row).getByTestId("started-at");
+    const endedAtElement = within(row).getByTestId("ended-at");
+    expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
+    expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
   });
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {
@@ -640,8 +642,8 @@ describe("TaskListPage", () => {
     await waitForLoaderToBeRemoved();
 
     const row = screen.getByTestId("task");
-    const dateTimeElements = within(row).getAllByText(/March 4, 2023/);
-    await userEvent.hover(dateTimeElements[0]);
+    const startedAtElement = within(row).getByTestId("started-at");
+    await userEvent.hover(startedAtElement);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });

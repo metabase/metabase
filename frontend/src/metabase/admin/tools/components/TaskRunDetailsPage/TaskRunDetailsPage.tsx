@@ -97,16 +97,30 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Started at`}</Text>
               <Tooltip label={taskRun.started_at}>
-                <DateTime value={taskRun.started_at} unit="minute" />
+                <DateTime
+                  value={taskRun.started_at}
+                  unit="minute"
+                  data-testid="started-at"
+                />
               </Tooltip>
               <CopyButton value={taskRun.started_at} />
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Ended at`}</Text>
-              <Tooltip label={taskRun.ended_at} disabled={!taskRun.ended_at}>
-                <DateTime value={taskRun.ended_at ?? "—"} unit="minute" />
-              </Tooltip>
-              {taskRun.ended_at && <CopyButton value={taskRun.ended_at} />}
+              {taskRun.ended_at ? (
+                <>
+                  <Tooltip label={taskRun.ended_at}>
+                    <DateTime
+                      value={taskRun.ended_at}
+                      unit="minute"
+                      data-testid="ended-at"
+                    />
+                  </Tooltip>
+                  <CopyButton value={taskRun.ended_at} />
+                </>
+              ) : (
+                "—"
+              )}
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Task count`}</Text>

@@ -92,17 +92,26 @@ export const TaskRunsTable = ({
                     alwaysShowTooltip
                     tooltip={taskRun.started_at}
                   >
-                    <DateTime value={taskRun.started_at} unit="minute" />
+                    <DateTime
+                      value={taskRun.started_at}
+                      unit="minute"
+                      data-testid="started-at"
+                    />
                   </Ellipsified>
                 </td>
                 <td>
-                  <Ellipsified
-                    style={{ maxWidth: 180 }}
-                    alwaysShowTooltip={Boolean(taskRun.ended_at)}
-                    tooltip={taskRun.ended_at}
-                  >
-                    <DateTime value={taskRun.ended_at ?? "—"} unit="minute" />
-                  </Ellipsified>
+                  {taskRun.ended_at && (
+                    <Ellipsified
+                      style={{ maxWidth: 180 }}
+                      tooltip={taskRun.ended_at}
+                    >
+                      <DateTime
+                        value={taskRun.ended_at}
+                        unit="minute"
+                        data-testid="ended-at"
+                      />
+                    </Ellipsified>
+                  )}
                 </td>
                 <td>
                   <TaskRunStatusBadge taskRun={taskRun} />
