@@ -13,12 +13,10 @@
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
-;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
-;; here so make sure to do a *thorough* find and replace on this.
 (def ^:private op->name
   {:sum       (deferred-tru "sum")
    :avg       (deferred-tru "average")
-   :min       (deferred-tru "minumum")
+   :min       (deferred-tru "minimum")
    :max       (deferred-tru "maximum")
    :count     (deferred-tru "number")
    :distinct  (deferred-tru "distinct count")

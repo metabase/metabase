@@ -20,3 +20,4 @@ jobs:
             enterprise
             frontend
             modules/drivers
+            src
