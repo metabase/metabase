@@ -13,9 +13,7 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        default-schema (when (get-method driver.sql/default-schema driver/*driver*)
-                         (driver.sql/default-schema driver/*driver*))
-        schema (or schema default-schema "public")]
+        schema (or schema (driver.sql/default-schema driver/*driver*))]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
@@ -34,7 +32,7 @@
 
 (deftest dependency-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-temp [:model/Table {table :id} {:schema "public"
+    (mt/with-temp [:model/Table {table :id} {:schema (driver.sql/default-schema driver/*driver*)
                                              :name "orders_2"}
                    :model/Field _ {:table_id table
                                    :name "foo"}
@@ -292,7 +290,7 @@
 (deftest get-transform-cycle-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "cycle is detected in transform referencing itself"
-      (mt/with-temp [:model/Table {table1 :id} {:schema "public"
+      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_1"}
                      :model/Field _ {:table_id table1
                                      :name "foo"}
@@ -305,11 +303,11 @@
                 :cycle [t1]}
                (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
     (testing "cycle is caught in 2 transforms referencing each other"
-      (mt/with-temp [:model/Table {table1 :id} {:schema "public"
+      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_1"}
                      :model/Field _ {:table_id table1
                                      :name "foo"}
-                     :model/Table {table2 :id} {:schema "public"
+                     :model/Table {table2 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_2"}
                      :model/Field _ {:table_id table2
                                      :name "foo"}
@@ -327,15 +325,15 @@
                 :cycle [t1 t2]}
                (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
     (testing "cycle is detected in 3 transforms referencing each other"
-      (mt/with-temp [:model/Table {table1 :id} {:schema "public"
+      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_1"}
                      :model/Field _ {:table_id table1
                                      :name "foo"}
-                     :model/Table {table2 :id} {:schema "public"
+                     :model/Table {table2 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_2"}
                      :model/Field _ {:table_id table2
                                      :name "foo"}
-                     :model/Table {table3 :id} {:schema "public"
+                     :model/Table {table3 :id} {:schema (driver.sql/default-schema driver/*driver*)
                                                 :name "table_3"}
                      :model/Field _ {:table_id table3
                                      :name "foo"}
@@ -361,8 +359,7 @@
 (defn- make-python-transform
   "Create a python transform definition with the given source-tables and target name."
   [source-tables target-name & [target-schema]]
-  (let [default-schema "public"
-        schema (or target-schema default-schema)]
+  (let [schema (or target-schema (driver.sql/default-schema driver/*driver*))]
     {:source {:type "python"
               :source-database (mt/id)
               :source-tables source-tables
@@ -375,48 +372,50 @@
 
 (deftest python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
-    (mt/with-temp [;; Transform A produces table "intermediate_output"
-                   :model/Transform {t-a :id} (make-python-transform
-                                               {"input" (mt/id :orders)}
-                                               "intermediate_output")
-                   ;; Transform B references intermediate_output by name (table doesn't exist yet)
-                   :model/Transform {t-b :id} (make-python-transform
-                                               {"source" {:database_id (mt/id)
-                                                          :schema "public"
-                                                          :table "intermediate_output"}}
-                                               "final_output")]
-      (testing "table-dependencies returns table-ref for unresolved name reference"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
-          (is (contains? deps {:table-ref {:database_id (mt/id)
-                                           :schema "public"
-                                           :table "intermediate_output"}}))))
+    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+      (mt/with-temp [;; Transform A produces table "intermediate_output"
+                     :model/Transform {t-a :id} (make-python-transform
+                                                 {"input" (mt/id :orders)}
+                                                 "intermediate_output")
+                     ;; Transform B references intermediate_output by name (table doesn't exist yet)
+                     :model/Transform {t-b :id} (make-python-transform
+                                                 {"source" {:database_id (mt/id)
+                                                            :schema default-schema
+                                                            :table "intermediate_output"}}
+                                                 "final_output")]
+        (testing "table-dependencies returns table-ref for unresolved name reference"
+          (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+            (is (contains? deps {:table-ref {:database_id (mt/id)
+                                             :schema default-schema
+                                             :table "intermediate_output"}}))))
 
-      (testing "transform-ordering correctly resolves the dependency"
-        (is (= {t-a #{}
-                t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+        (testing "transform-ordering correctly resolves the dependency"
+          (is (= {t-a #{}
+                  t-b #{t-a}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
-    (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
-                                               {"input" (mt/id :orders)}
-                                               "output_a")
-                   :model/Transform {t-b :id} (make-python-transform
-                                               {;; Direct table reference (existing table)
-                                                "existing" (mt/id :products)
-                                                ;; Name-based reference (table doesn't exist yet)
-                                                "from_transform" {:database_id (mt/id)
-                                                                  :schema "public"
-                                                                  :table "output_a"}}
-                                               "output_b")]
-      (testing "table-dependencies includes both types"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
-          (is (contains? deps {:table (mt/id :products)}))
-          (is (contains? deps {:table-ref {:database_id (mt/id)
-                                           :schema "public"
-                                           :table "output_a"}}))))
+    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+      (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
+                                                 {"input" (mt/id :orders)}
+                                                 "output_a")
+                     :model/Transform {t-b :id} (make-python-transform
+                                                 {;; Direct table reference (existing table)
+                                                  "existing" (mt/id :products)
+                                                  ;; Name-based reference (table doesn't exist yet)
+                                                  "from_transform" {:database_id (mt/id)
+                                                                    :schema default-schema
+                                                                    :table "output_a"}}
+                                                 "output_b")]
+        (testing "table-dependencies includes both types"
+          (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+            (is (contains? deps {:table (mt/id :products)}))
+            (is (contains? deps {:table-ref {:database_id (mt/id)
+                                             :schema default-schema
+                                             :table "output_a"}}))))
 
-      (testing "transform-ordering resolves both dependencies"
-        (is (= {t-a #{}
-                t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+        (testing "transform-ordering resolves both dependencies"
+          (is (= {t-a #{}
+                  t-b #{t-a}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]])))))))))
