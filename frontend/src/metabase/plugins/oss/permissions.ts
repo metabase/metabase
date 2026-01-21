@@ -144,8 +144,11 @@ const getDefaultFeatureLevelPermissions = () => ({
   ) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
-    [] as any,
+  getDataColumns: (
+    _subject: PermissionSubject,
+    _groupType?: SpecialGroupType,
+    _isExternal?: boolean,
+  ) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
