@@ -127,7 +127,7 @@ function ModalBody({
       table_ids: tableIds,
     }).unwrap();
     sendSuccessToast(t`Unpublished`);
-    trackDataStudioTableUnpublished(selected_table?.id);
+    trackDataStudioTableUnpublished(selected_table?.id ?? null);
     onUnpublish();
   };
 

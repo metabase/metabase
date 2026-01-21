@@ -54,12 +54,10 @@ export const trackDataStudioTablePickerSearchPerformed = () => {
   });
 };
 
-export const trackDataStudioTableUnpublished = (
-  id: TableId | null | undefined,
-) => {
+export const trackDataStudioTableUnpublished = (id: TableId | null) => {
   trackSimpleEvent({
     event: "data_studio_table_unpublished",
-    target_id: id !== null && id !== undefined ? Number(id) : null,
+    target_id: id !== null ? Number(id) : null,
   });
 };
 
