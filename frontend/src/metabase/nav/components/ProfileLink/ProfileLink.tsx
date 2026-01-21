@@ -30,8 +30,9 @@ import { ActionIcon, Icon, type IconName, Menu, Tooltip } from "metabase/ui";
 import type { MetabaseInfo } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
 
-import { useHelpLink } from "./useHelpLink";
 import { AboutModal } from "../AboutModal/AboutModal";
+
+import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
