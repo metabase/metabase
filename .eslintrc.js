@@ -168,7 +168,6 @@ module.exports = {
     },
   },
   parserOptions: {
-    requireConfigFile: false,
     ecmaFeatures: {
       legacyDecorators: true,
     },
