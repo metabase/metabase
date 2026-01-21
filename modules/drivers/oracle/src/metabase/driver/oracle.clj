@@ -62,8 +62,7 @@
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
-                              :regex/lookaheads-and-lookbehinds false
-                              :final-non-reserved               false}]
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details

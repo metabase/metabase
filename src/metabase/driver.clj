@@ -803,10 +803,7 @@
     :describe-is-nullable
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
-    :describe-is-generated
-
-    ;; Does the dbms consider `final` as non-reserved word in native forms?
-    :final-non-reserved})
+    :describe-is-generated})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
