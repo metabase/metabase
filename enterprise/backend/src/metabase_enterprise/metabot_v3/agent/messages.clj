@@ -50,6 +50,19 @@
   (let [entity-xml (llm-rep/entity->xml structured)]
     (format-with-instructions entity-xml instructions/entity-metadata-instructions)))
 
+(defn- format-metadata-result
+  "Format get_metadata result for the LLM."
+  [structured]
+  (llm-rep/get-metadata-result->xml structured))
+
+(defn- format-field-metadata-result
+  "Format field metadata result for the LLM."
+  [{:keys [field_id value_metadata]}]
+  (format-with-instructions
+   (llm-rep/field-metadata->xml {:field_id field_id
+                                 :value_metadata value_metadata})
+   instructions/field-metadata-instructions))
+
 (defn- format-answer-sources-result
   "Format answer sources (metrics and models list) for the LLM.
   Uses <metabase-models> tag to match Python AI Service exactly."
@@ -98,9 +111,17 @@
         (and (:data structured) (:total_count structured))
         (format-search-result structured)
 
+        ;; Metadata results - has :tables or :errors
+        (or (contains? structured :tables) (contains? structured :errors))
+        (format-metadata-result structured)
+
         ;; Answer sources - has :metrics and :models
         (and (contains? structured :metrics) (contains? structured :models))
         (format-answer-sources-result structured)
+
+        ;; Field metadata results
+        (and (:field_id structured) (contains? structured :value_metadata))
+        (format-field-metadata-result structured)
 
         ;; Query results (from query_model, query_metric, etc.)
         (and (:query-id structured) (:query structured))
