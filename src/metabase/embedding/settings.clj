@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
-   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -31,11 +30,9 @@
   :default true
   :export? true
   :getter  (fn []
-             (if (or (not config/ee-available?)
-                     (not (:valid (premium-features/token-status)))
-                     (not (premium-features/has-feature? :embedding)))
-               (setting/get-value-of-type :boolean :show-static-embed-terms)
-               false)))
+             (if (premium-features/hide-embed-branding?)
+               false
+               (setting/get-value-of-type :boolean :show-static-embed-terms))))
 
 (defsetting show-sdk-embed-terms
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
