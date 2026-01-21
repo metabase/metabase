@@ -309,7 +309,7 @@
         out-chan (a/chan 100)
         seeded-state (seed-state-from-context (or state {}) context)
         ;; Initialize memory and load any existing state (queries, charts, transforms, todos)
-        initial-memory (-> (memory/initialize messages seeded-state)
+        initial-memory (-> (memory/initialize messages seeded-state context)
                            (memory/load-queries-from-state seeded-state)
                            (memory/load-charts-from-state seeded-state)
                            (memory/load-transforms-from-state seeded-state)

@@ -48,8 +48,10 @@ Metabot needs to:
 (def query-created-instructions
   "Instructions for LLM after a query has been created."
   "Query created successfully.
-To visualize results: use create_chart with the query_id
-To show results to user: use show_results_to_user with the query_id")
+Metabot needs to:
+- Remember you cannot view the results directly yourself
+- Always provide a direct link using: `[Query Results](metabase://query/<id>)` where Query Results is a meaningful link text
+- Consider whether to create a chart or graph when that better matches the user's intent")
 
 (defn chart-created-instructions
   "Generate instructions for chart creation result."
@@ -70,13 +72,3 @@ Reference items using: [name](metabase://type/id)")
 
 After you have edited the query, do a thorough analysis of the query to ensure it is correct and efficient.
 If the query is correct, present the results to the user.")
-
-(def show-results-instructions
-  "Instructions for LLM after showing results to user."
-  "Results have been shown to the user.
-Continue the conversation based on the displayed data.")
-
-(def dashboard-subscription-instructions
-  "Instructions for LLM after creating a dashboard subscription."
-  "Dashboard subscription created successfully.
-The user will receive updates according to the schedule specified.")

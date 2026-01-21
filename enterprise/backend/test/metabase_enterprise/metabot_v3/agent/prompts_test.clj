@@ -11,8 +11,8 @@
       (is (> (count template) 1000))
       (is (re-find #"Metabot" template))))
 
-  (testing "loads embedding.selmer template"
-    (let [template (prompts/load-system-prompt-template "embedding.selmer")]
+  (testing "loads embedding-next.selmer template"
+    (let [template (prompts/load-system-prompt-template "embedding-next.selmer")]
       (is (some? template))
       (is (string? template))
       (is (re-find #"Metabot" template))))
@@ -134,7 +134,7 @@
 
 (deftest build-system-message-content-test
   (testing "builds complete system message"
-    (let [profile {:prompt-template "embedding.selmer"}
+    (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
                    :first_day_of_week "Sunday"
                    :sql-dialect "postgresql"}
@@ -147,7 +147,7 @@
       (is (re-find #"2024-01-15 14:30:00" content))))
 
   (testing "includes dialect instructions when dialect specified"
-    (let [profile {:prompt-template "embedding.selmer"}
+    (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"
                    :sql-dialect "postgresql"}
           tools {}

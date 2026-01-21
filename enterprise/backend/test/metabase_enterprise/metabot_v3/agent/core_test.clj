@@ -121,7 +121,7 @@
                                      [{:type :text :text "Hello"}]))]
       (let [messages [{:role :user :content "Hi"}]
             state {}
-            profile-id :embedding
+            profile-id :embedding_next
             context {}
             response-chan (agent/run-agent-loop
                            {:messages messages
@@ -151,7 +151,7 @@
                                            [{:type :text :text "Found results"}]))))]
         (let [messages [{:role :user :content "Search for test"}]
               state {}
-              profile-id :embedding
+              profile-id :embedding_next
               context {}
               response-chan (agent/run-agent-loop
                              {:messages messages
@@ -170,7 +170,7 @@
                                     (throw (ex-info "Mock error" {})))]
       (let [messages [{:role :user :content "Hi"}]
             state {}
-            profile-id :embedding
+            profile-id :embedding_next
             context {}
             response-chan (agent/run-agent-loop
                            {:messages messages
@@ -265,7 +265,7 @@
             response-chan (agent/run-agent-loop
                            {:messages messages
                             :state {}
-                            :profile-id :embedding
+                            :profile-id :embedding_next
                             :context {}})
             result (chan->seq response-chan)]
         ;; Verify basic structure

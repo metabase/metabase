@@ -6,12 +6,8 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
-   [metabase-enterprise.metabot-v3.tools.dependencies-test :as metabot-v3.tools.dependencies-test]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
-   [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.test-util :as tools.tu]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
@@ -44,56 +40,31 @@
   ([user metabot-id]
    (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
 
-(deftest create-dashboard-subscription-test
-  (mt/with-premium-features #{:metabot-v3}
-    (let [tool-requests (atom [])
-          conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription
-                    (fn [arguments]
-                      (swap! tool-requests conj arguments)
-                      {:output output})]
-        (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/create-dashboard-subscription"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:dashboard_id 1
-                                                                :email        "user@example.com"
-                                                                :schedule     {:frequency "monthly"
-                                                                               :hour 15
-                                                                               :day_of_month "middle-of-month"}}
-                                              :conversation_id conversation-id})]
-          (is (=? [{:dashboard-id 1
-                    :email        "user@example.com"
-                    :schedule     {:frequency :monthly
-                                   :hour 15
-                                   :day-of-month :middle-of-month}}]
-                  @tool-requests))
-          (is (=? {:output output
-                   :conversation_id conversation-id}
-                  response)))))))
-
 (deftest field-values-test
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
           ai-token (ai-session-token)
           table-id (mt/id :people)
+          field-id (-> table-id
+                       metabot-v3.tools.u/table-field-id-prefix
+                       (str 4))
           response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/field-values"
                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:arguments       {:entity_type "table"
                                                             :entity_id   table-id
-                                                            :field_id    (-> table-id
-                                                                             metabot-v3.tools.u/table-field-id-prefix
-                                                                             (str 4)) ; name
+                                                            :field_id    field-id ; name
                                                             :limit       15}
                                           :conversation_id conversation-id})]
-      (is (=? {:structured_output {:statistics
-                                   {:distinct_count 2499,
-                                    :percent_null 0.0,
-                                    :percent_json 0.0,
-                                    :percent_url 0.0,
-                                    :percent_email 0.0,
-                                    :percent_state 0.0,
-                                    :average_length 13.532}}
+      (is (=? {:structured_output {:field_id field-id
+                                   :value_metadata
+                                   {:statistics
+                                    {:distinct_count 2499,
+                                     :percent_null 0.0,
+                                     :percent_json 0.0,
+                                     :percent_url 0.0,
+                                     :percent_email 0.0,
+                                     :percent_state 0.0,
+                                     :average_length 13.532}}}
                :conversation_id conversation-id}
               response)))))
 
@@ -132,56 +103,6 @@
                                          :query_id query-id
                                          :query {}
                                          :result_columns []}
-                     :conversation_id conversation-id}
-                    response))))))))
-
-(deftest find-outliers-test
-  (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233-2"}
-                       {:query {:database 1}, :result_field_id "q1233-2"}
-                       {:metric_id 1}
-                       {:report_id 1, :result_field_id "c131-3"}
-                       {:table_id "card__1", :result_field_id "t42-7"}]]
-    (mt/with-premium-features #{:metabot-v3}
-      (let [tool-requests (atom [])
-            conversation-id (str (random-uuid))
-            ai-token (ai-session-token)
-            output [{:dimension "2024-11-13", :value 42}]]
-        (with-redefs [metabot-v3.tools.find-outliers/find-outliers
-                      (fn [arguments]
-                        (swap! tool-requests conj arguments)
-                        {:structured-output output})]
-          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/find-outliers"
-                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                               {:arguments       {:data_source data-source}
-                                                :conversation_id conversation-id})]
-            (is (=? {:structured_output output
-                     :conversation_id conversation-id}
-                    response))))))))
-
-(deftest generate-insights-test
-  (doseq [data-source [{:query {:database 1}}
-                       {:metric_id 1}
-                       {:report_id 1}
-                       {:table_id "card__1"}]]
-    (mt/with-premium-features #{:metabot-v3}
-      (let [tool-requests (atom [])
-            conversation-id (str (random-uuid))
-            output (str (random-uuid))
-            redirect-url "https://example.com/redirect-target"
-            ai-token (ai-session-token)]
-        (with-redefs [metabot-v3.tools.generate-insights/generate-insights
-                      (fn [arguments]
-                        (swap! tool-requests conj arguments)
-                        {:output output
-                         :reactions [{:type :metabot.reaction/redirect
-                                      :url  redirect-url}]})]
-          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/generate-insights"
-                                               {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                               {:arguments       {:for data-source}
-                                                :conversation_id conversation-id})]
-            (is (=? {:output output
-                     :reactions [{:type "metabot.reaction/redirect"
-                                  :url  redirect-url}]
                      :conversation_id conversation-id}
                     response))))))))
 
@@ -1467,49 +1388,3 @@
                                           {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                           {:arguments {:snippet_id (:id snippet-1)}
                                            :conversation_id conversation-id})))))))))
-
-(deftest check-transform-dependencies-test
-  ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
-  ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
-  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies :transforms-python}
-    (let [conversation-id (str (random-uuid))
-          rasta-ai-token (ai-session-token)
-          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
-          people-query (lib/native-query (mt/metadata-provider) "SELECT * FROM people")
-          modified-source {:type "query" :query people-query}]
-      (metabot-v3.tools.dependencies-test/with-dependent-transforms! [transform1-id _]
-        (testing "400 for invalid args"
-          (is (=? {:errors
-                   {:arguments {:source string?}},
-                   :specific-errors {:arguments {:source ["missing required key, received: nil"]}}}
-                  (mt/user-http-request :rasta :post 400 "ee/metabot-tools/check-transform-dependencies"
-                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                        {:arguments {:transform_id 1}
-                                         :conversation_id conversation-id}))))
-        (testing "403 for insufficient permissions"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/check-transform-dependencies"
-                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
-                                       {:arguments {:transform_id transform1-id
-                                                    :source modified-source}
-                                        :conversation_id conversation-id}))))
-        (testing "404 returned for non-existent snippet"
-          (is (= "Not found."
-                 (let [max-transform-id (t2/select-one-fn :max-id [:model/Transform [:%max.id :max-id]])]
-                   (mt/user-http-request :rasta :post 404 "ee/metabot-tools/check-transform-dependencies"
-                                         {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                         {:arguments {:transform_id (inc max-transform-id)
-                                                      :source modified-source}
-                                          :conversation_id conversation-id})))))
-        (testing "Edits with broken dependencies"
-          (is (=? {:structured_output {:success false
-                                       :bad_question_count 0
-                                       :bad_questions nil
-                                       :bad_transform_count 1
-                                       :bad_transforms seq?}
-                   :conversation_id conversation-id}
-                  (mt/user-http-request :rasta :post 200 "ee/metabot-tools/check-transform-dependencies"
-                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
-                                        {:arguments {:transform_id transform1-id
-                                                     :source modified-source}
-                                         :conversation_id conversation-id}))))))))

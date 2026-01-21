@@ -34,58 +34,30 @@
                     {:agent-error? true}))))
 
 (defn- apply-sql-edit
-  "Apply an edit to SQL content.
+  "Apply a targeted string replacement to SQL content."
+  [sql {:keys [old_string new_string replace_all]}]
+  (when-not (and (string? old_string) (string? new_string))
+    (throw (ex-info (tru "Each edit must include old_string and new_string")
+                    {:agent-error? true})))
+  (let [pattern (re-pattern (java.util.regex.Pattern/quote old_string))
+        occurrences (count (re-seq pattern sql))]
+    (cond
+      (zero? occurrences)
+      (throw (ex-info (tru "Text to replace not found: {0}" old_string)
+                      {:agent-error? true
+                       :old old_string}))
 
-  Edit can be:
-  - {:type :replace :old <string> :new <string>} - Replace first occurrence
-  - {:type :replace-all :old <string> :new <string>} - Replace all occurrences
-  - {:type :append :text <string>} - Append to end
-  - {:type :prepend :text <string>} - Prepend to start
-  - {:type :insert-after :marker <string> :text <string>} - Insert after marker
-  - {:type :insert-before :marker <string> :text <string>} - Insert before marker"
-  [sql edit]
-  (case (:type edit)
-    :replace
-    (let [{:keys [old new]} edit]
-      (when-not (str/includes? sql old)
-        (throw (ex-info (tru "Text to replace not found: {0}" old)
-                        {:agent-error? true
-                         :old old})))
-      (str/replace-first sql old new))
+      (and (> occurrences 1) (not replace_all))
+      (throw (ex-info (tru "Text to replace found multiple times: {0}" old_string)
+                      {:agent-error? true
+                       :old old_string
+                       :occurrences occurrences}))
 
-    :replace-all
-    (let [{:keys [old new]} edit]
-      (when-not (str/includes? sql old)
-        (throw (ex-info (tru "Text to replace not found: {0}" old)
-                        {:agent-error? true
-                         :old old})))
-      (str/replace sql old new))
+      replace_all
+      (str/replace sql old_string new_string)
 
-    :append
-    (str sql "\n" (:text edit))
-
-    :prepend
-    (str (:text edit) "\n" sql)
-
-    :insert-after
-    (let [{:keys [marker text]} edit]
-      (when-not (str/includes? sql marker)
-        (throw (ex-info (tru "Marker not found: {0}" marker)
-                        {:agent-error? true
-                         :marker marker})))
-      (str/replace-first sql marker (str marker "\n" text)))
-
-    :insert-before
-    (let [{:keys [marker text]} edit]
-      (when-not (str/includes? sql marker)
-        (throw (ex-info (tru "Marker not found: {0}" marker)
-                        {:agent-error? true
-                         :marker marker})))
-      (str/replace-first sql marker (str text "\n" marker)))
-
-    (throw (ex-info (tru "Unknown edit type: {0}" (:type edit))
-                    {:agent-error? true
-                     :type (:type edit)}))))
+      :else
+      (str/replace-first sql old_string new_string))))
 
 (defn edit-sql-query
   "Edit an existing SQL query from in-memory state.
@@ -100,8 +72,8 @@
   - :query-id - The ID of the updated query
   - :query-content - The updated SQL content
   - :database - Database ID"
-  [{:keys [query-id edit queries-state name description]}]
-  (log/info "Editing SQL query" {:query-id query-id :edit-type (:type edit)})
+  [{:keys [query-id edits queries-state name description]}]
+  (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   ;; Look up query from in-memory state
   (let [query-id (str query-id)
@@ -118,8 +90,8 @@
                         {:agent-error? true
                          :query-id query-id})))
 
-      ;; Apply the edit
-      (let [new-sql (apply-sql-edit current-sql edit)
+      ;; Apply edits sequentially
+      (let [new-sql (reduce apply-sql-edit current-sql edits)
             updated-query (update-query-sql query new-sql)]
         {:query-id      query-id
          :query-content new-sql

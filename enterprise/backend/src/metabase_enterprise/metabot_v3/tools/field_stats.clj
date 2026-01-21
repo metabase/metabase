@@ -14,7 +14,7 @@
                       (set/rename-keys {:nil% :percent-null})
                       (into (vals (:type fp))))})
    (when-let [fvs (-> fvs :values not-empty)]
-     {:values (into [] (if limit (take limit) identity) fvs)})))
+     {:field_values (into [] (if limit (take limit) identity) fvs)})))
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint
@@ -33,39 +33,42 @@
 (defn- table-field-stats
   [table-id agent-field-id limit]
   (try
-    (let [query (or (metabot-v3.tools.u/table-query table-id)
-                    (throw (ex-info (str "No table found with ID " table-id)
-                                    {:agent-error? true :status-code 404})))
+    (let [query           (or (metabot-v3.tools.u/table-query table-id)
+                              (throw (ex-info (str "No table found with ID " table-id)
+                                              {:agent-error? true :status-code 404})))
           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
-          visible-cols (lib/visible-columns query)
-          col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
-      {:structured-output (field-statistics col limit)})
+          visible-cols    (lib/visible-columns query)
+          col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+      {:structured-output {:field_id       agent-field-id
+                           :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
 
 (defn- card-field-stats
   [card-id agent-field-id limit card-type]
   (try
-    (let [query (or (metabot-v3.tools.u/card-query card-id)
-                    (throw (ex-info (str "No " card-type " found with ID " card-id)
-                                    {:agent-error? true :status-code 404})))
+    (let [query           (or (metabot-v3.tools.u/card-query card-id)
+                              (throw (ex-info (str "No " card-type " found with ID " card-id)
+                                              {:agent-error? true :status-code 404})))
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
-          visible-cols (lib/visible-columns query)
-          col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
-      {:structured-output (field-statistics col limit)})
+          visible-cols    (lib/visible-columns query)
+          col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+      {:structured-output {:field_id       agent-field-id
+                           :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
 
 (defn- metric-field-stats
   [metric-id agent-field-id limit]
   (try
-    (let [query (or (metabot-v3.tools.u/metric-query metric-id)
-                    (throw (ex-info (str "No metric found with ID " metric-id)
-                                    {:agent-error? true :status-code 404})))
+    (let [query           (or (metabot-v3.tools.u/metric-query metric-id)
+                              (throw (ex-info (str "No metric found with ID " metric-id)
+                                              {:agent-error? true :status-code 404})))
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
           filterable-cols (lib/filterable-columns query)
-          col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
-      {:structured-output (field-statistics col limit)})
+          col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
+      {:structured-output {:field_id       agent-field-id
+                           :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
 
