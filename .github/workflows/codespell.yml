@@ -2,8 +2,8 @@ name: Codespell
 
 on:
   schedule:
-    # Run weekly on Saturday at 6:00 AM UTC
-    - cron: "0 6 * * 6"
+    # Run nightly at 4:00 AM UTC
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 jobs:
