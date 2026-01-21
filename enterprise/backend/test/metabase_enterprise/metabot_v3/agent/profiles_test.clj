@@ -4,44 +4,63 @@
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]))
 
 (deftest get-profile-test
-  (testing "retrieves embedding profile"
-    (let [profile (profiles/get-profile :embedding)]
+  (testing "retrieves embedding_next profile"
+    (let [profile (profiles/get-profile :embedding_next)]
       (is (some? profile))
-      (is (= "claude-sonnet-4-5-20250929" (:model profile)))
-      (is (= 6 (:max-iterations profile)))
+      (is (= "claude-haiku-4-5" (:model profile)))
+      (is (= 10 (:max-iterations profile)))
       (is (= 0.3 (:temperature profile)))
       (is (vector? (:tools profile)))
-      (is (contains? (set (:tools profile)) "search"))
-      (is (contains? (set (:tools profile)) "query_metric"))))
+      (is (contains? (set (:tools profile)) "construct_notebook_query"))
+      (is (contains? (set (:tools profile)) "list_available_data_sources"))))
 
   (testing "retrieves internal profile"
     (let [profile (profiles/get-profile :internal)]
       (is (some? profile))
-      (is (= "claude-sonnet-4-5-20250929" (:model profile)))
+      (is (= "claude-haiku-4-5" (:model profile)))
       (is (= 10 (:max-iterations profile)))
       (is (= 0.3 (:temperature profile)))
       (is (vector? (:tools profile)))
-      ;; Should have more tools than embedding profile
+      ;; Should have more tools than embedding_next profile
       (is (> (count (:tools profile)) 5))
       (is (contains? (set (:tools profile)) "search"))
-      (is (contains? (set (:tools profile)) "find_outliers"))
-      (is (contains? (set (:tools profile)) "generate_insights"))))
+      (is (contains? (set (:tools profile)) "create_sql_query"))
+      (is (contains? (set (:tools profile)) "create_chart"))))
 
-  (testing "retrieves transforms-codegen profile"
-    (let [profile (profiles/get-profile :transforms-codegen)]
+  (testing "retrieves transforms_codegen profile"
+    (let [profile (profiles/get-profile :transforms_codegen)]
       (is (some? profile))
-      (is (= "claude-sonnet-4-5-20250929" (:model profile)))
+      (is (= "claude-haiku-4-5" (:model profile)))
       (is (= 30 (:max-iterations profile)))
       (is (= 0.3 (:temperature profile)))
       (is (vector? (:tools profile)))
       (is (contains? (set (:tools profile)) "search"))
-      (is (contains? (set (:tools profile)) "get_transform_details"))))
+      (is (contains? (set (:tools profile)) "get_transform_details"))
+      (is (contains? (set (:tools profile)) "list_available_fields"))))
+
+  (testing "retrieves sql profile"
+    (let [profile (profiles/get-profile :sql)]
+      (is (some? profile))
+      (is (= "claude-haiku-4-5" (:model profile)))
+      (is (= 10 (:max-iterations profile)))
+      (is (= 0.3 (:temperature profile)))
+      (is (contains? (set (:tools profile)) "search"))
+      (is (contains? (set (:tools profile)) "create_sql_query"))))
+
+  (testing "retrieves nlq profile"
+    (let [profile (profiles/get-profile :nlq)]
+      (is (some? profile))
+      (is (= "claude-haiku-4-5" (:model profile)))
+      (is (= 10 (:max-iterations profile)))
+      (is (= 0.3 (:temperature profile)))
+      (is (contains? (set (:tools profile)) "search"))
+      (is (contains? (set (:tools profile)) "construct_notebook_query"))))
 
   (testing "returns nil for unknown profile"
     (is (nil? (profiles/get-profile :unknown-profile))))
 
   (testing "all profiles have required keys"
-    (doseq [profile-id [:embedding :internal :transforms-codegen :sql-only :nlq-only :next :beta-customer]]
+    (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq]]
       (let [profile (profiles/get-profile profile-id)]
         (is (contains? profile :model))
         (is (contains? profile :max-iterations))
