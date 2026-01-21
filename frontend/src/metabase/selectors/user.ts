@@ -64,5 +64,3 @@ export const getIsTenantUser = createSelector(
   [getUser],
   (user) => user?.tenant_id != null,
 );
-
-export const getUserCanWriteSegments = getUserIsAdmin;

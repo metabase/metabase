@@ -19,6 +19,7 @@ function setup({ measures = [], table = {}, remoteSyncType }: SetupOpts = {}) {
     db_id: 1,
     schema: "PUBLIC",
     measures,
+    is_published: true,
     ...table,
   });
 
@@ -74,17 +75,32 @@ describe("MeasureList", () => {
     );
   });
 
-  it("should render a 'New measure' button", () => {
-    setup();
-    expect(
-      screen.getByRole("link", { name: /New measure/i }),
-    ).toBeInTheDocument();
-  });
+  describe("'new measure' link", () => {
+    it("is rendered by default", () => {
+      setup();
 
-  it("should not render 'New measure' button when remote sync is set to read-only", () => {
-    setup({ remoteSyncType: "read-only" });
-    expect(
-      screen.queryByRole("link", { name: /New measure/i }),
-    ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /New measure/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("is not rendered when remote sync is set to read-only", () => {
+      setup({ remoteSyncType: "read-only" });
+
+      expect(
+        screen.queryByRole("link", { name: /New measure/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is still rendered when remote sync is set to read-only but table is not published", () => {
+      setup({
+        remoteSyncType: "read-only",
+        table: { is_published: false },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /New measure/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
