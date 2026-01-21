@@ -576,11 +576,10 @@ describe(suiteTitle, () => {
     cy.log("snippet should show alerts as false");
     getEmbedSidebar().findByText("Get code").click();
 
-    // TODO: (Kelvin 2026-01-16) Uncomment this assertion after (metabase#68285) is fixed
-    // H.expectUnstructuredSnowplowEvent({
-    //   event: "embed_wizard_options_completed",
-    //   event_detail: "settings=default",
-    // });
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
 
     cy.log("test non-guest embeds");
     getEmbedSidebar().within(() => {
@@ -589,7 +588,11 @@ describe(suiteTitle, () => {
       cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.button("Next").click();
       cy.button("Next").click();
 
