@@ -24,9 +24,9 @@ export const SdkBreadcrumbs = ({
   style,
   onBreadcrumbClick,
 }: SdkBreadcrumbProps) => {
-  const { breadcrumbs, navigateTo } = useSdkBreadcrumbs();
+  const { breadcrumbs, navigateTo, isBreadcrumbEnabled } = useSdkBreadcrumbs();
 
-  if (breadcrumbs.length === 0) {
+  if (breadcrumbs.length === 0 || !isBreadcrumbEnabled) {
     return null;
   }
 

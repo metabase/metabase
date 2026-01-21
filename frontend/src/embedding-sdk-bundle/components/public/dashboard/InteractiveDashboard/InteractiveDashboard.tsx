@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -12,7 +13,11 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
+import {
+  SdkDashboard,
+  type SdkDashboardInnerProps,
+  type SdkDashboardProps,
+} from "../SdkDashboard";
 
 import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
 
@@ -40,23 +45,29 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     [plugins],
   );
 
-  return (
-    <SdkDashboard
-      {...props}
-      getClickActionMode={getClickActionMode}
-      dashboardActions={[
+  const dashboardProps: SdkDashboardInnerProps = useMemo(
+    () => ({
+      ...props,
+      getClickActionMode,
+      dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
-      ]}
-      dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
+      ],
+      dashcardMenu: ({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
         isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
-        )
-      }
-    />
+        ),
+    }),
+    [props, getClickActionMode],
+  );
+
+  return (
+    <SdkInternalNavigationProvider dashboardProps={dashboardProps}>
+      <SdkDashboard {...dashboardProps} />
+    </SdkInternalNavigationProvider>
   );
 };
 

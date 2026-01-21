@@ -1,6 +1,9 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import type { SdkState } from "embedding-sdk-bundle/store/types";
+import type {
+  SdkInternalNavigationEntry,
+  SdkState,
+} from "embedding-sdk-bundle/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
@@ -42,6 +45,11 @@ export const setPlugins = createAction<MetabasePluginsConfig | null>(
   SET_PLUGINS,
 );
 
+const SET_GLOBAL_OPTIONS = "sdk/SET_GLOBAL_OPTIONS";
+export const setGlobalOptions = createAction<{
+  enableInternalNavigation: boolean;
+}>(SET_GLOBAL_OPTIONS);
+
 const SET_EVENT_HANDLERS = "sdk/SET_EVENT_HANDLERS";
 export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
   SET_EVENT_HANDLERS,
@@ -50,6 +58,25 @@ export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
 const SET_USAGE_PROBLEM = "sdk/SET_USAGE_PROBLEM";
 export const setUsageProblem = createAction<SdkUsageProblem | null>(
   SET_USAGE_PROBLEM,
+);
+
+const INIT_SDK_INTERNAL_NAVIGATION = "sdk/INIT_INTERNAL_NAVIGATION";
+export const initSdkInternalNavigation =
+  createAction<SdkInternalNavigationEntry>(INIT_SDK_INTERNAL_NAVIGATION);
+
+const PUSH_SDK_INTERNAL_NAVIGATION = "sdk/PUSH_INTERNAL_NAVIGATION";
+export const pushSdkInternalNavigation =
+  createAction<SdkInternalNavigationEntry>(PUSH_SDK_INTERNAL_NAVIGATION);
+
+const POP_SDK_INTERNAL_NAVIGATION = "sdk/POP_INTERNAL_NAVIGATION";
+export const popSdkInternalNavigation = createAction(
+  POP_SDK_INTERNAL_NAVIGATION,
+);
+
+const UPDATE_INITIAL_SDK_INTERNAL_NAVIGATION_NAME =
+  "sdk/UPDATE_INITIAL_INTERNAL_NAVIGATION_NAME";
+export const updateInitialSdkInternalNavigationName = createAction<string>(
+  UPDATE_INITIAL_SDK_INTERNAL_NAVIGATION_NAME,
 );
 
 const initialState: SdkState = {
@@ -68,6 +95,7 @@ const initialState: SdkState = {
   usageProblem: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
+  internalNavigationStack: [],
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -151,5 +179,23 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setUsageProblem, (state, action) => {
     state.usageProblem = action.payload;
+  });
+
+  builder.addCase(initSdkInternalNavigation, (state, action) => {
+    state.internalNavigationStack = [action.payload];
+  });
+
+  builder.addCase(pushSdkInternalNavigation, (state, action) => {
+    state.internalNavigationStack.push(action.payload);
+  });
+
+  builder.addCase(popSdkInternalNavigation, (state) => {
+    state.internalNavigationStack.pop();
+  });
+
+  builder.addCase(updateInitialSdkInternalNavigationName, (state, action) => {
+    if (state.internalNavigationStack.length > 0) {
+      state.internalNavigationStack[0].name = action.payload;
+    }
   });
 });

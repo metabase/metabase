@@ -53,6 +53,7 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
   withSubscriptions: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
+  enableNavigation: Yup.mixed().optional(),
 }).noUnknown();
 
 export const editableDashboardSchema: FunctionSchema = {
