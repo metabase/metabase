@@ -140,7 +140,7 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    const dimensionValue = parseTimestamp(datum[X_AXIS_DATA_KEY]);
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
