@@ -578,6 +578,9 @@ describe("scenarios > data studio > datamodel", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "data_studio_table_picker_filters_applied",
         });
+        H.expectUnstructuredSnowplowEvent({
+          event: "data_studio_table_picker_search_performed",
+        });
 
         cy.get<TableId>("@goldTableId").then(expectTableVisible);
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);

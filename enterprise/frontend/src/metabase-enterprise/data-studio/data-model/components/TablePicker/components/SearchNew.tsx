@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -99,7 +100,11 @@ export function SearchNew({
 }: SearchNewProps) {
   const { resetSelection } = useSelection();
   const routeParams = parseRouteParams(params);
-  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
+  const {
+    data: tables,
+    isLoading: isLoadingTables,
+    isFetching: isFetchingTables,
+  } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
     "data-source":
@@ -120,6 +125,8 @@ export function SearchNew({
     {},
     { defaultExpanded: true },
   );
+
+  const previousIsFetchingTables = usePrevious(isFetchingTables);
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -146,10 +153,10 @@ export function SearchNew({
   }, [query, filters, resetSelection]);
 
   useEffect(() => {
-    if (!isLoading && query.trim().length > 0) {
+    if (previousIsFetchingTables === true && isFetchingTables === false) {
       trackDataStudioTablePickerSearchPerformed();
     }
-  }, [isLoading, query]);
+  }, [previousIsFetchingTables, isFetchingTables]);
 
   if (isLoading) {
     return (
