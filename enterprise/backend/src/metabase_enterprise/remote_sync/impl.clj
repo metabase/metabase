@@ -137,7 +137,7 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [path-filters (cond-> [#"collections/.*" #"databases/.*"]
+            (let [path-filters (cond-> [#"collections/.*" #"databases/.*" #"actions/.*"]
                                  (settings/remote-sync-transforms)
                                  (conj #"transforms/.*"))
                   ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})

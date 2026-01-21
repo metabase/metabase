@@ -1089,4 +1089,71 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("be.visible");
     });
   });
+
+  it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
+    // Use a smaller viewport to ensure labels need to rotate
+    cy.viewport(940, 800);
+
+    const query = `
+      SELECT * FROM (
+        VALUES
+        ('Alnyba', 390000),
+        ('Bvsieginlri', 500000),
+        ('Cflonta', 700000),
+        ('Dgamruh', 50000),
+        ('Eitstrugb', 130000),
+        ('Farnotcs', 107000),
+        ('Gkro', 750000)
+      ) AS Data(LABEL, amount)
+    `;
+
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "native",
+        native: { query, "template-tags": {} },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["LABEL"],
+        "graph.metrics": ["amount"],
+      },
+    });
+
+    // Open the data reference sidebar to squish the data further
+    cy.findByLabelText("Learn about your data").click();
+
+    cy.wait("@dataset");
+    H.echartsContainer().should("be.visible");
+
+    // Verify all 7 labels are visible and rotated (not hidden)
+    const expectedLabels = [
+      "Alnyba",
+      "Bvsieginlri",
+      "Cflonta",
+      "Dgamruh",
+      "Eitstrugb",
+      "Farnotcs",
+      "Gkro",
+    ];
+
+    H.echartsContainer().within(() => {
+      // When labels don't fit horizontally, ECharts rotates them
+      // Rotated labels have a transform attribute containing rotation
+      expectedLabels.forEach((label) => {
+        cy.contains("text", label).should("be.visible");
+      });
+
+      // Verify labels are rotated by checking for transform attribute with rotation
+      // ECharts applies rotation via transform attribute when labels don't fit
+      cy.get("text")
+        .filter((_, el) =>
+          expectedLabels.some((label) => el.textContent?.includes(label)),
+        )
+        .should("have.length", 7)
+        .first()
+        .should("have.attr", "transform")
+        .and("match", /matrix/);
+    });
+  });
 });

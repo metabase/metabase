@@ -11,6 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
+import { getUserCanWriteMeasures } from "metabase-enterprise/data-studio/selectors";
 import * as Lib from "metabase-lib";
 import type { Measure } from "metabase-types/api";
 
@@ -35,6 +36,10 @@ export function MeasureDetailPage({
   onRemove,
 }: MeasureDetailPageProps) {
   const metadata = useSelector(getMetadata);
+  const table = metadata.tables[measure.table_id];
+  const canWriteMeasures = useSelector((state) =>
+    getUserCanWriteMeasures(state, table?.is_published),
+  );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [description, setDescription] = useState(measure.description ?? "");
@@ -117,12 +122,14 @@ export function MeasureDetailPage({
             </Group>
           )
         }
+        readOnly={!canWriteMeasures}
       />
       <MeasureEditor
         query={query}
         description={description}
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
+        readOnly={!canWriteMeasures}
       />
       <LeaveRouteConfirmModal
         key={measure.id}

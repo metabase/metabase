@@ -222,6 +222,12 @@
      field-ref #(-> %
                     (assoc ::source-table (source-table query path col)
                            ::source-alias (escaped-source-alias query path join-alias source-col-alias))
+                    ;; For implicit joins, ::source-table will be a string (join alias) rather than an
+                    ;; integer table ID. We need to explicitly enable coercion since the SQL QP checks
+                    ;; for (pos-int? ::source-table) to determine if coercion should be applied. This
+                    ;; follows the same pattern used by the SparkSQL driver. See #67704.
+                    (cond-> implicit-join?
+                      (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
                     (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref

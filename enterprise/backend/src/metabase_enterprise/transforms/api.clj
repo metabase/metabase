@@ -102,7 +102,7 @@
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
+          (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -137,7 +137,9 @@
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
   (api/create-check :model/Transform body)
   (check-database-feature body)
   (check-feature-enabled! body)
@@ -147,15 +149,19 @@
              (deferred-tru "A table with that name already exists."))
   (let [transform (t2/with-transaction [_]
                     (let [tag-ids (:tag_ids body)
+                          ;; Set owner_user_id to current user if not explicitly provided
+                          owner-user-id (when-not (:owner_email body)
+                                          (or (:owner_user_id body) api/*current-user-id*))
                           transform (t2/insert-returning-instance!
                                      :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
-                                            :creator_id api/*current-user-id*))]
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id :owner_email])
+                                            :creator_id api/*current-user-id*
+                                            :owner_user_id owner-user-id))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
                         (transform.model/update-transform-tags! (:id transform) tag-ids))
                       ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
+                      (t2/hydrate transform :transform_tag_ids :creator :owner)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
     (python-source-table-ref->table-id transform)))
 
@@ -165,7 +171,7 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
         python-source-table-ref->table-id)))
@@ -193,7 +199,7 @@
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
-    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator))))
+    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator :owner))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -238,7 +244,9 @@
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
   (api/write-check :model/Transform id)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
@@ -260,7 +268,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (python-source-table-ref->table-id transform)))
 
@@ -319,7 +327,8 @@
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
-                                             :run-method :manual}))
+                                             :run-method :manual
+                                             :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

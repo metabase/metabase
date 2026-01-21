@@ -67,7 +67,7 @@
     ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
     ;; implementation
     (remove-method driver/initialize! driver)
-    ;; ok, do the init steps listed in the plugin mainfest
+    ;; ok, do the init steps listed in the plugin manifest
     (u/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
       (init-steps/do-init-steps! init-steps))
     ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has
