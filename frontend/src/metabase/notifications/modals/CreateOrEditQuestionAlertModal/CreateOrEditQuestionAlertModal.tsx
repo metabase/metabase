@@ -121,15 +121,24 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
 }: CreateOrEditQuestionAlertModalWithQuestionProps) => {
   const question = useSelector(getQuestion);
 
-  return (
-    <CreateOrEditQuestionAlertModal
-      question={question}
-      editingNotification={editingNotification}
-      onAlertCreated={onAlertCreated!}
-      onAlertUpdated={onAlertUpdated!}
-      onClose={onClose}
-    />
-  );
+  if (editingNotification) {
+    return (
+      <CreateOrEditQuestionAlertModal
+        question={question}
+        editingNotification={editingNotification}
+        onAlertUpdated={onAlertUpdated}
+        onClose={onClose}
+      />
+    );
+  } else {
+    return (
+      <CreateOrEditQuestionAlertModal
+        question={question}
+        onAlertCreated={onAlertCreated}
+        onClose={onClose}
+      />
+    );
+  }
 };
 
 export const CreateOrEditQuestionAlertModal = ({
