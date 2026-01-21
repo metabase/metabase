@@ -205,6 +205,17 @@
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
     native-model? (conj :id)))
 
+(def ^:private internal-join-alias-keys
+  "Keys that track internal join information. These should not leak through the model abstraction
+   boundary to downstream queries. See #65532."
+  [:lib/original-join-alias :source-alias])
+
+(defn- strip-internal-join-aliases
+  "Remove internal join alias keys from a column. Models should present a 'flat table' abstraction,
+   so internal joins shouldn't affect how columns are displayed in downstream queries."
+  [col]
+  (apply dissoc col internal-join-alias-keys))
+
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
@@ -263,10 +274,16 @@
                                    (lib.util/native-stage? -1)))]
         (not-empty
          (into []
-               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
-               ;; 'crazy long' column name then we need to use that in the next stage.
-               ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
+               (comp
+                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
+                ;; 'crazy long' column name then we need to use that in the next stage.
+                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
+                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
+                ;; Models should present a "flat table" abstraction - internal joins shouldn't leak to downstream queries.
+                ;; Strip join alias keys so display names don't get prefixed with join aliases. See #65532.
+                (if (= (:type card) :model)
+                  (map strip-internal-join-aliases)
+                  identity))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols native-model?))))))))
 

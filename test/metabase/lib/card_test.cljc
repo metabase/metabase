@@ -655,14 +655,12 @@
           ;; Create a query that uses this model as source
           query         (lib/query mp (lib.metadata/card mp 1))
           returned-cols (lib/returned-columns query)]
-      (testing "Model columns with custom display names should not have join prefix"
-        (let [product-id-col (m/find-first #(= (:name %) "ID_2") returned-cols)]
-          (is (some? product-id-col)
-              "Should find the joined ID column")
-          (when product-id-col
-            (is (= "Product ID"
-                   (lib.metadata.calculation/display-name query -1 product-id-col :long))
-                "Joined column with custom model display name should not have join prefix")))))))
+      (let [product-id-col (m/find-first #(= (:name %) "ID_2") returned-cols)]
+        (is (some? product-id-col)
+            "Should find the joined ID column")
+        (when product-id-col
+          (is (= "Product ID"
+                 (lib.metadata.calculation/display-name query -1 product-id-col :long))))))))
 
 (deftest ^:parallel card-returned-columns-source-model-without-query-test
   (testing "should not throw when the source model does not have a query (metabase#68012)"

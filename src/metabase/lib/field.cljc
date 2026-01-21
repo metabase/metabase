@@ -158,7 +158,7 @@
 (defn- field-display-name-add-join-alias
   [query
    stage-number
-   {current-join-alias   :metabase.lib.join/join-alias
+   {join-alias           :metabase.lib.join/join-alias
     original-join-alias  :lib/original-join-alias
     ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
@@ -166,11 +166,10 @@
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
-    model-display-name  :lib/model-display-name
     :as                  _col}
    style
    display-name]
-  (let [join-alias        (or current-join-alias
+  (let [join-alias        (or join-alias
                               original-join-alias
                               source-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
@@ -180,16 +179,7 @@
                                      ;; Otherwise we'll end up with display names like
                                      ;;
                                      ;;    Products → Products → Category
-                                     (not (str/includes? display-name " → "))
-                                     ;; Don't prepend a join display name if this column has a model display name
-                                     ;; that doesn't already contain a join prefix AND the column is from the source
-                                     ;; (not from a current join). Columns from joined models should still get their
-                                     ;; join prefix. Note: we only check current-join-alias, not original-join-alias,
-                                     ;; because original-join-alias is from the model's internal joins which should
-                                     ;; be hidden. See #65532.
-                                     (not (and model-display-name
-                                               (not (str/includes? model-display-name " → "))
-                                               (not current-join-alias))))
+                                     (not (str/includes? display-name " → ")))
                             (or (when fk-field-id
                                   ;; Implicitly joined column pickers don't use the target table's name, they use the
                                   ;; FK field's name with "ID" dropped instead.
