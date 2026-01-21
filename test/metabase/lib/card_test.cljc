@@ -648,7 +648,7 @@
                                  :dataset-query   model-query
                                  :result-metadata (mapv (fn [col]
                                                           (if (= (:name col) "ID_2")
-                                                            (assoc col :display-name "Product ID")
+                                                            (assoc col :display-name "IDX")
                                                             col))
                                                         model-cols)
                                  :type            :model}]})
@@ -659,7 +659,7 @@
         (is (some? product-id-col)
             "Should find the joined ID column")
         (when product-id-col
-          (is (= "Product ID"
+          (is (= "IDX"
                  (lib.metadata.calculation/display-name query -1 product-id-col :long))))))))
 
 (deftest ^:parallel card-returned-columns-source-model-without-query-test
