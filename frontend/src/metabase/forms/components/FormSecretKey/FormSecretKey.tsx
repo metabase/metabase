@@ -56,7 +56,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
     [setTouched, onBlur],
   );
   const generateToken = async () => {
-    const result = await UtilApi.random_token();
+    const result = (await UtilApi.random_token()) as { token: string };
     setValue(result.token);
   };
 

@@ -52,6 +52,7 @@ import type {
   Card,
   CardId,
   DashCardId,
+  Dashboard,
   DashboardCard,
   DashboardId,
   Dataset,
@@ -320,7 +321,7 @@ export const fetchCardDataAction = createAsyncThunk<
 
     // make the actual request
     if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         MetabaseApi.datasetEndpoint(
           {
             endpoint: datasetQuery.endpoint,
@@ -328,7 +329,7 @@ export const fetchCardDataAction = createAsyncThunk<
           },
           queryOptions,
         ),
-      );
+      )) as Dataset | { error: unknown } | null;
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
         maybeUsePivotEndpoint(
@@ -660,27 +661,27 @@ export const fetchDashboard = createAsyncThunk(
         };
         result = denormalize(dashId, dashboardSchema, entities);
       } else if (dashboardType === "public") {
-        result = await PublicApi.dashboard(
+        const response = (await PublicApi.dashboard(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
           { cancelled: fetchDashboardCancellation.promise },
-        );
+        )) as Dashboard;
         result = {
-          ...result,
+          ...response,
           id: dashId,
-          dashcards: result.dashcards.map((dc: DashboardCard) => ({
+          dashcards: response.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard(
+        const response = (await EmbedApi.dashboard(
           { token: dashId, dashboard_load_id: dashboardLoadId },
           { cancelled: fetchDashboardCancellation.promise },
-        );
+        )) as Dashboard;
         result = {
-          ...result,
+          ...response,
           id: dashId,
-          dashcards: result.dashcards.map((dc: DashboardCard) => ({
+          dashcards: response.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -688,7 +689,7 @@ export const fetchDashboard = createAsyncThunk(
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
-        const [response] = await Promise.all([
+        const [response] = (await Promise.all([
           AutoApi.dashboard(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
@@ -702,7 +703,7 @@ export const fetchDashboard = createAsyncThunk(
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
-        ]);
+        ])) as [Dashboard, unknown];
         result = {
           ...response,
           id: dashId,

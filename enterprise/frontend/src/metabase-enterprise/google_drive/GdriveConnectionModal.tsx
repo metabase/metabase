@@ -143,7 +143,7 @@ function GoogleSheetsConnectModal({
         color="brand"
         c="text-primary-inverse"
         value={linkType}
-        onChange={setLinkType}
+        onChange={(value) => setLinkType(value as UploadType)}
         data={
           [
             { value: "folder", label: t`Entire folder` },

@@ -21,12 +21,12 @@ export const useCacheConfigs = ({
   configurableModels: CacheableModel[];
   id?: number;
 }) => {
-  const configsApiResult = useAsync(async () => {
+  const configsApiResult = useAsync(async (): Promise<CacheConfig[]> => {
     const configsForEachModel = await Promise.all(
       configurableModels.map((model) =>
-        CacheConfigApi.list({ model, id }).then(
-          (response: CacheConfigAPIResponse) => response.data,
-        ),
+        (
+          CacheConfigApi.list({ model, id }) as Promise<CacheConfigAPIResponse>
+        ).then((response) => response.data),
       ),
     );
     const configs = _.flatten(configsForEachModel);

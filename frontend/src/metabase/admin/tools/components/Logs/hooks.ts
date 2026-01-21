@@ -24,7 +24,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
 
     try {
       isFetchingRef.current = true;
-      const newLogs: Log[] = await UtilApi.logs();
+      const newLogs = (await UtilApi.logs()) as Log[];
       if (isMountedRef.current) {
         setLoaded(true);
         setError(null);

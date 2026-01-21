@@ -191,7 +191,7 @@ export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
   async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
     const params = getDatasetParams(opts);
-    const response = await getDatasetResponse(params);
+    const response = (await getDatasetResponse(params)) as Response;
     const name = getDatasetFileName(response.headers, opts.type);
     const fileContent = await response.blob();
     openSaveDialog(name, fileContent);

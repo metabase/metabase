@@ -116,9 +116,11 @@ interface ParameterValuesRequest {
 }
 
 const loadParameterValues = async (request: ParameterValuesRequest) => {
-  const { values, has_more_values } = request.query
-    ? await ParameterApi.parameterSearch(request)
-    : await ParameterApi.parameterValues(request);
+  const { values, has_more_values } = (
+    request.query
+      ? await ParameterApi.parameterSearch(request)
+      : await ParameterApi.parameterValues(request)
+  ) as ParameterValues;
 
   return {
     values: values,
@@ -134,9 +136,11 @@ interface CardParameterValuesRequest {
 }
 
 const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
-  const { values, has_more_values } = request.query
-    ? await CardApi.parameterSearch(request)
-    : await CardApi.parameterValues(request);
+  const { values, has_more_values } = (
+    request.query
+      ? await CardApi.parameterSearch(request)
+      : await CardApi.parameterValues(request)
+  ) as ParameterValues;
 
   return {
     values: values,
@@ -154,9 +158,11 @@ interface DashboardParameterValuesRequest {
 const loadDashboardParameterValues = async (
   request: DashboardParameterValuesRequest,
 ) => {
-  const { values, has_more_values } = request.query
-    ? await DashboardApi.parameterSearch(request)
-    : await DashboardApi.parameterValues(request);
+  const { values, has_more_values } = (
+    request.query
+      ? await DashboardApi.parameterSearch(request)
+      : await DashboardApi.parameterValues(request)
+  ) as ParameterValues;
 
   return {
     values: values,
