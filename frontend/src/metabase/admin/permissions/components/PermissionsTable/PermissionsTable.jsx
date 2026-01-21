@@ -87,7 +87,11 @@ export function PermissionsTable({
                   <ColumnName>
                     {name}{" "}
                     {hint && (
-                      <Tooltip position="right" label={hint}>
+                      <Tooltip
+                        label={hint}
+                        closeDelay={100}
+                        classNames={{ tooltip: CS.pointerEventsAuto }}
+                      >
                         <HintIcon />
                       </Tooltip>
                     )}
