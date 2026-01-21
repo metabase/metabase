@@ -38,6 +38,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 };
 
 type QueryEditorBodyProps = {
+  extraButton?: ReactNode;
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
@@ -74,6 +75,7 @@ type QueryEditorBodyProps = {
 };
 
 export function QueryEditorBody({
+  extraButton,
   question,
   proposedQuestion,
   modalSnippet,
@@ -163,6 +165,7 @@ export function QueryEditorBody({
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
         topBarInnerContent={topBarInnerContent}
+        extraButton={extraButton}
       />
     );
   }

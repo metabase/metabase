@@ -15,7 +15,7 @@ import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Button, Icon, Stack, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -58,6 +58,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
   editorContext?: "question" | "action";
+  extraButton?: ReactNode;
   handleResize?: () => void;
   hasEditingSidebar?: boolean;
   hasParametersList?: boolean;
@@ -112,6 +113,7 @@ export const NativeQueryEditor = forwardRef<
 >(function NativeQueryEditorInner(props, ref) {
   const {
     availableHeight = Infinity,
+    extraButton,
     canChangeDatabase = true,
     cancelQuery,
     className,
@@ -376,17 +378,20 @@ export const NativeQueryEditor = forwardRef<
                   </Tooltip>
                 </>
               )}
-              {hasRunButton && !readOnly && (
-                <NativeQueryEditorRunButton
-                  cancelQuery={cancelQuery}
-                  isResultDirty={isResultDirty}
-                  isRunnable={isRunnable}
-                  isRunning={isRunning}
-                  nativeEditorSelectedText={nativeEditorSelectedText}
-                  runQuery={runQuery}
-                  questionErrors={Lib.validateTemplateTags(question.query())}
-                />
-              )}
+              <Flex gap="sm">
+                {extraButton}
+                {hasRunButton && !readOnly && (
+                  <NativeQueryEditorRunButton
+                    cancelQuery={cancelQuery}
+                    isResultDirty={isResultDirty}
+                    isRunnable={isRunnable}
+                    isRunning={isRunning}
+                    nativeEditorSelectedText={nativeEditorSelectedText}
+                    runQuery={runQuery}
+                    questionErrors={Lib.validateTemplateTags(question.query())}
+                  />
+                )}
+              </Flex>
             </Stack>
           </ResizableArea>
         )}

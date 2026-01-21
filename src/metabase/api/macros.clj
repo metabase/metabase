@@ -711,7 +711,8 @@
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
          (-> metadata update-info rebuild-handler))))
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
-    (when config/is-dev?
+    ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
+    (when (config/config-bool :mb-enable-openapi-auto-regen)
       (try
         (events/publish-event! :event/api-handler-update
                                {:api.docs/request-rebuild
