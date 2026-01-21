@@ -29,6 +29,7 @@ function setup({
     db_id: 1,
     schema: "PUBLIC",
     measures,
+    is_published: true,
     ...table,
   });
 
@@ -85,27 +86,42 @@ describe("MeasureList", () => {
     );
   });
 
-  it("should render a 'New measure' button", () => {
-    setup();
-    expect(
-      screen.getByRole("link", { name: /New measure/i }),
-    ).toBeInTheDocument();
-  });
+  describe("'new measure' link", () => {
+    it("is rendered when user is an admin", () => {
+      setup({ measures: [], isAdmin: true });
 
-  it("should not render 'New measure' button when user cannot create measures", () => {
-    setup({ measures: [], isAdmin: false });
+      expect(
+        screen.getByRole("link", { name: /New measure/i }),
+      ).toBeInTheDocument();
+    });
 
-    expect(screen.getByText("No measures yet")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /New measure/i }),
-    ).not.toBeInTheDocument();
-  });
+    it("is not rendered when user is not an admin", () => {
+      setup({ measures: [], isAdmin: false });
 
-  it("should not render 'New measure' button when remote sync is set to read-only", () => {
-    setup({ isAdmin: true, remoteSyncType: "read-only" });
+      expect(
+        screen.queryByRole("link", { name: /New measure/i }),
+      ).not.toBeInTheDocument();
+    });
 
-    expect(
-      screen.queryByRole("link", { name: /New measure/i }),
-    ).not.toBeInTheDocument();
+    it("is not rendered when remote sync is set to read-only", () => {
+      setup({ measures: [], isAdmin: true, remoteSyncType: "read-only" });
+
+      expect(
+        screen.queryByRole("link", { name: /New measure/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is still rendered when remote sync is set to read-only but table is not published", () => {
+      setup({
+        measures: [],
+        isAdmin: true,
+        remoteSyncType: "read-only",
+        table: { is_published: false },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /New measure/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
