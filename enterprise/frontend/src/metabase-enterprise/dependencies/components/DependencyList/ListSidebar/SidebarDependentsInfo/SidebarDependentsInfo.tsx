@@ -13,6 +13,7 @@ import {
   FixedSizeIcon,
   Group,
   Menu,
+  Skeleton,
   Stack,
   Title,
 } from "metabase/ui";
@@ -48,7 +49,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const [filters, setFilters] = useState<DependencyFilterOptions>({});
 
-  const { data: dependents = [] } = useListNodeDependentsQuery(
+  const { data: dependents = [], isLoading } = useListNodeDependentsQuery(
     {
       id: node.id,
       type: node.type,
@@ -87,9 +88,13 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
       </Group>
       {dependents.length > 0 && (
         <Card p={0} shadow="none" withBorder>
-          {dependents.map((dependent, dependentIndex) => (
-            <DependentItem key={dependentIndex} node={dependent} />
-          ))}
+          {isLoading ? (
+            <DependentItemSkeleton />
+          ) : (
+            dependents.map((dependent, dependentIndex) => (
+              <DependentItem key={dependentIndex} node={dependent} />
+            ))
+          )}
         </Card>
       )}
     </Stack>
@@ -167,5 +172,17 @@ function DependentItem({ node }: DependentItemProps) {
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+function DependentItemSkeleton() {
+  return (
+    <Stack className={S.item} p="md" gap="sm">
+      <Group gap="sm" wrap="nowrap">
+        <Skeleton width={16} height={16} circle />
+        <Skeleton height={16} natural />
+      </Group>
+      <Skeleton height={16} natural />
+    </Stack>
   );
 }
