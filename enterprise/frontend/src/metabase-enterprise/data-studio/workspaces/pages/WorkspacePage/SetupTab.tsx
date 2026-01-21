@@ -62,7 +62,7 @@ export const SetupTab = ({
   const databaseOptions = useMemo(
     () =>
       allowedDatabases?.databases
-        ?.filter((db) => db.supported)
+        ?.filter((db) => db.enabled)
         ?.map((db) => ({
           value: db.id.toString(),
           label: db.name,
