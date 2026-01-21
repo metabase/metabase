@@ -2,20 +2,23 @@ import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EnterpriseSettings } from "metabase-types/api";
+import type { EnterpriseSettings, Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { TableMeasures } from "./TableMeasures";
 
 type SetupOpts = {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
+  table?: Partial<Table>;
 };
 
-const setup = ({ remoteSyncType }: SetupOpts = {}) => {
+const setup = ({ remoteSyncType, table }: SetupOpts = {}) => {
   const mockTable = createMockTable({
     id: 1,
     db_id: 1,
     schema: "PUBLIC",
+    is_published: true,
+    ...table,
   });
 
   renderWithProviders(
@@ -33,21 +36,24 @@ const setup = ({ remoteSyncType }: SetupOpts = {}) => {
 };
 
 describe("TablesMeasures", () => {
-  it("renders the new measure button", () => {
-    setup();
-    expect(
-      screen.getByRole("link", { name: /New measure/ }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /New measure/ })).toHaveAttribute(
-      "href",
-      "/data-studio/library/tables/1/measures/new",
-    );
-  });
+  describe("'new measure' link", () => {
+    it("is not rendered when remote sync is set to read-only", () => {
+      setup({ remoteSyncType: "read-only" });
 
-  it("does not render the new measure button if remote sync is set to read-only", () => {
-    setup({ remoteSyncType: "read-only" });
-    expect(
-      screen.queryByRole("link", { name: /New measure/ }),
-    ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /New measure/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is rendered when remote sync is set to read-only but table is not published", () => {
+      setup({
+        remoteSyncType: "read-only",
+        table: { is_published: false },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /New measure/i }),
+      ).toBeInTheDocument();
+    });
   });
 });
