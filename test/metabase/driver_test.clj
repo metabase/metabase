@@ -9,6 +9,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -531,3 +532,27 @@
 (deftest create-index-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl :schemas)
     (create-index-test-impl! "flibble")))
+
+(deftest parse-final-identifier-test
+  (mt/test-driver
+    (mt/normal-driver-select {:+feature [:final-non-reserved]
+                              :+parent :sql})
+    (testing "`final` is allowed as identifier and parsed correctly"
+      (mt/with-temp [:model/Database db {:name "final"
+                                         :initial_sync_status "complete"}
+                     :model/Table t {:name "final"
+                                     :schema "public"
+                                     :db_id (:id db)}
+                     :model/Field _ {:name "final"
+                                     :table_id (:id t)}]
+        (mt/with-db
+          db
+          (let [mp (mt/metadata-provider)
+                query (lib/native-query mp "select final from final")
+                broken-query (lib/native-query mp "select final, xix from final")]
+            (is (=? #{{:table (:id t)}}
+                    (driver/native-query-deps driver/*driver* query)))
+            (is (=? [{:name "final" :display-name "Final" :lib/desired-column-alias "final"}]
+                    (driver/native-result-metadata driver/*driver* query)))
+            (is (=? #{{:type :validate/missing-column, :name "xix"}}
+                    (driver/validate-native-query-fields driver/*driver* broken-query)))))))))

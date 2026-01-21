@@ -78,7 +78,8 @@
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :final-non-reserved                     false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake

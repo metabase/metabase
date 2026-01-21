@@ -51,7 +51,8 @@
                  :expressions/today
                  :distinct-where
                  :database-routing
-                 :dependencies/native]]
+                 :dependencies/native
+                 :final-non-reserved]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
