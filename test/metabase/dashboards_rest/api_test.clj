@@ -4793,14 +4793,12 @@
                   :tables     [{:id (str "card__" card-id-1)}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
-         ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
-         ;; The source table can't be resolved, but the database should still be present.
          #(testing "After delete"
             (is (=? {:cards      empty?
                      :fields     empty?
                      :dashboards empty?
                      :tables     empty?
-                     :databases [{:id (mt/id) :engine string?}]}
+                     :databases  empty?}
                     (query-metadata)))))))))
 
 (deftest dashboard-query-metadata-no-tables-test

@@ -3883,14 +3883,9 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            ;; card-id-1 is deleted, so it should return 404
-            (is (= "Not found."
-                   (query-metadata 404 card-id-1)))
-            ;; card-id-2 still exists but its source is gone, so it should return empty metadata
-            (is (=? {:fields empty?
-                     :tables empty?
-                     :databases [{:id (mt/id) :engine string?}]}
-                    (query-metadata 200 card-id-2)))))))))
+            (doseq [card-id [card-id-1 card-id-2]]
+              (is (= "Not found."
+                     (query-metadata 404 card-id))))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
