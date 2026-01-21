@@ -599,6 +599,19 @@
      (when (pred v)
        v))))
 
+(defn get-raw-value-source
+  "Get the source of the raw value of a Setting from wherever it may be specified.
+  Priority order is specified in `get-raw-value`."
+  ([setting-definition-or-name]
+   (let [setting (resolve-setting setting-definition-or-name)]
+     (cond
+       (some? (user-local-value setting)) :user-local
+       (some? (database-local-value setting)) :database-local
+       (some? (env-var-value setting)) :env
+       (some? (db-or-cache-value setting)) :database
+       (some? (:default setting)) :default
+       :else nil))))
+
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
   for Settings with `setting-type`.
