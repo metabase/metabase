@@ -75,7 +75,9 @@ export interface WorkspaceContextValue {
   addOpenedTab: (tab: WorkspaceTab, activate?: boolean) => void;
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
-  addOpenedTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
+  addOpenedTransform: (
+    transform: TaggedTransform | WorkspaceTransform | UnsavedTransform,
+  ) => void;
   removeWorkspaceTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
@@ -347,7 +349,7 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTransform = useCallback(
-    (transform: TaggedTransform | WorkspaceTransform) => {
+    (transform: TaggedTransform | WorkspaceTransform | UnsavedTransform) => {
       const transformTab: TransformTab = {
         id: getTransformTabId(transform),
         name: transform.name,

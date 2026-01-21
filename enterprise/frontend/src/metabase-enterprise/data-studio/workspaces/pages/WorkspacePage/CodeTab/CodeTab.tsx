@@ -46,7 +46,9 @@ type CodeTabProps = {
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
   readOnly: boolean;
-  onTransformClick: (transform: TaggedTransform | WorkspaceTransform) => void;
+  onTransformClick: (
+    transform: TaggedTransform | WorkspaceTransform | UnsavedTransform,
+  ) => void;
 };
 
 export const CodeTab = ({
@@ -103,7 +105,7 @@ export const CodeTab = ({
         // Unsaved transforms should already be opened via the provider
         // This path shouldn't normally be hit, but if it is, we can't
         // call onTransformClick because we don't have a full transform
-        return;
+        return onTransformClick(item);
       }
 
       const { data: transform, error } = await fetchWorkspaceTransform(
