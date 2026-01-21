@@ -412,14 +412,26 @@
 
 (defmethod tx/fake-sync-database-type :snowflake
   [_driver base-type]
-  ;; Snowflake normalizes types internally, so what we create differs from what it reports.
-  ;; E.g., we create TEXT but Snowflake reports VARCHAR in INFORMATION_SCHEMA.
+  ;; Return the database_type as Snowflake's query processor expects it.
+  ;; The QP uses lowercase types without precision (e.g., "time" not "TIME(3)").
+  ;; Snowflake normalizes types: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
   (case base-type
-    :type/Text           "VARCHAR"
-    :type/Float          "DOUBLE"
-    :type/Integer        "NUMBER"
-    :type/BigInteger     "NUMBER"
-    ;; For types that don't change, use the creation type
+    :type/Text                   "VARCHAR"
+    :type/Float                  "DOUBLE"
+    :type/Integer                "NUMBER"
+    :type/BigInteger             "NUMBER"
+    :type/Number                 "NUMBER"
+    :type/Boolean                "BOOLEAN"
+    :type/Date                   "date"
+    :type/DateTime               "timestampntz"
+    :type/DateTimeWithTZ         "timestampltz"
+    :type/DateTimeWithLocalTZ    "timestamptz"
+    :type/DateTimeWithZoneID     "timestamptz"
+    :type/DateTimeWithZoneOffset "timestamptz"
+    :type/Time                   "time"
+    :type/TimeWithLocalTZ        "time"
+    :type/TimeWithZoneOffset     "time"
+    ;; For other types, use the creation type
     (sql.tx/field-base-type->sql-type :snowflake base-type)))
 
 (defmethod tx/fake-sync-base-type :snowflake
