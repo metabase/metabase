@@ -13,7 +13,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (deftest ^:parallel single-column-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -335,12 +336,25 @@
                                              :condition    [:= $product_id &Products.products.id]
                                              :fields       [&Products.products.price]}]
                                    :fields [[:field %id {:base-type :type/BigInteger}]]})]
+          ;; DEBUG: Check if longitude field has fingerprint in metadata provider
+          (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                    [source-card-query])
+                longitude-field (lib.metadata/field mp (mt/id :people :longitude))]
+            (log/infof "DEBUG: longitude field fingerprint from metadata provider: %s"
+                       (pr-str (:fingerprint longitude-field)))
+            ;; DEBUG: Check card result-metadata
+            (let [card (lib.metadata/card mp 1)]
+              (log/infof "DEBUG: card result-metadata fingerprints: %s"
+                         (pr-str (map #(select-keys % [:name :fingerprint])
+                                      (:result-metadata card))))))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [source-card-query])
             (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
                                        (lib/aggregate (lib/count)))
                   people-longitude (m/find-first #(= (:id %) (mt/id :people :longitude))
                                                  (lib/breakoutable-columns query))
+                  _                (log/infof "DEBUG: people-longitude from breakoutable-columns fingerprint: %s"
+                                              (pr-str (:fingerprint people-longitude)))
                   _                (is (some? people-longitude))
                   binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
                                                  (lib/available-binning-strategies query people-longitude))
