@@ -18,6 +18,7 @@ import type {
   TestPythonTransformResponse,
 } from "metabase-types/api";
 
+import S from "./DataTab.module.css";
 import { useTablePreview } from "./useTablePreview";
 import { useTransformDryRunPreview } from "./useTransformDryRunPreview";
 
@@ -116,65 +117,57 @@ export function DataTab({
   );
 }
 
-type ResultsTab = "results" | "output";
-
 function PythonPreviewResults({
   executionResult,
 }: {
   executionResult: TestPythonTransformResponse;
 }) {
-  const [tab, setTab] = useState<ResultsTab>("results");
+  const [tab, setTab] = useState<string>("results");
 
   return (
     <Stack gap={0} h="100%">
-      <Box
-        p="sm"
-        style={{
-          borderBottom: "1px solid var(--mb-color-border)",
+      <Tabs
+        h="100%"
+        value={tab}
+        onChange={(newTab) => {
+          if (newTab) {
+            setTab(newTab);
+          }
         }}
       >
-        <Tabs
-          value={tab}
-          onChange={(value) => {
-            if (value === "output" || value === "results") {
-              setTab(value);
-            }
-          }}
-        >
-          <Tabs.List>
-            <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
-            <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-      </Box>
+        <Tabs.List className={S.tabsPanel} px="md">
+          <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
+          <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
+        </Tabs.List>
 
-      {tab === "results" &&
-        (executionResult?.error ? (
-          <ErrorState error={executionResult.error.message} />
-        ) : (
-          <Box h="100%" style={{ overflow: "auto" }}>
-            <ExecutionOutputTable output={executionResult?.output} />
-          </Box>
-        ))}
-
-      {tab === "output" && (
-        <Box
-          fz="sm"
-          p="md"
-          h="100%"
-          style={{
-            whiteSpace: "pre",
-            fontFamily: "var(--mb-default-monospace-font-family)",
-            overflow: "auto",
-          }}
-        >
-          {executionResult?.logs ? (
-            <AnsiLogs>{executionResult.logs}</AnsiLogs>
+        <Tabs.Panel h="100%" p="md" value="results">
+          {executionResult?.error ? (
+            <ErrorState error={executionResult.error.message} />
           ) : (
-            <EmptyState message={t`No logs to display`} />
+            <Box h="100%" style={{ overflow: "auto" }}>
+              <ExecutionOutputTable output={executionResult?.output} />
+            </Box>
           )}
-        </Box>
-      )}
+        </Tabs.Panel>
+
+        <Tabs.Panel bg="background-secondary" h="100%" p="md" value="output">
+          <Box
+            fz="sm"
+            h="100%"
+            style={{
+              whiteSpace: "pre",
+              fontFamily: "var(--mb-default-monospace-font-family)",
+              overflow: "auto",
+            }}
+          >
+            {executionResult?.logs ? (
+              <AnsiLogs>{executionResult.logs}</AnsiLogs>
+            ) : (
+              <EmptyState message={t`No logs to display`} />
+            )}
+          </Box>
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }

@@ -91,12 +91,12 @@ export const useMetabotSuggestionActions = () => {
 };
 
 export const useRegisterMetabotSuggestionActions = (
-  actions: MetabotSuggestionActions,
+  actions: MetabotSuggestionActions | null | undefined,
 ) => {
   const { setSuggestionActions } = useContext(MetabotContext);
 
   useEffect(() => {
-    setSuggestionActions(actions);
+    setSuggestionActions(actions ?? null);
     return () => setSuggestionActions(null);
   }, [actions, setSuggestionActions]);
 };

@@ -55,7 +55,7 @@
                               :transforms/table                 true
                               :transforms/index-ddl             false
                               :uuid-type                        false
-                              :workspace                        true}]
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
