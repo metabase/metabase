@@ -662,6 +662,49 @@ describe("scenarios > data studio > workspaces", () => {
         });
       },
     );
+
+    it("should preserve changed target table after merging workspace", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Check out existing SQL transform");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Change target table settings");
+      Workspaces.getTransformTargetButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").should("have.value", "Schema A");
+        cy.findByLabelText("New table name").clear().type("renamed_table");
+        cy.findByRole("button", { name: /Change target/ }).click();
+      });
+      verifyAndCloseToast("Transform target updated");
+
+      cy.log("Merge the workspace");
+      Workspaces.getMergeWorkspaceButton().click();
+      Workspaces.getMergeCommitInput().type("Rename target table");
+      H.modal().within(() => {
+        cy.findByText("1 transform will be merged").should("exist");
+
+        cy.log("Verify target table diff is displayed");
+        cy.findByText("SQL transform").click();
+        Workspaces.getTransformTargetDiff().within(() => {
+          verifyRemovedText("transform_table_2");
+          verifyAddedText("renamed_table");
+        });
+
+        cy.findByRole("button", { name: /Merge/ }).click();
+      });
+      verifyAndCloseToast("merged successfully");
+
+      cy.log("Verify target table is updated in global transform");
+      Transforms.list()
+        .findByRole("row", { name: /SQL transform/ })
+        .click();
+      Transforms.settingsTab().click();
+      getTableLink({ isActive: false }).should("contain.text", "renamed_table");
+    });
   });
 
   describe("should show tabs UI correctly", () => {
