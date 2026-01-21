@@ -4,19 +4,21 @@ import { getEmbedSidebar } from "./helpers";
 
 const { H } = cy;
 
-const { IS_ENTERPRISE } = Cypress.env();
-const IS_OSS = !IS_ENTERPRISE;
-const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
-
-const DATA_BY_MB_EDITION = {
-  oss: {
+const DATA_BY_EMBEDDING_TYPE = {
+  guest: {
+    path: "/admin/embedding/guest",
+    token: null,
+    authMethodLabel: "Guest",
     cardTestId: "guest-embeds-setting-card",
     cardText:
       "To continue, enable guest embeds and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-static",
     showTermsSettingName: "show-static-embed-terms",
   },
-  ee: {
+  modular: {
+    path: "/admin/embedding",
+    token: "bleeding-edge",
+    authMethodLabel: "Metabase account (SSO)",
     cardTestId: "sdk-setting-card",
     cardText:
       "To continue, enable modular embedding and agree to the usage conditions.",
@@ -25,19 +27,24 @@ const DATA_BY_MB_EDITION = {
   },
 } as const;
 
-describe(
-  `scenarios > embedding > sdk iframe embed setup > enable embed js > ${MB_EDITION}`,
-  { ...(IS_OSS && { tags: "@OSS" }) },
-  () => {
-    const { embeddingSettingName, showTermsSettingName, cardTestId, cardText } =
-      DATA_BY_MB_EDITION[MB_EDITION];
+Object.entries(DATA_BY_EMBEDDING_TYPE).forEach(([key, value]) => {
+  describe(`scenarios > embedding > sdk iframe embed setup > enable embed js (EE) > ${key}`, () => {
+    const {
+      path,
+      token,
+      authMethodLabel,
+      embeddingSettingName,
+      showTermsSettingName,
+      cardTestId,
+      cardText,
+    } = value;
 
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
 
-      if (IS_ENTERPRISE) {
-        H.activateToken("bleeding-edge");
+      if (token) {
+        H.activateToken(token);
       }
 
       H.mockEmbedJsToDevServer();
@@ -47,13 +54,15 @@ describe(
       H.updateSetting(embeddingSettingName, false);
       H.updateSetting(showTermsSettingName, true);
 
-      cy.visit("/admin/embedding");
+      cy.visit(path);
 
       cy.findAllByTestId(cardTestId)
         .first()
         .within(() => {
           cy.findByText("New embed").click();
         });
+
+      cy.findByLabelText(authMethodLabel).click();
 
       embedModalEnableEmbeddingCard().within(() => {
         cy.findByText(cardText).should("exist");
@@ -111,13 +120,15 @@ describe(
       H.updateSetting(embeddingSettingName, true);
       H.updateSetting(showTermsSettingName, true);
 
-      cy.visit("/admin/embedding");
+      cy.visit(path);
 
       cy.findAllByTestId(cardTestId)
         .first()
         .within(() => {
           cy.findByText("New embed").click();
         });
+
+      cy.findByLabelText(authMethodLabel).click();
 
       embedModalEnableEmbeddingCard().within(() => {
         cy.findByText("Agree to the usage conditions to continue.").should(
@@ -141,7 +152,7 @@ describe(
       H.updateSetting(embeddingSettingName, true);
       H.updateSetting(showTermsSettingName, false);
 
-      cy.visit("/admin/embedding");
+      cy.visit(path);
 
       cy.findAllByTestId(cardTestId)
         .first()
@@ -149,7 +160,9 @@ describe(
           cy.findByText("New embed").click();
         });
 
+      cy.findByLabelText(authMethodLabel).click();
+
       getEmbedSidebar().contains(cardText).should("not.exist");
     });
-  },
-);
+  });
+});

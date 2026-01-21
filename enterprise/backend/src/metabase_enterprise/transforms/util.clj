@@ -299,9 +299,8 @@
 
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
   or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
-        db-id (transforms.i/target-db-id transform)]
+  [{:keys [source target] :as transform}]
+  (let [db-id (transforms.i/target-db-id transform)]
     (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -374,11 +373,11 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [id source]}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy] query-type :type} source]
     (case (keyword query-type)
       :query
-      (let [checkpoint (next-checkpoint id)
+      (let [checkpoint (next-checkpoint transform)
             query (:query source)
             driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
         (binding [driver/*compile-with-inline-parameters*
@@ -688,7 +687,7 @@
   (when (driver.u/supports? (:engine database) :describe-indexes database)
     (let [driver     (:engine database)
           indexes    (driver/describe-table-indexes driver database target)
-          checkpoint (next-checkpoint (:id transform))
+          checkpoint (next-checkpoint transform)
           {:keys [drop create]}
           (decide-secondary-index-ddl
            {:filter-column (:filter-column checkpoint)

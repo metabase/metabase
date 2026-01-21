@@ -34,6 +34,7 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
+  is_data_analyst: boolean;
 
   date_joined: string;
   last_login: string;
@@ -48,6 +49,7 @@ export interface UserPermissions {
 
   // requires advanced_permissions feature
   is_group_manager?: boolean;
+  is_data_analyst?: boolean;
   can_access_data_model?: boolean;
   can_access_db_details?: boolean;
   can_access_monitoring?: boolean;

@@ -5,7 +5,6 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { isCypressActive } from "metabase/env";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -145,8 +144,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {/* TODO (Alex P 01/15/2026): remove isCypressActive once we are ready to release this feature */}
-        {PLUGIN_DEPENDENCIES.isEnabled && isCypressActive && (
+        {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency diagnostics`}
             icon="list"
