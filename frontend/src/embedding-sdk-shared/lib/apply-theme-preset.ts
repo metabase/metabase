@@ -12,7 +12,6 @@ import type { ColorPalette } from "metabase/lib/colors/types";
 
 const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background",
-  "background-hover",
   "background-disabled",
   "background-secondary",
   "text-primary",
