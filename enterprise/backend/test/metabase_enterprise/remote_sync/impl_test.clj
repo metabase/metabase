@@ -1060,3 +1060,36 @@
               (testing "RemoteSyncObject entry is cleaned up after export"
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Measure" :model_id measure-id)))
                     "RemoteSyncObject entry for archived measure should have synced status")))))))))
+
+(deftest import!-blocks-if-it-encounters-library-conflicts
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (mt/with-temp [:model/Collection _ {:name "Test Library Collection"
+                                        :type "library"
+                                        :entity_id collection/library-entity-id
+                                        :location "/"}]
+      (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
+                                (test-helpers/generate-collection-yaml collection/library-entity-id "Another Library")}}
+            mock-source (test-helpers/create-mock-source :initial-files test-files)
+            result (impl/import! (source.p/snapshot mock-source) task-id)]
+        (is (= :conflict (:status result)))
+        (is (= #{"Library"} (:conflicts result)))))))
+
+(deftest import!-blocks-if-it-encounters-snippet-conflicts
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (mt/with-temp [:model/NativeQuerySnippet _ {:name "Test Snippet"}]
+      (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
+                                (test-helpers/generate-snippet-yaml "blahblahblah" "A Snippet" "select 123")}}
+            mock-source (test-helpers/create-mock-source :initial-files test-files)
+            result (impl/import! (source.p/snapshot mock-source) task-id)]
+        (is (= :conflict (:status result)))
+        (is (= #{"Snippets"} (:conflicts result)))))))
+
+(deftest import!-blocks-if-it-encounters-transform-conflicts
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (mt/with-temp [:model/Transform _ {:name "Test Transform"}]
+      (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
+                                (test-helpers/generate-transform-yaml "blahblahblah" "A Transform")}}
+            mock-source (test-helpers/create-mock-source :initial-files test-files)
+            result (impl/import! (source.p/snapshot mock-source) task-id)]
+        (is (= :conflict (:status result)))
+        (is (= #{"Transforms"} (:conflicts result)))))))

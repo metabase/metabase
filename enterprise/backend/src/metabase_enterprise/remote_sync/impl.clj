@@ -116,6 +116,20 @@
 
        :details {:error-type (type e)}})))
 
+(defn- get-conflicts [snapshot]
+  (let [has-library? (t2/exists? :model/Collection :type collection/library-collection-type)
+        has-transforms? (t2/exists? :model/Transform)
+        has-snippets? (t2/exists? :model/NativeQuerySnippet)
+        ingest-list (serialization/ingest-list snapshot)
+        repo-has-library? (some #(= {:model "Collection" :id collection/library-entity-id}
+                                    (first %)) ingest-list)
+        repo-has-transforms? (some #(= "Transform" (:model (first %))) ingest-list)
+        repo-has-snippets? (some #(= "NativeQuerySnippet" (:model (first %))) ingest-list)]
+    (cond-> #{}
+      repo-has-library? (conj "Library")
+      repo-has-transforms? (conj "Transforms")
+      repo-has-snippets? (conj "Snippets"))))
+
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
@@ -134,20 +148,29 @@
     (if snapshot
       (try
         (let [snapshot-version (source.p/version snapshot)
-              last-imported-version (remote-sync.task/last-version)]
-          (if (and (not force?) (= last-imported-version snapshot-version))
+              last-imported-version (remote-sync.task/last-version)
+              path-filters (cond-> [#"collections/.*" #"databases/.*"]
+                             (settings/remote-sync-transforms)
+                             (conj #"transforms/.*")
+                             (settings/library-is-remote-synced?)
+                             (conj #"snippets/.*"))
+              ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
+                                       (source.ingestable/wrap-progress-ingestable task-id 0.7))
+              conflicts (get-conflicts ingestable-snapshot)]
+
+          (cond
+            (and (not force?) (= last-imported-version snapshot-version))
             (u/prog1 {:status :success
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [path-filters (cond-> [#"collections/.*" #"databases/.*"]
-                                 (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*")
-                                 (settings/library-is-remote-synced?)
-                                 (conj #"snippets/.*"))
-                  ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
-                                           (source.ingestable/wrap-progress-ingestable task-id 0.7))
-                  load-result (serdes/with-cache
+
+            (and (not force?) (seq conflicts))
+            {:status :conflict
+             :conflicts conflicts}
+
+            :else
+            (let [load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
                   seen-paths (:seen load-result)
                   data-model-models #{"Table" "Field"}

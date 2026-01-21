@@ -574,3 +574,50 @@ serdes/meta:
             table-name
             eid
             (str/replace (u/lower-case-en measure-name) #"\s+" "_"))))
+
+(defn generate-snippet-yaml
+  "Generates YAML content for a NativeQuerySnippet."
+  [entity-id name content & {:keys [collection-id]}]
+  (format "name: %s
+description: null
+entity_id: %s
+content: '%s'
+archived: false
+template_tags: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+collection_id: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: NativeQuerySnippet
+"
+          name entity-id content (or collection-id "null")
+          entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-transform-yaml
+  "Generates YAML content for a transform."
+  [entity-id name]
+  (format "name: %s
+description: null
+entity_id: %s
+collection_id: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+source:
+  type: query
+  query:
+    database: 1
+    type: query
+    query:
+      source-table: 1
+target:
+  type: table
+  name: test_output
+  schema: PUBLIC
+serdes/meta:
+- id: %s
+  label: %s
+  model: Transform
+"
+          name entity-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

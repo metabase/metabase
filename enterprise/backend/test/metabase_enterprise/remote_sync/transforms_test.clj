@@ -278,33 +278,6 @@
                   (is (not (some #(str/includes? % "transforms/") (keys files-after-export)))
                       "Export should NOT include transform files when setting is disabled"))))))))))
 
-(defn- generate-transform-yaml
-  "Generates YAML content for a transform."
-  [entity-id name]
-  (format "name: %s
-description: null
-entity_id: %s
-collection_id: null
-created_at: '2024-08-28T09:46:18.671622Z'
-creator_id: rasta@metabase.com
-source:
-  type: query
-  query:
-    database: 1
-    type: query
-    query:
-      source-table: 1
-target:
-  type: table
-  name: test_output
-  schema: PUBLIC
-serdes/meta:
-- id: %s
-  label: %s
-  model: Transform
-"
-          name entity-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
-
 (defn- generate-transforms-namespace-collection-yaml
   "Generates YAML content for a transforms-namespace collection."
   [entity-id name]
@@ -341,7 +314,7 @@ is_sample: false
                 test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
                                     (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
                                     (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
-                                    (generate-transform-yaml transform-entity-id "Test Transform")}}
+                                    (test-helpers/generate-transform-yaml transform-entity-id "Test Transform")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
@@ -391,7 +364,7 @@ is_sample: false
               (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
                                            (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
                                            (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                           (generate-transform-yaml transform-eid "Child Transform")}}
+                                           (test-helpers/generate-transform-yaml transform-eid "Child Transform")}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
