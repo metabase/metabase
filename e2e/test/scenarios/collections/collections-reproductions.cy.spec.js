@@ -6,8 +6,6 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { IS_ENTERPRISE } = Cypress.env();
-
 describe("issue 20911", () => {
   const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
   const FIRST_COLLECTION = "First collection";
@@ -24,7 +22,6 @@ describe("issue 20911", () => {
     H.assertPermissionTable([
       ["Administrators", "Curate"],
       ["All Users", "No access"],
-      ...(IS_ENTERPRISE ? [["Data Analysts", "No access"]] : []),
       ["collection", "Curate"],
       ["data", "No access"],
       ["nosql", "No access"],
@@ -58,7 +55,6 @@ describe("issue 20911", () => {
     H.assertPermissionTable([
       ["Administrators", "Curate"],
       ["All Users", "No access"],
-      ...(IS_ENTERPRISE ? [["Data Analysts", "No access"]] : []),
       ["collection", "No access"],
       ["data", "No access"],
       ["nosql", "No access"],
