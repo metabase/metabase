@@ -146,14 +146,8 @@
                                            (field-id->remapping-dimension query id))]
                       (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
-                         :new-field-clause      [:field
-                                                 (merge
-                                                  {:lib/uuid                (str (random-uuid))
-                                                   :source-field            id
-                                                   ::new-field-dimension-id (u/the-id dimension)}
-                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
-                                                    {:join-alias join-alias}))
-                                                 (u/the-id (:human-readable-field-id dimension))]
+                         :new-field-clause (-> (lib/remapped-field-ref col (u/the-id (:human-readable-field-id dimension)))
+                                               (lib/update-options assoc ::new-field-dimension-id (u/the-id dimension)))
                          :dimension             (assoc dimension
                                                        :field-name                (-> dimension :field-id unique-name)
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))

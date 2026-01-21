@@ -338,6 +338,7 @@
   joinable-columns
   joins
   raw-join-strategy
+  remapped-field-ref
   suggested-join-conditions
   with-join-alias
   with-join-fields

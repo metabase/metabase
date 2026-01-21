@@ -23,8 +23,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -1211,3 +1213,20 @@
   (some->> (not-empty (joins query stage-number))
            (map #(lib.metadata.calculation/display-name query stage-number %))
            (str/join " + ")))
+
+(mu/defn remapped-field-ref :- ::lib.schema.ref/field.id
+  "Create a field ref for a remapped field.
+
+   Takes a source-field and the id for the field to remap to."
+  [source-field  :- ::lib.schema.metadata/column
+   fk-target-id  :- ::lib.schema.id/field]
+  [:field
+   (merge
+    {:lib/uuid                (str (random-uuid))
+     :source-field            (:id source-field)}
+    (when-let [inherited-name (or (lib.field.util/inherited-column-name source-field)
+                                  (:lib/source-column-alias source-field))]
+      {:source-field-name inherited-name})
+    (when-let [join-alias (::join-alias source-field)]
+      {:join-alias join-alias}))
+   fk-target-id])
