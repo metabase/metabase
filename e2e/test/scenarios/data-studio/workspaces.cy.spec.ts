@@ -31,8 +31,6 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    setPythonRunnerSettings();
-
     // TODO: Is this correct way to grant querying permissions?
     cy.request("PUT", "/api/permissions/graph", {
       groups: {
@@ -475,6 +473,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should be able to check out existing Python transform with multiple input tables into a new workspace",
       { tags: ["@python"] },
       () => {
+        setPythonRunnerSettings();
         cy.log("Create Python transform with 2 input tables");
         H.getTableId({
           name: "Animals",
@@ -544,6 +543,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should be able to create new SQL and Python transforms in a workspace and merge them to global list",
       { tags: ["@python"] },
       () => {
+        setPythonRunnerSettings();
         cy.log("Create a new workspace");
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -928,6 +928,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should display multiple transforms and their connections",
       { tags: ["@python"] },
       () => {
+        setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1525,6 +1526,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should show ad-hoc results for Python transform",
       { tags: ["@python"] },
       () => {
+        setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1581,6 +1583,7 @@ describe("scenarios > data studio > workspaces", () => {
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
+        setPythonRunnerSettings();
         createTransforms();
         Workspaces.visitWorkspaces();
         createWorkspace();
@@ -1610,6 +1613,7 @@ describe("scenarios > data studio > workspaces", () => {
 
   describe("run all transforms", () => {
     it("should run all transforms", { tags: ["@python"] }, () => {
+      setPythonRunnerSettings();
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1672,6 +1676,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should run all stale transforms", { tags: ["@python"] }, () => {
+      setPythonRunnerSettings();
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -2276,23 +2281,16 @@ function verifyRemovedText(text: string) {
 }
 
 function setPythonRunnerSettings() {
-  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
-  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-endpoint",
-    "http://localhost:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-bucket",
-    "metabase-python-runner",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
-  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
-  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
-  H.updateEnterpriseSetting(
-    "python-storage-s-3-container-endpoint",
-    "http://localstack:4566",
-  );
-  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
+  cy.request("PUT", "/api/setting", {
+    "python-runner-url": "http://localhost:5001",
+    "python-runner-api-token": "dev-token-12345",
+    "python-storage-s-3-endpoint": "http://localhost:4566",
+    "python-storage-s-3-region": "us-east-1",
+    "python-storage-s-3-bucket": "metabase-python-runner",
+    "python-storage-s-3-prefix": "test-prefix",
+    "python-storage-s-3-access-key": "test",
+    "python-storage-s-3-secret-key": "test",
+    "python-storage-s-3-container-endpoint": "http://localstack:4566",
+    "python-storage-s-3-path-style-access": true,
+  });
 }
