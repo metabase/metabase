@@ -33,7 +33,6 @@ const MOCK_SVG = "data:image/svg+xml;base64,test-base64";
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
   getChartSelector: () => "#chart",
   getChartImagePngDataUri: () => MOCK_PNG,
-  getChartSvgSelector: () => "#chart svg",
   getVisualizationSvgDataUri: () => MOCK_SVG,
 }));
 
@@ -199,12 +198,38 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     ]);
   });
 
-  it("should produce valid series results for pie charts", async () => {
+  it("should produce valid series results for pie charts with string dimension", async () => {
     const card = createMockCard({
       name: "Count by name",
       display: "pie",
       visualization_settings: createMockVisualizationSettings({
         "pie.dimension": "name",
+        "pie.metric": "count",
+      }),
+    });
+    const data = createMockData({ question: new Question(card) });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Count by name": {
+        chart_type: "pie",
+        display_name: "Count by name",
+        stacked: false,
+        x: { name: "name", type: "string" },
+        x_values: ["a", "b", "c"],
+        y: { name: "count", type: "number" },
+        y_values: [1, 2, 3],
+      },
+    });
+  });
+
+  it("should produce valid series results for pie charts with array dimension", async () => {
+    const card = createMockCard({
+      name: "Count by name",
+      display: "pie",
+      visualization_settings: createMockVisualizationSettings({
+        "pie.dimension": ["name"], // Array dimension (common in actual usage)
         "pie.metric": "count",
       }),
     });
@@ -293,6 +318,172 @@ describe("registerQueryBuilderMetabotContextFn", () => {
 
     const chartConfig = getChartConfig(result)!;
     expect(chartConfig.display_type).toEqual("histogram");
+  });
+
+  it("should produce valid series for scalar charts", async () => {
+    const card = createMockCard({
+      name: "Total Revenue",
+      display: "scalar",
+      visualization_settings: createMockVisualizationSettings({
+        "scalar.field": "total",
+      }),
+    });
+    const data = createMockData({
+      question: new Question(card),
+      series: [
+        createMockSingleSeries(card, {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "total",
+                display_name: "Total",
+                base_type: "type/Integer",
+              }),
+            ],
+            rows: [[42000]],
+          },
+        }),
+      ],
+    });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Total Revenue": {
+        x: { name: "total", type: "number" },
+        x_values: [42000],
+        display_name: "Total Revenue",
+        chart_type: "scalar",
+      },
+    });
+  });
+
+  it("should produce valid series for smartscalar charts with only comparison and current values", async () => {
+    const card = createMockCard({
+      name: "Monthly Revenue",
+      display: "smartscalar",
+      visualization_settings: createMockVisualizationSettings({
+        "scalar.field": "revenue",
+      }),
+    });
+    const data = createMockData({
+      question: new Question(card),
+      series: [
+        createMockSingleSeries(card, {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "month",
+                display_name: "Month",
+                base_type: "type/Date",
+              }),
+              createMockColumn({
+                name: "revenue",
+                display_name: "Revenue",
+                base_type: "type/Integer",
+              }),
+            ],
+            rows: [
+              ["2024-01", 10000],
+              ["2024-02", 12000],
+              ["2024-03", 15000],
+            ],
+          },
+        }),
+      ],
+    });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    // SmartScalar sends only the comparison value and current value (not all data)
+    expect(chartConfig.series).toEqual({
+      "Monthly Revenue": {
+        x: { name: "month", type: "date" },
+        y: { name: "revenue", type: "number" },
+        x_values: ["2024-02", "2024-03"], // comparison date, current date
+        y_values: [12000, 15000], // comparison value, current value
+        display_name: "Monthly Revenue",
+        chart_type: "smartscalar",
+      },
+    });
+  });
+
+  it("should handle smartscalar with static number comparison", async () => {
+    const card = createMockCard({
+      name: "Revenue vs Target",
+      display: "smartscalar",
+      visualization_settings: createMockVisualizationSettings({
+        "scalar.field": "revenue",
+        "scalar.comparisons": [
+          { id: "1", type: "staticNumber", value: 10000, label: "Target" },
+        ],
+      }),
+    });
+    const data = createMockData({
+      question: new Question(card),
+      series: [
+        createMockSingleSeries(card, {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "month",
+                display_name: "Month",
+                base_type: "type/Date",
+              }),
+              createMockColumn({
+                name: "revenue",
+                display_name: "Revenue",
+                base_type: "type/Integer",
+              }),
+            ],
+            rows: [["2024-03", 15000]],
+          },
+        }),
+      ],
+    });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    // Static comparison has no date, just the values
+    expect(chartConfig.series?.["Revenue vs Target"]?.y_values).toEqual([
+      10000, 15000,
+    ]);
+  });
+
+  it("should fall back to first column for scalar charts without scalar.field", async () => {
+    const card = createMockCard({
+      name: "Total Count",
+      display: "scalar",
+      visualization_settings: createMockVisualizationSettings({}),
+    });
+    const data = createMockData({
+      question: new Question(card),
+      series: [
+        createMockSingleSeries(card, {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "count",
+                display_name: "Count",
+                base_type: "type/Integer",
+              }),
+            ],
+            rows: [[500]],
+          },
+        }),
+      ],
+    });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Total Count": {
+        x: { name: "count", type: "number" },
+        x_values: [500],
+        display_name: "Total Count",
+        chart_type: "scalar",
+      },
+    });
   });
 });
 

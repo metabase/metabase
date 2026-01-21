@@ -332,27 +332,88 @@ function computeTrendAnotherColumn({
   const { latestRowIndex } = currentMetricData.indexData;
   const { cols, rows } = series[0].data;
 
-  const columnIndex = cols.findIndex(
-    (column) => column.name === comparison.column,
-  );
+  const comparisonValue = findAnotherColumnValue({
+    comparison,
+    cols,
+    rows,
+    latestRowIndex,
+  });
 
-  if (columnIndex === -1) {
+  if (comparisonValue == null) {
     return {
       comparisonValueStr: t`(No data)`,
       comparisonDescStr: t`vs. N/A`,
     };
   }
 
-  const column = cols[columnIndex];
-
-  const lastRow = rows[latestRowIndex];
-  const comparisonValue = lastRow[columnIndex];
-
-  const displayName = comparison.label || column.display_name;
+  const column = cols.find((col) => col.name === comparison.column);
+  const displayName = comparison.label || column?.display_name;
 
   return {
     comparisonDescStr: t`vs. ${displayName}`,
     comparisonValue,
+  };
+}
+
+// Core utility functions for extracting comparison values
+export function findStaticNumberValue(
+  comparison: SmartScalarComparisonStaticNumber,
+): RowValue {
+  return comparison.value;
+}
+
+export function findAnotherColumnValue({
+  comparison,
+  cols,
+  rows,
+  latestRowIndex,
+}: {
+  comparison: SmartScalarComparisonAnotherColumn;
+  cols: DatasetColumn[];
+  rows: RowValues[];
+  latestRowIndex: number;
+}): RowValue | null {
+  const columnIndex = cols.findIndex(
+    (column) => column.name === comparison.column,
+  );
+
+  if (columnIndex === -1) {
+    return null;
+  }
+
+  return rows[latestRowIndex][columnIndex];
+}
+
+export function findPreviousValue({
+  rows,
+  dimensionColIndex,
+  metricColIndex,
+  latestRowIndex,
+}: {
+  rows: RowValues[];
+  dimensionColIndex: number;
+  metricColIndex: number;
+  latestRowIndex: number;
+}): { value: RowValue; date: RowValue } | null {
+  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
+    if (i >= latestRowIndex) {
+      return false;
+    }
+
+    const date = dimensionColIndex >= 0 ? row[dimensionColIndex] : null;
+    const value = row[metricColIndex];
+
+    return !isEmpty(value) && (dimensionColIndex < 0 || !isEmpty(date));
+  });
+
+  if (previousRowIndex === -1) {
+    return null;
+  }
+
+  return {
+    value: rows[previousRowIndex][metricColIndex],
+    date:
+      dimensionColIndex >= 0 ? rows[previousRowIndex][dimensionColIndex] : null,
   };
 }
 
@@ -412,34 +473,26 @@ function computeComparisonPreviousValue({
   nextDate: string | undefined;
   dateUnitSettings: DateUnitSettings;
 }) {
-  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
-    if (i >= nextValueRowIndex) {
-      return false;
-    }
-
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
+  const result = findPreviousValue({
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    latestRowIndex: nextValueRowIndex,
   });
 
-  // if no row exists with non-null date and non-null value
-  if (previousRowIndex === -1) {
+  if (!result) {
     return null;
   }
 
-  const prevDate = rows[previousRowIndex][dimensionColIndex] as string;
-  const prevValue = rows[previousRowIndex][metricColIndex];
-
   const comparisonDescStr = computeComparisonStrPreviousValue({
     nextDate,
-    prevDate,
+    prevDate: result.date as string,
     dateUnitSettings,
   });
 
   return {
     comparisonDescStr,
-    comparisonValue: prevValue,
+    comparisonValue: result.value,
   };
 }
 

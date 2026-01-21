@@ -6,13 +6,19 @@ import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
   getChartSelector,
-  getChartSvgSelector,
   getVisualizationSvgDataUri,
 } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  findAnotherColumnValue,
+  findPreviousValue,
+  findStaticNumberValue,
+} from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  CardDisplayType,
   MetabotChartConfig,
   MetabotColumnType,
   MetabotDisplayType,
@@ -66,7 +72,9 @@ const getDimensions = (
   }
 
   if (visualizationSettings["pie.dimension"]) {
-    return [visualizationSettings["pie.dimension"]];
+    const pieDimension = visualizationSettings["pie.dimension"];
+    // pie.dimension can be a string or array (for multi-ring pie charts)
+    return Array.isArray(pieDimension) ? pieDimension : [pieDimension];
   }
 
   if (visualizationSettings["funnel.dimension"]) {
@@ -92,6 +100,179 @@ const getMetrics = (visualizationSettings: ComputedVisualizationSettings) => {
   return [];
 };
 
+const TIME_DIMENSION_TYPES = new Set([
+  "type/Date",
+  "type/DateTime",
+  "type/DateTimeWithTZ",
+  "type/DateTimeWithZoneID",
+  "type/Instant",
+]);
+
+const getScalarField = (
+  visualizationSettings: ComputedVisualizationSettings,
+): string | undefined => {
+  return visualizationSettings["scalar.field"] as string | undefined;
+};
+
+function processScalarSeries(
+  series: RawSeries[number],
+  seriesKey: string,
+  visualizationSettings: ComputedVisualizationSettings,
+): MetabotSeriesConfig | null {
+  const { cols, rows } = series.data;
+  const scalarField = getScalarField(visualizationSettings);
+
+  // Find the scalar field column, or fall back to first column
+  const scalarColIndex = scalarField
+    ? cols.findIndex((col) => col.name === scalarField)
+    : 0;
+
+  if (scalarColIndex < 0 || !cols[scalarColIndex]) {
+    return null;
+  }
+
+  const scalarCol = cols[scalarColIndex];
+  const values = rows.map((row) => row[scalarColIndex]);
+
+  return {
+    x: {
+      name: scalarCol.name,
+      type: getMetabotColType(scalarCol.base_type),
+    },
+    x_values: values,
+    display_name: seriesKey,
+    chart_type: series.card.display as CardDisplayType,
+  };
+}
+
+function processSmartScalarSeries(
+  series: RawSeries[number],
+  seriesKey: string,
+  visualizationSettings: ComputedVisualizationSettings,
+): MetabotSeriesConfig | null {
+  const { cols, rows } = series.data;
+  const scalarField = getScalarField(visualizationSettings);
+
+  const scalarColIndex = scalarField
+    ? cols.findIndex((col) => col.name === scalarField)
+    : 0;
+
+  if (scalarColIndex < 0 || !cols[scalarColIndex]) {
+    return null;
+  }
+
+  const timeDimensionIndex = cols.findIndex(
+    (col, index) =>
+      index !== scalarColIndex &&
+      col.base_type &&
+      TIME_DIMENSION_TYPES.has(col.base_type),
+  );
+
+  const scalarCol = cols[scalarColIndex];
+
+  const latestRowIndex = rows.findLastIndex(
+    (row) => row[scalarColIndex] != null && row[scalarColIndex] !== "",
+  );
+
+  if (latestRowIndex < 0) {
+    return null;
+  }
+
+  const currentValue = rows[latestRowIndex][scalarColIndex];
+  const currentDate =
+    timeDimensionIndex >= 0 ? rows[latestRowIndex][timeDimensionIndex] : null;
+
+  const comparisons = visualizationSettings["scalar.comparisons"] as
+    | Array<{ type: string; value?: number; column?: string; label?: string }>
+    | undefined;
+  const firstComparison = comparisons?.[0];
+
+  let comparisonValue: unknown = null;
+  let comparisonDate: unknown = null;
+
+  if (firstComparison) {
+    const result = match(firstComparison.type)
+      .with(COMPARISON_TYPES.STATIC_NUMBER, () => ({
+        value: findStaticNumberValue(firstComparison as any),
+        date: null,
+      }))
+      .with(COMPARISON_TYPES.ANOTHER_COLUMN, () => ({
+        value: findAnotherColumnValue({
+          comparison: firstComparison as any,
+          cols,
+          rows,
+          latestRowIndex,
+        }),
+        date: null,
+      }))
+      .otherwise(
+        () =>
+          findPreviousValue({
+            rows,
+            dimensionColIndex: timeDimensionIndex,
+            metricColIndex: scalarColIndex,
+            latestRowIndex,
+          }) ?? { value: null, date: null },
+      );
+
+    comparisonValue = result.value;
+    comparisonDate = result.date;
+  } else {
+    // Default to previous value when no comparison is specified
+    const result = findPreviousValue({
+      rows,
+      dimensionColIndex: timeDimensionIndex,
+      metricColIndex: scalarColIndex,
+      latestRowIndex,
+    });
+
+    if (result) {
+      comparisonValue = result.value;
+      comparisonDate = result.date;
+    }
+  }
+
+  // Build the series config with just the two relevant data points
+  if (timeDimensionIndex >= 0) {
+    const timeDimensionCol = cols[timeDimensionIndex];
+    const xValues =
+      comparisonDate != null ? [comparisonDate, currentDate] : [currentDate];
+    const yValues =
+      comparisonValue != null
+        ? [comparisonValue, currentValue]
+        : [currentValue];
+
+    return {
+      x: {
+        name: timeDimensionCol.name,
+        type: getMetabotColType(timeDimensionCol.base_type),
+      },
+      y: {
+        name: scalarCol.name,
+        type: getMetabotColType(scalarCol.base_type),
+      },
+      x_values: xValues,
+      y_values: yValues,
+      display_name: seriesKey,
+      chart_type: series.card.display as CardDisplayType,
+    };
+  }
+
+  // No time dimension - just send the values
+  const xValues =
+    comparisonValue != null ? [comparisonValue, currentValue] : [currentValue];
+
+  return {
+    x: {
+      name: scalarCol.name,
+      type: getMetabotColType(scalarCol.base_type),
+    },
+    x_values: xValues,
+    display_name: seriesKey,
+    chart_type: series.card.display as CardDisplayType,
+  };
+}
+
 export function processSeriesData(
   transformedSeriesData: RawSeries,
   visualizationSettings: ComputedVisualizationSettings | undefined,
@@ -105,10 +286,37 @@ export function processSeriesData(
     .reduce(
       (acc, series, index) => {
         const { cols, rows } = series.data;
+        const seriesKey = series.card.name || `series_${index}`;
+
+        // Handle scalar charts
+        if (series.card.display === "scalar") {
+          const scalarConfig = processScalarSeries(
+            series,
+            seriesKey,
+            visualizationSettings,
+          );
+          if (scalarConfig) {
+            return Object.assign(acc, { [seriesKey]: scalarConfig });
+          }
+          return acc;
+        }
+
+        // Handle smartscalar charts (includes time dimension for trend context)
+        if (series.card.display === "smartscalar") {
+          const smartScalarConfig = processSmartScalarSeries(
+            series,
+            seriesKey,
+            visualizationSettings,
+          );
+          if (smartScalarConfig) {
+            return Object.assign(acc, { [seriesKey]: smartScalarConfig });
+          }
+          return acc;
+        }
+
+        // Handle dimension/metric charts (line, bar, pie, funnel, etc.)
         const dimensions = getDimensions(visualizationSettings);
         const metrics = getMetrics(visualizationSettings);
-
-        const seriesKey = series.card.name || `series_${index}`;
 
         const dimensionIndex = cols.findIndex((col) =>
           dimensions.includes(col.name),
@@ -156,7 +364,7 @@ function processTimelineEvents(timelineEvents: TimelineEvent[]) {
     .slice(0, 20);
 }
 
-function getVisualizationDataUri(question: Question) {
+async function getVisualizationDataUri(question: Question) {
   const cardId = question.id();
   const display = question.card().display;
 
@@ -164,13 +372,18 @@ function getVisualizationDataUri(question: Question) {
     PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats[display] ??
     ("none" as const);
 
-  return match(format)
-    .with("none", () => undefined)
-    .with("svg", () =>
-      getVisualizationSvgDataUri(getChartSvgSelector({ cardId })),
-    )
-    .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
-    .exhaustive();
+  try {
+    return await match(format)
+      .with("none", () => undefined)
+      .with("svg", () =>
+        getVisualizationSvgDataUri(getChartSelector({ cardId })),
+      )
+      .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
+      .exhaustive();
+  } catch (err) {
+    // Image generation can fail (e.g., missing html2canvas), but context should still work
+    return undefined;
+  }
 }
 
 const getDisplayType = (
