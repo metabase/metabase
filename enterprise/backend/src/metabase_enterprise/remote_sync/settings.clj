@@ -82,6 +82,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-transforms
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer
@@ -155,7 +163,7 @@
                              (if obfuscated? current-token remote-sync-token))]
         (check-git-settings! (assoc settings :remote-sync-token token-to-check))
         (t2/with-transaction [_conn]
-          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
+          (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import :remote-sync-transforms]]
             (when (and (not= :env (setting/get-raw-value-source k)) (contains? settings k)
                        (not (and (= k :remote-sync-token) obfuscated?)))
               (setting/set! k (k settings)))))))))

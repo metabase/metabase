@@ -53,6 +53,7 @@ import {
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
   TOKEN_KEY,
+  TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -411,23 +412,39 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
               )}
 
               {/* Section 4: Collections to sync */}
-              {isRemoteSyncEnabled && (
+              {(isRemoteSyncEnabled || values?.[TYPE_KEY] === "read-write") &&
+                !isModalVariant && (
+                  <RemoteSyncSettingsSection
+                    description={t`Choose which collections to sync with git.`}
+                    title={t`Collections to sync`}
+                    variant={variant}
+                  >
+                    <Stack gap="lg">
+                      <TopLevelCollectionsList />
+                      {useTenants && (
+                        <>
+                          <Text fw={700} size="md" lh="1rem">
+                            {t`Shared collections`}
+                          </Text>
+                          <SharedTenantCollectionsList />
+                        </>
+                      )}
+                    </Stack>
+                  </RemoteSyncSettingsSection>
+                )}
+
+              {/* Section 5: Transforms sync */}
+              {(isRemoteSyncEnabled || values?.[TYPE_KEY] === "read-write") && (
                 <RemoteSyncSettingsSection
-                  description={t`Choose which collections to sync with git.`}
-                  title={t`Collections to sync`}
+                  title={t`Transforms`}
                   variant={variant}
                 >
-                  <Stack gap="lg">
-                    <TopLevelCollectionsList />
-                    {useTenants && (
-                      <>
-                        <Text fw={700} size="md" lh="1rem">
-                          {t`Shared collections`}
-                        </Text>
-                        <SharedTenantCollectionsList />
-                      </>
-                    )}
-                  </Stack>
+                  <FormSwitch
+                    label={t`Sync transforms with git`}
+                    description={t`When enabled, all transforms and transform tags will be synced.`}
+                    name={TRANSFORMS_KEY}
+                    size="sm"
+                  />
                 </RemoteSyncSettingsSection>
               )}
 

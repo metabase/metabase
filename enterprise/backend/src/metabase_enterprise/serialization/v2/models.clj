@@ -27,7 +27,8 @@
    "Document"
    "Glossary"
    "NativeQuerySnippet"
-   "Timeline"])
+   "Timeline"
+   "Transform"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -36,7 +37,6 @@
           ["FieldValues"
            "Metabot"
            "Setting"
-           "Transform"
            "TransformJob"
            "TransformTag"]))
 

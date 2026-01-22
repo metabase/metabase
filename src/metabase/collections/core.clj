@@ -15,11 +15,15 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
+  create-library-collection!
+  descendant-ids
   library-collection
   library-data-collection-type
   location-path
-  create-library-collection!
-  moving-into-remote-synced?
   moving-from-remote-synced?
+  moving-into-remote-synced?
   non-remote-synced-dependencies
-  shared-tenant-collection?])
+  remote-synced-collection
+  remote-synced-collection?
+  shared-tenant-collection?
+  transforms-ns])

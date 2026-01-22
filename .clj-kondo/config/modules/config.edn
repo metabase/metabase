@@ -1456,6 +1456,7 @@
            models
            permissions
            premium-features
+           query-processor
            request
            task
            util}}
@@ -2333,6 +2334,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            revisions
            search
