@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [java-time.clock]
    [metabase.analytics.core :as analytics]
@@ -237,32 +236,3 @@
   []
   (refresh-cache-configs!))
 
-(defn- shorthand-ref?
-  "Check if string matches shorthand pattern like x1, t1, x23, etc."
-  [s]
-  (boolean (re-matches #"[xt]\d+" s)))
-
-(defn- parse-magic-references
-  "Recursively walk data structure converting shorthand refs to keywords."
-  [x]
-  (walk/postwalk
-   (fn [v]
-     (if (and (string? v) (shorthand-ref? v))
-       (keyword v)
-       v))
-   x))
-
-(api.macros/defendpoint :post "/workspace/resources" :- [:map
-                                                         [:workspace-id [:maybe :int]]
-                                                         [:global-map [:map-of [:or :keyword :string] :int]]
-                                                         [:workspace-map [:map-of :keyword :string]]]
-  "Create test resources for workspace e2e tests."
-  [_route-params
-   _query-params
-   body :- [:map
-            [:global {:optional true} :map]
-            [:workspace {:optional true} :map]]]
-  (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
-    (create-fn (parse-magic-references body))
-    {:status 501
-     :body   {:error "Workspace test utilities not available"}}))
