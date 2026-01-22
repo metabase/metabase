@@ -166,7 +166,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       );
 
       cy.log("2. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });

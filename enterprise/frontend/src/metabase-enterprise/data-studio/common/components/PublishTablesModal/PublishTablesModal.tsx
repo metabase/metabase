@@ -141,9 +141,7 @@ function ModalBody({
       sendSuccessToast(t`Published`);
     }
 
-    trackDataStudioTablePublished(
-      selected_table != null ? selected_table.id : null,
-    );
+    trackDataStudioTablePublished();
 
     onPublish();
   };

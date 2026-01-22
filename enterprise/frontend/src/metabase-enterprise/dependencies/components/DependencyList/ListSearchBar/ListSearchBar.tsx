@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type * as Urls from "metabase/lib/urls";
-import { Flex, Icon, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Flex, Loader, TextInput } from "metabase/ui";
 
 import { getSearchQuery } from "../../../utils";
 import type { DependencyListMode } from "../types";
@@ -46,7 +46,7 @@ export const ListSearchBar = memo(function ListSearchBar({
         value={searchValue}
         placeholder={t`Search…`}
         flex={1}
-        leftSection={<Icon name="search" />}
+        leftSection={<FixedSizeIcon name="search" />}
         rightSection={hasLoader ? <Loader size="sm" /> : undefined}
         data-testid="dependency-list-search-input"
         onChange={handleSearchChange}

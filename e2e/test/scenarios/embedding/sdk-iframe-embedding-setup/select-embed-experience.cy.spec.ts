@@ -2,6 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   assertDashboard,
@@ -66,48 +67,6 @@ describe(suiteTitle, () => {
       });
     });
 
-    it("shows the `guest embeds disabled` icon + tooltip when guest embeds disabled", () => {
-      H.updateSetting("enable-embedding-static", false);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-
-      visitNewEmbedPage({ waitForResource: false });
-
-      cy.url().should("not.match", /\/admin\/embedding\/guest/);
-
-      getEmbedSidebar().within(() => {
-        cy.findByTestId("guest-embeds-disabled-info-icon").should("be.visible");
-        cy.findByTestId("guest-embeds-disabled-info-icon").click();
-      });
-
-      H.hovercard()
-        .findByText(/You can enable guest embeds in/)
-        .should("exist");
-
-      H.hovercard()
-        .findByText(/admin settings/)
-        .click();
-
-      cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
-        .first()
-        .within(() => {
-          cy.url().should("match", /\/admin\/embedding\/guest/);
-          cy.findByText("Enable guest embeds").should("be.visible");
-        });
-    });
-
-    it("hides the `guest embeds disabled` icon + tooltip when guest embeds enabled", () => {
-      H.updateSetting("enable-embedding-static", true);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-
-      visitNewEmbedPage({ waitForResource: false });
-
-      getEmbedSidebar().within(() => {
-        cy.findByTestId("guest-embeds-disabled-info-icon").should("not.exist");
-      });
-    });
-
     it("shows the most recent question from the activity log when selected", () => {
       const questionName = "Orders, Count";
 
@@ -165,7 +124,11 @@ describe(suiteTitle, () => {
 
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Metabase account (SSO)").click();
+      });
 
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
@@ -307,7 +270,11 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });

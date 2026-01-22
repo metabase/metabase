@@ -27,7 +27,7 @@ describe("MeasureEditor", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables inputs when read-only", () => {
+  it("shows description as plain text when read-only", () => {
     renderWithProviders(
       <MeasureEditor
         query={query}
@@ -38,9 +38,11 @@ describe("MeasureEditor", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Give it a description")).toHaveAttribute(
-      "readonly",
-    );
+    expect(
+      screen.queryByLabelText("Give it a description"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Description")).toBeInTheDocument();
+    expect(screen.getByText(description)).toBeInTheDocument();
     expect(
       screen.queryByText("Pick an aggregation function"),
     ).not.toBeInTheDocument();

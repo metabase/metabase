@@ -24,7 +24,6 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -33,7 +32,6 @@ import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => (
   <Stack gap="md">
-    <AuthenticationSection />
     <BehaviorSection />
     <ParametersSection />
     <AppearanceSection />

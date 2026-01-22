@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  mockEmbedJsToDevServer,
+} from "e2e/support/helpers";
 
 import {
   codeBlock,
@@ -208,7 +211,11 @@ describe(suiteTitle, () => {
       cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.button("Next").click();
       cy.button("Next").click();
 

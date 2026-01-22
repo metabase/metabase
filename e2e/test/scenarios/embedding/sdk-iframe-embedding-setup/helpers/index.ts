@@ -36,15 +36,10 @@ export const visitNewEmbedPage = (
       cy.findByText("New embed").click();
     });
 
-  cy.get("body").then(($body) => {
-    const isEmbeddingDisabled =
-      $body.find('[data-testid="enable-embedding-card"]').length > 0;
-
-    if (isEmbeddingDisabled) {
-      embedModalEnableEmbedding();
-    }
-
+  cy.get("body").then(() => {
     if (waitForResource) {
+      embedModalEnableEmbedding();
+
       cy.wait("@dashboard");
 
       cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
@@ -103,6 +98,7 @@ export const navigateToEntitySelectionStep = (
 
   if (preselectSso || !isQuestionOrDashboardExperience) {
     cy.findByLabelText("Metabase account (SSO)").click();
+    embedModalEnableEmbedding();
   }
 
   const labelByExperience = match(experience)

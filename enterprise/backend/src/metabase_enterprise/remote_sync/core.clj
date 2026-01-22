@@ -53,6 +53,18 @@
       (not (collections/remote-synced-collection? (or (:collection table)
                                                       (:collection_id table))))))
 
+(defenterprise transforms-editable?
+  "Determines if transforms should be editable.
+
+  Returns true if transforms are editable, false otherwise. Transforms are globally
+  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+
+  Always returns true on OSS."
+  :feature :none
+  []
+  (or (not (settings/remote-sync-enabled))
+      (= (settings/remote-sync-type) :read-write)))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."

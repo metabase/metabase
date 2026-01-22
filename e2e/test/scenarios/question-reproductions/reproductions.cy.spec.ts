@@ -1477,3 +1477,20 @@ describe("issue 66210", () => {
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });
+
+describe("issue #67903", () => {
+  beforeEach(() => {
+    cy.viewport(1000, 800);
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shoult not show preview table headers on top of other elements (metabase#67903)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(1, "Orders").click();
+    H.getNotebookStep("data").findByTestId("step-preview-button").click();
+    H.queryBuilderHeader().findByLabelText("View SQL").click();
+    cy.findByTestId("table-header").should("not.be.visible");
+  });
+});

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.models.transform-tag
   (:require
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.i18n :as i18n]
@@ -58,3 +59,16 @@
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
   (let [{:keys [id label]} (-> tt serdes/path last)]
     ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))
+
+;; Event hooks for remote-sync tracking
+(t2/define-after-insert :model/TransformTag [tag]
+  (events/publish-event! :event/transform-tag-create {:object tag})
+  tag)
+
+(t2/define-after-update :model/TransformTag [tag]
+  (events/publish-event! :event/transform-tag-update {:object tag})
+  tag)
+
+(t2/define-before-delete :model/TransformTag [tag]
+  (events/publish-event! :event/transform-tag-delete {:object tag})
+  tag)

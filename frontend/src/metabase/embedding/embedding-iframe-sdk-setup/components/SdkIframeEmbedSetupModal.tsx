@@ -9,8 +9,8 @@ import "react-resizable/css/styles.css";
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
+import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
-import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useDispatch } from "metabase/lib/redux";
@@ -39,15 +39,11 @@ export const SdkIframeEmbedSetupContent = () => {
   const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const {
-    isSimpleEmbedFeatureAvailable,
-    isSimpleEmbeddingEnabled,
-    isSimpleEmbeddingTermsAccepted,
-    isGuestEmbedsEnabled,
-    isGuestEmbedsTermsAccepted,
     currentStep,
     handleNext,
     handleBack,
     canGoBack,
+    allowPreviewAndNavigation,
     isLoading,
     experience,
     resource,
@@ -70,10 +66,6 @@ export const SdkIframeEmbedSetupContent = () => {
 
     dispatch(closeModal());
   }
-
-  const allowPreviewAndNavigation = isSimpleEmbedFeatureAvailable
-    ? isSimpleEmbeddingEnabled && isSimpleEmbeddingTermsAccepted
-    : isGuestEmbedsEnabled && isGuestEmbedsTermsAccepted;
 
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
     experience,
@@ -122,7 +114,7 @@ export const SdkIframeEmbedSetupContent = () => {
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
             <Stack gap="md" flex={1}>
-              <SdkIframeStepHeader />
+              <AuthenticationSection />
 
               <Stack
                 gap="md"

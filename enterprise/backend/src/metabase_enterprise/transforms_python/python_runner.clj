@@ -271,9 +271,10 @@
   [table-id source-incremental-strategy transform-id limit]
   (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
-        table-metadata    (lib.metadata/table metadata-provider table-id)]
+        table-metadata    (lib.metadata/table metadata-provider table-id)
+        transform         (t2/select-one :model/Transform transform-id)]
     (cond-> (lib/query metadata-provider table-metadata)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform-id))
+      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.

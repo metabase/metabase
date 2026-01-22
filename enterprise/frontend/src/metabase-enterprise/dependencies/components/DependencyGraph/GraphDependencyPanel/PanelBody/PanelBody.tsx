@@ -10,13 +10,13 @@ import {
   getNodeLink,
   getNodeLocationInfo,
   getNodeViewCount,
+  getNodeViewCountLabel,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
-import { getNodeViewCountLabel } from "./utils";
 
 type PanelBodyProps = {
   nodes: DependencyNode[];

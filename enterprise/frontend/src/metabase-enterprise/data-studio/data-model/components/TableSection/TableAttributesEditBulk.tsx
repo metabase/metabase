@@ -9,12 +9,16 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
+import {
+  trackDataStudioBulkAttributeUpdated,
+  trackDataStudioBulkSyncSettingsClicked,
+} from "metabase-enterprise/data-studio/analytics";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -38,7 +42,7 @@ export function TableAttributesEditBulk({
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
-  const isAdmin = useSelector(getUserIsAdmin);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const {
     selectedDatabases,
     selectedSchemas,
@@ -87,6 +91,21 @@ export function TableAttributesEditBulk({
           : (email ?? undefined),
       owner_user_id: userId === "unknown" ? null : (userId ?? undefined),
     });
+
+    const result = error ? "failure" : "success";
+
+    if (email !== undefined || userId !== undefined) {
+      trackDataStudioBulkAttributeUpdated("owner", result);
+    }
+    if (dataLayer !== undefined) {
+      trackDataStudioBulkAttributeUpdated("layer", result);
+    }
+    if (entityType !== undefined) {
+      trackDataStudioBulkAttributeUpdated("entity_type", result);
+    }
+    if (dataSource !== undefined) {
+      trackDataStudioBulkAttributeUpdated("data_source", result);
+    }
 
     if (error) {
       sendErrorToast(t`Failed to update items`);
@@ -158,7 +177,7 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            {isAdmin && (
+            {!remoteSyncReadOnly && (
               <Button
                 flex={1}
                 p="sm"
@@ -168,7 +187,7 @@ export function TableAttributesEditBulk({
                 {t`Publish`}
               </Button>
             )}
-            {isAdmin && hasLibrary && (
+            {!remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"
@@ -181,7 +200,10 @@ export function TableAttributesEditBulk({
             <Button
               flex={1}
               leftSection={<Icon name="settings" />}
-              onClick={() => setModalType("sync")}
+              onClick={() => {
+                trackDataStudioBulkSyncSettingsClicked();
+                setModalType("sync");
+              }}
             >
               {t`Sync settings`}
             </Button>

@@ -1,4 +1,5 @@
 import { type WithRouterProps, withRouter } from "react-router";
+import { t } from "ttag";
 
 import { useListTaskRunsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -7,6 +8,7 @@ import { Flex } from "metabase/ui";
 
 import { TaskRunTypePicker } from "../RunTypePicker";
 import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
+import { TaskRunDatePicker } from "../TaskRunStartedAtPicker";
 import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
 import { TasksTabs } from "../TasksTabs";
 
@@ -21,6 +23,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
       "run-type": runType,
       "entity-type": entityType,
       "entity-id": entityId,
+      "started-at": startedAt,
       status,
     },
     { patchUrlState },
@@ -37,6 +40,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
       "run-type": runType ?? undefined,
       "entity-type": entityType ?? undefined,
       "entity-id": entityId ?? undefined,
+      "started-at": startedAt ?? undefined,
       status: status ?? undefined,
     },
     {
@@ -65,8 +69,22 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
             }
           />
 
+          <TaskRunDatePicker
+            value={startedAt}
+            placeholder={t`Filter by started at`}
+            onChange={(startedAt) =>
+              patchUrlState({
+                "started-at": startedAt,
+                "entity-type": null,
+                "entity-id": null,
+                page: 0,
+              })
+            }
+          />
+
           <TaskRunEntityPicker
             runType={runType}
+            startedAt={startedAt}
             value={entityValue}
             onChange={(entity) =>
               patchUrlState({

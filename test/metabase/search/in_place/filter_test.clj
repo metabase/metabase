@@ -18,6 +18,7 @@
    :model-ancestors?            false
    :current-user-id             1
    :is-superuser?               true
+   :is-data-analyst?            false
    :current-user-perms          #{"/"}
    :calculate-available-models? false})
 

@@ -214,14 +214,6 @@
   [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
-(defn supported-incremental-filter-type?
-  "Returns true if the given base-type is supported for incremental filtering.
-
-  We only support temporal (timestamp/tz) and numeric (int/float) types."
-  [base-type]
-  (or (isa? base-type :type/Temporal)
-      (isa? base-type :type/Number)))
-
 (defn- source->checkpoint-filter-unique-key
   "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
   [query source-incremental-strategy]
@@ -231,38 +223,23 @@
   "Resolve the checkpoint filter column for an incremental transform.
 
   Tries to resolve the column using the unique key first.
-  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified.
-
-  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
-  Throws an exception if the column type is not supported."
+  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified."
   [query source-incremental-strategy table metadata-provider]
-  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key]} source-incremental-strategy]
-    (when-some [{column-name :name
-                 :keys [base-type]
-                 :as column}
-                (cond
-                  checkpoint-filter-unique-key
-                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
-                  checkpoint-filter
-                  (when-some [field-id (t2/select-one-pk :model/Field
-                                                         :table_id (:id table)
-                                                         :name checkpoint-filter)]
-                    (lib.metadata/field metadata-provider field-id)))]
-      (when-not (supported-incremental-filter-type? base-type)
-        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
-                             "Only numeric and temporal columns are supported for incremental filtering.")
-                        {:column-name column-name
-                         :base-type   base-type})))
-      column)))
+  (or
+   (source->checkpoint-filter-unique-key query source-incremental-strategy)
+   (when-let [field-name (-> source-incremental-strategy :checkpoint-filter)]
+     (when-let [field-id (t2/select-one-pk :model/Field
+                                           :table_id (:id table)
+                                           :name field-name)]
+       (lib.metadata/field metadata-provider field-id)))))
 
 (defn next-checkpoint
   "Build a query to compute the MAX of the checkpoint column from the target table.
 
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
   or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
-        db-id (transforms.i/target-db-id transform)]
+  [{:keys [source target] :as transform}]
+  (let [db-id (transforms.i/target-db-id transform)]
     (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -335,11 +312,11 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [id source]}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy] query-type :type} source]
     (case (keyword query-type)
       :query
-      (let [checkpoint (next-checkpoint id)
+      (let [checkpoint (next-checkpoint transform)
             query (:query source)
             driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
         (binding [driver/*compile-with-inline-parameters*
@@ -649,7 +626,7 @@
   (when (driver.u/supports? (:engine database) :describe-indexes database)
     (let [driver     (:engine database)
           indexes    (driver/describe-table-indexes driver database target)
-          checkpoint (next-checkpoint (:id transform))
+          checkpoint (next-checkpoint transform)
           {:keys [drop create]}
           (decide-secondary-index-ddl
            {:filter-column (:filter-column checkpoint)

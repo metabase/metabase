@@ -1236,6 +1236,155 @@ describe("documents", () => {
     });
   });
 
+  describe("anchor links", () => {
+    // Helper to create filler paragraphs for scroll tests
+    const createFillerParagraphs = (count: number, startIndex: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        type: "paragraph",
+        attrs: { _id: `filler-paragraph-${startIndex + i}` },
+        content: [
+          {
+            type: "text",
+            text: `This is filler paragraph ${startIndex + i} to make the document long enough to require scrolling. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          },
+        ],
+      }));
+
+    beforeEach(() => {
+      H.createDocument({
+        name: "Anchor Test Document",
+        document: {
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1, _id: "heading-block-1" },
+              content: [{ type: "text", text: "First Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-1" },
+              content: [{ type: "text", text: "Some content here" }],
+            },
+            // Add filler content to ensure scrolling is needed
+            ...createFillerParagraphs(15, 1),
+            {
+              type: "heading",
+              attrs: { level: 2, _id: "heading-block-2" },
+              content: [{ type: "text", text: "Second Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-2" },
+              content: [{ type: "text", text: "More content here" }],
+            },
+            // More filler to push blockquote down
+            ...createFillerParagraphs(10, 16),
+            {
+              type: "blockquote",
+              attrs: { _id: "blockquote-block-1" },
+              content: [
+                {
+                  type: "paragraph",
+                  attrs: { _id: "quote-paragraph" },
+                  content: [{ type: "text", text: "A nice quote" }],
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+    });
+
+    it("should show anchor link icon on left side when hovering over a heading", () => {
+      H.visitDocument("@documentId");
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden buttons
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
+    });
+
+    it("should copy anchor URL to clipboard when clicking anchor link", () => {
+      H.visitDocument("@documentId");
+
+      cy.wrap(
+        Cypress.automation("remote:debugger:protocol", {
+          command: "Browser.grantPermissions",
+          params: {
+            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
+            origin: window.location.origin,
+          },
+        }),
+      );
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden buttons
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .click();
+
+      cy.get("body").findByText("Copied!").should("be.visible");
+
+      cy.window().then((win) => {
+        win.navigator.clipboard.readText().then((text) => {
+          expect(text).to.include("/document/");
+          expect(text).to.include("#heading-block-1");
+        });
+      });
+    });
+
+    it("should scroll to the correct block when navigating with anchor hash", () => {
+      cy.get("@documentId").then((documentId) => {
+        cy.visit(`/document/${documentId}#heading-block-2`);
+
+        H.documentContent()
+          .findByRole("heading", { name: "Second Heading" })
+          .should("be.visible");
+
+        H.documentContent()
+          .findByRole("heading", { name: "First Heading" })
+          .should("not.be.visible");
+      });
+    });
+
+    it("should still show comments menu on right side (regression check)", () => {
+      H.visitDocument("@documentId");
+
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Filter to visible one since all blocks have hidden menus
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
+
+      // Comments button uses ForwardRefLink, so it's a link role not button
+      cy.get('[data-testid="comments-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("link", { name: /comments/i })
+        .should("be.visible");
+    });
+  });
+
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup

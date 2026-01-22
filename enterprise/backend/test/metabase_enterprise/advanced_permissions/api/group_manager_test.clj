@@ -55,7 +55,7 @@
             (delete-group :crowberto 204 false)))
 
         (testing "if `advanced-permissions` is enabled"
-          (mt/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions :data-studio}
             (testing "still fails if user is not a manager"
               (get-groups user 403)
               (get-one-group user 403 group)
@@ -210,8 +210,8 @@
                                             :user_id          (:id new-user)
                                             :is_group_manager true})))))
 
-          (testing "Admin can could view all groups"
-            (is (= (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)
+          (testing "Admin can view all groups with members"
+            (is (= (t2/select-fn-set :group_id :model/PermissionsGroupMembership)
                    (membership->groups-ids (get-membership :crowberto 200))))))))))
 
 (deftest get-users-api-test

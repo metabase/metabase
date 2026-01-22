@@ -79,6 +79,8 @@ export enum DataPermissionValue {
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;
+
 export type PermissionSectionConfig = {
   permission: DataPermission;
   type: DataPermissionType;

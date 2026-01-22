@@ -152,6 +152,7 @@ const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 interface SavePdfProps {
+  fileName: string;
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
@@ -170,16 +171,11 @@ async function isValidColor(str: string) {
 }
 
 export const saveDashboardPdf = async ({
+  fileName,
   selector,
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
-  const originalFileName = `${dashboardName}.pdf`;
-  const fileName = includeBranding
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
-      `Metabase - ${originalFileName}`
-    : originalFileName;
-
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 

@@ -5,7 +5,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { getUserCanWriteMeasures } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import { MeasureItem } from "./MeasureItem";
@@ -23,11 +23,13 @@ export function MeasureList({ table }: MeasureListProps) {
       tableId: table.id,
       measureId,
     });
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const canWriteMeasures = useSelector((state) =>
+    getUserCanWriteMeasures(state, table.is_published),
+  );
 
   return (
     <Stack gap="md" data-testid="table-measures-page">
-      {!remoteSyncReadOnly && (
+      {canWriteMeasures && (
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}

@@ -7,6 +7,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListChannelsQuery } from "metabase/api/channel";
+import { useSetting } from "metabase/common/hooks";
 import {
   Button,
   Flex,
@@ -21,6 +22,8 @@ import {
 import type { NotificationChannel } from "metabase-types/api";
 
 import { SlackSettingsModal } from "../../slack/SlackSettingsModal";
+import { SlackSetup } from "../../slack/SlackSetup";
+import { SlackStatus } from "../../slack/SlackStatus";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 
@@ -31,6 +34,8 @@ export const NotificationSettingsPage = () => {
     useDisclosure(false);
   const [webhookModal, setWebhookModal] = useState<NotificationModals>(null);
   const [currentChannel, setCurrentChannel] = useState<NotificationChannel>();
+  const slackAppToken = useSetting("slack-app-token");
+  const slackBotToken = useSetting("slack-token");
 
   const { data: channels } = useListChannelsQuery();
 
@@ -40,18 +45,32 @@ export const NotificationSettingsPage = () => {
     <>
       <SettingsPageWrapper title={t`Notifications`}>
         <SettingsSection title={t`Slack`}>
-          <UnstyledButton onClick={openSlackModal} variant="unstyled" w="100%">
-            <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
-              <Flex gap="0.5rem" align="center" mb="0.5rem">
+          {slackAppToken || slackBotToken ? (
+            <Paper shadow="0" withBorder p="lg">
+              <Flex gap="0.5rem" align="center" mb="1rem">
                 <Icon name="slack_colorized" />
-                <Title order={3}>{t`Connect to Slack`}</Title>
+                <Title order={3}>{t`Slack`}</Title>
               </Flex>
-              <Text>
-                {t`If your team uses Slack, you can send dashboard subscriptions and
-              alerts there`}
-              </Text>
+              {slackAppToken ? <SlackStatus /> : <SlackSetup />}
             </Paper>
-          </UnstyledButton>
+          ) : (
+            <UnstyledButton
+              onClick={openSlackModal}
+              variant="unstyled"
+              w="100%"
+            >
+              <Paper shadow="0" withBorder p="lg">
+                <Flex gap="0.5rem" align="center" mb="0.5rem">
+                  <Icon name="slack_colorized" />
+                  <Title order={3}>{t`Connect to Slack`}</Title>
+                </Flex>
+                <Text>
+                  {t`If your team uses Slack, you can send dashboard subscriptions and
+              alerts there`}
+                </Text>
+              </Paper>
+            </UnstyledButton>
+          )}
         </SettingsSection>
 
         <SettingsSection>

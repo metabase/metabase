@@ -672,6 +672,8 @@
 
 (deftest ^:parallel fe-friendly-legacy-field-refs-test
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
+    ;; (This is calculated by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]])
+    ;;
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
     (let [query (merge

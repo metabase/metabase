@@ -23,8 +23,7 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
-
-import { isConcreteTableId } from "../utils";
+import { isConcreteTableId } from "metabase-types/api";
 
 import S from "./TableSelector.module.css";
 

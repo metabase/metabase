@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { MeasureAggregationPicker } from "metabase/querying/measures";
-import { Card, Stack, TextInput } from "metabase/ui";
+import { Card, Stack, Text, TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import S from "./MeasureEditor.module.css";
@@ -19,7 +19,7 @@ export function MeasureEditor({
   description,
   onQueryChange,
   onDescriptionChange,
-  readOnly,
+  readOnly = false,
 }: MeasureEditorProps) {
   return (
     <Card withBorder p="xl">
@@ -31,17 +31,24 @@ export function MeasureEditor({
             readOnly={readOnly}
           />
         )}
-        <TextInput
-          label={t`Give it a description`}
-          placeholder={t`Only if it really needs it`}
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          maw={400}
-          classNames={{
-            label: S.descriptionLabel,
-          }}
-          readOnly={readOnly}
-        />
+        {!readOnly && (
+          <TextInput
+            label={t`Give it a description`}
+            placeholder={t`Only if it really needs it`}
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            maw={400}
+            classNames={{
+              label: S.descriptionLabel,
+            }}
+          />
+        )}
+        {readOnly && description && (
+          <Stack gap="sm">
+            <Text fw="bold">{t`Description`}</Text>
+            <Text c="text-secondary">{description}</Text>
+          </Stack>
+        )}
       </Stack>
     </Card>
   );

@@ -606,7 +606,8 @@
   Use nil for analysis-version if you want to check that no analysis exists."
   [spec]
   (doseq [[entity-type ids-and-versions] spec]
-    (let [analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version])
+    (let [analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                       :analyzed_entity_type entity-type)
                             (into {} (map (juxt :analyzed_entity_id :analysis_version))))]
       (doseq [[id expected-version] ids-and-versions]
         (testing (str "Checking " entity-type " " id)

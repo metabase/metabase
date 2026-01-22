@@ -156,6 +156,10 @@ export const ALL_EXTERNAL_USERS_GROUP_ID = _.findWhere(
   },
 )?.id;
 
+export const DATA_ANALYSTS_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
+  magic_group_type: "data-analyst",
+})?.id;
+
 export const COLLECTION_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
   name: "collection",
 }).id;

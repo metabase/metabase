@@ -9,6 +9,7 @@ import type {
   PythonTransformTableAliases,
   Table,
 } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 
 import { AliasInput } from "./AliasInput";
 import S from "./PythonDataPicker.module.css";
@@ -16,7 +17,6 @@ import { TableSelector } from "./TableSelector";
 import type { TableSelection } from "./types";
 import {
   getInitialTableSelections,
-  isConcreteTableId,
   selectionsToTableAliases,
   slugify,
 } from "./utils";

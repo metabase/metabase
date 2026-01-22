@@ -5,6 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import type {
   Task,
   TaskRun,
+  TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunStatus,
   TaskRunType,
@@ -103,3 +104,19 @@ export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
   (
     ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
   ).includes(value as TaskRunStatus);
+
+export const guardTaskRunStartedAtRange = (
+  value: string,
+): value is TaskRunDateFilterOption =>
+  (
+    [
+      "thisday",
+      "past1days~",
+      "past1weeks~",
+      "past7days~",
+      "past30days~",
+      "past1months~",
+      "past3months~",
+      "past12months~",
+    ] satisfies TaskRunDateFilterOption[]
+  ).includes(value as TaskRunDateFilterOption);

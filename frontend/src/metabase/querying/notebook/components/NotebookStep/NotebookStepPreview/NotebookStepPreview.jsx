@@ -12,6 +12,8 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
+import S from "./NotebookStepPreview.module.css";
+
 const PREVIEW_ROWS_LIMIT = 10;
 
 const getPreviewQuestion = (step) => {
@@ -97,9 +99,16 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
       rawSeries={rawSeries}
       error={err}
       queryBuilderMode="notebook"
-      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
-        [CS.p2]: err,
-      })}
+      className={cx(
+        S.PreviewVisualization,
+        CS.bordered,
+        CS.shadowed,
+        CS.rounded,
+        CS.bgWhite,
+        {
+          [CS.p2]: err,
+        },
+      )}
       style={{
         height: err ? "auto" : getPreviewHeightForResult(result),
       }}

@@ -203,6 +203,7 @@ describe("issue 56567", () => {
     ["All Users", allUsersPermission],
     ["collection", "Curate"],
     ["data", "No access"],
+    ["Data Analysts", "No access"],
     ["nosql", "No access"],
     ["readonly", "View"],
   ];

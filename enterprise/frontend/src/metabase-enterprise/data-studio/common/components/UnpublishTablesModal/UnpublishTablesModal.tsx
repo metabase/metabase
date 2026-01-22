@@ -22,6 +22,7 @@ import {
   useGetTableSelectionInfoQuery,
   useUnpublishTablesMutation,
 } from "metabase-enterprise/api";
+import { trackDataStudioTableUnpublished } from "metabase-enterprise/data-studio/analytics";
 import type {
   BulkTableInfo,
   DatabaseId,
@@ -126,6 +127,7 @@ function ModalBody({
       table_ids: tableIds,
     }).unwrap();
     sendSuccessToast(t`Unpublished`);
+    trackDataStudioTableUnpublished();
     onUnpublish();
   };
 

@@ -25,37 +25,37 @@ const FULL_HEIGHT = 400;
 // - On load, long queries will be capped at this length
 // - When loading an empty query, this is the height
 // - When the editor grows during typing this is the max height
-export function getMaxAutoSizeLines(viewHeight: number) {
-  const pixelHeight = viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
+export function getMaxAutoSizeLines(availableHeight: number) {
+  const pixelHeight = availableHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
   return Math.ceil(getLinesForHeight(pixelHeight));
 }
 
 type GetVisibleLinesCountParams = {
   query?: NativeQuery;
-  viewHeight: number | "full";
+  availableHeight?: number | "full";
 };
 
 function getVisibleLinesCount({
   query,
-  viewHeight,
+  availableHeight,
 }: {
   query?: NativeQuery;
-  viewHeight: number;
+  availableHeight: number;
 }) {
-  const maxAutoSizeLines = getMaxAutoSizeLines(viewHeight);
+  const maxAutoSizeLines = getMaxAutoSizeLines(availableHeight);
   const queryLineCount = query?.lineCount() || maxAutoSizeLines;
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
-export function calcInitialEditorHeight({
+export function getInitialEditorHeight({
   query,
-  viewHeight,
+  availableHeight = 0,
 }: GetVisibleLinesCountParams) {
-  if (viewHeight === "full") {
+  if (availableHeight === "full") {
     // override for action editor
     return FULL_HEIGHT;
   }
-  const lines = getVisibleLinesCount({ query, viewHeight });
+  const lines = getVisibleLinesCount({ query, availableHeight });
   return getEditorLineHeight(lines);
 }
 

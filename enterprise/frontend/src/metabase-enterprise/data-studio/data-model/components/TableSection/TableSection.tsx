@@ -21,7 +21,6 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -63,7 +62,6 @@ const TableSectionBase = ({
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
-  const isAdmin = useSelector(getUserIsAdmin);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
@@ -217,7 +215,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {isAdmin && !remoteSyncReadOnly && (
+        {!remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"

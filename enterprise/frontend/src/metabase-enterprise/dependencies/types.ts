@@ -1,6 +1,9 @@
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
+import type {
+  AnalysisFindingErrorType,
+  DependencyGroupType,
+} from "metabase-types/api";
 
 export type NodeId = string;
 
@@ -22,6 +25,16 @@ export type NodeLocationInfo = {
 export type DependentGroup = {
   type: DependencyGroupType;
   count: number;
+};
+
+export type DependencyError = {
+  type: AnalysisFindingErrorType;
+  detail?: string | null;
+};
+
+export type DependencyErrorGroup = {
+  type: AnalysisFindingErrorType;
+  errors: DependencyError[];
 };
 
 export type DependencyErrorInfo = {

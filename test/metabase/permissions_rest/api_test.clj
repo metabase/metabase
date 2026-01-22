@@ -64,6 +64,14 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
+(deftest no-data-analyst-groups-test
+  (testing "GET /api/permissions/group"
+    (testing "in OSS, the data analyst group is hidden"
+      ;; note that this uses `config/ee-available?` instead of a feature to avoid hiding a group that may stil provide permissions!
+      (when-not config/ee-available?
+        (is (not (contains? (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))
+                            "Data Analysts")))))))
+
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"

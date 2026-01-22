@@ -11,6 +11,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { Box } from "metabase/ui";
 import { usePublishTablesMutation } from "metabase-enterprise/api/table";
 import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
+import { isConcreteTableId } from "metabase-types/api";
 
 interface PublishTableModalProps {
   opened: boolean;
@@ -35,7 +36,9 @@ export function PublishTableModal({
     await publishTables({ table_ids: [item.id] }).unwrap(); // unwrap() allows EntityPicker's error handling to take over
     onClose();
     sendSuccessToast(t`Published`);
-    trackDataStudioTablePublished(item.id);
+    if (isConcreteTableId(item.id)) {
+      trackDataStudioTablePublished(item.id);
+    }
     onPublished(item);
   };
 

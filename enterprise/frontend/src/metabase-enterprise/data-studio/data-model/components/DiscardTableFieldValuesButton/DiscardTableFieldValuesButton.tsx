@@ -4,6 +4,7 @@ import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import { useDiscardTablesFieldValuesMutation } from "metabase-enterprise/api";
+import { trackDataStudioTableFieldValuesDiscardStarted } from "metabase-enterprise/data-studio/analytics";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {
@@ -30,8 +31,10 @@ export const DiscardTableFieldValuesButton = ({
 
     if (error) {
       sendErrorToast(t`Failed to discard values`);
+      trackDataStudioTableFieldValuesDiscardStarted("failure");
     } else {
       setStarted(true);
+      trackDataStudioTableFieldValuesDiscardStarted("success");
     }
   };
 

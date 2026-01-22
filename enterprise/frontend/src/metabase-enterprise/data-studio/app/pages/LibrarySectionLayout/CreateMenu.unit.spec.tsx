@@ -55,21 +55,39 @@ const setup = ({
 };
 
 describe("CreateMenu", () => {
-  it("renders nothing if menu does not have any options (user lacks permissions)", () => {
-    setup();
+  it("renders all options for admins", async () => {
+    setup({ user: fullPermissionsUser });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
     expect(
-      screen.queryByRole("button", { name: /New/ }),
-    ).not.toBeInTheDocument();
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual([
+      "Publish a table",
+      "Metric",
+      "New snippet",
+      "New snippet folder",
+    ]);
   });
 
-  it("does not render snippet menu items if user only has query builder access", async () => {
+  it("renders publish option for data analysts", async () => {
+    setup({ user: { is_data_analyst: true } });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Publish a table"]);
+  });
+
+  it("renders publish and metric options if user only has query builder access", async () => {
     setup({ user: { permissions: { can_create_queries: true } } });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Metric"]);
+    ).toEqual(["Publish a table", "Metric"]);
   });
 
   it("does not render Metric option when canWriteToMetricCollection is false", async () => {
@@ -89,21 +107,6 @@ describe("CreateMenu", () => {
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
     ).toEqual(["Publish a table", "New snippet", "New snippet folder"]);
-  });
-
-  it("renders all options when user has full permissions", async () => {
-    setup({ user: fullPermissionsUser });
-
-    await userEvent.click(screen.getByRole("button", { name: /New/ }));
-
-    expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual([
-      "Publish a table",
-      "Metric",
-      "New snippet",
-      "New snippet folder",
-    ]);
   });
 
   it("renders nothing if remote sync is set to read-only", () => {

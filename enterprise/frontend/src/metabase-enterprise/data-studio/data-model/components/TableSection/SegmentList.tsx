@@ -4,9 +4,8 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";
@@ -16,7 +15,6 @@ type SegmentListProps = {
 };
 
 export function SegmentList({ table }: SegmentListProps) {
-  const canCreateSegment = useSelector(getUserCanWriteSegments);
   const segments = table.segments ?? [];
   const getSegmentHref = (segmentId: number) =>
     Urls.dataStudioDataModelSegment({
@@ -25,11 +23,13 @@ export function SegmentList({ table }: SegmentListProps) {
       tableId: table.id,
       segmentId,
     });
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const canCreateSegment = useSelector((state) =>
+    getUserCanWriteSegments(state, table.is_published),
+  );
 
   return (
     <Stack gap="md" data-testid="table-segments-page">
-      {canCreateSegment && !remoteSyncReadOnly && (
+      {canCreateSegment && (
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}

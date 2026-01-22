@@ -20,7 +20,7 @@ type MeasureHeaderProps = {
   measure: Measure;
   tabUrls: MeasureTabUrls;
   previewUrl?: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   onNameChange?: (name: string) => void;
   breadcrumbs?: ReactNode;
   actions?: ReactNode;

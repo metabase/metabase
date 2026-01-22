@@ -27,9 +27,11 @@ module.exports = {
       Literal(node) {
         if (
           typeof node.value !== "string" ||
-          ["ExportNamedDeclaration", "ImportDeclaration"].includes(
-            node.parent.type,
-          )
+          [
+            "ExportNamedDeclaration",
+            "ImportDeclaration",
+            "ExportAllDeclaration",
+          ].includes(node.parent.type)
         ) {
           return;
         }

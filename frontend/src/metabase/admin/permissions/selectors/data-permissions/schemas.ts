@@ -21,6 +21,7 @@ import type {
   DataPermissionValue,
   DatabaseEntityId,
   PermissionSectionConfig,
+  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {
@@ -194,14 +195,15 @@ const buildNativePermission = (
 export const buildSchemasPermissions = (
   entityId: DatabaseEntityId,
   groupId: number,
-  isAdmin: boolean,
-  isExternal: boolean,
+  groupType: SpecialGroupType,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
   permissionView: "group" | "database",
 ): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -232,8 +234,7 @@ export const buildSchemasPermissions = (
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
       groupId,
-      isAdmin,
-      isExternal,
+      groupType,
       permissions,
       accessPermission.value,
       defaultGroup,

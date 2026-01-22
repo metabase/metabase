@@ -306,6 +306,7 @@
      {:current-user-id       api/*current-user-id*
       :current-user-perms    @api/*current-user-permissions-set*
       :is-superuser?         api/*is-superuser?*
+      :is-data-analyst       api/*is-data-analyst?*
       :is-impersonated-user? (perms-util/impersonated-user?)
       :is-sandboxed-user?    (perms-util/impersonated-user?)
       :archived              false

@@ -36,6 +36,7 @@ export interface SdkIframeEmbedSetupContextType {
   canGoBack: boolean;
   isFirstStep: boolean;
   isLastStep: boolean;
+  allowPreviewAndNavigation: boolean;
 
   // Initial state
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;

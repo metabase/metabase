@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
@@ -74,6 +74,12 @@ export function DependencyList({
   ) => {
     onParamsChange({ ...params, sorting });
   };
+
+  useLayoutEffect(() => {
+    if (selectedEntry != null && selectedNode == null) {
+      setSelectedEntry(undefined);
+    }
+  }, [selectedEntry, selectedNode]);
 
   return (
     <Flex h="100%">

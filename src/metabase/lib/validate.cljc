@@ -14,30 +14,30 @@
 (mu/defn missing-column-error :- [:ref ::lib.schema.validate/missing-column-error]
   "Create a missing-column lib validation error"
   [col-name :- :string]
-  {:type :validate/missing-column
+  {:type :missing-column
    :name col-name})
 
 (mu/defn missing-table-alias-error :- [:ref ::lib.schema.validate/missing-table-alias-error]
   "Create a missing-table-alias lib validation error"
   [alias-name :- :string]
-  {:type :validate/missing-table-alias
+  {:type :missing-table-alias
    :name alias-name})
 
 (mu/defn duplicate-column-error :- [:ref ::lib.schema.validate/duplicate-column-error]
   "Create a duplicate-column lib validation error"
   [col-name :- :string]
-  {:type :validate/duplicate-column
+  {:type :duplicate-column
    :name col-name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
   "Create a syntax-error lib validation error"
   []
-  {:type :validate/syntax-error})
+  {:type :syntax-error})
 
 (mu/defn validation-exception-error :- [:ref ::lib.schema.validate/validation-exception-error]
   "Create a validation-exception-error lib validation error"
   [message :- :string]
-  {:type :validate/validation-exception-error
+  {:type :validation-exception-error
    :message message})
 
 (defn- extract-source-from-field-ref
@@ -113,7 +113,7 @@
 (mu/defn find-bad-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
   "Like [[find-bad-refs]] but includes source entity information for each error.
    Returns a set of error maps, each containing:
-   - `:type` - the error type (e.g., `:validate/missing-column`)
+   - `:type` - the error type (e.g., `:missing-column`)
    - `:name` - the column name (for missing-column errors)
    - `:source-entity-type` - optional, `:table` or `:card` if source could be determined
    - `:source-entity-id` - optional, the ID of the source entity"

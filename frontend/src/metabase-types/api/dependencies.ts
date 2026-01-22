@@ -55,12 +55,19 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   type: TType;
   data: TData;
   dependents_count?: DependentsCount | null;
-  dependents_errors?: DependencyError[] | null;
+  dependents_errors?: AnalysisFindingError[] | null;
 };
 
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
+  | "name"
+  | "display_name"
+  | "description"
+  | "db_id"
+  | "schema"
+  | "db"
+  | "fields"
+  | "transform"
 >;
 
 export type TransformDependencyNodeData = Pick<
@@ -199,18 +206,26 @@ export type DependencyNode =
   | SegmentDependencyNode
   | MeasureDependencyNode;
 
-export const DEPENDENCY_ERROR_TYPES = [
+export type AnalysisFindingErrorId = number;
+
+export const ANALYSIS_FINDING_ERROR_TYPES = [
   "missing-column",
   "missing-table-alias",
   "duplicate-column",
   "syntax-error",
   "validation-error",
 ] as const;
-export type DependencyErrorType = (typeof DEPENDENCY_ERROR_TYPES)[number];
+export type AnalysisFindingErrorType =
+  (typeof ANALYSIS_FINDING_ERROR_TYPES)[number];
 
-export type DependencyError = {
-  type: DependencyErrorType;
-  detail?: string | null;
+export type AnalysisFindingError = {
+  id: AnalysisFindingErrorId;
+  analyzed_entity_id: DependencyId;
+  analyzed_entity_type: DependencyType;
+  source_entity_id?: DependencyId | null;
+  source_entity_type?: DependencyType | null;
+  error_type: AnalysisFindingErrorType;
+  error_detail?: string | null;
 };
 
 export type DependencyEdge = {
@@ -233,8 +248,9 @@ export type GetDependencyGraphRequest = {
 export type ListNodeDependentsRequest = {
   id: DependencyId;
   type: DependencyType;
-  dependent_type: DependencyType;
-  dependent_card_type?: CardType;
+  dependent_types?: DependencyType[];
+  dependent_card_types?: CardType[];
+  broken?: boolean;
   archived?: boolean;
 };
 
@@ -256,7 +272,8 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
-  "dependents-count",
+  "dependents-errors",
+  "dependents-with-errors",
 ] as const;
 export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 
@@ -268,6 +285,13 @@ export type DependencySortingOptions = {
   column: DependencySortColumn;
   direction: DependencySortDirection;
 };
+
+/**
+ * Entity types that can be the source of validation errors (breaking other entities).
+ * Only tables and cards can be sources of errors in analysis_finding_error.
+ */
+export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
+export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
 
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];

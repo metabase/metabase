@@ -81,7 +81,6 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
 
 export const getCommonEmbedSettings = ({
   experience,
-  isGuestEmbedsEnabled,
   isSsoEnabledAndConfigured,
   isGuest,
   useExistingUserSession,
@@ -96,7 +95,7 @@ export const getCommonEmbedSettings = ({
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
   if (isSimpleEmbedFeatureAvailable) {
-    return isGuestEmbedsEnabled && isGuest
+    return isGuest
       ? GET_ENABLE_GUEST_EMBED_SETTINGS({
           experience,
           isSimpleEmbedFeatureAvailable,

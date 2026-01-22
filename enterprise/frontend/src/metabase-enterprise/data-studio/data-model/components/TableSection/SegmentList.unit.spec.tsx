@@ -29,6 +29,7 @@ function setup({
     db_id: 1,
     schema: "PUBLIC",
     segments,
+    is_published: true,
     ...table,
   });
 
@@ -60,21 +61,43 @@ describe("SegmentList", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not render 'New segment' button when user cannot create segments", () => {
-    setup({ segments: [], isAdmin: false });
+  describe("'new segment' link", () => {
+    it("is rendered when user is an admin", () => {
+      setup({ segments: [], isAdmin: true });
 
-    expect(screen.getByText("No segments yet")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /New segment/i }),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        screen.getByRole("link", { name: /New segment/i }),
+      ).toBeInTheDocument();
+    });
 
-  it("should not render 'New segment' button when remote sync is set to read-only", () => {
-    setup({ segments: [], isAdmin: true, remoteSyncType: "read-only" });
+    it("is not rendered when user is not an admin", () => {
+      setup({ segments: [], isAdmin: false });
 
-    expect(
-      screen.queryByRole("link", { name: /New segment/i }),
-    ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /New segment/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is not rendered when remote sync is set to read-only", () => {
+      setup({ segments: [], isAdmin: true, remoteSyncType: "read-only" });
+
+      expect(
+        screen.queryByRole("link", { name: /New segment/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is still rendered when remote sync is set to read-only but table is not published", () => {
+      setup({
+        segments: [],
+        isAdmin: true,
+        remoteSyncType: "read-only",
+        table: { is_published: false },
+      });
+
+      expect(
+        screen.getByRole("link", { name: /New segment/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should render segment items", () => {
