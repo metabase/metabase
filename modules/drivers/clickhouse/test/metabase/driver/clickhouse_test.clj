@@ -400,15 +400,9 @@
           db
           (let [mp (mt/metadata-provider)
                 broken-query (lib/native-query mp "select final from final")]
-            (try
-              (driver/native-query-deps :clickhouse broken-query)
-              (catch Exception e
-                (is (= "SQL parsing failed." (ex-message e)))))
-            (try
-              (driver/native-result-metadata :clickhouse broken-query)
-              (catch Exception e
-                (is (= "SQL parsing failed." (ex-message e)))))
-            (try
-              (driver/validate-native-query-fields :clickhouse broken-query)
-              (catch Exception e
-                (is (= "SQL parsing failed." (ex-message e)))))))))))
+            (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                  (driver/native-query-deps :clickhouse broken-query)))
+            (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                  (driver/native-result-metadata :clickhouse broken-query)))
+            (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                  (driver/validate-native-query-fields :clickhouse broken-query)))))))))
