@@ -1,0 +1,112 @@
+(ns metabase.llm.anthropic-test
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.llm.anthropic :as anthropic]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------- extract-tool-input Tests -------------------------------------------
+
+(deftest extract-tool-input-test
+  (testing "valid tool_use response extracts input"
+    (let [response {:content [{:type "tool_use"
+                               :id "123"
+                               :name "generate_sql"
+                               :input {:sql "SELECT 1"}}]}]
+      (is (= {:sql "SELECT 1"}
+             (#'anthropic/extract-tool-input response)))))
+
+  (testing "multiple content blocks finds tool_use"
+    (let [response {:content [{:type "text" :text "thinking..."}
+                              {:type "tool_use"
+                               :id "456"
+                               :name "generate_sql"
+                               :input {:sql "SELECT 1" :explanation "Simple query"}}]}]
+      (is (= {:sql "SELECT 1" :explanation "Simple query"}
+             (#'anthropic/extract-tool-input response)))))
+
+  (testing "no tool_use block returns nil"
+    (let [response {:content [{:type "text" :text "no tool"}]}]
+      (is (nil? (#'anthropic/extract-tool-input response)))))
+
+  (testing "empty content returns nil"
+    (is (nil? (#'anthropic/extract-tool-input {:content []})))
+    (is (nil? (#'anthropic/extract-tool-input {}))))
+
+  (testing "tool_use without input returns nil"
+    (let [response {:content [{:type "tool_use" :id "123" :name "generate_sql"}]}]
+      (is (nil? (#'anthropic/extract-tool-input response)))))
+
+  (testing "returns first tool_use when multiple present"
+    (let [response {:content [{:type "tool_use"
+                               :id "1"
+                               :name "generate_sql"
+                               :input {:sql "SELECT 1"}}
+                              {:type "tool_use"
+                               :id "2"
+                               :name "generate_sql"
+                               :input {:sql "SELECT 2"}}]}]
+      (is (= {:sql "SELECT 1"}
+             (#'anthropic/extract-tool-input response))))))
+
+;;; ------------------------------------------- build-request-headers Tests -------------------------------------------
+
+(deftest build-request-headers-test
+  (testing "includes required headers"
+    (let [headers (#'anthropic/build-request-headers "sk-test-key")]
+      (is (= "sk-test-key" (get headers "x-api-key")))
+      (is (= "2023-06-01" (get headers "anthropic-version")))
+      (is (= "application/json" (get headers "content-type"))))))
+
+;;; ------------------------------------------- build-request-body Tests -------------------------------------------
+
+(deftest build-request-body-test
+  (testing "includes required fields"
+    (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
+                                                :messages [{:role "user" :content "test"}]})]
+      (is (= "claude-sonnet-4-5-20250929" (:model body)))
+      (is (= 4096 (:max_tokens body)))
+      (is (= [{:role "user" :content "test"}] (:messages body)))
+      (is (vector? (:tools body)))
+      (is (= {:type "tool" :name "generate_sql"} (:tool_choice body)))))
+
+  (testing "includes system prompt when provided"
+    (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
+                                                :system "You are a SQL expert"
+                                                :messages [{:role "user" :content "test"}]})]
+      (is (= "You are a SQL expert" (:system body)))))
+
+  (testing "omits system when not provided"
+    (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
+                                                :messages [{:role "user" :content "test"}]})]
+      (is (not (contains? body :system))))))
+
+;;; ------------------------------------------- generate-sql-tool Tests -------------------------------------------
+
+(deftest generate-sql-tool-test
+  (testing "tool definition has correct structure"
+    (let [tool @#'anthropic/generate-sql-tool]
+      (is (= "generate_sql" (:name tool)))
+      (is (string? (:description tool)))
+      (is (= "object" (get-in tool [:input_schema :type])))
+      (is (contains? (get-in tool [:input_schema :properties]) :sql))
+      (is (= ["sql"] (get-in tool [:input_schema :required]))))))
+
+;;; ------------------------------------------- chat-completion error handling Tests -------------------------------------------
+
+(deftest chat-completion-not-configured-test
+  (testing "throws when API key not configured"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"not configured"
+           (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
+
+;;; ------------------------------------------- default-model Tests -------------------------------------------
+
+(deftest default-model-test
+  (testing "default model is defined and reasonable"
+    (is (string? anthropic/default-model))
+    (is (str/includes? anthropic/default-model "claude"))))

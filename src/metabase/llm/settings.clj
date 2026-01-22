@@ -19,20 +19,6 @@
   :export? false
   :doc false)
 
-(defsetting llm-openai-api-key
-  (deferred-tru "OpenAI API key for AI-assisted SQL generation.")
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :export? false
-  :doc false)
-
-(defsetting llm-openai-model
-  (deferred-tru "OpenAI model for AI-assisted SQL generation.")
-  :encryption :no
-  :visibility :settings-manager
-  :export? false
-  :doc false)
-
 (defn llm-enabled?
   "Returns true if LLM SQL generation is enabled (i.e., an Anthropic API key is configured)."
   []

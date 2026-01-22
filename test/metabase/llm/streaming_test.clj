@@ -23,15 +23,6 @@
     (is (= "d:{\"finishReason\":\"stop\"}\n"
            (streaming/format-sse-line :finish-message {:finishReason "stop"})))))
 
-(deftest format-code-edit-part-test
-  (testing "creates code edit part with correct structure"
-    (let [part (streaming/format-code-edit-part "qb" "SELECT * FROM users")]
-      (is (= "code_edit" (:type part)))
-      (is (= 1 (:version part)))
-      (is (= "qb" (get-in part [:value :buffer_id])))
-      (is (= "rewrite" (get-in part [:value :mode])))
-      (is (= "SELECT * FROM users" (get-in part [:value :value]))))))
-
 (deftest format-finish-message-test
   (testing "creates finish message with reason"
     (is (= {:finishReason "stop"}
