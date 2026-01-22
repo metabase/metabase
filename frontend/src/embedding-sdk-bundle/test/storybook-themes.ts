@@ -1,7 +1,8 @@
 import {
-  type MetabaseTheme,
+  type MetabaseEmbeddingTheme,
   defineMetabaseTheme,
 } from "metabase/embedding-sdk/theme";
+import { METABASE_DARK_THEME } from "metabase/lib/colors/constants/themes/dark";
 
 export const darkColors = {
   primary: "#DF75E9",
@@ -69,7 +70,7 @@ const pugColors = {
   negative: "#D30100",
 };
 
-const pugTheme: MetabaseTheme = {
+const pugTheme: MetabaseEmbeddingTheme = {
   // fontFamily: "DM Mono", // we don't have it in storybook
   fontSize: "14px",
   colors: {
@@ -127,7 +128,7 @@ const stitchColors = {
   background: "#161A1D",
 };
 
-const stitchTheme: MetabaseTheme = {
+const stitchTheme: MetabaseEmbeddingTheme = {
   fontFamily: "Inter",
   fontSize: "14px",
   colors: {
@@ -182,7 +183,7 @@ const luminaraColors = {
   viz1: "#64786A",
 };
 
-const luminaraTheme: MetabaseTheme = {
+const luminaraTheme: MetabaseEmbeddingTheme = {
   // fontFamily: "Arsenal", // we don't have it in storybook
   fontSize: "14px",
   colors: {
@@ -243,7 +244,7 @@ const proficiencyColors = {
   negative: "rgba(234, 56, 41, 1)",
 };
 
-const proficiencyTheme: MetabaseTheme = {
+const proficiencyTheme: MetabaseEmbeddingTheme = {
   // fontFamily: "Figtree", // we don't have it in storybook
   fontSize: "14px",
   colors: {
@@ -310,9 +311,13 @@ const proficiencyTheme: MetabaseTheme = {
   },
 };
 
-export const storybookThemes: Record<string, MetabaseTheme | undefined> = {
+export const storybookThemes: Record<
+  string,
+  MetabaseEmbeddingTheme | undefined
+> = {
   default: undefined,
   dark: darkTheme,
+  "dark-v2": METABASE_DARK_THEME,
   pug: pugTheme,
   stitch: stitchTheme,
   luminara: luminaraTheme,

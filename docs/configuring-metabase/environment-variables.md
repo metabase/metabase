@@ -1369,6 +1369,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
+
+Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
 - Type: integer
@@ -1376,6 +1384,14 @@ If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate 
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
 The maximum amount of time a remote sync task will be given to complete.
+
+### `MB_REMOTE_SYNC_TRANSFORMS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-transforms`
+
+Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
 
 ### `MB_REPORT_TIMEZONE`
 

@@ -3,13 +3,15 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
+
 import S from "./ListSidebar.module.css";
-import { SidebarCreationInfo } from "./SidebarCreationInfo";
-import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
-import { SidebarErrorInfo } from "./SidebarErrorInfo";
+import { SidebarCreationSection } from "./SidebarCreationSection";
+import { SidebarDependentsSection } from "./SidebarDependentsSection";
+import { SidebarErrorSection } from "./SidebarErrorSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarLocationInfo } from "./SidebarLocationInfo";
-import { getDependencyErrorGroups } from "./utils";
+import { SidebarLocationSection } from "./SidebarLocationSection";
+import { SidebarTransformSection } from "./SidebarTransformSection";
 
 type ListSidebarProps = {
   node: DependencyNode;
@@ -20,27 +22,32 @@ export const ListSidebar = memo(function ListSidebar({
   node,
   onClose,
 }: ListSidebarProps) {
-  const errorGroups = getDependencyErrorGroups(node.dependents_errors ?? []);
+  const errors = getDependencyErrors(node.dependents_errors ?? []);
+  const errorGroups = getDependencyErrorGroups(errors);
 
   return (
     <Stack
-      className={S.panel}
+      className={S.sidebar}
       p="lg"
-      w="25rem"
-      gap="lg"
+      w="32rem"
+      gap="xl"
+      bg="background-primary"
       data-testid="dependency-list-sidebar"
     >
-      <SidebarHeader node={node} onClose={onClose} />
-      <SidebarCreationInfo node={node} />
-      <SidebarLocationInfo node={node} />
-      <SidebarDependentsInfo node={node} />
+      <Stack gap="lg">
+        <SidebarHeader node={node} onClose={onClose} />
+        <SidebarLocationSection node={node} />
+        <SidebarTransformSection node={node} />
+        <SidebarCreationSection node={node} />
+      </Stack>
       {errorGroups.map((errorGroup) => (
-        <SidebarErrorInfo
+        <SidebarErrorSection
           key={errorGroup.type}
           type={errorGroup.type}
           errors={errorGroup.errors}
         />
       ))}
+      <SidebarDependentsSection node={node} />
     </Stack>
   );
 });

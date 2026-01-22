@@ -22,7 +22,7 @@ export function useQuestionEditorSync({
   queryResults,
   queryQuestion,
 }: UseQuestionEditorSyncOptions) {
-  const isNewQuestion = originalId === "new";
+  const isNewQuestion = originalId === "new" || originalId === "new-native";
 
   const [
     isEditorOpen,

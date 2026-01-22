@@ -614,7 +614,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
            premium-features
            server
            settings
@@ -1408,6 +1407,7 @@
            permissions
            premium-features
            settings
+           system
            util}}
 
   startup
@@ -1470,9 +1470,12 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
+           config
            models
            permissions
            premium-features
+           query-processor
            request
            task
            util}}
@@ -2341,6 +2344,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            collections
            driver
            events
@@ -2350,7 +2354,9 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
+           revisions
            search
            settings
            sync

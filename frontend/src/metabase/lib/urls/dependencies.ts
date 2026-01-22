@@ -1,7 +1,8 @@
 import type {
   DependencyEntry,
   DependencyGroupType,
-  DependencySortingOptions,
+  DependencySortColumn,
+  DependencySortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -31,42 +32,46 @@ export function dependencyTasks() {
 }
 
 export type DependencyListParams = {
+  page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
-  sorting?: DependencySortingOptions;
-  page?: number;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: DependencySortDirection;
 };
 
 function dependencyListQueryString({
+  page,
   query,
   groupTypes,
   includePersonalCollections,
-  sorting,
-  page,
+  sortColumn,
+  sortDirection,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
 
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
   if (query != null) {
     searchParams.set("query", query);
   }
   if (groupTypes != null) {
     groupTypes.forEach((groupType) => {
-      searchParams.append("group-types", groupType);
+      searchParams.append("group_types", groupType);
     });
   }
   if (includePersonalCollections != null) {
     searchParams.set(
-      "include-personal-collections",
+      "include_personal_collections",
       String(includePersonalCollections),
     );
   }
-  if (sorting != null) {
-    searchParams.set("sort-column", sorting.column);
-    searchParams.set("sort-direction", sorting.direction);
+  if (sortColumn != null) {
+    searchParams.set("sort_column", sortColumn);
   }
-  if (page != null) {
-    searchParams.set("page", String(page));
+  if (sortDirection != null) {
+    searchParams.set("sort_direction", sortDirection);
   }
 
   const queryString = searchParams.toString();

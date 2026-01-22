@@ -22,6 +22,11 @@ import OpenInMetabase from "../components/OpenInMetabase";`,
 export { MetabaseLinksToggleWidget } from "./MetabaseLinksToggleWidget";`,
   },
   {
+    // "Metabase in * reexports"
+    code: `
+export * from "./MetabaseLinksToggleWidget";`,
+  },
+  {
     // "No Metabase string",
     code: `
   const label = "some string"`,
