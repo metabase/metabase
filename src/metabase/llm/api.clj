@@ -172,24 +172,6 @@
                            response))
     :else              response))
 
-(defn- make-code-edit-part
-  "Create an AI SDK v5 data part for a code edit suggestion."
-  [buffer-id sql]
-  {:type    "code_edit"
-   :version 1
-   :value   {:buffer_id buffer-id
-             :mode      "rewrite"
-             :value     sql}})
-
-(defn- make-context-part
-  "Create an AI SDK v5 context data part for sync responses."
-  [{:keys [system-prompt dialect table-ids]}]
-  {:type    "context"
-   :version 1
-   :value   {:system_prompt system-prompt
-             :dialect       dialect
-             :table_ids     (vec table-ids)}})
-
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema
@@ -241,46 +223,40 @@
    - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
-   Returns AI SDK v5 data part format for frontend compatibility.
-   If include_context is true, includes a context part with the system prompt."
+   Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
-            [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]
             [:referenced_entities {:optional true}
              [:sequential [:map
                            [:model :string]
                            [:id pos-int?]]]]]]
   :- [:map
-      [:parts [:sequential [:map
-                            [:type :string]
-                            [:version pos-int?]
-                            [:value :map]]]]]
+      [:sql :string]
+      [:referenced_entities [:sequential [:map
+                                          [:model :string]
+                                          [:id pos-int?]]]]]
   ;; 1. Validate LLM is configured
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id source_sql buffer_id include_context referenced_entities]} body
-        buffer-id (or buffer_id "qb")
-        ;; 2. Extract table IDs from frontend-provided entities, or parse from prompt/SQL
+  (let [{:keys [prompt database_id source_sql referenced_entities]} body
+        ;; 2. Extract table IDs from all sources and merge them
         frontend-table-ids (when (seq referenced_entities)
                              (->> referenced_entities
                                   (filter #(= "table" (:model %)))
                                   (map :id)
                                   set))
-        explicit-table-ids (when (empty? frontend-table-ids)
-                             (llm.context/parse-table-mentions prompt))
-        implicit-table-ids (when (and (empty? frontend-table-ids) source_sql)
+        explicit-table-ids (llm.context/parse-table-mentions prompt)
+        implicit-table-ids (when source_sql
                              (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (if (seq frontend-table-ids)
-                             frontend-table-ids
-                             (set/union (or explicit-table-ids #{})
-                                        (or implicit-table-ids #{})))]
+        table-ids          (set/union (or frontend-table-ids #{})
+                                      (or explicit-table-ids #{})
+                                      (or implicit-table-ids #{}))]
 
     ;; 3. Validate at least one table is referenced
     (when (empty? table-ids)
@@ -316,14 +292,11 @@
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_response.txt") (pr-str response)))
 
-          ;; 9. Parse and return AI SDK formatted result
-          (let [sql   (parse-sql-response response)
-                parts (cond-> [(make-code-edit-part buffer-id sql)]
-                        include_context
-                        (conj (make-context-part {:system-prompt system-prompt
-                                                  :dialect       dialect
-                                                  :table-ids     table-ids})))]
-            {:parts parts}))))))
+          ;; 9. Parse and return result
+          (let [sql                 (parse-sql-response response)
+                referenced-entities (mapv (fn [id] {:model "table" :id id}) table-ids)]
+            {:sql                 sql
+             :referenced_entities referenced-entities}))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -335,8 +308,8 @@
 
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
-   Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id source_sql buffer_id referenced_entities]}]
+   Returns {:system-prompt :table-ids} or throws appropriate error."
+  [{:keys [prompt database_id source_sql referenced_entities]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
@@ -345,14 +318,12 @@
                                   (filter #(= "table" (:model %)))
                                   (map :id)
                                   set))
-        explicit-table-ids (when (empty? frontend-table-ids)
-                             (llm.context/parse-table-mentions prompt))
-        implicit-table-ids (when (and (empty? frontend-table-ids) source_sql)
+        explicit-table-ids (llm.context/parse-table-mentions prompt)
+        implicit-table-ids (when source_sql
                              (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (if (seq frontend-table-ids)
-                             frontend-table-ids
-                             (set/union (or explicit-table-ids #{})
-                                        (or implicit-table-ids #{})))]
+        table-ids          (set/union (or frontend-table-ids #{})
+                                      (or explicit-table-ids #{})
+                                      (or implicit-table-ids #{}))]
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
@@ -361,15 +332,12 @@
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
       (let [engine               (database-engine database_id)
-            dialect              (database-dialect database_id)
             dialect-instructions (load-dialect-instructions engine)
-            system-prompt        (build-system-prompt {:dialect              dialect
+            system-prompt        (build-system-prompt {:dialect              (database-dialect database_id)
                                                        :schema-ddl           schema-ddl
                                                        :dialect-instructions dialect-instructions
                                                        :source-sql           source_sql})]
-        {:dialect       dialect
-         :system-prompt system-prompt
-         :buffer-id     (or buffer_id "qb")
+        {:system-prompt system-prompt
          :table-ids     table-ids}))))
 
 (api.macros/defendpoint :post "/generate-sql-streaming"
@@ -380,25 +348,21 @@
    - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
-   Returns SSE stream in AI SDK v5 format:
-   - 0:\"text\" - Text delta chunks as SQL is generated
-   - 2:{...}   - Final code_edit data part with complete SQL
-   - 2:{...}   - Context data part (if include_context is true)
-   - d:{...}   - Finish message"
+   Returns SSE stream with:
+   - 2:{sql: '...', referenced_entities: [...]} - Final result data part
+   - d:{...} - Finish message"
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
-            [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]
             [:referenced_entities {:optional true}
              [:sequential [:map
                            [:model :string]
                            [:id pos-int?]]]]]]
-  (let [{:keys [prompt include_context]} body
-        {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
+  (let [{:keys [prompt]} body
+        {:keys [system-prompt table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
 
     (when (debug-logging-enabled?)
@@ -416,20 +380,15 @@
               nil
 
               (nil? chunk)
-              (let [json-str  (str text-acc)
-                    final-sql (parse-sql-response json-str)]
+              (let [json-str            (str text-acc)
+                    final-sql           (parse-sql-response json-str)
+                    referenced-entities (mapv (fn [id] {:model "table" :id id}) table-ids)]
                 (when (debug-logging-enabled?)
                   (log-to-file! (str timestamp "_response.txt") json-str))
                 (write-sse! os (llm.streaming/format-sse-line
                                 :data
-                                (llm.streaming/format-code-edit-part buffer-id final-sql)))
-                (when include_context
-                  (write-sse! os (llm.streaming/format-sse-line
-                                  :data
-                                  (llm.streaming/format-context-part
-                                   {:system-prompt system-prompt
-                                    :dialect       dialect
-                                    :table-ids     table-ids}))))
+                                {:sql                 final-sql
+                                 :referenced_entities referenced-entities}))
                 (write-sse! os (llm.streaming/format-sse-line
                                 :finish-message
                                 (llm.streaming/format-finish-message "stop"))))

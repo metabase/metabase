@@ -84,7 +84,7 @@ export function useInlineSQLPrompt(
   const databaseId = question.databaseId();
 
   const handleGenerated = useCallback((result: GenerateSqlResponse) => {
-    const tables = (result.referenced_entities ?? [])
+    const tables = result.referenced_entities
       .filter((e) => e.model === "table")
       .map((e) => ({ id: e.id, name: "" }));
     if (tables.length > 0) {

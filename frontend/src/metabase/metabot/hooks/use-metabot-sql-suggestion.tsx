@@ -50,9 +50,8 @@ export function useMetabotSQLSuggestion({
         const result = await request.unwrap();
         requestRef.current = null;
 
-        const codeEdit = result.parts.find((p) => p.type === "code_edit");
-        if (codeEdit?.value?.value) {
-          setSource(codeEdit.value.value);
+        if (result.sql) {
+          setSource(result.sql);
           onGenerated?.(result);
         } else {
           setError(t`Something went wrong. Please try again.`);

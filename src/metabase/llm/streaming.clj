@@ -186,24 +186,6 @@
   [type-key value]
   (str (get type-prefix type-key) (json/encode value) "\n"))
 
-(defn format-code-edit-part
-  "Create an AI SDK v5 code_edit data part."
-  [buffer-id sql]
-  {:type    "code_edit"
-   :version 1
-   :value   {:buffer_id buffer-id
-             :mode      "rewrite"
-             :value     sql}})
-
-(defn format-context-part
-  "Create an AI SDK v5 context data part containing the system prompt and metadata."
-  [{:keys [system-prompt dialect table-ids]}]
-  {:type    "context"
-   :version 1
-   :value   {:system_prompt system-prompt
-             :dialect       dialect
-             :table_ids     (vec table-ids)}})
-
 (defn format-finish-message
   "Create an AI SDK v5 finish message."
   [reason]

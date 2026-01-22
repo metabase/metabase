@@ -40,11 +40,24 @@
                  (parse-long id-str)))
          set)))
 
+(defn- table-match-clause
+  "Build a WHERE clause to match a table by name and optionally schema.
+   When schema is present, matches both; otherwise matches just the table name."
+  [{:keys [schema table]}]
+  (let [table-lower (u/lower-case-en table)]
+    (if schema
+      [:and
+       [:= [:lower :name] table-lower]
+       [:= [:lower :schema] (u/lower-case-en schema)]]
+      [:= [:lower :name] table-lower])))
+
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string using Macaw parser.
 
    Parses the SQL to identify referenced table names, then queries the
-   database to resolve those names to table IDs.
+   database to resolve those names to table IDs. When the SQL includes
+   schema-qualified references (e.g., schema.table), matches on both
+   schema and table name.
 
    Returns a set of table IDs (integers), or empty set if parsing fails
    or no tables are found."
@@ -54,11 +67,12 @@
       (let [result (macaw/query->tables sql-string {:mode :compound-select})
             tables (:tables result)]
         (if (seq tables)
-          (let [table-names (into #{} (map (comp u/lower-case-en :table)) tables)
+          (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
-                                          :db_id database-id
-                                          :active true
-                                          [:lower :name] [:in table-names])]
+                                          {:where [:and
+                                                   [:= :db_id database-id]
+                                                   [:= :active true]
+                                                   (into [:or] match-clauses)]})]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
