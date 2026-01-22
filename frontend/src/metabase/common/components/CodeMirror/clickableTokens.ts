@@ -68,16 +68,21 @@ export const clickableTokens = (tokenDefs: TokenDef[]) => {
     {
       decorations: (v) => v.decorations,
       eventHandlers: {
-        click({ target }) {
-          if (!(target instanceof Element)) {
+        click(e) {
+          if (!(e.target instanceof Element)) {
             return false;
           }
-          const key = target
-            .closest(TOKEN_CLASS)
-            ?.getAttribute(DATA_TOKEN_ATTRIBUTE);
+          const el = e.target.closest(TOKEN_CLASS);
+          if (!el) {
+            return false;
+          }
+          const key = el.getAttribute(DATA_TOKEN_ATTRIBUTE);
           if (key) {
-            tokenDefsMap.get(key)?.onClick();
-            return true;
+            const tokenDef = tokenDefsMap.get(key);
+            if (tokenDef?.onClick) {
+              tokenDef.onClick(e);
+              return true;
+            }
           }
           return false;
         },
@@ -92,7 +97,7 @@ export const clickableTokens = (tokenDefs: TokenDef[]) => {
   return [plugin, theme];
 };
 
-export type TokenDef = {
+type TokenDef = {
   tokenLocator: (view: EditorView, node: SyntaxNodeRef) => boolean;
-  onClick: () => void;
+  onClick: (e: MouseEvent) => void;
 };

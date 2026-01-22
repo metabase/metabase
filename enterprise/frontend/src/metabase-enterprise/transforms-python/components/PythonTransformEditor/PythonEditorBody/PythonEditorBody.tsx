@@ -55,10 +55,17 @@ export function PythonEditorBody({
   const dispatch = useDispatch();
 
   const navigateToCommonLibrary = useCallback(
-    () =>
-      dispatch(
-        push(Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })),
-      ),
+    (e: MouseEvent) => {
+      const openInNewTab = e.metaKey || e.ctrlKey || e.button === 1;
+      const href = Urls.transformPythonLibrary({
+        path: SHARED_LIB_IMPORT_PATH,
+      });
+      if (openInNewTab) {
+        window.open(href, "_blank", "noopener,noreferrer");
+      } else {
+        dispatch(push(href));
+      }
+    },
     [dispatch],
   );
 
@@ -67,7 +74,7 @@ export function PythonEditorBody({
       clickableTokens([
         {
           tokenLocator: createPythonImportTokenLocator("common"),
-          onClick: () => navigateToCommonLibrary(),
+          onClick: (e) => navigateToCommonLibrary(e),
         },
       ]),
     [navigateToCommonLibrary],
