@@ -6,6 +6,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
@@ -3863,6 +3864,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
         },
       },
     });
+    H.setUserAsAnalyst(NORMAL_USER_ID);
 
     cy.log("sign in as normal user and create a transform");
     cy.signInAsNormalUser();
