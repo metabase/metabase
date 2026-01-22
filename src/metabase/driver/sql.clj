@@ -191,7 +191,7 @@
         db-transforms (driver-api/transforms query)]
     (-> query
         driver-api/raw-native-query
-        (macaw/parsed-query (driver.u/macaw-options driver))
+        (driver.u/parsed-query driver)
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
@@ -303,7 +303,7 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (let [{:keys [returned-fields]} (-> native-query
                                       driver-api/raw-native-query
-                                      (macaw/parsed-query (driver.u/macaw-options driver))
+                                      (driver.u/parsed-query driver)
                                       macaw/->ast
                                       (->> (sql.references/field-references driver)))]
     (mapcat #(->> (resolve-field driver native-query %)
@@ -315,7 +315,7 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (let [{:keys [used-fields returned-fields errors]} (-> native-query
                                                          driver-api/raw-native-query
-                                                         (macaw/parsed-query (driver.u/macaw-options driver))
+                                                         (driver.u/parsed-query driver)
                                                          macaw/->ast
                                                          (->> (sql.references/field-references driver)))
         check-fields #(mapcat (fn [col-spec]
