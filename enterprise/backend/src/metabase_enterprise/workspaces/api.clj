@@ -1037,17 +1037,21 @@
                                                       [:workspace-map [:map-of :keyword :string]]]
     "Create test resources for workspace e2e tests. Only available in dev/test mode.
 
-    Assumes the test database context is set up (uses `(mt/id)` internally)."
+     Optionally accepts a database_id in the body; if not provided it will try to use the sample database."
     [_route-params
      _query-params
-     body :- [:map
-              [:global {:optional true} ::dependency-graph]
-              [:workspace {:optional true} [:map
-                                            [:name {:optional true} :string]
-                                            [:checkouts {:optional true} [:sequential :keyword]]
-                                            [:definitions {:optional true} ::dependency-graph]]]]]
+     {:keys [database_id] :as body} :- [:map
+                                        [:database_id {:optional true} ::ws.t/appdb-id]
+                                        [:global {:optional true} ::dependency-graph]
+                                        [:workspace {:optional true} [:map
+                                                                      [:name {:optional true} :string]
+                                                                      [:checkouts {:optional true} [:sequential :keyword]]
+                                                                      [:definitions {:optional true} ::dependency-graph]]]]]
     (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
-      (create-fn (parse-magic-references body))
+      (create-fn (-> body
+                     (dissoc :database_id)
+                     (cond-> database_id (assoc :database-id database_id))
+                     parse-magic-references))
       (throw (ex-info "Workspace test utilities not available" {:status-code 501})))))
 
 (def ^{:arglists '([request respond raise])} routes

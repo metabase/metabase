@@ -1799,40 +1799,65 @@
                 (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
                                       :transform-id (:id tx))))))))
 
-(deftest test-resources-test
-  (mt/with-model-cleanup [:model/Collection
-                          :model/Transform
-                          :model/TransformRun
-                          :model/Workspace
-                          :model/WorkspaceTransform
-                          :model/WorkspaceInput
-                          :model/WorkspaceOutput]
-    (testing "POST /api/ee/workspace/test-resources creates test resources"
-      (testing "global transforms only (no workspace)"
-        (let [orders (mt/format-name :orders)]
-          (is (=? {:workspace-id  nil
-                   :global-map    {(keyword orders) int?, :x1 int?, :x2 int?}
-                   :workspace-map {}}
-                  (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
-                                        {:global {:x1 [orders], :x2 [:x1]}})))))
-      (testing "complex graph with real tables, mock tables, and chained transforms"
-        (let [orders   (mt/format-name :orders)
-              products (mt/format-name :products)
-              people   (mt/format-name :people)]
+(defmacro ^:private with-test-resources-cleanup! [& body]
+  `(mt/with-model-cleanup [:model/Transform :model/Workspace :model/Table]
+     ~@body))
+
+(deftest test-resources-global-only-test
+  (testing "POST /api/ee/workspace/test-resources with global transforms only (no workspace)"
+    (with-test-resources-cleanup!
+      (let [orders (mt/format-name :orders)]
+        (is (=? {:workspace-id  nil
+                 :global-map    {(keyword orders) int?, :x1 int?, :x2 int?}
+                 :workspace-map {}}
+                (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
+                                      {:global {:x1 [orders], :x2 [:x1]}})))))))
+
+(deftest test-resources-complex-graph-test
+  (testing "POST /api/ee/workspace/test-resources with complex graph"
+    (with-test-resources-cleanup!
+      (let [orders   (mt/format-name :orders)
+            products (mt/format-name :products)
+            people   (mt/format-name :people)]
+        (is (=? {:workspace-id  int?
+                 :global-map    {(keyword orders)   int?
+                                 (keyword products) int?
+                                 :t4                int?
+                                 :x1                int?
+                                 :x2                int?
+                                 :x3                int?
+                                 :x4                int?}
+                 :workspace-map {:x5 string?, :x6 string?}}
+                (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
+                                      {:global    {:x1 [orders]
+                                                   :x2 [products]
+                                                   :x3 [:x1 :x2]
+                                                   :x4 [:t4]}
+                                       :workspace {:definitions {:x2 [:x1]
+                                                                 :x5 [orders :x3]
+                                                                 :x6 [:x5 people]}}})))))))
+
+(deftest test-resources-custom-database-test
+  (testing "POST /api/ee/workspace/test-resources with custom database_id"
+    (with-test-resources-cleanup!
+      (mt/with-temp [:model/Database {other-db-id :id} {:name "Other DB" :engine driver/*driver*}
+                     :model/Table    {table-id    :id} {:name "coffee", :db_id other-db-id}]
+        (let [result (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
+                                           {:database_id other-db-id
+                                            :global      {:x1 [:t1 "coffee"]}
+                                            :workspace   {:definitions {:x2 [:t2]}}})]
           (is (=? {:workspace-id  int?
-                   :global-map    {(keyword orders)   int?
-                                   (keyword products) int?
-                                   :t4                int?
-                                   :x1                int?
-                                   :x2                int?
-                                   :x3                int?
-                                   :x4                int?}
-                   :workspace-map {:x5 string?, :x6 string?}}
-                  (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
-                                        {:global    {:x1 [orders]
-                                                     :x2 [products]
-                                                     :x3 [:x1 :x2]
-                                                     :x4 [:t4]}
-                                         :workspace {:definitions {:x2 [:x1]
-                                                                   :x5 [orders :x3]
-                                                                   :x6 [:x5 people]}}}))))))))
+                   :global-map    {:t1 int?, :t2 int?, :x1 int?, :coffee table-id}
+                   :workspace-map {:x2 string?}}
+                  result))
+          (testing "workspace uses the specified database"
+            (is (= other-db-id
+                   (t2/select-one-fn :database_id :model/Workspace :id (:workspace-id result)))))
+          (testing "mock tables are created in the specified database"
+            (is (= other-db-id
+                   (t2/select-one-fn :db_id :model/Table :id (:t1 (:global-map result)))))
+            (is (= other-db-id
+                   (t2/select-one-fn :db_id :model/Table :id (:t2 (:global-map result))))))
+          (testing "transform targets the specified database"
+            (is (= other-db-id
+                   (get-in (t2/select-one :model/Transform :id (:x1 (:global-map result))) [:target :database])))))))))
