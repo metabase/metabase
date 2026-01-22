@@ -26,7 +26,8 @@ import type {
   NormalizedSegment,
   NormalizedTable,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+
+import type { EntitiesState } from "../../metabase-types/store/entities";
 
 import { getSettings } from "./settings";
 
@@ -40,13 +41,18 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
-const getNormalizedSchemas = (state: State) => state.entities.schemas;
+const getNormalizedDatabases = (state: StateWithEntities) =>
+  state.entities.databases;
+const getNormalizedSchemas = (state: StateWithEntities) =>
+  state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
+const getNormalizedTablesUnfiltered = (state: StateWithEntities) =>
+  state.entities.tables;
 
-const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
-  !!props?.includeHiddenTables;
+const getIncludeHiddenTables = (
+  _state: StateWithEntities,
+  props?: TableSelectorOpts,
+) => !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -60,9 +66,12 @@ const getNormalizedTables = createSelector(
         ),
 );
 
-const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
-const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
-  !!props?.includeSensitiveFields;
+const getNormalizedFieldsUnfiltered = (state: StateWithEntities) =>
+  state.entities.fields;
+const getIncludeSensitiveFields = (
+  _state: StateWithEntities,
+  props?: FieldSelectorOpts,
+) => !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
   [
@@ -87,10 +96,14 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
-const getNormalizedQuestions = (state: State) => state.entities.questions;
-const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedSegments = (state: StateWithEntities) =>
+  state.entities.segments;
+const getNormalizedMeasures = (state: StateWithEntities) =>
+  state.entities.measures ?? {};
+const getNormalizedQuestions = (state: StateWithEntities) =>
+  state.entities.questions;
+const getNormalizedSnippets = (state: StateWithEntities) =>
+  state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -98,8 +111,12 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 export const getShallowMeasures = getNormalizedMeasures;
 
+type StateWithEntities = {
+  entities: EntitiesState;
+};
+
 export const getMetadata: (
-  state: State,
+  state: StateWithEntities,
   props?: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
@@ -191,7 +208,7 @@ export const getMetadata: (
   },
 );
 
-export const getMetadataUnfiltered = (state: State) => {
+export const getMetadataUnfiltered = (state: StateWithEntities) => {
   return getMetadata(state, {
     includeHiddenTables: true,
     includeSensitiveFields: true,
@@ -199,7 +216,7 @@ export const getMetadataUnfiltered = (state: State) => {
 };
 
 export const getMetadataWithHiddenTables = (
-  state: State,
+  state: StateWithEntities,
   props?: TableSelectorOpts,
 ) => {
   return getMetadata(state, { ...props, includeHiddenTables: true });
