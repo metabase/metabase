@@ -13,7 +13,7 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        schema (or schema (driver.sql/default-schema driver/*driver*))]
+        schema (or schema (and driver/*driver* (driver.sql/default-schema driver/*driver*)) "public")]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
@@ -372,7 +372,7 @@
 
 (deftest python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
-    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+    (let [default-schema "test-ordering"]
       (mt/with-temp [;; Transform A produces table "intermediate_output"
                      :model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
@@ -396,7 +396,7 @@
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
-    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+    (let [default-schema "test-ordering"]
       (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
                                                  "output_a")
