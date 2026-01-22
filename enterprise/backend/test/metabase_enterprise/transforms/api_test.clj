@@ -1104,12 +1104,10 @@
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))
 
-        (testing "Users with transform permission can access endpoints"
-          (mt/with-user-in-groups [group {:name "Transform Group"}
-                                   user  [group]]
-            (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
-              (mt/user-http-request user :get 200 "ee/transform")
-              (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform))))))))))
+        (testing "Data analysts can read transforms"
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/user-http-request :lucky :get 200 "ee/transform")
+            (mt/user-http-request :lucky :get 200 (str "ee/transform/" (:id transform)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
   [_driver _feature _database]
