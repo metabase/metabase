@@ -1331,6 +1331,21 @@ databaseChangeLog:
               DELETE FROM permissions
               WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
+  - changeSet:
+      id: v58.2026-01-23T05:55:14
+      author: johnswanson
+      comment: Fix missing perm_value/perm_type/collection_id from v58.2026-01-09T12:00:01
+      changes:
+        - sql:
+            sql: >-
+              UPDATE permissions
+              SET perm_value = 'read-and-write',
+                  perm_type = 'perms/collection-access',
+                  collection_id = CAST(SUBSTRING(object FROM 13 FOR LENGTH(object) - 13) AS INTEGER)
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst')
+                AND object LIKE '/collection/%/'
+                AND perm_value IS NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
