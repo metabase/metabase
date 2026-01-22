@@ -13,7 +13,7 @@ import { SdkQuestionProvider } from "../../context";
 import { ChartTypeDropdown } from "./ChartTypeDropdown";
 
 describe("ChartTypeDropdown", () => {
-  it("should have overflow: 'auto' (matabase#67209)", async () => {
+  it("should have overflow: 'auto' (metabase#67209)", async () => {
     const user = createMockUser({
       permissions: createMockUserPermissions({
         can_create_queries: true,
