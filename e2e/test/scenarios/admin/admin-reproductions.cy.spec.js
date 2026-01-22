@@ -60,8 +60,7 @@ describe("issue 21532", () => {
   it("should allow navigating back from admin settings (metabase#21532)", () => {
     cy.visit("/");
 
-    cy.icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
     cy.findByTestId("admin-layout-content");
 
     cy.go("back");
@@ -94,15 +93,6 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   });
 
-  function enterAdmin() {
-    H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
-  }
-
-  function exitAdmin() {
-    H.appBar().findByText("Exit admin").click();
-  }
-
   function openWritableDatabaseQuestion() {
     // start new question without navigating
     H.appBar().findByText("New").click();
@@ -123,7 +113,7 @@ describe("issue 41765", { tags: "@external" }, () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    enterAdmin();
+    H.goToAdmin();
 
     H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
@@ -140,7 +130,7 @@ describe("issue 41765", { tags: "@external" }, () => {
       tableName: TEST_TABLE,
     });
 
-    exitAdmin();
+    H.goToMainApp();
     openWritableDatabaseQuestion();
 
     H.getNotebookStep("data").button("Pick columns").click();
@@ -160,7 +150,7 @@ describe("(metabase#45042)", () => {
     //Ensure tabs are present in normal view
     cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("link", { name: "Settings" }).should("exist");
-      cy.findByRole("link", { name: "Exit admin" }).should("exist");
+      H.getModeSwitcher().should("exist");
     });
 
     //Shrink viewport

@@ -20,6 +20,7 @@ import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import { getLocation } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Avatar,
@@ -56,6 +57,7 @@ export function ModeSwitcher() {
   const dispatch = useDispatch();
 
   const user = useSelector(getUser);
+  const applicationName = useSelector(getApplicationName);
 
   // generate the proper set of list items for the current user
   // based on whether they're an admin or not
@@ -133,9 +135,8 @@ export function ModeSwitcher() {
 
     return items.length > 1 ? (
       <>
-        {" "}
         <Divider key="app-sectiondivider" w="100%" my="sm" />
-        <Box px="md">{items}</Box>{" "}
+        <Box px="md">{items}</Box>
       </>
     ) : null;
   }, [canAccessDataStudio, adminItems, currentApp]);
@@ -151,7 +152,6 @@ export function ModeSwitcher() {
             size="2.25rem"
             p="sm"
             variant="outline"
-            color={"text-primary"}
             bd="1px solid var(--mb-color-border)"
             aria-label={t`Settings`}
             bdrs="50%"
@@ -172,7 +172,11 @@ export function ModeSwitcher() {
         <Menu.Dropdown w={320} px="0">
           {/* Avatar Stuff */}
           <Box px="md">
-            <Menu.Item component={ForwardRefLink} to={Urls.accountSettings()}>
+            <Menu.Item
+              component={ForwardRefLink}
+              to={Urls.accountSettings()}
+              data-testid="mode-switcher-profile-link"
+            >
               <Group wrap="nowrap">
                 <Avatar color="brand" radius="lg">
                   {user ? userInitials(user) : "?"}
@@ -197,10 +201,10 @@ export function ModeSwitcher() {
               <Menu.Sub.Target>
                 <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>
               </Menu.Sub.Target>
-              <Menu.Sub.Dropdown>
+              <Menu.Sub.Dropdown data-testid="help-submenu">
                 <Menu.Item onClick={() => openModal("about")}>
                   {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
-                  {t`About Metabase`}
+                  {t`About ${applicationName}`}
                 </Menu.Item>
                 <Menu.Item
                   onClick={() => dispatch(setOpenModal("help"))}

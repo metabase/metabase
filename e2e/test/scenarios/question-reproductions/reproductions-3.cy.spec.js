@@ -2620,7 +2620,7 @@ describe("issue 23449", () => {
     cy.button("Save").click();
 
     cy.log("make a model on Reviews");
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Create a new model").click();
     cy.findByRole("link", { name: /Use the notebook editor/ }).click();

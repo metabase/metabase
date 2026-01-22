@@ -9,15 +9,14 @@ import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
 import NewItemButton from "../NewItemButton";
-import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
-import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;

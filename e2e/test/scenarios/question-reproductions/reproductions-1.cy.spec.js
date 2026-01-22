@@ -1019,14 +1019,13 @@ describe("issue 19742", () => {
     });
 
     H.openNavigationSidebar();
-    cy.icon("gear").click();
-    selectFromDropdown("Admin settings");
+    H.goToAdmin();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exit admin").click();
+
+    H.goToMainApp();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
@@ -1043,10 +1042,6 @@ describe("issue 19742", () => {
     });
   });
 });
-
-function selectFromDropdown(optionName) {
-  H.popover().findByText(optionName).click();
-}
 
 const QUESTION_1 = {
   name: "Q1",

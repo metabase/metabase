@@ -389,7 +389,7 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
