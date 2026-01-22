@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
@@ -850,48 +851,46 @@
                                                    :name     target-name}}]
         ;; create the global table
         (transforms.execute/execute! x1 {:run-method :manual})
-        (let [workspace    (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                 {:name        "Test Workspace"
-                                                  :database_id (mt/id)})
-              create-url   (ws-url (:id workspace) "/transform")
-              create-req   (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
-              ;; add the transform
-              ref-id       (:ref_id (mt/user-http-request :crowberto :post 200 create-url create-req))
-              ;; fetch the workspace again so we have the new schema
-              workspace    (t2/select-one :model/Workspace (:id workspace))
-              ws-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)
-              orig-id      (t2/select-one-fn :id [:model/Table :id]
-                                             :db_id (:database_id workspace)
-                                             :schema (-> ws-transform :target :schema)
-                                             :name (-> ws-transform :target :name))]
-          (testing "/table returns expected results"
-            ;; Schema is normalized to driver's default schema ("public" for Postgres) when stored
-            (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
-                     :outputs
-                     [{:db_id    (mt/id)
-                       :global   {:schema   target-schema
-                                  :table    target-name
-                                  :table_id orig-id}
-                       :isolated {:transform_id ref-id
-                                  #_#_:schema       (:schema workspace)
-                                  :table        string?
-                                  :table_id     nil}}]}
-                    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
-          (testing "and after we run the transform, id for isolated table appears"
-            (is (=? {:status "succeeded"}
-                    (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
-            (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
-                     :outputs
-                     [{:db_id    (mt/id)
-                       :global   {:schema   target-schema
-                                  :table    target-name
-                                  :table_id orig-id}
-                       :isolated {:transform_id ref-id
-                                  :schema       (:schema workspace)
-                                  ;; maybe this is a bit too specific, but gives me a peace of mind for now
-                                  :table        (ws.u/isolated-table-name target-schema target-name)
-                                  :table_id     int?}}]}
-                    (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table"))))))))))
+        (ws.tu/with-workspaces! [workspace {:name        "Test Workspace"
+                                            :database_id (mt/id)}]
+          (let [body         {:name   (:name x1)
+                              :source (:source x1)
+                              :target (:target x1)}
+                ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform (:id x1) body)
+                workspace    (ws.tu/ws-ready (:id workspace))
+                ref-id       (:ref_id ws-transform)
+                orig-id      (t2/select-one-fn :id [:model/Table :id]
+                                               :db_id (:database_id workspace)
+                                               :schema (-> ws-transform :target :schema)
+                                               :name (-> ws-transform :target :name))]
+            (testing "/table returns expected results"
+              ;; Schema is normalized to driver's default schema ("public" for Postgres) when stored
+              (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
+                       :outputs
+                       [{:db_id    (mt/id)
+                         :global   {:schema   target-schema
+                                    :table    target-name
+                                    :table_id orig-id}
+                         :isolated {:transform_id ref-id
+                                    #_#_:schema       (:schema workspace)
+                                    :table        string?
+                                    :table_id     nil}}]}
+                      (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
+            (testing "and after we run the transform, id for isolated table appears"
+              (is (=? {:status "succeeded"}
+                      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "transform" ref-id "run"))))
+              (is (=? {:inputs [{:db_id (mt/id), :schema orig-schema, :table orig-name, :table_id int?}]
+                       :outputs
+                       [{:db_id    (mt/id)
+                         :global   {:schema   target-schema
+                                    :table    target-name
+                                    :table_id orig-id}
+                         :isolated {:transform_id ref-id
+                                    :schema       (:schema workspace)
+                                    ;; maybe this is a bit too specific, but gives me a peace of mind for now
+                                    :table        (ws.u/isolated-table-name target-schema target-name)
+                                    :table_id     int?}}]}
+                      (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))))))))
 
 ;; TODO write a test for /table that covers the shadowing
 ;; e.g. have two transforms in a chain connecting 3 tables:  (A -> X1 -> B -> X2 -> C)
@@ -1353,27 +1352,30 @@
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
 (deftest execute-workspace-test
-  (testing "POST /api/ee/workspace/:id/execute"
-    (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}
-                             ws-2 {:name "Workspace 2"}]
-      ;; TODO (chris 2026/01/07) things would fail because the workspace won't have been initialized yet.
-      ;;                         ... the correct thing to do would be for the relevant code to initialize it!
-      (t2/update! :model/Workspace {:schema nil} {:schema "placeholder"})
-      (mt/with-temp [:model/WorkspaceTransform transform {:name "Transform in WS1", :workspace_id (:id ws-1)}]
-        ;; Workaround for with-temp not properly populating the target - it doesn't set the target database
-        (t2/update! :model/WorkspaceTransform
-                    (select-keys transform [:workspace_id :ref_id])
-                    {:target (assoc (:target transform) :database (mt/id))})
-        (testing "returns empty when no transforms"
-          (is (= {:succeeded []
-                  :failed    []
-                  :not_run   []}
-                 (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
-        (testing "executes transforms in workspace"
-          (is (= {:succeeded [(:ref_id transform)]
-                  :failed    []
-                  :not_run   []}
-                 (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run")))))))))
+  (mt/test-drivers #{:snowflake}
+    (testing "POST /api/ee/workspace/:id/execute"
+      (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
+        (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}
+                                 ws-2 {:name "Workspace 2"}]
+          (let [body         {:name   "Transform for execute test"
+                              :source {:type  "query"
+                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                              :target {:type     "table"
+                                       :database (mt/id)
+                                       :schema   nil
+                                       :name     output-table}}
+                ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) ws-1 :transform nil body)
+                ws-1         (ws.tu/ws-ready (:id ws-1))]
+            (testing "returns empty when no transforms"
+              (is (= {:succeeded []
+                      :failed    []
+                      :not_run   []}
+                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
+            (testing "executes transforms in workspace"
+              (is (= {:succeeded [(:ref_id ws-transform)]
+                      :failed    []
+                      :not_run   []}
+                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run")))))))))))
 
 (defn- random-target [db-id]
   {:type     "table"

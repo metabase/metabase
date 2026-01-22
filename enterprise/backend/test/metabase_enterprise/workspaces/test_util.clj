@@ -245,33 +245,29 @@
 (defn ws-fixtures!
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
   []
-  (use-fixtures :once (fn [tests]
-                        ;; E.g. app-db.yml tests perorm driver tests. Workspaces are not supported on mysql.
-                        ;; Following disj suppresses those runs destined for failure.
+  (use-fixtures :each (fn [tests]
                         (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
                           (mt/with-premium-features [:workspaces :dependencies :transforms]
                             (search.tu/with-index-disabled
-                              (tests))))))
-
-  (use-fixtures :each (fn [tests]
-                        (mt/with-model-cleanup [:model/Collection
-                                                :model/Transform
-                                                :model/TransformRun
-                                                :model/Workspace
-                                                :model/WorkspaceTransform
-                                                :model/WorkspaceInput
-                                                :model/WorkspaceOutput]
-                          (tests)))))
+                              (mt/with-model-cleanup [:model/Collection
+                                                      :model/Transform
+                                                      :model/TransformRun
+                                                      :model/Workspace
+                                                      :model/WorkspaceTransform
+                                                      :model/WorkspaceInput
+                                                      :model/WorkspaceOutput]
+                                (tests))))))))
 
 (derive :model/Workspace :model/WorkspaceCleanUpInTest)
 
 (t2/define-before-delete :model/WorkspaceCleanUpInTest
   [workspace]
   (try
-    (log/infof "Cleaningup workspace %d in tests" (:id workspace))
-    (when (:database_details workspace)
+    (if (:database_details workspace)
       (let [database (t2/select-one :model/Database (:database_id workspace))]
-        (ws.isolation/destroy-workspace-isolation! database workspace)))
+        (log/infof "Cleaning up workspace %d in tests" (:id workspace))
+        (ws.isolation/destroy-workspace-isolation! database workspace))
+      (log/infof "Skip cleaning up workspace %d due to no database details" (:id workspace)))
     (catch Exception e
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)

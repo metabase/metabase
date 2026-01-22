@@ -59,7 +59,7 @@
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
-    :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    :warehouse           (tx/db-test-env-var-or-throw :snowflake :warehouse)
     ;;
     ;; SESSION parameters
     ;;
