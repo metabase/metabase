@@ -1036,23 +1036,35 @@
     "Map of shorthand symbols to lists of dependencies. The latter are all strings, and refs need to be detected."
     [:map-of :keyword [:sequential :string]])
 
-  (api.macros/defendpoint :post "/test-resources" :- [:map
-                                                      [:workspace-id [:maybe :int]]
-                                                      [:global-map [:map-of [:or :keyword :string] :int]]
-                                                      [:workspace-map [:map-of :keyword :string]]]
+  (mr/def ::test-resources-request
+    "Request body for creating test resources."
+    [:map
+     [:database_id {:optional true} ::ws.t/appdb-id]
+     [:global {:optional true} ::dependency-graph]
+     [:workspace {:optional true} [:map
+                                   [:name {:optional true} :string]
+                                   [:checkouts {:optional true} [:sequential :keyword]]
+                                   [:definitions {:optional true} ::dependency-graph]]]])
+
+  (mr/def ::test-resources-response
+    "Response from creating test resources."
+    [:map
+     [:workspace-id [:maybe :int]]
+     [:global-map [:map-of [:or :keyword :string] :int]]
+     [:workspace-map [:map-of :keyword :string]]])
+
+  (api.macros/defendpoint :post "/test-resources" :- ::test-resources-response
     "Create test resources for workspace e2e tests. Only available in dev/test mode.
 
-    Assumes the test database context is set up (uses `(mt/id)` internally)."
+     Optionally accepts a database_id in the body; if not provided it will try to use the sample database."
     [_route-params
      _query-params
-     body :- [:map
-              [:global {:optional true} ::dependency-graph]
-              [:workspace {:optional true} [:map
-                                            [:name {:optional true} :string]
-                                            [:checkouts {:optional true} [:sequential :keyword]]
-                                            [:definitions {:optional true} ::dependency-graph]]]]]
+     {db-id :database_id :as body} :- ::test-resources-request]
     (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
-      (create-fn (parse-magic-references body))
+      (create-fn (-> body
+                     (dissoc :database_id)
+                     (cond-> db-id (assoc :database-id db-id))
+                     parse-magic-references))
       (throw (ex-info "Workspace test utilities not available" {:status-code 501})))))
 
 (def ^{:arglists '([request respond raise])} routes

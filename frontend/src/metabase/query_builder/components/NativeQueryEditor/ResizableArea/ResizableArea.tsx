@@ -77,7 +77,7 @@ export function ResizableArea(props: {
       maxConstraints={[Infinity, maxHeight]}
       axis="y"
       handle={dragHandle}
-      resizeHandles={["s"]}
+      resizeHandles={resizable ? ["s"] : []}
       onResize={handleResize}
       onResizeStop={handleResize}
     >

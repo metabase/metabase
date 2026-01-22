@@ -35,6 +35,7 @@ export function TransformEditor({
       canChangeDatabase: false,
       readOnly: disabled,
       hidePreview: true,
+      resizable: false,
     }),
     [disabled],
   );

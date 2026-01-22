@@ -19,12 +19,6 @@
 ;; The actual multimethod implementations are now in the individual driver files.
 ;; These functions dispatch through the driver multimethods.
 
-(defn init-workspace-database-isolation!
-  "Create database isolation for a workspace. Return the database details.
-   Delegates to driver/init-workspace-isolation!"
-  [database workspace]
-  (driver/init-workspace-isolation! (driver.u/database->driver database) database workspace))
-
 (defn grant-read-access-to-tables!
   "Grant read access to these tables.
    Delegates to driver/grant-workspace-read-access!"
@@ -44,7 +38,7 @@
 (defn ensure-database-isolation!
   "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
-  (init-workspace-database-isolation! database workspace))
+  (driver/init-workspace-isolation! (driver.u/database->driver database) database workspace))
 
 (defn do-with-workspace-isolation
   "Impl of* with-workspace-isolation*."

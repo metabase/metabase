@@ -111,6 +111,7 @@ export function QueryEditor({
             isRunnable={isRunnable}
             isRunning={isRunning}
             isResultDirty={isResultDirty}
+            resizable={uiOptions?.resizable}
             isShowingDataReference={uiState.sidebarType === "data-reference"}
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}

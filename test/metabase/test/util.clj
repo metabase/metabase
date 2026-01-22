@@ -857,6 +857,11 @@
   [_]
   [:not= :id audit/audit-db-id])
 
+(def ^:private models-with-cleanup-hooks
+  "Models that require `t2/delete!` instead of raw SQL delete during cleanup.
+   Use this for models that have `before-delete` or `after-delete` hooks that must run."
+  #{:model/Workspace})
+
 (defn- model->model&pk [model]
   (if (vector? model)
     model
@@ -888,16 +893,23 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let [old-max-id (get model->old-max-id model)
                       max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where [:and max-id-condition additional-conditions]}))
+                      additional-conditions (with-model-cleanup-additional-conditions model)
+                      where-clause [:and max-id-condition additional-conditions]]]
+          (if (contains? models-with-cleanup-hooks model)
+            ;; Use t2/delete! to trigger before-delete/after-delete hooks
+            (t2/delete! model {:where where-clause})
+            ;; Fast path: raw SQL for models without hooks
+            (t2/query-one
+             {:delete-from (t2/table-name model)
+              :where where-clause})))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
-  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved.
+  "Execute `body`, then delete any *new* rows created for each model in `models`.
+
+   By default, uses raw SQL DELETE for performance. For models in [[models-with-cleanup-hooks]],
+   uses `t2/delete!` to ensure `before-delete`/`after-delete` hooks are triggered.
 
   It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
   situation (e.g. when creating objects via the API).

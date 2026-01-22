@@ -57,7 +57,8 @@
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]]]]]
+               ;; If the upstream table doesn't exist yet, table_id will be nil
+               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]
   (cond
     (= (keyword source-type) :query)
     (upstream-deps:query query)
