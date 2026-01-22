@@ -12,13 +12,14 @@ import type {
 } from "metabase-types/api";
 
 import { createMockEntitiesState } from "../../../../frontend/test/__support__/store";
-import { SAMPLE_DB_ID } from "../../cypress_data";
-import { SAMPLE_DATABASE } from "../../cypress_sample_database";
+import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "../../cypress_data";
 
 import type { GetMetadataOpts } from "./types";
 
-const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
-const DEFAULT_TABLE_IDS: TableId[] = [ORDERS_ID, PEOPLE_ID];
+const DEFAULT_TABLE_IDS: TableId[] = [
+  SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+  SAMPLE_DB_TABLES.STATIC_PEOPLE_ID,
+];
 const DEFAULT_CARD_IDS: CardId[] = [];
 
 /**
