@@ -420,4 +420,3 @@
           (is (= "Unauthenticated"
                  (client/client :get 401 "agent/v1/ping"
                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}))))))))
-
