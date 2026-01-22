@@ -800,9 +800,9 @@
       ;; 10 seconds
       :timeout               10000})
    {;; There is no plan to be exhaustive yet.
-    ;; Note that while an allowed list would be more conservative, at the time of writing only 2 of the bundled
+    ;; Note that while an allowed list would be more conservative, at the time of writing only 1 of the bundled
     ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
     ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
     ;; through the JDBC connection, where possible.
-    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:snowflake :oracle} driver)
+    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
                                                 :final)]))}))
