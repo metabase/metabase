@@ -7,7 +7,6 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import { createTestJsQuery } from "metabase-lib/test-helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -1455,31 +1454,34 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.getMetadataProvider().then((provider) => {
+    H.createTestJsQuery(
+      {},
+      {
+        databaseId: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [
+              {
+                name: "Count",
+                value: {
+                  type: "operator",
+                  operator: "count",
+                  args: [],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ).then((dataset_query) => {
       H.createTestQuestion({
         name: METRIC_NAME,
         type: "metric",
-        dataset_query: createTestJsQuery(provider, {
-          databaseId: SAMPLE_DB_ID,
-          stages: [
-            {
-              source: {
-                type: "table",
-                id: ORDERS_ID,
-              },
-              aggregations: [
-                {
-                  name: "Count",
-                  value: {
-                    type: "operator",
-                    operator: "count",
-                    args: [],
-                  },
-                },
-              ],
-            },
-          ],
-        }),
+        dataset_query,
       });
     });
 
