@@ -105,9 +105,9 @@
                                     :target {:database (mt/id)
                                              :schema   "analytics"
                                              :name     "table_a"}})
-      (let [workspace (ws.tu/ws-ready workspace)
+      (let [workspace (ws.tu/ws-done! workspace)
             database  (mt/db)]
-        (testing "resources are creeated during workspace initialization"
+        (testing "resources are created during workspace initialization"
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? true? (vals resources)))))
 
