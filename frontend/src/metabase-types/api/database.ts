@@ -241,3 +241,14 @@ export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
 }
+
+export type CheckWorkspacePermissionsResponse = {
+  status: string;
+  checked_at?: string;
+  error?: string;
+};
+
+export type CheckWorkspacePermissionsRequest = {
+  id: DatabaseId;
+  cached?: boolean;
+};

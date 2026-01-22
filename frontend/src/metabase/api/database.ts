@@ -5,6 +5,8 @@ import type {
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
+  CheckWorkspacePermissionsRequest,
+  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
@@ -267,8 +269,8 @@ export const databaseApi = Api.injectEndpoints({
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     checkWorkspacePermissions: builder.mutation<
-      { status: string; checked_at?: string; error?: string },
-      { id: DatabaseId; cached?: boolean }
+      CheckWorkspacePermissionsResponse,
+      CheckWorkspacePermissionsRequest
     >({
       query: ({ id, cached = true }) => ({
         method: "POST",
