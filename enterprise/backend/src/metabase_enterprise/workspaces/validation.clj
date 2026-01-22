@@ -157,14 +157,15 @@
 
 (defn- validate-transform-against-fields
   "Check if a transform would break given a modified set of fields.
-   Returns bad refs if the transform's query references fields that don't exist in replacement-fields."
+   Returns bad refs if the transform's query references fields that don't exist in replacement-fields,
+   or nil if there are no bad refs."
   [transform global-table-id replacement-fields]
   (let [db-id (get-in transform [:source :query :database])]
     (when db-id
       (let [base-provider     (lib-be/application-database-metadata-provider db-id)
             override-provider (make-field-override-provider base-provider global-table-id replacement-fields)
             query             (lib/query override-provider (get-in transform [:source :query]))]
-        (lib/find-bad-refs query)))))
+        (not-empty (lib/find-bad-refs query))))))
 
 (defn- get-table-fields
   "Get all active fields for a table by ID."

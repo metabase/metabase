@@ -10,7 +10,6 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.merge :as ws.merge]
-
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase-enterprise.workspaces.models.workspace-input-external]
    [metabase-enterprise.workspaces.models.workspace-log]
@@ -339,10 +338,7 @@
                                                               [:status :string]
                                                               [:checked_at :string]
                                                               [:error {:optional true} :string]]]]]]]
-  "Get a list of databases that support workspaces, with their enablement status.
-   A database is enabled if:
-   1. The workspace permission check has passed (cached in workspace_permissions_status column)
-   2. The workspaces_enabled column is true"
+  "Get a list supported databases, and whether they're enabled and have required permissions."
   [_url-params
    _query-params]
   (let [databases (->> (t2/select [:model/Database :id :name :engine :settings :workspace_permissions_status]

@@ -35,6 +35,9 @@
     (str url (subs part 1))))
 
 (defn ws-url [id & path]
+  (when (some nil? (cons id path))
+    (throw (ex-info "Cannot build workspace URL without key resources"
+                    {:id id, :path path})))
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
@@ -805,30 +808,28 @@
            (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "/table"))))))
 
 (deftest tables-endpoint-transform-not-run-test
-  (let [mp    (mt/metadata-provider)
-        query (lib/native-query mp "select * from orders limit 10;")]
-    (with-transform-cleanup! [orig-name "ws_tables_not_run_test"]
-      (mt/with-temp [:model/Transform x1 {:name        "My X1"
-                                          :source      {:type  "query"
-                                                        :query query}
-                                          :target      {:type     "table"
-                                                        :database (mt/id)
-                                                        :schema   "public"
-                                                        :name     orig-name}}]
-        (let [{ws-id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                  {:name        "Test Workspace"
-                                                   :database_id (mt/id)})
-              ;; add the transform
-              req           (assoc (select-keys x1 [:name :description :source :target]) :global_id (:id x1))
-              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform") req))
-              ;; get the tables
-              tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/table"))]
-          (testing "/tables returns expected results"
-            (is (=? {:inputs  [{:db_id (mt/id), :schema "public", :table "orders", :table_id int?}]
-                     :outputs [{:db_id (mt/id)
-                                :global {:schema "public", :table orig-name}
-                                :isolated {:transform_id ref-id}}]}
-                    tables-result))))))))
+  (with-transform-cleanup! [orig-name "ws_tables_not_run_test"]
+    (mt/with-temp [:model/Transform x1 {:name        "My X1"
+                                        :source      {:type  "query"
+                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:limit 10})))}
+                                        :target      {:type     "table"
+                                                      :database (mt/id)
+                                                      :schema   "public"
+                                                      :name     orig-name}}]
+      (let [{ws-id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                {:name        "Test Workspace"
+                                                 :database_id (mt/id)})
+            ;; add the transform
+            req           (assoc (select-keys x1 [:name :description :source :target]) :global_id (:id x1))
+            ref-id        (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform") req))
+            ;; get the tables
+            tables-result (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/table"))]
+        (testing "/tables returns expected results"
+          (is (=? {:inputs  [{:db_id (mt/id), :schema (t2/select-one-fn :schema :model/Table (mt/id :orders)), :table "orders", :table_id int?}]
+                   :outputs [{:db_id (mt/id)
+                              :global {:schema "public", :table orig-name}
+                              :isolated {:transform_id ref-id}}]}
+                  tables-result)))))))
 
 (deftest tables-endpoint-test
   (let [mp          (mt/metadata-provider)
@@ -1057,7 +1058,7 @@
       ;; TODO this isn't async yet, but it should be after BOT-746
         #_(is (=? {:status "pending"} res))
         (testing "and then it becomes ready"
-          (is (=? {:status :ready} (ws.tu/ws-ready res)))))))
+          (is (=? {:status :ready} (ws.tu/ws-done! res)))))))
 
 (deftest workspace-log-endpoint-test
   (testing "GET /api/ee/workspace/:id/log returns status and log entries"
@@ -1089,7 +1090,7 @@
   (testing "Failed workspace setup logs error message"
     (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
                                 (fn [& _] (throw (ex-info "Test isolation error" {})))]
-      (let [{ws-id :id} (ws.tu/create-ready-ws! "Log tester #3")]
+      (let [{ws-id :id} (ws.tu/initialize-ws! "Log tester #3")]
         (is (=? [{:task    :database-isolation
                   :status  :failure
                   :message "Test isolation error"}
@@ -1124,7 +1125,7 @@
                                                       :schema   "public"
                                                       :name     "init_transform_output"}})]
         (is (some? (:ref_id transform)))
-        (let [ws (ws.tu/ws-ready ws)]
+        (let [ws (ws.tu/ws-done! ws)]
           (is (=? {:db_status   :ready
                    :database_id (mt/id)}
                   ws)))
@@ -1266,31 +1267,32 @@
   (testing "POST /api/ee/workspace/:id/transform/:txid/run successful execution"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api_success"]
       (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
-        (mt/with-temp [:model/Transform x1 {:name   "Transform"
-                                            :source {:type  "query"
-                                                     :query (mt/native-query {:query "SELECT count(*) from orders"})}
-                                            :target {:type     "table"
-                                                     :database (mt/id)
-                                                     :schema   "public"
-                                                     :name     output-table}}]
-          (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))
-                ws     (ws.tu/ws-ready (:id ws))]
-            (testing "returns succeeded status with isolated table info"
-              (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run"))]
-                (is (=? {:status     "succeeded"
-                         :message    nil
-                         :start_time some?
-                         :end_time   some?
-                         :table      {:schema (:schema ws)
-                                      :name   (str "public__" output-table)}}
-                        result))))
-            (testing "doesn't create excessive transforms in the db"
-              (is (= (:id x1)
-                     (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]}))))
-            (testing "transform has last_run_at and last_run_status after success"
-              (is (=? {:last_run_at     some?
-                       :last_run_status "succeeded"}
-                      (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id)))))))))))
+        (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+          (mt/with-temp [:model/Transform x1 {:name   "Transform"
+                                              :source {:type  "query"
+                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                              :target {:type     "table"
+                                                       :database (mt/id)
+                                                       :schema   target-schema
+                                                       :name     output-table}}]
+            (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))
+                  ws     (ws.tu/ws-done! (:id ws))]
+              (testing "returns succeeded status with isolated table info"
+                (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run"))]
+                  (is (=? {:status     "succeeded"
+                           :message    nil
+                           :start_time some?
+                           :end_time   some?
+                           :table      {:schema (:schema ws)
+                                        :name   (str target-schema "__" output-table)}}
+                          result))))
+              (testing "doesn't create excessive transforms in the db"
+                (is (= (:id x1)
+                       (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]}))))
+              (testing "transform has last_run_at and last_run_status after success"
+                (is (=? {:last_run_at     some?
+                         :last_run_status "succeeded"}
+                        (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))))
 
 (deftest run-workspace-transform-failure-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run failed execution"
@@ -1305,7 +1307,7 @@
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
-              ws            (ws.tu/ws-ready (:id ws))]
+              ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message and isolated table info"
             (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
@@ -1326,16 +1328,17 @@
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api_badcol"]
       (ws.tu/with-workspaces! [ws {:name "Workspace for bad column test"}]
-        (let [bad-transform {:name   "Bad Column Transform"
+        (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))
+              bad-transform {:name   "Bad Column Transform"
                              :source {:type  "query"
                                       :query (mt/native-query {:query "SELECT nocolumn FROM orders"})}
                              :target {:type     "table"
                                       :database (mt/id)
-                                      :schema   "public"
+                                      :schema   target-schema
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
-              ws            (ws.tu/ws-ready (:id ws))]
+              ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message mentioning the bad column"
             (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
@@ -1344,7 +1347,7 @@
                        :start_time some?
                        :end_time   some?
                        :table      {:schema (:schema ws)
-                                    :name   (str "public__" output-table)}}
+                                    :name   (str target-schema "__" output-table)}}
                       result))))
           (testing "transform has last_run_message mentioning the bad column"
             (is (=? {:last_run_at      some?
@@ -1581,7 +1584,7 @@
                                                             :workspace {:checkouts   [:x1]
                                                                         :definitions {:x3 [:x2]}}})
 
-          ws             (ws.tu/ws-ready ws-id)
+          ws             (ws.tu/ws-done! ws-id)
           tx-1           (t2/select-one :model/WorkspaceTransform :workspace_id ws-id, :ref_id (tx-ids :x1))
           tx-2           (t2/select-one :model/Transform (id-map :x2))
           tx-3           (t2/select-one :model/WorkspaceTransform :workspace_id ws-id, :ref_id (tx-ids :x3))

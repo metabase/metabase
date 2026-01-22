@@ -6,15 +6,15 @@
 (setting/defsetting database-enable-workspaces
   (deferred-tru "Whether the database has workspaces enabled")
   :default          false
-  :feature          :table-data-editing
-  :driver-feature   :actions/data-editing
+  :feature          :workspaces
+  :driver-feature   :workspace
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
                       (if-let [permission-status (:workspace_permissions_status db)]
                         (when-let [error (:error permission-status)]
                           [{:type    :error
                             :key     :workspaces/permisions-missing
-                            ;; TODO (Ngoc 2026-01-20) localize error message
+                            ;; TODO (Ngoc 2026-01-20) localize error message - GDGT-1552
                             :message error}])
                         [{:type    :error
                           :key     :workspaces/permisisons-unchecked

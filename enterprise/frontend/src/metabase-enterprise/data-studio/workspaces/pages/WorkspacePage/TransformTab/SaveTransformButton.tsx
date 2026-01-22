@@ -174,8 +174,8 @@ export const SaveTransformButton = ({
       const savedTransform = await createWorkspaceTransform(request).unwrap();
 
       // Remove from unsaved transforms and refresh workspace
-      if ("id" in editedTransform && typeof editedTransform.id === "number") {
-        removeUnsavedTransform(editedTransform.id);
+      if (isNewTransform) {
+        removeUnsavedTransform(transform.id);
       }
 
       // Invalidate workspace transforms after creating new one

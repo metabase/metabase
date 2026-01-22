@@ -56,7 +56,7 @@
    :start_of_week                  mi/transform-keyword
    :settings                       mi/transform-encrypted-json
    :dbms_version                   mi/transform-json
-   :workspace_permissions_status    mi/transform-json})
+   :workspace_permissions_status   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
@@ -580,9 +580,11 @@
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix :workspace_permissions_status]
+               :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
-               :cache_ttl]
+               :cache_ttl
+               ;; workspace_permissions_status is instance-specific and should not be serialized
+               :workspace_permissions_status]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
