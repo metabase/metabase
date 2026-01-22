@@ -26,6 +26,7 @@ import type {
   NormalizedSegment,
   NormalizedTable,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { EntitiesState } from "../../metabase-types/store/entities";
 
@@ -115,7 +116,7 @@ type StateWithEntities = {
   entities: EntitiesState;
 };
 
-export const getMetadata: (
+export const getMetadataWithoutSettings: (
   state: StateWithEntities,
   props?: MetadataSelectorOpts,
 ) => Metadata = createSelector(
@@ -128,7 +129,6 @@ export const getMetadata: (
     getNormalizedMeasures,
     getNormalizedQuestions,
     getNormalizedSnippets,
-    getSettings,
   ],
   (
     databases,
@@ -139,9 +139,8 @@ export const getMetadata: (
     measures,
     questions,
     snippets,
-    settings,
   ) => {
-    const metadata = new Metadata({ settings });
+    const metadata = new Metadata({});
 
     metadata.databases = Object.fromEntries(
       Object.values(databases).map((d) => [d.id, createDatabase(d, metadata)]),
@@ -204,6 +203,17 @@ export const getMetadata: (
       table.fields?.forEach((field) => hydrateField(field, metadata));
     });
 
+    return metadata;
+  },
+);
+
+export const getMetadata: (
+  state: State,
+  props?: MetadataSelectorOpts,
+) => Metadata = createSelector(
+  [getMetadataWithoutSettings, getSettings],
+  (metadata, settings) => {
+    metadata.settings = settings;
     return metadata;
   },
 );
