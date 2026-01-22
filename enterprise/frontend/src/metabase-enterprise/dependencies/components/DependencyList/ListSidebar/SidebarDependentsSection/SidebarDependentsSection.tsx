@@ -143,7 +143,7 @@ function DependentItem({ node }: DependentItemProps) {
               </Box>
             </Group>
             {viewCount != null && (
-              <Box c="text-secondary" fz="sm" lh="1rem">
+              <Box c="text-secondary" flex="1 0 auto" fz="sm" lh="1rem">
                 {getNodeViewCountLabel(viewCount)}
               </Box>
             )}
