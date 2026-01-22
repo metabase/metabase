@@ -26,6 +26,8 @@
 
 (ws.tu/ws-fixtures!)
 
+(use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
+
 (defn- append-part [url part]
   (case [(str/starts-with? part "/")
          (str/ends-with? url "/")]
