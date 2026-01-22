@@ -13,14 +13,14 @@ describe("getDataColumns", () => {
     it("returns 4 columns with Transforms when PLUGIN_TRANSFORMS.isEnabled is true", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      expect(getDataColumns("schemas")).toStrictEqual([
+      expect(getDataColumns("schemas", "admin")).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
         },
         { name: "Manage table metadata" },
         { name: "Manage database" },
-        { name: "Transforms" },
+        { name: "Transforms", hint: null },
       ]);
     });
 
