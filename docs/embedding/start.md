@@ -14,6 +14,8 @@ What is embedding, and how does it work?
 
 Embed individual dashboards, questions, or the query builder in your app with an interactive wizard and simple drop-in script, with minimal or no coding required. Control component UI and theming. Integrate your app's auth with Metabase SSO.
 
+> **Quick start for OSS/Starter**: Jump directly to [Guest embedding](./guest-embedding.md) for the simplest setup path.
+
 ### [Modular embedding SDK](./sdk/introduction.md)
 
 With the Modular embedding SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.

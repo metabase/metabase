@@ -15,12 +15,19 @@ Modular embedding lets you embed and customize Metabase [components](./component
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
+> **Using Metabase OSS or Starter?** For basic modular embedding without SSO, see [Guest embedding](./guest-embedding.md).
+
 ## Enable modular embedding
 
 1. In Metabase, go to **Admin settings > Embedding**.
 2. Toggle on **Enable modular embedding**.
+
+**For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
+
+**For SSO embeds** (Pro/Enterprise only): Continue with additional configuration:
+
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
-4. If you're embedding Metabase components in a domain that's different from your Metabase's domain (including when you're testing the app locally but use Metabase Cloud), go to **Admin settings > Embedding > Security** and set **SameSite cookie** to **None**.
+4. If embedding on a different domain, see [Embedding Metabase in a different domain](#embedding-metabase-in-a-different-domain).
 
 ## Create a new embed
 
@@ -200,6 +207,8 @@ API keys should only be used for testing with trusted people. Anyone with access
 ## Embedding Metabase in a different domain
 
 {% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+
+> **Note**: This section applies only to **authenticated (SSO) embeds**. Guest embeds work cross-domain without additional configuration.
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
