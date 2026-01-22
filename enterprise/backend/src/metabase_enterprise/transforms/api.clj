@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -365,7 +364,7 @@
     ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
     ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
     ;;         adding at least default :non-resserved-words.
-    (let [^PlainSelect parsed (macaw/parsed-query sql-string (driver.u/macaw-options nil))]
+    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
       (cond
         (not (instance? PlainSelect parsed))
         {:is_simple false
