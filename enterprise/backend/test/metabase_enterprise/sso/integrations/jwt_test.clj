@@ -726,7 +726,7 @@
                 (testing "their name is unchanged"
                   (is (= [first-name last-name] (t2/select-one-fn (juxt :first_name :last_name) :model/User :email email))))))))))))
 
-(deftest a-user-cannot-log-in-with-a-deactivated-tenant
+(deftest a-user-can-log-in-with-a-deactivated-tenant
   (with-jwt-default-setup!
     (mt/with-additional-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
@@ -736,9 +736,9 @@
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           (mt/with-temporary-setting-values [use-tenants true]
-            (testing "a new user fails to log in with correct error message"
+            (testing "a new user can log into a deactivated tenant"
               (mt/with-model-cleanup [:model/User]
-                (let [response (client/client-real-response :get 403 "/auth/sso"
+                (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
                                                             :jwt
@@ -748,10 +748,10 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (not (saml-test/successful-login? response)))
-                  (is (str/includes? (:body response) "Tenant is not active")))))
+                  (is (saml-test/successful-login? response))
+                  (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))))
             (testing "an existing user also fails to log in with correct error message"
-              (let [response (client/client-real-response :get 403 "/auth/sso"
+              (let [response (client/client-real-response :get 302 "/auth/sso"
                                                           {:request-options {:redirect-strategy :none}}
                                                           :return_to default-redirect-uri
                                                           :jwt
@@ -761,8 +761,48 @@
                                                             :first_name "Existing"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (not (saml-test/successful-login? response)))
-                (is (str/includes? (:body response) "Tenant is not active"))))))))))
+                (is (saml-test/successful-login? response))
+                (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))
+
+(deftest users-cannot-log-into-deactivated-tenant-with-provisioning-disabled
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"
+                                                      :is_active false}
+                       :model/User {existing-email :email} {:tenant_id tenant-id}]
+          (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
+            (testing "with user provisioning turned off"
+              (testing "a new user cannot log into a deactivated tenant, and the tenant doesn't get activated"
+                (mt/with-model-cleanup [:model/User]
+                  (let [response (client/client-real-response :get 401 "/auth/sso"
+                                                              {:request-options {:redirect-strategy :none}}
+                                                              :return_to default-redirect-uri
+                                                              :jwt
+                                                              (jwt/sign
+                                                               {:email "newuser@metabase.com"
+                                                                "@tenant" "tenant-mctenantson"
+                                                                :first_name "New"
+                                                                :last_name "User"}
+                                                               default-jwt-secret))]
+                    (is (not (saml-test/successful-login? response)))
+                    (is (not (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))
+              (testing "an existing user cannot log into a deactivated tenant"
+                (let [response (client/client-real-response :get 403 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email existing-email
+                                                              "@tenant" "tenant-mctenantson"
+                                                              :first_name "Existing"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (not (saml-test/successful-login? response)))
+                  (is (str/includes? (:body response) "Tenant is not active"))
+                  (is (not (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))))
 
 ;; not yet - we need to figure out what to do about personal collections here first
 #_(deftest existing-users-can-be-updated-with-a-tenant
