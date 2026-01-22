@@ -371,7 +371,7 @@ By default, Metabase will pull any changes (if any) from the branch you specify 
 
 ## Disabling Remote Sync
 
-To disable Remote Sync, go to the Remote Sync settings page in Admin settings. 
+To disable Remote Sync, go to the Remote Sync settings page in Admin settings.
 
 To disable Remote Sync:
 
@@ -402,3 +402,8 @@ If you want to switch fully to Remote Sync, we recommend starting with a new rep
 4. Push up your changes to the new repo.
 
 Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+
+## Further reading
+
+- [Library](../data-studio/library.md)
+- [Serialization](./serialization.md)
