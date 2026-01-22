@@ -1906,7 +1906,7 @@
         "We should be able to build a query specifically using these display names")))
 
 (deftest ^:parallel short-display-names-include-joins-from-previous-stage
-  (testing "Join prefixes are stripped when columns cross stage boundaries (#65532)"
+  (testing "Join prefixes are stripped when columns cross card boundaries (#65532)"
     (let [card-query (lib.tu.macros/mbql-query orders
                        {:joins  [{:source-table $$people
                                   :alias        "People"
