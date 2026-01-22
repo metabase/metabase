@@ -495,3 +495,57 @@
                                   (tx/default-dataset :bigquery-cloud-sdk)))))
 
 (defmethod sql.tx/session-schema :bigquery-cloud-sdk [_driver] (get-test-data-name))
+
+;;; ------------------------------------------------ Fake Sync Support ------------------------------------------------
+
+;; Enable fake sync for BigQuery on feature branches.
+;; Fake sync skips network calls to the database for metadata sync, saving CI time.
+;; On master/release branches, use real sync to catch any sync regressions.
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/use-fake-sync]
+  [_driver _feature _database]
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :bigquery-cloud-sdk
+  [_driver]
+  ;; BigQuery uses the dataset ID as the "schema" in Metabase's table metadata.
+  ;; Unlike Snowflake (which has a static "PUBLIC" schema), BigQuery's schema IS
+  ;; the dataset ID (e.g., "sha_abc123_test_data").
+  ;; This works because *dbdef-used-to-create-db* is bound during fake-sync.
+  (get-test-data-name))
+
+(defmethod tx/fake-sync-table-name :bigquery-cloud-sdk
+  [_driver _database-name table-name]
+  ;; BigQuery uses separate datasets per test database, so table names are NOT prefixed.
+  ;; E.g., just "venues" not "test_data_venues" (unlike Redshift).
+  table-name)
+
+(defmethod tx/fake-sync-database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  ;; Return database_type as BigQuery reports it in INFORMATION_SCHEMA.
+  ;; These match the normalized types from raw-type->database+base-type.
+  (case base-type
+    :type/BigInteger         "INTEGER"
+    :type/Boolean            "BOOLEAN"
+    :type/Date               "DATE"
+    :type/DateTime           "DATETIME"
+    :type/DateTimeWithTZ     "TIMESTAMP"
+    :type/DateTimeWithLocalTZ "TIMESTAMP"
+    :type/Decimal            "BIGNUMERIC"
+    :type/Float              "FLOAT"
+    :type/Integer            "INTEGER"
+    :type/Number             "INTEGER"
+    :type/Text               "STRING"
+    :type/Time               "TIME"
+    ;; Fallback: use existing base-type->bigquery-type and stringify
+    (some-> (base-type->bigquery-type base-type) name)))
+
+(defmethod tx/fake-sync-base-type :bigquery-cloud-sdk
+  [_driver base-type]
+  ;; BigQuery's TIMESTAMP type maps to :type/DateTimeWithLocalTZ in sync.
+  ;; See database-type->base-type in bigquery_cloud_sdk.clj
+  (case base-type
+    :type/DateTimeWithTZ         :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneID     :type/DateTimeWithLocalTZ
+    :type/DateTimeWithZoneOffset :type/DateTimeWithLocalTZ
+    ;; Other types pass through unchanged
+    base-type))
