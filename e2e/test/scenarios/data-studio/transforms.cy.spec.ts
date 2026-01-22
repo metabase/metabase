@@ -2284,6 +2284,20 @@ LIMIT
       },
     );
 
+    it(
+      "should navigate to the common library when clicking 'common' in an import statement",
+      { tags: ["@python"] },
+      () => {
+        visitTransformListPage();
+        cy.button("Create a transform").click();
+        H.popover().findByText("Python script").click();
+        cy.get(".cm-clickable-token").should("be.visible").click();
+        H.modal().button("Discard changes").click();
+        cy.url().should("include", "/data-studio/transforms/library/common.py");
+        cy.findByTestId("python-library-header").should("be.visible");
+      },
+    );
+
     function visitCommonLibrary(path = "common.py") {
       cy.visit(`/data-studio/transforms/library/${path}`);
     }
