@@ -1421,17 +1421,36 @@ describe("issue #47005", () => {
     H.restore("postgres-12");
     cy.signInAsNormalUser();
 
-    H.createQuestion({
+    H.createTestQuestion({
       name: "Question A",
       query: {
-        "source-table": ORDERS_ID,
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+          },
+        ],
       },
     }).then(({ body: question }) => {
-      H.createQuestion(
+      H.createTestQuestion(
         {
           name: "Question B",
+          metadata: {
+            cardIds: [question.id],
+          },
           query: {
-            "source-table": "card__" + question.id,
+            databaseId: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: {
+                  type: "card",
+                  id: question.id,
+                },
+              },
+            ],
           },
         },
         { visitQuestion: true },
