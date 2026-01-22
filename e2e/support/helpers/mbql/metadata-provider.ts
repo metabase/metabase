@@ -1,4 +1,4 @@
-import { getMetadata as getMetadataFromState } from "metabase/selectors/metadata";
+import { getMetadataWithoutSettings as getMetadataFromState } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
