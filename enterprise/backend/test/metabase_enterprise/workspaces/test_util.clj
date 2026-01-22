@@ -52,7 +52,7 @@
   (or (t2/select-one-fn :id :model/Table
                         :db_id (mt/id)
                         :active true
-                        {:where [:= [:lower :name] (str/lower-case table-name)]})
+                        {:where [:= [:lower :name] (u/lower-case-en table-name)]})
       (throw (ex-info (str "Existing table not found: " table-name) {:table table-name}))))
 
 ;;;; Query helpers
