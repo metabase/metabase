@@ -100,7 +100,7 @@ export function AdminDatabaseWorkspacesSection({
     }
   };
 
-  if (!isSettingDisabled) {
+  if (isSettingDisabled) {
     return null;
   }
 

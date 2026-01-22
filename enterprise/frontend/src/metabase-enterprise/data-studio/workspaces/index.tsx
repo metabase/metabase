@@ -1,8 +1,11 @@
 import { PLUGIN_WORKSPACES } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { AdminDatabaseWorkspacesSection } from "./admin/AdminDatabaseWorkspacesSection";
 
 export function initializePlugin() {
-  PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection =
-    AdminDatabaseWorkspacesSection;
+  if (hasPremiumFeature("workspaces")) {
+    PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection =
+      AdminDatabaseWorkspacesSection;
+  }
 }
