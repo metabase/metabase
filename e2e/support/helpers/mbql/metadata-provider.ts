@@ -1,3 +1,6 @@
+// WARNING:
+//   This module should not be imported directly in cypress
+//   harnesses, use an dynamic import instead.
 import { getMetadataWithoutSettings as getMetadataFromState } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type {
@@ -18,6 +21,19 @@ const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 const DEFAULT_TABLE_IDS: TableId[] = [ORDERS_ID, PEOPLE_ID];
 const DEFAULT_CARD_IDS: CardId[] = [];
 
+/**
+ * Returns a Lib.MetadataProvider instance containing metadata for the
+ * provided database, tables and cards.
+ *
+ * WARNING:
+ *   DO NOT USE THIS DIRECTLY IN TESTS.
+ *   Use the `getMetadataProvider` from ./wrappers" instead.
+ *
+ * NOTE:
+ *   This function uses plain Promises and Promise.all to avoid type issues
+ *   with Cypress. The result needs to wrapped in cy.wrap() to be correctly usable
+ *   in Cypress tests.
+ */
 export async function getMetadataProvider({
   databaseId = SAMPLE_DB_ID,
   ...rest
@@ -26,7 +42,7 @@ export async function getMetadataProvider({
   return Lib.metadataProvider(databaseId, metadata);
 }
 
-export async function getMetadata({
+async function getMetadata({
   databaseId = SAMPLE_DB_ID,
   tableIds = DEFAULT_TABLE_IDS,
   cardIds = DEFAULT_CARD_IDS,
