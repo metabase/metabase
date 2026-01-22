@@ -362,6 +362,8 @@
                "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
                ;; Ignore connection URI in favor of the MB_DB_FILE
                "-Dmb.db.connection.uri="
+               ;; Unset the premium token so that tests can set it programmatically
+               "-Dmb.premium.embedding.token="
                ;; Ignore config.yml
                "-Dmb.config.file.path=__cypress__"
                ;; We use Snowplow micro in e2e tests
