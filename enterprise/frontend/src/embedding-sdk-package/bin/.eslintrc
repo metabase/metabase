@@ -1,6 +1,6 @@
 {
   "rules": {
-    "metabase-custom/no-literal-metabase-strings": "off",
+    "metabase/no-literal-metabase-strings": "off",
     "no-console": "off",
   },
 }
