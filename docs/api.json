@@ -6555,6 +6555,7 @@
           }
         }
       },
+      "metabase.lib.schema.deduplicate-refs-ignoring-source-field-name-when-possible" : { },
       "metabase.lib.schema.expression..expression.definition" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
       },
@@ -6714,6 +6715,8 @@
           "minItems" : 1
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.deduplicate-refs-ignoring-source-field-name-when-possible"
         } ]
       },
       "metabase.lib.schema.filter.string-filter-options" : {
