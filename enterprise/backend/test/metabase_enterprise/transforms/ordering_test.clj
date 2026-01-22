@@ -11,15 +11,21 @@
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
+(defn- default-schema* []
+  (and driver/*driver* (driver.sql/default-schema driver/*driver*)) "public")
+
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        schema (or schema (and driver/*driver* (driver.sql/default-schema driver/*driver*)) "public")]
+        schema (or schema (default-schema*))]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
      :target {:schema schema
               :name name
               :type :table}}))
+
+;; TODO (Chris 2026/01/22) Remove this boilerplate from existing tests (deferred to avoid git bloodbath)
+(use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
 
 (deftest basic-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -372,7 +378,7 @@
 
 (deftest python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
-    (let [default-schema "test-ordering"]
+    (let [default-schema (default-schema*)]
       (mt/with-temp [;; Transform A produces table "intermediate_output"
                      :model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
@@ -396,7 +402,7 @@
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
-    (let [default-schema "test-ordering"]
+    (let [default-schema (default-schema*)]
       (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
                                                  "output_a")
