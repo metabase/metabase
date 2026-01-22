@@ -24,7 +24,7 @@ import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
 import {
   canFilter,
-  canSortByColumn,
+  getAvailableSortColumns,
   getDefaultFilterOptions,
   getDefaultSortOptions,
   getListRequest,
@@ -52,7 +52,7 @@ export function GraphDependencyPanel({
     getDefaultFilterOptions(),
   );
   const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
-    getDefaultSortOptions(),
+    getDefaultSortOptions(groupType),
   );
   const {
     data: nodes = [],
@@ -67,8 +67,9 @@ export function GraphDependencyPanel({
       setFilterOptions(getDefaultFilterOptions());
     }
 
-    if (!canSortByColumn(groupType, sortOptions.column)) {
-      setSortOptions(getDefaultSortOptions());
+    const availableSortColumns = getAvailableSortColumns(groupType);
+    if (!availableSortColumns.includes(sortOptions.column)) {
+      setSortOptions(getDefaultSortOptions(groupType));
     }
   }, [groupType, filterOptions, sortOptions]);
 

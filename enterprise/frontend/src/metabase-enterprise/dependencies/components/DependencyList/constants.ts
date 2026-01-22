@@ -21,6 +21,7 @@ export const BROKEN_DEPENDENTS_GROUP_TYPES: DependencyGroupType[] = [
 export const BROKEN_DEPENDENTS_SORT_COLUMNS: DependencySortColumn[] = [
   "name",
   "location",
+  "view-count",
 ];
 
 export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [

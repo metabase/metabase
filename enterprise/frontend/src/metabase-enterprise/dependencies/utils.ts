@@ -396,6 +396,26 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
+export function canHaveViewCount(groupType: DependencyGroupType): boolean {
+  switch (groupType) {
+    case "question":
+    case "dashboard":
+    case "document":
+      return true;
+    // view_count is not calculated property for models and metrics since
+    // they are typically not run directly
+    case "table":
+    case "model":
+    case "metric":
+    case "transform":
+    case "snippet":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return false;
+  }
+}
+
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":

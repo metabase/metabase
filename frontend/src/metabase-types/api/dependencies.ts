@@ -276,6 +276,7 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
+  "view-count",
   "dependents-errors",
   "dependents-with-errors",
 ] as const;

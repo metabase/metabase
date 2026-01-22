@@ -26,8 +26,6 @@ import type {
   DependencySortOptions,
 } from "../../../../types";
 import {
-  getCardTypes,
-  getDependencyTypes,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -45,6 +43,11 @@ import {
 } from "../../constants";
 
 import S from "./SidebarDependentsSection.module.css";
+import {
+  getDefaultFilterOptions,
+  getDefaultSortOptions,
+  getListRequest,
+} from "./utils";
 
 type SidebarDependentsSectionProps = {
   node: DependencyNode;
@@ -55,28 +58,14 @@ export function SidebarDependentsSection({
 }: SidebarDependentsSectionProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>(
-    {},
+    getDefaultFilterOptions(),
   );
-  const [sortOptions, setSortOptions] = useState<DependencySortOptions>({
-    column: "name",
-    direction: "asc",
-  });
+  const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
+    getDefaultSortOptions(),
+  );
 
   const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
-    {
-      id: node.id,
-      type: node.type,
-      broken: true,
-      dependent_types: getDependencyTypes(
-        filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
-      ),
-      dependent_card_types: getCardTypes(
-        filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
-      ),
-      include_personal_collections: filterOptions.includePersonalCollections,
-      sort_column: sortOptions.column,
-      sort_direction: sortOptions.direction,
-    },
+    getListRequest(node, filterOptions, sortOptions),
     {
       skip: count === 0,
     },
