@@ -7,10 +7,12 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
+   [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-filters]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
+   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -31,29 +33,6 @@
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
-(def ^:private tool-request-transformer
-  "Transformer for encoding query components to the format expected by internal tool functions.
-   Converts snake_case keys to kebab-case and string enum values to keywords.
-   This is the same transformer used by deftool for the internal tools API."
-  (mtx/transformer {:name :tool-api-request}))
-
-(defn- encode-query-components
-  "Encode query components (filters, fields, aggregations, group-by) using the tools.api schemas
-   to transform them to the format expected by internal functions."
-  [{:keys [filters fields aggregations group-by order-by] :as args}]
-  (let [encode (fn [schema items]
-                 (when items
-                   (mapv #(mc/encode schema % tool-request-transformer) items)))]
-    (cond-> args
-      filters      (assoc :filters (encode ::tools.api/filter filters))
-      fields       (assoc :fields (encode ::tools.api/field fields))
-      aggregations (assoc :aggregations (encode ::tools.api/aggregation aggregations))
-      group-by     (assoc :group-by (encode ::tools.api/group-by group-by))
-      order-by     (assoc :order-by (mapv (fn [{:keys [field direction]}]
-                                            {:field     (mc/encode ::tools.api/field field tool-request-transformer)
-                                             :direction (keyword direction)})
-                                          order-by)))))
-
 (defn- check-tool-result
   "Extract :structured-output from a tool result, or throw 404 with the error message.
    Tool functions return {:structured-output ...} on success, {:output \"error\"} on failure.
@@ -69,19 +48,13 @@
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
-(defn- ->snake_case-keys
-  "Convert all map keys to snake_case. Used for encoding responses."
-  [m]
-  (when m
-    (update-keys m u/->snake_case_en)))
-
 (mr/def ::field-type
   "A data type for a field derived from Metabase's type hierarchy."
   [:enum :boolean :date :datetime :time :number :string])
 
 (mr/def ::field
   "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:field_id :string]
    [:name :string]
    [:type {:optional true} [:maybe ::field-type]]
@@ -96,7 +69,7 @@
 
 (mr/def ::metric-summary
   "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :metric]]
    [:name :string]
@@ -105,7 +78,7 @@
 
 (mr/def ::segment
   "A predefined filter condition that can be applied to queries via the segment_id in filters."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -113,7 +86,7 @@
 
 (mr/def ::related-table
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :table]]
    [:name :string]
@@ -127,7 +100,7 @@
 
 (mr/def ::table
   "Full details of a table including its fields, related tables, metrics, and segments."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:type ::entity-type]
    [:name :string]
@@ -143,7 +116,7 @@
 
 (mr/def ::metric
   "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :metric]]
    [:name :string]
@@ -155,7 +128,7 @@
 
 (mr/def ::statistics
   "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:distinct_count {:optional true} [:maybe :int]]
    [:percent_null   {:optional true} [:maybe number?]]
    [:min            {:optional true} [:maybe number?]]
@@ -174,14 +147,14 @@
 
 (mr/def ::field-values
   "Statistics and sample values for a specific field."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:field_id {:optional true} [:maybe :string]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::search-result-item
   "A table or metric returned from search."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
    [:type [:enum "table" "metric"]]
    [:name :string]
@@ -195,7 +168,7 @@
 
 (mr/def ::search-response
   "Search results containing tables and metrics matching the query."
-  [:map {:encode/api ->snake_case-keys}
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
 
@@ -294,7 +267,10 @@
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
-;; Reuse schemas from the metabot tools API for query components
+;; Request schemas for the Agent API.
+;; These use snake_case keys for validation and OpenAPI generation,
+;; with :encode/tool-api-request transformers for converting to the internal format.
+
 (mr/def ::construct-query-table-request
   "Request schema for constructing a query from a table.
 
@@ -305,26 +281,28 @@
    - group_by: Fields to group by, with optional temporal granularity
    - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.
    - limit: Maximum rows to return"
-  [:map
-   [:table_id ms/PositiveInt]
-   [:filters      {:optional true} [:maybe [:sequential ::tools.api/filter]]]
-   [:fields       {:optional true} [:maybe [:sequential ::tools.api/field]]]
-   [:aggregations {:optional true} [:maybe [:sequential ::tools.api/aggregation]]]
-   [:group_by     {:optional true} [:maybe [:sequential ::tools.api/group-by]]]
-   [:order_by     {:optional true
-                   :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
-    [:maybe [:sequential [:map
-                          [:field ::tools.api/field]
-                          [:direction [:enum "asc" "desc"]]]]]]
-   [:limit        {:optional true} [:maybe ms/PositiveInt]]])
+  [:and
+   [:map
+    [:table_id ms/PositiveInt]
+    [:filters      {:optional true} [:maybe [:sequential ::tools.api/filter]]]
+    [:fields       {:optional true} [:maybe [:sequential ::tools.api/field]]]
+    [:aggregations {:optional true} [:maybe [:sequential ::tools.api/aggregation]]]
+    [:group_by     {:optional true} [:maybe [:sequential ::tools.api/group-by]]]
+    [:order_by     {:optional true
+                    :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
+     [:maybe [:sequential ::tools.api/order-by]]]
+    [:limit        {:optional true} [:maybe ms/PositiveInt]]]
+   [:map {:encode/tool-api-request metabot-v3.u/safe->kebab-case-en}]])
 
 (mr/def ::construct-query-metric-request
   "Request schema for constructing a query from a metric.
    Only supports filters and group_by (aggregation is defined by the metric)."
-  [:map
-   [:metric_id ms/PositiveInt]
-   [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
-   [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]])
+  [:and
+   [:map
+    [:metric_id ms/PositiveInt]
+    [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
+    [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]]
+   [:map {:encode/tool-api-request metabot-v3.u/safe->kebab-case-en}]])
 
 (mr/def ::construct-query-request
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
@@ -355,29 +333,18 @@
 
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
-  [{:keys [table_id filters fields aggregations group_by order_by limit]}]
-  (let [args (encode-query-components {:filters      filters
-                                       :fields       fields
-                                       :aggregations aggregations
-                                       :group-by     group_by
-                                       :order-by     order_by})
-        data (check-tool-result
-              (metabot-filters/query-datasource
-               (assoc args
-                      :table-id table_id
-                      :limit    limit)))]
+  [body]
+  (let [args (mc/encode ::construct-query-table-request body deftool/request-transformer)
+        data (check-tool-result (metabot-filters/query-datasource args))]
     {:query (-> (:query data)
                 json/encode
                 encode-base64-url-safe)}))
 
 (defn- construct-metric-query
   "Build a query from a metric using filters and group_by."
-  [{:keys [metric_id filters group_by]}]
-  (let [args (encode-query-components {:filters  filters
-                                       :group-by group_by})
-        data (check-tool-result
-              (metabot-filters/query-metric
-               (assoc args :metric-id metric_id)))]
+  [body]
+  (let [args (mc/encode ::construct-query-metric-request body deftool/request-transformer)
+        data (check-tool-result (metabot-filters/query-metric args))]
     {:query (-> (:query data)
                 json/encode
                 encode-base64-url-safe)}))

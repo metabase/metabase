@@ -16,11 +16,12 @@
    [:conversation_id ms/UUIDString]
    [:profile_id {:optional true} [:maybe :string]]])
 
-(def ^:private request-transformer
-  "Transformer for encoding tool request arguments (snake_case -> kebab-case)."
+(def request-transformer
+  "Transformer for encoding tool request arguments (snake_case -> kebab-case).
+   Converts snake_case keys to kebab-case and string enum values to keywords."
   (mtx/transformer {:name :tool-api-request}))
 
-(def ^:private response-transformer
+(def response-transformer
   "Transformer for decoding tool response data (kebab-case -> snake_case)."
   (mtx/transformer {:name :tool-api-response}))
 
