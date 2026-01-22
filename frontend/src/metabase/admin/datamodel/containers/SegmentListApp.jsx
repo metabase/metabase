@@ -13,7 +13,7 @@ import CS from "metabase/css/core/index.css";
 import { Segments } from "metabase/entities/segments";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserCanWriteSegments } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 class SegmentListAppInner extends Component {
   render() {
@@ -66,7 +66,7 @@ class SegmentListAppInner extends Component {
 const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable("segments"),
-  connect((state) => ({ isAdmin: getUserCanWriteSegments(state) }), {
+  connect((state, props) => ({ isAdmin: getUserIsAdmin(state) }), {
     setArchived: Segments.actions.setArchived,
   }),
 )(SegmentListAppInner);

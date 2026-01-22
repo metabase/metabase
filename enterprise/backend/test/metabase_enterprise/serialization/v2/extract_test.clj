@@ -2291,6 +2291,11 @@
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
 
+                           :model/Collection
+                           {coll-id :id coll-eid :entity_id}
+                           {:name "Transform Collection"
+                            :namespace :transforms}
+
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
@@ -2314,6 +2319,7 @@
                            {:name "Test Transform"
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
+                            :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
                                              :query    {:source-table table-id}}
@@ -2364,8 +2370,9 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include source table and tags"
+            (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))

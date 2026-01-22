@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -44,7 +43,7 @@
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
    `errors` is a sequence of maps with keys:
-   - `:error-type` - keyword like `:validate/missing-column`
+   - `:error-type` - keyword like `:missing-column`
    - `:error-detail` - string (column name, alias, message, etc.) or nil
    - `:source-entity-type` - keyword like `:table`, `:card`, or nil
    - `:source-entity-id` - int or nil"
@@ -60,7 +59,7 @@
                   (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
                           {:analyzed_entity_type (name entity-type)
                            :analyzed_entity_id entity-id
-                           :error_type (u/qualified-name error-type)
+                           :error_type error-type
                            :error_detail error-detail
                            :source_entity_type (some-> source-entity-type name)
                            :source_entity_id source-entity-id})
