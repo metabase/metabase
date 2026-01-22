@@ -522,113 +522,119 @@
                  (mt/rows+column-names (qp/process-query query)))))))))
 
 (deftest sync-table-with-required-filter-test
+  ;; Requires real sync (not fake-sync) because native-dataset creates tables via raw SQL.
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/dataset native-dataset
-      (testing "tables that require a partition filters are synced correctly"
-        (mt/with-model-cleanup [:model/Table]
-          (let [table-name->is-filter-required? {"partition_by_range"              true
-                                                 "partition_by_time"               true
-                                                 "partition_by_ingestion_time"     true
-                                                 "partition_by_range_not_required" false
-                                                 "not_partitioned"                 false}]
-            (testing "describe-database"
-              (qp.store/with-metadata-provider (mt/id)
-                (is (= #{{:schema (get-test-data-name)
-                          :name "partition_by_ingestion_time",
-                          :database_require_filter true}
-                         {:schema (get-test-data-name), :name "partition_by_time", :database_require_filter true}
-                         {:schema (get-test-data-name), :name "partition_by_range", :database_require_filter true}
-                         {:schema (get-test-data-name),
-                          :name "partition_by_range_not_required",
-                          :database_require_filter false}
-                         {:schema (get-test-data-name),
-                          :name "partition_by_ingestion_time_not_required",
-                          :database_require_filter false}}
-                       (into #{}
-                             (filter (comp #{"partition_by_range"
-                                             "partition_by_time"
-                                             "partition_by_ingestion_time"
-                                             "partition_by_range_not_required"
-                                             "partition_by_ingestion_time_not_required"} :name))
-                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+    (tx/with-driver-supports-feature! [:bigquery-cloud-sdk :test/use-fake-sync false]
+      (mt/dataset native-dataset
+        (testing "tables that require a partition filters are synced correctly"
+          (mt/with-model-cleanup [:model/Table]
+            (let [table-name->is-filter-required? {"partition_by_range"              true
+                                                   "partition_by_time"               true
+                                                   "partition_by_ingestion_time"     true
+                                                   "partition_by_range_not_required" false
+                                                   "not_partitioned"                 false}]
+              (testing "describe-database"
+                (qp.store/with-metadata-provider (mt/id)
+                  (is (= #{{:schema (get-test-data-name)
+                            :name "partition_by_ingestion_time",
+                            :database_require_filter true}
+                           {:schema (get-test-data-name), :name "partition_by_time", :database_require_filter true}
+                           {:schema (get-test-data-name), :name "partition_by_range", :database_require_filter true}
+                           {:schema (get-test-data-name),
+                            :name "partition_by_range_not_required",
+                            :database_require_filter false}
+                           {:schema (get-test-data-name),
+                            :name "partition_by_ingestion_time_not_required",
+                            :database_require_filter false}}
+                         (into #{}
+                               (filter (comp #{"partition_by_range"
+                                               "partition_by_time"
+                                               "partition_by_ingestion_time"
+                                               "partition_by_range_not_required"
+                                               "partition_by_ingestion_time_not_required"} :name))
+                               (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
 
-            (testing "tables that require a filter are correctly identified"
-              (is (= table-name->is-filter-required?
-                     (t2/select-fn->fn :name :database_require_filter :model/Table
-                                       :name [:in (keys table-name->is-filter-required?)]))))
+              (testing "tables that require a filter are correctly identified"
+                (is (= table-name->is-filter-required?
+                       (t2/select-fn->fn :name :database_require_filter :model/Table
+                                         :name [:in (keys table-name->is-filter-required?)]))))
 
-            (testing "partitioned fields are correctly identified"
-              (is (= {["not_partitioned"                 "transaction_id"]   false
-                      ["partition_by_range_not_required" "customer_id"]      true
-                      ["partition_by_range_not_required" "transaction_date"] false
-                      ["partition_by_range"              "customer_id"]      true
-                      ["partition_by_ingestion_time"     "transaction_id"]   false
-                      ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
-                      ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
-                      ["partition_by_time"               "transaction_time"] true
-                      ["partition_by_time"               "transaction_id"]   false}
-                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
-                                     :from   [[:metabase_field :field]]
-                                     :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
-                                     :where  [:and [:= :table.db_id (mt/id)]
-                                              [:in :table.name (keys table-name->is-filter-required?)]]})
-                          (map (fn [{:keys [table_name field_name database_partitioned]}]
-                                 [[table_name field_name] database_partitioned]))
-                          (into {})))))))))))
+              (testing "partitioned fields are correctly identified"
+                (is (= {["not_partitioned"                 "transaction_id"]   false
+                        ["partition_by_range_not_required" "customer_id"]      true
+                        ["partition_by_range_not_required" "transaction_date"] false
+                        ["partition_by_range"              "customer_id"]      true
+                        ["partition_by_ingestion_time"     "transaction_id"]   false
+                        ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
+                        ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
+                        ["partition_by_time"               "transaction_time"] true
+                        ["partition_by_time"               "transaction_id"]   false}
+                       (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
+                                       :from   [[:metabase_field :field]]
+                                       :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                       :where  [:and [:= :table.db_id (mt/id)]
+                                                [:in :table.name (keys table-name->is-filter-required?)]]})
+                            (map (fn [{:keys [table_name field_name database_partitioned]}]
+                                   [[table_name field_name] database_partitioned]))
+                            (into {}))))))))))))
 
 (deftest full-sync-partitioned-table-test
+  ;; Requires real sync (not fake-sync) because native-dataset creates tables via raw SQL.
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/dataset native-dataset
-      (testing "Partitioned tables that require a partition filter can be synced"
-        (let [table-names   ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
-                             "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
-              mv-names      ["mv_partition_by_datetime" "mv_partition_by_range"]
-              table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
-              all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
-          (testing "Field values are correctly synced"
-            ;; Manually activate Field values since they are not created during sync (#53387)
-            (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
-              (field-values/get-or-create-full-field-values! field))
-            (is (= {"customer_id"   #{1 2 3}
-                    "vip_customer"  #{42}
-                    "name"          #{"Khuat" "Quang" "Ngoc"}
-                    "company"       #{"Metabase" "Tesla" "Apple"}
-                    "ev_company"    #{"Tesla"}
-                    "is_awesome"    #{true false}
-                    "is_opensource" #{true false}}
-                   (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
-                                   :from   [[:metabase_field :field]]
-                                   :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
-                                   :where  [:and [:in :field.table_id table-ids]
-                                            [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                        (map #(update % :values (comp set json/decode)))
-                        (map (juxt :field-name :values))
-                        (into {}))))))))))
+    (tx/with-driver-supports-feature! [:bigquery-cloud-sdk :test/use-fake-sync false]
+      (mt/dataset native-dataset
+        (testing "Partitioned tables that require a partition filter can be synced"
+          (let [table-names   ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
+                               "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
+                mv-names      ["mv_partition_by_datetime" "mv_partition_by_range"]
+                table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
+                all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+            (testing "Field values are correctly synced"
+              ;; Manually activate Field values since they are not created during sync (#53387)
+              (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+                (field-values/get-or-create-full-field-values! field))
+              (is (= {"customer_id"   #{1 2 3}
+                      "vip_customer"  #{42}
+                      "name"          #{"Khuat" "Quang" "Ngoc"}
+                      "company"       #{"Metabase" "Tesla" "Apple"}
+                      "ev_company"    #{"Tesla"}
+                      "is_awesome"    #{true false}
+                      "is_opensource" #{true false}}
+                     (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                     :from   [[:metabase_field :field]]
+                                     :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                     :where  [:and [:in :field.table_id table-ids]
+                                              [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
+                          (map #(update % :values (comp set json/decode)))
+                          (map (juxt :field-name :values))
+                          (into {})))))))))))
 
 (deftest full-sync-partitioned-table-test-2
+  ;; Requires real sync (not fake-sync) because native-dataset creates tables via raw SQL.
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/dataset native-dataset
-      (testing "Partitioned tables that require a partition filter can be synced"
-        (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
-          (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
-                                                                      :name "partition_by_ingestion_time_not_required_2")]
-            (is (=? [{:name           "_PARTITIONTIME"
-                      :database_type "TIMESTAMP"
-                      :base_type     :type/DateTimeWithLocalTZ
-                      :database_position 1}
-                     {:name           "_PARTITIONDATE"
-                      :database_type "DATE"
-                      :base_type     :type/Date
-                      :database_position 2}]
-                    (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
-                               :database_partitioned true {:order-by [[:name :desc]]}))))
-          (testing "and query this table should return the column pseudocolumn as well"
-            (is (malli=
-                 [:tuple :boolean ms/TemporalString ms/TemporalString]
-                 (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1})))))))))))
+    (tx/with-driver-supports-feature! [:bigquery-cloud-sdk :test/use-fake-sync false]
+      (mt/dataset native-dataset
+        (testing "Partitioned tables that require a partition filter can be synced"
+          (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+            (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                        :name "partition_by_ingestion_time_not_required_2")]
+              (is (=? [{:name           "_PARTITIONTIME"
+                        :database_type "TIMESTAMP"
+                        :base_type     :type/DateTimeWithLocalTZ
+                        :database_position 1}
+                       {:name           "_PARTITIONDATE"
+                        :database_type "DATE"
+                        :base_type     :type/Date
+                        :database_position 2}]
+                      (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                                 :database_partitioned true {:order-by [[:name :desc]]}))))
+            (testing "and query this table should return the column pseudocolumn as well"
+              (is (malli=
+                   [:tuple :boolean ms/TemporalString ms/TemporalString]
+                   (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1}))))))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk

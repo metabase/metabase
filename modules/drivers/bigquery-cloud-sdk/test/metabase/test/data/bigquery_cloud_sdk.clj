@@ -517,7 +517,9 @@
   [_driver _database-name table-name]
   ;; BigQuery uses separate datasets per test database, so table names are NOT prefixed.
   ;; E.g., just "venues" not "test_data_venues" (unlike Redshift).
-  table-name)
+  ;; IMPORTANT: Must normalize names (hyphens → underscores) to match what BigQuery actually stores.
+  ;; The physical table is created with normalize-name, so sync sees "bird_count" not "bird-count".
+  (normalize-name table-name))
 
 (defmethod tx/fake-sync-database-type :bigquery-cloud-sdk
   [_driver base-type]
