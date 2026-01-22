@@ -23,10 +23,12 @@ export async function _getMetadataProvider(
 }
 
 export function createTestJsQuery(
-  metadataProvider: Lib.MetadataProvider,
+  metadataProvider: Lib.MetadataProvider | GetMetadataOpts,
   opts: CreateTestQueryOpts,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
-  return cy.wrap(_createTestJsQuery(metadataProvider, opts));
+  return getProvider(metadataProvider).then((provider) => {
+    return _createTestJsQuery(provider, opts);
+  });
 }
 
 export async function _createTestJsQuery(
@@ -38,11 +40,13 @@ export async function _createTestJsQuery(
 }
 
 export function createTestNativeJsQuery(
-  metadataProvider: Lib.MetadataProvider,
+  metadataProvider: Lib.MetadataProvider | GetMetadataOpts,
   databaseId: DatabaseId,
   query: string,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
-  return cy.wrap(_createTestNativeJsQuery(metadataProvider, databaseId, query));
+  return getProvider(metadataProvider).then((provider) =>
+    _createTestNativeJsQuery(provider, databaseId, query),
+  );
 }
 
 export async function _createTestNativeJsQuery(
@@ -52,4 +56,19 @@ export async function _createTestNativeJsQuery(
 ) {
   const { createTestNativeJsQuery } = await import("metabase-lib/test-helpers");
   return createTestNativeJsQuery(metadataProvider, databaseId, query);
+}
+
+function isMetadataProvider(
+  opts: GetMetadataOpts | Lib.MetadataProvider,
+): opts is Lib.MetadataProvider {
+  return "cache" in opts;
+}
+
+function getProvider(
+  providerOrOpts: GetMetadataOpts | Lib.MetadataProvider,
+): Cypress.Chainable<Lib.MetadataProvider> {
+  if (isMetadataProvider(providerOrOpts)) {
+    return cy.wrap(providerOrOpts);
+  }
+  return getMetadataProvider(providerOrOpts);
 }
