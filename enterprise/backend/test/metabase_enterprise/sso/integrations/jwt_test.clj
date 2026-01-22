@@ -1210,3 +1210,79 @@
                              (group-memberships (u/the-id user)))))
                     (testing "user is no longer in Group A"
                       (is (not (contains? (group-memberships (u/the-id user)) "Group A"))))))))))))))
+
+(deftest tenant-attributes-from-jwt-test
+  (testing "Tenant attributes can be set via JWT"
+    (testing "New tenant gets attributes from JWT"
+      (mt/with-model-cleanup [:model/Tenant]
+        (with-jwt-default-setup!
+          (mt/with-additional-premium-features #{:tenants}
+            (mt/with-temporary-setting-values [use-tenants true]
+              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser@metabase.com"
+                                                              "@tenant" "new-tenant-with-attrs"
+                                                              "@tenant.attributes" {"plan" "enterprise"
+                                                                                    "region" "us-west"}
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (saml-test/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant :slug "new-tenant-with-attrs")]
+                    (is (some? tenant))
+                    (is (= {"plan" "enterprise" "region" "us-west"}
+                           (:attributes tenant)))))))))))
+
+    (testing "Existing tenant - new attributes added, existing preserved"
+      (with-jwt-default-setup!
+        (mt/with-additional-premium-features #{:tenants}
+          (mt/with-temporary-setting-values [use-tenants true]
+            (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "existing-tenant"
+                                                          :name "Existing Tenant"
+                                                          :attributes {"plan" "enterprise"}}]
+              (mt/with-model-cleanup [:model/User]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser@metabase.com"
+                                                              "@tenant" "existing-tenant"
+                                                              "@tenant.attributes" {"plan" "basic"
+                                                                                    "region" "us-east"}
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (saml-test/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant tenant-id)]
+                    (testing "existing 'plan' attribute is preserved, not overwritten"
+                      (is (= "enterprise" (get (:attributes tenant) "plan"))))
+                    (testing "new 'region' attribute is added"
+                      (is (= "us-east" (get (:attributes tenant) "region"))))))))))))
+
+    (testing "Invalid @tenant.attributes is ignored"
+      (mt/with-model-cleanup [:model/Tenant]
+        (with-jwt-default-setup!
+          (mt/with-additional-premium-features #{:tenants}
+            (mt/with-temporary-setting-values [use-tenants true]
+              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser2@metabase.com"
+                                                              "@tenant" "tenant-invalid-attrs"
+                                                              "@tenant.attributes" "not-a-map"
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (saml-test/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant :slug "tenant-invalid-attrs")]
+                    (is (some? tenant))
+                    (testing "tenant created but with no attributes since the value wasn't a map"
+                      (is (nil? (:attributes tenant))))))))))))))
