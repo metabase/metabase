@@ -1054,11 +1054,11 @@
      Optionally accepts a database_id in the body; if not provided it will try to use the sample database."
     [_route-params
      _query-params
-     {:keys [database_id] :as body} :- ::test-resources-request]
+     {db-id :database_id :as body} :- ::test-resources-request]
     (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
       (create-fn (-> body
                      (dissoc :database_id)
-                     (cond-> database_id (assoc :database-id database_id))
+                     (cond-> db-id (assoc :database-id db-id))
                      parse-magic-references))
       (throw (ex-info "Workspace test utilities not available" {:status-code 501})))))
 
