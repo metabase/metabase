@@ -48,6 +48,17 @@ describe("scenarios > data studio > workspaces", () => {
       impersonations: [],
     });
 
+    cy.request(
+      "POST",
+      `/api/database/${WRITABLE_DB_ID}/permission/workspace/check`,
+      {
+        cached: false,
+      },
+    );
+    cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
+      settings: { "database-enable-workspaces": true },
+    });
+
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
       "runTransform",
