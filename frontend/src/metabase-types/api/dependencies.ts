@@ -253,6 +253,8 @@ export type ListNodeDependentsRequest = {
   broken?: boolean;
   include_personal_collections?: boolean;
   archived?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type CheckDependenciesResponse = {

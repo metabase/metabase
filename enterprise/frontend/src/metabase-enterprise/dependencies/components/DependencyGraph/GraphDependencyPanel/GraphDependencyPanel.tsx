@@ -12,7 +12,7 @@ import type {
   DependencyNode,
 } from "metabase-types/api";
 
-import { DEPENDENTS_SEARCH_THRESHOLD } from "../constants";
+import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../constants";
 
 import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";

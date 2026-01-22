@@ -10,11 +10,13 @@ import type { DependencyNode } from "metabase-types/api";
 import { getNodeTransform } from "../../../../utils";
 import S from "../ListSidebar.module.css";
 
-type SidebarTransformInfoProps = {
+type SidebarTransformSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarTransformInfo({ node }: SidebarTransformInfoProps) {
+export function SidebarTransformSection({
+  node,
+}: SidebarTransformSectionProps) {
   const transform = getNodeTransform(node);
 
   if (transform == null) {

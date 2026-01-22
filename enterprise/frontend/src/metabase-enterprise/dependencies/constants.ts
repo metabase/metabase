@@ -1,1 +1,2 @@
+export const DEPENDENTS_SEARCH_THRESHOLD = 5;
 export const TOOLTIP_OPEN_DELAY_MS = 700;

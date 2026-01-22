@@ -14,11 +14,11 @@ import {
 } from "../../../../utils";
 import S from "../ListSidebar.module.css";
 
-type SidebarCreationInfoProps = {
+type SidebarCreationSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarCreationInfo({ node }: SidebarCreationInfoProps) {
+export function SidebarCreationSection({ node }: SidebarCreationSectionProps) {
   const createdBy = getNodeCreatedBy(node);
   const createdAt = getNodeCreatedAt(node);
   const editedBy = getNodeLastEditedBy(node);

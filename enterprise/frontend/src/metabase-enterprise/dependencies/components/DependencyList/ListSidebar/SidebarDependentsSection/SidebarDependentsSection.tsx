@@ -13,14 +13,17 @@ import {
   FixedSizeIcon,
   Group,
   Menu,
-  Skeleton,
   Stack,
   Title,
 } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { DependencyFilterOptions } from "../../../../types";
+import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
 import {
   getCardTypes,
   getDependencyTypes,
@@ -34,31 +37,42 @@ import {
   getNodeViewCountLabel,
 } from "../../../../utils";
 import { FilterOptionsPicker } from "../../../FilterOptionsPicker";
-import { BROKEN_DEPENDENTS_GROUP_TYPES } from "../../constants";
+import { SortOptionsPicker } from "../../../SortOptionsPicker";
+import {
+  BROKEN_DEPENDENTS_GROUP_TYPES,
+  BROKEN_DEPENDENTS_SORT_COLUMNS,
+} from "../../constants";
 
-import S from "./SidebarDependentsInfo.module.css";
+import S from "./SidebarDependentsSection.module.css";
 
-type SidebarDependentsInfoProps = {
+type SidebarDependentsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
+export function SidebarDependentsSection({
+  node,
+}: SidebarDependentsSectionProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const [filters, setFilters] = useState<DependencyFilterOptions>({});
-  const availableGroupTypes = BROKEN_DEPENDENTS_GROUP_TYPES;
+  const [sorting, setSorting] = useState<DependencySortOptions>({
+    column: "name",
+    direction: "asc",
+  });
 
-  const { data: dependents = [], isLoading } = useListNodeDependentsQuery(
+  const { data: dependents = [] } = useListNodeDependentsQuery(
     {
       id: node.id,
       type: node.type,
       broken: true,
       dependent_types: getDependencyTypes(
-        filters.groupTypes ?? availableGroupTypes,
+        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
       ),
       dependent_card_types: getCardTypes(
-        filters.groupTypes ?? availableGroupTypes,
+        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
       ),
       include_personal_collections: filters.includePersonalCollections,
+      sort_column: sorting.column,
+      sort_direction: sorting.direction,
     },
     {
       skip: count === 0,
@@ -80,22 +94,27 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
             {getDependentErrorNodesLabel(dependents.length)}
           </Title>
         </Group>
-        <FilterOptionsPicker
-          filters={filters}
-          availableGroupTypes={availableGroupTypes}
-          compact
-          onFiltersChange={setFilters}
-        />
+        {count > DEPENDENTS_SEARCH_THRESHOLD && (
+          <Group gap={0}>
+            <SortOptionsPicker
+              sorting={sorting}
+              availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
+              onSortingChange={setSorting}
+            />
+            <FilterOptionsPicker
+              filters={filters}
+              availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
+              compact
+              onFiltersChange={setFilters}
+            />
+          </Group>
+        )}
       </Group>
       {dependents.length > 0 && (
         <Card p={0} shadow="none" withBorder>
-          {isLoading ? (
-            <DependentItemSkeleton />
-          ) : (
-            dependents.map((dependent, dependentIndex) => (
-              <DependentItem key={dependentIndex} node={dependent} />
-            ))
-          )}
+          {dependents.map((dependent, dependentIndex) => (
+            <DependentItem key={dependentIndex} node={dependent} />
+          ))}
         </Card>
       )}
     </Stack>
@@ -173,17 +192,5 @@ function DependentItem({ node }: DependentItemProps) {
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
-  );
-}
-
-function DependentItemSkeleton() {
-  return (
-    <Stack className={S.item} p="md" gap="sm">
-      <Group gap="sm" wrap="nowrap">
-        <Skeleton width={16} height={16} circle />
-        <Skeleton height={16} natural />
-      </Group>
-      <Skeleton height={16} natural />
-    </Stack>
   );
 }

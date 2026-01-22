@@ -20,14 +20,17 @@ import type { AnalysisFindingErrorType } from "metabase-types/api";
 import type { DependencyError } from "../../../../types";
 import { getErrorTypeLabel } from "../../../../utils";
 
-import S from "./SidebarErrorInfo.module.css";
+import S from "./SidebarErrorSection.module.css";
 
-type SidebarErrorInfoProps = {
+type SidebarErrorSectionProps = {
   type: AnalysisFindingErrorType;
   errors: DependencyError[];
 };
 
-export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
+export function SidebarErrorSection({
+  type,
+  errors,
+}: SidebarErrorSectionProps) {
   const count = errors.length;
   const title = getErrorTypeLabel(type, count);
   const details = errors

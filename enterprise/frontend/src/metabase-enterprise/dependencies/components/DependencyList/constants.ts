@@ -1,4 +1,7 @@
-import type { DependencyGroupType } from "metabase-types/api";
+import type {
+  DependencyGroupType,
+  DependencySortColumn,
+} from "metabase-types/api";
 
 export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "table",
@@ -13,6 +16,11 @@ export const BROKEN_DEPENDENTS_GROUP_TYPES: DependencyGroupType[] = [
   "segment",
   "measure",
   "transform",
+];
+
+export const BROKEN_DEPENDENTS_SORT_COLUMNS: DependencySortColumn[] = [
+  "name",
+  "location",
 ];
 
 export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
