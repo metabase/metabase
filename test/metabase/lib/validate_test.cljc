@@ -15,7 +15,7 @@
           bad-query (assoc-in query [:stages 0 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :source-entity-type :table
               :source-entity-id (meta/id :orders)
               :name "missingcol"}
@@ -34,7 +34,7 @@
           bad-query (assoc-in query [:stages 0 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :source-entity-type :card
               :source-entity-id 101
               :name "missingcol"}
@@ -59,7 +59,7 @@
           bad-query (assoc-in filter-query [:stages 0 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :source-entity-type :table
               :source-entity-id (meta/id :products)
               :name "missingcol"}
@@ -87,7 +87,7 @@
           bad-query (assoc-in filter-query [:stages 0 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :source-entity-type :card
               :source-entity-id 101
               :name "missingcol"}
@@ -135,11 +135,11 @@
                         (assoc-in [:stages 0 :filters 1 2 2] "missingcol2"))
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 2 (count errors)))
-      (is (= #{{:type :validate/missing-column
+      (is (= #{{:type :missing-column
                 :source-entity-type :table
                 :source-entity-id (meta/id :products)
                 :name "missingcol1"}
-               {:type :validate/missing-column
+               {:type :missing-column
                 :source-entity-type :card
                 :source-entity-id 101
                 :name "missingcol2"}}
@@ -158,7 +158,7 @@
           bad-query (assoc-in filter-query [:stages 1 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :name "missingcol"}
              (first errors))))))
 
@@ -172,7 +172,7 @@
           bad-query (assoc-in filter-query [:stages 0 :filters 0 2 2] "missingcol")
           errors (lib/find-bad-refs-with-source bad-query)]
       (is (= 1 (count errors)))
-      (is (= {:type :validate/missing-column
+      (is (= {:type :missing-column
               :source-entity-type :table
               :source-entity-id (meta/id :orders)
               :name "missingcol"}
