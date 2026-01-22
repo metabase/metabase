@@ -811,9 +811,10 @@
 (defn parsed-query
   "Wrapped for `parsed-query` providing default options and throwing exceptions on parsing failures."
   [sql driver & {:as opts}]
-  (let [result #_{:clj-kondo/ignore [:discouraged-var]}
-               (macaw/parsed-query sql (merge (macaw-options driver)
-                                              opts))]
+  (let [result
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (macaw/parsed-query sql (merge (macaw-options driver)
+                                       opts))]
     (when (and (map? result) (some? (:error result)))
       (throw (ex-info "SQL parsing failed."
                       {:macaw-error (:error result)}
