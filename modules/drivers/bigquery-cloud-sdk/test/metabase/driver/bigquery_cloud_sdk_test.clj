@@ -508,18 +508,22 @@
                  (into [] (filter (fn [x] (= (:table-name x) "records_o"))
                                   (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
 
-(deftest ^:parallel query-nested-fields-test
+(deftest query-nested-fields-test
+  ;; Requires real sync because fake-sync only inserts top-level fields, not nested RECORD fields.
+  ;; The test uses (mt/id :records :r :a) which looks up nested field IDs from the app DB.
+  ;; Not ^:parallel because with-driver-supports-feature! mutates driver state.
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset nested-records
-      (let [query (mt/mbql-query records
-                    {:fields [(mt/id :records :r :a)
-                              (mt/id :records :r :b)
-                              (mt/id :records :r :rr :aa)
-                              (mt/id :records :r :rr)]})]
-        (mt/with-native-query-testing-context query
-          (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
-                  :rows    [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
-                 (mt/rows+column-names (qp/process-query query)))))))))
+    (tx/with-driver-supports-feature! [:bigquery-cloud-sdk :test/use-fake-sync false]
+      (mt/dataset nested-records
+        (let [query (mt/mbql-query records
+                      {:fields [(mt/id :records :r :a)
+                                (mt/id :records :r :b)
+                                (mt/id :records :r :rr :aa)
+                                (mt/id :records :r :rr)]})]
+          (mt/with-native-query-testing-context query
+            (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+                    :rows    [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
+                   (mt/rows+column-names (qp/process-query query))))))))))
 
 (deftest sync-table-with-required-filter-test
   ;; Requires real sync (not fake-sync) because native-dataset creates tables via raw SQL.
