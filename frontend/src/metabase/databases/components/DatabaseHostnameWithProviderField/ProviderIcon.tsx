@@ -25,9 +25,7 @@ export function ProviderIcon({
   provider: DatabaseProviderName | null;
 }) {
   if (!provider) {
-    return (
-      <Icon name="database" size={ICON_SIZE} c="icon-primary" opacity={0.25} />
-    );
+    return <Icon name="database" size={ICON_SIZE} c="icon-primary" />;
   }
 
   const image = match(provider)
