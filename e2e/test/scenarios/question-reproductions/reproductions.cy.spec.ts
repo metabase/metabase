@@ -1454,9 +1454,10 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createTestJsQuery(
-      {},
-      {
+    H.createTestQuestion({
+      name: METRIC_NAME,
+      type: "metric",
+      query: {
         databaseId: SAMPLE_DB_ID,
         stages: [
           {
@@ -1477,12 +1478,6 @@ describe("issue 66210", () => {
           },
         ],
       },
-    ).then((dataset_query) => {
-      H.createTestQuestion({
-        name: METRIC_NAME,
-        type: "metric",
-        dataset_query,
-      });
     });
 
     cy.visit("/");
