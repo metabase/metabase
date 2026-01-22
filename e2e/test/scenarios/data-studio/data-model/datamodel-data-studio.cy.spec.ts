@@ -561,15 +561,15 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
 
         cy.log("Filter popover should close on click outside");
         H.DataModel.TablePicker.getSearchInput().click();
         H.DataModel.TablePicker.getFilterForm().should("not.exist");
 
-        openFilterPopover();
-        selectFilterOption("Visibility type", "Gold");
-        applyFilters();
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Visibility type", "Gold");
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@goldTableId").then(expectTableVisible);
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
@@ -593,9 +593,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
-        selectFilterOption("Owner", "Unspecified");
-        applyFilters();
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Owner", "Unspecified");
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@unownedTableId").then(expectTableVisible);
         cy.get<TableId>("@ownedTableId").then(expectTableNotVisible);
@@ -620,11 +620,11 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         cy.get<string>("@ownerName").then((ownerName) => {
           selectOwnerByName(ownerName);
         });
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@ownedTableId").then(expectTableVisible);
         cy.get<TableId>("@unownedTableId").then(expectTableNotVisible);
@@ -646,9 +646,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         selectOwnerByEmail(OWNER_EMAIL);
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@emailOwnedTableId").then(expectTableVisible);
         cy.get<TableId>("@otherTableId").then(expectTableNotVisible);
@@ -669,9 +669,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
-        selectFilterOption("Source", "Uploaded data");
-        applyFilters();
+        TablePicker.openFilterPopover();
+        TablePicker.selectFilterOption("Source", "Uploaded data");
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@uploadedTableId").then(expectTableVisible);
         cy.get<TableId>("@ingestedTableId").then(expectTableNotVisible);
@@ -704,9 +704,9 @@ describe("scenarios > data studio > datamodel", () => {
 
         H.DataModel.visitDataStudio();
 
-        openFilterPopover();
+        TablePicker.openFilterPopover();
         toggleUnusedFilter(true);
-        applyFilters();
+        TablePicker.applyFilters();
 
         cy.get<TableId>("@unusedTableId").then(expectTableVisible);
         cy.get<TableId>("@usedTableId").then(expectTableNotVisible);
@@ -3917,21 +3917,6 @@ type TableLookup = {
   displayName?: string;
   name?: string;
 };
-
-function openFilterPopover() {
-  cy.findByRole("button", { name: "Filter" }).click();
-  H.popover();
-}
-
-function applyFilters() {
-  cy.findByRole("button", { name: "Apply" }).click();
-  cy.wait("@listTables");
-}
-
-function selectFilterOption(fieldLabel: string, optionLabel: string) {
-  cy.findByRole("textbox", { name: fieldLabel }).click();
-  H.popover().contains(optionLabel).click();
-}
 
 function selectOwnerByName(ownerLabel: string) {
   cy.findByRole("textbox", { name: "Owner" }).click();

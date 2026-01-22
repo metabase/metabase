@@ -96,7 +96,8 @@ export function SearchNew({
   filters,
   onChange,
 }: SearchNewProps) {
-  const { resetSelection } = useSelection();
+  const { resetSelection, filterSelectedTables } = useSelection();
+
   const routeParams = parseRouteParams(params);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
     term: query,
@@ -130,8 +131,10 @@ export function SearchNew({
       return [];
     }
 
+    filterSelectedTables(tables.map((table) => table.id));
+
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
-  }, [allowedDatabaseIds, tables]);
+  }, [allowedDatabaseIds, tables, filterSelectedTables]);
 
   const isLoading = isLoadingTables || isLoadingDatabases;
 
@@ -139,6 +142,16 @@ export function SearchNew({
     () => buildResultTree(filteredTables),
     [filteredTables],
   );
+
+  // when search is loaded, let's reset the active table, as it often might not even be visible in search results
+  //  that leads to confusion and has no added benefit
+  useEffect(() => {
+    onChange?.({
+      databaseId: undefined,
+      schemaName: undefined,
+      tableId: undefined,
+    });
+  }, [onChange]);
 
   useEffect(() => {
     resetSelection();
