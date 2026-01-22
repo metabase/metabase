@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
+import { clickableTokens } from "metabase/common/components/CodeMirror";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { PythonEditor } from "../../PythonEditor";
 
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
+import { createPythonImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
@@ -46,6 +52,26 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const editorHeight = useInitialEditorHeight(isEditMode);
+  const dispatch = useDispatch();
+
+  const navigateToCommonLibrary = useCallback(
+    () =>
+      dispatch(
+        push(Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })),
+      ),
+    [dispatch],
+  );
+
+  const clickableTokensExtension = useMemo(
+    () =>
+      clickableTokens([
+        {
+          tokenLocator: createPythonImportTokenLocator("common"),
+          onClick: () => navigateToCommonLibrary(),
+        },
+      ]),
+    [navigateToCommonLibrary],
+  );
 
   return (
     <ResizableBox
@@ -64,6 +90,7 @@ export function PythonEditorBody({
           onChange={onChange}
           withPandasCompletions
           readOnly={!isEditMode}
+          extensions={[clickableTokensExtension]}
           data-testid="python-editor"
         />
 
