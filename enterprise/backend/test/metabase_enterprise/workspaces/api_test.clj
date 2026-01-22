@@ -1806,6 +1806,24 @@
   `(mt/with-model-cleanup [:model/Transform :model/Workspace :model/Table]
      ~@body))
 
+(deftest test-resources-empty
+  (testing "POST /api/ee/workspace/test-resources with global transforms only (no workspace)"
+    (with-test-resources-cleanup!
+      (is (=? {:workspace-id  nil
+               :global-map    {}
+               :workspace-map {}}
+              (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
+                                    {:global {}}))))))
+
+(deftest test-resources-single
+  (testing "POST /api/ee/workspace/test-resources with global transforms only (no workspace)"
+    (with-test-resources-cleanup!
+      (is (=? {:workspace-id  nil
+               :global-map    {:x1 int?}
+               :workspace-map {}}
+              (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
+                                    {:global {:x1 []}}))))))
+
 (deftest test-resources-global-only-test
   (testing "POST /api/ee/workspace/test-resources with global transforms only (no workspace)"
     (with-test-resources-cleanup!
