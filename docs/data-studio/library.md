@@ -5,9 +5,11 @@ summary: Create a source of truth for analytics with curated tables, metrics, an
 
 # Library
 
-> “I have always imagined that Paradise will be a kind of library.”
->
-> ― Jorge Luis Borges
+{% include plans-blockquote.html feature="Library" %}
+
+"I have always imagined that Paradise will be a kind of library."
+
+― Jorge Luis Borges
 
 ![Library in the main navigation sidebar](./images/library-in-sidebar.png)
 
