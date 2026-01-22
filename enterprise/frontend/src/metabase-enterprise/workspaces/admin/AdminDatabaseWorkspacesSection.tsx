@@ -8,8 +8,8 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useCheckWorkspacePermissionsMutation } from "metabase/api";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Button, Flex, Stack, Switch } from "metabase/ui";
+import { getErrorMessage } from "metabase/api/utils";
+import { Flex, List, Stack, Switch } from "metabase/ui";
 import type {
   Database,
   DatabaseData,
@@ -17,10 +17,7 @@ import type {
   DatabaseLocalSettingAvailability,
 } from "metabase-types/api";
 
-import {
-  DATABASE_WORKSPACES_SETTING,
-  isDatabaseWorkspacesEnabled,
-} from "../settings";
+import { DATABASE_WORKSPACES_SETTING } from "../settings";
 
 export function AdminDatabaseWorkspacesSection({
   database,
@@ -33,118 +30,79 @@ export function AdminDatabaseWorkspacesSection({
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
 }) {
+  const isEnabled = Boolean(database.settings?.[DATABASE_WORKSPACES_SETTING]);
+  const workspacesSetting = settingsAvailable?.[DATABASE_WORKSPACES_SETTING];
+  const isSettingDisabled = !workspacesSetting;
+
   const [error, setError] = useState<string | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
   const [checkWorkspacePermissions] = useCheckWorkspacePermissionsMutation();
 
-  const workspacesSetting = settingsAvailable?.[DATABASE_WORKSPACES_SETTING];
-  const isSettingDisabled =
-    !workspacesSetting || workspacesSetting.enabled === false;
-
-  const firstDisabledReason =
-    workspacesSetting?.enabled === false
-      ? workspacesSetting?.reasons?.[0]
-      : undefined;
-
-  const permissionsStatus = database.workspace_permissions_status?.status;
-  const hasPermissionsError =
-    permissionsStatus === "failed" || permissionsStatus === "unknown";
-
-  const handleToggle = async (event: ChangeEvent<HTMLInputElement>) => {
-    const enabled = event.target.checked;
-
-    try {
-      setError(null);
-      setPermissionsError(null);
-
-      if (enabled) {
-        // When enabling, first check permissions
-        setIsCheckingPermissions(true);
-        try {
-          const result = await checkWorkspacePermissions({
-            id: database.id,
-            cached: true,
-          }).unwrap();
-
-          if (result.status === "failed" || result.status === "unknown") {
-            setPermissionsError(
-              result.error ||
-                t`Workspace connection must be tested explicitly.`,
-            );
-            setIsCheckingPermissions(false);
-            return;
-          }
-
-          // Permissions are OK, proceed with enabling
-          await updateDatabase({
-            id: database.id,
-            settings: { [DATABASE_WORKSPACES_SETTING]: true },
-          });
-        } catch (err) {
-          const errorMessage = getResponseErrorMessage(err);
-          setPermissionsError(
-            errorMessage || t`Failed to check workspace permissions`,
-          );
-          setIsCheckingPermissions(false);
-          return;
-        } finally {
-          setIsCheckingPermissions(false);
-        }
-      } else {
-        // When disabling, just update the setting
-        await updateDatabase({
-          id: database.id,
-          settings: { [DATABASE_WORKSPACES_SETTING]: false },
-        });
-      }
-    } catch (err) {
-      setError(getResponseErrorMessage(err) || t`An error occurred`);
-    }
+  const enableWorkspaces = async () => {
+    await updateDatabase({
+      id: database.id,
+      settings: { [DATABASE_WORKSPACES_SETTING]: true },
+    });
   };
 
-  const handleRetryEnabling = async () => {
-    try {
-      setError(null);
-      setPermissionsError(null);
-      setIsCheckingPermissions(true);
+  const disableWorkspaces = async () => {
+    await updateDatabase({
+      id: database.id,
+      settings: { [DATABASE_WORKSPACES_SETTING]: false },
+    });
+  };
 
-      // Bust cache and re-check permissions
+  const tryToEnableWorkspaces = async () => {
+    setIsCheckingPermissions(true);
+
+    try {
       const result = await checkWorkspacePermissions({
         id: database.id,
         cached: false,
       }).unwrap();
 
-      if (result.status === "failed" || result.status === "unknown") {
+      if (result.status === "ok") {
+        await enableWorkspaces();
+      } else {
         setPermissionsError(
-          result.error || t`Workspace connection must be tested explicitly.`,
+          getErrorMessage(
+            result.error,
+            t`This database connection does not have sufficient permissions`,
+          ),
         );
-        setIsCheckingPermissions(false);
-        return;
       }
-
-      // Permissions are OK, enable workspaces
-      await updateDatabase({
-        id: database.id,
-        settings: { [DATABASE_WORKSPACES_SETTING]: true },
-      });
-    } catch (err) {
-      const errorMessage = getResponseErrorMessage(err);
+    } catch (error) {
       setPermissionsError(
-        errorMessage || t`Failed to check workspace permissions`,
+        getErrorMessage(
+          error,
+          t`Failed to check workspace permissions for this database`,
+        ),
       );
     } finally {
       setIsCheckingPermissions(false);
     }
   };
 
-  if (!workspacesSetting) {
+  const handleToggle = async (event: ChangeEvent<HTMLInputElement>) => {
+    try {
+      setError(null);
+      setPermissionsError(null);
+
+      if (event.target.checked) {
+        await tryToEnableWorkspaces();
+      } else {
+        await disableWorkspaces();
+      }
+    } catch (error) {
+      setError(getErrorMessage(error));
+    }
+  };
+
+  if (!isSettingDisabled) {
     return null;
   }
-
-  const isEnabled = isDatabaseWorkspacesEnabled(database);
-  const showPermissionsError = hasPermissionsError && isEnabled === false;
 
   return (
     <DatabaseInfoSection
@@ -157,40 +115,45 @@ export function AdminDatabaseWorkspacesSection({
           <Label htmlFor="workspaces-toggle">{t`Enable workspaces`}</Label>
 
           <Switch
-            disabled={isSettingDisabled || isCheckingPermissions}
+            checked={isEnabled}
+            disabled={isCheckingPermissions}
             id="workspaces-toggle"
-            value={isEnabled}
             onChange={handleToggle}
           />
         </Flex>
 
-        <Box maw="22.5rem">
-          {error ? <Error>{error}</Error> : null}
-          {permissionsError ? <Error>{permissionsError}</Error> : null}
-
-          {showPermissionsError ? (
-            <Stack gap="md">
-              <Description>
-                {t`To enable workspaces, the database connection user needs permissions to:
-• Create users and schemas
-• Grant table permissions
-• Manage database resources`}
-              </Description>
-              <Button
-                onClick={handleRetryEnabling}
-                loading={isCheckingPermissions}
-                variant="filled"
-              >
-                {t`Retry enabling`}
-              </Button>
-            </Stack>
-          ) : (
+        <Stack maw="22.5rem">
+          {!permissionsError && (
             <Description>
-              {firstDisabledReason?.message ??
-                t`Your database connection will need permissions to create users, schemas, and grant table permissions.`}
+              {t`Your database connection will need permissions to create users, schemas, and grant table permissions.`}
             </Description>
           )}
-        </Box>
+
+          {permissionsError && (
+            <Stack c="text-secondary" gap="xs" lh={1.4}>
+              {t`To enable workspaces, the database connection user needs permissions to:`}
+
+              <List>
+                <List.Item
+                  c="text-secondary"
+                  lh={1.4}
+                >{t`Create users and schemas`}</List.Item>
+                <List.Item
+                  c="text-secondary"
+                  lh={1.4}
+                >{t`Grant table permissions`}</List.Item>
+                <List.Item
+                  c="text-secondary"
+                  lh={1.4}
+                >{t`Manage database resources`}</List.Item>
+              </List>
+            </Stack>
+          )}
+
+          {error && <Error>{error}</Error>}
+
+          {permissionsError && <Error>{permissionsError}</Error>}
+        </Stack>
       </Stack>
     </DatabaseInfoSection>
   );
