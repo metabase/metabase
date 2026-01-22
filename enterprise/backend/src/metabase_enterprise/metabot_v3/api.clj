@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :as premium-features]
@@ -115,8 +116,8 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (handlers/routes
-   (api.macros/ns-handler *ns*)
    (handlers/route-map-handler
     {"/metabot" metabase-enterprise.metabot-v3.api.metabot/routes
      "/document" metabase-enterprise.metabot-v3.api.document/routes
-     "/slack" metabase-enterprise.metabot-v3.api.slackbot/routes})))
+     "/slack" metabase-enterprise.metabot-v3.api.slackbot/routes})
+   (api.macros/ns-handler *ns* +auth)))

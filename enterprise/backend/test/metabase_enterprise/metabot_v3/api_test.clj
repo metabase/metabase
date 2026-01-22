@@ -166,3 +166,18 @@
         (testing "Throws when premium token is missing"
           (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))
+
+(deftest endpoints-require-authentication-test
+  (testing "Metabot v3 endpoints require authentication"
+    (testing "/agent-streaming"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "ee/metabot-v3/agent-streaming"
+                        {:message "Test"
+                         :context {}
+                         :conversation_id (str (random-uuid))
+                         :history []
+                         :state {}}))))
+    (testing "/feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "ee/metabot-v3/feedback"
+                        {:feedback {}}))))))
