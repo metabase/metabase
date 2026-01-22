@@ -260,7 +260,10 @@ export function TreeTableRow<TData extends TreeNodeData>({
     return (
       <div
         data-position={virtualItemOrPinnedPosition}
-        className={cx(S.root, S.pinned)}
+        className={cx(S.root, S.pinned, {
+          [S.hasCenterRows]: table.getCenterRows().length > 0,
+          [S.hasTopPinned]: table.getTopRows().length > 0,
+        })}
       >
         {renderContent()}
       </div>

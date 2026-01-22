@@ -194,7 +194,7 @@ export function TreeTable<TData extends TreeNodeData>({
               top={0}
               style={{ minWidth: totalContentWidth, zIndex: 1 }}
             >
-              <TreeTableHeader<TData>
+              <TreeTableHeader
                 table={table}
                 columnWidths={columnWidths}
                 showCheckboxes={showCheckboxes}

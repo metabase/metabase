@@ -63,8 +63,6 @@ const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   library: "text-primary",
 };
 
-const COMMON_PYTHON_LIBRARY_ID = "library";
-
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
 const globalFilterFn = (
   row: { original: TreeNode },
@@ -115,7 +113,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     const data = buildTreeData(collections, transforms);
     if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
       data.push({
-        id: COMMON_PYTHON_LIBRARY_ID,
+        id: "library",
         name: t`Python library`,
         nodeType: "library",
         icon: "snippet",
@@ -267,16 +265,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     onGlobalFilterChange: setSearchQuery,
     globalFilterFn,
     isFilterable,
-    ...(PLUGIN_TRANSFORMS_PYTHON.isEnabled
-      ? {
-          enableRowPinning: true,
-          initialState: {
-            rowPinning: {
-              bottom: [COMMON_PYTHON_LIBRARY_ID],
-            },
-          },
-        }
-      : undefined),
   });
 
   const handleRowClick = useCallback((row: Row<TreeNode>) => {

@@ -15,11 +15,14 @@
 
   --border-style: 1px solid var(--mb-color-border);
 
-  &[data-position="top"] {
+  &[data-position="top"]:not(:last-child),
+  &[data-position="top"].hasCenterRows {
     border-bottom: var(--border-style);
   }
 
-  &[data-position="bottom"] {
+  &[data-position="bottom"]:not(:first-child),
+  &[data-position="bottom"].hasCenterRows,
+  &[data-position="bottom"].hasTopPinned {
     border-top: var(--border-style);
   }
 }
