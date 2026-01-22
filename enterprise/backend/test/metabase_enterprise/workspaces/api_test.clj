@@ -860,7 +860,7 @@
                               :source (:source x1)
                               :target (:target x1)}
                 ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform (:id x1) body)
-                workspace    (ws.tu/ws-ready (:id workspace))
+                workspace    (ws.tu/ws-done! (:id workspace))
                 ref-id       (:ref_id ws-transform)
                 orig-id      (t2/select-one-fn :id [:model/Table :id]
                                                :db_id (:database_id workspace)
@@ -1367,7 +1367,7 @@
                                      :schema   nil
                                      :name     output-table}}
               ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) ws-1 :transform nil body)
-              ws-1         (ws.tu/ws-ready (:id ws-1))]
+              ws-1         (ws.tu/ws-done! (:id ws-1))]
           (testing "returns empty when no transforms"
             (is (= {:succeeded []
                     :failed    []
