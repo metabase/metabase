@@ -218,7 +218,7 @@ export const getMetadata: (
   },
 );
 
-export const getMetadataUnfiltered = (state: StateWithEntities) => {
+export const getMetadataUnfiltered = (state: State) => {
   return getMetadata(state, {
     includeHiddenTables: true,
     includeSensitiveFields: true,
@@ -226,7 +226,7 @@ export const getMetadataUnfiltered = (state: StateWithEntities) => {
 };
 
 export const getMetadataWithHiddenTables = (
-  state: StateWithEntities,
+  state: State,
   props?: TableSelectorOpts,
 ) => {
   return getMetadata(state, { ...props, includeHiddenTables: true });
