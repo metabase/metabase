@@ -59,26 +59,24 @@
 (def ^:private other-ip "1.2.3.4:5555")
 
 (deftest enable-embedding-SDK-true-ignores-localhosts
-  (mt/with-premium-features #{:embedding :embedding-sdk}
-    (mt/with-temporary-setting-values [enable-embedding-sdk true]
-      (let [origin-value "localhost:*"]
-        (embed.settings/embedding-app-origins-sdk! origin-value)
-        (testing "All localhosty origins should be ignored, so the result should be empty"
-          (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
-          (is (= "" (embed.settings/embedding-app-origins-sdk))))
-        (testing "Normal ips are added to the list"
-          (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
-          (is (= other-ip (embed.settings/embedding-app-origins-sdk))))))))
+  (mt/with-temporary-setting-values [enable-embedding-sdk true]
+    (let [origin-value "localhost:*"]
+      (embed.settings/embedding-app-origins-sdk! origin-value)
+      (testing "All localhosty origins should be ignored, so the result should be empty"
+        (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
+        (is (= "" (embed.settings/embedding-app-origins-sdk))))
+      (testing "Normal ips are added to the list"
+        (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
+        (is (= other-ip (embed.settings/embedding-app-origins-sdk)))))))
 
 (deftest enable-embedding-SDK-false-returns-nothing
-  (mt/with-premium-features #{:embedding :embedding-sdk}
-    (mt/with-temporary-setting-values [enable-embedding-sdk false]
-      (embed.settings/embedding-app-origins-sdk! "")
-      (let [origin-value (str "localhost:* " other-ip " "
-                              (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
-        (embed.settings/embedding-app-origins-sdk! origin-value)
-        (is (not (and (embed.settings/enable-embedding-sdk)
-                      (embed.settings/embedding-app-origins-sdk))))))))
+  (mt/with-temporary-setting-values [enable-embedding-sdk false]
+    (embed.settings/embedding-app-origins-sdk! "")
+    (let [origin-value (str "localhost:* " other-ip " "
+                            (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
+      (embed.settings/embedding-app-origins-sdk! origin-value)
+      (is (not (and (embed.settings/enable-embedding-sdk)
+                    (embed.settings/embedding-app-origins-sdk)))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
   (is (thrown-with-msg?
@@ -209,39 +207,37 @@
 
 (deftest disable-cors-on-localhost-validation-test
   (testing "Should reject localhost origins when disable-cors-on-localhost is enabled"
-    (mt/with-premium-features #{:embedding-sdk}
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         disable-cors-on-localhost true
-                                         embedding-app-origins-sdk ""]
-        (testing "localhost:* should be rejected"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
-               (embed.settings/embedding-app-origins-sdk! "localhost:*"))))
-        (testing "localhost:3000 should be rejected"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
-               (embed.settings/embedding-app-origins-sdk! "localhost:3000"))))
-        (testing "localhost mixed with other origins should be rejected"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
-               (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       disable-cors-on-localhost true
+                                       embedding-app-origins-sdk ""]
+      (testing "localhost:* should be rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+             (embed.settings/embedding-app-origins-sdk! "localhost:*"))))
+      (testing "localhost:3000 should be rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+             (embed.settings/embedding-app-origins-sdk! "localhost:3000"))))
+      (testing "localhost mixed with other origins should be rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+             (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000"))))))
 
   (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
-    (mt/with-premium-features #{:embedding-sdk}
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         disable-cors-on-localhost false
-                                         embedding-app-origins-sdk ""]
-        (testing "localhost origins should be allowed"
-          (embed.settings/embedding-app-origins-sdk! "localhost:*")
-          (is (= "" (embed.settings/embedding-app-origins-sdk)))
-          (embed.settings/embedding-app-origins-sdk! "localhost:3000")
-          (is (= "" (embed.settings/embedding-app-origins-sdk))))
-        (testing "localhost mixed with other origins should work"
-          (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
-          (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))
+    (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                       disable-cors-on-localhost false
+                                       embedding-app-origins-sdk ""]
+      (testing "localhost origins should be allowed"
+        (embed.settings/embedding-app-origins-sdk! "localhost:*")
+        (is (= "" (embed.settings/embedding-app-origins-sdk)))
+        (embed.settings/embedding-app-origins-sdk! "localhost:3000")
+        (is (= "" (embed.settings/embedding-app-origins-sdk))))
+      (testing "localhost mixed with other origins should work"
+        (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
+        (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk)))))))
 
 (deftest toggle-full-app-embedding-test
   (mt/discard-setting-changes [embedding-app-origins-interactive]

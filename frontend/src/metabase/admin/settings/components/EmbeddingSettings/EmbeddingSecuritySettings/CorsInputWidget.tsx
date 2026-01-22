@@ -2,22 +2,21 @@ import { jt, t } from "ttag";
 
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useSetting } from "metabase/common/hooks";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Box, Group, HoverCard, Icon, Text } from "metabase/ui";
 
 export const CorsInputWidget = () => {
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
-  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
+  const isStaticEmbedEnabled = useSetting("enable-embedding-static");
 
   const corsHintText = isLocalhostCorsDisabled
     ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
     : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
 
   const canEditSdkOrigins =
-    (isReactSdkFeatureAvailable && isReactSdkEnabled) || isSimpleEmbedEnabled;
+    isReactSdkEnabled || isSimpleEmbedEnabled || isStaticEmbedEnabled;
 
   return (
     <AdminSettingInput

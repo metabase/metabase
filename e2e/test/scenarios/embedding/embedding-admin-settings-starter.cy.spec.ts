@@ -46,4 +46,15 @@ describe("scenarios > embedding > admin settings > starter", () => {
       cy.icon("gem").should("be.visible");
     });
   });
+
+  it("should correctly save a value entered in CORS setting input", () => {
+    cy.visit("/admin/embedding");
+
+    cy.findByTestId("embedding-app-origins-sdk-setting")
+      .find("input")
+      .type("https://test.example.com")
+      .blur();
+
+    H.undoToast().findByText("Changes saved").should("be.visible");
+  });
 });
