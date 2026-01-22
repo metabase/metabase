@@ -1,0 +1,14 @@
+.OptionLabel {
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  place-content: center;
+}
+
+.OptionLabelContent {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-clamp: 1;
+}

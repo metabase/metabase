@@ -3,8 +3,10 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { isEmail } from "metabase/lib/email";
-import { Avatar, Group, Icon, Select, type SelectProps } from "metabase/ui";
+import { Avatar, Grid, Icon, Select, type SelectProps } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
+
+import S from "./UserInput.module.css";
 
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;
@@ -93,21 +95,24 @@ export const UserInput = ({
       renderOption={(item) => {
         const option = item.option as Option;
         return (
-          <Group gap="sm" p="sm">
-            {option.type === "user" && <Avatar name={item.option.label} />}
-            {option.type === "unknown" && (
-              <Avatar>
-                <Icon name="person" c="text-secondary" />
-              </Avatar>
-            )}
-            {option.type === "email" && (
-              <Avatar color="initials" name="emails">
-                <Icon name="mail" />
-              </Avatar>
-            )}
-
-            <span>{item.option.label}</span>
-          </Group>
+          <Grid columns={2} p="sm" gutter="sm" w="100%">
+            <Grid.Col span="content">
+              {option.type === "user" && <Avatar name={item.option.label} />}
+              {option.type === "unknown" && (
+                <Avatar color="background-secondary">
+                  <Icon name="person" c="text-secondary" />
+                </Avatar>
+              )}
+              {option.type === "email" && (
+                <Avatar color="initials" name="emails">
+                  <Icon name="mail" />
+                </Avatar>
+              )}
+            </Grid.Col>
+            <Grid.Col span="content" className={S.OptionLabel}>
+              <span className={S.OptionLabelContent}>{item.option.label}</span>
+            </Grid.Col>
+          </Grid>
         );
       }}
       value={email ? email : userId ? String(userId) : null}
