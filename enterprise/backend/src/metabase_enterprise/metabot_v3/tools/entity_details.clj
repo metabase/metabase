@@ -18,6 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- convert-measure-or-segment
+  "Convert a measure or segment metadata object to the format expected by the API."
+  [metadata]
+  (select-keys metadata [:id :name :display-name :description :definition]))
+
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
@@ -94,12 +99,14 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
-  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
+  ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
+                                   with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
-                                   with-queryable-dimensions?      true}}]
+                                   with-queryable-dimensions?      true
+                                   with-segments?                  false}}]
    (let [id (:id card)
-         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions?)
+         query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
          breakouts (when query-needed?
@@ -136,7 +143,12 @@
                                                 (map #(metabot-v3.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))))))
+                                               field-values-fn)))
+
+       with-segments?
+       (assoc :segments (if-let [segments (lib/available-segments metric-query)]
+                          (mapv convert-measure-or-segment segments)
+                          []))))))
 
 (defn- convert-metric
   ([db-metric metadata-provider]
@@ -150,16 +162,19 @@
 
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?]
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
+               with-measures? with-segments?]
         :or   {field-values-fn      add-field-values
                with-fields?         true
                with-related-tables? true
-               with-metrics?        true}
+               with-metrics?        true
+               with-measures?       false
+               with-segments?       false}
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
-     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
+     (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
            db-engine (:engine (if metadata-provider
                                 (lib.metadata/database metadata-provider)
@@ -191,7 +206,13 @@
                          :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query))))))))))
+                                                     (lib/available-metrics table-query))))
+                         :measures (when with-measures?
+                                     (not-empty (mapv convert-measure-or-segment
+                                                      (lib/available-measures table-query))))
+                         :segments (when with-segments?
+                                     (not-empty (mapv convert-measure-or-segment
+                                                      (lib/available-segments table-query))))))))))
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
@@ -236,18 +257,21 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
-  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?]
+  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
+                                   with-measures? with-segments?]
                             :or   {field-values-fn      add-field-values
                                    with-fields?         true
                                    with-related-tables? true
-                                   with-metrics?        true}
+                                   with-metrics?        true
+                                   with-measures?       false
+                                   with-segments?       false}
                             :as   options}]
    (let [id (:id base)
          database-id (:database_id base)
          database-engine (:engine (lib.metadata/database metadata-provider))
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
-         query-needed? (or with-fields? with-related-tables? with-metrics?)
+         query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
@@ -276,7 +300,13 @@
           :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
-                                      (lib/available-metrics card-query)))))))))
+                                      (lib/available-metrics card-query))))
+          :measures (when with-measures?
+                      (not-empty (mapv convert-measure-or-segment
+                                       (lib/available-measures card-query))))
+          :segments (when with-segments?
+                      (not-empty (mapv convert-measure-or-segment
+                                       (lib/available-segments card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`

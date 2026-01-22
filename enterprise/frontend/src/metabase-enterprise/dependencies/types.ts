@@ -1,11 +1,15 @@
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
+import type {
+  AnalysisFindingErrorType,
+  DependencyGroupType,
+} from "metabase-types/api";
 
 export type NodeId = string;
 
 export type DependencyGroupTypeInfo = {
   label: string;
-  color: string;
+  color: ColorName;
 };
 
 export type NodeLink = {
@@ -18,11 +22,22 @@ export type NodeLocationInfo = {
   links: NodeLink[];
 };
 
-export type DependencyErrorInfo = {
-  label: string;
-  detail: string | null;
+export type DependentGroup = {
+  type: DependencyGroupType;
+  count: number;
 };
 
-export type DependencyFilterOptions = {
-  groupTypes: DependencyGroupType[];
+export type DependencyError = {
+  type: AnalysisFindingErrorType;
+  detail?: string | null;
+};
+
+export type DependencyErrorGroup = {
+  type: AnalysisFindingErrorType;
+  errors: DependencyError[];
+};
+
+export type DependencyErrorInfo = {
+  label: string;
+  detail?: string | null;
 };

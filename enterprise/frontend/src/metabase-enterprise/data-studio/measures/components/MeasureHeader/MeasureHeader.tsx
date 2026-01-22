@@ -20,10 +20,11 @@ type MeasureHeaderProps = {
   measure: Measure;
   tabUrls: MeasureTabUrls;
   previewUrl?: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   onNameChange?: (name: string) => void;
   breadcrumbs?: ReactNode;
   actions?: ReactNode;
+  readOnly?: boolean;
 };
 
 export function MeasureHeader({
@@ -34,16 +35,26 @@ export function MeasureHeader({
   onNameChange,
   breadcrumbs,
   actions,
+  readOnly,
 }: MeasureHeaderProps) {
   return (
     <Stack gap={0}>
       <PaneHeader
         data-testid="measure-pane-header"
         title={
-          <MeasureNameInput measure={measure} onNameChange={onNameChange} />
+          <MeasureNameInput
+            measure={measure}
+            onNameChange={onNameChange}
+            readOnly={readOnly}
+          />
         }
         icon="sum"
-        menu={<MeasureMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
+        menu={
+          <MeasureMoreMenu
+            previewUrl={previewUrl}
+            onRemove={readOnly ? undefined : onRemove}
+          />
+        }
         tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}
         breadcrumbs={breadcrumbs}
@@ -55,9 +66,14 @@ export function MeasureHeader({
 type MeasureNameInputProps = {
   measure: Measure;
   onNameChange?: (name: string) => void;
+  readOnly?: boolean;
 };
 
-function MeasureNameInput({ measure, onNameChange }: MeasureNameInputProps) {
+function MeasureNameInput({
+  measure,
+  onNameChange,
+  readOnly,
+}: MeasureNameInputProps) {
   const [updateMeasure] = useUpdateMeasureMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -88,6 +104,7 @@ function MeasureNameInput({ measure, onNameChange }: MeasureNameInputProps) {
       maxLength={MEASURE_NAME_MAX_LENGTH}
       onChange={handleChange}
       onContentChange={onNameChange}
+      readOnly={readOnly}
     />
   );
 }

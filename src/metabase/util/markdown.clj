@@ -324,7 +324,7 @@
     (if resolved-uri
       ["<" resolved-uri "|" resolved-content ">"]
       ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
-      ;; restore them. This is a known discrepency between flexmark-java and Markdown rendering on the frontend.
+      ;; restore them. This is a known discrepancy between flexmark-java and Markdown rendering on the frontend.
       ["[" resolved-content "]"])))
 
 (defmethod ast->slack :auto-link
@@ -381,7 +381,7 @@
 
 (defn- empty-link-ref?
   "Returns true if this node was parsed as a link ref, but has no references. This probably means the original text
-  was just a pair of square brackets, and not an actual link ref. This is a known discrepency between flexmark-java
+  was just a pair of square brackets, and not an actual link ref. This is a known discrepancy between flexmark-java
   and Markdown rendering on the frontend."
   [^Node node]
   (and (instance? LinkRef node)

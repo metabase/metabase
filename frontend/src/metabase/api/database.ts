@@ -130,7 +130,7 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/schema/${schema}`,
+        url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [
@@ -148,7 +148,7 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/datasets/${schema}`,
+        url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [

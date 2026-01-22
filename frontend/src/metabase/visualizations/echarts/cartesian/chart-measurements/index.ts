@@ -12,6 +12,7 @@ import type {
   XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getPaddedAxisLabel } from "metabase/visualizations/echarts/cartesian/option/utils";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -641,18 +642,20 @@ const areHorizontalXAxisTicksOverlapping = (
       return;
     }
     const prevDatum = dataset[index - 1];
-    const leftTickWidth = measureText(
-      formatter(datum[X_AXIS_DATA_KEY]),
+    const rightTickWidth = measureText(
+      getPaddedAxisLabel(formatter(datum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
-    const rightTickWidth = measureText(
-      formatter(prevDatum[X_AXIS_DATA_KEY]),
+    const leftTickWidth = measureText(
+      getPaddedAxisLabel(formatter(prevDatum[X_AXIS_DATA_KEY])), // in some cases we render labels with extra spaces, so we have to be pessimistic with width measurement
       fontStyle,
     );
 
     return (
       leftTickWidth / 2 + rightTickWidth / 2 + HORIZONTAL_TICKS_GAP >
-      dimensionWidth
+        dimensionWidth ||
+      rightTickWidth + HORIZONTAL_TICKS_GAP / 2 > dimensionWidth ||
+      leftTickWidth + HORIZONTAL_TICKS_GAP / 2 > dimensionWidth
     );
   });
 };

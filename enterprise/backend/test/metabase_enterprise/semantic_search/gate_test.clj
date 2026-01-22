@@ -347,7 +347,7 @@
                     (mt/metric-value system :metabase-search/semantic-gate-write-ms)))
             (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
             (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
-          (testing ":metabase-search/semantic-gate-write-modified is not increased if documets are gated"
+          (testing ":metabase-search/semantic-gate-write-modified is not increased if documents are gated"
             (sut pgvector index-metadata docs)
             (is (== 4 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
             (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))

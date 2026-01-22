@@ -24,9 +24,13 @@
   (= (name t) (str (first (name id)))))
 
 (defn- lexico [id]
-  (let [n (name id)]
-    [(parse-long (subs n 1))
-     ({\x 1 \t 2 \m 3} (first n))]))
+  (let [n (name id)
+        prefix (when (keyword? id) (first n))]
+    (if-let [type-order ({\x 1 \t 2 \m 3} prefix)]
+      ;; Standard shorthand keyword like :x1, :t2 - sort by number then type
+      [(parse-long (subs n 1)) type-order]
+      ;; Real table string reference - sort after all standard keywords
+      [Long/MAX_VALUE n])))
 
 (defn expand-shorthand
   "As shorthand, we can use transforms in the place of their induced tables.

@@ -29,19 +29,36 @@
 ;;;; Shorthand notation helpers
 
 (defn transform?
-  "Check if keyword represents a transform (starts with 'x')."
+  "Check if keyword represents a transform (keyword starting with 'x')."
   [kw]
-  (= \x (first (name kw))))
+  (and (keyword? kw)
+       (= \x (first (name kw)))))
 
-(defn table?
-  "Check if keyword represents a table (starts with 't')."
+(defn mock-table?
+  "Check if keyword represents a mock table (keyword starting with 't')."
   [kw]
-  (= \t (first (name kw))))
+  (and (keyword? kw)
+       (= \t (first (name kw)))))
+
+(defn real-table?
+  "Check if ref is a string (existing table reference by name)."
+  [ref]
+  (string? ref))
 
 (defn kw->id
   "Extract numeric id from shorthand keyword (e.g., :x1 -> 1, :t2 -> 2)."
   [kw]
+  (assert (keyword? kw) (str "kw->id requires a keyword, got: " (pr-str kw)))
   (parse-long (subs (name kw) 1)))
+
+(defn- real-table-id
+  "Look up an existing table by name (case-insensitive). Returns table ID."
+  [table-name]
+  (or (t2/select-one-fn :id :model/Table
+                        :db_id (mt/id)
+                        :active true
+                        {:where [:= [:lower :name] (u/lower-case-en table-name)]})
+      (throw (ex-info (str "Existing table not found: " table-name) {:table table-name}))))
 
 ;;;; Query helpers
 
@@ -94,7 +111,11 @@
 (defn create-transform!
   "Create a global transform with given dependencies. Returns transform ID."
   [tx-sym deps id-map schema]
-  (let [table-ids (->> deps (filter table?) (map id-map) (filter some?))
+  (let [table-ids (->> deps
+                       (keep #(cond
+                                (mock-table? %) (id-map %)
+                                (real-table? %) (real-table-id %)
+                                :else nil)))
         source    (build-source-query table-ids)
         target    (build-transform-target tx-sym schema)]
     (t2/insert-returning-pk! :model/Transform
@@ -109,16 +130,20 @@
    For new transforms: provide :deps and :id-map to build the source
    If both :global-tx and :deps are provided, the deps override the global source."
   [ws-id tx-sym {:keys [global-tx deps id-map schema]}]
-  (let [body     (if global-tx
+  (let [resolve-table-ids (fn [deps]
+                            (->> deps
+                                 (keep #(cond
+                                          (mock-table? %) (id-map %)
+                                          (real-table? %) (real-table-id %)
+                                          :else nil))))
+        body     (if global-tx
                    ;; Checkout: use global transform's body (can be overridden with deps)
                    (cond-> (select-keys global-tx [:name :description :source :target])
                      deps (assoc :source {:type  :query
-                                          :query (build-source-query
-                                                  (->> deps (filter table?) (map id-map)))}))
+                                          :query (build-source-query (resolve-table-ids deps))}))
                    ;; New: build from deps
                    {:name   (str "Test " (name tx-sym))
-                    :source {:type :query :query (build-source-query
-                                                  (->> deps (filter table?) (map id-map)))}
+                    :source {:type :query :query (build-source-query (resolve-table-ids deps))}
                     :target (build-transform-target tx-sym schema)})
         response (mt/user-http-request :crowberto :post 200
                                        (str "ee/workspace/" ws-id "/transform")
@@ -127,38 +152,6 @@
     (:ref_id response)))
 
 ;;;; Orchestration functions
-
-(defn create-global-resources!
-  "Create test transforms and tables from shorthand dependency graph.
-   Automatically expands shorthand notation (e.g., :x2 [:x1] becomes :x2 [:t1], :t1 [:x1]).
-   Returns {symbol -> id} for both tables and transforms.
-
-   NOTE: Caller should wrap in mt/with-model-cleanup for proper cleanup."
-  [dependencies]
-  (let [expanded-deps (dag-abstract/expand-shorthand dependencies)
-        schema        (str/replace (str (random-uuid)) "-" "_")
-        all-ids       (set (concat (keys expanded-deps) (mapcat val expanded-deps)))
-        table-syms    (filter table? all-ids)
-        tx-syms       (filter transform? all-ids)
-
-        ;; Create tables first
-        table-ids  (create-tables! table-syms schema)
-
-        ;; Create transforms (they depend on tables)
-        tx-ids     (into {}
-                         (for [tx tx-syms]
-                           [tx (create-transform! tx (get expanded-deps tx []) table-ids schema)]))
-
-        ;; Insert dependencies (usually inserted as side effect of running the transform, but we want to skip that)
-        _          (doseq [[tx-kw tx-id] tx-ids]
-                     (let [output-table-sym (keyword (str "t" (kw->id tx-kw)))]
-                       (when-let [table-id (table-ids output-table-sym)]
-                         (app-db/update-or-insert! :model/Dependency
-                                                   {:to_entity_type   "transform"
-                                                    :to_entity_id     tx-id
-                                                    :from_entity_type "table"
-                                                    :from_entity_id   table-id}))))]
-    (merge table-ids tx-ids)))
 
 (defn- create-workspace-for-test! [props]
   (let [creator-id (or (:creator_id props) (mt/user->id :crowberto))
@@ -174,7 +167,7 @@
    Input: {:global dependencies-graph (shorthand)
            :workspace {:checkouts ids, :definitions dependencies-graph (shorthand)}}
 
-   Returns: {:workspace-id int
+   Returns: {:workspace-id int (or nil if no workspace)
              :global-map {symbol -> db-id}
              :workspace-map {symbol -> ref-id}}
 
@@ -188,22 +181,30 @@
         expanded-global  (dag-abstract/expand-shorthand global)
         expanded-ws-defs (when definitions (dag-abstract/expand-shorthand definitions))
 
-        ;; Find all tables needed (union of global and workspace)
-        global-tables    (set (filter table? (concat (keys expanded-global)
-                                                     (mapcat val expanded-global))))
+        ;; Find all mock tables needed (union of global and workspace)
+        global-tables    (set (filter mock-table? (concat (keys expanded-global)
+                                                          (mapcat val expanded-global))))
         ws-tables        (when expanded-ws-defs
-                           (set (filter table? (concat (keys expanded-ws-defs)
-                                                       (mapcat val expanded-ws-defs)))))
+                           (set (filter mock-table? (concat (keys expanded-ws-defs)
+                                                            (mapcat val expanded-ws-defs)))))
         all-tables       (set/union global-tables (or ws-tables #{}))
 
-        ;; Create all tables upfront
+        ;; Create all mock tables upfront
         table-ids        (create-tables! all-tables schema)
+
+        ;; Collect and resolve all real table references
+        real-table-ids   (into {}
+                               (for [ref (distinct
+                                          (filter real-table?
+                                                  (concat (mapcat val expanded-global)
+                                                          (mapcat val (or expanded-ws-defs {})))))]
+                                 [ref (real-table-id ref)]))
 
         ;; Create global transforms
         global-tx-syms   (filter transform? (keys expanded-global))
         global-tx-ids    (into {}
                                (for [tx global-tx-syms]
-                                 [tx (create-transform! tx (get expanded-global tx []) table-ids schema)]))
+                                 [tx (create-transform! tx (get expanded-global tx []) (merge table-ids real-table-ids) schema)]))
 
         ;; Insert global dependencies
         _                (doseq [[tx-kw tx-id] global-tx-ids]
@@ -215,10 +216,11 @@
                                                           :from_entity_type "table"
                                                           :from_entity_id   table-id}))))
 
-        global-map       (merge table-ids global-tx-ids)
+        global-map       (merge table-ids global-tx-ids real-table-ids)
 
-        ;; Create workspace
-        ws               (create-workspace-for-test! {:name (or (:name workspace) (str "test-ws-" (random-uuid)))})
+        ;; Create workspace (only if workspace key was provided)
+        ws               (when workspace
+                           (create-workspace-for-test! {:name (or (:name workspace) (str "test-ws-" (random-uuid)))}))
         ws-id            (:id ws)
 
         ;; Determine which workspace transforms to create
@@ -373,6 +375,10 @@
      "external-transform" external-transform)
    entity-id entity-id))
 
+(defn- table-ref? [sym]
+  (or (mock-table? sym)
+      (real-table? sym)))
+
 (defn translate-graph
   "Turn a real workspace graph back into :x1 etc symbols"
   [{:keys [nodes edges]} resources-map]
@@ -380,10 +386,10 @@
                         (fn [acc [sym id]]
                           (assoc-in acc
                                     [(cond
-                                       (table? sym) :input-table
+                                       (table-ref? sym) :input-table
                                        (transform? sym) :external-transform
                                        :else (throw (ex-info "Unexpected symbol" {:symbol sym :id id})))
-                                     (if (table? sym)
+                                     (if (table-ref? sym)
                                        (let [{:keys [db_id schema name]} (t2/select-one [:model/Table :db_id :schema :name] id)]
                                          (str db_id "-" schema "-" name))
                                        id)]

@@ -3,12 +3,15 @@ import { memo } from "react";
 import { Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
+
 import S from "./ListSidebar.module.css";
 import { SidebarCreationInfo } from "./SidebarCreationInfo";
+import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
 import { SidebarErrorInfo } from "./SidebarErrorInfo";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarLocationInfo } from "./SidebarLocationInfo";
-import { getDependencyErrorGroups } from "./utils";
+import { SidebarTransformInfo } from "./SidebarTransformInfo";
 
 type ListSidebarProps = {
   node: DependencyNode;
@@ -19,19 +22,24 @@ export const ListSidebar = memo(function ListSidebar({
   node,
   onClose,
 }: ListSidebarProps) {
-  const errorGroups = getDependencyErrorGroups(node.errors ?? []);
+  const errors = getDependencyErrors(node.dependents_errors ?? []);
+  const errorGroups = getDependencyErrorGroups(errors);
 
   return (
     <Stack
-      className={S.panel}
+      className={S.sidebar}
       p="lg"
-      w="25rem"
-      gap="lg"
+      w="32rem"
+      gap="xl"
+      bg="background-primary"
       data-testid="dependency-list-sidebar"
     >
-      <SidebarHeader node={node} onClose={onClose} />
-      <SidebarCreationInfo node={node} />
-      <SidebarLocationInfo node={node} />
+      <Stack gap="lg">
+        <SidebarHeader node={node} onClose={onClose} />
+        <SidebarLocationInfo node={node} />
+        <SidebarTransformInfo node={node} />
+        <SidebarCreationInfo node={node} />
+      </Stack>
       {errorGroups.map((errorGroup) => (
         <SidebarErrorInfo
           key={errorGroup.type}
@@ -39,6 +47,7 @@ export const ListSidebar = memo(function ListSidebar({
           errors={errorGroup.errors}
         />
       ))}
+      <SidebarDependentsInfo node={node} />
     </Stack>
   );
 });

@@ -356,7 +356,7 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)

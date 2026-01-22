@@ -68,11 +68,13 @@ function TestWrapper({
 type SetupOpts = {
   initialTables?: Set<TableId>;
   isAdmin?: boolean;
+  isDataAnalyst?: boolean;
 };
 
 function setup({
   initialTables = new Set([1]),
-  isAdmin = true,
+  isAdmin = false,
+  isDataAnalyst = false,
 }: SetupOpts = {}) {
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
@@ -94,25 +96,35 @@ function setup({
   renderWithProviders(<TestWrapper initialTables={initialTables} />, {
     withRouter: false,
     storeInitialState: {
-      currentUser: createMockUser({ is_superuser: isAdmin }),
+      currentUser: createMockUser({
+        is_superuser: isAdmin,
+        is_data_analyst: isDataAnalyst,
+      }),
     },
   });
 }
 
 describe("TableAttributesEditBulk", () => {
-  it("should not render publish buttons for non-admin users", async () => {
-    setup({ isAdmin: false });
+  it("should render publish buttons for admins", async () => {
+    setup({ isAdmin: true });
 
     await waitFor(() => {
       expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("button", { name: /Publish/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Unpublish/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
+  });
+
+  it("should render publish buttons for data analysts", async () => {
+    setup({ isDataAnalyst: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
   });
 
   it("should reset form state when selection changes", async () => {
