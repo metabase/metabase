@@ -7,6 +7,8 @@ import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "../../../../types";
+import { getCardTypes, getDependencyTypes } from "../../../../utils";
+import { BROKEN_DEPENDENTS_GROUP_TYPES } from "../../constants";
 
 export function getListRequest(
   node: DependencyNode,
@@ -16,15 +18,22 @@ export function getListRequest(
   return {
     id: node.id,
     type: node.type,
+    dependent_types: getDependencyTypes(
+      filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+    ),
+    dependent_card_types: getCardTypes(
+      filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+    ),
     broken: true,
-    include_personal_collections: filterOptions.includePersonalCollections,
+    include_personal_collections:
+      filterOptions.includePersonalCollections ?? true,
     sort_column: sortOptions.column,
     sort_direction: sortOptions.direction,
   };
 }
 
 export function getDefaultFilterOptions(): DependencyFilterOptions {
-  return { includePersonalCollections: true };
+  return {};
 }
 
 export function getDefaultSortOptions(): DependencySortOptions {

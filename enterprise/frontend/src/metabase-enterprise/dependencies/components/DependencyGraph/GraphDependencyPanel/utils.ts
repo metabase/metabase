@@ -31,7 +31,8 @@ export function getListRequest(
     dependent_types: [type],
     dependent_card_types: cardType != null ? [cardType] : undefined,
     query: query,
-    include_personal_collections: filterOptions.includePersonalCollections,
+    include_personal_collections:
+      filterOptions.includePersonalCollections ?? true,
     sort_column: sortOptions.column,
     sort_direction: sortOptions.direction,
   };
@@ -50,7 +51,7 @@ export function canFilter(groupType: DependencyGroupType): boolean {
 }
 
 export function getDefaultFilterOptions(): DependencyFilterOptions {
-  return { includePersonalCollections: true };
+  return {};
 }
 
 export function getAvailableSortColumns(
