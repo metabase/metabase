@@ -190,6 +190,49 @@
              :dialect       dialect
              :table_ids     (vec table-ids)}})
 
+;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
+
+(def ^:private table-with-columns-schema
+  "Schema for table metadata with columns returned by /extract-tables."
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:columns [:sequential
+              [:map
+               [:id pos-int?]
+               [:name :string]
+               [:database_type {:optional true} [:maybe :string]]
+               [:description {:optional true} [:maybe :string]]
+               [:semantic_type {:optional true} [:maybe :string]]
+               [:fk_target {:optional true}
+                [:map
+                 [:table_name :string]
+                 [:field_name :string]]]]]]])
+
+(api.macros/defendpoint :post "/extract-tables"
+  "Parse SQL and return referenced tables with their columns.
+
+   Uses Macaw to parse the SQL, resolves table names to IDs,
+   and returns permission-filtered tables with column metadata.
+
+   This is a lightweight endpoint that does not trigger fingerprinting
+   or field value fetching."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:database_id pos-int?]
+            [:sql :string]]]
+  :- [:map [:tables [:sequential table-with-columns-schema]]]
+  (let [{:keys [database_id sql]} body
+        table-ids (llm.context/extract-tables-from-sql database_id sql)
+        tables    (llm.context/get-tables-with-columns database_id table-ids)]
+    {:tables (or tables [])}))
+
+;;; ------------------------------------------ Generate SQL Endpoint ------------------------------------------
+
 (api.macros/defendpoint :post "/generate-sql"
   "Generate SQL from a natural language prompt.
 
@@ -207,7 +250,11 @@
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
+            [:include_context {:optional true} :boolean]
+            [:referenced_entities {:optional true}
+             [:sequential [:map
+                           [:model :string]
+                           [:id pos-int?]]]]]]
   :- [:map
       [:parts [:sequential [:map
                             [:type :string]
@@ -218,14 +265,22 @@
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id source_sql buffer_id include_context]} body
+  (let [{:keys [prompt database_id source_sql buffer_id include_context referenced_entities]} body
         buffer-id (or buffer_id "qb")
-        ;; 2. Parse table mentions from prompt (explicit) and source SQL (implicit)
-        explicit-table-ids (llm.context/parse-table-mentions prompt)
-        implicit-table-ids (when source_sql
+        ;; 2. Extract table IDs from frontend-provided entities, or parse from prompt/SQL
+        frontend-table-ids (when (seq referenced_entities)
+                             (->> referenced_entities
+                                  (filter #(= "table" (:model %)))
+                                  (map :id)
+                                  set))
+        explicit-table-ids (when (empty? frontend-table-ids)
+                             (llm.context/parse-table-mentions prompt))
+        implicit-table-ids (when (and (empty? frontend-table-ids) source_sql)
                              (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
-                                      (or implicit-table-ids #{}))]
+        table-ids          (if (seq frontend-table-ids)
+                             frontend-table-ids
+                             (set/union (or explicit-table-ids #{})
+                                        (or implicit-table-ids #{})))]
 
     ;; 3. Validate at least one table is referenced
     (when (empty? table-ids)
@@ -281,15 +336,23 @@
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
    Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id source_sql buffer_id]}]
+  [{:keys [prompt database_id source_sql buffer_id referenced_entities]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-  (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
-        implicit-table-ids (when source_sql
+  (let [frontend-table-ids (when (seq referenced_entities)
+                             (->> referenced_entities
+                                  (filter #(= "table" (:model %)))
+                                  (map :id)
+                                  set))
+        explicit-table-ids (when (empty? frontend-table-ids)
+                             (llm.context/parse-table-mentions prompt))
+        implicit-table-ids (when (and (empty? frontend-table-ids) source_sql)
                              (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
-                                      (or implicit-table-ids #{}))]
+        table-ids          (if (seq frontend-table-ids)
+                             frontend-table-ids
+                             (set/union (or explicit-table-ids #{})
+                                        (or implicit-table-ids #{})))]
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
@@ -329,7 +392,11 @@
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
+            [:include_context {:optional true} :boolean]
+            [:referenced_entities {:optional true}
+             [:sequential [:map
+                           [:model :string]
+                           [:id pos-int?]]]]]]
   (let [{:keys [prompt include_context]} body
         {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
