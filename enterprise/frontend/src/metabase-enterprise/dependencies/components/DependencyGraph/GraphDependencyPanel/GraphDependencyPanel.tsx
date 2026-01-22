@@ -2,7 +2,7 @@ import { useDebouncedValue } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
@@ -56,7 +56,7 @@ export function GraphDependencyPanel({
   );
   const {
     data: nodes = [],
-    isFetching,
+    isLoading,
     error,
   } = useListNodeDependentsQuery(
     getListRequest(node, groupType, searchQuery, filterOptions, sortOptions),
@@ -87,8 +87,8 @@ export function GraphDependencyPanel({
         onSortOptionsChange={setSortOptions}
         onClose={onClose}
       />
-      {isFetching || error != null ? (
-        <LoadingAndErrorWrapper loading={isFetching} error={error} />
+      {isLoading || error != null ? (
+        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : nodes.length === 0 ? (
         <Box p="lg" c="text-secondary" ta="center">
           {t`Didn't find any results`}
