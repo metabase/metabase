@@ -98,9 +98,8 @@ export const QuestionActions = ({
   };
 
   const shouldShowDataStudioLink =
-    PLUGIN_DATA_STUDIO.isEnabled &&
     PLUGIN_DATA_STUDIO.getLibraryCollectionType(question.collection()?.type) !=
-      null;
+    null;
 
   return (
     <>

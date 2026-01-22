@@ -80,6 +80,7 @@ export {
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
+export { PLUGIN_LIBRARY } from "./oss/library";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -169,6 +170,7 @@ import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
+import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -209,6 +211,7 @@ export function reinitialize() {
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
   reinitializeEntities();
+  reinitializeLibrary();
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();

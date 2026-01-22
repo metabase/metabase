@@ -26,7 +26,6 @@ export type DataStudioToolbarButtonProps = {
 };
 
 type DataStudioPlugin = {
-  isEnabled: boolean;
   canAccessDataStudio: (state: State) => boolean;
   getDataStudioRoutes: (
     store: Store<State>,

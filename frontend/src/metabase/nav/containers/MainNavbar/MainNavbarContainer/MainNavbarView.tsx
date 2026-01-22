@@ -241,13 +241,11 @@ export function MainNavbarView({
             />
           )}
 
-          {PLUGIN_DATA_STUDIO.isEnabled && (
-            <PLUGIN_DATA_STUDIO.NavbarLibrarySection
-              collections={collections}
-              selectedId={collectionItem?.id}
-              onItemSelect={onItemSelect}
-            />
-          )}
+          <PLUGIN_DATA_STUDIO.NavbarLibrarySection
+            collections={collections}
+            selectedId={collectionItem?.id}
+            onItemSelect={onItemSelect}
+          />
 
           <SidebarSection>
             <ErrorBoundary>

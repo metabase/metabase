@@ -33,7 +33,7 @@ import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/c
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { SectionLayout } from "../../components/SectionLayout";
+import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
