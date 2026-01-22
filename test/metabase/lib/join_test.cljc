@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -252,7 +253,11 @@
       (is (=? [(merge (m/filter-vals some? (meta/field-metadata :categories :name))
                       {:display-name         "Name"
                        :lib/source           :source/joins
-                       ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                       ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"
+                       :lib/column-key       (-> (meta/id :categories :name)
+                                                 lib.column-key/field-key
+                                                 (lib.column-key/explicitly-joined
+                                                  "490a5abb-54c2-4e62-9196-7e9e99e8d291"))})]
               metadata))
       (is (=? "CATEGORIES__via__CATEGORY_ID"
               (lib.join.util/current-join-alias (first metadata))))

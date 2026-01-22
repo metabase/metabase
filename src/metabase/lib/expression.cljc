@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -92,11 +93,13 @@
   (lib.computed/with-cache-ephemeral* query [:expression-metadata/by-ref stage-number expression-ref-clause
                                              (lib.metadata.calculation/cacheable-options {})]
     (fn []
-      (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
+      (let [expr      (resolve-expression query stage-number expression-name)
+            base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
         (merge {:lib/type                :metadata/column
               ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
               ;; of the expression definition??
                 :lib/source-uuid         (:lib/uuid opts)
+                :lib/column-key          (lib.column-key/expression-key expr)
                 :name                    expression-name
                 :lib/expression-name     expression-name
                 :lib/source-column-alias expression-name
@@ -433,6 +436,7 @@
         (assoc :lib/source          :source/expressions
                :lib/source-uuid     (lib.options/uuid expression-definition)
                :lib/expression-name expression-name
+               :lib/column-key      (lib.column-key/expression-key expression-definition)
                :name                expression-name
                :display-name        expression-name))))
 

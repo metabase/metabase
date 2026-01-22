@@ -6,6 +6,7 @@
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -193,6 +194,7 @@
              :table
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
+     {:lib/column-key (lib.column-key/field-key (:id field))}
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external

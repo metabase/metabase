@@ -7,6 +7,7 @@
    [inflections.core :as inflections]
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
@@ -248,24 +249,38 @@
 (mu/defn column-from-join :- [:map
                               [:lib/type [:= :metadata/column]]]
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   col          :- [:map
-                    [:lib/type [:= :metadata/column]]]
-   join-alias   :- ::lib.schema.join/alias]
-  (-> col
-      (assoc
-       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-       ;; keys for join aliases.
-       :source-alias              join-alias
-       :lib/original-join-alias   join-alias
-       :lib/source                :source/joins
-       ::join-alias               join-alias
-       :lib/original-name         ((some-fn :lib/original-name :name) col)
-       :lib/original-display-name (or (:lib/original-display-name col)
-                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
-      (set/rename-keys {:lib/expression-name :lib/original-expression-name})
-      (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
+  ([query stage-number col join-alias]
+   (column-from-join query stage-number col join-alias (maybe-resolve-join query stage-number join-alias)))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    col          :- [:map
+                     [:lib/type [:= :metadata/column]]]
+    join-alias   :- ::lib.schema.join/alias
+    clause       :- [:maybe ::lib.join.util/partial-join]]
+   (-> col
+       (assoc
+         ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
+         ;; keys for join aliases.
+        :source-alias              join-alias
+        :lib/original-join-alias   join-alias
+        :lib/source                :source/joins
+        ::join-alias               join-alias
+        :lib/column-key            (if-let [join (or clause
+                                                     (maybe-resolve-join query stage-number join-alias))]
+                                      ;; HACK: Convoluted code at the stage boundary can result in this getting called
+                                      ;; more than once on the same column. To avoid "double-bagging" the column keys,
+                                      ;; check if it's already marked as coming from this join.
+                                      ;; TODO: (Braden, 2026/01/12) Clean up the `returned-columns` logic so this hack is
+                                      ;; not needed anymore.
+                                     (if (lib.column-key/from-join? (:lib/column-key col) join)
+                                       (:lib/column-key col)
+                                       (lib.column-key/explicitly-joined (:lib/column-key col) join))
+                                     ::failed-to-resolve-join-clause)
+        :lib/original-name         ((some-fn :lib/original-name :name) col)
+        :lib/original-display-name (or (:lib/original-display-name col)
+                                       (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
+       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))))))
 
 (defn- HACK-column-from-incomplete-join
   "Hack until I can figure out a better way to fix this. Once I made `::join-alias` required for columns with
@@ -336,7 +351,7 @@
    (into []
          (comp
           (map lib.field.util/update-keys-for-col-from-previous-stage)
-          (map #(column-from-join query stage-number % join-alias))
+          (map #(column-from-join query stage-number % join-alias join))
           (if-let [fk-field-id (:fk-field-id join)]
             (map (fn [col]
                    (assoc col :fk-field-id fk-field-id)))
@@ -397,7 +412,7 @@
                   options))]
       ;; TODO (Cam 8/1/25) -- doesn't [[join-returned-columns-relative-to-parent-stage]] already
       ;; call [[column-from-join]] ???
-      (mapv #(column-from-join query stage-number % join-alias)
+      (mapv #(column-from-join query stage-number % join-alias join)
             cols'))))
 
 ;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE LAST STAGE OF A JOIN!!!! IF YOU WANT THEM WITH APPROPRIATE METADATA
@@ -411,7 +426,7 @@
    options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (into []
         (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
-              (map #(column-from-join query stage-number % join-alias)))
+              (map #(column-from-join query stage-number % join-alias join)))
         (lib.metadata.calculation/returned-columns query stage-number join options)))
 
 (mu/defn all-joins-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns

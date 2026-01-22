@@ -611,8 +611,13 @@
 (defn- remove-matching-missing-columns
   [query-after query-before stage-number match-spec]
   (let [removed-cols (set/difference
-                      (set (lib.metadata.calculation/visible-columns query-before stage-number))
-                      (set (lib.metadata.calculation/visible-columns query-after stage-number)))]
+                      ;; TODO: (Braden, 2026-01-15) This is a hack to preserve the behaviour from before
+                      ;; `:lib/column-key` was added. Remove-replace logic for matching up refs with the original query
+                      ;; should be powered by `:lib/column-key` rather than working around it.
+                      (into #{} (map #(dissoc % :lib/column-key))
+                            (lib.metadata.calculation/visible-columns query-before stage-number))
+                      (into #{} (map #(dissoc % :lib/column-key))
+                            (lib.metadata.calculation/visible-columns query-after stage-number)))]
     (reduce
      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
      query-after

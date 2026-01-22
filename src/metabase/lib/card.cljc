@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -84,7 +85,9 @@
                               (assoc :lib/model-display-name (:display-name source-metadata-col)))
         col (merge
              {:base-type :type/*, :lib/type :metadata/column}
-             field-metadata
+             ;; Disregard the column key from the field-metadata; it's always the underlying field's key and might
+             ;; be missing a join, nested card, or other wrapping.
+             (dissoc field-metadata :lib/column-key)
              (m/filter-vals some? source-metadata-col)
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
@@ -97,7 +100,11 @@
               ;; original DB field but should not be treated as FKs unless the metadata is configured
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
-              (assoc :fk-target-field-id nil))]
+              (assoc :fk-target-field-id nil)
+
+              (not (:lib/column-key col))
+              (as-> $c (assoc $c :lib/column-key (mu/disable-enforcement
+                                                   (lib.column-key/opaque-on-card metadata-providerable $c)))))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
         (merge (when card-id
@@ -106,10 +113,13 @@
         ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
         ;; add original display name IF not already present AND we have a value
-        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
+        (->> (lib.normalize/normalize ::lib.schema.metadata/column))
+        (update :lib/column-key lib.column-key/from-card card-id))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
+  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata.
+
+  If the metadata does not have `:lib/column-key`, this will add one, treating the card's columns as opaque."
   ([metadata-providerable cols]
    (->card-metadata-columns metadata-providerable nil cols))
 
@@ -147,7 +157,7 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and add `:lib/column-key` values."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)

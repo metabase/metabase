@@ -5,6 +5,7 @@
       :cljs [metabase.lib.cache :as lib.cache])
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
@@ -708,21 +709,23 @@
                                          (-> (id->target-fields fk-target-field-id)
                                              (assoc ::fk-field-id   source-field-id
                                                     ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                    ::fk-column-key (:lib/column-key source)
                                                     ::fk-join-alias (:metabase.lib.join/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias fk-column-key]}]
                     (let [table (id->table table-id)]
                       (for [field (returned-columns query stage-number table)]
-                        (m/assoc-some field
-                                      :fk-field-id              fk-field-id
-                                      :fk-field-name            fk-field-name
-                                      :fk-join-alias            fk-join-alias
-                                      :lib/source               :source/implicitly-joinable
-                                      :lib/source-column-alias  (:name field))))))
+                        (-> field
+                            (m/assoc-some :fk-field-id              fk-field-id
+                                          :fk-field-name            fk-field-name
+                                          :fk-join-alias            fk-join-alias
+                                          :lib/source               :source/implicitly-joinable
+                                          :lib/source-column-alias  (:name field))
+                            (update :lib/column-key lib.column-key/implicitly-joined-via fk-column-key))))))
           target-fields)))
 
 (mu/defn default-columns-for-stage :- ::returned-columns

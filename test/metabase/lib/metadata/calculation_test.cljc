@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.lib.field.util :as lib.field.util]
@@ -175,23 +176,29 @@
 
 (deftest ^:parallel source-cards-test
   (testing "with :source-card"
-    (let [query {:lib/type     :mbql/query
+    (let [card-id (:id (:orders (lib.tu/mock-cards)))
+          query {:lib/type     :mbql/query
                  :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database     (meta/id)
                  :stages       [{:lib/type :mbql.stage/mbql
-                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+                                 :source-card card-id}]}
           own-fields (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders))]
                        (-> field
-                           (assoc :lib/source :source/card)))]
+                           (assoc :lib/source :source/card)
+                           (update :lib/column-key lib.column-key/from-card card-id)))
+          implicit-via (fn [table-id fk-field-id]
+                         (let [fk-column-key (-> fk-field-id
+                                                 lib.column-key/field-key
+                                                 (lib.column-key/from-card card-id))]
+                           (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) table-id)]
+                             (-> field
+                                 (assoc :lib/source :source/implicitly-joinable)
+                                 (update :lib/column-key lib.column-key/implicitly-joined-via fk-column-key)))))]
       (testing "implicitly joinable columns"
         (testing "are included by visible-columns"
           (is (=? (->> (concat own-fields
-                               (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :people))]
-                                 (assoc field
-                                        :lib/source :source/implicitly-joinable))
-                               (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :products))]
-                                 (assoc field
-                                        :lib/source :source/implicitly-joinable)))
+                               (implicit-via (meta/id :people) (meta/id :orders :user-id))
+                               (implicit-via (meta/id :products) (meta/id :orders :product-id)))
                        (sort-by (juxt :name :id)))
                   (sort-by (juxt :name :id) (lib.metadata.calculation/visible-columns query)))))
         (testing "are not included by returned-columns"
@@ -205,22 +212,19 @@
               query      (lib/append-stage query)]
           (testing "are included by visible-columns"
             (is (=? (->> (concat own-fields
-                                 (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :people))]
-                                   (assoc field
-                                          :lib/source :source/implicitly-joinable))
-                                 (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :products))]
-                                   (assoc field
-                                          :lib/source :source/implicitly-joinable)))
+                                 (implicit-via (meta/id :people) (meta/id :orders :user-id))
+                                 (implicit-via (meta/id :products) (meta/id :orders :product-id)))
                          (sort-by (juxt :lib/source :name :id)))
                     (sort-by (juxt :lib/source :name :id) (lib.metadata.calculation/visible-columns query)))))
           (testing "are not included by returned-columns"
             (is (=? (sort-by (juxt :name :id) own-fields)
                     (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query))))))))))
 
-(defn- implicitly-joined [table-key]
+(defn- implicitly-joined [fk-metadata table-key]
   (->> (for [field-key (meta/fields table-key)]
          (-> (meta/field-metadata table-key field-key)
-             (assoc :lib/source :source/implicitly-joinable)))
+             (assoc :lib/source :source/implicitly-joinable)
+             (update :lib/column-key lib.column-key/implicitly-joined-via (:lib/column-key fk-metadata))))
        (sort-by :position)))
 
 (deftest ^:parallel self-join-visible-columns-test
@@ -232,18 +236,28 @@
                                                                (meta/field-metadata :orders :id))])
                                       (lib/with-join-fields (for [field [:id :tax]]
                                                               (lib/ref (meta/field-metadata :orders field)))))))
-        orders-cols (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
-                                      "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
-                      {:name                    field-name
-                       :lib/source-column-alias field-name
-                       :lib/source              :source/table-defaults})
+        join-clause (first (lib/joins query))
+        orders-cols (for [field-key [:id :user-id :product-id :subtotal :tax
+                                     :total :discount :created-at :quantity]
+                          :let      [field (meta/field-metadata :orders field-key)]]
+                      {:name                    (:name field)
+                       :lib/source-column-alias (:name field)
+                       :lib/source              :source/table-defaults
+                       :lib/column-key          (lib.column-key/field-key (meta/id :orders field-key))})
         joined-cols (for [field-key [:id :user-id :product-id :subtotal :tax
                                      :total :discount :created-at :quantity]
                           :let      [field (meta/field-metadata :orders field-key)]]
                       {:name                         (:name field)
                        :metabase.lib.join/join-alias "Orders"
                        :lib/source-column-alias      (:name field)
-                       :lib/source                   :source/joins})]
+                       :lib/source                   :source/joins
+                       :lib/column-key               (-> (meta/id :orders field-key)
+                                                         lib.column-key/field-key
+                                                         (lib.column-key/explicitly-joined join-clause))})
+        base-user-id    (m/find-first #(= (:name %) "USER_ID") orders-cols)
+        join-user-id    (m/find-first #(= (:name %) "USER_ID") joined-cols)
+        base-product-id (m/find-first #(= (:name %) "PRODUCT_ID") orders-cols)
+        join-product-id (m/find-first #(= (:name %) "PRODUCT_ID") joined-cols)]
     (testing "just own columns"
       (is (=? (concat orders-cols joined-cols)
               (lib/visible-columns query -1 {:include-implicitly-joinable? false}))))
@@ -251,11 +265,11 @@
       (is (=? (concat orders-cols
                       joined-cols
                       ;; First set of implicit joins
-                      (implicitly-joined :people)
-                      (implicitly-joined :products)
+                      (implicitly-joined base-user-id :people)
+                      (implicitly-joined base-product-id :products)
                       ;; Second set of implicit joins
-                      (implicitly-joined :people)
-                      (implicitly-joined :products))
+                      (implicitly-joined join-user-id :people)
+                      (implicitly-joined join-product-id :products))
               (lib/visible-columns query -1))))))
 
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test

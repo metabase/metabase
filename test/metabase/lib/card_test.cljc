@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -77,6 +78,7 @@
         (is (=? (for [col (get-in (lib.tu/mock-cards) [:venues :result-metadata])]
                   (-> col
                       (assoc :lib/source :source/card)
+                      (update :lib/column-key lib.column-key/from-card (:id metadata))
                       (dissoc :fk-target-field-id)))
                 (lib/returned-columns query)))))))
 
@@ -96,32 +98,44 @@
   (for [col cols]
     (assoc col :lib/source src)))
 
-(defn- implicitly-joined [cols]
-  (from :source/implicitly-joinable cols))
+(defn- implicitly-joined [fk-key cols]
+  (->> (from :source/implicitly-joinable cols)
+       (map #(update % :lib/column-key lib.column-key/implicitly-joined-via fk-key))))
 
-(defn- explicitly-joined [cols]
-  (from :source/joins cols))
+(defn- explicitly-joined [join-or-uuid cols]
+  (->> (from :source/joins cols)
+       (map #(update % :lib/column-key lib.column-key/explicitly-joined join-or-uuid))))
 
 (defn- cols-of [table]
   (for [col (meta/fields table)]
     (meta/field-metadata table col)))
+
+(defn- from-card [card-id cols]
+  (->> (from :source/card cols)
+       (map #(update % :lib/column-key lib.column-key/from-card card-id))))
 
 (defn- sort-cols [cols]
   (sort-by (juxt :id :name :source-alias :lib/desired-column-alias) cols))
 
 (deftest ^:parallel visible-columns-use-result-metadata-test
   (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
-    (let [venues-query (lib/query
-                        (lib.tu/mock-metadata-provider
-                         meta/metadata-provider
-                         {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib.tu/venues-query))]})
-                        (:orders (lib.tu/mock-cards)))]
+    (let [venues-query   (lib/query
+                          (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib.tu/venues-query))]})
+                          (:orders (lib.tu/mock-cards)))
+          user-id-key    (-> (meta/id :orders :user-id)
+                             lib.column-key/field-key
+                             (lib.column-key/from-card (:id (:orders (lib.tu/mock-cards)))))
+          product-id-key (-> (meta/id :orders :product-id)
+                             lib.column-key/field-key
+                             (lib.column-key/from-card (:id (:orders (lib.tu/mock-cards)))))]
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-      (is (=? (->> (concat (from :source/card (cols-of :orders))
-                           (implicitly-joined (cols-of :people))
-                           (implicitly-joined (cols-of :products)))
+      (is (=? (->> (concat (from-card (:id (:orders (lib.tu/mock-cards))) (cols-of :orders))
+                           (implicitly-joined user-id-key    (cols-of :people))
+                           (implicitly-joined product-id-key (cols-of :products)))
                    sort-cols)
               (sort-cols (lib/visible-columns venues-query)))))))
 
@@ -191,19 +205,20 @@
 
 (deftest ^:parallel card-source-query-visible-columns-test
   (testing "Explicitly joined fields do not also appear as implictly joinable"
-    (let [base       (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          join       (lib/join-clause (meta/table-metadata :products)
-                                      [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
-                                              (lib/ref (meta/field-metadata :products :id)))])
-          query      (lib/join base join)]
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
+                                                        (lib/ref (meta/field-metadata :products :id)))])))
+          [join] (lib/joins query)]
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (cols-of :products)))
+                           (explicitly-joined join (cols-of :products)))
                    sort-cols
                    (map #(dissoc % :name)))
               (->> query lib.metadata.calculation/returned-columns sort-cols)))
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (cols-of :products))
-                           (implicitly-joined (cols-of :people)))
+                           (explicitly-joined join (cols-of :products))
+                           (implicitly-joined (lib.column-key/field-key (meta/id :orders :user-id))
+                                              (cols-of :people)))
                    sort-cols)
               (->> query lib.metadata.calculation/visible-columns sort-cols)))
       ;; TODO: Currently if the source-card has an explicit join for a table, those fields will also be duplicated as

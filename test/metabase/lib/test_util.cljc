@@ -4,6 +4,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -204,16 +205,18 @@
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results
-                                        :columns  [{:lib/type      :metadata/column
-                                                    :name          "abc"
-                                                    :display-name  "another Field"
-                                                    :base-type     :type/Integer
-                                                    :semantic-type :type/FK}
-                                                   {:lib/type      :metadata/column
-                                                    :name          "sum"
-                                                    :display-name  "sum of User ID"
-                                                    :base-type     :type/Integer
-                                                    :semantic-type :type/FK}]}
+                                        :columns  [{:lib/type       :metadata/column
+                                                    :name           "abc"
+                                                    :display-name   "another Field"
+                                                    :base-type      :type/Integer
+                                                    :semantic-type  :type/FK
+                                                    :lib/column-key (lib.column-key/native-key "abc")}
+                                                   {:lib/type       :metadata/column
+                                                    :name           "sum"
+                                                    :display-name   "sum of User ID"
+                                                    :base-type      :type/Integer
+                                                    :semantic-type  :type/FK
+                                                    :lib/column-key (lib.column-key/native-key "sum")}]}
                    :native             "SELECT whatever"}]})
 
 (defn base-metadata-provider
