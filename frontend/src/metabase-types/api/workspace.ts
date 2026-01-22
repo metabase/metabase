@@ -540,13 +540,7 @@ export type WorkspaceTransformDryRunData = {
 
 export type WorkspaceTransformDryRunResponse = {
   status: "succeeded" | "failed";
-  start_time?: string | null;
-  end_time?: string | null;
   message?: string | null;
-  table: {
-    name: string;
-    schema?: string | null;
-  };
   data?: WorkspaceTransformDryRunData;
 };
 

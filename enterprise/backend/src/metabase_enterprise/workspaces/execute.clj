@@ -8,12 +8,19 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [macaw.core :as macaw]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
+   [metabase-enterprise.transforms-python.s3 :as s3]
+   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -101,29 +108,84 @@
   "Maximum number of rows to return in dry-run/preview mode."
   2000)
 
-(defn- run-sql-preview
+(defn- dry-run-python
+  "Run Python transform and return first 2000 rows without persisting.
+   Returns a map with :status and :data (on success) or :message (on failure)."
+  [{:keys [source]} remapping]
+  (let [table-mapping          (:tables remapping no-mapping)
+        remapped-source        (remap-python-source table-mapping source)
+        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))]
+    (try
+      (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
+        (let [server-url (transforms-python.settings/python-runner-url)
+              _          (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
+                                                            :source         (assoc remapped-source
+                                                                                   :source-tables resolved-source-tables)
+                                                            :limit          preview-row-limit})
+              {:keys [status body]}
+              (python-runner/execute-python-code-http-call!
+               {:server-url     server-url
+                :code           (:body remapped-source)
+                :request-id     (u/generate-nano-id)
+                :table-name->id resolved-source-tables
+                :shared-storage @shared-storage-ref})]
+          (cond
+            (:timeout body)
+            {:status  :failed
+             :message "Python execution timed out"}
+
+            (not= 200 status)
+            {:status  :failed
+             :message (str "Python execution failed (exit code " (:exit_code body "?") ")")}
+
+            :else
+            (let [output-manifest  (python-runner/read-output-manifest @shared-storage-ref)
+                  {:keys [fields]} output-manifest]
+              (when-not (seq fields)
+                (throw (ex-info "No fields in output metadata" {:manifest output-manifest})))
+              (with-open [in  (python-runner/open-output @shared-storage-ref)
+                          rdr (io/reader in)]
+                (let [cols     (mapv (fn [c]
+                                       {:name      (:name c)
+                                        :base_type (some-> c :base_type keyword)})
+                                     fields)
+                      colnames (mapv :name cols)
+                      rows     (into []
+                                     (comp
+                                      (remove str/blank?)
+                                      (take preview-row-limit)
+                                      (map json/decode)
+                                      (map (fn [row] (mapv #(get row %) colnames))))
+                                     (line-seq rdr))]
+                  {:status :succeeded
+                   :data   {:rows rows
+                            :cols cols}}))))))
+      (catch Exception e
+        {:status  :failed
+         :message (ex-message e)}))))
+
+(defn- dry-run-sql
   "Run SQL transform query and return first 2000 rows without persisting.
    Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
   [{:keys [source]} remapping]
-  (let [s-type          (transforms/transform-source-type source)
-        table-mapping   (:tables remapping no-mapping)
-        field-mapping   (:fields remapping no-mapping)
-        remapped-source (remap-source table-mapping field-mapping s-type source)
-        query           (:query remapped-source)]
-    (try
+  (try
+    (let [s-type          (transforms/transform-source-type source)
+          table-mapping   (:tables remapping no-mapping)
+          field-mapping   (:fields remapping no-mapping)
+          remapped-source (remap-source table-mapping field-mapping s-type source)
+          query           (:query remapped-source)]
       (let [result (qp/process-query
                     (assoc query :constraints {:max-results           preview-row-limit
                                                :max-results-bare-rows preview-row-limit}))
-            data (:data result)]
+            data   (:data result)]
         (if (= :completed (:status result))
-          {:status     :succeeded
-           :data       (select-keys data [:rows :cols :results_metadata])}
-          {:status     :failed
-           :message    (or (:error result) "Query execution failed")}))
-      (catch Exception e
-        {:status     :failed
-         :message    (ex-message e)
-         :ex-data    (ex-data e)}))))
+          {:status :succeeded
+           :data   (select-keys data [:rows :cols :results_metadata])}
+          {:status  :failed
+           :message (or (:error result) "Query execution failed")})))
+    (catch Exception e
+      {:status  :failed
+       :message (ex-message e)})))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
@@ -131,9 +193,8 @@
   [{:keys [source] :as transform} remapping]
   (let [s-type (transforms/transform-source-type source)]
     (case s-type
-      (:native :mbql) (run-sql-preview transform remapping)
-      :python         (throw (ex-info "Dry-run is not yet supported for Python transforms"
-                                      {:transform-type :python})))))
+      (:native :mbql) (dry-run-sql transform remapping)
+      :python         (dry-run-python transform remapping))))
 
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.

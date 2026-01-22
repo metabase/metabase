@@ -256,7 +256,7 @@
                         ;; E.g. app-db.yml tests perorm driver tests. Workspaces are not supported on mysql.
                         ;; Following disj suppresses those runs destined for failure.
                         (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-                          (mt/with-premium-features [:workspaces :dependencies :transforms]
+                          (mt/with-premium-features [:workspaces :dependencies :transforms :transforms-python]
                             (search.tu/with-index-disabled
                               (tests))))))
 
