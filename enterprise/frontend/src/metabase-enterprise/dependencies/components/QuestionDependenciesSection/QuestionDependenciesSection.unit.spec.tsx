@@ -57,14 +57,12 @@ function setup({
   isLoading = false,
   isError = false,
 }: SetupOpts = {}) {
-  jest
-    .spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount")
-    .mockReturnValue({
-      dependenciesCount,
-      dependentsCount,
-      isLoading,
-      isError,
-    });
+  jest.spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount").mockReturnValue({
+    dependenciesCount,
+    dependentsCount,
+    isLoading,
+    isError,
+  });
 
   jest
     .spyOn(PLUGIN_DATA_STUDIO, "canAccessDataStudio")

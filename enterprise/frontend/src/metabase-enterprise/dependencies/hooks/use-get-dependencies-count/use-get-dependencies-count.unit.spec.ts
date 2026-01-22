@@ -74,7 +74,7 @@ describe("useGetDependenciesCount", () => {
       nodes: [
         createMockCardDependencyNode({
           id: 1,
-          dependents_count: { card: 3, transform: 2 },
+          dependents_count: { question: 3, transform: 2 },
         }),
       ],
       edges: [],
@@ -95,7 +95,7 @@ describe("useGetDependenciesCount", () => {
       nodes: [
         createMockCardDependencyNode({
           id: 1,
-          dependents_count: { card: 3, transform: 1 },
+          dependents_count: { question: 3, transform: 1 },
         }),
         createMockTableDependencyNode({ id: 10 }),
         createMockTableDependencyNode({ id: 20 }),
@@ -149,7 +149,7 @@ describe("useGetDependenciesCount", () => {
       nodes: [
         createMockCardDependencyNode({
           id: 1,
-          dependents_count: { card: 2 },
+          dependents_count: { question: 2 },
         }),
       ],
       edges: [
@@ -177,11 +177,11 @@ describe("useGetDependenciesCount", () => {
       nodes: [
         createMockCardDependencyNode({
           id: 1,
-          dependents_count: { card: 5 },
+          dependents_count: { question: 5 },
         }),
         createMockTableDependencyNode({
           id: 1,
-          dependents_count: { card: 10 },
+          dependents_count: { question: 10 },
         }),
       ],
       edges: [],

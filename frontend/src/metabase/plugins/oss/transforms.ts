@@ -100,6 +100,8 @@ type DependenciesPlugin = {
   useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
     dependenciesCount: number;
     dependentsCount: number;
+    isLoading: boolean;
+    isError: boolean;
   };
 };
 
@@ -186,6 +188,8 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   useGetDependenciesCount: () => ({
     dependenciesCount: 0,
     dependentsCount: 0,
+    isLoading: false,
+    isError: false,
   }),
 });
 
