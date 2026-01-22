@@ -423,10 +423,9 @@
   [sql-string]
   (try
     ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
-    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. That may result
-    ;;         in failure to parse e.g. `select final from final` because without opts parser considers the final
-    ;;         reserved.
-    (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
+    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
+    ;;         adding at least default :non-resserved-words.
+    (let [^PlainSelect parsed (macaw/parsed-query sql-string (driver.u/macaw-options nil))]
       (cond
         (not (instance? PlainSelect parsed))
         {:is_simple false
