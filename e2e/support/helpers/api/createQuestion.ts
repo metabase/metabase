@@ -206,9 +206,8 @@ export const logAction = (
 };
 
 export const createTestQuestion = (
-  options: Omit<QuestionDetails, "dataset_query"> & {
-    dataset_query: DatasetQuery;
-  },
+  details: QuestionDetails,
+  options?: Options,
 ) => {
-  return question(options);
+  return question(details, options);
 };
