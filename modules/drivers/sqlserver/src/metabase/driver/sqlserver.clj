@@ -9,7 +9,6 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -1028,7 +1027,7 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query sql-query (driver.u/macaw-options driver))
+        ^Select parsed-query (driver.u/parsed-query sql-query driver)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
     [(str parsed-query) sql-params]))
