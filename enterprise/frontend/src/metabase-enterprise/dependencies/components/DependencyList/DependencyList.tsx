@@ -56,7 +56,7 @@ export function DependencyList({
     types: getDependencyTypes(groupTypes ?? getAvailableGroupTypes(mode)),
     card_types: getCardTypes(groupTypes ?? getAvailableGroupTypes(mode)),
     query: query,
-    include_personal_collections: includePersonalCollections,
+    include_personal_collections: includePersonalCollections ?? true,
     sort_column: sortColumn,
     sort_direction: sortDirection,
     offset: page * PAGE_SIZE,
