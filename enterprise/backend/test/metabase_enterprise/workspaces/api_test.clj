@@ -35,6 +35,9 @@
     (str url (subs part 1))))
 
 (defn ws-url [id & path]
+  (when (some nil? (cons id path))
+    (throw (ex-info "Cannot build workspace URL without key resources"
+                    {:id id, :path path})))
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
