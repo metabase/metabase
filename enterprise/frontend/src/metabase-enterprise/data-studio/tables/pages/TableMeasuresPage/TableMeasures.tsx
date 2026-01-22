@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { getUserCanWriteMeasures } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import {
@@ -16,12 +16,14 @@ type TableMeasuresProps = {
 };
 
 export function TableMeasures({ table }: TableMeasuresProps) {
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const canWriteMeasures = useSelector((state) =>
+    getUserCanWriteMeasures(state, table.is_published),
+  );
   const measures = table.measures ?? [];
   let newButtonLabel: string | undefined;
   let newButtonUrl: string | undefined;
 
-  if (!remoteSyncReadOnly) {
+  if (canWriteMeasures) {
     newButtonLabel = t`New measure`;
     newButtonUrl = Urls.dataStudioPublishedTableMeasureNew(table.id);
   }

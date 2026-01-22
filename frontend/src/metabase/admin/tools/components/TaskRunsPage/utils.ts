@@ -4,6 +4,7 @@ import {
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
 import type {
+  TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunStatus,
   TaskRunType,
@@ -12,6 +13,7 @@ import type {
 import {
   guardTaskRunEntityType,
   guardTaskRunRunType,
+  guardTaskRunStartedAtRange,
   guardTaskRunStatus,
 } from "../../utils";
 
@@ -21,6 +23,7 @@ type UrlState = {
   "entity-type": TaskRunEntityType | null;
   "entity-id": number | null;
   status: TaskRunStatus | null;
+  "started-at": TaskRunDateFilterOption | null;
 };
 
 export const urlStateConfig: UrlStateConfig<UrlState> = {
@@ -30,6 +33,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "entity-type": parseTaskRunEntityType(query["entity-type"]),
     "entity-id": parseTaskRunEntityId(query["entity-id"]),
     status: parseTaskRunStatus(query.status),
+    "started-at": parseTaskRunStartedAt(query["started-at"]),
   }),
   serialize: ({
     page,
@@ -37,12 +41,14 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "entity-type": entityType,
     "entity-id": entityId,
     status,
+    "started-at": startedAt,
   }) => ({
     page: page === 0 ? undefined : String(page),
     "run-type": runType === null ? undefined : runType,
     "entity-type": entityType === null ? undefined : entityType,
     "entity-id": entityId === null ? undefined : String(entityId),
     status: status === null ? undefined : status,
+    "started-at": startedAt === null ? undefined : startedAt,
   }),
 };
 
@@ -74,4 +80,9 @@ const parseTaskRunEntityId = (param: QueryParam): UrlState["entity-id"] => {
 const parseTaskRunStatus = (param: QueryParam): UrlState["status"] => {
   const value = getFirstParamValue(param);
   return value && guardTaskRunStatus(value) ? value : null;
+};
+
+const parseTaskRunStartedAt = (param: QueryParam): UrlState["started-at"] => {
+  const value = getFirstParamValue(param);
+  return value && guardTaskRunStartedAtRange(value) ? value : null;
 };

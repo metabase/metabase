@@ -26,11 +26,14 @@ export function getListRequest(
   node: DependencyNode,
   groupType: DependencyGroupType,
 ): ListNodeDependentsRequest {
+  const type = getDependencyType(groupType);
+  const cardType = getCardType(groupType);
+
   return {
     id: node.id,
     type: node.type,
-    dependent_type: getDependencyType(groupType),
-    dependent_card_type: getCardType(groupType) ?? undefined,
+    dependent_types: [type],
+    dependent_card_types: cardType != null ? [cardType] : undefined,
   };
 }
 

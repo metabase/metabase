@@ -4,10 +4,13 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -70,7 +73,8 @@
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
-   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]])
+   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
+   [:started-at  {:optional true} ms/NonBlankString]])
 
 (mr/def ::TaskRun
   [:map
@@ -160,15 +164,33 @@
                    (get counts-by-id (:id %)))
            runs))))
 
+(defn- timestamp-constraint
+  [field-name date-string]
+  (let [{:keys [start end]}
+        (try
+          (params.dates/date-string->range date-string {:inclusive-end? false})
+          (catch Exception e
+            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
+                            {:status-code 400}
+                            e))))
+        start (some-> start u.date/parse)
+        end   (some-> end   u.date/parse)]
+    (into [:and] (remove nil?)
+          [(when start
+             [:>= field-name start])
+           (when end
+             [:< field-name end])])))
+
 (defn- build-run-where-clause
-  [{:keys [run-type entity-type entity-id status]}]
-  (let [clause (cond-> {}
-                 run-type    (assoc :run_type run-type)
-                 entity-type (assoc :entity_type entity-type)
-                 entity-id   (assoc :entity_id entity-id)
-                 status      (assoc :status status))]
-    (if (seq clause)
-      {:where (into [:and] (map (fn [[k v]] [:= k v])) clause)}
+  [{:keys [run-type entity-type entity-id status started-at]}]
+  (let [conditions (cond-> []
+                     run-type    (conj [:= :run_type run-type])
+                     entity-type (conj [:= :entity_type entity-type])
+                     entity-id   (conj [:= :entity_id entity-id])
+                     status      (conj [:= :status status])
+                     started-at  (conj (timestamp-constraint :started_at started-at)))]
+    (if (seq conditions)
+      {:where (into [:and] conditions)}
       {})))
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
@@ -203,10 +225,14 @@
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
   [_
-   params :- [:map [:run-type (into [:enum] (map name task-run/run-types))]]]
+   params :- [:map
+              [:run-type   (into [:enum] (map name task-run/run-types))]
+              [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)
-  (->> (t2/query {:select-distinct [:entity_type :entity_id]
-                  :from            :task_run
-                  :where           [:= :run_type (:run-type params)]})
-       (map #(update % :entity_type keyword))
-       hydrate-entity-names))
+  (let [where-conditions [[:= :run_type (:run-type params)]
+                          (timestamp-constraint :started_at (:started-at params))]]
+    (->> (t2/query {:select-distinct [:entity_type :entity_id]
+                    :from            :task_run
+                    :where           (into [:and] where-conditions)})
+         (map #(update % :entity_type keyword))
+         hydrate-entity-names)))
