@@ -1,6 +1,6 @@
 ---
 title: Library
-summary: Create a source of truth for analytics with curated tables, metrics, and SQL snippets that your team can trust and reuse.
+summary: Create a source of truth for analytics with curated tables, metrics, and SQL snippets that your team can trust.
 ---
 
 # Library
@@ -22,7 +22,7 @@ The Library is a special section in the navigation sidebar that you curate in [D
 You can use the Library to curate:
 
 - Data: cleaned, pre-transformed data sources. Tables published to the Library appear first when people choose data sources, nudging them toward trusted data.
-- [Metrics](/docs/data-modeling/metrics.md): standardized calculations that people can trust.
+- [Metrics](../data-modeling/metrics.md): standardized calculations that people can trust.
 - [SQL snippets](../questions/native-editor/snippets.md): reusable bits of code.
 
 Unlike collections, each section in the Library restricts which type of content it contains (which helps keep the Library tidy). For example, the Library's Metrics collection can only contain metrics.
