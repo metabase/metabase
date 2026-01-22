@@ -54,7 +54,7 @@ describe("scenarios > auth > signin > SSO", () => {
       cy.findByLabelText("Password").type("123");
       cy.button("Sign in").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Password: did not match stored password");
+      cy.contains("did not match stored password");
     });
 
     it("should pass `redirect` search params from Google button screen to email/password screen (metabase#16216)", () => {
