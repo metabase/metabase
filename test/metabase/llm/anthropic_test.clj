@@ -63,14 +63,21 @@
 ;;; ------------------------------------------- build-request-body Tests -------------------------------------------
 
 (deftest build-request-body-test
-  (testing "includes required fields"
-    (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
-                                                :messages [{:role "user" :content "test"}]})]
-      (is (= "claude-sonnet-4-5-20250929" (:model body)))
-      (is (= 4096 (:max_tokens body)))
-      (is (= [{:role "user" :content "test"}] (:messages body)))
-      (is (vector? (:tools body)))
-      (is (= {:type "tool" :name "generate_sql"} (:tool_choice body)))))
+  (testing "includes required fields with default max_tokens"
+    (mt/with-temporary-setting-values [llm-max-tokens nil]
+      (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
+                                                  :messages [{:role "user" :content "test"}]})]
+        (is (= "claude-sonnet-4-5-20250929" (:model body)))
+        (is (= 4096 (:max_tokens body)))
+        (is (= [{:role "user" :content "test"}] (:messages body)))
+        (is (vector? (:tools body)))
+        (is (= {:type "tool" :name "generate_sql"} (:tool_choice body))))))
+
+  (testing "uses configured max_tokens setting"
+    (mt/with-temporary-setting-values [llm-max-tokens 8192]
+      (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
+                                                  :messages [{:role "user" :content "test"}]})]
+        (is (= 8192 (:max_tokens body))))))
 
   (testing "includes system prompt when provided"
     (let [body (#'anthropic/build-request-body {:model "claude-sonnet-4-5-20250929"
