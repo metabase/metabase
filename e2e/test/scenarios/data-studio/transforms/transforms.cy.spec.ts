@@ -120,7 +120,7 @@ describe("scenarios > admin > transforms", () => {
         cy.findByText("Data").should("not.exist");
       });
 
-      cy.findByRole("link", { name: "Exit" }).click();
+      H.goToMainApp();
       H.modal().button("Discard changes").click();
       H.newButton("Question").click();
 

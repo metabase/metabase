@@ -5,7 +5,9 @@ import type { AvatarProps } from "./UserAvatar.styled";
 import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
-  user: User;
+  user: Partial<
+    Pick<User, "first_name" | "last_name" | "email" | "common_name">
+  >;
 }
 
 interface GroupProps {
