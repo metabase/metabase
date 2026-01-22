@@ -45,6 +45,7 @@ type SidebarDependentsInfoProps = {
 export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
   const [filters, setFilters] = useState<DependencyFilterOptions>({});
+  const availableGroupTypes = BROKEN_DEPENDENTS_GROUP_TYPES;
 
   const { data: dependents = [], isLoading } = useListNodeDependentsQuery(
     {
@@ -52,10 +53,10 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
       type: node.type,
       broken: true,
       dependent_types: getDependencyTypes(
-        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+        filters.groupTypes ?? availableGroupTypes,
       ),
       dependent_card_types: getCardTypes(
-        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+        filters.groupTypes ?? availableGroupTypes,
       ),
       include_personal_collections: filters.includePersonalCollections,
     },
@@ -81,7 +82,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
         </Group>
         <FilterOptionsPicker
           filters={filters}
-          availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
+          availableGroupTypes={availableGroupTypes}
           compact
           onFiltersChange={setFilters}
         />
