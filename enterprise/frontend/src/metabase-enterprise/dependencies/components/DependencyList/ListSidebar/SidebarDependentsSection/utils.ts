@@ -3,6 +3,7 @@ import type {
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../../../constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
@@ -18,22 +19,20 @@ export function getListRequest(
   return {
     id: node.id,
     type: node.type,
-    dependent_types: getDependencyTypes(
-      filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
-    ),
-    dependent_card_types: getCardTypes(
-      filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
-    ),
+    dependent_types: getDependencyTypes(filterOptions.groupTypes),
+    dependent_card_types: getCardTypes(filterOptions.groupTypes),
     broken: true,
-    include_personal_collections:
-      filterOptions.includePersonalCollections ?? true,
+    include_personal_collections: filterOptions.includePersonalCollections,
     sort_column: sortOptions.column,
     sort_direction: sortOptions.direction,
   };
 }
 
 export function getDefaultFilterOptions(): DependencyFilterOptions {
-  return {};
+  return {
+    groupTypes: BROKEN_DEPENDENTS_GROUP_TYPES,
+    includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+  };
 }
 
 export function getDefaultSortOptions(): DependencySortOptions {

@@ -5,6 +5,7 @@ import type {
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../../constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
@@ -31,8 +32,7 @@ export function getListRequest(
     dependent_types: [type],
     dependent_card_types: cardType != null ? [cardType] : undefined,
     query: query,
-    include_personal_collections:
-      filterOptions.includePersonalCollections ?? true,
+    include_personal_collections: filterOptions.includePersonalCollections,
     sort_column: sortOptions.column,
     sort_direction: sortOptions.direction,
   };
@@ -51,7 +51,10 @@ export function canFilter(groupType: DependencyGroupType): boolean {
 }
 
 export function getDefaultFilterOptions(): DependencyFilterOptions {
-  return {};
+  return {
+    groupTypes: [],
+    includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+  };
 }
 
 export function getAvailableSortColumns(

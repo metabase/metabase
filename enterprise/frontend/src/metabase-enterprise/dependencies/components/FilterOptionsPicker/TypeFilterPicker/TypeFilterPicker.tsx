@@ -36,7 +36,7 @@ export function TypeFilterPicker({
     setSelectedGroupTypes(newGroupTypes);
     onFilterOptionsChange({
       ...filterOptions,
-      groupTypes: isFullSelection ? undefined : newGroupTypes,
+      groupTypes: isFullSelection ? availableGroupTypes : newGroupTypes,
     });
   };
 

@@ -45,8 +45,8 @@ export type DependencyErrorInfo = {
 };
 
 export type DependencyFilterOptions = {
-  groupTypes?: DependencyGroupType[];
-  includePersonalCollections?: boolean;
+  groupTypes: DependencyGroupType[];
+  includePersonalCollections: boolean;
 };
 
 export type DependencySortOptions = {

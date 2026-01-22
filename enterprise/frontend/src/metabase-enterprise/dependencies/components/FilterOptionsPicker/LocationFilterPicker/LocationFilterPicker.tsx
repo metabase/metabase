@@ -14,18 +14,15 @@ export function LocationFilterPicker({
   filterOptions,
   onFilterOptionsChange,
 }: LocationFilterPickerProps) {
-  const defaultValue = true;
-  const { includePersonalCollections = defaultValue } = filterOptions;
+  const { includePersonalCollections } = filterOptions;
 
   const handleIncludeInPersonalCollectionsChange = (
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const newValue = event.target.checked;
-    const isDefault = newValue === defaultValue;
-
     onFilterOptionsChange({
       ...filterOptions,
-      includePersonalCollections: isDefault ? undefined : newValue,
+      includePersonalCollections: newValue,
     });
   };
 

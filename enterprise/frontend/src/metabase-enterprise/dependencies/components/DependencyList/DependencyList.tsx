@@ -9,6 +9,7 @@ import {
 } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
@@ -23,7 +24,11 @@ import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
-import { getAvailableGroupTypes, getSortOptions } from "./utils";
+import {
+  getAvailableGroupTypes,
+  getFilterOptions,
+  getSortOptions,
+} from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -47,7 +52,7 @@ export function DependencyList({
     page = 0,
     query,
     groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = true,
+    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
     sortColumn,
     sortDirection,
   } = params;
@@ -108,7 +113,7 @@ export function DependencyList({
         <ListSearchBar
           mode={mode}
           query={query}
-          filterOptions={params}
+          filterOptions={getFilterOptions(mode, params)}
           hasLoader={isFetching && !isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
