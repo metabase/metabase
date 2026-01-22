@@ -192,7 +192,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  { :drivers #{;; core drivers
+  {:drivers #{ ;; core drivers
               #_:h2
               :postgres
               :mysql
