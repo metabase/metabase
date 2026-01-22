@@ -2,7 +2,7 @@
  * Codemod to add metabase/ prefix to unprefixed custom ESLint rule names
  *
  * Usage:
- *   npx jscodeshift -t dev/codemods/prefix-custom-eslint-rules.cjs e2e enterprise/frontend/src frontend/src --extensions=js,jsx,ts,tsx
+ *   npx jscodeshift -t dev/codemods/prefix-custom-eslint-rules.cjs e2e enterprise/frontend/src frontend/{src,build,test} --extensions=js,jsx,ts,tsx
  */
 
 const customRules = [
