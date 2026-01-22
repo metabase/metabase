@@ -132,7 +132,8 @@
 ;; ---------------------- Pure Transformation Functions ----------------------
 
 (defn- field-def->row
-  "Convert a FieldDefinition to a Field row map (without table_id, added during insertion).
+  "Convert a FieldDefinition to a Field row map for fake-sync insertion.
+   Creates the metadata row that would normally come from syncing the database.
    Handles three forms of base-type:
    1. {:native \"BINARY(8)\"} - driver-specific native type string
    2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types

@@ -416,7 +416,7 @@
   ;; The QP uses lowercase types without precision (e.g., "time" not "TIME(3)").
   ;; Snowflake normalizes types: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
   ;;
-  ;; For timezone columns: :type/DateTimeWithTZ -> TIMESTAMP_TZ DDL -> reports as TIMESTAMPTZ
+  ;; For timezone columns: DDL uses TIMESTAMP_TZ, but DB reports as TIMESTAMPTZ
   (case base-type
     :type/Text                   "VARCHAR"
     :type/Float                  "DOUBLE"
@@ -426,7 +426,7 @@
     :type/Boolean                "BOOLEAN"
     :type/Date                   "date"
     :type/DateTime               "timestampntz"
-    :type/DateTimeWithTZ         "timestamptz"   ; TIMESTAMP_TZ -> reports as TIMESTAMPTZ
+    :type/DateTimeWithTZ         "timestamptz"   ; DDL: TIMESTAMP_TZ, reported as: TIMESTAMPTZ
     :type/DateTimeWithLocalTZ    "timestamptz"
     :type/DateTimeWithZoneID     "timestamptz"
     :type/DateTimeWithZoneOffset "timestamptz"
