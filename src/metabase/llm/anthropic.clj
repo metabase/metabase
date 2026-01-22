@@ -45,10 +45,10 @@
 (defn- build-request-body
   "Build the request body for Anthropic messages API."
   [{:keys [model system messages]}]
-  (cond-> {:model      model
-           :max_tokens 4096
-           :messages   messages
-           :tools      [generate-sql-tool]
+  (cond-> {:model       model
+           :max_tokens  (llm-settings/llm-max-tokens)
+           :messages    messages
+           :tools       [generate-sql-tool]
            :tool_choice {:type "tool" :name "generate_sql"}}
     system (assoc :system system)))
 
@@ -95,13 +95,14 @@
           request {:model    model
                    :system   system
                    :messages messages}]
-      (println "TSP sync completion with model: " model)
       (try
         (let [response (http/post anthropic-messages-url
-                                  {:headers      (build-request-headers api-key)
-                                   :body         (json/encode (build-request-body request))
-                                   :as           :json
-                                   :content-type :json})]
+                                  {:headers            (build-request-headers api-key)
+                                   :body               (json/encode (build-request-body request))
+                                   :as                 :json
+                                   :content-type       :json
+                                   :socket-timeout     (llm-settings/llm-request-timeout-ms)
+                                   :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
           (extract-tool-input (:body response)))
         (catch Exception e
           (handle-api-error e))))))
@@ -161,13 +162,14 @@
     (let [model        (or model (llm-settings/llm-anthropic-model) default-model)
           request      {:model model :system system :messages messages}
           request-body (build-streaming-request-body request)]
-      (println "TSP using model: " model)
       (try
         (let [response (http/post anthropic-messages-url
-                                  {:as               :stream
-                                   :headers          (build-request-headers api-key)
-                                   :body             (json/encode request-body)
-                                   :throw-exceptions false})]
+                                  {:as                 :stream
+                                   :headers            (build-request-headers api-key)
+                                   :body               (json/encode request-body)
+                                   :throw-exceptions   false
+                                   :socket-timeout     (llm-settings/llm-request-timeout-ms)
+                                   :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
           (if (<= 200 (:status response) 299)
             (a/pipe (streaming/anthropic-sse-chan (:body response))
                     (a/chan 64 streaming/anthropic-chat->aisdk-xf))

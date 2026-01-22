@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
@@ -12,11 +13,13 @@
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.streaming :as llm.streaming]
+   [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [stencil.core :as stencil]
+   [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -25,6 +28,19 @@
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
+
+;;; ----------------------------------------------- Rate Limiting -----------------------------------------------
+
+(def ^:private sql-gen-throttlers
+  "Throttlers for SQL generation endpoints.
+   - :user-id limits requests per user (default 20/minute)
+   - :ip-address limits requests per IP (default 100/minute)"
+  {:user-id    (throttle/make-throttler :user-id
+                                        :attempts-threshold (llm.settings/llm-rate-limit-per-user)
+                                        :attempt-ttl-ms 60000)
+   :ip-address (throttle/make-throttler :ip-address
+                                        :attempts-threshold (llm.settings/llm-rate-limit-per-ip)
+                                        :attempt-ttl-ms 60000)})
 
 ;;; ------------------------------------------------ Logging ------------------------------------------------
 
@@ -172,25 +188,71 @@
                            response))
     :else              response))
 
-(defn- make-code-edit-part
-  "Create an AI SDK v5 data part for a code edit suggestion."
-  [buffer-id sql]
-  {:type    "code_edit"
-   :version 1
-   :value   {:buffer_id buffer-id
-             :mode      "rewrite"
-             :value     sql}})
+;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
-(defn- make-context-part
-  "Create an AI SDK v5 context data part for sync responses."
-  [{:keys [system-prompt dialect table-ids]}]
-  {:type    "context"
-   :version 1
-   :value   {:system_prompt system-prompt
-             :dialect       dialect
-             :table_ids     (vec table-ids)}})
+(def ^:private table-with-columns-schema
+  "Schema for table metadata with columns returned by /extract-tables."
+  [:map
+   [:id pos-int?]
+   [:name :string]
+   [:schema {:optional true} [:maybe :string]]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:columns [:sequential
+              [:map
+               [:id pos-int?]
+               [:name :string]
+               [:database_type {:optional true} [:maybe :string]]
+               [:description {:optional true} [:maybe :string]]
+               [:semantic_type {:optional true} [:maybe :string]]
+               [:fk_target {:optional true}
+                [:map
+                 [:table_name :string]
+                 [:field_name :string]]]]]]])
+
+(api.macros/defendpoint :post "/extract-tables"
+  :- [:map [:tables [:sequential table-with-columns-schema]]]
+  "Parse SQL and return referenced tables with their columns.
+
+   Uses Macaw to parse the SQL, resolves table names to IDs,
+   and returns permission-filtered tables with column metadata.
+
+   This is a lightweight endpoint that does not trigger fingerprinting
+   or field value fetching."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:database_id pos-int?]
+            [:sql :string]]]
+  (let [{:keys [database_id sql]} body
+        table-ids (llm.context/extract-tables-from-sql database_id sql)
+        tables    (llm.context/get-tables-with-columns database_id table-ids)]
+    {:tables (or tables [])}))
+
+;;; ------------------------------------------ Generate SQL Endpoint ------------------------------------------
 
 (api.macros/defendpoint :post "/generate-sql"
+  :- [:map
+      [:sql :string]
+      [:referenced_entities [:sequential
+                             [:map
+                              [:model :string]
+                              [:id pos-int?]
+                              [:name :string]
+                              [:schema {:optional true} [:maybe :string]]
+                              [:display_name {:optional true} [:maybe :string]]
+                              [:description {:optional true} [:maybe :string]]
+                              [:columns [:sequential
+                                         [:map
+                                          [:id pos-int?]
+                                          [:name :string]
+                                          [:database_type {:optional true} [:maybe :string]]
+                                          [:description {:optional true} [:maybe :string]]
+                                          [:semantic_type {:optional true} [:maybe :string]]
+                                          [:fk_target {:optional true}
+                                           [:map
+                                            [:table_name :string]
+                                            [:field_name :string]]]]]]]]]]
   "Generate SQL from a natural language prompt.
 
    Requires:
@@ -198,77 +260,63 @@
    - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
-   Returns AI SDK v5 data part format for frontend compatibility.
-   If include_context is true, includes a context part with the system prompt."
+   Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
-            [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
-  :- [:map
-      [:parts [:sequential [:map
-                            [:type :string]
-                            [:version pos-int?]
-                            [:value :map]]]]]
-  ;; 1. Validate LLM is configured
+            [:referenced_entities {:optional true}
+             [:sequential [:map
+                           [:model :string]
+                           [:id pos-int?]]]]]
+   request]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-
-  (let [{:keys [prompt database_id source_sql buffer_id include_context]} body
-        buffer-id (or buffer_id "qb")
-        ;; 2. Parse table mentions from prompt (explicit) and source SQL (implicit)
-        explicit-table-ids (llm.context/parse-table-mentions prompt)
-        implicit-table-ids (when source_sql
-                             (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
-                                      (or implicit-table-ids #{}))]
-
-    ;; 3. Validate at least one table is referenced
-    (when (empty? table-ids)
-      (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
-                      {:status-code 400})))
-
-    ;; 4. Fetch schema context for mentioned tables
-    (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
-      (when-not schema-ddl
-        (throw (ex-info (tru "No accessible tables found. Check table permissions.")
+  (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
+                             (sql-gen-throttlers :user-id)    api/*current-user-id*]
+    (let [{:keys [prompt database_id source_sql referenced_entities]} body
+        ;; 2. Extract table IDs from all sources and merge them
+          frontend-table-ids (when (seq referenced_entities)
+                               (->> referenced_entities
+                                    (filter #(= "table" (:model %)))
+                                    (map :id)
+                                    set))
+          explicit-table-ids (llm.context/parse-table-mentions prompt)
+          implicit-table-ids (when source_sql
+                               (llm.context/extract-tables-from-sql database_id source_sql))
+          table-ids          (set/union (or frontend-table-ids #{})
+                                        (or explicit-table-ids #{})
+                                        (or implicit-table-ids #{}))]
+      (when (empty? table-ids)
+        (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                         {:status-code 400})))
-
-      ;; 5. Get database dialect, instructions, and build system prompt
-      (let [engine              (database-engine database_id)
-            dialect             (database-dialect database_id)
-            dialect-instructions (load-dialect-instructions engine)
-            system-prompt       (build-system-prompt {:dialect              dialect
-                                                      :schema-ddl           schema-ddl
-                                                      :dialect-instructions dialect-instructions
-                                                      :source-sql           source_sql})
-            timestamp           (current-timestamp)]
-
-        ;; 6. Log the system prompt (if debug logging enabled)
-        (when (debug-logging-enabled?)
-          (log-to-file! (str timestamp "_prompt.txt") system-prompt))
-
-        ;; 7. Call LLM (returns map with :sql and :explanation from tool response)
-        (let [response (llm.anthropic/chat-completion
-                        {:system   system-prompt
-                         :messages [{:role "user" :content prompt}]})]
-
-          ;; 8. Log the response (if debug logging enabled)
+      (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
+        (when-not schema-ddl
+          (throw (ex-info (tru "No accessible tables found. Check table permissions.")
+                          {:status-code 400})))
+        (let [engine              (database-engine database_id)
+              dialect             (database-dialect database_id)
+              dialect-instructions (load-dialect-instructions engine)
+              system-prompt       (build-system-prompt {:dialect              dialect
+                                                        :schema-ddl           schema-ddl
+                                                        :dialect-instructions dialect-instructions
+                                                        :source-sql           source_sql})
+              timestamp           (current-timestamp)]
           (when (debug-logging-enabled?)
-            (log-to-file! (str timestamp "_response.txt") (pr-str response)))
-
-          ;; 9. Parse and return AI SDK formatted result
-          (let [sql   (parse-sql-response response)
-                parts (cond-> [(make-code-edit-part buffer-id sql)]
-                        include_context
-                        (conj (make-context-part {:system-prompt system-prompt
-                                                  :dialect       dialect
-                                                  :table-ids     table-ids})))]
-            {:parts parts}))))))
+            (log-to-file! (str timestamp "_prompt.txt") system-prompt))
+          (let [response (llm.anthropic/chat-completion
+                          {:system   system-prompt
+                           :messages [{:role "user" :content prompt}]})]
+            (when (debug-logging-enabled?)
+              (log-to-file! (str timestamp "_response.txt") (pr-str response)))
+            (let [sql                 (parse-sql-response response)
+                  tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                  referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
+              {:sql                 sql
+               :referenced_entities referenced-entities})))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -280,15 +328,21 @@
 
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
-   Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
-  [{:keys [prompt database_id source_sql buffer_id]}]
+   Returns {:system-prompt :table-ids} or throws appropriate error."
+  [{:keys [prompt database_id source_sql referenced_entities]}]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-  (let [explicit-table-ids (llm.context/parse-table-mentions prompt)
+  (let [frontend-table-ids (when (seq referenced_entities)
+                             (->> referenced_entities
+                                  (filter #(= "table" (:model %)))
+                                  (map :id)
+                                  set))
+        explicit-table-ids (llm.context/parse-table-mentions prompt)
         implicit-table-ids (when source_sql
                              (llm.context/extract-tables-from-sql database_id source_sql))
-        table-ids          (set/union (or explicit-table-ids #{})
+        table-ids          (set/union (or frontend-table-ids #{})
+                                      (or explicit-table-ids #{})
                                       (or implicit-table-ids #{}))]
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
@@ -298,15 +352,12 @@
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
       (let [engine               (database-engine database_id)
-            dialect              (database-dialect database_id)
             dialect-instructions (load-dialect-instructions engine)
-            system-prompt        (build-system-prompt {:dialect              dialect
+            system-prompt        (build-system-prompt {:dialect              (database-dialect database_id)
                                                        :schema-ddl           schema-ddl
                                                        :dialect-instructions dialect-instructions
                                                        :source-sql           source_sql})]
-        {:dialect       dialect
-         :system-prompt system-prompt
-         :buffer-id     (or buffer_id "qb")
+        {:system-prompt system-prompt
          :table-ids     table-ids}))))
 
 (api.macros/defendpoint :post "/generate-sql-streaming"
@@ -317,73 +368,71 @@
    - At least one table reference (explicit @mention or implicit from source_sql)
    - A database_id parameter
 
-   Returns SSE stream in AI SDK v5 format:
-   - 0:\"text\" - Text delta chunks as SQL is generated
-   - 2:{...}   - Final code_edit data part with complete SQL
-   - 2:{...}   - Context data part (if include_context is true)
-   - d:{...}   - Finish message"
+   Returns SSE stream with:
+   - 2:{sql: '...', referenced_entities: [...]} - Final result data part
+   - d:{...} - Finish message"
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
-            [:buffer_id {:optional true} :string]
-            [:include_context {:optional true} :boolean]]]
-  (let [{:keys [prompt include_context]} body
-        {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
-        timestamp (current-timestamp)]
+            [:referenced_entities {:optional true}
+             [:sequential [:map
+                           [:model :string]
+                           [:id pos-int?]]]]]
+   request]
+  (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
+                             (sql-gen-throttlers :user-id)    api/*current-user-id*]
+    (let [{:keys [prompt database_id]} body
+          {:keys [system-prompt table-ids]} (validate-and-prepare-context body)
+          timestamp (current-timestamp)]
 
-    (when (debug-logging-enabled?)
-      (log-to-file! (str timestamp "_prompt.txt") system-prompt))
+      (when (debug-logging-enabled?)
+        (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
-    (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-      (let [llm-chan (llm.anthropic/chat-completion-stream
-                      {:system   system-prompt
-                       :messages [{:role "user" :content prompt}]})
-            text-acc (StringBuilder.)]
-        (loop []
-          (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
-            (cond
-              (= port canceled-chan)
-              nil
+      (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+        (let [llm-chan (llm.anthropic/chat-completion-stream {:system   system-prompt
+                                                              :messages [{:role "user" :content prompt}]})
+              text-acc (StringBuilder.)]
+          (loop []
+            (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
+              (cond
+                (= port canceled-chan)
+                nil
 
-              (nil? chunk)
-              (let [json-str  (str text-acc)
-                    final-sql (parse-sql-response json-str)]
-                (when (debug-logging-enabled?)
-                  (log-to-file! (str timestamp "_response.txt") json-str))
-                (write-sse! os (llm.streaming/format-sse-line
-                                :data
-                                (llm.streaming/format-code-edit-part buffer-id final-sql)))
-                (when include_context
+                (nil? chunk)
+                (let [json-str            (str text-acc)
+                      final-sql           (parse-sql-response json-str)
+                      tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                      referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
+                  (when (debug-logging-enabled?)
+                    (log-to-file! (str timestamp "_response.txt") json-str))
                   (write-sse! os (llm.streaming/format-sse-line
                                   :data
-                                  (llm.streaming/format-context-part
-                                   {:system-prompt system-prompt
-                                    :dialect       dialect
-                                    :table-ids     table-ids}))))
-                (write-sse! os (llm.streaming/format-sse-line
-                                :finish-message
-                                (llm.streaming/format-finish-message "stop"))))
+                                  {:sql                 final-sql
+                                   :referenced_entities referenced-entities}))
+                  (write-sse! os (llm.streaming/format-sse-line
+                                  :finish-message
+                                  (llm.streaming/format-finish-message "stop"))))
 
-              (= (:type chunk) :error)
-              (do
-                (log/error "Error chunk received" {:error (:error chunk)})
-                (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
+                (= (:type chunk) :error)
+                (do
+                  (log/error "Error chunk received" {:error (:error chunk)})
+                  (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
 
-              (= (:type chunk) :text-delta)
-              (do
+                (= (:type chunk) :text-delta)
+                (do
                 ;; Accumulate JSON silently - don't stream raw JSON to frontend.
                 ;; With tool_use, the streamed content is JSON like {"sql": "..."}
                 ;; which isn't useful to display. We extract the SQL at the end.
-                (.append text-acc (:delta chunk))
-                (recur))
+                  (.append text-acc (:delta chunk))
+                  (recur))
 
-              :else
-              (do
-                (log/warn "Unknown chunk type" {:chunk chunk})
-                (recur)))))))))
+                :else
+                (do
+                  (log/warn "Unknown chunk type" {:chunk chunk})
+                  (recur))))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."
