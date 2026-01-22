@@ -1852,14 +1852,14 @@
                                                                                  (m/find-first (comp #{:sum} :short))
                                                                                  :columns
                                                                                  (m/find-first (comp #{"Price"} :display-name)))))
-                                                 (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                 (lib/breakout $q (-> (m/find-first (comp #{"Created At"} :display-name)
                                                                                     (lib/breakoutable-columns $q))
                                                                       (lib/with-temporal-bucket :month)))))
                               :database-id   (meta/id)
                               :name          "Products+Reviews Summary"
                               :type          :model}]})
           question (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                     (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                     (lib/breakout $q (-> (m/find-first (comp #{"Created At"} :display-name)
                                                         (lib/breakoutable-columns $q))
                                           (lib/with-temporal-bucket :month)))
                      (lib/aggregate $q (lib/avg (->> $q
@@ -1876,17 +1876,17 @@
                                                     :found        (map :display-name (lib/breakoutable-columns query))}))))]
                        (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
                                                          [(lib/=
-                                                           (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
+                                                           (lib/with-temporal-bucket (find-col $q "Created At: Month")
                                                              :month)
                                                            (lib/with-temporal-bucket (find-col
                                                                                       (lib/query mp (lib.metadata/card mp 2))
-                                                                                      "Reviews → Created At: Month")
+                                                                                      "Created At: Month")
                                                              :month))])
                                         (lib/with-join-fields :all)))))]
-      (is (= ["Reviews → Created At: Month"
+      (is (= ["Created At: Month"
               "Average of Rating"
-              "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"
-              "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"]
+              "Products+Reviews Summary → Created At: Month"
+              "Products+Reviews Summary → Sum of Price"]
              (mapv :display-name (lib/returned-columns question)))))))
 
 (deftest ^:parallel short-display-names-include-bucketing-units-test
@@ -1906,7 +1906,7 @@
         "We should be able to build a query specifically using these display names")))
 
 (deftest ^:parallel short-display-names-include-joins-from-previous-stage
-  (testing "SHORT field display names ACTUALLY should include join alias if the join happened in a source saved question"
+  (testing "Join prefixes are stripped when columns cross stage boundaries (#65532)"
     (let [card-query (lib.tu.macros/mbql-query orders
                        {:joins  [{:source-table $$people
                                   :alias        "People"
@@ -1924,7 +1924,7 @@
       ;; lib.tu.notebook-helpers/add-breakout will throw if it can't find a matching column name
       (is (-> (lib/query mp (lib.metadata/card mp 1))
               (lib/aggregate (lib/count))
-              (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
+              (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "Birth Date"} {}))))))
 
 ;;; adapted from [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test

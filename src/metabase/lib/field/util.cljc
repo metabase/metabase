@@ -132,4 +132,7 @@
       ;;
       ;; we should OTOH keep `:lib/deduplicated-name`, because this is used to calculate subsequent deduplicated
       ;; names, see [[metabase.lib.stage-test/return-correct-deduplicated-names-test]] for an example.
-      (dissoc :lib/desired-column-alias)))
+      (dissoc :lib/desired-column-alias)
+      ;; Cards should present a "flat table" abstraction - internal joins should not leak to downstream
+      ;; queries. Strip join alias keys so display names do not get prefixed. See #65532.
+      (dissoc :lib/original-join-alias :source-alias)))
