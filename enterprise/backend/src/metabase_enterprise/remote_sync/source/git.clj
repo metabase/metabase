@@ -233,12 +233,15 @@
   Takes a git-source map containing a :git Git instance.
 
   Returns the default branch name as a string (without 'refs/heads/' prefix), or nil if no default branch is found."
-  [{:keys [^Git git]}]
-  (let [repo (.getRepository git)
-        head-ref (.findRef repo "HEAD")]
-    (when head-ref
-      (when-let [target-ref (.getTarget head-ref)]
-        (str/replace-first (.getName target-ref) "refs/heads/" "")))))
+  [{:keys [^Git git] :as git-source}]
+  ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
+  (let [refs (call-remote-command (.lsRemote git) git-source)
+        head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
+    (or (when head-ref
+          (when (.isSymbolic ^Ref head-ref)
+            (when-let [target (.getTarget ^Ref head-ref)]
+              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn write-files!
   "Writes multiple files to the git repository and commits the changes.
