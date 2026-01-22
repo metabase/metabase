@@ -3,6 +3,7 @@ import type {
   PythonTransformTableAliases,
   Transform,
   TransformJob,
+  TransformOwner,
   TransformRun,
   TransformSource,
   TransformTag,
@@ -11,6 +12,18 @@ import type {
 } from "metabase-types/api";
 
 import { createMockStructuredDatasetQuery } from "./query";
+
+export function createMockTransformOwner(
+  opts?: Partial<TransformOwner>,
+): TransformOwner {
+  return {
+    id: 1,
+    email: "owner@example.com",
+    first_name: "Test",
+    last_name: "Owner",
+    ...opts,
+  };
+}
 
 export function createMockTransformSource(): TransformSource {
   return {

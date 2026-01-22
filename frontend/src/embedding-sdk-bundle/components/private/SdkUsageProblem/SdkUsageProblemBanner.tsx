@@ -81,11 +81,16 @@ export const SdkUsageProblemBanner = ({
         >
           <Stack gap="sm">
             <Flex w="100%" justify="space-between">
-              <Text fw="bold" size="md" c={unthemedTextDark} ff={fontFamily}>
+              <Text
+                fw="bold"
+                size="md"
+                style={{ color: unthemedTextDark }}
+                ff={fontFamily}
+              >
                 {title}
               </Text>
             </Flex>
-            <Text c={unthemedTextDark} ff={fontFamily} fz="sm">
+            <Text style={{ color: unthemedTextDark }} ff={fontFamily} fz="sm">
               {problem.message}
             </Text>
 

@@ -181,12 +181,12 @@
       (is (nil? (lib/check-segment-overwrite 1 segment-1-def))))))
 
 (deftest ^:parallel check-segment-overwrite-self-reference-not-in-mp-test
-  (testing "Segment referencing itself - should throw (reported as does not exist since segment being saved isn't in mp)"
+  (testing "Segment referencing itself - should throw cycle (even if segment is not in mp)"
     (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
           segment-1-def (segment-definition-referencing mp 1)]
       (is (thrown-with-msg?
            #?(:clj Exception :cljs js/Error)
-           #"does not exist"
+           #"[Cc]ycle"
            (lib/check-segment-overwrite 1 segment-1-def))))))
 
 (deftest ^:parallel check-segment-overwrite-self-reference-in-mp-test

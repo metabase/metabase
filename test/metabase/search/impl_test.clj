@@ -86,6 +86,7 @@
                                                  :models                      search.config/all-models
                                                  :current-user-id             (mt/user->id :crowberto)
                                                  :is-superuser?               true
+                                                 :is-data-analyst?            false
                                                  :current-user-perms          #{"/"}
                                                  :model-ancestors?            false
                                                  :limit-int                   100

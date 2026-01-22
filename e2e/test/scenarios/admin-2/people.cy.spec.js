@@ -110,7 +110,7 @@ describe("scenarios > admin > people", () => {
 
       cy.findByRole("link", { name: /group/i }).click();
 
-      cy.findByRole("table").findByRole("link", { name: /data/i }).click();
+      cy.findByRole("table").findByRole("link", { name: /data$/i }).click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1 member");

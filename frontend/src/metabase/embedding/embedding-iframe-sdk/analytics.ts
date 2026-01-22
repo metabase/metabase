@@ -132,6 +132,7 @@ export function createEmbeddedAnalyticsJsUsage(
       })
       .with(
         { componentName: "metabase-question", questionId: "new" },
+        { componentName: "metabase-question", questionId: "new-native" },
         (properties) => {
           if (!usage.exploration) {
             usage = assocIn(usage, ["exploration"], {

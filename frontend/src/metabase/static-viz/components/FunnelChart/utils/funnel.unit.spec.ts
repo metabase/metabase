@@ -49,6 +49,45 @@ describe("calculateFunnelSteps", () => {
       },
     ]);
   });
+
+  it("handles increasing data", () => {
+    const steps = calculateFunnelSteps(
+      [
+        ["funnel step 1", 50],
+        ["funnel step 2", 100],
+        ["funnel step 3", 25],
+      ],
+      1,
+      1,
+    );
+
+    expect(steps).toStrictEqual([
+      {
+        height: 0.5,
+        left: 0,
+        measure: 50,
+        percent: 1,
+        step: "funnel step 1",
+        top: 0.25,
+      },
+      {
+        height: 1,
+        left: 1,
+        measure: 100,
+        percent: 2,
+        step: "funnel step 2",
+        top: 0,
+      },
+      {
+        height: 0.25,
+        left: 2,
+        measure: 25,
+        percent: 0.5,
+        step: "funnel step 3",
+        top: 0.375,
+      },
+    ]);
+  });
 });
 
 describe("calculateFunnelPolygonPoints", () => {

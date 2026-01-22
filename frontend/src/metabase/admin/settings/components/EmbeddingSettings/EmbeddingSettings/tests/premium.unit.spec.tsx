@@ -4,7 +4,10 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
+    tokenFeatures: {
+      embedding_simple: opts.isEmbeddingSimpleEnabled,
+      embedding_sdk: opts.isEmbeddingSdkEnabled,
+    },
     ...opts,
   });
 
@@ -12,6 +15,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
   it("should not tell users to upgrade or switch binaries", async () => {
     await setup({
       isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: true,
       showSdkEmbedTerms: false,
       enterprisePlugins: [
         "embedding-sdk",
@@ -42,6 +46,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     it("should offer users version pinning when they have a cloud instance", async () => {
       await setup({
         isEmbeddingSdkEnabled: true,
+        isEmbeddingSimpleEnabled: true,
         showSdkEmbedTerms: false,
         isHosted: true,
         enterprisePlugins: [

@@ -3,6 +3,7 @@ import type { HTMLAttributes, MouseEvent } from "react";
 import { useCallback } from "react";
 
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Center } from "metabase/ui";
 
 import ColorPillS from "./ColorPill.module.css";
@@ -14,7 +15,7 @@ export type ColorPillAttributes = Omit<
 >;
 
 export interface ColorPillProps extends ColorPillAttributes {
-  color: string;
+  color: ColorName | string;
   isAuto?: boolean;
   isSelected?: boolean;
   onSelect?: (newColor: string) => void;
@@ -52,6 +53,7 @@ export const ColorPill = ({
         ColorPillS.ColorPill,
         CS.flexNoShrink,
         {
+          [ColorPillS.XSmall]: pillSize === "xsmall",
           [ColorPillS.Small]: pillSize === "small",
           [ColorPillS.Medium]: pillSize === "medium",
           [ColorPillS.Large]: pillSize === "large",
@@ -61,6 +63,7 @@ export const ColorPill = ({
         className,
       )}
     >
+      {/* @ts-expect-error color pill needs access to arbitrary color values */}
       <Box bg={color} w="100%" h="100%" style={{ borderRadius: "50%" }}></Box>
     </Center>
   );

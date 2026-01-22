@@ -126,7 +126,7 @@ export function ColumnValue({
       }
       break;
     // Not using `isCategory` because it incorrectly gives false positive
-    // for many other category subtypes, like Name / Title / City (which we dont' want here).
+    // for many other category subtypes, like Name / Title / City (which we don't want here).
     case column.semantic_type === TYPE.Category:
       return (
         <Badge
@@ -176,7 +176,7 @@ export function ColumnValue({
           truncate
           fw="bold"
           style={style}
-          c={style?.color || "text-primary"}
+          c={style?.color ? undefined : "text-primary"}
         >
           {value}
         </Ellipsified>
@@ -305,7 +305,7 @@ export function ColumnValue({
       size="sm"
       truncate
       style={style}
-      c={style?.color || "text-primary"}
+      c={style?.color ? undefined : "text-primary"}
     >
       {value}
     </Ellipsified>

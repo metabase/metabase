@@ -160,7 +160,8 @@
   breakouts-metadata
   remove-all-breakouts]
  [metabase.lib.card
-  card->underlying-query]
+  card->underlying-query
+  model-preserved-keys]
  [lib.column-group
   columns-group-columns
   group-columns]
@@ -279,6 +280,7 @@
   add-field
   fieldable-columns
   fields
+  find-column-for-name
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -504,6 +506,7 @@
  [lib.validate
   duplicate-column-error
   find-bad-refs
+  find-bad-refs-with-source
   missing-column-error
   missing-table-alias-error
   syntax-error

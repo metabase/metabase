@@ -11,7 +11,7 @@ interface NativeQueryEditorRunButtonProps {
   isResultDirty: boolean;
   isRunnable: boolean;
   isRunning: boolean;
-  nativeEditorSelectedText?: string;
+  nativeEditorSelectedText?: string | null;
   questionErrors?: Lib.ValidationError[] | null;
   runQuery?: () => void;
 }

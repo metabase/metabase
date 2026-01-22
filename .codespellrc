@@ -1,3 +1,24 @@
 [codespell]
-skip = *.csv,*.edn,*.geojson,*.json,*.tsv,*.xml,docs/developers-guide/drivers/driver-tests.md,docs/developers-guide/e2e-tests.md,docs/questions/query-builder/expressions-list.md,docs/questions/visualizations/country-codes.md,e2e/test/scenarios/admin/i18n/content-translation/constants.ts,frontend/src/cljs,frontend/src/metabase/querying/expressions/tokenizer/lezer.js,frontend/src/metabase/static-viz/constants/char-sizes.ts,frontend/src/metabase/visualizations/lib/mapping_codes.ts,modules/drivers/mongo/src/metabase/driver/mongo/operators.clj
+skip =
+    *.csv,
+    *.edn,
+    *.geojson,
+    *.json,
+    *.tsv,
+    *.unit.spec.*,
+    *.xml,
+    docs/developers-guide/drivers/driver-tests.md,
+    docs/developers-guide/e2e-tests.md,
+    docs/questions/query-builder/expressions-list.md,
+    docs/questions/visualizations/country-codes.md,
+    e2e/test/scenarios/admin/i18n/content-translation/constants.ts,
+    frontend/src/cljs,
+    frontend/src/metabase/querying/expressions/tokenizer/lezer.js,
+    frontend/src/metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language.ts,
+    frontend/src/metabase/static-viz/constants/char-sizes.ts,
+    frontend/src/metabase/visualizations/lib/mapping_codes.ts,
+    frontend/*/mocks/*,
+    modules/drivers/mongo/src/metabase/driver/mongo/operators.clj,
+    src/metabase/analyze/classifiers/name.clj,
+    src/metabase/util/currency.cljc,
 ignore-words = .codespellignore
