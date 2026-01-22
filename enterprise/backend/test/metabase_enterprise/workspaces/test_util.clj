@@ -294,13 +294,16 @@
   (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
 
 (defn create-ready-ws!
-  "Create a simple workspace and wait for it to finish initializing database resources."
+  "Create a simple workspace and wait for it to finish initializing database resources.
+   Throws if workspace does not become ready."
   [name]
   (let [graph {:workspace {:name name, :definitions {:x2 [:t1]}}}
         ws-id (:workspace-id (create-resources! graph))
         ws    (ws-done! ws-id)]
-    (is (= :ready (:db_status ws)))
-    ws))
+    (if (= :ready (:db_status ws))
+      ws
+      (throw (ex-info "Workspace failed to become ready"
+                      {:name name :db_status (:db_status ws) :workspace-id ws-id})))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
