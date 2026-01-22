@@ -357,11 +357,14 @@
      "external-transform" external-transform)
    entity-id entity-id))
 
+(defn- table-ref? [sym]
+  (or (mock-table? sym)
+      (real-table? sym)))
+
 (defn translate-graph
   "Turn a real workspace graph back into :x1 etc symbols"
   [{:keys [nodes edges]} resources-map]
-  (let [table-ref? (fn [sym] (or (mock-table? sym) (real-table? sym)))
-        mapping (merge (reduce
+  (let [mapping (merge (reduce
                         (fn [acc [sym id]]
                           (assoc-in acc
                                     [(cond
