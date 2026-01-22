@@ -7,12 +7,16 @@ export function useGetDependenciesCount(args: GetDependencyGraphRequest) {
   const entityId = args.id != null ? Number(args.id) : null;
   const entityType = args.type;
 
-  const { data: dependencyGraphData } = useGetDependencyGraphQuery(
+  const {
+    data: dependencyGraphData,
+    isLoading,
+    isError,
+  } = useGetDependencyGraphQuery(
     entityId != null ? { id: entityId, type: entityType } : skipToken,
   );
 
   if (!dependencyGraphData) {
-    return { dependenciesCount: 0, dependentsCount: 0 };
+    return { dependenciesCount: 0, dependentsCount: 0, isLoading, isError };
   }
 
   const thisNode = dependencyGraphData.nodes.find(
@@ -24,7 +28,7 @@ export function useGetDependenciesCount(args: GetDependencyGraphRequest) {
   ).reduce((acc, curr) => acc + curr, 0);
 
   if (!dependencyGraphData?.edges) {
-    return { dependenciesCount: 0, dependentsCount };
+    return { dependenciesCount: 0, dependentsCount, isLoading, isError };
   }
 
   // Dependencies: edges where this entity is the SOURCE (this -> to_entity)
@@ -35,5 +39,5 @@ export function useGetDependenciesCount(args: GetDependencyGraphRequest) {
       edge.from_entity_id === entityId && edge.from_entity_type === entityType,
   ).length;
 
-  return { dependenciesCount, dependentsCount };
+  return { dependenciesCount, dependentsCount, isLoading, isError };
 }

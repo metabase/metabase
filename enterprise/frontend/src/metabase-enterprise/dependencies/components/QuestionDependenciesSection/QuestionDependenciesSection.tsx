@@ -5,7 +5,15 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DATA_STUDIO, PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Anchor, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Anchor,
+  Button,
+  Group,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { DependencyGraphModal } from "../DependencyGraphModal";
@@ -21,11 +29,32 @@ export function QuestionDependenciesSection({
     PLUGIN_DATA_STUDIO.canAccessDataStudio,
   );
 
-  const { dependenciesCount, dependentsCount } =
+  const { dependenciesCount, dependentsCount, isLoading, isError } =
     PLUGIN_DEPENDENCIES.useGetDependenciesCount({ id: cardId, type: "card" });
 
   if (!canAccessDataStudio) {
     return null;
+  }
+
+  if (isLoading) {
+    return (
+      <Stack gap="sm">
+        <Group gap="xl">
+          <Stack gap={0}>
+            <Skeleton h="1.5rem" w="2rem" />
+            <Skeleton h="1rem" w="4rem" mt="xs" />
+          </Stack>
+          <Stack gap={0}>
+            <Skeleton h="1.5rem" w="2rem" />
+            <Skeleton h="1rem" w="5rem" mt="xs" />
+          </Stack>
+        </Group>
+      </Stack>
+    );
+  }
+
+  if (isError) {
+    return <Text c="text-secondary">{t`Unable to load dependencies.`}</Text>;
   }
 
   const hasDependencies = dependenciesCount > 0 || dependentsCount > 0;

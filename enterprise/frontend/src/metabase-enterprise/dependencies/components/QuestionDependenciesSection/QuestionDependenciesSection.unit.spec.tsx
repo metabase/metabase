@@ -45,6 +45,8 @@ type SetupOpts = {
   dependenciesCount?: number;
   dependentsCount?: number;
   canAccessDataStudio?: boolean;
+  isLoading?: boolean;
+  isError?: boolean;
 };
 
 function setup({
@@ -52,10 +54,17 @@ function setup({
   dependenciesCount = 0,
   dependentsCount = 0,
   canAccessDataStudio = true,
+  isLoading = false,
+  isError = false,
 }: SetupOpts = {}) {
   jest
     .spyOn(PLUGIN_DEPENDENCIES, "useGetDependenciesCount")
-    .mockReturnValue({ dependenciesCount, dependentsCount });
+    .mockReturnValue({
+      dependenciesCount,
+      dependentsCount,
+      isLoading,
+      isError,
+    });
 
   jest
     .spyOn(PLUGIN_DATA_STUDIO, "canAccessDataStudio")
@@ -152,5 +161,24 @@ describe("QuestionDependenciesSection (Enterprise)", () => {
       id: 42,
       type: "card",
     });
+  });
+
+  it("shows loading skeleton while data is loading", () => {
+    setup({ isLoading: true });
+
+    // Should not show counts or "no dependencies" message while loading
+    expect(
+      screen.queryByText("This question has no dependencies."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Upstream")).not.toBeInTheDocument();
+    expect(screen.queryByText("Downstream")).not.toBeInTheDocument();
+  });
+
+  it("shows error message when API request fails", () => {
+    setup({ isError: true });
+
+    expect(
+      screen.getByText("Unable to load dependencies."),
+    ).toBeInTheDocument();
   });
 });

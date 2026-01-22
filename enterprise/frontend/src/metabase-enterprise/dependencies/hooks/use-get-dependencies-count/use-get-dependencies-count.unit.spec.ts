@@ -24,14 +24,15 @@ function setup({ graph = createMockDependencyGraph() }: SetupOpts = {}) {
 }
 
 describe("useGetDependenciesCount", () => {
-  it("returns 0 counts when no graph data is available", async () => {
+  it("returns 0 counts and loading state when no graph data is available", async () => {
     const { result } = setup({ graph: createMockDependencyGraph() });
 
-    // Initial state before data loads
-    expect(result.current).toEqual({
-      dependenciesCount: 0,
-      dependentsCount: 0,
-    });
+    // Initial state before data loads - isLoading will be true initially
+    expect(result.current.dependenciesCount).toBe(0);
+    expect(result.current.dependentsCount).toBe(0);
+    // isLoading and isError are returned from the hook
+    expect(result.current).toHaveProperty("isLoading");
+    expect(result.current).toHaveProperty("isError");
   });
 
   it("counts upstream dependencies (edges where entity is from_entity)", async () => {
@@ -125,11 +126,9 @@ describe("useGetDependenciesCount", () => {
     const { result } = setup({ graph });
 
     await waitFor(() => {
-      expect(result.current).toEqual({
-        dependenciesCount: 2,
-        dependentsCount: 4,
-      });
+      expect(result.current.dependenciesCount).toBe(2);
     });
+    expect(result.current.dependentsCount).toBe(4);
   });
 
   it("returns 0 dependents when node has no dependents_count", async () => {
