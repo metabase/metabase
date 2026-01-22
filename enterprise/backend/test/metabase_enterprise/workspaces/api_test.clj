@@ -1090,7 +1090,7 @@
   (testing "Failed workspace setup logs error message"
     (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
                                 (fn [& _] (throw (ex-info "Test isolation error" {})))]
-      (let [{ws-id :id} (ws.tu/create-ready-ws! "Log tester #3")]
+      (let [{ws-id :id} (ws.tu/initialize-ws! "Log tester #3")]
         (is (=? [{:task    :database-isolation
                   :status  :failure
                   :message "Test isolation error"}

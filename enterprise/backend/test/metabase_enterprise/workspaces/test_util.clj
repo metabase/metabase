@@ -21,6 +21,11 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(defn unique-name
+  "Generate a unique name for test resources to avoid conflicts."
+  ([] (unique-name "Test"))
+  ([prefix] (str prefix " " (random-uuid))))
+
 ;;;; Shorthand notation helpers
 
 (defn transform?
@@ -293,17 +298,23 @@
   [name]
   (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
 
+(defn initialize-ws!
+  "Create a workspace with a transform to trigger initialization, and wait for it to finish.
+   Returns the workspace regardless of its final status (ready, broken, etc.)."
+  [name]
+  (let [graph {:workspace {:name name, :definitions {:x2 [:t1]}}}
+        ws-id (:workspace-id (create-resources! graph))]
+    (ws-done! ws-id)))
+
 (defn create-ready-ws!
   "Create a simple workspace and wait for it to finish initializing database resources.
    Throws if workspace does not become ready."
   [name]
-  (let [graph {:workspace {:name name, :definitions {:x2 [:t1]}}}
-        ws-id (:workspace-id (create-resources! graph))
-        ws    (ws-done! ws-id)]
+  (let [ws (initialize-ws! name)]
     (if (= :ready (:db_status ws))
       ws
       (throw (ex-info "Workspace failed to become ready"
-                      {:name name :db_status (:db_status ws) :workspace-id ws-id})))))
+                      {:name name :db_status (:db_status ws) :workspace-id (:id ws)})))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
