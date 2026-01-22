@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -806,3 +807,14 @@
     ;; through the JDBC connection, where possible.
     :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
                                                 :final)]))}))
+
+(defn parsed-query
+  "Wrapped for `parsed-query` providing default options and throwing exceptions on parsing failures."
+  [sql driver & {:as opts}]
+  (let [result (macaw/parsed-query sql (merge (macaw-options driver)
+                                              opts))]
+    (when (and (map? result) (some? (:error result)))
+      (throw (throw (ex-info "SQL parsing failed."
+                             {:macaw-error (:error result)}
+                             (-> result :context :cause)))))
+    result))
