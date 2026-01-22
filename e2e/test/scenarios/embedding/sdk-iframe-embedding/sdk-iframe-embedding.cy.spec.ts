@@ -396,6 +396,10 @@ describe("scenarios > embedding > Modular embedding", () => {
           false: 1,
           true: 0,
         },
+        with_alerts: {
+          false: 1,
+          true: 0,
+        },
       },
       exploration: {
         is_save_enabled: {
