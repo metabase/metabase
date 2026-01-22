@@ -290,6 +290,17 @@
    "Sat" :saturday
    "Sun" :sunday})
 
+;; Day of week numbers used by Metabase (1 = Sunday, 2 = Monday, ..., 7 = Saturday)
+;; This matches the convention used by temporal-extract for :day-of-week
+(def ^:private short-day->day-number
+  {"Sun" 1
+   "Mon" 2
+   "Tue" 3
+   "Wed" 4
+   "Thu" 5
+   "Fri" 6
+   "Sat" 7})
+
 (def ^:private short-month->month
   (into {}
         (map-indexed (fn [i m] [m (inc i)]))
@@ -307,8 +318,10 @@
     (case unit
       :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
               (format "%sT%02d:00:00" date hour))
-      :day (when-let [day (short-day->day exclusion)]
-             (str (t/adjust date :next-or-same-day-of-week day)))
+      ;; For day-of-week exclusions, return the day number directly (1=Sun, 2=Mon, etc.)
+      ;; instead of a date string. This ensures proper comparison with extract(dow) + 1.
+      ;; See issue #68479 for details.
+      :day (short-day->day-number exclusion)
       :month (when-let [month (short-month->month exclusion)]
                (format "%s-%02d-01" year month))
       :quarter (when-let [quarter (parse-int-in-range exclusion 1 4)]
