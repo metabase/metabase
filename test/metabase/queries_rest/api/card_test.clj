@@ -3849,13 +3849,13 @@
     [:model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Parameterized native query"
       (is (=?
-           {:fields (sort-by :id
-                             [{:id (mt/id :people :id)}
-                              {:id (mt/id :orders :user_id)}
-                              {:id (mt/id :people :source)}
-                              {:id (mt/id :people :name)}])
-            :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+           {:fields    (sort-by :id
+                                [{:id (mt/id :people :id)}
+                                 {:id (mt/id :orders :user_id)}
+                                 {:id (mt/id :people :source)}
+                                 {:id (mt/id :people :name)}])
+            :tables    []
+            :cards     [{:id card-id-2}]
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
@@ -3873,11 +3873,16 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
-                                        [card-id-2 (str "card__" card-id-1)]]]
+            (doseq [{:keys [card-id table-id source-card-id]} [{:card-id card-id-1, :table-id (mt/id :products)}
+                                                               {:card-id card-id-2, :source-card-id card-id-1}]]
               (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
+                   {:fields    empty?
+                    :tables    (if table-id
+                                 [{:id table-id}]
+                                 [])
+                    :cards     (if source-card-id
+                                 [{:id source-card-id}]
+                                 [])
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
@@ -3885,8 +3890,8 @@
             (is (= "Not found."
                    (query-metadata 404 card-id-1)))
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
-            (is (=? {:fields empty?
-                     :tables empty?
+            (is (=? {:fields    empty?
+                     :tables    empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata 200 card-id-2)))))))))
 

@@ -4730,10 +4730,10 @@
          card-id-1
          #(testing "Before delete"
             (is (=?
-                 {:cards      empty?
+                 {:cards      [{:id card-id-1}]
                   :fields     empty?
                   :dashboards empty?
-                  :tables     [{:id (str "card__" card-id-1)}]
+                  :tables     empty?
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
@@ -4815,10 +4815,10 @@
   (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
-                         {:tables     [{} {}]
+                         {:tables     [{}]
                           :databases  [{}]
                           :fields     []
-                          :cards      []
+                          :cards      [{}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
                    :model/Card          card      {:name "Card attached to dashcard"

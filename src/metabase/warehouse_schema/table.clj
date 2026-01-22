@@ -2,13 +2,13 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

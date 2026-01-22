@@ -706,35 +706,35 @@
       (let [entries (t2/select :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= 0 (count entries)))))))
 
-(deftest card-event-derivation-test
+(deftest ^:parallel card-event-derivation-test
   (testing "card events properly derive from :metabase/event"
     (is (isa? ::lib.events/card-change-event :metabase/event))
     (is (isa? :event/card-create ::lib.events/card-change-event))
     (is (isa? :event/card-update ::lib.events/card-change-event))
     (is (isa? :event/card-delete ::lib.events/card-change-event))))
 
-(deftest dashboard-event-derivation-test
+(deftest ^:parallel dashboard-event-derivation-test
   (testing "dashboard events properly derive from :metabase/event"
     (is (isa? ::lib.events/dashboard-change-event :metabase/event))
     (is (isa? :event/dashboard-create ::lib.events/dashboard-change-event))
     (is (isa? :event/dashboard-update ::lib.events/dashboard-change-event))
     (is (isa? :event/dashboard-delete ::lib.events/dashboard-change-event))))
 
-(deftest document-event-derivation-test
+(deftest ^:parallel document-event-derivation-test
   (testing "document events properly derive from :metabase/event"
     (is (isa? ::lib.events/document-change-event :metabase/event))
     (is (isa? :event/document-create ::lib.events/document-change-event))
     (is (isa? :event/document-update ::lib.events/document-change-event))
     (is (isa? :event/document-delete ::lib.events/document-change-event))))
 
-(deftest snippet-event-derivation-test
+(deftest ^:parallel snippet-event-derivation-test
   (testing "snippet events properly derive from :metabase/event"
     (is (isa? ::lib.events/snippet-change-event :metabase/event))
     (is (isa? :event/snippet-create ::lib.events/snippet-change-event))
     (is (isa? :event/snippet-update ::lib.events/snippet-change-event))
     (is (isa? :event/snippet-delete ::lib.events/snippet-change-event))))
 
-(deftest collection-event-derivation-test
+(deftest ^:parallel collection-event-derivation-test
   (testing "collection events properly derive from :metabase/event"
     (is (isa? ::lib.events/collection-change-event :metabase/event))
     (is (isa? :event/collection-create ::lib.events/collection-change-event))
@@ -981,7 +981,7 @@
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
           (is (= "removed" (:status update-entry))))))))
 
-(deftest table-event-derivation-test
+(deftest ^:parallel table-event-derivation-test
   (testing "table events properly derive from :metabase/event"
     (is (isa? ::lib.events/table-change-event :metabase/event))
     (is (isa? :event/table-create ::lib.events/table-change-event))
@@ -1169,7 +1169,7 @@
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id (:id segment))]
           (is (= "update" (:status update-entry))))))))
 
-(deftest segment-event-derivation-test
+(deftest ^:parallel segment-event-derivation-test
   (testing "segment events properly derive from :metabase/event"
     (is (isa? ::lib.events/segment-change-event :metabase/event))
     (is (isa? :event/segment-create ::lib.events/segment-change-event))
@@ -1256,7 +1256,7 @@
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Field" :model_id (:id field))]
           (is (= "removed" (:status update-entry))))))))
 
-(deftest field-event-derivation-test
+(deftest ^:parallel field-event-derivation-test
   (testing "field events properly derive from :metabase/event"
     (is (isa? ::lib.events/field-change-event :metabase/event))
     (is (isa? :event/field-create ::lib.events/field-change-event))

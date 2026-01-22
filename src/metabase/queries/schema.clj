@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [malli.error :as me]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -10,8 +11,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [potemkin :as p]
-   [malli.error :as me]))
+   [potemkin :as p]))
 
 (p/import-vars
  [lib.schema.metadata
