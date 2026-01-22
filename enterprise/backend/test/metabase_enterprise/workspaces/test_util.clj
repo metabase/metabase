@@ -294,7 +294,7 @@
   (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
 
 (defn create-ready-ws!
-  "Create a simple workspace and wait for it to be ready."
+  "Create a simple workspace and wait for it to finish initializing database resources."
   [name]
   (u/prog1 (ws-done! (:workspace-id (create-resources! {:workspace {:name name, :definitions {:x2 [:t1]}}})))
     (is (= :ready (:db_status <>)))))
