@@ -66,9 +66,7 @@ async function getMetadata({
     ),
 
     // tables
-    Promise.all(
-      cardIds.map((cardId) => GET<Card>(`/api/card/${cardId}/query_metadata`)),
-    ),
+    Promise.all(cardIds.map((cardId) => GET<Card>(`/api/card/${cardId}`))),
   ]);
 
   const entities = createMockEntitiesState({
