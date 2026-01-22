@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,9 +8,8 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useCheckWorkspacePermissionsMutation } from "metabase/api";
-import Toggle from "metabase/common/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Button, Flex, Stack } from "metabase/ui";
+import { Box, Button, Flex, Stack, Switch } from "metabase/ui";
 import type {
   Database,
   DatabaseData,
@@ -49,11 +48,13 @@ export function AdminDatabaseWorkspacesSection({
       ? workspacesSetting?.reasons?.[0]
       : undefined;
 
-  const permissionsStatus = database.workspace_permissions_status;
+  const permissionsStatus = database.workspace_permissions_status?.status;
   const hasPermissionsError =
     permissionsStatus === "failed" || permissionsStatus === "unknown";
 
-  const handleToggle = async (enabled: boolean) => {
+  const handleToggle = async (event: ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+
     try {
       setError(null);
       setPermissionsError(null);
@@ -147,18 +148,19 @@ export function AdminDatabaseWorkspacesSection({
 
   return (
     <DatabaseInfoSection
-      name={t`Workspaces`}
-      description={t`Enable workspaces for this database to create isolated data environments for transforms.`}
       data-testid="database-workspaces-section"
+      description={t`Enable workspaces for this database to create isolated data environments for transforms.`}
+      name={t`Workspaces`}
     >
       <Stack gap="md">
         <Flex align="center" justify="space-between">
           <Label htmlFor="workspaces-toggle">{t`Enable workspaces`}</Label>
-          <Toggle
+
+          <Switch
+            disabled={isSettingDisabled || isCheckingPermissions}
             id="workspaces-toggle"
             value={isEnabled}
             onChange={handleToggle}
-            disabled={isSettingDisabled || isCheckingPermissions}
           />
         </Flex>
 
