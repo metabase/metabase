@@ -184,8 +184,6 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
-;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
-#_{:clj-kondo/ignore [:discouraged-var]}
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
@@ -300,8 +298,6 @@
   [_driver _metadata-provider _col-spec]
   [])
 
-;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
-#_{:clj-kondo/ignore [:discouraged-var]}
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
@@ -314,8 +310,6 @@
                   (keep :col))
             returned-fields)))
 
-;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
-#_{:clj-kondo/ignore [:discouraged-var]}
 (mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
