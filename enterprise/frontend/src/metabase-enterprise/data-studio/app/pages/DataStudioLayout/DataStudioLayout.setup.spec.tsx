@@ -58,36 +58,14 @@ const createRemoteSyncSettings = ({
 // Endpoint Setup Functions
 // ============================================================================
 
-export const setupBaseEndpoints = () => {
-  setupSettingsEndpoints([]);
-};
-
-export const setupRemoteSyncSettingsEndpoints = (
+const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
 ) => {
   const remoteSyncSettings = createRemoteSyncSettings(settings);
   setupPropertiesEndpoints(createMockSettings(remoteSyncSettings));
 };
 
-export const setupGitSyncVisibleEndpoints = (
-  settings: Partial<Omit<RemoteSyncSettings, "enabled" | "branch">> = {},
-) => {
-  setupRemoteSyncSettingsEndpoints({
-    enabled: true,
-    branch: "main",
-    type: "read-write",
-    ...settings,
-  });
-};
-
-export const setupGitSettingsVisibleEndpoints = () => {
-  setupRemoteSyncSettingsEndpoints({
-    enabled: false,
-    branch: null,
-  });
-};
-
-export const setupDirtyEndpoints = ({
+const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
 }: {
@@ -110,7 +88,7 @@ export const setupDirtyEndpoints = ({
   setupCollectionsEndpoints({ collections });
 };
 
-export const setupNavbarEndpoints = (isOpened = true) => {
+const setupNavbarEndpoints = (isOpened = true) => {
   setupUserKeyValueEndpoints({
     namespace: "data_studio",
     key: "isNavbarOpened",
@@ -127,7 +105,7 @@ interface StoreStateOptions {
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
 }
 
-export const createStoreState = ({
+const createStoreState = ({
   isAdmin = true,
   remoteSyncSettings = {},
 }: StoreStateOptions = {}) => {
@@ -152,7 +130,7 @@ export const createStoreState = ({
 // Plugin Initialization
 // ============================================================================
 
-export const initializePlugins = () => {
+const initializePlugins = () => {
   initializeRemoteSyncPlugin();
   initializeFeatureLevelPermissionsPlugin();
   initializeTransformsPlugin();
@@ -163,9 +141,7 @@ export const initializePlugins = () => {
 // Render Helper
 // ============================================================================
 
-export const renderDataStudioLayout = (
-  storeOptions: StoreStateOptions = {},
-) => {
+const renderDataStudioLayout = (storeOptions: StoreStateOptions = {}) => {
   renderWithProviders(
     <DataStudioLayout>
       <div data-testid="content">{"Content"}</div>
@@ -180,60 +156,12 @@ export const renderDataStudioLayout = (
 };
 
 // ============================================================================
-// Convenience Setup Functions (for common test scenarios)
-// ============================================================================
-
-export const setupForGitSyncVisible = ({
-  isNavbarOpened = true,
-  dirty = [] as RemoteSyncEntity[],
-  collections = [] as Collection[],
-  transforms = false,
-}: {
-  isNavbarOpened?: boolean;
-  dirty?: RemoteSyncEntity[];
-  collections?: Collection[];
-  transforms?: boolean;
-} = {}) => {
-  setupBaseEndpoints();
-  setupGitSyncVisibleEndpoints({ transforms });
-  setupDirtyEndpoints({ dirty, collections });
-  setupNavbarEndpoints(isNavbarOpened);
-
-  renderDataStudioLayout({
-    remoteSyncSettings: {
-      enabled: true,
-      branch: "main",
-      type: "read-write",
-      transforms,
-    },
-  });
-};
-
-export const setupForGitSettingsVisible = ({
-  isNavbarOpened = true,
-}: {
-  isNavbarOpened?: boolean;
-} = {}) => {
-  setupBaseEndpoints();
-  setupGitSettingsVisibleEndpoints();
-  setupDirtyEndpoints();
-  setupNavbarEndpoints(isNavbarOpened);
-
-  renderDataStudioLayout({
-    remoteSyncSettings: {
-      enabled: false,
-      branch: null,
-    },
-  });
-};
-
-// ============================================================================
-// Legacy setup function (for backwards compatibility during migration)
+// Setup function
 // ============================================================================
 
 interface SetupOpts {
-  isGitSyncVisible?: boolean;
-  isGitSettingsVisible?: boolean;
+  remoteSyncEnabled?: boolean;
+  remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
@@ -242,8 +170,8 @@ interface SetupOpts {
 }
 
 export const setup = ({
-  isGitSyncVisible = false,
-  isGitSettingsVisible = false,
+  remoteSyncEnabled = true,
+  remoteSyncBranch = null,
   isAdmin = true,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
@@ -268,21 +196,6 @@ export const setup = ({
     dirty.push(createMockDirtyTransformEntity());
   }
 
-  // Determine remote sync settings from visibility flags
-  let remoteSyncEnabled: boolean;
-  let remoteSyncBranch: string | null;
-
-  if (isGitSyncVisible) {
-    remoteSyncEnabled = true;
-    remoteSyncBranch = "main";
-  } else if (isGitSettingsVisible) {
-    remoteSyncEnabled = false;
-    remoteSyncBranch = null;
-  } else {
-    remoteSyncEnabled = true;
-    remoteSyncBranch = null;
-  }
-
   const remoteSyncSettings: Partial<RemoteSyncSettings> = {
     enabled: remoteSyncEnabled,
     branch: remoteSyncBranch,
@@ -290,7 +203,7 @@ export const setup = ({
     transforms: remoteSyncTransforms,
   };
 
-  setupBaseEndpoints();
+  setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);

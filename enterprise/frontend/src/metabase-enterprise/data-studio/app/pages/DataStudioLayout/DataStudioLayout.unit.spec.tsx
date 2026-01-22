@@ -18,7 +18,7 @@ describe("DataStudioLayout", () => {
 
   describe("Set up git sync button", () => {
     it("should show Set up git sync button when git settings is visible", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should hide Set up git sync button when git settings is not visible", async () => {
-      setup({ isGitSettingsVisible: false });
+      setup({ remoteSyncEnabled: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should show Set up git sync text when sidebar is expanded", async () => {
-      setup({ isGitSettingsVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncEnabled: false, isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("DataStudioLayout", () => {
 
   describe("sidebar rendering", () => {
     it("should render the sidebar with navigation tabs", async () => {
-      setup({ isGitSyncVisible: true });
+      setup({ remoteSyncBranch: "main" });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: false });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render content area", async () => {
-      setup({ isGitSyncVisible: false });
+      setup({ remoteSyncBranch: null });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe("DataStudioLayout", () => {
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
-        isGitSyncVisible: true,
+        remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: true,
         remoteSyncTransforms: true,
@@ -161,7 +161,7 @@ describe("DataStudioLayout", () => {
 
     it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
       setup({
-        isGitSyncVisible: true,
+        remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: false,
         remoteSyncTransforms: true,
@@ -179,7 +179,7 @@ describe("DataStudioLayout", () => {
 
     it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
       setup({
-        isGitSyncVisible: true,
+        remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: true,
         remoteSyncTransforms: false,
