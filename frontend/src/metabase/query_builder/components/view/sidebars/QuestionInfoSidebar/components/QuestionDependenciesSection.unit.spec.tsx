@@ -56,7 +56,7 @@ describe("QuestionDependenciesSection (OSS)", () => {
 
     expect(
       screen.getByText(
-        /See how questions, models, and metrics connect to understand the impact of changes/i,
+        /See how your data connects and understand the impact of changes/i,
       ),
     ).toBeInTheDocument();
   });

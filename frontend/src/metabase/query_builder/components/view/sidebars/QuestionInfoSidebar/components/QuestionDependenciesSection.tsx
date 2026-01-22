@@ -38,7 +38,7 @@ export function QuestionDependenciesSection({
       }}
     >
       <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
-        {t`See how questions, models, and metrics connect to understand the impact of changes.`}
+        {t`See how your data connects and understand the impact of changes.`}
         {showMetabaseLinks && (
           <>
             {" "}
