@@ -12,6 +12,7 @@ import {
   Card,
   FixedSizeIcon,
   Group,
+  Loader,
   Menu,
   Stack,
   Title,
@@ -59,7 +60,7 @@ export function SidebarDependentsSection({
     direction: "asc",
   });
 
-  const { data: dependents = [] } = useListNodeDependentsQuery(
+  const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
     {
       id: node.id,
       type: node.type,
@@ -86,13 +87,14 @@ export function SidebarDependentsSection({
   return (
     <Stack role="region" aria-label={getDependentErrorNodesLabel()}>
       <Group justify="space-between" wrap="nowrap">
-        <Group gap="sm">
+        <Group gap="sm" wrap="nowrap">
           <Badge c="text-selected" bg="error">
-            {dependents.length}
+            {count}
           </Badge>
           <Title order={5}>
             {getDependentErrorNodesLabel(dependents.length)}
           </Title>
+          {isFetching && <Loader size="sm" />}
         </Group>
         {count > DEPENDENTS_SEARCH_THRESHOLD && (
           <Group gap={0}>
