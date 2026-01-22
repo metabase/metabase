@@ -18,7 +18,7 @@
    [toucan2.core :as t2]))
 
 (defn- check-analyst
-  "Check that the current user has transforms permission for at least one database."
+  "Check that the current user is a data analyst."
   []
   (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*)))
 

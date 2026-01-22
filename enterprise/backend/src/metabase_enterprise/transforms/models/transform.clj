@@ -53,8 +53,16 @@
    (mi/can-read? model pk)))
 
 (defmethod mi/can-create? :model/Transform
-  [model instance]
-  (mi/can-write? model instance))
+  [_model instance]
+  ;; Inline can-write? logic since instance is a plain map without model metadata.
+  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
+  ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
+  (let [source-db-id (or (:source_database_id instance) (transforms.i/source-db-id instance))]
+    (and (or api/*is-superuser?*
+             (and api/*is-data-analyst?*
+                  (transforms.util/source-tables-readable? instance)))
+         (transforms.util/has-db-transforms-permission? api/*current-user-id* source-db-id)
+         (remote-sync/transforms-editable?))))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."

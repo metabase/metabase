@@ -296,7 +296,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)]
-    (api/check-403 (mi/can-write? transform))
     (t2/delete! :model/Transform id)
     (events/publish-event! :event/transform-delete
                            {:object transform
@@ -325,7 +324,6 @@
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transform-run/running-run-for-transform-id id))]
-    (api/check-403 (mi/can-write? transform))
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
       (transforms.canceling/cancel-run! (:id run))))
