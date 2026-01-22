@@ -44,7 +44,7 @@ describe("OSS", { tags: "@OSS" }, () => {
       getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
 
-    it("should show upsell for Allow alert option", () => {
+    it("should show upsell for Allow alerts option", () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: QUESTION_NAME,
