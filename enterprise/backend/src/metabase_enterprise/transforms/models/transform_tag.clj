@@ -70,9 +70,9 @@
                                 (map (fn [[tag-id tform-ids]]
                                        [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
                                 tag-id->transform-ids)]
-      (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags)
+      (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-      (defmethod serdes/hash-fields :model/TransformTag
+(defmethod serdes/hash-fields :model/TransformTag
   [_tt]
   [:name :built_in_type])
 
