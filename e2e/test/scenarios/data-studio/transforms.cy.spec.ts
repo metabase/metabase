@@ -2298,7 +2298,7 @@ LIMIT
       cy.log("create a collection from the transforms list");
       visitTransformListPage();
       cy.button("Create a transform").click();
-      H.popover().findByText("New collection").click();
+      H.popover().findByText("Transform folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Marketing Transforms");
@@ -2311,7 +2311,7 @@ LIMIT
 
       cy.log("create a nested collection");
       cy.button("Create a transform").click();
-      H.popover().findByText("New collection").click();
+      H.popover().findByText("Transform folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Q4 Reports");
