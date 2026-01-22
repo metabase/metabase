@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DATA_STUDIO, PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -38,35 +39,43 @@ export function QuestionDependenciesSection({
 
   if (isLoading) {
     return (
-      <Stack gap="sm">
-        <Group gap="xl">
-          <Stack gap={0}>
-            <Skeleton h="1.5rem" w="2rem" />
-            <Skeleton h="1rem" w="4rem" mt="xs" />
-          </Stack>
-          <Stack gap={0}>
-            <Skeleton h="1.5rem" w="2rem" />
-            <Skeleton h="1rem" w="5rem" mt="xs" />
-          </Stack>
-        </Group>
-      </Stack>
+      <SidesheetCard title={t`Dependencies`}>
+        <Stack gap="sm">
+          <Group gap="xl">
+            <Stack gap={0}>
+              <Skeleton h="1.5rem" w="2rem" />
+              <Skeleton h="1rem" w="4rem" mt="xs" />
+            </Stack>
+            <Stack gap={0}>
+              <Skeleton h="1.5rem" w="2rem" />
+              <Skeleton h="1rem" w="5rem" mt="xs" />
+            </Stack>
+          </Group>
+        </Stack>
+      </SidesheetCard>
     );
   }
 
   if (isError) {
-    return <Text c="text-secondary">{t`Unable to load dependencies.`}</Text>;
+    return (
+      <SidesheetCard title={t`Dependencies`}>
+        <Text c="text-secondary">{t`Unable to load dependencies.`}</Text>
+      </SidesheetCard>
+    );
   }
 
   const hasDependencies = dependenciesCount > 0 || dependentsCount > 0;
 
   if (!hasDependencies) {
     return (
-      <Text c="text-secondary">{t`This question has no dependencies.`}</Text>
+      <SidesheetCard title={t`Dependencies`}>
+        <Text c="text-secondary">{t`This question has no dependencies.`}</Text>
+      </SidesheetCard>
     );
   }
 
   return (
-    <>
+    <SidesheetCard title={t`Dependencies`}>
       <Stack gap="sm">
         <Group gap="xl">
           <Stack gap={0}>
@@ -110,6 +119,6 @@ export function QuestionDependenciesSection({
         opened={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-    </>
+    </SidesheetCard>
   );
 }

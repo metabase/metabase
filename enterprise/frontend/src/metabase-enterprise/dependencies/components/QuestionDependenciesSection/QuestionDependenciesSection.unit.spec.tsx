@@ -92,6 +92,9 @@ describe("QuestionDependenciesSection (Enterprise)", () => {
       canAccessDataStudio: false,
     });
 
+    expect(
+      screen.queryByRole("heading", { name: "Dependencies" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Upstream")).not.toBeInTheDocument();
     expect(screen.queryByText("Downstream")).not.toBeInTheDocument();
     expect(
@@ -99,9 +102,20 @@ describe("QuestionDependenciesSection (Enterprise)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders SidesheetCard with Dependencies title when user can access Data Studio", () => {
+    setup({ dependenciesCount: 1, dependentsCount: 0 });
+
+    expect(
+      screen.getByRole("heading", { name: "Dependencies" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows 'This question has no dependencies' when counts are 0", () => {
     setup({ dependenciesCount: 0, dependentsCount: 0 });
 
+    expect(
+      screen.getByRole("heading", { name: "Dependencies" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("This question has no dependencies."),
     ).toBeInTheDocument();
@@ -164,6 +178,10 @@ describe("QuestionDependenciesSection (Enterprise)", () => {
   it("shows loading skeleton while data is loading", () => {
     setup({ isLoading: true });
 
+    // Should render the card with title while loading
+    expect(
+      screen.getByRole("heading", { name: "Dependencies" }),
+    ).toBeInTheDocument();
     // Should not show counts or "no dependencies" message while loading
     expect(
       screen.queryByText("This question has no dependencies."),
@@ -175,6 +193,9 @@ describe("QuestionDependenciesSection (Enterprise)", () => {
   it("shows error message when API request fails", () => {
     setup({ isError: true });
 
+    expect(
+      screen.getByRole("heading", { name: "Dependencies" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Unable to load dependencies."),
     ).toBeInTheDocument();
