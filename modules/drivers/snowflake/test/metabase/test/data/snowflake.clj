@@ -13,7 +13,6 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.sql PreparedStatement ResultSet)))
@@ -57,8 +56,6 @@
     :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
     :use-password false
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
-    ;; this lowercasing this value is part of testing the fix for
-    ;; https://github.com/metabase/metabase/issues/9511
     :warehouse           (tx/db-test-env-var-or-throw :snowflake :warehouse)
     ;;
     ;; SESSION parameters
