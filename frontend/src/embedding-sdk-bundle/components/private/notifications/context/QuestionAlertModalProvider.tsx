@@ -17,10 +17,9 @@ const questionAlertModalContext = createContext<QuestionAlertModalContext>(
   DEFAULT_CONTEXT_VALUE,
 );
 
-interface Props {}
 export function QuestionAlertModalProvider({
   children,
-}: PropsWithChildren<Props>): JSX.Element {
+}: PropsWithChildren): JSX.Element {
   const [isOpen, { close, toggle }] = useDisclosure(false);
   return (
     <questionAlertModalContext.Provider value={{ isOpen, toggle, close }}>

@@ -31,7 +31,7 @@ export function useHideEmptyElement(
       const elements: Element[] = [
         parentElement as Element,
         ...Array.from(parentElement.querySelectorAll(selector)),
-      ].filter(Boolean);
+      ];
 
       // Bottom-up recursion
       for (let index = elements.length - 1; index >= 0; index--) {
