@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -22,6 +22,7 @@ import S from "./TablePillsInput.module.css";
 export interface SelectedTable {
   id: TableId;
   name: string;
+  display_name?: string | null;
 }
 
 interface TablePillsInputProps {
@@ -42,6 +43,14 @@ export function TablePillsInput({
     undefined,
   );
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+
+  const handleRemoveTable = useCallback(
+    (tableId: TableId) => {
+      onChange(selectedTables.filter((t) => t.id !== tableId));
+    },
+    [onChange, selectedTables],
+  );
+
   const {
     data: searchData,
     isLoading,
@@ -82,14 +91,10 @@ export function TablePillsInput({
     const tableId = Number(tableIdStr) as TableId;
     const table = tables.find((t) => t.id === tableId);
     if (table) {
-      onChange([...selectedTables, { id: tableId, name: table.name }]);
+      onChange([...selectedTables, table]);
     }
     combobox.closeDropdown();
     setSearch("");
-  };
-
-  const handleRemoveTable = (tableId: TableId) => {
-    onChange(selectedTables.filter((t) => t.id !== tableId));
   };
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +151,7 @@ export function TablePillsInput({
                   onClick={() => handlePillClick(table.id)}
                   style={{ cursor: "pointer" }}
                 >
-                  {table.name || String(table.id)}
+                  {table.display_name || table.name || String(table.id)}
                 </Pill>
               ))}
               <Combobox.DropdownTarget>

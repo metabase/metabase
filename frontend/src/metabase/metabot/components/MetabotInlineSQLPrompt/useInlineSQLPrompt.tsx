@@ -11,16 +11,14 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { skipToken, useExtractTablesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  DatabaseId,
-  DatasetQuery,
-  GenerateSqlResponse,
-} from "metabase-types/api";
+import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -68,29 +66,47 @@ export function useInlineSQLPrompt(
   bufferId: string,
 ): UseInlineSqlEditResult {
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
+  const databaseId = question.databaseId();
+
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
+  const [editorSql, setEditorSql] = useState(() => {
+    const query = question.query();
+    return Lib.queryDisplayInfo(query).isNative
+      ? Lib.rawNativeQuery(query)
+      : "";
+  });
 
-  // TODO: this should get moved into the EE implementation
-  // PLUGIN_METABOT.useMetabotSQLSuggestion should take the portalTarget?.view thing
-  // we can make the extractMetabotBufferContext part OSS
+  const debouncedEditorSql = useDebouncedValue(editorSql.trim(), 1000);
+  const { data: extractedTablesData } = useExtractTablesQuery(
+    databaseId && debouncedEditorSql && llmSqlGenerationEnabled
+      ? { database_id: databaseId, sql: debouncedEditorSql }
+      : skipToken,
+  );
+
   useRegisterCodeEditorMetabotContext(
     portalTarget?.view,
     question.databaseId(),
     bufferId,
   );
 
-  const databaseId = question.databaseId();
+  const sourceSqlTables = useMemo(
+    () => extractedTablesData?.tables ?? [],
+    [extractedTablesData],
+  );
 
-  const handleGenerated = useCallback((result: GenerateSqlResponse) => {
-    const tables = result.referenced_entities
-      .filter((e) => e.model === "table")
-      .map((e) => ({ id: e.id, name: "" }));
-    if (tables.length > 0) {
-      setSelectedTables(tables);
+  // Merge new tables from extracted data into selected tables
+  useEffect(() => {
+    if (!sourceSqlTables.length) {
+      return;
     }
-  }, []);
+    setSelectedTables((prev) => {
+      const selectedIds = new Set(prev.map((t) => t.id));
+      const newTables = sourceSqlTables.filter((t) => !selectedIds.has(t.id));
+      return newTables.length > 0 ? [...prev, ...newTables] : prev;
+    });
+  }, [sourceSqlTables]);
 
   const {
     source: generatedSource,
@@ -105,13 +121,15 @@ export function useInlineSQLPrompt(
   } = PLUGIN_METABOT.useMetabotSQLSuggestion({
     databaseId,
     bufferId,
-    onGenerated: handleGenerated,
+    onGenerated: (res) => {
+      if (res) {
+        setSelectedTables(
+          res.referenced_entities as unknown as SelectedTable[],
+        );
+      }
+      setPromptValue("");
+    },
   });
-
-  const hideInput = useCallback(() => {
-    portalTarget?.view.dispatch({ effects: hideEffect.of() });
-    portalTarget?.view.focus();
-  }, [portalTarget?.view]);
 
   const getSourceSql = useCallback(() => {
     return portalTarget?.view.state.doc.toString() ?? "";
@@ -125,6 +143,19 @@ export function useInlineSQLPrompt(
       prevDatabaseIdRef.current = databaseId;
     }
   }, [databaseId]);
+
+  const generatedSqlRef = useRef(generatedSource);
+  generatedSqlRef.current = generatedSource;
+
+  const clearSuggestionRef = useRef(clearSuggestion);
+  useEffect(() => {
+    clearSuggestionRef.current = clearSuggestion;
+  }, [clearSuggestion]);
+
+  const hideInput = useCallback(() => {
+    portalTarget?.view.dispatch({ effects: hideEffect.of() });
+    portalTarget?.view.focus();
+  }, [portalTarget?.view]);
 
   const hideInputRef = useRef(hideInput);
   useLayoutEffect(() => {
@@ -140,14 +171,6 @@ export function useInlineSQLPrompt(
     [generatedSource, hideInput],
   );
 
-  const generatedSqlRef = useRef(generatedSource);
-  generatedSqlRef.current = generatedSource;
-
-  const clearSuggestionRef = useRef(clearSuggestion);
-  useEffect(() => {
-    clearSuggestionRef.current = clearSuggestion;
-  }, [clearSuggestion]);
-
   useEffect(
     function resetOnDbChangeAndUnmount() {
       return () => {
@@ -162,6 +185,11 @@ export function useInlineSQLPrompt(
     clearSuggestion();
     hideInput();
   }, [clearSuggestion, hideInput]);
+
+  const handleClose = () => {
+    hideInput();
+    setSelectedTables(sourceSqlTables);
+  };
 
   // NOTE: ref is needed for the extension to not be recalculated in the useMemo
   // below, while still being able to reset the suggestion state on close
@@ -221,6 +249,12 @@ export function useInlineSQLPrompt(
                 clearSuggestionRef.current();
               }
             }),
+            // Track SQL changes for prefetching table extraction
+            EV.updateListener.of((update) => {
+              if (update.docChanged) {
+                setEditorSql(update.state.doc.toString());
+              }
+            }),
           ]
         : [],
     [llmSqlGenerationEnabled],
@@ -233,7 +267,7 @@ export function useInlineSQLPrompt(
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
-              onClose={hideInput}
+              onClose={handleClose}
               isLoading={isLoading}
               error={error}
               generate={generate}

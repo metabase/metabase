@@ -14,7 +14,7 @@ import type {
   GenerateSqlResponse,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
-  ReferencedEntity,
+  ReferencedEntityId,
   SearchModel,
   Timeline,
   TimelineEvent,
@@ -90,14 +90,14 @@ type PluginMetabotType = {
   useMetabotSQLSuggestion: (options: {
     databaseId: DatabaseId | null;
     bufferId: string;
-    onGenerated?: (result: GenerateSqlResponse) => void;
+    onGenerated?: (result?: GenerateSqlResponse) => void;
   }) => {
     source: string | undefined;
     isLoading: boolean;
     generate: (options: {
       prompt: string;
       sourceSql?: string;
-      referencedEntities?: ReferencedEntity[];
+      referencedEntities?: ReferencedEntityId[];
     }) => Promise<void>;
     error: string | undefined;
     cancelRequest: () => void;
