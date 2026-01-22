@@ -25,9 +25,9 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Snippets.saveButton().should("be.disabled");
 
       H.DataStudio.Snippets.editor.type("SELECT * FROM orders");
-      H.DataStudio.Snippets.saveButton().should("be.disabled");
+      H.DataStudio.Snippets.saveButton().should("be.enabled");
 
-      H.DataStudio.Snippets.nameInput().type("Test snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Test snippet");
       H.DataStudio.Snippets.saveButton().should("be.enabled");
 
       H.DataStudio.Snippets.descriptionInput().type(
@@ -196,7 +196,7 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Snippet").click();
 
-      H.DataStudio.Snippets.nameInput().type("Folder snippet");
+      H.DataStudio.Snippets.nameInput().clear().type("Folder snippet");
       H.DataStudio.Snippets.editor.type("SELECT 1");
       H.DataStudio.Snippets.saveButton().click();
 
