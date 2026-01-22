@@ -9,7 +9,7 @@ import {
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useCheckWorkspacePermissionsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { Flex, List, Stack, Switch } from "metabase/ui";
+import { Group, List, Loader, Stack, Switch } from "metabase/ui";
 import type {
   Database,
   DatabaseData,
@@ -36,22 +36,35 @@ export function AdminDatabaseWorkspacesSection({
 
   const [error, setError] = useState<string | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
 
   const [checkWorkspacePermissions] = useCheckWorkspacePermissionsMutation();
 
   const enableWorkspaces = async () => {
-    await updateDatabase({
-      id: database.id,
-      settings: { [DATABASE_WORKSPACES_SETTING]: true },
-    });
+    setIsUpdating(true);
+
+    try {
+      await updateDatabase({
+        id: database.id,
+        settings: { [DATABASE_WORKSPACES_SETTING]: true },
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const disableWorkspaces = async () => {
-    await updateDatabase({
-      id: database.id,
-      settings: { [DATABASE_WORKSPACES_SETTING]: false },
-    });
+    setIsUpdating(true);
+
+    try {
+      await updateDatabase({
+        id: database.id,
+        settings: { [DATABASE_WORKSPACES_SETTING]: false },
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const tryToEnableWorkspaces = async () => {
@@ -111,16 +124,20 @@ export function AdminDatabaseWorkspacesSection({
       name={t`Workspaces`}
     >
       <Stack gap="md">
-        <Flex align="center" justify="space-between">
+        <Group align="center" justify="space-between" wrap="nowrap">
           <Label htmlFor="workspaces-toggle">{t`Enable workspaces`}</Label>
 
-          <Switch
-            checked={isEnabled}
-            disabled={isCheckingPermissions}
-            id="workspaces-toggle"
-            onChange={handleToggle}
-          />
-        </Flex>
+          <Group align="center" gap="md" wrap="nowrap">
+            {(isCheckingPermissions || isUpdating) && <Loader size="sm" />}
+
+            <Switch
+              checked={isEnabled}
+              disabled={isCheckingPermissions}
+              id="workspaces-toggle"
+              onChange={handleToggle}
+            />
+          </Group>
+        </Group>
 
         <Stack maw="22.5rem">
           {!permissionsError && (
