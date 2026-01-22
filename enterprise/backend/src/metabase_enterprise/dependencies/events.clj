@@ -91,7 +91,7 @@
 
 ;; On *saving* a transform, the upstream deps of its query are computed and saved.
 (defn- drop-outdated-target-dep! [{:keys [id target] :as transform}]
-  (let [db-id                (transforms/transform-type transform)
+  (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
                                                :from_entity_type :table
                                                :to_entity_type   :transform
