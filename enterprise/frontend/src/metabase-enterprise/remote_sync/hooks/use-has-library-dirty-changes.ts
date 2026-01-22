@@ -10,7 +10,8 @@ import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
 export function useHasLibraryDirtyChanges(): boolean {
   const { isVisible: isGitSyncVisible } = useGitSyncVisible();
-  const { hasDirtyInCollectionTree, isDirty } = useRemoteSyncDirtyState();
+  const { hasDirtyInCollectionTree, isDirty, hasRemovedItems } =
+    useRemoteSyncDirtyState();
 
   const { data: collections = [] } = useListCollectionsTreeQuery(
     {
@@ -22,6 +23,11 @@ export function useHasLibraryDirtyChanges(): boolean {
   );
 
   return useMemo(() => {
+    // Always show dirty if there are removed items
+    if (hasRemovedItems) {
+      return true;
+    }
+
     if (!isDirty) {
       return false;
     }
@@ -43,5 +49,5 @@ export function useHasLibraryDirtyChanges(): boolean {
     );
 
     return hasDirtyInCollectionTree(numericIds);
-  }, [collections, isDirty, hasDirtyInCollectionTree]);
+  }, [collections, isDirty, hasRemovedItems, hasDirtyInCollectionTree]);
 }

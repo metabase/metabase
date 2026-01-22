@@ -1,6 +1,8 @@
+import type { Row } from "@tanstack/react-table";
 import cx from "classnames";
 import {
   type KeyboardEvent,
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -26,6 +28,9 @@ export function TreeTable<TData extends TreeNodeData>({
   getSelectionState,
   onCheckboxClick,
   isChildrenLoading,
+  isRowDisabled,
+  getRowProps,
+  getRowHref,
   classNames,
   styles,
   ariaLabel,
@@ -43,6 +48,8 @@ export function TreeTable<TData extends TreeNodeData>({
     setContainerWidth,
     handleKeyDown,
     activeRowId,
+    setActiveRowId,
+    selectedRowId,
   } = instance;
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -69,15 +76,12 @@ export function TreeTable<TData extends TreeNodeData>({
       return;
     }
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const width = entry.contentRect.width;
-        const adjustedWidth = showCheckboxes
-          ? width - CHECKBOX_COLUMN_WIDTH
-          : width;
-        setContainerWidth(adjustedWidth);
-      }
+    const observer = new ResizeObserver(() => {
+      const width = container.clientWidth - 1;
+      const adjustedWidth = showCheckboxes
+        ? width - CHECKBOX_COLUMN_WIDTH
+        : width;
+      setContainerWidth(adjustedWidth);
     });
 
     observer.observe(container);
@@ -99,9 +103,19 @@ export function TreeTable<TData extends TreeNodeData>({
 
   const measureElement = useCallback(
     (element: HTMLElement | null) => {
-      virtualizer.measureElement(element);
+      if (element?.isConnected) {
+        virtualizer.measureElement(element);
+      }
     },
     [virtualizer],
+  );
+
+  const handleRowClick = useCallback(
+    (row: Row<TData>, event: MouseEvent) => {
+      setActiveRowId(row.id);
+      onRowClick?.(row, event);
+    },
+    [setActiveRowId, onRowClick],
   );
 
   const showEmptyState = rows.length === 0 && emptyState;
@@ -112,7 +126,8 @@ export function TreeTable<TData extends TreeNodeData>({
       className={cx(S.root, classNames?.root)}
       style={styles?.root}
       direction="column"
-      h="100%"
+      flex={1}
+      mih={0}
       w="100%"
       role="treegrid"
       tabIndex={0}
@@ -127,12 +142,12 @@ export function TreeTable<TData extends TreeNodeData>({
         style={styles?.body}
       >
         {showEmptyState ? (
-          <Center h="100%" p="xl" c="text-light">
+          <Center h="100%" p="xl" c="text-tertiary">
             {emptyState}
           </Center>
         ) : (
           <>
-            <TreeTableHeader
+            <TreeTableHeader<TData>
               table={table}
               columnWidths={columnWidths}
               showCheckboxes={showCheckboxes}
@@ -153,7 +168,7 @@ export function TreeTable<TData extends TreeNodeData>({
                 }
 
                 return (
-                  <TreeTableRow
+                  <TreeTableRow<TData>
                     key={row.id}
                     row={row}
                     rowIndex={virtualItem.index}
@@ -164,14 +179,20 @@ export function TreeTable<TData extends TreeNodeData>({
                     showExpandButtons={hasExpandableNodes}
                     indentWidth={indentWidth}
                     activeRowId={activeRowId}
+                    selectedRowId={selectedRowId}
+                    isExpanded={row.getIsExpanded()}
+                    canExpand={row.getCanExpand()}
                     measureElement={measureElement}
-                    onRowClick={onRowClick}
+                    onRowClick={handleRowClick}
                     onRowDoubleClick={onRowDoubleClick}
+                    isDisabled={isRowDisabled?.(row)}
                     isChildrenLoading={isChildrenLoading?.(row)}
                     getSelectionState={getSelectionState}
                     onCheckboxClick={onCheckboxClick}
                     classNames={classNames}
                     styles={styles}
+                    getRowProps={getRowProps}
+                    href={getRowHref?.(row)}
                   />
                 );
               })}

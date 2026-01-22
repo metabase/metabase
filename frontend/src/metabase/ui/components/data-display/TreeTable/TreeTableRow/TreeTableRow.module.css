@@ -1,5 +1,16 @@
 .root {
-  border-bottom: 1px solid var(--mb-color-border);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  &:not(:last-child) .content {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.content {
+  display: flex;
   cursor: pointer;
 
   &:hover {
@@ -13,10 +24,6 @@
 
   &:focus-visible {
     box-shadow: inset 0 0 0 2px var(--mb-color-focus);
-  }
-
-  &:last-child {
-    border-bottom: none;
   }
 }
 
@@ -46,4 +53,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }

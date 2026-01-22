@@ -65,9 +65,17 @@ function TestWrapper({
   );
 }
 
+type SetupOpts = {
+  initialTables?: Set<TableId>;
+  isAdmin?: boolean;
+  isDataAnalyst?: boolean;
+};
+
 function setup({
   initialTables = new Set([1]),
-}: { initialTables?: Set<TableId> } = {}) {
+  isAdmin = false,
+  isDataAnalyst = false,
+}: SetupOpts = {}) {
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -87,10 +95,38 @@ function setup({
 
   renderWithProviders(<TestWrapper initialTables={initialTables} />, {
     withRouter: false,
+    storeInitialState: {
+      currentUser: createMockUser({
+        is_superuser: isAdmin,
+        is_data_analyst: isDataAnalyst,
+      }),
+    },
   });
 }
 
 describe("TableAttributesEditBulk", () => {
+  it("should render publish buttons for admins", async () => {
+    setup({ isAdmin: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
+  });
+
+  it("should render publish buttons for data analysts", async () => {
+    setup({ isDataAnalyst: true });
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+    expect(screen.getByText("Unpublish")).toBeInTheDocument();
+  });
+
   it("should reset form state when selection changes", async () => {
     setup({ initialTables: new Set([1]) });
     const userName = "Testy Tableton";

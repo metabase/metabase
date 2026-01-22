@@ -48,6 +48,7 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     defaultRowHeight = DEFAULT_ROW_HEIGHT,
     overscan = DEFAULT_OVERSCAN,
     onRowActivate,
+    selectedRowId,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -258,5 +259,6 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     activeRowId: keyboard.activeRowId,
     setActiveRowId: keyboard.setActiveRowId,
     handleKeyDown: keyboard.handleKeyDown,
+    selectedRowId: selectedRowId ?? null,
   };
 }

@@ -1,4 +1,10 @@
 .fieldset {
-  cursor: pointer;
   border-radius: var(--default-border-radius);
+  border: 2px solid var(--mb-color-border);
+  cursor: pointer;
+  transition: border 0.2s ease-in-out;
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
 }

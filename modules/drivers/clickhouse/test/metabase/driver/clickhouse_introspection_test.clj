@@ -1,5 +1,4 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

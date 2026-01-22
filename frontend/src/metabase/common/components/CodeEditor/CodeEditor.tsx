@@ -50,6 +50,7 @@ export function CodeEditor({
       className={className}
       extensions={extensions}
       id={id}
+      editable={!readOnly}
       readOnly={readOnly}
       value={proposedValue ?? value}
       onChange={onChange}

@@ -3,7 +3,7 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres_12");
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
     cy.request("POST", "/api/persist/enable");
   });
@@ -252,5 +252,32 @@ describe("(metabase#46714)", () => {
       "have.text",
       "Total is less than 1000",
     );
+  });
+});
+
+describe("issue 45890", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+
+    cy.visit("/admin/performance/databases");
+    H.main().within(() => {
+      cy.findByLabelText(/Edit policy for database 'Sample Database'/)
+        .findByText("No caching")
+        .click();
+
+      cy.findByText("Schedule").click();
+
+      cy.button("Save changes").click();
+    });
+  });
+
+  it("should correctly reset caching schedule form when discarding changes", () => {
+    H.main().findByLabelText("Frequency").click();
+    H.popover().findByText("weekly").click();
+
+    H.main().button("Discard changes").click();
+    H.main().findByLabelText("Frequency").should("have.value", "hourly");
   });
 });

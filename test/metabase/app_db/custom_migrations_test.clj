@@ -2725,37 +2725,3 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
-
-(deftest backfill-transform-target-database-id-test
-  (testing "Migration v58.2025-12-15T12:16:16: backfill target_db_id for existing transforms"
-    (impl/test-migrations ["v58.2025-12-15T12:16:16"] [migrate!]
-      (let [user-id (first (t2/insert-returning-pks! :core_user {:first_name  "Test"
-                                                                 :last_name   "User"
-                                                                 :email       "test@example.com"
-                                                                 :password    "password"
-                                                                 :date_joined :%now}))
-            db-id   (first (t2/insert-returning-pks! :metabase_database {:name    "test-db"
-                                                                         :engine  "h2"
-                                                                         :details "{}"
-                                                                         :created_at :%now
-                                                                         :updated_at :%now}))
-            xf-id   (first (t2/insert-returning-pks! :transform
-                                                     {:name        "Query transform"
-                                                      :source      (json/encode {:type  "query"
-                                                                                 :query {:database db-id
-                                                                                         :type     "native"
-                                                                                         :native   {:query "SELECT 1"}}})
-                                                      :source_type "native"
-                                                      :target      (json/encode {:type     "table"
-                                                                                 :schema   "public"
-                                                                                 :name     "output_table"
-                                                                                 :database db-id})
-                                                      :creator_id  user-id
-                                                      :created_at  :%now
-                                                      :updated_at  :%now}))]
-        (testing "before migration, target_db_id is nil"
-          (is (nil? (:target_db_id (t2/select-one :transform :id xf-id)))))
-        (migrate!)
-        (testing "after migration, target_db_id is populated"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id xf-id)))
-              "Query transform target_db_id should equal target.database"))))))

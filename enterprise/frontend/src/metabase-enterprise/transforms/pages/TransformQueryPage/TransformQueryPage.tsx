@@ -23,11 +23,12 @@ import {
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { Database, Transform } from "metabase-types/api";
 
+import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 
@@ -103,6 +104,8 @@ function TransformQueryPageBody({
   const isEditMode = !!route.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
 
+  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
+
   const {
     checkData,
     isCheckingDependencies,
@@ -117,6 +120,10 @@ function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
+
+        if (isEditMode) {
+          dispatch(push(Urls.transform(transform.id)));
+        }
       }
     },
   });
@@ -137,21 +144,20 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   const handleSave = async () => {
-    if (isNotDraftSource(source)) {
-      await handleInitialSave({
-        id: transform.id,
-        source,
-      });
-
-      if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+    if (!isCompleteSource(source)) {
+      return;
+    }
+    if ("source-incremental-strategy" in source) {
+      const confirmed = await confirmIfQueryIsComplex(source);
+      if (!confirmed) {
+        return;
       }
     }
+
+    await handleInitialSave({ id: transform.id, source });
   };
 
   const handleCancel = () => {
-    setSourceAndRejectProposed(transform.source);
-
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
     }
@@ -178,7 +184,7 @@ function TransformQueryPageBody({
         />
         <Box
           w="100%"
-          bg="bg-white"
+          bg="background-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border)"
           flex={1}
@@ -192,7 +198,8 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode={isEditMode}
+              transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
@@ -228,6 +235,7 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
+      {modal}
     </>
   );
 }

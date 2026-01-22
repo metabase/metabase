@@ -95,9 +95,11 @@ export class AdHocQuestionLoader extends Component {
       const card = deserializeCardFromUrl(questionHash);
       // pass the decoded card to load any necessary metadata
       // (tables, source db, segments, etc) into
-      // the redux store, the resulting metadata will be avaliable as metadata on the
-      // component props once it's avaliable
-      await this.props.loadMetadataForCard(card);
+      // the redux store, the resulting metadata will be available as metadata on the
+      // component props once it's available
+      await this.props.loadMetadataForCard(card, {
+        includeSensitiveFields: this.props.includeSensitiveFields,
+      });
 
       // instantiate a new question object using the metadata and saved question
       // so we can use metabase-lib methods to retrieve information and modify
@@ -122,9 +124,11 @@ export class AdHocQuestionLoader extends Component {
 }
 
 // redux stuff
-function mapStateToProps(state) {
+function mapStateToProps(state, ownProps) {
   return {
-    metadata: getMetadata(state),
+    metadata: getMetadata(state, {
+      includeSensitiveFields: ownProps.includeSensitiveFields,
+    }),
   };
 }
 

@@ -9,38 +9,43 @@ import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-  getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 
 export const CreateMenu = ({
   metricCollectionId,
+  canWriteToMetricCollection,
 }: {
   metricCollectionId?: CollectionId;
+  canWriteToMetricCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
   const closeModal = () => setModal(undefined);
 
-  const isAdmin = useSelector(getUserIsAdmin);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  const canCreateMetric = hasDataAccess && metricCollectionId;
+  if (remoteSyncReadOnly) {
+    return null;
+  }
+
+  const canCreateMetric =
+    hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
   const menuItems = [
-    isAdmin && (
-      <Menu.Item
-        key="publish-table"
-        leftSection={<FixedSizeIcon name="publish" />}
-        onClick={() => setModal("publish-table")}
-      >
-        {t`Publish a table`}
-      </Menu.Item>
-    ),
+    <Menu.Item
+      key="publish-table"
+      leftSection={<FixedSizeIcon name="publish" />}
+      onClick={() => setModal("publish-table")}
+    >
+      {t`Publish a table`}
+    </Menu.Item>,
     canCreateMetric && (
       <Menu.Item
         key="metric"

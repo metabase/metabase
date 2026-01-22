@@ -9,6 +9,7 @@ import type { EntityToken } from "metabase-types/api/entity";
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   getDictionaryBasePath: null as string | null,
+  setEndpointsForAuthEmbedding: () => {},
   setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
@@ -20,6 +21,11 @@ const getDefaultPluginContentTranslation = () => ({
     obj: T,
     _tc: ContentTranslationFunction,
   ) => obj,
+  getTranslatedFilterDisplayName: (
+    displayName: string,
+    _tc: ContentTranslationFunction,
+    _columnDisplayName: string | undefined,
+  ): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>

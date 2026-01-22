@@ -505,9 +505,6 @@ describe("filtering based on the remapped column name should result in a correct
           'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
       },
     }).then(({ body: { id } }) => {
-      // Visit the question to first load metadata
-      H.visitQuestion(id);
-
       // Turn the question into a model
       cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
@@ -983,9 +980,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1093,9 +1091,10 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1292,9 +1291,10 @@ FROM
 
   it("Create model, set metadata, distinct", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 

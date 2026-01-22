@@ -18,6 +18,8 @@ import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { MetabaseAccentColorKey } from "metabase/lib/colors";
+import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import { colorTuple } from "./color-tuple";
@@ -99,6 +101,21 @@ export function getEmbeddingThemeOverride(
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);
         }
+      }
+    }
+
+    if (theme.colors.charts) {
+      const accents = mapChartColorsToAccents(theme.colors.charts);
+
+      for (const _accentKey in accents) {
+        const accentKey = _accentKey as MetabaseAccentColorKey;
+        const accentColor = accents[accentKey];
+
+        if (!accentColor) {
+          continue;
+        }
+
+        override.colors[accentKey] = colorTuple(accentColor);
       }
     }
   }

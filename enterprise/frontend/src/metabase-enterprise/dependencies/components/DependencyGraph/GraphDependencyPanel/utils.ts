@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../utils";
+} from "../../../utils";
 
 import { FILTER_OPTIONS } from "./constants";
 import type {
@@ -26,11 +26,14 @@ export function getListRequest(
   node: DependencyNode,
   groupType: DependencyGroupType,
 ): ListNodeDependentsRequest {
+  const type = getDependencyType(groupType);
+  const cardType = getCardType(groupType);
+
   return {
     id: node.id,
     type: node.type,
-    dependent_type: getDependencyType(groupType),
-    dependent_card_type: getCardType(groupType) ?? undefined,
+    dependent_types: [type],
+    dependent_card_types: cardType != null ? [cardType] : undefined,
   };
 }
 
@@ -42,17 +45,10 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  "in-dashboard": (node) => {
-    switch (node.type) {
-      case "card": {
-        const dashboard = node.data.dashboard;
-        return dashboard != null;
-      }
-      default:
-        return false;
+  "include-in-personal-collections": (node, isEnabled) => {
+    if (isEnabled) {
+      return true;
     }
-  },
-  "not-in-personal-collection": (node) => {
     switch (node.type) {
       case "card":
       case "dashboard":
@@ -61,7 +57,7 @@ const FILTERS: Record<FilterOption, FilterCallback> = {
         return collection != null && !collection.is_personal;
       }
       default:
-        return false;
+        return true;
     }
   },
 };
@@ -72,14 +68,7 @@ export function canFilterByOption(
 ): boolean {
   const type = getDependencyType(groupType);
   switch (option) {
-    case "in-dashboard":
-      switch (type) {
-        case "card":
-          return true;
-        default:
-          return false;
-      }
-    case "not-in-personal-collection":
+    case "include-in-personal-collections":
       switch (type) {
         case "card":
         case "dashboard":
@@ -95,15 +84,21 @@ export function canFilter(groupType: DependencyGroupType): boolean {
   return FILTER_OPTIONS.some((option) => canFilterByOption(groupType, option));
 }
 
+export function getDefaultFilterOptions(
+  groupType: DependencyGroupType,
+): FilterOption[] {
+  return FILTER_OPTIONS.filter((option) =>
+    canFilterByOption(groupType, option),
+  );
+}
+
 function isMatchingFilters(
   node: DependencyNode,
   filterOptions: FilterOption[],
 ): boolean {
-  if (filterOptions.length === 0) {
-    return true;
-  }
-
-  return filterOptions.every((option) => FILTERS[option](node));
+  return FILTER_OPTIONS.every((option) =>
+    FILTERS[option](node, filterOptions.includes(option)),
+  );
 }
 
 const COMPARATORS: Record<SortColumn, SortCallback> = {
@@ -113,13 +108,13 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
     return label1.localeCompare(label2);
   },
   location: (node1, node2) => {
-    const parts1 = getNodeLocationInfo(node1) ?? [];
-    const parts2 = getNodeLocationInfo(node2) ?? [];
-    const minParts = parts1.length < parts2.length ? parts1 : parts2;
-    const result = minParts
-      .map((_link, i) => parts1[i].label.localeCompare(parts2[i].label))
+    const links1 = getNodeLocationInfo(node1)?.links ?? [];
+    const links2 = getNodeLocationInfo(node2)?.links ?? [];
+    const minLinks = links1.length < links2.length ? links1 : links2;
+    const result = minLinks
+      .map((_link, i) => links1[i].label.localeCompare(links2[i].label))
       .find((result) => result !== 0);
-    return result ?? parts1.length - parts2.length;
+    return result ?? links1.length - links2.length;
   },
   "view-count": (node1, node2) => {
     const count1 = getNodeViewCount(node1) ?? 0;

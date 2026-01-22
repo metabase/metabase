@@ -6,11 +6,19 @@ import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { documentApi } from "metabase/api/document";
-import { tag } from "metabase/api/tags";
+import { fieldApi } from "metabase/api/field";
+import { segmentApi } from "metabase/api/segment";
+import { tableApi as coreTableApi } from "metabase/api/table";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
+import { getSetting } from "metabase/selectors/settings";
+import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
+import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
+import { tag } from "metabase-enterprise/api/tags";
+import { transformApi } from "metabase-enterprise/api/transform";
+import { transformTagApi } from "metabase-enterprise/api/transform-tag";
 import type {
   Card,
   CardId,
@@ -65,6 +73,8 @@ const ALL_INVALIDATION_TAGS = [
   tag("subscription-channel"),
   tag("timeline"),
   tag("timeline-event"),
+  tag("transform"),
+  tag("python-transform-library"),
 ];
 
 function shouldInvalidateForEntity(
@@ -77,9 +87,16 @@ function shouldInvalidateForEntity(
   return oldSynced !== newSynced || newSynced;
 }
 
+function isTransformsNamespaceCollection(
+  collection: Collection | undefined,
+): boolean {
+  return collection?.namespace === "transforms";
+}
+
 function shouldInvalidateForCollection(
   oldCollection: Collection | undefined,
   newCollection: Collection | undefined,
+  isTransformsSyncEnabled: boolean | null | undefined,
 ): boolean {
   if (!newCollection) {
     return false;
@@ -88,7 +105,22 @@ function shouldInvalidateForCollection(
   const oldSynced = oldCollection?.is_remote_synced ?? false;
   const newSynced = newCollection.is_remote_synced ?? false;
 
-  return oldSynced || newSynced;
+  // Check if either collection is remote-synced
+  if (oldSynced || newSynced) {
+    return true;
+  }
+
+  // Check if either collection is in transforms namespace with transforms sync enabled
+  if (isTransformsSyncEnabled) {
+    if (
+      isTransformsNamespaceCollection(oldCollection) ||
+      isTransformsNamespaceCollection(newCollection)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function getOriginalDocument(originalState: State, id: number) {
@@ -232,10 +264,17 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: collectionApi.endpoints.createCollection.matchFulfilled,
-  effect: async (action: PayloadAction<Collection>, { dispatch }) => {
+  effect: async (action: PayloadAction<Collection>, { dispatch, getState }) => {
     const collection = action.payload;
+    const isTransformsSyncEnabled = getSetting(
+      getState(),
+      "remote-sync-transforms",
+    );
 
-    if (collection.is_remote_synced) {
+    if (
+      collection.is_remote_synced ||
+      (isTransformsSyncEnabled && isTransformsNamespaceCollection(collection))
+    ) {
       invalidateRemoteSyncTags(dispatch);
     }
   },
@@ -245,15 +284,25 @@ remoteSyncListenerMiddleware.startListening({
   matcher: collectionApi.endpoints.updateCollection.matchFulfilled,
   effect: async (
     action: PayloadAction<Collection>,
-    { getOriginalState, dispatch },
+    { getOriginalState, dispatch, getState },
   ) => {
     const newCollection = action.payload;
     const oldCollection = getOriginalCollection(
       getOriginalState(),
       newCollection.id,
     );
+    const isTransformsSyncEnabled = getSetting(
+      getState(),
+      "remote-sync-transforms",
+    );
 
-    if (shouldInvalidateForCollection(oldCollection, newCollection)) {
+    if (
+      shouldInvalidateForCollection(
+        oldCollection,
+        newCollection,
+        isTransformsSyncEnabled,
+      )
+    ) {
       invalidateRemoteSyncTags(dispatch);
     }
   },
@@ -261,7 +310,7 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: collectionApi.endpoints.deleteCollection.matchFulfilled,
-  effect: async (action, { getOriginalState, dispatch }) => {
+  effect: async (action, { getOriginalState, dispatch, getState }) => {
     const deleteRequest = (action.meta as any).arg.originalArgs as {
       id: number;
     };
@@ -271,8 +320,15 @@ remoteSyncListenerMiddleware.startListening({
         getOriginalState(),
         deleteRequest.id,
       );
+      const isTransformsSyncEnabled = getSetting(
+        getState(),
+        "remote-sync-transforms",
+      );
 
-      if (collection?.is_remote_synced) {
+      if (
+        collection?.is_remote_synced ||
+        (isTransformsSyncEnabled && isTransformsNamespaceCollection(collection))
+      ) {
         invalidateRemoteSyncTags(dispatch);
       }
     }
@@ -295,6 +351,76 @@ remoteSyncListenerMiddleware.startListening({
     timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
     timelineEventApi.endpoints.updateTimelineEvent.matchFulfilled,
     timelineEventApi.endpoints.deleteTimelineEvent.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Enterprise table mutations (publish/unpublish/edit)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    enterpriseTableApi.endpoints.publishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.unpublishTables.matchFulfilled,
+    enterpriseTableApi.endpoints.editTables.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Core table mutations (metadata edits)
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    coreTableApi.endpoints.updateTable.matchFulfilled,
+    coreTableApi.endpoints.updateTableFieldsOrder.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Field mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    fieldApi.endpoints.updateField.matchFulfilled,
+    fieldApi.endpoints.createFieldDimension.matchFulfilled,
+    fieldApi.endpoints.deleteFieldDimension.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Segment mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    segmentApi.endpoints.createSegment.matchFulfilled,
+    segmentApi.endpoints.updateSegment.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Transform mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    transformApi.endpoints.createTransform.matchFulfilled,
+    transformApi.endpoints.updateTransform.matchFulfilled,
+    transformApi.endpoints.deleteTransform.matchFulfilled,
+  ),
+  effect: async (_action, { dispatch }) => {
+    invalidateRemoteSyncTags(dispatch);
+  },
+});
+
+// Transform tag mutations
+remoteSyncListenerMiddleware.startListening({
+  matcher: isAnyOf(
+    transformTagApi.endpoints.createTransformTag.matchFulfilled,
+    transformTagApi.endpoints.updateTransformTag.matchFulfilled,
+    transformTagApi.endpoints.deleteTransformTag.matchFulfilled,
   ),
   effect: async (_action, { dispatch }) => {
     invalidateRemoteSyncTags(dispatch);
@@ -367,7 +493,7 @@ remoteSyncListenerMiddleware.startListening({
           }, 500);
 
           if (isImportTask) {
-            dispatch(Api.util.invalidateTags(ALL_INVALIDATION_TAGS));
+            dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
           }
         }
 

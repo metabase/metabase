@@ -84,6 +84,75 @@ describe("formatDateTimeRangeWithUnit", () => {
   }
 });
 
+describe("formatDateTimeRangeWithUnit with date_style", () => {
+  it("should format M/D/YYYY style in cells", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+    const options = { type: "cell" as const, date_style: "M/D/YYYY" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "1/1/2017 – 1/7/2017",
+    );
+  });
+
+  it("should format D/M/YYYY style in cells", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+    const options = { type: "cell" as const, date_style: "D/M/YYYY" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "1/1/2017 – 7/1/2017",
+    );
+  });
+
+  it("should format YYYY/M/D style in cells", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+    const options = { type: "cell" as const, date_style: "YYYY/M/D" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "2017/1/1 – 2017/1/7",
+    );
+  });
+
+  it("should format D MMMM, YYYY style in cells", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+    const options = { type: "cell" as const, date_style: "D MMMM, YYYY" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "1 January, 2017 – 7 January, 2017",
+    );
+  });
+
+  it("should format week across months with M/D/YYYY in cells", () => {
+    const input: [string] = ["2017-01-29"]; // Week: 2017-01-29 to 2017-02-04
+    const options = { type: "cell" as const, date_style: "M/D/YYYY" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "1/29/2017 – 2/4/2017",
+    );
+  });
+
+  it("should format week across years with M/D/YYYY in cells", () => {
+    const input: [string] = ["2017-12-31"]; // Week: 2017-12-31 to 2018-01-06
+    const options = { type: "cell" as const, date_style: "M/D/YYYY" };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "12/31/2017 – 1/6/2018",
+    );
+  });
+
+  it("should respect custom separator with M/D/YYYY style", () => {
+    const input: [string] = ["2017-01-01"]; // Week: 2017-01-01 to 2017-01-07
+    const options = {
+      type: "cell" as const,
+      date_style: "M/D/YYYY",
+      date_separator: "-",
+    };
+
+    expect(formatDateTimeRangeWithUnit(input, "week", options)).toBe(
+      "1-1-2017 – 1-7-2017",
+    );
+  });
+});
+
 describe("formatDateTimeForParameter", () => {
   const value = "2020-01-01T06:00:00+05:00";
 
