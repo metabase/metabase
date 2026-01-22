@@ -42,7 +42,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
           [S.visible]: show || hasUnresolvedComments,
         })}
         contentEditable={false}
-        data-testid="comments-menu"
         draggable={false}
         mt={rem(-2)}
         pl="lg"
