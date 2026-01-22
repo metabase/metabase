@@ -1694,7 +1694,7 @@ LIMIT
       "should show Python transforms in view-only mode",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
@@ -1735,7 +1735,7 @@ LIMIT
       "should transition from read-only to edit mode for Python transforms",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
@@ -1771,7 +1771,7 @@ LIMIT
       "should return to read-only mode after saving a Python transform",
       { tags: ["@python"] },
       () => {
-        setPythonRunnerSettings();
+        H.setPythonRunnerSettings();
         cy.log("create a new Python transform");
         H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
           (id) => {
