@@ -24,7 +24,7 @@ export function getListRequest(
 }
 
 export function getDefaultFilterOptions(): DependencyFilterOptions {
-  return {};
+  return { includePersonalCollections: true };
 }
 
 export function getDefaultSortOptions(): DependencySortOptions {
