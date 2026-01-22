@@ -2,7 +2,7 @@
  * Codemod to add metabase-custom/ prefix to unprefixed custom ESLint rule names
  *
  * Usage:
- *   npx jscodeshift -t prefix-custom-eslint-rules.cjs frontend/src --extensions=js,jsx,ts,tsx
+ *   npx jscodeshift -t dev/codemods/prefix-custom-eslint-rules.cjs e2e enterprise/frontend/src frontend/src --extensions=js,jsx,ts,tsx
  */
 
 const customRules = [
@@ -19,7 +19,7 @@ const customRules = [
   "no-external-references-for-sdk-package-code",
 ];
 
-module.exports = function transformer(file, api) {
+module.exports = function transformer(file) {
   const source = file.source;
   let modified = false;
   let result = source;
