@@ -1027,20 +1027,28 @@
    x))
 
 (when (or config/is-dev? config/is-test?)
+  (mr/def ::dependency-graph
+    "Map of shorthand symbols (:x1, :t1, etc.) to lists of dependencies (symbols or table name strings)."
+    [:map-of :keyword [:sequential [:or :keyword :string]]])
+
   (api.macros/defendpoint :post "/test-resources" :- [:map
                                                       [:workspace-id [:maybe :int]]
                                                       [:global-map [:map-of [:or :keyword :string] :int]]
                                                       [:workspace-map [:map-of :keyword :string]]]
-    "Create test resources for workspace e2e tests. Only available in dev/test mode."
+    "Create test resources for workspace e2e tests. Only available in dev/test mode.
+
+    Assumes the test database context is set up (uses `(mt/id)` internally)."
     [_route-params
      _query-params
      body :- [:map
-              [:global {:optional true} :map]
-              [:workspace {:optional true} :map]]]
+              [:global {:optional true} ::dependency-graph]
+              [:workspace {:optional true} [:map
+                                            [:name {:optional true} :string]
+                                            [:checkouts {:optional true} [:sequential :keyword]]
+                                            [:definitions {:optional true} ::dependency-graph]]]]]
     (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
       (create-fn (parse-magic-references body))
-      {:status 501
-       :body   {:error "Workspace test utilities not available"}})))
+      (throw (ex-info "Workspace test utilities not available" {:status-code 501})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

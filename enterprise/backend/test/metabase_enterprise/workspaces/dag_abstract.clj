@@ -25,7 +25,7 @@
 
 (defn- lexico [id]
   (let [n (name id)
-        prefix (first n)]
+        prefix (when (keyword? id) (first n))]
     (if-let [type-order ({\x 1 \t 2 \m 3} prefix)]
       ;; Standard shorthand keyword like :x1, :t2 - sort by number then type
       [(parse-long (subs n 1)) type-order]
