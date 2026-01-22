@@ -51,7 +51,11 @@ You can [sync Library content to version control](../installation-and-operation/
 
 ## Permissions
 
-[Data permissions](../permissions/data.md) work the same way in the Library as everywhere else in Metabase. Being in the Library doesn't grant anyone new access—people still need the right permissions to view the underlying data.
+![Library collection permissions](./images/library-permissions.png)
+
+Metabase uses the standard [collection permissions](../permissions/collections.md) to determine who can view and edit items in the Library. One difference to note is that people in the Data Analyst group always have Curate access to the Library. Like with the Admin group, you can't change the Data Analyst's Curate access to the Library.
+
+[Data permissions](../permissions/data.md) work the same way in the Library as everywhere else in Metabase. Adding items to the Library doesn't grant anyone new data access—people still need the right permissions to view the underlying data, or be in a group with access to the collection.
 
 ## Further reading
 
