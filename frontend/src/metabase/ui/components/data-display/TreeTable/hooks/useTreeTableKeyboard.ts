@@ -1,7 +1,6 @@
 import type { Row, Table } from "@tanstack/react-table";
 import type { Virtualizer } from "@tanstack/react-virtual";
-import type { KeyboardEvent } from "react";
-import { useCallback, useState } from "react";
+import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
 
 import type { TreeNodeData } from "../types";
 
@@ -31,15 +30,20 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
   onRowActivate,
 }: UseTreeTableKeyboardOptions<TData>): UseTreeTableKeyboardResult {
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  /**
+   * we can't use table.getRowModel().rows because it respects the original
+   * data order, not the visual order when rows are pinned
+   */
+  const allRows = useMemo(
+    () => [...topPinnedRows, ...centerRows, ...bottomPinnedRows],
+    [topPinnedRows, centerRows, bottomPinnedRows],
+  );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
-      // Combine all rows in display order for navigation
-      const allRows = [...topPinnedRows, ...centerRows, ...bottomPinnedRows];
       const currentIndex = allRows.findIndex((r) => r.id === activeRowId);
       const currentRow: Row<TData> | undefined = allRows[currentIndex];
 
-      // Helper to scroll to row only if it's in center rows (virtualizer)
       const scrollToRowIfNeeded = (rowId: string) => {
         const centerIndex = centerRows.findIndex((r) => r.id === rowId);
         if (centerIndex >= 0) {
@@ -142,12 +146,11 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
     [
       table,
       virtualizer,
-      topPinnedRows,
       centerRows,
-      bottomPinnedRows,
       activeRowId,
       enableRowSelection,
       onRowActivate,
+      allRows,
     ],
   );
 
