@@ -278,7 +278,7 @@
 
 (defn ws-done!
   "Poll until workspace status is no longer :pending.
-   Note: uninitialized workspaces will never transition without adding a transform."
+   Returns immediately if workspace has not started initializing, which requires a transform being added."
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
