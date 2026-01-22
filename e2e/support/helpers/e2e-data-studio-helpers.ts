@@ -16,8 +16,20 @@ export const DataStudio = {
     header: () => cy.findByTestId("transforms-header"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
-    editTransform: () => cy.findByRole("button", { name: "Edit transform" }),
-    editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
+    editTransform: () => cy.findByRole("button", { name: "Edit" }),
+    editDefinition: () => {
+      // When workspaces are available, "Edit definition" is inside the "Edit" menu
+      // When workspaces are not available, "Edit definition" is a direct link
+      cy.get("body").then(($body) => {
+        const directLink = $body.find('a:contains("Edit definition")');
+        if (directLink.length) {
+          cy.findByRole("link", { name: "Edit definition" }).click();
+        } else {
+          cy.findByRole("button", { name: "Edit" }).click();
+          popover().findByRole("menuitem", { name: "Edit definition" }).click();
+        }
+      });
+    },
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),

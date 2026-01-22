@@ -298,7 +298,7 @@ describe("scenarios > data studio > workspaces", () => {
       createTransforms({ visit: true });
 
       cy.log("Create a workspace, open transform page in it");
-      cy.findByRole("button", { name: /Edit transform/ }).click();
+      cy.findByRole("button", { name: /Edit/ }).click();
       H.popover().within(() => {
         cy.findByText("No workspaces yet").should("be.visible");
         cy.findByText("New workspace").should("be.visible").click();
@@ -338,7 +338,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getRunTransformButton().should("not.exist");
       Workspaces.getSaveTransformButton().should("be.enabled");
 
-      H.NativeEditor.type(" LIMIT 2");
+      H.NativeEditor.get().type(" LIMIT 2");
 
       cy.log("UI Controls are enabled after changes");
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
@@ -1471,15 +1471,16 @@ describe("scenarios > data studio > workspaces", () => {
         .findByRole("row", { name: /SQL transform/ })
         .click();
 
-      cy.findByRole("button", { name: /Edit transform/ }).click();
+      cy.findByRole("button", { name: /Edit/ }).click();
 
       cy.get<string>("@workspaceA").then((workspaceA) => {
         cy.get<string>("@workspaceB").then((workspaceB) => {
           H.popover().within(() => {
-            cy.findAllByRole("menuitem").eq(0).contains("New workspace");
-            cy.findAllByRole("menuitem").eq(1).contains(workspaceB);
+            cy.findAllByRole("menuitem").eq(0).contains("Edit definition");
+            cy.findAllByRole("menuitem").eq(1).contains("New workspace");
+            cy.findAllByRole("menuitem").eq(2).contains(workspaceB);
             cy.log("Check that edit redirects to correct workspace");
-            cy.findAllByRole("menuitem").eq(2).contains(workspaceA).click();
+            cy.findAllByRole("menuitem").eq(3).contains(workspaceA).click();
           });
         });
       });
@@ -1516,7 +1517,7 @@ describe("scenarios > data studio > workspaces", () => {
         .findByRole("row", { name: /SQL transform/ })
         .click();
 
-      cy.findByRole("button", { name: /Edit transform/ }).click();
+      cy.findByRole("button", { name: /Edit/ }).click();
       cy.get<string>("@workspaceA").then((workspaceA) => {
         cy.get<string>("@workspaceB").then((workspaceB) => {
           H.popover().within(() => {
@@ -1566,8 +1567,8 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.log("Verify Edit transform button is disabled");
-      cy.findByRole("button", { name: /Edit transform/ }).should("be.disabled");
-      cy.findByRole("button", { name: /Edit transform/ }).realHover();
+      cy.findByRole("button", { name: /Edit/ }).should("be.disabled");
+      cy.findByRole("button", { name: /Edit/ }).realHover();
       H.tooltip().should(
         "contain.text",
         "This transform cannot be edited in a workspace because it references other questions.",
@@ -1581,7 +1582,7 @@ describe("scenarios > data studio > workspaces", () => {
       Transforms.saveChangesButton().click();
 
       cy.log("Verify Edit transform button is now enabled");
-      cy.findByRole("button", { name: /Edit transform/ }).should("be.enabled");
+      cy.findByRole("button", { name: /Edit/ }).should("be.enabled");
     });
   });
 
@@ -1605,7 +1606,7 @@ describe("scenarios > data studio > workspaces", () => {
         });
       });
 
-      cy.findByRole("button", { name: /Edit transform/ }).click();
+      cy.findByRole("button", { name: /Edit/ }).click();
       H.popover().findByText("New workspace").click();
 
       cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
@@ -1749,7 +1750,7 @@ describe("scenarios > data studio > workspaces", () => {
         });
 
         cy.log("Create a workspace and check out the transform");
-        cy.findByRole("button", { name: /Edit transform/ }).click();
+        cy.findByRole("button", { name: /Edit/ }).click();
         H.popover().findByText("New workspace").click();
 
         cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
@@ -2109,7 +2110,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByPlaceholderText("My Great Transform").type("My transform");
       H.modal().button("Save").click();
 
-      cy.button(/Edit transform/).click();
+      cy.button(/Edit/).click();
       H.popover().findByText("New workspace").click();
       H.undoToast().should("not.exist");
       Workspaces.getWorkspaceTabs().within(() => {
