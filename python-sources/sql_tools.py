@@ -6,8 +6,10 @@ def parse_sql(sql: str, dialect: str = "postgres"):
     """Parses SQL and returns the root Expression."""
     return sqlglot.parse_one(sql, read=dialect)
 
-def get_ast_json(expression) -> dict:
+def get_ast_json(expression) -> any:
     """Recursively converts an expression to a JSON-dict."""
+
+    # 1. Handle SQLGlot Expressions (Recursive step)
     if isinstance(expression, exp.Expression):
         return {
             "type": type(expression).__name__,
@@ -17,7 +19,15 @@ def get_ast_json(expression) -> dict:
                 for k, v in expression.args.items()
             }
         }
-    return expression
+
+    # 2. Handle Primitives (Pass through safely)
+    if isinstance(expression, (str, int, float, bool, type(None))):
+        return expression
+
+    # 3. THE FIX: Handle Enums/Types
+    # If we reach here, it's an object (like Type.DATE) that JSON hates.
+    # We convert it to its string representation (e.g., "DataType.Type.DATE")
+    return str(expression)
 
 def get_tables(expression, include_ctes: bool = True) -> list:
     """Finds all tables. set include_ctes=False to exclude WITH clauses."""
