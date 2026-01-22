@@ -6,6 +6,7 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
+  ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
   TransformId,
@@ -527,7 +528,7 @@ export type DataStudioLibraryCreatedEvent = ValidateEvent<{
 
 export type DataStudioTablePublishedEvent = ValidateEvent<{
   event: "data_studio_table_published";
-  target_id: number | null;
+  target_id: ConcreteTableId | undefined;
 }>;
 
 export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
@@ -559,7 +560,7 @@ export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
 
 export type DataStudioTableUnpublishedEvent = ValidateEvent<{
   event: "data_studio_table_unpublished";
-  target_id: number | null;
+  target_id: ConcreteTableId | undefined;
 }>;
 
 export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{

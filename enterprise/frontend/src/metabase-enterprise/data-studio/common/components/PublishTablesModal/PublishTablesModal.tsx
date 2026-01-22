@@ -32,7 +32,6 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 type PublishTablesModalProps = {
   databaseIds?: DatabaseId[];
@@ -142,9 +141,7 @@ function ModalBody({
       sendSuccessToast(t`Published`);
     }
 
-    if (isConcreteTableId(selected_table?.id)) {
-      trackDataStudioTablePublished(selected_table.id);
-    }
+    trackDataStudioTablePublished();
 
     onPublish();
   };

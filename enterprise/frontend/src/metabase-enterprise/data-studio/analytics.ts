@@ -8,7 +8,7 @@ export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   });
 };
 
-export const trackDataStudioTablePublished = (id: ConcreteTableId) => {
+export const trackDataStudioTablePublished = (id?: ConcreteTableId) => {
   trackSimpleEvent({
     event: "data_studio_table_published",
     target_id: id,
@@ -54,7 +54,7 @@ export const trackDataStudioTablePickerSearchPerformed = () => {
   });
 };
 
-export const trackDataStudioTableUnpublished = (id: ConcreteTableId) => {
+export const trackDataStudioTableUnpublished = (id?: ConcreteTableId) => {
   trackSimpleEvent({
     event: "data_studio_table_unpublished",
     target_id: id,

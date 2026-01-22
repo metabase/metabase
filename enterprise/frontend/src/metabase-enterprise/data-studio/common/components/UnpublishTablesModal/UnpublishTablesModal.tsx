@@ -29,7 +29,6 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 type UnpublishTablesModalProps = {
   databaseIds?: DatabaseId[];
@@ -128,9 +127,7 @@ function ModalBody({
       table_ids: tableIds,
     }).unwrap();
     sendSuccessToast(t`Unpublished`);
-    if (isConcreteTableId(selected_table?.id)) {
-      trackDataStudioTableUnpublished(selected_table.id);
-    }
+    trackDataStudioTableUnpublished();
     onUnpublish();
   };
 
