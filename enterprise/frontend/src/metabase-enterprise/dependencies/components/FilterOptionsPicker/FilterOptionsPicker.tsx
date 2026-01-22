@@ -9,27 +9,23 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type {
-  CardType,
-  DependencyFilterOptions,
-  DependencyType,
-} from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
+
+import type { DependencyFilterOptions } from "../../types";
 
 import { LocationFilterPicker } from "./LocationFilterPicker";
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
 type FilterOptionsPickerProps = {
   filters: DependencyFilterOptions;
-  availableTypes: DependencyType[];
-  availableCardTypes: CardType[];
+  availableGroupTypes: DependencyGroupType[];
   compact?: boolean;
   onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export function FilterOptionsPicker({
   filters,
-  availableTypes,
-  availableCardTypes,
+  availableGroupTypes,
   compact = false,
   onFiltersChange,
 }: FilterOptionsPickerProps) {
@@ -45,7 +41,7 @@ export function FilterOptionsPicker({
         ) : (
           <Button
             leftSection={<FixedSizeIcon name="filter" aria-hidden />}
-            data-testid="dependency-list-filter-button"
+            data-testid="dependency-filter-button"
             onClick={toggle}
           >
             {t`Filter`}
@@ -55,8 +51,7 @@ export function FilterOptionsPicker({
       <Popover.Dropdown>
         <FilterOptionsPopover
           filters={filters}
-          availableTypes={availableTypes}
-          availableCardTypes={availableCardTypes}
+          availableGroupTypes={availableGroupTypes}
           onFiltersChange={onFiltersChange}
         />
       </Popover.Dropdown>
@@ -66,15 +61,13 @@ export function FilterOptionsPicker({
 
 type FilterOptionsPopoverProps = {
   filters: DependencyFilterOptions;
-  availableTypes: DependencyType[];
-  availableCardTypes: CardType[];
+  availableGroupTypes: DependencyGroupType[];
   onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 function FilterOptionsPopover({
   filters,
-  availableTypes,
-  availableCardTypes,
+  availableGroupTypes,
   onFiltersChange,
 }: FilterOptionsPopoverProps) {
   return (
@@ -82,8 +75,7 @@ function FilterOptionsPopover({
       <Stack>
         <TypeFilterPicker
           filters={filters}
-          availableTypes={availableTypes}
-          availableCardTypes={availableCardTypes}
+          availableGroupTypes={availableGroupTypes}
           onFiltersChange={onFiltersChange}
         />
         <LocationFilterPicker

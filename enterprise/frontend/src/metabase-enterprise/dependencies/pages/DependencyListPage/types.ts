@@ -1,9 +1,8 @@
 export type DependencyListQueryParams = {
-  types?: unknown;
-  "card-types"?: unknown;
-  query?: unknown;
-  "include-personal-collections"?: unknown;
-  "sort-column"?: unknown;
-  "sort-direction"?: unknown;
   page?: unknown;
+  group_types?: unknown;
+  query?: unknown;
+  include_personal_collections?: unknown;
+  sort_column?: unknown;
+  sort_direction?: unknown;
 };

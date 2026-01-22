@@ -4,27 +4,31 @@ import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Flex, Loader, TextInput } from "metabase/ui";
-import type { DependencyFilterOptions } from "metabase-types/api";
 
+import type { DependencyFilterOptions } from "../../../types";
 import { getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";
-import { getAvailableCardTypes, getAvailableTypes } from "../utils";
+import { getAvailableGroupTypes } from "../utils";
 
 type ListSearchBarProps = {
   mode: DependencyListMode;
+  query?: string;
   filters: DependencyFilterOptions;
   hasLoader: boolean;
+  onQueryChange: (query: string | undefined) => void;
   onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export const ListSearchBar = memo(function ListSearchBar({
   mode,
+  query,
   filters,
   hasLoader,
+  onQueryChange,
   onFiltersChange,
 }: ListSearchBarProps) {
-  const [searchValue, setSearchValue] = useState(filters.query ?? "");
+  const [searchValue, setSearchValue] = useState(query ?? "");
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;
@@ -35,10 +39,14 @@ export const ListSearchBar = memo(function ListSearchBar({
   const handleSearchDebounce = useDebouncedCallback(
     (newSearchValue: string) => {
       const newQuery = getSearchQuery(newSearchValue);
-      onFiltersChange({ ...filters, query: newQuery });
+      onQueryChange(newQuery);
     },
     SEARCH_DEBOUNCE_DURATION,
   );
+
+  const handleFiltersChange = (newFilters: DependencyFilterOptions) => {
+    onFiltersChange({ ...filters, ...newFilters });
+  };
 
   return (
     <Flex gap="md" align="center">
@@ -53,9 +61,8 @@ export const ListSearchBar = memo(function ListSearchBar({
       />
       <FilterOptionsPicker
         filters={filters}
-        availableTypes={getAvailableTypes(mode)}
-        availableCardTypes={getAvailableCardTypes(mode)}
-        onFiltersChange={onFiltersChange}
+        availableGroupTypes={getAvailableGroupTypes(mode)}
+        onFiltersChange={handleFiltersChange}
       />
     </Flex>
   );

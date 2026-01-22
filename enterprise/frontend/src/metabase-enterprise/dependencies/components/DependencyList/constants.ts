@@ -1,34 +1,28 @@
-import type { CardType, DependencyType } from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
-export const BROKEN_TYPES: DependencyType[] = ["table", "card"];
-
-export const BROKEN_CARD_TYPES: CardType[] = ["question", "model"];
-
-export const UNREFERENCED_TYPES: DependencyType[] = [
+export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "table",
-  "card",
+  "question",
+  "model",
+];
+
+export const BROKEN_DEPENDENTS_GROUP_TYPES: DependencyGroupType[] = [
+  "question",
+  "model",
+  "metric",
+  "segment",
+  "measure",
+  "transform",
+];
+
+export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
+  "table",
+  "question",
+  "model",
+  "metric",
   "segment",
   "measure",
   "snippet",
-];
-
-export const UNREFERENCED_CARD_TYPES: CardType[] = [
-  "question",
-  "model",
-  "metric",
-];
-
-export const BROKEN_DEPENDENTS_TYPES: DependencyType[] = [
-  "card",
-  "transform",
-  "segment",
-  "measure",
-];
-
-export const BROKEN_DEPENDENTS_CARD_TYPES: CardType[] = [
-  "question",
-  "model",
-  "metric",
 ];
 
 export const PAGE_SIZE = 25;

@@ -2,46 +2,24 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Stack } from "metabase/ui";
-import type {
-  CardType,
-  DependencyFilterOptions,
-  DependencyType,
-} from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
-import {
-  getCardTypes,
-  getDependencyGroupTypeInfo,
-  getDependencyGroupTypes,
-  getDependencyTypes,
-} from "../../../utils";
+import type { DependencyFilterOptions } from "../../../types";
+import { getDependencyGroupTypeInfo } from "../../../utils";
 
 type TypeFilterPickerProps = {
   filters: DependencyFilterOptions;
-  availableTypes: DependencyType[];
-  availableCardTypes: CardType[];
+  availableGroupTypes: DependencyGroupType[];
   onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export function TypeFilterPicker({
   filters,
-  availableTypes,
-  availableCardTypes,
+  availableGroupTypes,
   onFiltersChange,
 }: TypeFilterPickerProps) {
-  const [isEmpty, setIsEmpty] = useState(false);
-
-  const selectedGroupTypes = getDependencyGroupTypes(
-    filters.types == null || filters.types.length === 0
-      ? availableTypes
-      : filters.types,
-    filters.cardTypes == null || filters.cardTypes.length === 0
-      ? availableCardTypes
-      : filters.cardTypes,
-  );
-
-  const availableGroupTypes = getDependencyGroupTypes(
-    availableTypes,
-    availableCardTypes,
+  const [selectedGroupTypes, setSelectedGroupTypes] = useState(
+    filters.groupTypes ?? availableGroupTypes,
   );
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
@@ -53,18 +31,19 @@ export function TypeFilterPicker({
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
       newValue.includes(groupType),
     );
-    setIsEmpty(newGroupTypes.length === 0);
+    const isFullSelection = newGroupTypes.length === availableGroupTypes.length;
+
+    setSelectedGroupTypes(newGroupTypes);
     onFiltersChange({
       ...filters,
-      types: getDependencyTypes(newGroupTypes),
-      cardTypes: getCardTypes(newGroupTypes),
+      groupTypes: isFullSelection ? undefined : newGroupTypes,
     });
   };
 
   return (
     <Checkbox.Group
       label={t`Entity type`}
-      value={isEmpty ? [] : selectedGroupTypes}
+      value={selectedGroupTypes}
       onChange={handleChange}
     >
       <Stack gap="sm" mt="sm">

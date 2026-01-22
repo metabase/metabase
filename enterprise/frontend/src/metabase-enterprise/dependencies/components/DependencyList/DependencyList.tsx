@@ -7,13 +7,13 @@ import {
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
-import type {
-  DependencyEntry,
-  DependencyFilterOptions,
-  DependencySortingOptions,
-} from "metabase-types/api";
+import type { DependencyEntry } from "metabase-types/api";
 
-import { isSameNode } from "../../utils";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../types";
+import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
@@ -23,7 +23,7 @@ import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
-import { getAvailableCardTypes, getAvailableTypes } from "./utils";
+import { getAvailableGroupTypes } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -43,15 +43,22 @@ export function DependencyList({
       ? useListBrokenGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
 
-  const { page = 0, filters = {}, sorting } = params;
+  const {
+    page = 0,
+    query,
+    groupTypes,
+    includePersonalCollections,
+    sortColumn,
+    sortDirection,
+  } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: filters.types ?? getAvailableTypes(mode),
-    card_types: filters.cardTypes ?? getAvailableCardTypes(mode),
-    query: filters.query,
-    include_personal_collections: filters.includePersonalCollections ?? true,
-    sort_column: sorting?.column,
-    sort_direction: sorting?.direction,
+    types: getDependencyTypes(groupTypes ?? getAvailableGroupTypes(mode)),
+    card_types: getCardTypes(groupTypes ?? getAvailableGroupTypes(mode)),
+    query: query,
+    include_personal_collections: includePersonalCollections,
+    sort_column: sortColumn,
+    sort_direction: sortDirection,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });
@@ -64,14 +71,20 @@ export function DependencyList({
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
-  const handleFiltersChange = (filters: DependencyFilterOptions) => {
-    onParamsChange({ ...params, filters });
+  const handleQueryChange = (query: string | undefined) => {
+    onParamsChange({ ...params, query });
   };
 
-  const handleSortingChange = (
-    sorting: DependencySortingOptions | undefined,
-  ) => {
-    onParamsChange({ ...params, sorting });
+  const handleFiltersChange = (filters: DependencyFilterOptions) => {
+    onParamsChange({ ...params, ...filters });
+  };
+
+  const handleSortingChange = (sorting: DependencySortOptions | undefined) => {
+    onParamsChange({
+      ...params,
+      sortColumn: sorting?.column,
+      sortDirection: sorting?.direction,
+    });
   };
 
   const handlePageChange = (page: number) => {
@@ -90,8 +103,10 @@ export function DependencyList({
         <ListHeader />
         <ListSearchBar
           mode={mode}
-          filters={filters}
+          query={query}
+          filters={params}
           hasLoader={isFetching && !isLoading}
+          onQueryChange={handleQueryChange}
           onFiltersChange={handleFiltersChange}
         />
         {error != null ? (
@@ -102,7 +117,7 @@ export function DependencyList({
           <ListBody
             nodes={nodes}
             mode={mode}
-            sorting={sorting}
+            sorting={{ column: sortColumn, direction: sortDirection }}
             isLoading={isLoading}
             onSelect={setSelectedEntry}
             onSortingChange={handleSortingChange}

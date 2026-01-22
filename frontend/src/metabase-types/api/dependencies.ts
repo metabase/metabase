@@ -270,13 +270,6 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type DependencyFilterOptions = {
-  query?: string;
-  types?: DependencyType[];
-  cardTypes?: CardType[];
-  includePersonalCollections?: boolean;
-};
-
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
@@ -288,18 +281,6 @@ export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
-
-export type DependencySortingOptions = {
-  column: DependencySortColumn;
-  direction: DependencySortDirection;
-};
-
-/**
- * Entity types that can be the source of validation errors (breaking other entities).
- * Only tables and cards can be sources of errors in analysis_finding_error.
- */
-export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
-export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
 
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];

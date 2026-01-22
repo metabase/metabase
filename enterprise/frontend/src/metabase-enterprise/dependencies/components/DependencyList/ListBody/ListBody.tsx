@@ -7,11 +7,9 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  DependencyNode,
-  DependencySortingOptions,
-} from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
+import type { DependencySortOptions } from "../../../types";
 import { getNodeId } from "../../../utils";
 import { ListEmptyState } from "../ListEmptyState";
 import type { DependencyListMode } from "../types";
@@ -27,10 +25,10 @@ import {
 type ListBodyProps = {
   nodes: DependencyNode[];
   mode: DependencyListMode;
-  sorting: DependencySortingOptions | undefined;
+  sorting: DependencySortOptions | undefined;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
-  onSortingChange: (sorting: DependencySortingOptions | undefined) => void;
+  onSortingChange: (sorting: DependencySortOptions | undefined) => void;
 };
 
 export const ListBody = function ListBody({

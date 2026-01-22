@@ -18,12 +18,12 @@ import {
   Title,
 } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
-import type {
-  DependencyFilterOptions,
-  DependencyNode,
-} from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
+import type { DependencyFilterOptions } from "../../../../types";
 import {
+  getCardTypes,
+  getDependencyTypes,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -34,10 +34,7 @@ import {
   getNodeViewCountLabel,
 } from "../../../../utils";
 import { FilterOptionsPicker } from "../../../FilterOptionsPicker";
-import {
-  BROKEN_DEPENDENTS_CARD_TYPES,
-  BROKEN_DEPENDENTS_TYPES,
-} from "../../constants";
+import { BROKEN_DEPENDENTS_GROUP_TYPES } from "../../constants";
 
 import S from "./SidebarDependentsInfo.module.css";
 
@@ -54,8 +51,12 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
       id: node.id,
       type: node.type,
       broken: true,
-      dependent_types: filters.types,
-      dependent_card_types: filters.cardTypes,
+      dependent_types: getDependencyTypes(
+        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+      ),
+      dependent_card_types: getCardTypes(
+        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+      ),
       include_personal_collections: filters.includePersonalCollections,
     },
     {
@@ -80,8 +81,7 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
         </Group>
         <FilterOptionsPicker
           filters={filters}
-          availableTypes={BROKEN_DEPENDENTS_TYPES}
-          availableCardTypes={BROKEN_DEPENDENTS_CARD_TYPES}
+          availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
           compact
           onFiltersChange={setFilters}
         />

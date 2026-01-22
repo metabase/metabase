@@ -1,7 +1,8 @@
 import type {
   DependencyEntry,
-  DependencyFilterOptions,
-  DependencySortingOptions,
+  DependencyGroupType,
+  DependencySortColumn,
+  DependencySortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -32,45 +33,45 @@ export function dependencyTasks() {
 
 export type DependencyListParams = {
   page?: number;
-  filters?: DependencyFilterOptions;
-  sorting?: DependencySortingOptions;
+  query?: string;
+  groupTypes?: DependencyGroupType[];
+  includePersonalCollections?: boolean;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: DependencySortDirection;
 };
 
 function dependencyListQueryString({
   page,
-  filters,
-  sorting,
+  query,
+  groupTypes,
+  includePersonalCollections,
+  sortColumn,
+  sortDirection,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
 
   if (page != null) {
     searchParams.set("page", String(page));
   }
-  if (filters != null) {
-    const { query, types, cardTypes, includePersonalCollections } = filters;
-    if (query != null) {
-      searchParams.set("query", query);
-    }
-    if (types != null) {
-      types.forEach((type) => {
-        searchParams.append("types", type);
-      });
-    }
-    if (cardTypes != null) {
-      cardTypes.forEach((cardType) => {
-        searchParams.append("card-types", cardType);
-      });
-    }
-    if (includePersonalCollections != null) {
-      searchParams.set(
-        "include-personal-collections",
-        String(includePersonalCollections),
-      );
-    }
+  if (query != null) {
+    searchParams.set("query", query);
   }
-  if (sorting != null) {
-    searchParams.set("sort-column", sorting.column);
-    searchParams.set("sort-direction", sorting.direction);
+  if (groupTypes != null) {
+    groupTypes.forEach((groupType) => {
+      searchParams.append("group_types", groupType);
+    });
+  }
+  if (includePersonalCollections != null) {
+    searchParams.set(
+      "include_personal_collections",
+      String(includePersonalCollections),
+    );
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort_column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort_direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
