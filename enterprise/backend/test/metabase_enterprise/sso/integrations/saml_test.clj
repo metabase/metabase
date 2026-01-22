@@ -512,17 +512,17 @@
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
                (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
-                 (is (= {:email        "newuser@metabase.com"
-                         :first_name   "New"
-                         :is_qbnewb    true
-                         :is_superuser false
-                         :id           true
-                         :last_name    "User"
-                         :date_joined  true
-                         :common_name  "New User"
-                         :tenant_id    false}
-                        (-> (mt/boolean-ids-and-timestamps new-user)
-                            (dissoc :last_login))))
+                 (is (=? {:email        "newuser@metabase.com"
+                          :first_name   "New"
+                          :is_qbnewb    true
+                          :is_superuser false
+                          :id           true
+                          :last_name    "User"
+                          :date_joined  true
+                          :common_name  "New User"
+                          :tenant_id    false}
+                         (-> (mt/boolean-ids-and-timestamps new-user)
+                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
                    (is (= "newuser@metabase.com"
                           (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
@@ -545,32 +545,32 @@
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
-               (is (= [{:email        "newuser@metabase.com"
-                        :first_name   nil
-                        :is_qbnewb    true
-                        :is_superuser false
-                        :id           true
-                        :last_name    nil
-                        :date_joined  true
-                        :common_name  "newuser@metabase.com"
-                        :tenant_id    false}]
-                      (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                           (map #(dissoc % :last_login))))))
+               (is (=? [{:email        "newuser@metabase.com"
+                         :first_name   nil
+                         :is_qbnewb    true
+                         :is_superuser false
+                         :id           true
+                         :last_name    nil
+                         :date_joined  true
+                         :common_name  "newuser@metabase.com"
+                         :tenant_id    false}]
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                            (map #(dissoc % :last_login))))))
              ;; login with the same user, but now givenname and surname attributes exist
              (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
-               (is (= [{:email        "newuser@metabase.com"
-                        :first_name   "New"
-                        :is_qbnewb    true
-                        :is_superuser false
-                        :id           true
-                        :last_name    "User"
-                        :date_joined  true
-                        :common_name  "New User"
-                        :tenant_id    false}]
-                      (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                           (map #(dissoc % :last_login))))))
+               (is (=? [{:email        "newuser@metabase.com"
+                         :first_name   "New"
+                         :is_qbnewb    true
+                         :is_superuser false
+                         :id           true
+                         :last_name    "User"
+                         :date_joined  true
+                         :common_name  "New User"
+                         :tenant_id    false}]
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                            (map #(dissoc % :last_login))))))
              (finally
                (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
 
@@ -994,7 +994,7 @@
                      (is (successful-login? response))
                      (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))))))
 
-(deftest a-user-cannot-log-in-with-a-deactivated-tenant-via-saml
+(deftest a-user-can-log-into-deactivated-tenant-via-saml
   (with-other-sso-types-disabled!
     (with-saml-default-setup!
       (mt/with-additional-premium-features #{:tenants}
@@ -1010,8 +1010,8 @@
                  (mt/with-model-cleanup [:model/User]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
-                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
-                     (is (not (successful-login? response))))))
+                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
                  (with-redefs [saml.p/saml-response->attributes
                                (fn [_]
@@ -1019,8 +1019,37 @@
                                   "tenant" "tenant-mctenantson"})]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
-                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
-                     (is (not (successful-login? response))))))))))))))
+                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response)))))))))))))
+
+(deftest a-user-can-not-log-into-deactivated-tenant-via-saml-if-provisioning-is-off
+  (with-other-sso-types-disabled!
+    (with-saml-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true
+                                           saml-attribute-tenant "tenant"]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                        :name "Tenant McTenantson"
+                                                        :is_active false}
+                         :model/User {existing-email :email} {:tenant_id tenant-id}]
+            (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
+              (do-with-some-validators-disabled!
+               (fn []
+                 (testing "a new user fails to log in"
+                   (mt/with-model-cleanup [:model/User]
+                     (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                  default-redirect-uri)
+                           response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                       (is (not (successful-login? response))))))
+                 (testing "an existing user also fails to log in"
+                   (with-redefs [saml.p/saml-response->attributes
+                                 (fn [_]
+                                   {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
+                                    "tenant" "tenant-mctenantson"})]
+                     (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                  default-redirect-uri)
+                           response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                       (is (not (successful-login? response)))))))))))))))
 
 (deftest a-tenant-cannot-be-changed-once-set-via-saml
   (with-other-sso-types-disabled!
