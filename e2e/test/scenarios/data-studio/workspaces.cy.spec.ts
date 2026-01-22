@@ -3,6 +3,7 @@ import dedent from "ts-dedent";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { NativeEditor } from "e2e/support/helpers";
 import type {
+  DatabaseId,
   PythonTransformTableAliases,
   TransformTagId,
   WorkspaceRunResponse,
@@ -48,16 +49,7 @@ describe("scenarios > data studio > workspaces", () => {
       impersonations: [],
     });
 
-    cy.request(
-      "POST",
-      `/api/database/${WRITABLE_DB_ID}/permission/workspace/check`,
-      {
-        cached: false,
-      },
-    );
-    cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
-      settings: { "database-enable-workspaces": true },
-    });
+    enableWorkspacesInDb(WRITABLE_DB_ID);
 
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
@@ -570,7 +562,12 @@ describe("scenarios > data studio > workspaces", () => {
 
   describe("setup tab", () => {
     it("should allow to change database before transforms are added", () => {
-      H.addPostgresDatabase("Test DB");
+      H.addPostgresDatabase("Test DB", undefined, undefined, "testDbId");
+      cy.get<DatabaseId>("@testDbId").then((testDbId) => {
+        enableWorkspacesInDb(testDbId);
+      });
+
+      // get db id
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -2237,6 +2234,15 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 });
+
+function enableWorkspacesInDb(id: DatabaseId) {
+  cy.request("POST", `/api/database/${id}/permission/workspace/check`, {
+    cached: false,
+  });
+  cy.request("PUT", `/api/database/${id}`, {
+    settings: { "database-enable-workspaces": true },
+  });
+}
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
