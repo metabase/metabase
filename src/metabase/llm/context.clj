@@ -40,11 +40,24 @@
                  (parse-long id-str)))
          set)))
 
+(defn- table-match-clause
+  "Build a WHERE clause to match a table by name and optionally schema.
+   When schema is present, matches both; otherwise matches just the table name."
+  [{:keys [schema table]}]
+  (let [table-lower (u/lower-case-en table)]
+    (if schema
+      [:and
+       [:= [:lower :name] table-lower]
+       [:= [:lower :schema] (u/lower-case-en schema)]]
+      [:= [:lower :name] table-lower])))
+
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string using Macaw parser.
 
    Parses the SQL to identify referenced table names, then queries the
-   database to resolve those names to table IDs.
+   database to resolve those names to table IDs. When the SQL includes
+   schema-qualified references (e.g., schema.table), matches on both
+   schema and table name.
 
    Returns a set of table IDs (integers), or empty set if parsing fails
    or no tables are found."
@@ -54,11 +67,12 @@
       (let [result (macaw/query->tables sql-string {:mode :compound-select})
             tables (:tables result)]
         (if (seq tables)
-          (let [table-names (into #{} (map (comp u/lower-case-en :table)) tables)
+          (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
-                                          :db_id database-id
-                                          :active true
-                                          [:lower :name] [:in table-names])]
+                                          {:where [:and
+                                                   [:= :db_id database-id]
+                                                   [:= :active true]
+                                                   (into [:or] match-clauses)]})]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -91,21 +105,25 @@
 
 (defn- fetch-table-columns
   "Use metadata provider to get visible columns for a table.
-   Returns sequence of column maps with metadata for DDL generation."
-  [mp table-id]
-  (when-let [table-meta (lib.metadata/table mp table-id)]
-    (let [table-query (lib/query mp table-meta)
-          columns (lib/visible-columns table-query)]
-      (mapv (fn [col]
-              {:id                  (:id col)
-               :name                (:name col)
-               :database_type       (or (:database-type col)
-                                        (some-> (:base-type col) name))
-               :description         (:description col)
-               :semantic_type       (:semantic-type col)
-               :fingerprint         (:fingerprint col)
-               :fk_target_field_id  (:fk-target-field-id col)})
-            columns))))
+   Returns sequence of column maps with metadata for DDL generation.
+   By default excludes implicitly-joinable columns; pass opts to override."
+  ([mp table-id]
+   (fetch-table-columns mp table-id {}))
+  ([mp table-id opts]
+   (when-let [table-meta (lib.metadata/table mp table-id)]
+     (let [table-query (lib/query mp table-meta)
+           vis-opts    (merge {:include-implicitly-joinable? false} opts)
+           columns     (lib/visible-columns table-query -1 vis-opts)]
+       (mapv (fn [col]
+               {:id                  (:id col)
+                :name                (:name col)
+                :database_type       (or (:database-type col)
+                                         (some-> (:base-type col) name))
+                :description         (:description col)
+                :semantic_type       (:semantic-type col)
+                :fingerprint         (:fingerprint col)
+                :fk_target_field_id  (:fk-target-field-id col)})
+             columns)))))
 
 (defn- fetch-field-values
   "Fetch or create FieldValues for columns that should have them.
@@ -484,3 +502,50 @@
 
             (when (seq enriched-tables)
               (format-schema-ddl enriched-tables))))))))
+
+(defn get-tables-with-columns
+  "Fetch tables with their columns for the extract-tables endpoint.
+   Returns lightweight metadata without triggering fingerprinting or field values.
+
+   Parameters:
+   - database-id: Database containing the tables
+   - table-ids: Set of table IDs to include
+
+   Returns a vector of table maps with :id, :name, :schema, :display_name,
+   :description, and :columns (with FK targets resolved), or nil."
+  [database-id table-ids]
+  (when (and database-id (seq table-ids))
+    (let [accessible-tables (fetch-accessible-tables table-ids)]
+      (when (seq accessible-tables)
+        (lib-be/with-metadata-provider-cache
+          (let [mp (lib-be/application-database-metadata-provider database-id)
+                _ (lib.metadata/bulk-metadata mp :metadata/table (keys accessible-tables))
+
+                tables-with-columns
+                (keep (fn [[table-id table]]
+                        (when-let [columns (seq (fetch-table-columns mp table-id))]
+                          {:id           table-id
+                           :name         (:name table)
+                           :schema       (:schema table)
+                           :display_name (:display_name table)
+                           :description  (:description table)
+                           :columns      columns}))
+                      accessible-tables)
+
+                all-columns    (mapcat :columns tables-with-columns)
+                fk-targets-map (fetch-fk-targets all-columns)]
+
+            (mapv (fn [table]
+                    (update table :columns
+                            (fn [cols]
+                              (mapv (fn [col]
+                                      (let [fk-info (get fk-targets-map (:fk_target_field_id col))]
+                                        (cond-> {:id            (:id col)
+                                                 :name          (:name col)
+                                                 :database_type (:database_type col)
+                                                 :description   (:description col)
+                                                 :semantic_type (some-> (:semantic_type col) name)}
+                                          fk-info (assoc :fk_target {:table_name (:table fk-info)
+                                                                     :field_name (:field fk-info)}))))
+                                    cols))))
+                  tables-with-columns)))))))

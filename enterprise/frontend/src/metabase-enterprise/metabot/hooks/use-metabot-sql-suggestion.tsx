@@ -2,6 +2,7 @@ import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { UseMetabotSQLSuggestionOptions } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   useMetabotDispatch,
@@ -13,7 +14,6 @@ import {
   removeSuggestedCodeEdit,
   resetConversation,
 } from "metabase-enterprise/metabot/state";
-import type { DatabaseId } from "metabase-types/api";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
 
@@ -36,10 +36,10 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
   );
 };
 
-export function useMetabotSQLSuggestion(
-  _databaseId: DatabaseId | null,
-  bufferId: string,
-) {
+export function useMetabotSQLSuggestion({
+  bufferId,
+  onGenerated,
+}: UseMetabotSQLSuggestionOptions) {
   const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
 
   const [hasError, setHasError] = useState(false);
@@ -50,9 +50,15 @@ export function useMetabotSQLSuggestion(
   )?.value;
 
   const generate = useCallback(
-    async (value: string, _sourceSql?: string) => {
+    async ({
+      prompt,
+    }: {
+      prompt: string;
+      sourceSql?: string;
+      referencedEntities?: unknown;
+    }) => {
       setHasError(false);
-      const action = await submitInput(value, {
+      const action = await submitInput(prompt, {
         profile: METABOT_PROFILE_OVERRIDES.SQL,
         preventOpenSidebar: true,
       });
@@ -62,9 +68,11 @@ export function useMetabotSQLSuggestion(
         !responseHasCodeEdit(action)
       ) {
         setHasError(true);
+      } else {
+        onGenerated?.();
       }
     },
-    [submitInput],
+    [submitInput, onGenerated],
   );
 
   const reject = useCallback(() => {

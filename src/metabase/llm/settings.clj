@@ -19,16 +19,42 @@
   :export? false
   :doc false)
 
-(defsetting llm-openai-api-key
-  (deferred-tru "OpenAI API key for AI-assisted SQL generation.")
-  :encryption :when-encryption-key-set
+(defsetting llm-max-tokens
+  (deferred-tru "Maximum tokens for LLM responses.")
+  :type :integer
+  :default 4096
   :visibility :settings-manager
   :export? false
   :doc false)
 
-(defsetting llm-openai-model
-  (deferred-tru "OpenAI model for AI-assisted SQL generation.")
-  :encryption :no
+(defsetting llm-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  :type :integer
+  :default 60000
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+(defsetting llm-connection-timeout-ms
+  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  :type :integer
+  :default 5000
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+(defsetting llm-rate-limit-per-user
+  (deferred-tru "Maximum SQL generation requests per user per minute.")
+  :type :integer
+  :default 20
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+(defsetting llm-rate-limit-per-ip
+  (deferred-tru "Maximum SQL generation requests per IP address per minute.")
+  :type :integer
+  :default 100
   :visibility :settings-manager
   :export? false
   :doc false)
@@ -43,4 +69,5 @@
   :visibility :public
   :type       :boolean
   :setter     :none
+  :export?    false
   :getter     (fn [] (or (llm-enabled?) (premium-features/enable-metabot-v3?))))
