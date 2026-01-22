@@ -296,8 +296,11 @@
 (defn create-ready-ws!
   "Create a simple workspace and wait for it to finish initializing database resources."
   [name]
-  (u/prog1 (ws-done! (:workspace-id (create-resources! {:workspace {:name name, :definitions {:x2 [:t1]}}})))
-    (is (= :ready (:db_status <>)))))
+  (let [graph {:workspace {:name name, :definitions {:x2 [:t1]}}}
+        ws-id (:workspace-id (create-resources! graph))
+        ws    (ws-done! ws-id)]
+    (is (= :ready (:db_status ws)))
+    ws))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
