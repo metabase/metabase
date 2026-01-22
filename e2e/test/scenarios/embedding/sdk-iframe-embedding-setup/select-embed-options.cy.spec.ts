@@ -480,7 +480,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=true,withAlerts=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -672,12 +672,11 @@ describe(suiteTitle, () => {
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
 
-    // TODO: (Kelvin 2026-01-16) Uncomment this assertion when working on (EMB-1166)
-    // H.expectUnstructuredSnowplowEvent({
-    //   event: "embed_wizard_options_completed",
-    //   event_detail:
-    //     "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withAlerts=true,withTitle=true,isSaveEnabled=false,theme=default",
-    // });
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=chart,authType=sso,drills=false,withDownloads=false,withAlerts=true,withTitle=true,isSaveEnabled=false,theme=default",
+    });
 
     codeBlock().should("contain", 'with-alerts="true"');
   });
@@ -734,7 +733,7 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            ? "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withAlerts=false,withTitle=true,isSaveEnabled=true,theme=default"
             : "settings=custom,experience=exploration,authType=sso,isSaveEnabled=true,theme=default",
       });
 
