@@ -3,6 +3,7 @@ import type { Collection, CollectionId } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
+import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId } from "./user";
@@ -11,6 +12,12 @@ export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
+
+export function isConcreteTableId(
+  id: TableId | undefined,
+): id is ConcreteTableId {
+  return typeof id === "number";
+}
 
 export type TableVisibilityType =
   | null
@@ -49,6 +56,7 @@ export type Table = {
   fks?: ForeignKey[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   metrics?: Card[];
   field_order: TableFieldOrder;
 
@@ -102,6 +110,7 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+  "can-query"?: boolean;
 
   term?: string;
   "data-layer"?: TableDataLayer;

@@ -7,19 +7,17 @@ import {
   Group,
   Stack,
   Title,
-  rem,
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
-import { ACTION_ICON_PADDING } from "../../constants";
 import {
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
-} from "../../utils";
+} from "../../../../utils";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
 
 import S from "./PanelHeader.module.css";
 
@@ -34,16 +32,16 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
 
   return (
     <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
-      <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="bg-secondary">
+      <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background-secondary">
         <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>
         <Title order={3} lh="1.5rem">
           {getNodeLabel(node)}
         </Title>
-        {location != null && <GraphBreadcrumbs location={location} />}
+        {location != null && <GraphBreadcrumbs links={location.links} />}
       </Stack>
-      <Group m={rem(-ACTION_ICON_PADDING)} gap="xs">
+      <Group m="-sm" gap="xs">
         {link != null && (
           <GraphExternalLink label={link.label} url={link.url} />
         )}

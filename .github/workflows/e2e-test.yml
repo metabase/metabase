@@ -29,6 +29,15 @@ on:
         required: false
         type: number
 
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+  JOB_NAME: ${{ inputs.name }}
+
 jobs:
   e2e-tests:
     runs-on: ${{ inputs.runner }}
@@ -36,21 +45,12 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
-      DISPLAY: ""
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
     steps:
       - uses: actions/checkout@v4
         with:

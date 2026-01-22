@@ -57,7 +57,7 @@ export function MiniPickerItemList() {
 }
 
 function RootItemList() {
-  const { data: databases } = useListDatabasesQuery();
+  const { data: databases } = useListDatabasesQuery({ "can-query": true });
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
@@ -152,7 +152,9 @@ function DatabaseItemList({
   const { setPath, onChange, isHidden } = useMiniPickerContext();
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
-      parent.model === "database" ? { id: parent.id } : skipToken,
+      parent.model === "database"
+        ? { id: parent.id, "can-query": true }
+        : skipToken,
     );
 
   const schemaName: SchemaName | null =
@@ -170,6 +172,7 @@ function DatabaseItemList({
         ? {
             id: dbId,
             schema: schemaName,
+            "can-query": true,
           }
         : skipToken,
     );
@@ -312,7 +315,7 @@ function SearchItemList({ query }: { query: string }) {
       <Box>
         {isLoading && <MiniPickerListLoader />}
         {!isLoading && searchResults.length === 0 && (
-          <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
+          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
         )}
       </Box>
       {searchResults.map((item) => {
@@ -375,7 +378,7 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
   return (
     <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         <Ellipsified maw="18rem">{itemText}</Ellipsified>
       </Text>
     </Flex>

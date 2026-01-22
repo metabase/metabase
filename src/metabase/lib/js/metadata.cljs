@@ -412,7 +412,7 @@
   (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
         parse-card (parse-object-fn :card)]
     ;; The question objects might not contain the fields so we merge them
-    ;; in from the table matadata.
+    ;; in from the table metadata.
     (merge
      (-> metadata
          (object-get "tables")
@@ -473,6 +473,23 @@
   [_object-type]
   "segments")
 
+(defmethod lib-type :measure
+  [_object-type]
+  :metadata/measure)
+
+(defmethod excluded-keys :measure
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :measure
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :measure
+  [_object-type]
+  "measures")
+
 (defmethod lib-type :snippet
   [_object-type]
   :metadata/native-query-snippet)
@@ -517,6 +534,7 @@
     :metadata/table                :tables
     :metadata/column               :fields
     :metadata/card                 :cards
+    :metadata/measure              :measures
     :metadata/metric               :metrics
     :metadata/segment              :segments
     :metadata/native-query-snippet :snippets))
@@ -528,6 +546,7 @@
      :fields    (parse-objects-delay :field    metadata)
      :snippets  (parse-objects-delay :snippet  metadata)
      :cards     delayed-cards
+     :measures  (parse-objects-delay :measure  metadata)
      :metrics   (delay (metric-cards delayed-cards))
      :segments  (parse-objects-delay :segment  metadata)}))
 

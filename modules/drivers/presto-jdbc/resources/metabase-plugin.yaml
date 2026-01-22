@@ -8,12 +8,15 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - merge:
-      - host
-      - required: true
-    - merge:
-        - port
-        - placeholder: 8080
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - required: true
+          - merge:
+              - port
+              - placeholder: 8080
     - merge:
         - dbname
         - name: catalog
@@ -33,45 +36,48 @@ driver:
         - password
         - required: false
     - cloud-ip-address-info
-    - ssl
-    - name: ssl-use-keystore
-      display-name: Use SSL server certificate?
-      type: boolean
-      visible-if:
-        ssl: true
-    - name: ssl-keystore
-      display-name: Keystore
-      type: secret
-      secret-kind: keystore
-      placeholder: /path/to/keystore.jks
-      visible-if:
-        ssl-use-keystore: true
-    - name: ssl-keystore-password
-      display-name: Keystore password
-      type: secret
-      secret-kind: password
-      required: false
-      visible-if:
-        ssl-use-keystore: true
-    - name: ssl-use-truststore
-      display-name: Use SSL truststore?
-      type: boolean
-      visible-if:
-        ssl: true
-    - name: ssl-truststore
-      display-name: Truststore
-      type: secret
-      secret-kind: keystore
-      placeholder: /path/to/truststore.jks
-      visible-if:
-        ssl-use-truststore: true
-    - name: ssl-truststore-password
-      display-name: Truststore password
-      type: secret
-      secret-kind: password
-      required: false
-      visible-if:
-        ssl-use-truststore: true
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssl
+        - name: ssl-use-keystore
+          display-name: Use SSL server certificate?
+          type: boolean
+          visible-if:
+            ssl: true
+        - name: ssl-keystore
+          display-name: Keystore
+          type: secret
+          secret-kind: keystore
+          placeholder: /path/to/keystore.jks
+          visible-if:
+            ssl-use-keystore: true
+        - name: ssl-keystore-password
+          display-name: Keystore password
+          type: secret
+          secret-kind: password
+          required: false
+          visible-if:
+            ssl-use-keystore: true
+        - name: ssl-use-truststore
+          display-name: Use SSL truststore?
+          type: boolean
+          visible-if:
+            ssl: true
+        - name: ssl-truststore
+          display-name: Truststore
+          type: secret
+          secret-kind: keystore
+          placeholder: /path/to/truststore.jks
+          visible-if:
+            ssl-use-truststore: true
+        - name: ssl-truststore-password
+          display-name: Truststore password
+          type: secret
+          secret-kind: password
+          required: false
+          visible-if:
+            ssl-use-truststore: true
     - advanced-options-start
     - name: kerberos
       type: boolean

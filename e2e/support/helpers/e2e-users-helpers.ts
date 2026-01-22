@@ -3,6 +3,11 @@ interface User {
   first_name?: string | null;
   last_name?: string | null;
 }
+
+export function setUserAsAnalyst(userId: number) {
+  cy.request("PUT", `/api/user/${userId}`, { is_data_analyst: true });
+}
+
 /**
  * Get user's full name, or an email address if name is not available.
  */

@@ -1,8 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Badge,
   Box,
@@ -24,6 +26,7 @@ import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
+import S from "./TablePicker.module.css";
 import { Tree } from "./Tree";
 
 interface TablePickerProps {
@@ -43,8 +46,8 @@ export function TablePicker({
 }: TablePickerProps) {
   const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
-  const previousDeferredQuery = usePrevious(deferredQuery);
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
+  const previousDebouncedQuery = usePrevious(debouncedQuery);
   const [filters, setFilters] = useState<FilterState>({
     dataLayer: null,
     dataSource: null,
@@ -57,12 +60,12 @@ export function TablePicker({
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
-      (previousDeferredQuery === "" && deferredQuery !== "") ||
-      (previousDeferredQuery !== "" && deferredQuery === "");
+      (previousDebouncedQuery === "" && debouncedQuery !== "") ||
+      (previousDebouncedQuery !== "" && debouncedQuery === "");
     if (togglingBetweenSearchAndTree) {
       resetSelection();
     }
-  }, [deferredQuery, previousDeferredQuery, resetSelection]);
+  }, [debouncedQuery, previousDebouncedQuery, resetSelection]);
 
   return (
     <Stack
@@ -71,7 +74,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p={0}>
+      <Group gap="sm">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -136,17 +139,24 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Card mih={0} flex="1 1 auto" withBorder px={0} pb={0}>
-        {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
-        ) : (
-          <SearchNew query={deferredQuery} params={params} filters={filters} />
-        )}
-      </Card>
+      <Box mih={0} flex="0 1 auto" display="flex" className={S.treeContainer}>
+        <Card withBorder p={0} flex={1} mih={0} display="flex">
+          {debouncedQuery === "" && filtersCount === 0 ? (
+            <Tree
+              path={path}
+              onChange={onChange}
+              setOnUpdateCallback={setOnUpdateCallback}
+            />
+          ) : (
+            <SearchNew
+              query={debouncedQuery}
+              params={params}
+              filters={filters}
+              onChange={onChange}
+            />
+          )}
+        </Card>
+      </Box>
     </Stack>
   );
 }

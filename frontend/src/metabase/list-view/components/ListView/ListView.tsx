@@ -180,13 +180,13 @@ function ColumnHeader({
         alignItems: "center",
       }}
     >
-      <Text fz="0.875rem" c="text-medium" style={{ display: "inline" }}>
+      <Text fz="0.875rem" c="text-secondary" style={{ display: "inline" }}>
         {column.display_name}
       </Text>
       {sortedColumnName === column.name && (
         <Icon
           name={sortingDirection === "asc" ? "arrow_up" : "arrow_down"}
-          c="text-medium"
+          c="text-secondary"
           size={14}
           style={{ display: "inline", marginLeft: 4 }}
         />

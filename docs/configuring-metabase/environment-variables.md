@@ -293,6 +293,13 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
+### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
+
+- Type: integer
+- Default: `250`
+
+Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
+
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -340,6 +347,7 @@ Whether or not the use of custom GeoJSON is enabled.
 
 - Type: boolean
 - Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage`.
 - [Configuration file name](./config-file.md): `custom-homepage`
 
 Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.
@@ -348,6 +356,7 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 - Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage-dashboard`.
 - [Configuration file name](./config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
@@ -810,7 +819,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
-### `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
+### `MB_JDBC_NETWORK_TIMEOUT_MS`
 
 - Type: integer
 - Default: `1800000`
@@ -1360,6 +1369,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
+
+Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
 - Type: integer
@@ -1367,6 +1384,14 @@ If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate 
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
 The maximum amount of time a remote sync task will be given to complete.
+
+### `MB_REMOTE_SYNC_TRANSFORMS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-transforms`
+
+Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
 
 ### `MB_REPORT_TIMEZONE`
 

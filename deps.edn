@@ -4,10 +4,7 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
-                                             :exclusions  [org.clojure/clojure
-                                                           org.clojure/clojurescript]}
-  amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+ {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
                                              :exclusions  [junit/junit]}
@@ -83,7 +80,7 @@
   hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.569"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.570"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
@@ -104,7 +101,8 @@
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
-  metosin/malli                             {:mvn/version "0.20.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
+                                             :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.23.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI

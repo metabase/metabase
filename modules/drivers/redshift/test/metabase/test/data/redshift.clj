@@ -42,18 +42,19 @@
 ;; extensions
 
 ;; Time, UUID types aren't supported by redshift
-(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
-                                   :type/Boolean    "BOOL"
-                                   :type/Date       "DATE"
-                                   :type/DateTime   "TIMESTAMP"
-                                   :type/Decimal    "DECIMAL"
-                                   :type/Float      "FLOAT8"
-                                   :type/Integer    "INTEGER"
+(doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
+                                   :type/Boolean        "BOOL"
+                                   :type/Date           "DATE"
+                                   :type/DateTime       "TIMESTAMP"
+                                   :type/DateTimeWithTZ "TIMESTAMPTZ"
+                                   :type/Decimal        "DECIMAL"
+                                   :type/Float          "FLOAT8"
+                                   :type/Integer        "INTEGER"
                                    ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
                                    ;; But don't use VARCHAR(MAX) either because of performance impact
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
-                                   :type/Text       "VARCHAR(1024)"}]
+                                   :type/Text           "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
@@ -88,7 +89,7 @@
     @db-routing-connection-details
     @db-connection-details))
 
-(defmethod sql.tx/create-db-sql         :redshift [& _] nil)
+(defmethod sql.tx/create-db-sql :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
 
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
@@ -98,7 +99,7 @@
 (defmethod sql.tx/qualified-name-components :redshift [& args]
   (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
-;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
+;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
 (defmethod ddl/drop-db-ddl-statements :redshift
   [& args]
@@ -196,7 +197,7 @@
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
     (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))
-                         (format "CREATE SCHEMA \"%s\";"  (unique-session-schema))]]
+                         (format "CREATE SCHEMA \"%s\";" (unique-session-schema))]]
       (log/info (u/format-color 'blue "[redshift] %s" sql))
       (.execute stmt sql))))
 
@@ -298,25 +299,29 @@
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
          ;; table-name should be something like test_data_venues
-         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
-     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-      {:write? false}
-      (fn [^java.sql.Connection conn]
-        (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (if tx/*use-routing-details*
-                                                        (tx/db-test-env-var :redshift :db-routing)
-                                                        (tx/db-test-env-var :redshift :db))
-                                     #_schema-pattern session-schema
-                                     #_table-pattern  table-name
-                                     #_types          (into-array String ["TABLE"]))]
-          ;; if the ResultSet returns anything we know the table is already loaded.
-          (.next rset)))))))
+         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
+         ;; Use direct SQL query instead of JDBC metadata API (.getTables) because the metadata API
+         ;; can return stale/cached results on Redshift, causing flaky test failures.
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
+         results        (jdbc/query jdbc-spec
+                                    ["SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1"
+                                     session-schema
+                                     table-name])]
+     (seq results))))
+
+(defmethod driver/database-supports? [:redshift :test/use-fake-sync]
+  [_driver _feature _database]
+  ;; Use real sync in tests on master/release branches to catch sync regressions.
+  ;; Use fake sync in tests on feature branches for speed (~10 min savings per test run).
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :redshift
+  [_driver]
+  (unique-session-schema))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
-  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [statement [(format "DROP USER IF EXISTS %s;" role-name)
@@ -325,7 +330,7 @@
 
 (defn grant-table-perms-to-roles!
   [driver details roles]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
@@ -341,7 +346,7 @@
 
 (defmethod tx/drop-roles! :redshift
   [driver details roles _user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]

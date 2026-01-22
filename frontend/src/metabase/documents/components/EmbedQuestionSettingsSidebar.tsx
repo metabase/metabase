@@ -179,7 +179,7 @@ export const EmbedQuestionSettingsSidebar = ({
           <ActionIcon
             mt="1rem"
             mr="1rem"
-            color="text-dark"
+            color="text-primary"
             onClick={handleDone}
           >
             <Icon name="close" />

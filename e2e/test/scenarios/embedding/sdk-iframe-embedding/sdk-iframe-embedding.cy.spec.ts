@@ -208,29 +208,26 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
           },
         },
       ],
-      onVisitPage: () => {
-        cy.window().then((win) => {
-          const element = win.document!.querySelector("metabase-question")!;
-          element.addEventListener("ready", () => {
-            win.document!.body.setAttribute(
-              "data-consumer-event-triggered",
-              "true",
-            );
-          });
+      onVisitPage: (win) => {
+        const element = win.document.querySelector("metabase-question")!;
+        element.addEventListener("ready", () => {
+          win.document.body.setAttribute(
+            "data-consumer-event-triggered",
+            "true",
+          );
         });
+
+        // assert that the attribute is not set at the start
+        const attrValue = win.document.body.getAttribute(
+          "data-consumer-event-triggered",
+        );
+        expect(attrValue).to.not.equal("true");
       },
     });
 
-    cy.log("ready event should not be fired before the page loads");
-    cy.get("body").should(
-      "not.have.attr",
-      "data-consumer-event-triggered",
-      "true",
-    );
-
     cy.wait("@getCardQuery");
 
-    cy.log("ready event should be fired after the page loads");
+    cy.log("ready event should be fired after the iframe is loaded");
     cy.get("iframe").should("be.visible");
     cy.get("body").should("have.attr", "data-consumer-event-triggered", "true");
 

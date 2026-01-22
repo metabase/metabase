@@ -4,7 +4,10 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
+    tokenFeatures: {
+      embedding_sdk: opts.isEmbeddingSdkEnabled,
+      embedding_simple: opts.isEmbeddingSimpleEnabled,
+    },
     ...opts,
   });
 
@@ -12,6 +15,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
   it("should not tell users to switch binaries when they have a EE build", async () => {
     await setup({
       isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: true,
       showSdkEmbedTerms: false,
       isHosted: true,
       enterprisePlugins: [

@@ -32,7 +32,9 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/AnalysisFindingError
+    :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction
@@ -89,6 +91,7 @@
     :model/Session
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported

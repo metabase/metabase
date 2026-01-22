@@ -61,15 +61,15 @@ export const CollectionSyncList = ({
   }
 
   if (collections.length === 0) {
-    return <Text c="text-medium">{emptyMessage}</Text>;
+    return <Text c="text-secondary">{emptyMessage}</Text>;
   }
 
   return (
     <Box
+      bg="background-primary"
       style={{
         borderRadius: "var(--mantine-radius-md)",
         border: "1px solid var(--mb-color-border)",
-        backgroundColor: "var(--mb-color-bg-white)",
         overflow: "hidden",
       }}
     >

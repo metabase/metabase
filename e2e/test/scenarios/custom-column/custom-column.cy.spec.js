@@ -2058,13 +2058,12 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.openNotebook();
 
     cy.log("Move the second Count to be the first");
-    H.moveDnDKitElement(
-      H.getNotebookStep("summarize")
-        .findAllByText("Count")
-        .should("have.length", 2)
-        .last(),
-      { horizontal: -400 },
-    );
+    H.getNotebookStep("summarize")
+      .findAllByText("Count")
+      .should("have.length", 2)
+      .last()
+      .as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
 
     cy.log("The values should not have changed, but the order should have");
     H.visualize();
@@ -2526,13 +2525,12 @@ describe("scenarios > question > custom column > aggregation", () => {
         "Swapping the aggregation clauses should not change the results, but the column order will be different",
       );
       H.openNotebook();
-      H.moveDnDKitElement(
-        H.getNotebookStep("summarize")
-          .findAllByText("Count")
-          .should("have.length", 2)
-          .last(),
-        { horizontal: -400 },
-      );
+      H.getNotebookStep("summarize")
+        .findAllByText("Count")
+        .should("have.length", 2)
+        .last()
+        .as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { horizontal: -400 });
 
       H.visualize();
       H.assertTableData({

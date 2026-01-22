@@ -7,8 +7,6 @@ redirect_from:
 
 # Modular embedding
 
-{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
-
 {% include shared/in-page-promo-embedding-workshop.html %}
 
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
@@ -26,6 +24,10 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Create a new embed
 
+You can generate a code snippet for embedding a component by going through the embed wizard.
+
+### 1. Open the embed wizard
+
 In your Metabase:
 
 1. Visit the item you want to embed.
@@ -40,25 +42,21 @@ You can also go to **Admin settings > Embedding > Modular embedding** and click 
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
-## Pick how to authenticate the embed
+### 2. Pick how to authenticate the embed
+
+{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
 
 How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](./authentication.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md). But we recommend setting up modular embedding with SSO.
 
-## Customize your embed
+### 3. Customize your embed
 
-The exact customization options you see will depend on what type of entity you're embedding. You'll see a live preview of the embed with your customizations.
+The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/pricing) you're on. You'll see a live preview of the embed with your customizations.
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
-You'll also be able to pick colors for:
+If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll be also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
 
-- Brand
-- Text
-- Background
-
-But you can customize a lot more later. To configure other colors (like secondary colors, query builder colors, and more), as well as font, you can specify a `theme` in your embed code snippet.
-
-All the customization options you select in this interactive flow will be reflected in code snippet, which you can edit as you see fit.
+All the customization options you select in this wizard will be reflected in code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
 For example, this code defines the font, color, and size for text, background colors, and colors for filters and summaries:
 
@@ -87,7 +85,7 @@ Once you're done customizing your embed, click **Next**.
 
 ## Add the embedding script to your app
 
-Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
+If you [create an embed through the built-in embed wizard](#create-a-new-embed), Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 You'll add this code snippet to your app and refresh the page.
 
@@ -105,13 +103,13 @@ Here's an example snippet:
 
 <script defer src="https://your-metabase-url/app/embed.js"></script>
 
+<!-- Embedding configuration -->
 <script>
   function defineMetabaseConfig(config) {
     window.metabaseConfig = config;
   }
 </script>
 
-<!-- Embedding configuration -->
 <script>
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase-url",
@@ -135,7 +133,9 @@ If you're embedding multiple components in a single page, you only need to inclu
 
 ## Each end user should have their own Metabase account
 
-With SSO embeds, each end-user must have their own Metabase account.
+{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
+
+With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 
 The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the modular embedding, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
 
@@ -145,9 +145,9 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 ## Customizing embeds
 
-The exact customization options you see will depend on what type of entity you're embedding.
+The exact customization options you see will depend on what type of entity you're embedding and which plan you're on.
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -199,6 +199,8 @@ API keys should only be used for testing with trusted people. Anyone with access
 
 ## Embedding Metabase in a different domain
 
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
 You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
@@ -217,8 +219,6 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 
 ## Setting up SSO
 
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+
 For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
-
-## Example app with SSO embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.

@@ -3,7 +3,9 @@ import _ from "underscore";
 
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
+import { getVisualizationRaw } from "metabase/visualizations";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
+import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -39,9 +41,20 @@ export const DashboardChartSettings = ({
   });
 
   const handleDone = useCallback(() => {
-    onChange?.(chartSettings ?? tempSettings ?? {});
+    const allSettings = chartSettings ?? tempSettings ?? {};
+
+    // Filter out settings with dashboard: false to avoid persisting
+    // settings that are hidden from dashboard UI
+    const visualization = getVisualizationRaw(series);
+    const vizSettingsDefs = visualization?.settings ?? {};
+    const settingsToSave = sanitizeDashcardSettings(
+      allSettings,
+      vizSettingsDefs,
+    );
+
+    onChange?.(settingsToSave);
     onClose?.();
-  }, [chartSettings, onChange, onClose, tempSettings]);
+  }, [chartSettings, onChange, onClose, tempSettings, series]);
 
   const handleResetSettings = useCallback(() => {
     const originalCardSettings = dashcard?.card.visualization_settings;
@@ -74,7 +87,7 @@ export const DashboardChartSettings = ({
   return (
     <Flex justify="unset" align="unset" wrap="nowrap" h="100%">
       <BaseChartSettings
-        flex="1 0 0"
+        flex="0 0 400px"
         series={series}
         onChange={setTempSettings}
         chartSettings={chartSettings}
