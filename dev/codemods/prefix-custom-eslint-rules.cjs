@@ -26,7 +26,7 @@ module.exports = function transformer(file) {
 
   // Pattern to match eslint disable comments
   // Matches: eslint-disable, eslint-disable-line, eslint-disable-next-line
-  const eslintCommentPattern = /(\/\/\s*eslint-disable(?:-next-line|-line)?|\/\*\s*eslint-disable(?:-next-line|-line)?)\s+([^*\n]+?)(\s*\*\/|\n|$)/g;
+  const eslintCommentPattern = /(\/\/\s*eslint-disable(?:-next-line|-line))\s+([^*\n]+?)(\s*\*\/|\n|$)/g;
 
   result = source.replace(eslintCommentPattern, (match, prefix, rules, suffix) => {
     let rulesModified = false;
