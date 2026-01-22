@@ -9,13 +9,14 @@ import { documentApi } from "metabase/api/document";
 import { fieldApi } from "metabase/api/field";
 import { segmentApi } from "metabase/api/segment";
 import { tableApi as coreTableApi } from "metabase/api/table";
-import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { getSetting } from "metabase/selectors/settings";
+import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
+import { tag } from "metabase-enterprise/api/tags";
 import { transformApi } from "metabase-enterprise/api/transform";
 import { transformTagApi } from "metabase-enterprise/api/transform-tag";
 import type {
@@ -72,6 +73,8 @@ const ALL_INVALIDATION_TAGS = [
   tag("subscription-channel"),
   tag("timeline"),
   tag("timeline-event"),
+  tag("transform"),
+  tag("python-transform-library"),
 ];
 
 function shouldInvalidateForEntity(
@@ -490,7 +493,7 @@ remoteSyncListenerMiddleware.startListening({
           }, 500);
 
           if (isImportTask) {
-            dispatch(Api.util.invalidateTags(ALL_INVALIDATION_TAGS));
+            dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
           }
         }
 
