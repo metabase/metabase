@@ -10,7 +10,7 @@
 (deftest ^:parallel batch-fetch-card-metadata-empty-queries-test
   ;; disable Malli because we want to make sure this works in prod
   (mu/disable-enforcement
-    (is (= {:databases [], :fields [], :snippets [], :tables []}
+    (is (= {:databases [], :fields [], :snippets [], :tables [], :cards []}
            (queries.metadata/batch-fetch-card-metadata [{}])))))
 
 (deftest only-models-trust-fk-semantic-types-test
@@ -36,10 +36,10 @@
                                                  :name "Test Question"
                                                  :type :question)]
         (mt/with-test-user :crowberto
-          (let [[model-table]     (schema.table/batch-fetch-card-query-metadatas [(:id model)] {})
-                [question-table]  (schema.table/batch-fetch-card-query-metadatas [(:id question)] {})
-                model-fk-field    (m/find-first #(= (:name %) "COMPUTED_FK") (:fields model-table))
-                question-fk-field (m/find-first #(= (:name %) "COMPUTED_FK") (:fields question-table))]
+          (let [[model]           (schema.table/batch-fetch-card-query-metadatas [(:id model)])
+                [saved-question]  (schema.table/batch-fetch-card-query-metadatas [(:id question)])
+                model-fk-field    (m/find-first #(= (:name %) "COMPUTED_FK") (:result_metadata model))
+                question-fk-field (m/find-first #(= (:name %) "COMPUTED_FK") (:result_metadata saved-question))]
             (testing "Model preserves FK semantic_type for computed columns"
               (is (= :type/FK (:semantic_type model-fk-field))))
             (testing "Model preserves fk_target_field_id for computed columns"

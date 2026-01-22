@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :plugins))
+(use-fixtures :once (fixtures/initialize :plugins :db))
 
 ;; Helper Fns
 

@@ -128,7 +128,9 @@
                    :type     :query
                    :query    inner-query-clauses}})
 
-(defn- virtual-table-for-card [card & {:as kvs}]
+(defn- virtual-table-for-card
+  {:deprecated "0.59.0"}
+  [card & {:as kvs}]
   (merge
    {:id               (format "card__%d" (u/the-id card))
     :db_id            (:database_id card)
@@ -1192,15 +1194,7 @@
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
                     response))
-        (check-tables-included
-         response
-         (assoc (virtual-table-for-card card)
-                :fields [{:name                     "age_in_bird_years"
-                          :display_name             "Age in Bird Years"
-                          :table_id                 (str "card__" (u/the-id card))
-                          :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
-                          :semantic_type            nil
-                          :base_type                "type/Integer"}]))))))
+        (check-tables-included response (virtual-table-for-card card))))))
 
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"

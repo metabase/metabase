@@ -9,7 +9,7 @@
   "Valid Database ID"
   pos-int?)
 
-(def saved-questions-virtual-database-id
+(def ^{:deprecated "0.59.0"} saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
 
    A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using

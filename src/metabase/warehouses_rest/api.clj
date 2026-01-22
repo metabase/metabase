@@ -194,24 +194,26 @@
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::queries.schema/card-type
-   & {:keys [include-fields?]}]
+  {:deprecated "0.59.0"}
+  [card-type :- ::queries.schema/card-type]
   (for [card (source-query-cards card-type)]
-    (schema.table/card->virtual-table card :include-fields? include-fields?)))
+    (schema.table/card->virtual-table card)))
 
 (mu/defn- saved-cards-virtual-db-metadata
+  {:deprecated "0.59.0"}
   [card-type :- ::queries.schema/card-type
-   & {:keys [include-tables? include-fields?]}]
+   & {:keys [include-tables?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables card-type
-                                                           :include-fields? include-fields?)))))
+      include-tables? (assoc :tables (cards-virtual-tables card-type)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
-(defn- add-saved-questions-virtual-database [dbs & options]
+(defn- add-saved-questions-virtual-database
+  {:deprecated "0.59.0"}
+  [dbs & options]
   (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
@@ -567,7 +569,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :question :include-tables? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (get-database id {:include-editable-data-model? include-editable-data-model?})
@@ -1485,6 +1487,7 @@
 (api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
+  {:deprecated "0.59.0"}
   [{:keys [schema]}]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards

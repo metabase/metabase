@@ -4713,3 +4713,86 @@
                           :aggregation  [["count"]]}}
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))
+
+(deftest ^:parallel include-date-dimensions-in-nested-query-test
+  (testing "GET /api/card/:id/query_metadata"
+    (testing "Test date dimensions being included with a nested query"
+      (mt/with-temp [:model/Card card {:name          "Users"
+                                       :database_id   (mt/id)
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+        ;; run the Card which will populate its result_metadata column
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
+        ;; Now fetch the metadata for this "table" via the API
+        (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))]
+          (is (=? {:cards [{:name             "Users"
+                            :database_id      (:database_id card)
+                            :id               (:id card)
+                            :entity_id        (:entity_id card)
+                            :type             "question"
+                            :description      nil
+                            :moderated_status nil
+                            :metrics          nil
+                            :result_metadata  [{:name           "NAME"
+                                                :display_name   "NAME"
+                                                :base_type      "type/Text"
+                                                :effective_type "type/Text"
+                                                :database_type  "CHARACTER VARYING"
+                                                :semantic_type  "type/Name"
+                                                :fingerprint    (:fingerprint name-metadata)
+                                                :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
+                                               {:name           "LAST_LOGIN"
+                                                :display_name   "LAST_LOGIN"
+                                                :base_type      "type/DateTime"
+                                                :effective_type "type/DateTime"
+                                                :database_type  "TIMESTAMP"
+                                                :semantic_type  nil
+                                                :fingerprint    (:fingerprint last-login-metadata)
+                                                :field_ref      ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}]}
+                  (mt/user-http-request :crowberto :get 200
+                                        (format "card/%d/query_metadata" (u/the-id card))))))))))
+
+(deftest include-metrics-for-card-test
+  (testing "GET /api/card/:id"
+    (mt/with-temp [:model/Card model {:name          "Venues model"
+                                      :database_id   (mt/id)
+                                      :type          :model
+                                      :dataset_query (mt/mbql-query venues)}]
+      (let [card-virtual-table-id (str "card__" (:id model))
+            metric-query          {:database (mt/id)
+                                   :type     "query"
+                                   :query    {:source-table card-virtual-table-id
+                                              :aggregation  [["count"]]}}]
+        (mt/with-temp [:model/Collection coll   {:name "My Collection"}
+                       :model/Card       metric {:name          "Venues metric"
+                                                 :database_id   (mt/id)
+                                                 :collection_id (:id coll)
+                                                 :type          :metric
+                                                 :dataset_query metric-query}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) (:id coll))
+          (testing "Test metrics being included with cards"
+            (is (=? {:cards [{:name        "Venues model"
+                              :database_id (mt/id)
+                              :id          (:id model)
+                              :type        "model"
+                              :metrics     [{:source_card_id (:id model)
+                                             :table_id       (:table_id model)
+                                             :database_id    (mt/id)
+                                             :name           "Venues metric"
+                                             :type           "metric"
+                                             :dataset_query  {:database (mt/id)
+                                                              :lib/type "mbql/query"
+                                                              :stages   [{:source-card (:id model)
+                                                                          :aggregation [["count" {}]]}]}
+                                             :id             (:id metric)}]}]}
+                    (mt/user-http-request :crowberto :get 200
+                                          (format "card/%d/query_metadata" (u/the-id model))))))
+          (testing "Test metrics not being included with cards from inaccessible collections"
+            (is (=? {:cards [{:name        "Venues model"
+                              :database_id (mt/id)
+                              :id          (:id model)
+                              :type        "model"
+                              :metrics     nil}]}
+                    (mt/user-http-request :lucky :get 200
+                                          (format "card/%d/query_metadata" (u/the-id model)))))))))))
