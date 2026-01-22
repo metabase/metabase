@@ -44,7 +44,7 @@
 ;;; ------------------------------------------------ Shared Schemas -------------------------------------------------
 
 (mr/def ::bucket
-  (into [:enum {:error/message "Valid bucket"
+  (into [:enum {:error/message           "Valid bucket"
                 :encode/tool-api-request keyword}]
         (map name)
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
@@ -189,7 +189,12 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-aggregation
-  "Aggregation using a field and function."
+  "Aggregation using a field and function.
+
+   - field_id: Required. For 'count', any valid field_id can be provided (the value is ignored since count operates on rows).
+   - function: The aggregation function to apply.
+   - sort_order: Optional. Use this to order results by this aggregation ('asc' or 'desc').
+                 This is the correct way to sort by aggregation results - do NOT use order_by for aggregations."
   [:and
    [:map
     [:field_id :string]

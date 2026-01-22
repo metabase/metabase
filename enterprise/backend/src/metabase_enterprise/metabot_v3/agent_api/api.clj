@@ -3,6 +3,8 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
@@ -28,6 +30,29 @@
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
+
+(def ^:private tool-request-transformer
+  "Transformer for encoding query components to the format expected by internal tool functions.
+   Converts snake_case keys to kebab-case and string enum values to keywords.
+   This is the same transformer used by deftool for the internal tools API."
+  (mtx/transformer {:name :tool-api-request}))
+
+(defn- encode-query-components
+  "Encode query components (filters, fields, aggregations, group-by) using the tools.api schemas
+   to transform them to the format expected by internal functions."
+  [{:keys [filters fields aggregations group-by order-by] :as args}]
+  (let [encode (fn [schema items]
+                 (when items
+                   (mapv #(mc/encode schema % tool-request-transformer) items)))]
+    (cond-> args
+      filters      (assoc :filters (encode ::tools.api/filter filters))
+      fields       (assoc :fields (encode ::tools.api/field fields))
+      aggregations (assoc :aggregations (encode ::tools.api/aggregation aggregations))
+      group-by     (assoc :group-by (encode ::tools.api/group-by group-by))
+      order-by     (assoc :order-by (mapv (fn [{:keys [field direction]}]
+                                            {:field     (mc/encode ::tools.api/field field tool-request-transformer)
+                                             :direction (keyword direction)})
+                                          order-by)))))
 
 (defn- check-tool-result
   "Extract :structured-output from a tool result, or throw 404 with the error message.
@@ -272,16 +297,25 @@
 ;; Reuse schemas from the metabot tools API for query components
 (mr/def ::construct-query-table-request
   "Request schema for constructing a query from a table.
-   Supports all query components: filters, fields, aggregations, group_by, order_by, limit."
+
+   Query components:
+   - filters: Filter conditions to apply
+   - fields: Specific fields to select (omit for all fields)
+   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.
+   - group_by: Fields to group by, with optional temporal granularity
+   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.
+   - limit: Maximum rows to return"
   [:map
    [:table_id ms/PositiveInt]
    [:filters      {:optional true} [:maybe [:sequential ::tools.api/filter]]]
    [:fields       {:optional true} [:maybe [:sequential ::tools.api/field]]]
    [:aggregations {:optional true} [:maybe [:sequential ::tools.api/aggregation]]]
    [:group_by     {:optional true} [:maybe [:sequential ::tools.api/group-by]]]
-   [:order_by     {:optional true} [:maybe [:sequential [:map
-                                                         [:field ::tools.api/field]
-                                                         [:direction [:enum "asc" "desc"]]]]]]
+   [:order_by     {:optional true
+                   :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
+    [:maybe [:sequential [:map
+                          [:field ::tools.api/field]
+                          [:direction [:enum "asc" "desc"]]]]]]
    [:limit        {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::construct-query-metric-request
@@ -322,17 +356,16 @@
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
   [{:keys [table_id filters fields aggregations group_by order_by limit]}]
-  (let [data (check-tool-result
+  (let [args (encode-query-components {:filters      filters
+                                       :fields       fields
+                                       :aggregations aggregations
+                                       :group-by     group_by
+                                       :order-by     order_by})
+        data (check-tool-result
               (metabot-filters/query-datasource
-               {:table-id     table_id
-                :filters      filters
-                :fields       fields
-                :aggregations aggregations
-                :group-by     group_by
-                :order-by     (mapv (fn [{:keys [field direction]}]
-                                      {:field field :direction (keyword direction)})
-                                    order_by)
-                :limit        limit}))]
+               (assoc args
+                      :table-id table_id
+                      :limit    limit)))]
     {:query (-> (:query data)
                 json/encode
                 encode-base64-url-safe)}))
@@ -340,11 +373,11 @@
 (defn- construct-metric-query
   "Build a query from a metric using filters and group_by."
   [{:keys [metric_id filters group_by]}]
-  (let [data (check-tool-result
+  (let [args (encode-query-components {:filters  filters
+                                       :group-by group_by})
+        data (check-tool-result
               (metabot-filters/query-metric
-               {:metric-id metric_id
-                :filters   filters
-                :group-by  group_by}))]
+               (assoc args :metric-id metric_id)))]
     {:query (-> (:query data)
                 json/encode
                 encode-base64-url-safe)}))

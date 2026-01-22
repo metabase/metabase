@@ -86,19 +86,23 @@
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
   - field-index is the index within that model's visible columns
 
-  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid.
+  Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid
+  or the input is not a string.
 
   Examples:
     (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
-    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
+    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}
+    (parse-field-id nil) => nil
+    (parse-field-id \"invalid\") => nil"
   [field-id]
-  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
-    {:model-tag model-tag
-     ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
-     :model-id (if (= model-tag "q")
-                 model-id
-                 (parse-long model-id))
-     :field-index (parse-long field-index)}))
+  (when (string? field-id)
+    (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
+      {:model-tag   model-tag
+       ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
+       :model-id    (if (= model-tag "q")
+                      model-id
+                      (parse-long model-id))
+       :field-index (parse-long field-index)})))
 
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
