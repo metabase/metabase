@@ -4,6 +4,7 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -102,6 +103,7 @@ describe(
     describe("transforms access with permission granted", () => {
       beforeEach(() => {
         grantTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID);
       });
 
       it("allows user to view transforms list page", () => {
@@ -246,6 +248,7 @@ describe(
     describe("transforms access denied without permission", () => {
       beforeEach(() => {
         denyTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID, false);
       });
 
       it("denies user access to transforms list page", () => {
@@ -329,6 +332,7 @@ describe(
     describe("permission changes affect access immediately", () => {
       it("grants access after permission is added", () => {
         denyTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID, false);
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
@@ -336,6 +340,7 @@ describe(
 
         cy.signInAsAdmin();
         grantTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID);
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
@@ -345,6 +350,7 @@ describe(
 
       it("revokes access after permission is removed", () => {
         grantTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID);
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
@@ -352,6 +358,7 @@ describe(
 
         cy.signInAsAdmin();
         denyTransformsPermissionToAllGroups();
+        H.setUserAsAnalyst(NORMAL_USER_ID, false);
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
