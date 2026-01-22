@@ -7,6 +7,7 @@ import {
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Transform,
   Workspace,
@@ -16,6 +17,14 @@ import type {
 import { createMockTransform } from "metabase-types/api/mocks";
 
 import { EditTransformMenu } from "./EditTransformMenu";
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
 
 const DATABASE_ID = 1;
 
@@ -77,12 +86,16 @@ function setup({
 }
 
 async function openMenu() {
-  await userEvent.click(
-    await screen.findByRole("button", { name: /Edit transform/i }),
-  );
+  await userEvent.click(await screen.findByRole("button", { name: /Edit/i }));
 }
 
 describe("EditTransformMenu", () => {
+  beforeEach(() => {
+    mockHasPremiumFeature.mockImplementation(
+      (feature) => feature === "workspaces",
+    );
+  });
+
   it("should render menu items and sort workspaces with existing checkouts first", async () => {
     setup({
       workspaces: [
