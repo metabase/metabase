@@ -6,7 +6,6 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [java-time.clock]
-   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -263,4 +262,7 @@
    body :- [:map
             [:global {:optional true} :map]
             [:workspace {:optional true} :map]]]
-  (ws.tu/create-resources! (parse-magic-references body)))
+  (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
+    (create-fn (parse-magic-references body))
+    {:status 501
+     :body   {:error "Workspace test utilities not available"}}))
