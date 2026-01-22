@@ -1,25 +1,51 @@
 import type * as Lib from "metabase-lib";
 import type { CreateTestQueryOpts } from "metabase-lib/test-helpers";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, OpaqueDatasetQuery } from "metabase-types/api";
 
 import type { GetMetadataOpts } from "./types";
 
-export async function getMetadataProvider(
+export function getMetadataProvider(
+  opts?: GetMetadataOpts,
+): Cypress.Chainable<Lib.MetadataProvider> {
+  return (
+    cy
+      // we need to log in before we can get metadata
+      .getCookie("metabase.SESSION_ID")
+      .then(() => _getMetadataProvider({ ...opts }))
+  );
+}
+
+export async function _getMetadataProvider(
   opts?: GetMetadataOpts,
 ): Promise<Lib.MetadataProvider> {
   const { getMetadataProvider } = await import("./metadata-provider");
   return getMetadataProvider(opts);
 }
 
-export async function createTestJsQuery(
+export function createTestJsQuery(
   metadataProvider: Lib.MetadataProvider,
   opts: CreateTestQueryOpts,
-) {
+): Cypress.Chainable<OpaqueDatasetQuery> {
+  return cy.wrap(_createTestJsQuery(metadataProvider, opts));
+}
+
+export async function _createTestJsQuery(
+  metadataProvider: Lib.MetadataProvider,
+  opts: CreateTestQueryOpts,
+): Promise<OpaqueDatasetQuery> {
   const { createTestJsQuery } = await import("metabase-lib/test-helpers");
   return createTestJsQuery(metadataProvider, opts);
 }
 
-export async function createTestNativeJsQuery(
+export function createTestNativeJsQuery(
+  metadataProvider: Lib.MetadataProvider,
+  databaseId: DatabaseId,
+  query: string,
+): Cypress.Chainable<OpaqueDatasetQuery> {
+  return cy.wrap(_createTestNativeJsQuery(metadataProvider, databaseId, query));
+}
+
+export async function _createTestNativeJsQuery(
   metadataProvider: Lib.MetadataProvider,
   databaseId: DatabaseId,
   query: string,
