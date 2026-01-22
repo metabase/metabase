@@ -37,7 +37,7 @@ To include a table in the Library as a data source, you must **publish** the tab
 
 Tables published to the Library can't depend on any tables outside of the Library. If, for example, you want to publish at table that includes data from another table, such as a [foreign-key remapping](../questions/visualizations/table.md#foreign-key-remapping), Metabase will publish those tables as well.
 
-### Unpublishing tables
+## Unpublishing tables
 
 To unpublish a table from the Library:
 
@@ -46,6 +46,22 @@ To unpublish a table from the Library:
 3. Click **Unpublish**.
 
 If other tables depend on the table you want to unpublish, Metabase will unpublish those tables as well. You'll get a confirmation message explaining which tables Metabase would unpublish.
+
+## Managing tables
+
+Once a table is published, you can view and manage its metadata, and more.
+
+- Overview
+- [Fields](./data-editing.md)
+- [Segments](/docs/data-modeling/segments.md)
+- Measures
+- [Dependencies](./dependency-graph.md).
+
+To explore a table from the Library in Data Studio:
+
+1. Click on the table.
+2. Click the three-dot menu.
+3. Select **View**.
 
 ## Versioning the Library
 
