@@ -235,4 +235,3 @@
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
   (refresh-cache-configs!))
-

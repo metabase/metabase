@@ -77,4 +77,3 @@
                 (mt/user-http-request :rasta :post 200 "testing/set-time")))))
     (finally
       (alter-var-root #'java-time.clock/*clock* (constantly nil)))))
-
