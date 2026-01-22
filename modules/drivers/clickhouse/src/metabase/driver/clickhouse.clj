@@ -22,7 +22,8 @@
    [metabase.util.log :as log])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
-   (java.sql Connection SQLException Statement)))
+   (java.sql Connection SQLException Statement PreparedStatement)
+   (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -354,6 +355,12 @@
 (defmethod driver/table-known-to-not-exist? :clickhouse
   [_driver e]
   (instance? SQLException e))
+
+;; Override clickhouse to not pass in the Types/DATE parameter due to jdbc
+;; driver issue: https://github.com/ClickHouse/clickhouse-java/issues/2701
+(defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
+  [_ ^PreparedStatement prepared-statement i object]
+  (.setObject prepared-statement i object))
 
 ;;; ------------------------------------------ Workspace Isolation ------------------------------------------
 

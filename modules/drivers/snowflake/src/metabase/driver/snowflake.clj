@@ -77,6 +77,7 @@
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
                               :transforms/table                       true
                               :workspace                              true}]
@@ -455,7 +456,7 @@
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
   (let [milliseconds [:datediff [:raw "milliseconds"] x y]]
-    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    ;; milliseconds needs to be cast to float because division rounds incorrectly with large integers
     [:trunc (h2x// (h2x/cast :float milliseconds)
                    (case unit :hour 3600000 :minute 60000 :second 1000))]))
 

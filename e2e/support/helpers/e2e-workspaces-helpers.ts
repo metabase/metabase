@@ -54,7 +54,7 @@ export const Workspaces = {
   },
 
   getWorkspaceItem(name: string) {
-    return this.getWorkspacesSection().find(`button[name="${name}"]`);
+    return this.getWorkspacesSection().find(`a[name="${name}"]`);
   },
 
   getWorkspaceItemStatus(name: string) {

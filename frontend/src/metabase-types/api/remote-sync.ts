@@ -9,7 +9,13 @@ export type RemoteSyncEntityModel =
   | "dashboard"
   | "collection"
   | "document"
-  | "snippet";
+  | "snippet"
+  | "table"
+  | "field"
+  | "segment"
+  | "transform"
+  | "transformtag"
+  | "transformjob";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -25,6 +31,11 @@ export type RemoteSyncEntity = {
   collection_id?: number;
   display?: CardDisplayType;
   sync_status: RemoteSyncEntityStatus;
+  authority_level?: string | null;
+  /** Parent table ID for field and segment models */
+  table_id?: number;
+  /** Parent table name for field and segment models */
+  table_name?: string;
 };
 
 export type RemoteSyncChangesResponse = {
@@ -34,6 +45,10 @@ export type RemoteSyncChangesResponse = {
 
 export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
+};
+
+export type HasRemoteChangesResponse = {
+  has_changes: boolean;
 };
 
 export type ExportChangesRequest = {

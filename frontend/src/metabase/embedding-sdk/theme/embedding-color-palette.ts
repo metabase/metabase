@@ -3,10 +3,9 @@ import type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colorConfig, colors } from "metabase/lib/colors";
+import { colors } from "metabase/lib/colors";
+import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
-
-import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -102,7 +101,7 @@ export function getEmbeddingColorPalette(
   );
 
   const chartColors =
-    sdkColors.charts && getEmbeddingChartColors(sdkColors.charts);
+    sdkColors.charts && mapChartColorsToAccents(sdkColors.charts);
 
   return {
     ...originalColors,
@@ -126,12 +125,6 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
-  });
-
-  // Also set overrides on the color config, this way when we
-  // set up the mantine theme colors, we will grab apropriate app palette colors as well 🥺
-  Object.entries(combinedThemeColors).forEach(([key, value]) => {
-    colorConfig[key as ColorName] = { light: value, dark: value };
   });
 
   /**

@@ -30,7 +30,7 @@ Navigate to the **Admin**>**Settings** section of the Admin area, then click on 
 
 Here's a breakdown of each of the settings:
 
-- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
+- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
 
 - **String Used by the JWT Signing Key**: The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 

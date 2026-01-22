@@ -359,7 +359,7 @@
 (defn- make-python-transform
   "Create a python transform definition with the given source-tables and target name."
   [source-tables target-name & [target-schema]]
-  (let [schema (or target-schema (driver.sql/default-schema driver/*driver*))]
+  (let [schema (or target-schema (driver.sql/default-schema (or driver/*driver* (:engine (mt/db)))))]
     {:source {:type "python"
               :source-database (mt/id)
               :source-tables source-tables

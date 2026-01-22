@@ -208,13 +208,13 @@
    (prometheus/gauge :jetty/dispatched-active
                      {:description "Number of active requests being handled"})
    (prometheus/gauge :jetty/dispatched-active-max
-                     {:descrption "Maximum number of active requests handled"})
+                     {:description "Maximum number of active requests handled"})
    (prometheus/gauge :jetty/dispatched-time-max
                      {:description "Maximum time spent dispatching a request"})
    (prometheus/counter :jetty/dispatched-time-seconds-total
-                       {:descrption "Total time spent handling requests"})
+                       {:description "Total time spent handling requests"})
    (prometheus/counter :jetty/async-requests-total
-                       {:descrption "Totql number of async requests"})
+                       {:description "Total number of async requests"})
    (prometheus/gauge :jetty/async-requests-waiting
                      {:description "Currently waiting async requests"})
    (prometheus/gauge :jetty/async-requests-waiting-max
@@ -222,9 +222,9 @@
    (prometheus/counter :jetty/async-dispatches-total
                        {:description "Number of requests that have been asynchronously dispatched"})
    (prometheus/counter :jetty/expires-total
-                       {:descpription "Number of async requests that have expired"})
+                       {:description "Number of async requests that have expired"})
    (prometheus/counter :jetty/responses-total
-                       {:descrption "Total response grouped by status code"
+                       {:description "Total response grouped by status code"
                         :labels [:code]})
    (prometheus/counter :jetty/responses-bytes-total
                        {:description "Total number of bytes across all responses"})])

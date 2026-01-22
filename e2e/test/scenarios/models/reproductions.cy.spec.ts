@@ -1999,7 +1999,9 @@ describe("issue 38747", () => {
 
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
+      waitForAnimations: false,
+    });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");

@@ -236,12 +236,11 @@ function WorkspacePageContent({
     [setTab],
   );
 
-  if (error || isLoadingWorkspace || isLoadingWorkspaceTransforms) {
+  if (error || isLoadingWorkspace) {
     return (
-      <LoadingAndErrorWrapper
-        error={error}
-        loading={isLoadingWorkspace || isLoadingWorkspaceTransforms}
-      />
+      <Stack h="100%" justify="center">
+        <LoadingAndErrorWrapper error={error} loading={isLoadingWorkspace} />
+      </Stack>
     );
   }
 
@@ -518,6 +517,7 @@ function WorkspacePageContent({
                   databaseId={databaseId}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
+                  isLoadingWorkspaceTransforms={isLoadingWorkspaceTransforms}
                   onTransformClick={(transform) => {
                     addOpenedTransform(transform);
                     setTab(getTransformTabId(transform));

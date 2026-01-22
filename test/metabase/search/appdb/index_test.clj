@@ -548,9 +548,9 @@
    "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value" "report_card"}
+   "report_card"       #{"action" "model_index_value"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}
-   "workspace"        #{"collection"}})
+   "workspace"         #{"collection"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

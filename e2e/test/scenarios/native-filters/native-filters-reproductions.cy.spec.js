@@ -37,7 +37,8 @@ describe("issue 9357", () => {
       );
 
       // Drag the firstparameter to last position
-      H.moveDnDKitElement(H.filterWidget().findAllByRole("listitem").first(), {
+      H.filterWidget().findAllByRole("listitem").first().as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
       });
 
@@ -434,7 +435,7 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.NativeEditor.get().should("not.be.visible");
+      H.NativeEditor.get().should("not.exist");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
@@ -1180,7 +1181,8 @@ describe("issue 31606", () => {
     cy.findAllByRole("radio", { name: "Search box" }).first().click();
     H.filterWidget().first().click();
 
-    H.moveDnDKitElement(H.popover().findByText("Add filter"), {
+    H.popover().findByText("Add filter").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       horizontal: 300,
     });
 

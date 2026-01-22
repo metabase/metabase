@@ -1,11 +1,12 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
-import NativeQueryEditor, {
+import {
+  NativeQueryEditor,
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -37,6 +38,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 };
 
 type QueryEditorBodyProps = {
+  extraButton?: ReactNode;
   question: Question;
   proposedQuestion: Question | undefined;
   modalSnippet?:
@@ -57,7 +59,7 @@ type QueryEditorBodyProps = {
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
   shouldShowLibrary?: boolean;
-  resizable?: boolean;
+  onBlur?: () => void;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -71,9 +73,11 @@ type QueryEditorBodyProps = {
   onRejectProposed?: () => void;
   editorHeight?: number;
   topBarInnerContent?: ReactNode;
+  availableHeight?: number;
 };
 
 export function QueryEditorBody({
+  extraButton,
   question,
   proposedQuestion,
   modalSnippet,
@@ -89,7 +93,7 @@ export function QueryEditorBody({
   shouldDisableDatabase,
   shouldDisableItem,
   shouldShowLibrary,
-  resizable = true,
+  onBlur,
   onChange,
   onRunQuery,
   onToggleDataReference,
@@ -103,6 +107,7 @@ export function QueryEditorBody({
   onRejectProposed,
   editorHeight: editorHeightOverride,
   topBarInnerContent,
+  availableHeight,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -117,24 +122,6 @@ export function QueryEditorBody({
     [shouldDisableItem, shouldDisableDatabase, shouldShowLibrary],
   );
 
-  const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
-    () =>
-      resizable
-        ? {
-            className: S.nativeResizableBox,
-            height: editorHeight,
-            resizeHandles: ["s"],
-            style: isResizing ? undefined : { transition: "height 0.25s" },
-            onResizeStart: () => setIsResizing(true),
-            onResizeStop: () => setIsResizing(false),
-          }
-        : {
-            height: editorHeight,
-            resizeHandles: [],
-          },
-    [isResizing, editorHeight, resizable],
-  );
-
   const setQuestion = (newQuestion: Question) => {
     onChange(newQuestion);
     return Promise.resolve();
@@ -144,50 +131,61 @@ export function QueryEditorBody({
     onChange(newNativeQuery.question());
   };
 
-  return isNative ? (
-    <NativeQueryEditor
-      question={question}
-      proposedQuestion={proposedQuestion}
-      query={question.legacyNativeQuery()}
-      resizable={resizable}
-      resizableBoxProps={resizableBoxProps}
-      placeholder="SELECT * FROM TABLE_NAME"
-      hasTopBar
-      hasRunButton={!readOnly}
-      isInitiallyOpen
-      isNativeEditorOpen
-      readOnly={readOnly}
-      canChangeDatabase={canChangeDatabase}
-      hasParametersList={false}
-      isRunnable={isRunnable}
-      isRunning={isRunning}
-      isResultDirty={isResultDirty}
-      isShowingDataReference={isShowingDataReference}
-      isShowingSnippetSidebar={isShowingSnippetSidebar}
-      runQuery={onRunQuery}
-      cancelQuery={onCancelQuery}
-      databaseIsDisabled={shouldDisableDatabase}
-      setDatasetQuery={handleNativeQueryChange}
-      sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
-      toggleDataReference={onToggleDataReference}
-      toggleSnippetSidebar={onToggleSnippetSidebar}
-      modalSnippet={modalSnippet}
-      insertSnippet={onInsertSnippet}
-      closeSnippetModal={() => onChangeModalSnippet(null)}
-      setNativeEditorSelectedRange={onChangeNativeEditorSelection}
-      nativeEditorSelectedText={nativeEditorSelectedText}
-      onOpenModal={onOpenModal}
-      onAcceptProposed={onAcceptProposed}
-      onRejectProposed={onRejectProposed}
-      topBarInnerContent={topBarInnerContent}
-    />
-  ) : (
+  if (isNative) {
+    const query = question.legacyNativeQuery();
+    if (!query) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditor
+        className={S.nativeQueryEditor}
+        availableHeight={availableHeight}
+        question={question}
+        proposedQuestion={proposedQuestion}
+        query={query}
+        placeholder="SELECT * FROM TABLE_NAME"
+        hasTopBar
+        hasRunButton={!readOnly}
+        isInitiallyOpen
+        isNativeEditorOpen
+        readOnly={readOnly}
+        canChangeDatabase={canChangeDatabase}
+        hasParametersList={false}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        isShowingDataReference={isShowingDataReference}
+        isShowingSnippetSidebar={isShowingSnippetSidebar}
+        runQuery={onRunQuery}
+        cancelQuery={onCancelQuery}
+        databaseIsDisabled={shouldDisableDatabase}
+        setDatasetQuery={handleNativeQueryChange}
+        sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
+        toggleDataReference={onToggleDataReference}
+        toggleSnippetSidebar={onToggleSnippetSidebar}
+        modalSnippet={modalSnippet}
+        insertSnippet={onInsertSnippet}
+        closeSnippetModal={() => onChangeModalSnippet(null)}
+        setNativeEditorSelectedRange={onChangeNativeEditorSelection}
+        nativeEditorSelectedText={nativeEditorSelectedText}
+        onBlur={onBlur}
+        onOpenModal={onOpenModal}
+        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={onRejectProposed}
+        topBarInnerContent={topBarInnerContent}
+        extraButton={extraButton}
+      />
+    );
+  }
+
+  return (
     <ResizableBox
       axis="y"
       className={S.queryResizableBox}
       height={editorHeight}
-      handle={resizable ? <ResizeHandle /> : <span />}
-      resizeHandles={readOnly || !resizable ? [] : ["s"]}
+      handle={<ResizeHandle />}
+      resizeHandles={readOnly ? [] : ["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >

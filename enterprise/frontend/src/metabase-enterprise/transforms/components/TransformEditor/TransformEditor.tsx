@@ -29,6 +29,7 @@ export type TransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
+  onBlur?: () => void;
   readOnly?: boolean;
   transformId?: TransformId;
 };
@@ -44,6 +45,7 @@ export function TransformEditor({
   onAcceptProposed,
   onRejectProposed,
   onRunQueryStart,
+  onBlur,
   readOnly,
   transformId,
 }: TransformEditorProps) {
@@ -85,6 +87,7 @@ export function TransformEditor({
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
       onRunQueryStart={onRunQueryStart}
+      onBlur={onBlur}
       topBarInnerContent={
         readOnly &&
         !!transformId && (

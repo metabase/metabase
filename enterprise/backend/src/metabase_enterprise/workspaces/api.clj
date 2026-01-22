@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase-enterprise.transforms.core :as transforms]
@@ -19,6 +20,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.config.core :as config]
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
@@ -1006,6 +1008,47 @@
                           (assoc :status-code 500))
                       error))
       result)))
+
+;;; ---------------------------------------- Test Resources ----------------------------------------
+
+(defn- shorthand-ref?
+  "Check if string matches shorthand pattern like x1, t1, x23, etc."
+  [s]
+  (and (string? s) (boolean (re-matches #"[xt]\d+" s))))
+
+(defn- parse-magic-references
+  "Recursively walk data structure converting shorthand refs to keywords."
+  [x]
+  (walk/postwalk
+   (fn [v]
+     (if (shorthand-ref? v)
+       (keyword v)
+       v))
+   x))
+
+(when (or config/is-dev? config/is-test?)
+  (mr/def ::dependency-graph
+    "Map of shorthand symbols to lists of dependencies. The latter are all strings, and refs need to be detected."
+    [:map-of :keyword [:sequential :string]])
+
+  (api.macros/defendpoint :post "/test-resources" :- [:map
+                                                      [:workspace-id [:maybe :int]]
+                                                      [:global-map [:map-of [:or :keyword :string] :int]]
+                                                      [:workspace-map [:map-of :keyword :string]]]
+    "Create test resources for workspace e2e tests. Only available in dev/test mode.
+
+    Assumes the test database context is set up (uses `(mt/id)` internally)."
+    [_route-params
+     _query-params
+     body :- [:map
+              [:global {:optional true} ::dependency-graph]
+              [:workspace {:optional true} [:map
+                                            [:name {:optional true} :string]
+                                            [:checkouts {:optional true} [:sequential :keyword]]
+                                            [:definitions {:optional true} ::dependency-graph]]]]]
+    (if-let [create-fn (requiring-resolve 'metabase-enterprise.workspaces.test-util/create-resources!)]
+      (create-fn (parse-magic-references body))
+      (throw (ex-info "Workspace test utilities not available" {:status-code 501})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
