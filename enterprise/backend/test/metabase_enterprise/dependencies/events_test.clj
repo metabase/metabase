@@ -367,9 +367,10 @@
                      :body
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}
              target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
-         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target}
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target
+                                                                           :source source}
                         :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
-                        :model/Table {table2-id :id} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
+                        :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
            (testing "initial run"
              (events/publish-event! :event/transform-run-complete
                                     {:object {:db-id (mt/id)
@@ -405,9 +406,9 @@
        (let [source {:query (lib/native-query mp "select * from orders")
                      :type :query}
              target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
-         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target}
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target :source source}
                         :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
-                        :model/Table {table2-id :id} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
+                        :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
            (testing "initial run"
              (events/publish-event! :event/transform-run-complete
                                     {:object {:db-id (mt/id)
