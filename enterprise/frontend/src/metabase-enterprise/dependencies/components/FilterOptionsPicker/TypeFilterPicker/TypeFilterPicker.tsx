@@ -1,30 +1,25 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type * as Urls from "metabase/lib/urls";
 import { Checkbox, Stack } from "metabase/ui";
+import type { DependencyGroupType } from "metabase-types/api";
 
-import { getDependencyGroupTypeInfo } from "../../../../../utils";
-import type { DependencyListMode } from "../../../types";
-import { getAvailableGroupTypes } from "../../../utils";
+import type { DependencyFilterOptions } from "../../../types";
+import { getDependencyGroupTypeInfo } from "../../../utils";
 
 type TypeFilterPickerProps = {
-  mode: DependencyListMode;
-  params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  filterOptions: DependencyFilterOptions;
+  availableGroupTypes: DependencyGroupType[];
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function TypeFilterPicker({
-  mode,
-  params,
-  onParamsChange,
+  filterOptions,
+  availableGroupTypes,
+  onFilterOptionsChange,
 }: TypeFilterPickerProps) {
-  const availableGroupTypes = getAvailableGroupTypes(mode);
-
-  // preserve selected options in state to allow to deselect all types
-  // until the popover is closed
-  const [groupTypes, setGroupTypes] = useState(
-    params.groupTypes ?? availableGroupTypes,
+  const [selectedGroupTypes, setSelectedGroupTypes] = useState(
+    filterOptions.groupTypes ?? availableGroupTypes,
   );
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
@@ -36,20 +31,19 @@ export function TypeFilterPicker({
     const newGroupTypes = availableGroupTypes.filter((groupType) =>
       newValue.includes(groupType),
     );
-    setGroupTypes(newGroupTypes);
-    onParamsChange({
-      ...params,
-      groupTypes:
-        newGroupTypes.length === availableGroupTypes.length
-          ? undefined
-          : newGroupTypes,
+    const isFullSelection = newGroupTypes.length === availableGroupTypes.length;
+
+    setSelectedGroupTypes(newGroupTypes);
+    onFilterOptionsChange({
+      ...filterOptions,
+      groupTypes: isFullSelection ? availableGroupTypes : newGroupTypes,
     });
   };
 
   return (
     <Checkbox.Group
       label={t`Entity type`}
-      value={groupTypes}
+      value={selectedGroupTypes}
       onChange={handleChange}
     >
       <Stack gap="sm" mt="sm">

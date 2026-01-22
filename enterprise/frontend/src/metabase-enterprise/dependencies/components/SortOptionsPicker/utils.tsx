@@ -1,20 +1,22 @@
 import { t } from "ttag";
 
 import { FixedSizeIcon } from "metabase/ui";
-
-import { SORT_COLUMNS } from "../../constants";
-import type { SortColumn } from "../../types";
+import type { DependencySortColumn } from "metabase-types/api";
 
 import type { SortColumnItem, SortDirectionItem } from "./types";
 
-export function getSortColumnItems(): SortColumnItem[] {
-  const allLabels: Record<SortColumn, string> = {
+export function getSortColumnItems(
+  availableSortColumns: DependencySortColumn[],
+): SortColumnItem[] {
+  const allLabels: Record<DependencySortColumn, string> = {
     name: t`Name`,
     location: t`Location`,
     "view-count": t`View count`,
+    "dependents-errors": t`Problems`,
+    "dependents-with-errors": t`Broken dependents`,
   };
 
-  return SORT_COLUMNS.map((column) => ({
+  return availableSortColumns.map((column) => ({
     value: column,
     label: allLabels[column],
   }));

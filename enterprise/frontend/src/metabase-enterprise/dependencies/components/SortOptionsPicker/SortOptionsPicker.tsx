@@ -9,22 +9,24 @@ import {
   SegmentedControl,
   Stack,
 } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
+import {
+  DEPENDENCY_SORT_DIRECTIONS,
+  type DependencySortColumn,
+} from "metabase-types/api";
 
-import type { SortColumn, SortDirection, SortOptions } from "../../types";
-import { canSortByColumn } from "../../utils";
+import type { DependencySortOptions } from "../../types";
 
 import { getSortColumnItems, getSortDirectionItems } from "./utils";
 
 type SortOptionsPickerProps = {
-  groupType: DependencyGroupType;
-  sortOptions: SortOptions;
-  onSortOptionsChange: (sortOptions: SortOptions) => void;
+  sortOptions: DependencySortOptions;
+  availableSortColumns: DependencySortColumn[];
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
 };
 
 export function SortOptionsPicker({
-  groupType,
   sortOptions,
+  availableSortColumns,
   onSortOptionsChange,
 }: SortOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
@@ -38,8 +40,8 @@ export function SortOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <SortOptionsPopover
-          groupType={groupType}
           sortOptions={sortOptions}
+          availableSortColumns={availableSortColumns}
           onSortOptionsChange={onSortOptionsChange}
         />
       </Popover.Dropdown>
@@ -48,29 +50,34 @@ export function SortOptionsPicker({
 }
 
 type SortOptionsPopoverProps = {
-  groupType: DependencyGroupType;
-  sortOptions: SortOptions;
-  onSortOptionsChange: (sortOptions: SortOptions) => void;
+  sortOptions: DependencySortOptions;
+  availableSortColumns: DependencySortColumn[];
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
 };
 
 function SortOptionsPopover({
-  groupType,
   sortOptions,
+  availableSortColumns,
   onSortOptionsChange,
 }: SortOptionsPopoverProps) {
-  const columnItems = getSortColumnItems().filter((option) =>
-    canSortByColumn(groupType, option.value),
-  );
+  const columnItems = getSortColumnItems(availableSortColumns);
 
-  const handleColumnChange = (column: string) => {
-    onSortOptionsChange({ ...sortOptions, column: column as SortColumn });
+  const handleColumnChange = (newValue: string) => {
+    const newColumn = availableSortColumns.find(
+      (column) => column === newValue,
+    );
+    if (newColumn != null) {
+      onSortOptionsChange({ ...sortOptions, column: newColumn });
+    }
   };
 
-  const handleDirectionChange = (direction: string) => {
-    onSortOptionsChange({
-      ...sortOptions,
-      direction: direction as SortDirection,
-    });
+  const handleDirectionChange = (newValue: string) => {
+    const newDirection = DEPENDENCY_SORT_DIRECTIONS.find(
+      (direction) => direction === newValue,
+    );
+    if (newDirection != null) {
+      onSortOptionsChange({ ...sortOptions, direction: newDirection });
+    }
   };
 
   return (

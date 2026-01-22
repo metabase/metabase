@@ -12,6 +12,7 @@ import {
   Card,
   FixedSizeIcon,
   Group,
+  Loader,
   Menu,
   Stack,
   Title,
@@ -19,6 +20,11 @@ import {
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
+import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
 import {
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
@@ -29,23 +35,37 @@ import {
   getNodeViewCount,
   getNodeViewCountLabel,
 } from "../../../../utils";
+import { FilterOptionsPicker } from "../../../FilterOptionsPicker";
+import { SortOptionsPicker } from "../../../SortOptionsPicker";
+import {
+  BROKEN_DEPENDENTS_GROUP_TYPES,
+  BROKEN_DEPENDENTS_SORT_COLUMNS,
+} from "../../constants";
 
-import S from "./SidebarDependentsInfo.module.css";
+import S from "./SidebarDependentsSection.module.css";
+import {
+  getDefaultFilterOptions,
+  getDefaultSortOptions,
+  getListRequest,
+} from "./utils";
 
-type SidebarDependentsInfoProps = {
+type SidebarDependentsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
+export function SidebarDependentsSection({
+  node,
+}: SidebarDependentsSectionProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
-  const title = getDependentErrorNodesLabel(count);
+  const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>(
+    getDefaultFilterOptions(),
+  );
+  const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
+    getDefaultSortOptions(),
+  );
 
-  const { data: dependents = [] } = useListNodeDependentsQuery(
-    {
-      id: node.id,
-      type: node.type,
-      broken: true,
-    },
+  const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
+    getListRequest(node, filterOptions, sortOptions),
     {
       skip: count === 0,
     },
@@ -57,11 +77,31 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
 
   return (
     <Stack role="region" aria-label={getDependentErrorNodesLabel()}>
-      <Group gap="sm">
-        <Badge c="text-selected" bg="error">
-          {count}
-        </Badge>
-        <Title order={5}>{title}</Title>
+      <Group justify="space-between" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap">
+          <Badge c="text-selected" bg="error">
+            {count}
+          </Badge>
+          <Title order={5}>
+            {getDependentErrorNodesLabel(dependents.length)}
+          </Title>
+          {isFetching && <Loader size="sm" />}
+        </Group>
+        {count > DEPENDENTS_SEARCH_THRESHOLD && (
+          <Group gap={0}>
+            <SortOptionsPicker
+              sortOptions={sortOptions}
+              availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
+              onSortOptionsChange={setSortOptions}
+            />
+            <FilterOptionsPicker
+              filterOptions={filterOptions}
+              availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
+              compact
+              onFilterOptionsChange={setFilterOptions}
+            />
+          </Group>
+        )}
       </Group>
       {dependents.length > 0 && (
         <Card p={0} shadow="none" withBorder>
@@ -103,7 +143,12 @@ function DependentItem({ node }: DependentItemProps) {
               </Box>
             </Group>
             {viewCount != null && (
-              <Box c="text-secondary" fz="sm" lh="1rem">
+              <Box
+                className={CS.textNoWrap}
+                c="text-secondary"
+                fz="sm"
+                lh="1rem"
+              >
                 {getNodeViewCountLabel(viewCount)}
               </Box>
             )}
@@ -129,6 +174,7 @@ function DependentItem({ node }: DependentItemProps) {
           <Menu.Item
             component={ForwardRefLink}
             to={link.url}
+            target="_blank"
             leftSection={<FixedSizeIcon name="external" />}
           >
             {t`Go to this`}
@@ -137,6 +183,7 @@ function DependentItem({ node }: DependentItemProps) {
         <Menu.Item
           component={ForwardRefLink}
           to={Urls.dependencyGraph({ entry: node })}
+          target="_blank"
           leftSection={<FixedSizeIcon name="dependencies" />}
         >
           {t`View in dependency graph`}

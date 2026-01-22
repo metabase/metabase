@@ -9,11 +9,11 @@ import type { DependencyNode } from "metabase-types/api";
 import { getNodeLocationInfo } from "../../../../utils";
 import S from "../ListSidebar.module.css";
 
-type SidebarLocationInfoProps = {
+type SidebarLocationSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
+export function SidebarLocationSection({ node }: SidebarLocationSectionProps) {
   const locationInfo = getNodeLocationInfo(node);
 
   if (locationInfo == null) {
