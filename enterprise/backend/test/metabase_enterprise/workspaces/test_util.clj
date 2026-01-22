@@ -276,17 +276,17 @@
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)
 
-(defn ws-ready
-  "Poll until workspace status becomes :ready or timeout.
-   Note: uninitialized workspaces will never become ready without adding a transform."
+(defn ws-done!
+  "Poll until workspace status is no longer :pending.
+   Returns immediately if workspace has not started initializing, which requires a transform being added."
   [ws-or-id]
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
     (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
-                 :done?      #(contains? #{:ready :broken} (:db_status %))
+                 :done?      #(not= :pending (:db_status %))
                  ;; some cloud drivers are really slow
                  :timeout-ms (if config/is-dev? 10000 60000)})
-        (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
+        (throw (ex-info "Timeout waiting for workspace to finish initializing" {:workspace-id ws-id})))))
 
 (defn create-empty-ws!
   "Create a simple workspace and wait for it to be ready."
@@ -294,9 +294,16 @@
   (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
 
 (defn create-ready-ws!
-  "Create a simple workspace and wait for it to be ready."
+  "Create a simple workspace and wait for it to finish initializing database resources.
+   Throws if workspace does not become ready."
   [name]
-  (ws-ready (:workspace-id (create-resources! {:workspace {:name name, :definitions {:x2 [:t1]}}}))))
+  (let [graph {:workspace {:name name, :definitions {:x2 [:t1]}}}
+        ws-id (:workspace-id (create-resources! graph))
+        ws    (ws-done! ws-id)]
+    (if (= :ready (:db_status ws))
+      ws
+      (throw (ex-info "Workspace failed to become ready"
+                      {:name name :db_status (:db_status ws) :workspace-id ws-id})))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.

@@ -35,6 +35,9 @@
     (str url (subs part 1))))
 
 (defn ws-url [id & path]
+  (when (some nil? (cons id path))
+    (throw (ex-info "Cannot build workspace URL without key resources"
+                    {:id id, :path path})))
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
@@ -1055,7 +1058,7 @@
       ;; TODO this isn't async yet, but it should be after BOT-746
         #_(is (=? {:status "pending"} res))
         (testing "and then it becomes ready"
-          (is (=? {:status :ready} (ws.tu/ws-ready res)))))))
+          (is (=? {:status :ready} (ws.tu/ws-done! res)))))))
 
 (deftest workspace-log-endpoint-test
   (testing "GET /api/ee/workspace/:id/log returns status and log entries"
@@ -1122,7 +1125,7 @@
                                                       :schema   "public"
                                                       :name     "init_transform_output"}})]
         (is (some? (:ref_id transform)))
-        (let [ws (ws.tu/ws-ready ws)]
+        (let [ws (ws.tu/ws-done! ws)]
           (is (=? {:db_status   :ready
                    :database_id (mt/id)}
                   ws)))
@@ -1273,7 +1276,7 @@
                                                        :schema   target-schema
                                                        :name     output-table}}]
             (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))
-                  ws     (ws.tu/ws-ready (:id ws))]
+                  ws     (ws.tu/ws-done! (:id ws))]
               (testing "returns succeeded status with isolated table info"
                 (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run"))]
                   (is (=? {:status     "succeeded"
@@ -1304,7 +1307,7 @@
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
-              ws            (ws.tu/ws-ready (:id ws))]
+              ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message and isolated table info"
             (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
@@ -1335,7 +1338,7 @@
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
-              ws            (ws.tu/ws-ready (:id ws))]
+              ws            (ws.tu/ws-done! (:id ws))]
           (testing "returns failed status with error message mentioning the bad column"
             (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
@@ -1581,7 +1584,7 @@
                                                             :workspace {:checkouts   [:x1]
                                                                         :definitions {:x3 [:x2]}}})
 
-          ws             (ws.tu/ws-ready ws-id)
+          ws             (ws.tu/ws-done! ws-id)
           tx-1           (t2/select-one :model/WorkspaceTransform :workspace_id ws-id, :ref_id (tx-ids :x1))
           tx-2           (t2/select-one :model/Transform (id-map :x2))
           tx-3           (t2/select-one :model/WorkspaceTransform :workspace_id ws-id, :ref_id (tx-ids :x3))
