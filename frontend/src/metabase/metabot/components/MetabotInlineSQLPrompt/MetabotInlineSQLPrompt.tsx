@@ -7,10 +7,10 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
-import type { DatabaseId, ReferencedEntity, TableId } from "metabase-types/api";
+import type { DatabaseId, ReferencedEntity } from "metabase-types/api";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
-import { TablePillsInput } from "./TablePillsInput";
+import { type SelectedTable, TablePillsInput } from "./TablePillsInput";
 
 interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
@@ -27,8 +27,8 @@ interface MetabotInlineSQLPromptProps {
   getSourceSql?: () => string;
   value: string;
   onValueChange: (value: string) => void;
-  selectedTableIds: TableId[];
-  onSelectedTableIdsChange: (tableIds: TableId[]) => void;
+  selectedTables: SelectedTable[];
+  onSelectedTablesChange: (tables: SelectedTable[]) => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
@@ -42,8 +42,8 @@ export const MetabotInlineSQLPrompt = ({
   getSourceSql,
   value,
   onValueChange,
-  selectedTableIds,
-  onSelectedTableIdsChange,
+  selectedTables,
+  onSelectedTablesChange,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
 
@@ -52,14 +52,14 @@ export const MetabotInlineSQLPrompt = ({
   const handleSubmit = useCallback(async () => {
     const prompt = inputRef.current?.getValue?.().trim() ?? "";
     const sourceSql = getSourceSql?.();
-    const referencedEntities: ReferencedEntity[] = selectedTableIds.map(
-      (id) => ({
+    const referencedEntities: ReferencedEntity[] = selectedTables.map(
+      (table) => ({
         model: "table",
-        id,
+        id: table.id,
       }),
     );
     generate({ prompt, sourceSql, referencedEntities });
-  }, [generate, getSourceSql, selectedTableIds]);
+  }, [generate, getSourceSql, selectedTables]);
 
   const handleClose = useCallback(() => {
     cancelRequest();
@@ -87,7 +87,7 @@ export const MetabotInlineSQLPrompt = ({
 
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
   const shouldAutoFocusTableBar =
-    isTableBarEnabled && selectedTableIds.length === 0;
+    isTableBarEnabled && selectedTables.length === 0;
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
@@ -96,8 +96,8 @@ export const MetabotInlineSQLPrompt = ({
           <Box className={S.tableBar}>
             <TablePillsInput
               databaseId={databaseId}
-              selectedTableIds={selectedTableIds}
-              onChange={onSelectedTableIdsChange}
+              selectedTables={selectedTables}
+              onChange={onSelectedTablesChange}
               autoFocus={shouldAutoFocusTableBar}
             />
           </Box>

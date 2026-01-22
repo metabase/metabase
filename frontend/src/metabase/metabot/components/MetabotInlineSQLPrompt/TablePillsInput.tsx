@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { skipToken, useListTablesQuery } from "metabase/api";
+import { skipToken, useSearchQuery } from "metabase/api";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
   Combobox,
@@ -18,133 +19,101 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import S from "./TablePillsInput.module.css";
 
+export interface SelectedTable {
+  id: TableId;
+  name: string;
+}
+
 interface TablePillsInputProps {
   databaseId: DatabaseId | null;
-  selectedTableIds: TableId[];
-  onChange: (tableIds: TableId[]) => void;
+  selectedTables: SelectedTable[];
+  onChange: (tables: SelectedTable[]) => void;
   autoFocus?: boolean;
 }
 
 export function TablePillsInput({
   databaseId,
-  selectedTableIds,
+  selectedTables,
   onChange,
   autoFocus = false,
 }: TablePillsInputProps) {
   const [search, setSearch] = useState("");
-  const [selectedPillId, setSelectedPillId] = useState<TableId | null>(null);
+  const [focusedTableId, setFocusedTableId] = useState<TableId | undefined>(
+    undefined,
+  );
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+  const {
+    data: searchData,
+    isLoading,
+    error,
+  } = useSearchQuery(
+    databaseId
+      ? {
+          q: debouncedSearch.trim() || undefined,
+          models: ["table"],
+          table_db_id: databaseId,
+          limit: 20,
+        }
+      : skipToken,
+  );
+  const tables = useMemo(() => searchData?.data ?? [], [searchData]);
+  const tableOptions = useMemo(() => {
+    const selectedIds = new Set(selectedTables.map((t) => t.id));
+    return tables.filter(
+      (table) => table.id != null && !selectedIds.has(table.id as TableId),
+    );
+  }, [tables, selectedTables]);
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
     onDropdownOpen: () => {
-      setSelectedPillId(null);
+      setFocusedTableId(undefined);
       combobox.selectFirstOption();
     },
   });
 
-  const {
-    data: tables,
-    isLoading,
-    error,
-  } = useListTablesQuery(
-    databaseId
-      ? {
-          dbId: databaseId,
-          include_hidden: false,
-        }
-      : skipToken,
-  );
-
-  const filteredTables = useMemo(() => {
-    if (!tables || !databaseId) {
-      return [];
+  useEffect(() => {
+    if (combobox.dropdownOpened && tableOptions.length > 0) {
+      combobox.selectFirstOption();
     }
-    return tables.filter((table) => table.active && table.db_id === databaseId);
-  }, [tables, databaseId]);
-
-  const tableMap = useMemo(
-    () => _.indexBy(filteredTables, (table) => table.id),
-    [filteredTables],
-  );
-
-  const searchFilteredTables = useMemo(() => {
-    const searchLower = search.trim().toLowerCase();
-    if (!searchLower) {
-      return filteredTables;
-    }
-    return filteredTables.filter((table) => {
-      const displayName = (table.display_name || table.name).toLowerCase();
-      const schema = (table.schema || "").toLowerCase();
-      return displayName.includes(searchLower) || schema.includes(searchLower);
-    });
-  }, [filteredTables, search]);
+  }, [tableOptions, combobox]);
 
   const handleValueSelect = (tableIdStr: string) => {
     const tableId = Number(tableIdStr) as TableId;
-    if (selectedTableIds.includes(tableId)) {
-      onChange(selectedTableIds.filter((id) => id !== tableId));
-    } else {
-      onChange([...selectedTableIds, tableId]);
+    const table = tables.find((t) => t.id === tableId);
+    if (table) {
+      onChange([...selectedTables, { id: tableId, name: table.name }]);
     }
+    combobox.closeDropdown();
     setSearch("");
-    setTimeout(() => combobox.selectFirstOption(), 0);
   };
 
-  const handleValueRemove = (tableId: TableId) => {
-    onChange(selectedTableIds.filter((id) => id !== tableId));
+  const handleRemoveTable = (tableId: TableId) => {
+    onChange(selectedTables.filter((t) => t.id !== tableId));
+  };
+
+  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!combobox.dropdownOpened) {
+      combobox.openDropdown();
+    }
+    setFocusedTableId(undefined);
+    setSearch(e.currentTarget.value);
   };
 
   const handlePillClick = (tableId: TableId) => {
-    setSelectedPillId((prev) => (prev === tableId ? null : tableId));
+    setFocusedTableId((prev) => (prev === tableId ? undefined : tableId));
     combobox.closeDropdown();
   };
 
-  const placeholder =
-    selectedTableIds.length > 0
-      ? ""
-      : t`First, tell Metabot which tables to use`;
-
-  const pills = selectedTableIds.map((tableId) => {
-    const table = tableMap[tableId];
-    const label = table?.display_name || table?.name || String(tableId);
-    const isSelected = selectedPillId === tableId;
-    return (
-      <Pill
-        key={tableId}
-        fz="xs"
-        bg={isSelected ? "background-brand" : "background-secondary"}
-        c="text-primary"
-        bd={
-          isSelected
-            ? "1px solid var(--mb-color-brand)"
-            : "1px solid var(--mb-color-border)"
-        }
-        onClick={() => handlePillClick(tableId)}
-        style={{ cursor: "pointer" }}
-      >
-        {label}
-      </Pill>
-    );
-  });
-
-  const options = searchFilteredTables
-    .filter((table) => !selectedTableIds.includes(table.id))
-    .map((table) => (
-      <Combobox.Option value={String(table.id)} key={table.id}>
-        <Group gap="sm">
-          <Box component="span" fz="xs">
-            {table.display_name || table.name}
-            {table.schema && (
-              <Box component="span" c="text-tertiary" ml="sm">
-                {table.schema}
-              </Box>
-            )}
-          </Box>
-        </Group>
-      </Combobox.Option>
-    ));
-
-  const isDisabled = !databaseId || isLoading || !!error;
+  const emptyMessage = match({
+    showLoading: isLoading || debouncedSearch !== search,
+    hasError: !!error,
+    hasOptions: tableOptions.length > 0,
+  })
+    .with({ showLoading: true }, () => t`Loading tables...`)
+    .with({ hasError: true }, () => t`Error loading tables`)
+    .with({ hasOptions: false }, () => t`No tables found`)
+    .otherwise(() => undefined);
 
   return (
     <Flex className={S.root} align="center" gap="sm">
@@ -154,82 +123,102 @@ export function TablePillsInput({
           store={combobox}
           onOptionSubmit={handleValueSelect}
           withinPortal={false}
+          width={300}
+          position="bottom-start"
         >
-          <Combobox.DropdownTarget>
-            <PillsInput
-              onClick={() => !isDisabled && combobox.openDropdown()}
-              data-testid="metabot-table-input"
-              fz="xs"
-            >
-              <Pill.Group style={{ gap: "0.25rem" }}>
-                {pills}
-                <Combobox.EventsTarget>
-                  <PillsInput.Field
-                    onFocus={() => !isDisabled && combobox.openDropdown()}
-                    onBlur={() => combobox.closeDropdown()}
-                    value={search}
-                    placeholder={placeholder}
-                    fz="xs"
-                    onChange={(event) => {
-                      setSelectedPillId(null);
-                      combobox.updateSelectedOptionIndex();
-                      setSearch(event.currentTarget.value);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Backspace" &&
-                        search.length === 0 &&
-                        selectedTableIds.length > 0
-                      ) {
-                        event.preventDefault();
-                        if (selectedPillId !== null) {
-                          const currentIndex =
-                            selectedTableIds.indexOf(selectedPillId);
-                          handleValueRemove(selectedPillId);
-
-                          // Select previous pill, or next one if deleting the first
-                          if (currentIndex > 0) {
-                            setSelectedPillId(
-                              selectedTableIds[currentIndex - 1],
-                            );
-                          } else if (selectedTableIds.length > 1) {
-                            setSelectedPillId(selectedTableIds[1]);
-                          } else {
-                            setSelectedPillId(null);
-                          }
-                        } else {
-                          handleValueRemove(
-                            selectedTableIds[selectedTableIds.length - 1],
-                          );
+          <PillsInput data-testid="metabot-table-input" fz="xs">
+            <Pill.Group style={{ gap: "0.25rem" }}>
+              {selectedTables.map((table) => (
+                <Pill
+                  key={table.id}
+                  fz="xs"
+                  bg={
+                    focusedTableId === table.id
+                      ? "background-brand"
+                      : "background-secondary"
+                  }
+                  c="text-primary"
+                  bd={
+                    focusedTableId === table.id
+                      ? "1px solid var(--mb-color-brand)"
+                      : "1px solid var(--mb-color-border)"
+                  }
+                  onClick={() => handlePillClick(table.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {table.name || String(table.id)}
+                </Pill>
+              ))}
+              <Combobox.DropdownTarget>
+                <span style={{ display: "inline-flex", flex: 1, minWidth: 0 }}>
+                  <Combobox.EventsTarget>
+                    <PillsInput.Field
+                      value={search}
+                      placeholder={t`First, tell Metabot which tables to use`}
+                      fz="xs"
+                      onClick={() => {
+                        setFocusedTableId(undefined);
+                        if (search.length > 0) {
+                          combobox.openDropdown();
                         }
-                      }
-                    }}
-                    disabled={isDisabled}
-                    autoFocus={autoFocus}
-                    aria-label={t`Select tables`}
-                  />
-                </Combobox.EventsTarget>
-              </Pill.Group>
-            </PillsInput>
-          </Combobox.DropdownTarget>
+                      }}
+                      onBlur={() => combobox.closeDropdown()}
+                      onChange={handleFieldChange}
+                      onKeyDown={(e) => {
+                        const isDelete = e.key === "Backspace";
+                        const isInputEmpty =
+                          search.length === 0 && selectedTables.length > 0;
+                        if (!isDelete || !isInputEmpty) {
+                          return;
+                        }
 
-          <Combobox.Dropdown key={selectedTableIds.join("-")}>
+                        e.preventDefault();
+
+                        const tableId =
+                          focusedTableId ?? selectedTables.at(-1)?.id;
+                        if (tableId) {
+                          handleRemoveTable(tableId);
+                          if (focusedTableId) {
+                            const currIndex = selectedTables.findIndex(
+                              (t) => t.id === tableId,
+                            );
+                            const nextIndex = currIndex > 0 ? currIndex - 1 : 1;
+                            const nextTable = selectedTables[nextIndex];
+                            setFocusedTableId(nextTable?.id ?? null);
+                          }
+                        }
+                      }}
+                      autoFocus={autoFocus}
+                      aria-label={t`Select tables`}
+                    />
+                  </Combobox.EventsTarget>
+                </span>
+              </Combobox.DropdownTarget>
+            </Pill.Group>
+          </PillsInput>
+
+          <Combobox.Dropdown key={selectedTables.map((t) => t.id).join("-")}>
             <Combobox.Options>
-              {match({
-                isLoading,
-                error: !!error,
-                hasOptions: options.length > 0,
-              })
-                .with({ hasOptions: true }, () => options)
-                .with({ isLoading: true }, () => (
-                  <Combobox.Empty>{t`Loading tables...`}</Combobox.Empty>
+              {emptyMessage ? (
+                <Combobox.Empty fz="sm" py="md">
+                  {emptyMessage}
+                </Combobox.Empty>
+              ) : (
+                tableOptions.map((table) => (
+                  <Combobox.Option value={String(table.id)} key={table.id}>
+                    <Group gap="sm">
+                      <Box component="span" fz="xs">
+                        {table.name}
+                        {table.table_schema && (
+                          <Box component="span" c="text-tertiary" ml="sm">
+                            {table.table_schema}
+                          </Box>
+                        )}
+                      </Box>
+                    </Group>
+                  </Combobox.Option>
                 ))
-                .with({ error: true }, () => (
-                  <Combobox.Empty>{t`Error loading tables`}</Combobox.Empty>
-                ))
-                .otherwise(() => (
-                  <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
-                ))}
+              )}
             </Combobox.Options>
           </Combobox.Dropdown>
         </Combobox>
