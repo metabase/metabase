@@ -155,7 +155,7 @@
           :x4 []
           :x5 []}
          (#'ws.dag/collapse
-          ws.tu/table?
+          ws.tu/mock-table?
           {:x1 [:t1 :t2]
            :t1 [:x2]
            :t2 [:x3]
@@ -177,7 +177,7 @@
       ;; Include all changeset targets in the init-nodes
      (distinct (into init-nodes tables))
      {:node-parents (dag-abstract/expand-shorthand graph)
-      :table?       ws.tu/table?
+      :table?       ws.tu/mock-table?
       :table-sort   ws.tu/kw->id
       :unwrap-table identity})))
 

@@ -23,7 +23,7 @@
 
 ;;;; Shorthand notation helpers
 
-(defn mock-transform?
+(defn transform?
   "Check if keyword represents a transform (keyword starting with 'x')."
   [kw]
   (and (keyword? kw)
@@ -196,7 +196,7 @@
                                  [ref (real-table-id ref)]))
 
         ;; Create global transforms
-        global-tx-syms   (filter mock-transform? (keys expanded-global))
+        global-tx-syms   (filter transform? (keys expanded-global))
         global-tx-ids    (into {}
                                (for [tx global-tx-syms]
                                  [tx (create-transform! tx (get expanded-global tx []) (merge table-ids real-table-ids) schema)]))
@@ -224,7 +224,7 @@
                                     (filter #(not (contains? (set (keys definitions)) %)) checkouts)
                                     ;; All transforms from definitions
                                     (when expanded-ws-defs
-                                      (filter mock-transform? (keys expanded-ws-defs)))))
+                                      (filter transform? (keys expanded-ws-defs)))))
 
         ;; Create workspace transforms
         workspace-map    (into {}
@@ -366,7 +366,7 @@
                           (assoc-in acc
                                     [(cond
                                        (table-ref? sym) :input-table
-                                       (mock-transform? sym) :external-transform
+                                       (transform? sym) :external-transform
                                        :else (throw (ex-info "Unexpected symbol" {:symbol sym :id id})))
                                      (if (table-ref? sym)
                                        (let [{:keys [db_id schema name]} (t2/select-one [:model/Table :db_id :schema :name] id)]
@@ -380,7 +380,7 @@
                         (fn [acc [sym id]]
                           (assoc-in acc
                                     [(cond
-                                       (mock-transform? sym) :workspace-transform
+                                       (transform? sym) :workspace-transform
                                        :else (throw (ex-info "Unexpected symbol" {:symbol sym :id id})))
                                      id]
                                     sym))
