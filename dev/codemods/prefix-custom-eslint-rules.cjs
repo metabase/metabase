@@ -26,9 +26,9 @@ module.exports = function transformer(file) {
 
   // Pattern to match eslint disable comments
   // Matches: eslint-disable, eslint-disable-line, eslint-disable-next-line
-  const eslintCommentPattern = /(\/\/\s*eslint-disable(?:-next-line|-line))\s+([^*\n]+?)(\s*\*\/|\n|$)/g;
+  const eslintCommentPattern = /(\/\/|\/\*)(\s*eslint-disable(?:-next-line|-line)?)\s+([^*\n]+?)(\s*\*\/|\n|$)/g;
 
-  result = source.replace(eslintCommentPattern, (match, prefix, rules, suffix) => {
+  result = source.replace(eslintCommentPattern, (match, startComment, prefix, rules, suffix) => {
     let rulesModified = false;
 
     // Check if there's a -- comment separator
@@ -46,7 +46,9 @@ module.exports = function transformer(file) {
       .split(/\s*,\s*|\s+/)
       .map(rule => {
         rule = rule.trim();
-        if (!rule) return rule;
+        if (!rule) {
+          return rule;
+        }
 
         // Check if it's one of our custom rules without prefix
         if (customRules.includes(rule) && !rule.startsWith('metabase/')) {
@@ -62,7 +64,7 @@ module.exports = function transformer(file) {
     if (rulesModified) {
       // Reconstruct the comment
       const joinChar = rulesPart.includes(',') ? ', ' : ' ';
-      return `${prefix} ${updatedRules.join(joinChar)}${commentPart}${suffix}`;
+      return `${startComment}${prefix} ${updatedRules.join(joinChar)}${commentPart}${suffix}`;
     }
 
     return match;
