@@ -97,20 +97,26 @@ export function createTestQuestion(
     // MBQL question details, pass through createTestJsQuery
     const { metadata = {}, query, ...rest } = details;
     return createTestJsQuery(metadata, query).then((dataset_query) =>
-      question({
-        ...rest,
-        dataset_query,
-      }),
+      question(
+        {
+          ...rest,
+          dataset_query,
+        },
+        options,
+      ),
     );
   } else if (isNativeTestQuestionDetails(details)) {
     // Native question details, pass through createTestNativeJsQuery
     const { metadata = {}, databaseId, query, ...rest } = details;
     return createTestNativeJsQuery(metadata, databaseId, query).then(
       (dataset_query) =>
-        question({
-          ...rest,
-          dataset_query,
-        }),
+        question(
+          {
+            ...rest,
+            dataset_query,
+          },
+          options,
+        ),
     );
   }
   throw new Error("Invalid question details");
