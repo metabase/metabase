@@ -5,25 +5,20 @@ import type {
   Card,
   CardId,
   Database,
-  DatabaseId,
   Table,
   TableId,
 } from "metabase-types/api";
 
 // Manual import is needed because we can't import from test folder directly
-import { createMockEntitiesState } from "../../../frontend/test/__support__/store";
-import { SAMPLE_DB_ID } from "../cypress_data";
-import { SAMPLE_DATABASE } from "../cypress_sample_database";
+import { createMockEntitiesState } from "../../../../frontend/test/__support__/store";
+import { SAMPLE_DB_ID } from "../../cypress_data";
+import { SAMPLE_DATABASE } from "../../cypress_sample_database";
+
+import type { GetMetadataOpts } from "./types";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 const DEFAULT_TABLE_IDS: TableId[] = [ORDERS_ID, PEOPLE_ID];
 const DEFAULT_CARD_IDS: CardId[] = [];
-
-type GetMetadataOpts = {
-  databaseId?: DatabaseId;
-  tableIds?: TableId[];
-  cardIds?: CardId[];
-};
 
 export function getMetadataProvider({
   databaseId = SAMPLE_DB_ID,
