@@ -388,3 +388,27 @@
                        (lib/filter (lib/= val-col "abc"))
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest ^:parallel parse-final-identifier-test
+  (mt/test-driver
+    :clickhouse
+    (testing "`final` is not allowed as identifier on Clickhouse, parsing fails with an exception"
+      (mt/with-temp [:model/Database db {:engine "clickhouse"
+                                         :name "final"
+                                         :initial_sync_status "complete"}]
+        (mt/with-db
+          db
+          (let [mp (mt/metadata-provider)
+                broken-query (lib/native-query mp "select final from final")]
+            (try
+              (driver/native-query-deps :clickhouse broken-query)
+              (catch Exception e
+                (is (= "SQL parsing failed." (ex-message e)))))
+            (try
+              (driver/native-result-metadata :clickhouse broken-query)
+              (catch Exception e
+                (is (= "SQL parsing failed." (ex-message e)))))
+            (try
+              (driver/validate-native-query-fields :clickhouse broken-query)
+              (catch Exception e
+                (is (= "SQL parsing failed." (ex-message e)))))))))))
