@@ -141,10 +141,8 @@ export function SearchNew({
       return [];
     }
 
-    filterSelectedTables(tables.map((table) => table.id));
-
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
-  }, [allowedDatabaseIds, tables, filterSelectedTables]);
+  }, [allowedDatabaseIds, tables]);
 
   const isLoading = isLoadingTables || isLoadingDatabases;
 
@@ -153,15 +151,22 @@ export function SearchNew({
     [filteredTables],
   );
 
-  // when search is loaded, let's reset the active table, as it often might not even be visible in search results
-  //  that leads to confusion and has no added benefit
+  // when active table is not present in search results, let's reset the active table
   useEffect(() => {
-    onChange?.({
-      databaseId: undefined,
-      schemaName: undefined,
-      tableId: undefined,
-    });
-  }, [onChange]);
+    if (isFetchingTables || routeParams.tableId === undefined) {
+      return;
+    }
+    const isActiveTableVisible = filteredTables.some(
+      (table) => table.id === routeParams.tableId,
+    );
+    if (!isActiveTableVisible) {
+      onChange?.({
+        databaseId: undefined,
+        schemaName: undefined,
+        tableId: undefined,
+      });
+    }
+  }, [filteredTables, routeParams.tableId, onChange, isFetchingTables]);
 
   useEffect(() => {
     filterSelectedTables(filteredTables.map((table) => table.id));
