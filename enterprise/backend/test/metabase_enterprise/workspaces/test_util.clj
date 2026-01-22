@@ -206,7 +206,9 @@
         global-tx-syms   (filter transform? (keys expanded-global))
         global-tx-ids    (into {}
                                (for [tx global-tx-syms]
-                                 [tx (create-transform! db-id tx (get expanded-global tx []) (merge table-ids real-table-ids) schema)]))
+                                 [tx (create-transform! db-id tx
+                                                        (get expanded-global tx [])
+                                                        (merge table-ids real-table-ids) schema)]))
 
         ;; Insert global dependencies
         _                (doseq [[tx-kw tx-id] global-tx-ids]
@@ -222,7 +224,8 @@
 
         ;; Create workspace (only if workspace key was provided)
         ws               (when workspace
-                           (create-workspace-for-test! {:name        (or (:name workspace) (str "test-ws-" (random-uuid)))
+                           (create-workspace-for-test! {:name        (or (:name workspace)
+                                                                         (str "test-ws-" (random-uuid)))
                                                         :database_id db-id}))
         ws-id            (:id ws)
 
