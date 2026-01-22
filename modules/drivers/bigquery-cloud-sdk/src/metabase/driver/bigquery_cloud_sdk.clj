@@ -1016,6 +1016,8 @@
   [_]
   nil)
 
+;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
+#_{:clj-kondo/ignore [:discouraged-var]}
 (mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]

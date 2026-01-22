@@ -30,8 +30,10 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
+  ;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser imports and typehints)
   (:import
    (java.sql PreparedStatement)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
@@ -357,6 +359,9 @@
       (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
 
+;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
+;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser typehints)
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]

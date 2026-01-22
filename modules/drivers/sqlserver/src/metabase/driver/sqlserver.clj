@@ -30,12 +30,15 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv get-in]])
+  ;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser imports and typehints)
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.schema Table)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
@@ -1023,6 +1026,9 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
+;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
+;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser typehints and classes)
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query

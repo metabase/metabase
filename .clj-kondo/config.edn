@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- { ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -65,6 +65,7 @@
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
+  :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -191,7 +192,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -299,7 +300,8 @@
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
+   macaw.core/parsed-query                            {:message "Use metabase.driver.util/parsed-query instead of macaw.core/parsed-query"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
