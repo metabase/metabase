@@ -50,6 +50,6 @@ export type DependencyFilterOptions = {
 };
 
 export type DependencySortOptions = {
-  column?: DependencySortColumn;
-  direction?: DependencySortDirection;
+  column: DependencySortColumn;
+  direction: DependencySortDirection;
 };

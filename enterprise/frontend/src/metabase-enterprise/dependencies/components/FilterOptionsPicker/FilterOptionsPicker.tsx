@@ -18,14 +18,14 @@ import { TypeFilterPicker } from "./TypeFilterPicker";
 
 type FilterOptionsPickerProps = {
   filters: DependencyFilterOptions;
-  availableGroupTypes: DependencyGroupType[];
+  availableGroupTypes?: DependencyGroupType[];
   compact?: boolean;
   onFiltersChange: (filters: DependencyFilterOptions) => void;
 };
 
 export function FilterOptionsPicker({
   filters,
-  availableGroupTypes,
+  availableGroupTypes = [],
   compact = false,
   onFiltersChange,
 }: FilterOptionsPickerProps) {
@@ -73,11 +73,13 @@ function FilterOptionsPopover({
   return (
     <Box w="20rem" p="md">
       <Stack>
-        <TypeFilterPicker
-          filters={filters}
-          availableGroupTypes={availableGroupTypes}
-          onFiltersChange={onFiltersChange}
-        />
+        {availableGroupTypes.length > 0 && (
+          <TypeFilterPicker
+            filters={filters}
+            availableGroupTypes={availableGroupTypes}
+            onFiltersChange={onFiltersChange}
+          />
+        )}
         <LocationFilterPicker
           filters={filters}
           onFiltersChange={onFiltersChange}

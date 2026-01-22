@@ -1,5 +1,5 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,17 +13,21 @@ import type {
 } from "metabase-types/api";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../types";
+import { getSearchQuery } from "../../../utils";
 
 import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
 import {
-  canFilterByOption,
+  canFilter,
   canSortByColumn,
   getDefaultFilterOptions,
   getDefaultSortOptions,
   getListRequest,
-  getVisibleNodes,
 } from "./utils";
 
 type GraphDependencyPanelProps = {
@@ -39,36 +43,34 @@ export function GraphDependencyPanel({
   getGraphUrl,
   onClose,
 }: GraphDependencyPanelProps) {
+  const [searchText, setSearchText] = useState("");
+  const [searchQuery] = useDebouncedValue(
+    getSearchQuery(searchText),
+    SEARCH_DEBOUNCE_DURATION,
+  );
+  const [filters, setFilters] = useState<DependencyFilterOptions>(
+    getDefaultFilterOptions(),
+  );
+  const [sorting, setSorting] = useState<DependencySortOptions>(
+    getDefaultSortOptions(),
+  );
   const {
     data: nodes = [],
     isFetching,
     error,
-  } = useListNodeDependentsQuery(getListRequest(node, groupType));
-  const [searchText, setSearchText] = useState("");
-  const [searchQuery] = useDebouncedValue(
-    searchText.trim(),
-    SEARCH_DEBOUNCE_DURATION,
-  );
-  const [filterOptions, setFilterOptions] = useState(() =>
-    getDefaultFilterOptions(groupType),
-  );
-  const [sortOptions, setSortOptions] = useState(() =>
-    getDefaultSortOptions(groupType),
-  );
-  const visibleNodes = useMemo(
-    () => getVisibleNodes(nodes, { searchQuery, filterOptions, sortOptions }),
-    [nodes, searchQuery, filterOptions, sortOptions],
+  } = useListNodeDependentsQuery(
+    getListRequest(node, groupType, searchQuery, filters, sorting),
   );
 
   useLayoutEffect(() => {
-    if (filterOptions.some((option) => !canFilterByOption(groupType, option))) {
-      setFilterOptions(getDefaultFilterOptions(groupType));
+    if (!canFilter(groupType)) {
+      setFilters(getDefaultFilterOptions());
     }
 
-    if (!canSortByColumn(groupType, sortOptions.column)) {
-      setSortOptions(getDefaultSortOptions(groupType));
+    if (!canSortByColumn(groupType, sorting.column)) {
+      setSorting(getDefaultSortOptions());
     }
-  }, [groupType, filterOptions, sortOptions]);
+  }, [groupType, filters, sorting]);
 
   return (
     <Card className={S.root} withBorder data-testid="graph-dependency-panel">
@@ -76,22 +78,22 @@ export function GraphDependencyPanel({
         node={node}
         groupType={groupType}
         searchText={searchText}
-        filterOptions={filterOptions}
-        sortOptions={sortOptions}
+        filters={filters}
+        sorting={sorting}
         hasSearch={nodes.length >= DEPENDENTS_SEARCH_THRESHOLD}
         onSearchTextChange={setSearchText}
-        onFilterOptionsChange={setFilterOptions}
-        onSortOptionsChange={setSortOptions}
+        onFiltersChange={setFilters}
+        onSortingChange={setSorting}
         onClose={onClose}
       />
       {isFetching || error != null ? (
         <LoadingAndErrorWrapper loading={isFetching} error={error} />
-      ) : visibleNodes.length === 0 ? (
+      ) : nodes.length === 0 ? (
         <Box p="lg" c="text-secondary" ta="center">
           {t`Didn't find any results`}
         </Box>
       ) : (
-        <PanelBody nodes={visibleNodes} getGraphUrl={getGraphUrl} />
+        <PanelBody nodes={nodes} getGraphUrl={getGraphUrl} />
       )}
     </Card>
   );

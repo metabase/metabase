@@ -10,24 +10,27 @@ import {
 } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import type { FilterOption, SortOptions } from "../types";
-import { canFilter } from "../utils";
+import { FilterOptionsPicker } from "../../../../components/FilterOptionsPicker";
+import { SortOptionsPicker } from "../../../../components/SortOptionsPicker";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
+import { canFilter, getAvailableSortColumns } from "../utils";
 
-import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import S from "./PanelHeader.module.css";
-import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
   groupType: DependencyGroupType;
   searchText: string;
-  filterOptions: FilterOption[];
-  sortOptions: SortOptions;
+  filters: DependencyFilterOptions;
+  sorting: DependencySortOptions;
   hasSearch: boolean;
   onSearchTextChange: (searchText: string) => void;
-  onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
-  onSortOptionsChange: (sortOptions: SortOptions) => void;
+  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  onSortingChange: (sorting: DependencySortOptions) => void;
   onClose: () => void;
 };
 
@@ -35,12 +38,12 @@ export function PanelHeader({
   node,
   groupType,
   searchText,
-  filterOptions,
-  sortOptions,
+  filters,
+  sorting,
   hasSearch,
   onSearchTextChange,
-  onFilterOptionsChange,
-  onSortOptionsChange,
+  onFiltersChange,
+  onSortingChange,
   onClose,
 }: PanelHeaderProps) {
   const hasFilterPicker = canFilter(groupType);
@@ -61,17 +64,17 @@ export function PanelHeader({
           placeholder={t`Search`}
           leftSection={<FixedSizeIcon name="search" />}
           rightSection={
-            <Group gap={0}>
+            <Group gap={0} wrap="nowrap">
               <SortOptionsPicker
-                groupType={groupType}
-                sortOptions={sortOptions}
-                onSortOptionsChange={onSortOptionsChange}
+                sorting={sorting}
+                availableSortColumns={getAvailableSortColumns(groupType)}
+                onSortingChange={onSortingChange}
               />
               {hasFilterPicker && (
                 <FilterOptionsPicker
-                  groupType={groupType}
-                  filterOptions={filterOptions}
-                  onFilterOptionsChange={onFilterOptionsChange}
+                  filters={filters}
+                  compact
+                  onFiltersChange={onFiltersChange}
                 />
               )}
             </Group>
