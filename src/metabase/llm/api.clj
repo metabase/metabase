@@ -236,10 +236,25 @@
                            [:id pos-int?]]]]]]
   :- [:map
       [:sql :string]
-      [:referenced_entities [:sequential [:map
-                                          [:model :string]
-                                          [:id pos-int?]]]]]
-  ;; 1. Validate LLM is configured
+      [:referenced_entities [:sequential
+                             [:map
+                              [:model :string]
+                              [:id pos-int?]
+                              [:name :string]
+                              [:schema {:optional true} [:maybe :string]]
+                              [:display_name {:optional true} [:maybe :string]]
+                              [:description {:optional true} [:maybe :string]]
+                              [:columns [:sequential
+                                         [:map
+                                          [:id pos-int?]
+                                          [:name :string]
+                                          [:database_type {:optional true} [:maybe :string]]
+                                          [:description {:optional true} [:maybe :string]]
+                                          [:semantic_type {:optional true} [:maybe :string]]
+                                          [:fk_target {:optional true}
+                                           [:map
+                                            [:table_name :string]
+                                            [:field_name :string]]]]]]]]]]
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
@@ -257,19 +272,13 @@
         table-ids          (set/union (or frontend-table-ids #{})
                                       (or explicit-table-ids #{})
                                       (or implicit-table-ids #{}))]
-
-    ;; 3. Validate at least one table is referenced
     (when (empty? table-ids)
       (throw (ex-info (tru "No tables found. Use @mentions or provide source SQL with table references.")
                       {:status-code 400})))
-
-    ;; 4. Fetch schema context for mentioned tables
     (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
       (when-not schema-ddl
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
-
-      ;; 5. Get database dialect, instructions, and build system prompt
       (let [engine              (database-engine database_id)
             dialect             (database-dialect database_id)
             dialect-instructions (load-dialect-instructions engine)
@@ -278,23 +287,16 @@
                                                       :dialect-instructions dialect-instructions
                                                       :source-sql           source_sql})
             timestamp           (current-timestamp)]
-
-        ;; 6. Log the system prompt (if debug logging enabled)
         (when (debug-logging-enabled?)
           (log-to-file! (str timestamp "_prompt.txt") system-prompt))
-
-        ;; 7. Call LLM (returns map with :sql and :explanation from tool response)
         (let [response (llm.anthropic/chat-completion
                         {:system   system-prompt
                          :messages [{:role "user" :content prompt}]})]
-
-          ;; 8. Log the response (if debug logging enabled)
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_response.txt") (pr-str response)))
-
-          ;; 9. Parse and return result
           (let [sql                 (parse-sql-response response)
-                referenced-entities (mapv (fn [id] {:model "table" :id id}) table-ids)]
+                tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
             {:sql                 sql
              :referenced_entities referenced-entities}))))))
 
@@ -361,7 +363,7 @@
              [:sequential [:map
                            [:model :string]
                            [:id pos-int?]]]]]]
-  (let [{:keys [prompt]} body
+  (let [{:keys [prompt database_id]} body
         {:keys [system-prompt table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
 
@@ -369,9 +371,8 @@
       (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
     (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-      (let [llm-chan (llm.anthropic/chat-completion-stream
-                      {:system   system-prompt
-                       :messages [{:role "user" :content prompt}]})
+      (let [llm-chan (llm.anthropic/chat-completion-stream {:system   system-prompt
+                                                            :messages [{:role "user" :content prompt}]})
             text-acc (StringBuilder.)]
         (loop []
           (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
@@ -382,7 +383,8 @@
               (nil? chunk)
               (let [json-str            (str text-acc)
                     final-sql           (parse-sql-response json-str)
-                    referenced-entities (mapv (fn [id] {:model "table" :id id}) table-ids)]
+                    tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
+                    referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
                 (when (debug-logging-enabled?)
                   (log-to-file! (str timestamp "_response.txt") json-str))
                 (write-sse! os (llm.streaming/format-sse-line
