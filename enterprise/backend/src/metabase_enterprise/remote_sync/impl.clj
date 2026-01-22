@@ -126,9 +126,9 @@
         repo-has-transforms? (some #(= "Transform" (:model (first %))) ingest-list)
         repo-has-snippets? (some #(= "NativeQuerySnippet" (:model (first %))) ingest-list)]
     (cond-> #{}
-      repo-has-library? (conj "Library")
-      repo-has-transforms? (conj "Transforms")
-      repo-has-snippets? (conj "Snippets"))))
+      (and has-library? repo-has-library?) (conj "Library")
+      (and has-transforms? repo-has-transforms?) (conj "Transforms")
+      (and has-snippets? repo-has-snippets?) (conj "Snippets"))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -159,15 +159,18 @@
               conflicts (get-conflicts ingestable-snapshot)]
 
           (cond
+            (and (nil? last-imported-version) (not force?) (seq conflicts))
+            (u/prog1 {:status :conflict
+                      :version (source.p/version snapshot)
+                      :conflicts conflicts
+                      :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+              (log/infof (:message <>)))
+
             (and (not force?) (= last-imported-version snapshot-version))
             (u/prog1 {:status :success
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-
-            (and (not force?) (seq conflicts))
-            {:status :conflict
-             :conflicts conflicts}
 
             :else
             (let [load-result (serdes/with-cache
