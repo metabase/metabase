@@ -46,17 +46,17 @@ export function DependencyList({
   const {
     page = 0,
     query,
-    groupTypes,
-    includePersonalCollections,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = true,
     sortColumn,
     sortDirection,
   } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: getDependencyTypes(groupTypes ?? getAvailableGroupTypes(mode)),
-    card_types: getCardTypes(groupTypes ?? getAvailableGroupTypes(mode)),
+    types: getDependencyTypes(groupTypes),
+    card_types: getCardTypes(groupTypes),
     query: query,
-    include_personal_collections: includePersonalCollections ?? true,
+    include_personal_collections: includePersonalCollections,
     sort_column: sortColumn,
     sort_direction: sortDirection,
     offset: page * PAGE_SIZE,
