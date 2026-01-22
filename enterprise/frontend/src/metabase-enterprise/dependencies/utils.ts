@@ -561,15 +561,6 @@ export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
   return Array.from(new Set(cardTypes));
 }
 
-export function getDependencyGroupTypes(
-  types: DependencyType[],
-  cardTypes: CardType[],
-): DependencyGroupType[] {
-  return types.flatMap((type) => {
-    return type === "card" ? cardTypes : [type];
-  });
-}
-
 export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   const {
     question = 0,
