@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { transformEdit } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -23,6 +25,7 @@ import {
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
@@ -131,65 +134,78 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           disabled={!checkoutData?.checkout_disabled}
         >
           <Button
-            leftSection={<Icon name="pencil" />}
             rightSection={<Icon name="chevrondown" />}
             loading={isBusy}
             disabled={!!checkoutData?.checkout_disabled}
+            size="xs"
           >
-            {t`Edit transform`}
+            {t`Edit`}
           </Button>
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>{t`Add to workspace`}</Menu.Label>
         <Menu.Item
-          disabled={isBusy}
-          leftSection={<Icon name="add" />}
-          onClick={() => {
-            handleCreateWorkspace({ databaseId: sourceDatabaseId });
-          }}
+          component={Link}
+          to={transformEdit(transform.id)}
+          leftSection={<Icon name="pencil" />}
         >
-          <Stack gap={0} align="flex-start">
-            <Text fw={600}>{t`New workspace`}</Text>
-            <Text size="sm" c="text-light">
-              {t`Create a new workspace`}
-            </Text>
-          </Stack>
+          {t`Edit definition`}
         </Menu.Item>
-        <Menu.Divider />
 
-        {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
-          <Flex justify="center" align="center" py="md">
-            <Loader size="sm" />
-          </Flex>
-        ) : matchingWorkspaces.length === 0 ? (
-          <Box px="md" py="sm">
-            <Text size="sm" c="text-light">
-              {emptyMessage}
-            </Text>
-          </Box>
-        ) : (
-          <ScrollArea.Autosize mah={320} type="scroll">
-            <Stack gap={0}>
-              {matchingWorkspaces.map((workspace) => (
-                <Menu.Item
-                  key={workspace.id}
-                  leftSection={
-                    <Icon
-                      name="sparkles"
-                      c={workspace.isChecked ? "brand" : "text-dark"}
-                    />
-                  }
-                  onClick={() => handleWorkspaceSelect(workspace)}
-                  disabled={isBusy}
-                >
-                  <Stack gap={2} align="flex-start">
-                    <Text fw={600}>{workspace.name}</Text>
-                  </Stack>
-                </Menu.Item>
-              ))}
-            </Stack>
-          </ScrollArea.Autosize>
+        {hasPremiumFeature("workspaces") && (
+          <>
+            <Menu.Divider />
+            <Menu.Label>{t`Add to workspace`}</Menu.Label>
+            <Menu.Item
+              disabled={isBusy}
+              leftSection={<Icon name="add" />}
+              onClick={() => {
+                handleCreateWorkspace({ databaseId: sourceDatabaseId });
+              }}
+            >
+              <Stack gap={0} align="flex-start">
+                <Text fw={600}>{t`New workspace`}</Text>
+                <Text size="sm" c="text-light">
+                  {t`Create a new workspace`}
+                </Text>
+              </Stack>
+            </Menu.Item>
+            <Menu.Divider />
+
+            {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
+              <Flex justify="center" align="center" py="md">
+                <Loader size="sm" />
+              </Flex>
+            ) : matchingWorkspaces.length === 0 ? (
+              <Box px="md" py="sm">
+                <Text size="sm" c="text-light">
+                  {emptyMessage}
+                </Text>
+              </Box>
+            ) : (
+              <ScrollArea.Autosize mah={320} type="scroll">
+                <Stack gap={0}>
+                  {matchingWorkspaces.map((workspace) => (
+                    <Menu.Item
+                      key={workspace.id}
+                      leftSection={
+                        <Icon
+                          name="sparkles"
+                          c={workspace.isChecked ? "brand" : "text-dark"}
+                        />
+                      }
+                      onClick={() => handleWorkspaceSelect(workspace)}
+                      disabled={isBusy}
+                    >
+                      <Stack gap={2} align="flex-start">
+                        <Text fw={600}>{workspace.name}</Text>
+                      </Stack>
+                    </Menu.Item>
+                  ))}
+                </Stack>
+              </ScrollArea.Autosize>
+            )}
+          </>
         )}
       </Menu.Dropdown>
     </Menu>

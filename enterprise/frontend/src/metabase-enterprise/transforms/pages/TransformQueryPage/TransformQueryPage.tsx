@@ -21,7 +21,6 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Database,
   DatasetQuery,
@@ -30,9 +29,11 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
-import { TransformEditor, type TransformEditorProps } from "../../components/TransformEditor";
+import {
+  TransformEditor,
+  type TransformEditorProps,
+} from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
-import { EditTransformMenu } from "../../components/TransformHeader/EditTransformMenu";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
@@ -60,8 +61,6 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery({ include_analytics: true });
-  const showEditWorkspaceMenu =
-    transform?.source_type === "python" || transform?.source_type === "native";
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -78,7 +77,6 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
       transform={transform}
       databases={databases.data}
       route={route}
-      showEditWorkspaceMenu={showEditWorkspaceMenu}
     />
   );
 }
@@ -86,7 +84,6 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  showEditWorkspaceMenu: boolean;
   route: RouteProps;
 };
 
@@ -94,7 +91,6 @@ function TransformQueryPageBody({
   transform,
   databases,
   route,
-  showEditWorkspaceMenu,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -182,15 +178,13 @@ function TransformQueryPageBody({
           transform={transform}
           actions={
             <Group gap="sm">
-              {showEditWorkspaceMenu &&
-                hasPremiumFeature("workspaces") &&
-                !isEditMode && <EditTransformMenu transform={transform} />}
               <TransformPaneHeaderActions
                 source={source}
                 isSaving={isSaving}
                 isDirty={isDirty}
                 handleSave={handleSave}
                 handleCancel={handleCancel}
+                transform={transform}
                 transformId={transform.id}
                 isEditMode={isEditMode}
               />
@@ -234,6 +228,7 @@ function TransformQueryPageBody({
               onChangeUiState={setUiState}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              transform={transform}
               transformId={transform.id}
             />
           )}

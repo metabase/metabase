@@ -7,15 +7,18 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
+import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import * as Lib from "metabase-lib";
 import type {
   Database,
   DatasetQuery,
   QueryTransformSource,
+  Transform,
   TransformId,
 } from "metabase-types/api";
 
-import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";
 
 export type TransformEditorProps = {
@@ -31,6 +34,7 @@ export type TransformEditorProps = {
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   readOnly?: boolean;
+  transform?: Transform;
   transformId?: TransformId;
 };
 
@@ -47,6 +51,7 @@ export function TransformEditor({
   onRunQueryStart,
   onBlur,
   readOnly,
+  transform,
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -90,16 +95,13 @@ export function TransformEditor({
       onBlur={onBlur}
       topBarInnerContent={
         readOnly &&
-        !!transformId && (
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transformId}
-          />
-        )
+        !!transformId &&
+        transform &&
+        (hasPremiumFeature("workspaces") ? (
+          <EditTransformMenu transform={transform} />
+        ) : (
+          <EditDefinitionButton transformId={transformId} />
+        ))
       }
     />
   );

@@ -1,10 +1,24 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupWorkspaceCheckoutEndpoint,
+  setupWorkspacesEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import * as transformsUtils from "metabase-enterprise/transforms/utils";
 import type { DraftTransformSource } from "metabase-types/api";
+import { createMockTransform } from "metabase-types/api/mocks";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
 
 const mockQuerySource: DraftTransformSource = {
   type: "query",
@@ -59,6 +73,11 @@ function setup({
       ? nativeSource
       : source;
 
+  const transform = createMockTransform({
+    id: 1,
+    source_type: isPython ? "python" : isNative ? "native" : "mbql",
+  });
+
   const { unmount } = renderWithProviders(
     <Route
       component={() => (
@@ -69,6 +88,7 @@ function setup({
           isEditMode={isEditMode}
           isSaving={isSaving}
           source={resolvedSource}
+          transform={transform}
           transformId={1}
         />
       )}
@@ -86,6 +106,10 @@ function setup({
 describe("TransformPaneHeaderActions", () => {
   beforeEach(() => {
     jest.spyOn(console, "error").mockImplementation(() => {});
+
+    mockHasPremiumFeature.mockImplementation((feature) => {
+      return feature === "workspaces";
+    });
   });
 
   afterEach(() => {
@@ -144,13 +168,6 @@ describe("TransformPaneHeaderActions", () => {
   });
 
   describe("read-only mode (not edit mode)", () => {
-    it("should render EditDefinitionButton", () => {
-      setup({ isEditMode: false, isNative: false });
-      expect(
-        screen.getByRole("link", { name: /edit definition/i }),
-      ).toBeInTheDocument();
-    });
-
     it("should not render Save and Cancel", () => {
       setup({ isEditMode: false, isNative: true });
 
@@ -161,10 +178,44 @@ describe("TransformPaneHeaderActions", () => {
         screen.queryByRole("button", { name: /save/i }),
       ).not.toBeInTheDocument();
     });
+
+    describe("workspaces feature availability", () => {
+      it("should render EditDefinitionButton when workspaces feature is not available", () => {
+        mockHasPremiumFeature.mockReturnValue(false);
+        setup({ isEditMode: false, isNative: false });
+
+        expect(
+          screen.getByRole("link", { name: /edit definition/i }),
+        ).toBeInTheDocument();
+      });
+
+      it("should render EditTransformMenu when workspaces feature is available", async () => {
+        mockHasPremiumFeature.mockReturnValue(true);
+        setupWorkspacesEndpoint([]);
+
+        // Explicitly set checkout_disabled to null to ensure button is enabled
+        setupWorkspaceCheckoutEndpoint({ checkout_disabled: null });
+        setup({ isEditMode: false, isNative: false });
+
+        const editButton = await screen.findByRole("button", {
+          name: /edit/i,
+        });
+
+        // Wait for loading to finish (button should no longer have data-loading="true")
+        await waitFor(() => {
+          expect(editButton).not.toHaveAttribute("data-loading", "true");
+        });
+
+        expect(editButton).toBeEnabled();
+        expect(
+          screen.queryByRole("link", { name: /edit definition/i }),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe("Python transforms", () => {
-    it("should not render EditDefinitionButton for Python transforms (handled by PythonTransformTopBar)", () => {
+    it("should not render EditDefinitionButton for Python transforms (moved to EditTransformMenu in header)", () => {
       setup({ isEditMode: false, isPython: true });
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),

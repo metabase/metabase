@@ -4,10 +4,16 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
+import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, TransformId } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformId,
+} from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -16,6 +22,7 @@ type Props = {
   isEditMode: boolean;
   isSaving: boolean;
   source: DraftTransformSource;
+  transform: Transform;
   transformId: TransformId;
 };
 
@@ -27,7 +34,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
-    transformId,
+    transform,
   } = props;
   const metadata = useSelector(getMetadata);
 
@@ -49,12 +56,16 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isPythonTransform && !isNative && !isEditMode) {
-    return <EditDefinitionButton transformId={transformId} />;
-  }
-
   if (!isEditMode && isNative) {
     return null;
+  }
+
+  if (!isEditMode && !isPythonTransform && !isNative) {
+    return hasPremiumFeature("workspaces") ? (
+      <EditTransformMenu transform={transform} />
+    ) : (
+      <EditDefinitionButton transformId={transform.id} />
+    );
   }
 
   return (
