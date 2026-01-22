@@ -1,18 +1,19 @@
-import { Fragment } from "react";
+import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Anchor, Box, Card, Group, Icon, Stack, Title } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
+import S from "../ListSidebar.module.css";
 
 type SidebarLocationInfoProps = {
   node: DependencyNode;
 };
 
 export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
-  const title = t`Location`;
   const locationInfo = getNodeLocationInfo(node);
 
   if (locationInfo == null) {
@@ -20,21 +21,23 @@ export function SidebarLocationInfo({ node }: SidebarLocationInfoProps) {
   }
 
   return (
-    <Stack gap="sm" role="region" aria-label={title}>
-      <Title order={4}>{title}</Title>
-      <Card p="md" shadow="none" withBorder>
+    <div role="region" aria-label={t`Location`}>
+      <Breadcrumbs lh="1rem">
         {locationInfo.links.map((link, linkIndex) => (
-          <Fragment key={linkIndex}>
-            {linkIndex > 0 && <Box>/</Box>}
-            <Anchor component={Link} to={link.url}>
-              <Group gap="sm" wrap="nowrap">
-                {linkIndex === 0 && <Icon name={locationInfo.icon} />}
-                {link.label}
-              </Group>
-            </Anchor>
-          </Fragment>
+          <Anchor
+            key={linkIndex}
+            component={Link}
+            className={cx(CS.textWrap, S.link)}
+            lh="1rem"
+            to={link.url}
+          >
+            <Group gap="sm" wrap="nowrap">
+              {linkIndex === 0 && <FixedSizeIcon name={locationInfo.icon} />}
+              {link.label}
+            </Group>
+          </Anchor>
         ))}
-      </Card>
-    </Stack>
+      </Breadcrumbs>
+    </div>
   );
 }

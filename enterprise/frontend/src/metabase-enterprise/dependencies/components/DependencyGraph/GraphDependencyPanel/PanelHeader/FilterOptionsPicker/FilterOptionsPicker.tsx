@@ -67,12 +67,13 @@ function FilterOptionsPopover({
   };
 
   return (
-    <Box w="15rem" p="md">
+    <Box w="20rem" p="md">
       <Checkbox.Group
+        label={t`Location`}
         value={filterOptions}
         onChange={handleFilterOptionsChange}
       >
-        <Stack gap="0.75rem">
+        <Stack gap="sm" mt="sm">
           {filterItems.map((item) => (
             <Checkbox key={item.value} value={item.value} label={item.label} />
           ))}

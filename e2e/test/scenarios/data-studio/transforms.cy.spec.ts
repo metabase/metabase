@@ -7,6 +7,8 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
+  TransformId,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -41,6 +43,9 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+      "checkTransformDependencies",
+    );
   });
 
   afterEach(() => {
@@ -234,7 +239,7 @@ describe("scenarios > admin > transforms", () => {
           event_detail: "python",
         });
 
-        cy.findByTestId("python-data-picker")
+        cy.findByTestId("python-transform-top-bar")
           .findByText("Writable Postgres12")
           .click();
 
@@ -246,7 +251,7 @@ describe("scenarios > admin > transforms", () => {
         cy.log("Select database");
         H.popover().findByText(DB_NAME).click();
 
-        getPythonDataPicker().button("Select a table…").click();
+        getPythonDataPicker().findByText("Select a table…").click();
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {
@@ -720,6 +725,15 @@ LIMIT
         cy.findByText("Count").should("be.visible");
       });
     });
+
+    it("should show the metabot button", () => {
+      visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+      cy.findByRole("button", { name: /Chat with Metabot/ }).should(
+        "be.visible",
+      );
+    });
   });
 
   describe("name", () => {
@@ -734,6 +748,49 @@ LIMIT
       H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
         .should("have.value", "New name");
+    });
+  });
+
+  describe("ownership", () => {
+    it("should be able to view and manage transform ownership", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("verify the ownership section is displayed");
+      getTransformsTargetContent().within(() => {
+        cy.findByText("Ownership").should("be.visible");
+        cy.findByText("Specify who is responsible for this transform.").should(
+          "be.visible",
+        );
+        cy.findByText("Owner").should("be.visible");
+      });
+
+      cy.log("change the owner to another user");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Robert Tableton").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("set an external email as owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+        cy.findByLabelText("Owner").clear().type("external@example.com");
+      });
+      H.popover().findByText("external@example.com").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("clear the owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("No owner").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
     });
   });
 
@@ -944,7 +1001,7 @@ LIMIT
 
       // Make a second change while first is still in progress
       // Select any available checkpoint field
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
       getFieldPicker().click();
 
       // Click the first available option in the popover
@@ -979,7 +1036,7 @@ LIMIT
       // The source strategy select should be visible
       // (Currently only one option "checkpoint" is available, so select might not be shown)
       // The checkpoint field select should be visible
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
 
       cy.log("Select a checkpoint field");
       getFieldPicker().click();
@@ -1495,6 +1552,109 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
+    it("should be possible to continue editing a transform after closing check dependencies modal (metabase#68272)", () => {
+      const transformTableName = "output_table";
+      const dependentCardName = "Question depending on transform";
+
+      cy.log("create MBQL transform with name and score columns");
+      H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
+        (sourceTableId) => {
+          H.getFieldId({ tableId: sourceTableId, name: "name" }).then(
+            (nameFieldId) => {
+              H.getFieldId({ tableId: sourceTableId, name: "score" }).then(
+                (scoreFieldId) => {
+                  H.createTransform(
+                    {
+                      name: "MBQL transform with deps",
+                      source: {
+                        type: "query",
+                        query: {
+                          database: WRITABLE_DB_ID,
+                          type: "query",
+                          query: {
+                            "source-table": sourceTableId,
+                            fields: [
+                              ["field", nameFieldId, null],
+                              ["field", scoreFieldId, null],
+                            ],
+                          },
+                        },
+                      },
+                      target: {
+                        type: "table",
+                        database: WRITABLE_DB_ID,
+                        name: transformTableName,
+                        schema: TARGET_SCHEMA,
+                      },
+                    },
+                    { wrapId: true },
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+
+      cy.get<TransformId>("@transformId").then((transformId) => {
+        cy.log("run the transform to create the output table");
+        cy.request("POST", `/api/ee/transform/${transformId}/run`);
+        H.waitForSucceededTransformRuns();
+        H.resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: transformTableName,
+        });
+
+        cy.log("create a question that depends on the score column");
+        H.getTableId({
+          databaseId: WRITABLE_DB_ID,
+          name: transformTableName,
+        }).then((tableId) => {
+          H.createQuestion({
+            name: dependentCardName,
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+              filter: [
+                ">",
+                ["field", "score", { "base-type": "type/Integer" }],
+                10,
+              ],
+            },
+          });
+        });
+
+        H.visitTransform(transformId);
+
+        cy.log("remove score column (breaking change)");
+        H.DataStudio.Transforms.editDefinition().click();
+        H.getNotebookStep("data").findByLabelText("Pick columns").click();
+        H.popover().findByLabelText("Score").click();
+        H.DataStudio.Transforms.saveChangesButton().click();
+
+        cy.wait("@checkTransformDependencies");
+
+        H.modal().within(() => {
+          cy.findByText(
+            "These changes will break some other things. Save anyway?",
+          ).should("be.visible");
+          cy.findByText(dependentCardName).should("be.visible");
+
+          cy.log("cancel to continue editing");
+          cy.button("Cancel").click();
+        });
+
+        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.saveChangesButton()
+          .should("be.visible")
+          .and("be.enabled");
+
+        H.getNotebookStep("data").findByLabelText("Pick columns").click();
+        H.popover().findByLabelText("Name").should("be.disabled");
+        H.popover().findByLabelText("Score").should("not.be.checked");
+      });
+    });
+
     it("should be able to update a Python query", { tags: ["@python"] }, () => {
       H.setPythonRunnerSettings();
       cy.log("create a new transform");
@@ -1513,6 +1673,9 @@ LIMIT
         },
       );
 
+      cy.log("enter edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+
       cy.log("update the query");
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
       getQueryEditor().button("Save").click();
@@ -1525,6 +1688,215 @@ LIMIT
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
+    });
+
+    it(
+      "should show Python transforms in view-only mode",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("should be in read-only mode by default");
+        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        H.DataStudio.Transforms.editDefinition().should(
+          "have.attr",
+          "href",
+          "/data-studio/transforms/1/edit",
+        );
+
+        cy.log("sidebar should be hidden in read-only mode");
+        cy.findByTestId("python-data-picker").should("not.exist");
+
+        cy.log("results panel should be hidden in read-only mode");
+        cy.findByTestId("python-results").should("not.exist");
+
+        cy.log("library buttons should be hidden in read-only mode");
+        cy.findByLabelText("Import common library").should("not.exist");
+        cy.findByLabelText("Edit common library").should("not.exist");
+      },
+    );
+
+    it(
+      "should transition from read-only to edit mode for Python transforms",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("click Edit definition to enter edit mode");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        cy.log("sidebar should be visible in edit mode");
+        cy.findByTestId("python-data-picker").should("be.visible");
+
+        cy.log("results panel should be visible in edit mode");
+        cy.findByTestId("python-results").should("be.visible");
+
+        cy.log("Edit definition button should be hidden in edit mode");
+        H.DataStudio.Transforms.editDefinition().should("not.exist");
+      },
+    );
+
+    it(
+      "should return to read-only mode after saving a Python transform",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new Python transform");
+        H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+          (id) => {
+            createPythonTransform({
+              body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42 }])
+            `,
+              sourceTables: { foo: id },
+              visitTransform: true,
+            });
+          },
+        );
+
+        cy.log("enter edit mode");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        cy.log("make a change to trigger dirty state");
+        H.PythonEditor.type(" # comment");
+
+        cy.log("save the transform");
+        getQueryEditor().button("Save").click();
+        cy.wait("@updateTransform");
+
+        cy.log("should return to read-only mode after save");
+        cy.url().should("not.include", "/edit");
+        H.DataStudio.Transforms.editDefinition().should("be.visible");
+        cy.findByTestId("python-data-picker").should("not.exist");
+        cy.findByTestId("python-results").should("not.exist");
+      },
+    );
+
+    describe("query complexity warning", () => {
+      it("should show complexity warning modal when saving a complex SQL query", () => {
+        cy.log("create a simple SQL transform");
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+          visitTransform: true,
+          sourceCheckpointStrategy: { type: "checkpoint" },
+        });
+
+        cy.log("visit edit mode and change to a complex query with LIMIT");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        H.NativeEditor.type(" LIMIT 10");
+        getQueryEditor().button("Save").click();
+
+        handleQueryComplexityWarningModal("cancel");
+        cy.log("verify modal is closed and still in edit mode");
+        H.modal().should("not.exist");
+        cy.url().should("include", "/edit");
+        cy.get("@updateTransform.all").should("have.length", 0);
+
+        cy.log("Save anyway");
+        getQueryEditor().button("Save").click();
+        handleQueryComplexityWarningModal("save");
+
+        cy.wait("@updateTransform");
+        cy.url().should("not.include", "/edit");
+      });
+
+      it("should confirm incremental settings change if query is complex", () => {
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}" LIMIT 10`,
+          sourceCheckpointStrategy: { type: "checkpoint" },
+          visitTransform: true,
+        });
+        H.DataStudio.Transforms.settingsTab().click();
+
+        cy.log("Toggle incremental on");
+        isIncrementalSwitchDisabled();
+        getIncrementalSwitch().click();
+
+        handleQueryComplexityWarningModal("cancel");
+
+        cy.log("Verify that the switch is still off");
+        isIncrementalSwitchDisabled();
+
+        cy.log("Toggle incremental on");
+        getIncrementalSwitch().click();
+        handleQueryComplexityWarningModal("save");
+
+        cy.wait("@updateTransform");
+        isIncrementalSwitchEnabled();
+        H.undoToast().should(
+          "contain.text",
+          "Incremental transformation settings updated",
+        );
+      });
+
+      it("should show complexity warning with danger button in create transform modal when enabling incremental with complex query", () => {
+        cy.log("create a new SQL transform with a complex query");
+        visitTransformListPage();
+        cy.button("Create a transform").click();
+        H.popover().findByText("SQL query").click();
+        H.popover().findByText(DB_NAME).click();
+
+        H.NativeEditor.type(
+          `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}" LIMIT 10`,
+        );
+
+        getQueryEditor().button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Complex SQL transform");
+          cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+
+          cy.log("Enable incremental transformation");
+          getIncrementalSwitch().click();
+
+          cy.log("Verify complexity warning appears inline");
+          cy.findByTestId("query-complexity-warning")
+            .scrollIntoView()
+            .should("be.visible");
+
+          cy.log("Verify the submit button is styled as danger (red)");
+          cy.findByRole("button", { name: "Save anyway" })
+            .scrollIntoView()
+            .should("have.css", "background-color", "rgb(209, 44, 41)");
+        });
+      });
     });
   });
 
@@ -1847,8 +2219,12 @@ LIMIT
         cy.button("Create a transform").click();
         H.popover().findByText("Python script").click();
 
+        cy.log("import common should be included by default");
+        H.PythonEditor.value().should("contain", "import common");
+
         H.PythonEditor.clear().type(
           dedent`
+            import common
             import pandas as pd
 
             def transform():
@@ -1856,9 +2232,6 @@ LIMIT
           `,
           { allowFastSet: true },
         );
-
-        getQueryEditor().findByLabelText("Import common library").click();
-        H.PythonEditor.value().should("contain", "import common");
 
         cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
@@ -3095,6 +3468,9 @@ describe(
         },
       );
 
+      cy.log("enter edit mode");
+      H.DataStudio.Transforms.editDefinition().click();
+
       cy.log("running the script should work");
       runPythonScriptAndWaitForSuccess();
       H.assertTableData({
@@ -3149,7 +3525,9 @@ describe("scenarios > admin > transforms", () => {
     cy.button("Create a transform").click();
     H.popover().findByText("Python script").click();
 
-    getPythonDataPicker().findByText("Select a database").should("be.visible");
+    cy.findByTestId("python-transform-top-bar")
+      .findByText("Select a database")
+      .should("be.visible");
   });
 });
 
@@ -3250,6 +3628,18 @@ function isIncrementalSwitchDisabled() {
   return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
 }
 
+function handleQueryComplexityWarningModal(action: "cancel" | "save") {
+  cy.log(`Verify complexity warning modal appears and ${action} it`);
+  return H.modal().within(() => {
+    cy.findByTestId("query-complexity-warning").should("be.visible");
+    if (action === "save") {
+      cy.button("Save anyway").click();
+    } else {
+      cy.button("Cancel").click();
+    }
+  });
+}
+
 function getContentTable() {
   return cy.findByTestId("admin-content-table");
 }
@@ -3330,13 +3720,13 @@ function createMbqlTransform(
     ...opts,
   });
 }
-
 function createSqlTransform(opts: {
   sourceQuery: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
 }) {
   return H.createSqlTransform({
     targetTable: TARGET_TABLE,

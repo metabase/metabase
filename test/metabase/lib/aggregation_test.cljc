@@ -830,12 +830,12 @@
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))]
       (is (not (set/subset?
                 #{:avg :sum}
-                (set (mapv :short (lib/available-aggregation-operators query)))))
-          (is (set/subset?
-               #{:avg :sum}
-               (set (mapv :short (-> query
-                                     (lib/join (meta/table-metadata :venues))
-                                     lib/available-aggregation-operators)))))))))
+                (set (mapv :short (lib/available-aggregation-operators query))))))
+      (is (set/subset?
+           #{:avg :sum}
+           (set (mapv :short (-> query
+                                 (lib/join (meta/table-metadata :venues))
+                                 lib/available-aggregation-operators))))))))
 
 (deftest ^:synchronized selected-aggregation-operators-skip-marking-columns-for-non-refs-test
   (testing "when the aggregation's argument is not a column ref, don't try to mark selected columns"

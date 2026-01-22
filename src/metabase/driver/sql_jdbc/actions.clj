@@ -36,7 +36,7 @@
   The methods should returns a map of:
   - type: the error type. Check [[metabase.actions.error]] for the full list
   - message: a nice message summarized of what went wrong
-  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error
+  - errors: a map from field-name => specific error message. This is used by UI to display per fields error
     If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
@@ -458,7 +458,7 @@
   (let [db-id       (u/the-id database)
         driver      (:engine database)
         table-id    (get-in query [:query :source-table])
-        ;; Check that we have a PK before we insert thte data, because we'd need this to query the return data.
+        ;; Check that we have a PK before we insert the data, because we'd need this to query the return data.
         _           (assert-pk! db-id table-id)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql (-> {:insert-into (first from)

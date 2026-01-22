@@ -18,7 +18,7 @@
       );
     }
 
-    /* this pevents the divider between the button group from changing color */
+    /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
       border-right-color: var(--mb-color-border);
     }

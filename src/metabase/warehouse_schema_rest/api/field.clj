@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
@@ -185,6 +186,7 @@
     (u/prog1 (-> (t2/select-one :model/Field :id id)
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
+      (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
       (when (not= effective-type (:effective_type field))
         (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
         (quick-task/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
@@ -258,7 +260,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [field (api/read-check (t2/select-one :model/Field :id id))]
+  (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs

@@ -1,7 +1,8 @@
-const { H } = cy;
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type {
   CardId,
   CollectionId,
@@ -12,6 +13,7 @@ import type {
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
+const { H } = cy;
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MODEL_FOR_QUESTION_DATA_SOURCE = "Model for question data source";
@@ -71,6 +73,26 @@ const ENTITY_NAMES = [
   ...SNIPPET_NAMES,
 ];
 
+const MODELS_SORTED_BY_NAME = [
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+];
+
+const MODELS_SORTED_BY_LOCATION = [
+  MODEL_FOR_METRIC_DATA_SOURCE,
+  MODEL_FOR_MODEL_DATA_SOURCE,
+  MODEL_FOR_QUESTION_DATA_SOURCE,
+  MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+  MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE,
+  MODEL_FOR_DASHBOARD_CARD,
+  MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
+];
+
 describe("scenarios > dependencies > unreferenced list", () => {
   beforeEach(() => {
     H.restore();
@@ -125,7 +147,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
       });
 
       H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Model").click();
+      H.popover().findByText("Snippet").click();
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
         hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
@@ -141,11 +163,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Model").click();
-      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+      checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
       H.popover().findByText("Segment").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
         ],
@@ -153,21 +175,88 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.popover().findByText("Metric").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
           METRIC_FOR_QUESTION_AGGREGATION,
         ],
       });
 
-      H.popover().findByText("Snippet").click();
+      H.popover().findByText("Model").click();
+      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+    });
+
+    it("should filter by location", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SEGMENT_FOR_QUESTION_FILTER,
-          METRIC_FOR_QUESTION_AGGREGATION,
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
           SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         ],
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
+        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
+      });
+
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
+      });
+    });
+  });
+
+  describe("sorting", () => {
+    it("should sort by name", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.searchInput().type("Model for");
+
+      cy.log("sorted by name by default");
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name ascending");
+      H.DataStudio.Tasks.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name descending");
+      H.DataStudio.Tasks.list().findByText("Name").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
+      });
+    });
+
+    it("should sort by location", () => {
+      createEntities();
+      H.DataStudio.Tasks.visitUnreferencedEntities();
+      H.DataStudio.Tasks.searchInput().type("Model for");
+
+      cy.log("sorted by location ascending");
+      H.DataStudio.Tasks.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: MODELS_SORTED_BY_LOCATION,
+      });
+
+      cy.log("sorted by location descending");
+      H.DataStudio.Tasks.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
       });
     });
   });
@@ -272,6 +361,7 @@ function createModelContent({
   createModelWithTableDataSource({
     name: MODEL_FOR_METRIC_DATA_SOURCE,
     tableId: ORDERS_ID,
+    collectionId: ADMIN_PERSONAL_COLLECTION_ID,
   }).then(({ body: model }) => {
     if (withReferences) {
       createMetricWithModelDataSource({
@@ -902,6 +992,16 @@ function checkList({
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
+    });
+  });
+}
+
+function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
+  H.DataStudio.Tasks.list().within(() => {
+    visibleEntities.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
     });
   });
 }

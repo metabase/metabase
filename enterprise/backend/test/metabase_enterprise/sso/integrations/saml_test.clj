@@ -512,17 +512,17 @@
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
                (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
-                 (is (= {:email        "newuser@metabase.com"
-                         :first_name   "New"
-                         :is_qbnewb    true
-                         :is_superuser false
-                         :id           true
-                         :last_name    "User"
-                         :date_joined  true
-                         :common_name  "New User"
-                         :tenant_id    false}
-                        (-> (mt/boolean-ids-and-timestamps new-user)
-                            (dissoc :last_login))))
+                 (is (=? {:email        "newuser@metabase.com"
+                          :first_name   "New"
+                          :is_qbnewb    true
+                          :is_superuser false
+                          :id           true
+                          :last_name    "User"
+                          :date_joined  true
+                          :common_name  "New User"
+                          :tenant_id    false}
+                         (-> (mt/boolean-ids-and-timestamps new-user)
+                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
                    (is (= "newuser@metabase.com"
                           (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
@@ -545,32 +545,32 @@
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
-               (is (= [{:email        "newuser@metabase.com"
-                        :first_name   nil
-                        :is_qbnewb    true
-                        :is_superuser false
-                        :id           true
-                        :last_name    nil
-                        :date_joined  true
-                        :common_name  "newuser@metabase.com"
-                        :tenant_id    false}]
-                      (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                           (map #(dissoc % :last_login))))))
+               (is (=? [{:email        "newuser@metabase.com"
+                         :first_name   nil
+                         :is_qbnewb    true
+                         :is_superuser false
+                         :id           true
+                         :last_name    nil
+                         :date_joined  true
+                         :common_name  "newuser@metabase.com"
+                         :tenant_id    false}]
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                            (map #(dissoc % :last_login))))))
              ;; login with the same user, but now givenname and surname attributes exist
              (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
-               (is (= [{:email        "newuser@metabase.com"
-                        :first_name   "New"
-                        :is_qbnewb    true
-                        :is_superuser false
-                        :id           true
-                        :last_name    "User"
-                        :date_joined  true
-                        :common_name  "New User"
-                        :tenant_id    false}]
-                      (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
-                           (map #(dissoc % :last_login))))))
+               (is (=? [{:email        "newuser@metabase.com"
+                         :first_name   "New"
+                         :is_qbnewb    true
+                         :is_superuser false
+                         :id           true
+                         :last_name    "User"
+                         :date_joined  true
+                         :common_name  "New User"
+                         :tenant_id    false}]
+                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
+                            (map #(dissoc % :last_login))))))
              (finally
                (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
 
@@ -717,7 +717,7 @@
                               (get-in response [:headers "Location"])))))))))))))))
 
 (deftest sso-subpath-e2e-test
-  (testing "Redirect URL should correcly append the site-url when the redirect is a relative path (#28650)"
+  (testing "Redirect URL should correctly append the site-url when the redirect is a relative path (#28650)"
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (doseq [redirect-url ["/collection/root"

@@ -255,7 +255,7 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                       ;; registerd claims should not be synced as login attributes
+                                                       ;; registered claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
@@ -330,16 +330,16 @@
             (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
               (testing "new user"
                 (is
-                 (=
-                  {:email        "newuser@metabase.com"
-                   :first_name   "New"
-                   :is_qbnewb    true
-                   :is_superuser false
-                   :id           true
-                   :last_name    "User"
-                   :date_joined  true
-                   :common_name  "New User"
-                   :tenant_id    false}
+                 (=?
+                  {:email           "newuser@metabase.com"
+                   :first_name      "New"
+                   :is_qbnewb       true
+                   :is_superuser    false
+                   :id              true
+                   :last_name       "User"
+                   :date_joined     true
+                   :common_name     "New User"
+                   :tenant_id       false}
                   (-> (mt/boolean-ids-and-timestamps [new-user])
                       first
                       (dissoc :last_login)))))
@@ -374,16 +374,16 @@
             (is (saml-test/successful-login? response))
             (testing "new user with no first or last name"
               (is
-               (=
-                [{:email        "newuser@metabase.com"
-                  :first_name   nil
-                  :is_qbnewb    true
-                  :is_superuser false
-                  :id           true
-                  :last_name    nil
-                  :date_joined  true
-                  :common_name  "newuser@metabase.com"
-                  :tenant_id    false}]
+               (=?
+                [{:email           "newuser@metabase.com"
+                  :first_name      nil
+                  :is_qbnewb       true
+                  :is_superuser    false
+                  :id              true
+                  :last_name       nil
+                  :date_joined     true
+                  :common_name     "newuser@metabase.com"
+                  :tenant_id       false}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login)))))))
@@ -399,7 +399,7 @@
             (is (saml-test/successful-login? response))
             (testing "update user first and last name"
               (is
-               (=
+               (=?
                 [{:email        "newuser@metabase.com"
                   :first_name   "New"
                   :is_qbnewb    true

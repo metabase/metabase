@@ -2,8 +2,9 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { Stack, Title } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import {
+  PaneHeader,
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
@@ -11,21 +12,24 @@ import {
 export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Broken`,
-      to: Urls.dataStudioBrokenEntities(),
-      icon: "list",
+      label: t`Broken dependencies`,
+      to: Urls.brokenDependencies(),
+      icon: "broken_link",
     },
     {
-      label: t`Unreferenced`,
-      to: Urls.dataStudioUnreferencedEntities(),
-      icon: "list",
+      label: t`Unreferenced entities`,
+      to: Urls.unreferencedDependencies(),
+      icon: "unreferenced",
     },
   ];
 
   return (
-    <Stack gap="md">
-      <Title order={1} py="sm" fz="sm" lh="1rem" fw="normal">{t`Tasks`}</Title>
-      <PaneHeaderTabs tabs={tabs} />
-    </Stack>
+    <PaneHeader
+      breadcrumbs={
+        <DataStudioBreadcrumbs>{t`Dependency diagnostics`}</DataStudioBreadcrumbs>
+      }
+      tabs={<PaneHeaderTabs tabs={tabs} />}
+      py={0}
+    />
   );
 });
