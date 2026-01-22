@@ -28,5 +28,5 @@ export function getDefaultFilterOptions(): DependencyFilterOptions {
 }
 
 export function getDefaultSortOptions(): DependencySortOptions {
-  return { column: "name", direction: "asc" };
+  return { column: "view-count", direction: "desc" };
 }

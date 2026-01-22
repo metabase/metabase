@@ -11,6 +11,7 @@ export function getSortColumnItems(
   const allLabels: Record<DependencySortColumn, string> = {
     name: t`Name`,
     location: t`Location`,
+    "view-count": t`View count`,
     "dependents-errors": t`Problems`,
     "dependents-with-errors": t`Broken dependents`,
   };
