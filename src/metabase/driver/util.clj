@@ -814,7 +814,7 @@
   (let [result (macaw/parsed-query sql (merge (macaw-options driver)
                                               opts))]
     (when (and (map? result) (some? (:error result)))
-      (throw (throw (ex-info "SQL parsing failed."
-                             {:macaw-error (:error result)}
-                             (-> result :context :cause)))))
+      (throw (ex-info "SQL parsing failed."
+                      {:macaw-error (:error result)}
+                      (-> result :context :cause))))
     result))
