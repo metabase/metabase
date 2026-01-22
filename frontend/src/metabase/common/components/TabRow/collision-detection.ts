@@ -10,7 +10,7 @@ export const tabsCollisionDetection: CollisionDetection = ({
   // which updates in realtime, `activeRect` retains the original properties of
   // the list before dragging. E.g. `collectionRect.right` is the right value of
   // where the user has dragged the tab to, but `activeRect.right` is the right
-  // value from where it orginally was.
+  // value from where it originally was.
   const activeRect = droppableRects.get(active.id);
   if (!activeRect) {
     return [];

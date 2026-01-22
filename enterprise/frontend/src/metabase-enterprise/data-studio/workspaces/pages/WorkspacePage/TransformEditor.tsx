@@ -47,11 +47,11 @@ export function TransformEditor({
     <TransformQueryPageEditor
       source={source}
       proposedSource={proposedSource}
-      isDirty={false}
       uiState={uiState}
       setUiState={setUiState}
       uiOptions={uiOptions}
       databases={[]}
+      isEditMode={true}
       setSourceAndRejectProposed={handleSourceChange}
       acceptProposed={onAcceptProposed ?? _.noop}
       rejectProposed={onRejectProposed ?? _.noop}

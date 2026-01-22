@@ -156,6 +156,6 @@
   }
 
   50% {
-    background: var(--mb-color-background-secondary-inverse);
+    background: var(--mb-color-background-tertiary);
   }
 }
