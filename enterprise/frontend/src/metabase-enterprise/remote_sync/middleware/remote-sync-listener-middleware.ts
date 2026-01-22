@@ -10,6 +10,7 @@ import type { State } from "metabase-types/store";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
 import {
   modalDismissed,
+  setSyncConflictVariant,
   taskCleared,
   taskStarted,
   taskUpdated,
@@ -113,6 +114,12 @@ remoteSyncListenerMiddleware.startListening({
 
     if (task) {
       dispatch(taskUpdated(task));
+
+      if (task.status === "conflict") {
+        dispatch(setSyncConflictVariant("setup"));
+        dispatch(modalDismissed());
+        return;
+      }
 
       const isTerminalState = terminalTaskStates.includes(task.status);
 

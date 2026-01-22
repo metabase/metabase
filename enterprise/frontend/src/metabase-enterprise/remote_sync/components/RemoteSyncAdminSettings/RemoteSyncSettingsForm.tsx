@@ -83,7 +83,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
 
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
   const applicationName = useSelector(getApplicationName);
 
@@ -277,7 +277,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     },
   );
 
-  const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
+  const hasUnsyncedChanges = isRemoteSyncEnabled && !!dirtyData?.dirty?.length;
 
   return (
     <>

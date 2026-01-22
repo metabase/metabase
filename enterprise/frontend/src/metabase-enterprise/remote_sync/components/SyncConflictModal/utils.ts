@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 export type OptionValue = "push" | "force-push" | "new-branch" | "discard";
-export type SyncConflictVariant = "push" | "pull" | "switch-branch";
 
 export const getContinueButtonText = (optionValue?: OptionValue) => {
   switch (optionValue) {

@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Icon, Modal } from "metabase/ui";
+import { Box, Button, Group, Icon, Modal, Text } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
+import { AllChangesView } from "metabase-enterprise/remote_sync/components/ChangesLists/AllChangesView";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
 
@@ -13,17 +15,13 @@ import {
   usePushChangesAction,
   useStashToNewBranchAction,
 } from "./mutation-wrappers";
-import {
-  type OptionValue,
-  type SyncConflictVariant,
-  getContinueButtonText,
-} from "./utils";
+import { type OptionValue, getContinueButtonText } from "./utils";
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
   nextBranch?: string | null;
   onClose: VoidFunction;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
@@ -89,7 +87,52 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       withCloseButton={false}
     >
       <Box pt="md">
-        <ChangesLists />
+        {variant === "setup" ? (
+          <>
+            <Text component="p">
+              {t`We detected your instance has unsynced items that will be overwritten by pulling changes from the remote branch.`}
+            </Text>
+            <Text component="p" mb="sm" mt="md">
+              {t`What will be lost: `}
+            </Text>
+            <AllChangesView
+              entities={[
+                {
+                  id: 1,
+                  sync_status: "delete",
+                  name: "Transform 1",
+                  model: "card",
+                },
+                {
+                  id: 2,
+                  sync_status: "delete",
+                  name: "Transform 2",
+                  model: "card",
+                },
+                {
+                  id: 3,
+                  sync_status: "delete",
+                  name: "Snippet 1",
+                  model: "snippet",
+                },
+                {
+                  id: 4,
+                  sync_status: "delete",
+                  name: "Snippet 2",
+                  model: "snippet",
+                },
+                {
+                  id: 5,
+                  sync_status: "delete",
+                  name: "Published table 1",
+                  model: "table",
+                },
+              ]}
+            />
+          </>
+        ) : (
+          <ChangesLists />
+        )}
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
