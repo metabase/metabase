@@ -32,7 +32,6 @@
             ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
-
         (testing "execution returns expected result structure"
           (is (=? {:status     :succeeded
                    :start_time some?
