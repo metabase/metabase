@@ -17,7 +17,7 @@ import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "../../../types";
-import { getSearchQuery } from "../../../utils";
+import { getDependentCount, getSearchQuery } from "../../../utils";
 
 import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";
@@ -60,6 +60,7 @@ export function GraphDependencyPanel({
   } = useListNodeDependentsQuery(
     getListRequest(node, groupType, searchQuery, filterOptions, sortOptions),
   );
+  const dependentsCount = getDependentCount(node);
 
   useLayoutEffect(() => {
     const availableSortColumns = getAvailableSortColumns(groupType);
@@ -76,7 +77,7 @@ export function GraphDependencyPanel({
         searchText={searchText}
         filterOptions={filterOptions}
         sortOptions={sortOptions}
-        hasSearch={nodes.length >= DEPENDENTS_SEARCH_THRESHOLD}
+        hasSearch={dependentsCount >= DEPENDENTS_SEARCH_THRESHOLD}
         onSearchTextChange={setSearchText}
         onFilterOptionsChange={setFilterOptions}
         onSortOptionsChange={setSortOptions}
