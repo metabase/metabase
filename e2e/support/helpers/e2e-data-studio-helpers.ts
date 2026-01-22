@@ -43,7 +43,7 @@ export const DataStudio = {
   Snippets: {
     newPage: newSnippetPage,
     editPage: editSnippetPage,
-    nameInput: () => newSnippetPage().findByPlaceholderText("New SQL snippet"),
+    nameInput: () => newSnippetPage().findByDisplayValue("New SQL snippet"),
     descriptionInput: () => cy.findByPlaceholderText("No description"),
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
@@ -133,6 +133,7 @@ export const DataStudio = {
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
   Tasks: {
+    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
     visitUnreferencedEntities: () =>
       cy.visit("/data-studio/tasks/unreferenced"),
     list: () => cy.findByTestId("dependency-list"),
@@ -144,9 +145,13 @@ export const DataStudio = {
       get: () => cy.findByTestId("dependency-list-sidebar"),
       header: () => cy.findByTestId("dependency-list-sidebar-header"),
       locationInfo: () => cy.findByRole("region", { name: "Location" }),
-      errorInfo: (label: string) => cy.findByRole("region", { name: label }),
+      transformInfo: () => cy.findByRole("region", { name: "Transform" }),
+      missingColumnsInfo: () =>
+        cy.findByRole("region", { name: "Missing columns" }),
       creationInfo: () =>
         cy.findByRole("region", { name: "Creator and last editor" }),
+      brokenDependentsInfo: () =>
+        cy.findByRole("region", { name: "Broken dependents" }),
     },
   },
 };

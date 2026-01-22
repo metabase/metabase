@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { goBack, push } from "react-router-redux";
+import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,7 +7,6 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -50,7 +49,7 @@ import {
   isCollection,
   isEmptyStateData,
 } from "./types";
-import { getAccessibleCollection } from "./utils";
+import { getAccessibleCollection, getWritableCollection } from "./utils";
 
 interface EmptyStateActionProps {
   data: EmptyStateData;
@@ -121,10 +120,6 @@ export function LibrarySectionLayout() {
       "include-library": true,
     });
 
-  const isInstanceRemoteSyncEnabled = Boolean(
-    useSetting("remote-sync-enabled"),
-  );
-
   const libraryCollection = useMemo(
     () => collections.find(isLibraryCollection),
     [collections],
@@ -133,41 +128,40 @@ export function LibrarySectionLayout() {
   const tableCollection = useMemo(
     () =>
       libraryCollection &&
-      getAccessibleCollection(
-        libraryCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      ),
-    [libraryCollection, isInstanceRemoteSyncEnabled],
+      getAccessibleCollection(libraryCollection, "library-data"),
+    [libraryCollection],
   );
 
   const metricCollection = useMemo(
     () =>
       libraryCollection &&
-      getAccessibleCollection(
-        libraryCollection,
-        "library-metrics",
-        isInstanceRemoteSyncEnabled,
-      ),
-    [libraryCollection, isInstanceRemoteSyncEnabled],
+      getAccessibleCollection(libraryCollection, "library-metrics"),
+    [libraryCollection],
   );
 
-  const handleItemSelect = useCallback(
-    (item: TreeItem) => {
-      if (item.model === "empty-state" || isEmptyStateData(item.data)) {
-        return;
-      }
-      const entityId = item.data.id as number;
-      if (item.model === "metric") {
-        dispatch(push(Urls.dataStudioMetric(entityId)));
-      } else if (item.model === "snippet") {
-        dispatch(push(Urls.dataStudioSnippet(entityId)));
-      } else if (item.model === "table") {
-        dispatch(push(Urls.dataStudioTable(entityId)));
-      }
-    },
-    [dispatch],
+  const writableMetricCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getWritableCollection(libraryCollection, "library-metrics"),
+    [libraryCollection],
   );
+
+  const getItemHref = useCallback((item: TreeItem): string | null => {
+    if (item.model === "empty-state" || isEmptyStateData(item.data)) {
+      return null;
+    }
+    const entityId = item.data.id as number;
+    if (item.model === "metric") {
+      return Urls.dataStudioMetric(entityId);
+    }
+    if (item.model === "snippet") {
+      return Urls.dataStudioSnippet(entityId);
+    }
+    if (item.model === "table") {
+      return Urls.dataStudioTable(entityId);
+    }
+    return null;
+  }, []);
   const {
     tree: tablesTree,
     isLoading: loadingTables,
@@ -322,11 +316,9 @@ export function LibrarySectionLayout() {
     [setIsPublishTableModalOpen],
   );
 
-  const handleRowActivate = useCallback(
-    (row: { original: TreeItem }) => {
-      handleItemSelect(row.original);
-    },
-    [handleItemSelect],
+  const getRowHref = useCallback(
+    (row: { original: TreeItem }) => getItemHref(row.original),
+    [getItemHref],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -339,7 +331,6 @@ export function LibrarySectionLayout() {
     isFilterable: (node) =>
       node.model !== "collection" && node.model !== "empty-state",
     defaultExpanded: effectiveExpandedState,
-    onRowActivate: handleRowActivate,
   });
 
   let emptyMessage = null;
@@ -376,8 +367,8 @@ export function LibrarySectionLayout() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <CreateMenu
-              metricCollectionId={metricCollection?.id}
-              canWriteToMetricCollection={metricCollection?.can_write}
+              metricCollectionId={writableMetricCollection?.id}
+              canWriteToMetricCollection={!!writableMetricCollection}
             />
           </Flex>
           <Card withBorder p={0}>
@@ -395,10 +386,10 @@ export function LibrarySectionLayout() {
                   }
                   if (row.getCanExpand()) {
                     row.toggleExpanded();
-                  } else {
-                    handleRowActivate(row);
                   }
+                  // Navigation for leaf nodes is handled by the link
                 }}
+                getRowHref={getRowHref}
               />
             )}
           </Card>

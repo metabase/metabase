@@ -7,6 +7,7 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
+  TransformId,
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
@@ -42,6 +43,9 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+      "checkTransformDependencies",
+    );
   });
 
   afterEach(() => {
@@ -747,6 +751,49 @@ LIMIT
     });
   });
 
+  describe("ownership", () => {
+    it("should be able to view and manage transform ownership", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("verify the ownership section is displayed");
+      getTransformsTargetContent().within(() => {
+        cy.findByText("Ownership").should("be.visible");
+        cy.findByText("Specify who is responsible for this transform.").should(
+          "be.visible",
+        );
+        cy.findByText("Owner").should("be.visible");
+      });
+
+      cy.log("change the owner to another user");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Robert Tableton").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("set an external email as owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+        cy.findByLabelText("Owner").clear().type("external@example.com");
+      });
+      H.popover().findByText("external@example.com").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("clear the owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("No owner").click();
+      cy.wait("@updateTransform");
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+    });
+  });
+
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
@@ -954,7 +1001,7 @@ LIMIT
 
       // Make a second change while first is still in progress
       // Select any available checkpoint field
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
       getFieldPicker().click();
 
       // Click the first available option in the popover
@@ -989,7 +1036,7 @@ LIMIT
       // The source strategy select should be visible
       // (Currently only one option "checkpoint" is available, so select might not be shown)
       // The checkpoint field select should be visible
-      getFieldPicker().should("be.visible");
+      getFieldPicker().scrollIntoView().should("be.visible");
 
       cy.log("Select a checkpoint field");
       getFieldPicker().click();
@@ -1503,6 +1550,109 @@ LIMIT
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should be possible to continue editing a transform after closing check dependencies modal (metabase#68272)", () => {
+      const transformTableName = "output_table";
+      const dependentCardName = "Question depending on transform";
+
+      cy.log("create MBQL transform with name and score columns");
+      H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
+        (sourceTableId) => {
+          H.getFieldId({ tableId: sourceTableId, name: "name" }).then(
+            (nameFieldId) => {
+              H.getFieldId({ tableId: sourceTableId, name: "score" }).then(
+                (scoreFieldId) => {
+                  H.createTransform(
+                    {
+                      name: "MBQL transform with deps",
+                      source: {
+                        type: "query",
+                        query: {
+                          database: WRITABLE_DB_ID,
+                          type: "query",
+                          query: {
+                            "source-table": sourceTableId,
+                            fields: [
+                              ["field", nameFieldId, null],
+                              ["field", scoreFieldId, null],
+                            ],
+                          },
+                        },
+                      },
+                      target: {
+                        type: "table",
+                        database: WRITABLE_DB_ID,
+                        name: transformTableName,
+                        schema: TARGET_SCHEMA,
+                      },
+                    },
+                    { wrapId: true },
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+
+      cy.get<TransformId>("@transformId").then((transformId) => {
+        cy.log("run the transform to create the output table");
+        cy.request("POST", `/api/ee/transform/${transformId}/run`);
+        H.waitForSucceededTransformRuns();
+        H.resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: transformTableName,
+        });
+
+        cy.log("create a question that depends on the score column");
+        H.getTableId({
+          databaseId: WRITABLE_DB_ID,
+          name: transformTableName,
+        }).then((tableId) => {
+          H.createQuestion({
+            name: dependentCardName,
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+              filter: [
+                ">",
+                ["field", "score", { "base-type": "type/Integer" }],
+                10,
+              ],
+            },
+          });
+        });
+
+        H.visitTransform(transformId);
+
+        cy.log("remove score column (breaking change)");
+        H.DataStudio.Transforms.editDefinition().click();
+        H.getNotebookStep("data").findByLabelText("Pick columns").click();
+        H.popover().findByLabelText("Score").click();
+        H.DataStudio.Transforms.saveChangesButton().click();
+
+        cy.wait("@checkTransformDependencies");
+
+        H.modal().within(() => {
+          cy.findByText(
+            "These changes will break some other things. Save anyway?",
+          ).should("be.visible");
+          cy.findByText(dependentCardName).should("be.visible");
+
+          cy.log("cancel to continue editing");
+          cy.button("Cancel").click();
+        });
+
+        H.DataStudio.Transforms.editDefinition().should("not.exist");
+        H.DataStudio.Transforms.saveChangesButton()
+          .should("be.visible")
+          .and("be.enabled");
+
+        H.getNotebookStep("data").findByLabelText("Pick columns").click();
+        H.popover().findByLabelText("Name").should("be.disabled");
+        H.popover().findByLabelText("Score").should("not.be.checked");
+      });
     });
 
     it("should be able to update a Python query", { tags: ["@python"] }, () => {

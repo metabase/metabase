@@ -544,7 +544,7 @@
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
-    (with-redefs [remote-sync.object/dirty-global? (constantly true)
+    (with-redefs [remote-sync.object/dirty? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
@@ -972,3 +972,45 @@
             (is (=? {:success true} resp))
             (is (nil? (settings/remote-sync-token))
                 "Token should be cleared when explicitly set to nil")))))))
+
+;;; ------------------------------------------- Transforms Setting Tests -------------------------------------------
+
+(deftest settings-updates-transforms-setting-test
+  (testing "PUT /api/ee/remote-sync/settings can update remote-sync-transforms setting"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write
+                                           remote-sync-transforms false]
+          (testing "can enable transforms sync"
+            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                   {:remote-sync-transforms true})]
+              (wait-for-task-completion task_id)
+              (is (=? {:success true} resp))
+              (is (true? (settings/remote-sync-transforms)))))
+          (testing "can disable transforms sync"
+            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                   {:remote-sync-transforms false})]
+              (wait-for-task-completion task_id)
+              (is (=? {:success true} resp))
+              (is (false? (settings/remote-sync-transforms))))))))))
+
+(deftest settings-preserves-transforms-when-not-specified-test
+  (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write
+                                           remote-sync-transforms true]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-branch "develop"})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (true? (settings/remote-sync-transforms))
+                "Transforms setting should be preserved when not included in request")))))))

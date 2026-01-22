@@ -822,6 +822,57 @@ databaseChangeLog:
               - column:
                   name: type
 
+  - changeSet:
+      id: v56.2026-01-12T22:43:43
+      author: galdre
+      comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
+      changes:
+        - update:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  value: null
+            where: query_type = 'native' AND source_card_id IS NOT NULL
+      rollback:
+      # No rollback - we can't know what the original source_card_id values were
+
+  - changeSet:
+      id: v56.2026-01-13T12:00:00
+      author: galdre
+      comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v56.2026-01-13T12:00:01
+      author: galdre
+      comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
