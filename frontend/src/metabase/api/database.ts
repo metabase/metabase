@@ -98,6 +98,7 @@ export const databaseApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/database/${id}/settings-available`,
       }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
