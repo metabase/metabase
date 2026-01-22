@@ -203,7 +203,8 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true
+                                                            :channel.render/disable-links? (boolean (:disable_links payload))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -256,7 +257,7 @@
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
                                (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
-                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
+                                                                                               :channel.render/disable-links? (boolean (:disable_links payload))})
                                      result-attachment             (email.result-attachment/result-attachment part)]
                                  [(merge merged-attachments attachments)
                                   (into result-attachments result-attachment)
