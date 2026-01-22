@@ -7,21 +7,9 @@ inputs:
     required: false
     default: "."
 
-outputs:
-  chrome-path:
-    description: Path to the custom Chrome executable
-    value: ${{ steps.setup-chrome.outputs.chrome-path }}
-
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v111
-      uses: browser-actions/setup-chrome@v1
-      with:
-        # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 1097615
-      id: setup-chrome
-
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys

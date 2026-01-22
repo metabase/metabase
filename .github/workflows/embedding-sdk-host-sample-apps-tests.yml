@@ -201,8 +201,6 @@ jobs:
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
         continue-on-error: true
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure
@@ -285,8 +283,6 @@ jobs:
       - name: Run e2e tests for Host App
         id: run-e2e-tests
         continue-on-error: true
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure

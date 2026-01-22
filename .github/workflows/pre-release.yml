@@ -197,8 +197,6 @@ jobs:
 
       - name: Run a few important OSS Cypress tests as sanity check
         if: ${{ matrix.edition == 'oss' }}
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="@smoke+-@EE" \
@@ -206,8 +204,6 @@ jobs:
 
       - name: Run a few important EE Cypress tests as sanity check
         if: ${{ matrix.edition == 'ee' }}
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="@smoke+-@OSS" \

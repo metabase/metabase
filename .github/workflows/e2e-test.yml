@@ -108,8 +108,6 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
@@ -124,7 +122,6 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
@@ -142,7 +139,6 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \

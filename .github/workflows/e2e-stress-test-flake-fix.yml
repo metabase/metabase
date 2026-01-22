@@ -139,7 +139,6 @@ jobs:
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         env:
           GREP: ${{ github.event.inputs.grep }}
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec '${{ github.event.inputs.spec }}' \
