@@ -47,7 +47,7 @@ export const ListSearchBar = memo(function ListSearchBar({
   const handleFilterOptionsChange = (
     newFilterOptions: DependencyFilterOptions,
   ) => {
-    onFilterOptionsChange({ ...filterOptions, ...newFilterOptions });
+    onFilterOptionsChange(newFilterOptions);
   };
 
   return (
