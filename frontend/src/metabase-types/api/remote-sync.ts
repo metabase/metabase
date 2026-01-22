@@ -82,6 +82,7 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
+  | "remote-sync-transforms"
 > & {
   collections?: CollectionSyncPreferences;
 };

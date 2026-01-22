@@ -1456,6 +1456,7 @@
            models
            permissions
            premium-features
+           query-processor
            request
            task
            util}}
