@@ -15,7 +15,7 @@ Modular embedding lets you embed and customize Metabase [components](./component
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
-> **Using Metabase OSS or Starter?** For basic modular embedding without SSO, see [Guest embedding](./guest-embedding.md).
+> **Using Metabase OSS or Starter?** For basic modular embedding without SSO, see [Guest Embeds](./guest-embedding.md).
 
 ## Enable modular embedding
 
@@ -24,7 +24,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 
-**For SSO embeds** (Pro/Enterprise only): Continue with additional configuration:
+**For SSO embeds** (Pro/Enterprise only), some more steps:
 
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
 4. If embedding on a different domain, see [Embedding Metabase in a different domain](#embedding-metabase-in-a-different-domain).
