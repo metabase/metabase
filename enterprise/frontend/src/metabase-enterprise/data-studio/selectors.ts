@@ -34,6 +34,12 @@ export const getUserCanWriteMeasures = (
   state: State,
   isTablePublished: boolean,
 ) => {
+  const isAdmin = getUserIsAdmin(state);
+
+  if (!isAdmin) {
+    return false;
+  }
+
   const isRemoteSyncReadOnly = getIsRemoteSyncReadOnly(state);
 
   return !isRemoteSyncReadOnly || !isTablePublished;

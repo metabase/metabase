@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import { ALL_COLOR_NAMES } from "metabase/lib/colors";
 import type { ColorPalette } from "metabase/lib/colors/types";
 import { useMantineTheme } from "metabase/ui";
-import { ALL_COLOR_NAMES } from "metabase/ui/utils/colors";
 
 /**
  * Allows palettes to be overridden by the user, primarily via the React embedding SDK.
