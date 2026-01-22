@@ -1,4 +1,3 @@
-/* TODO: remove this file somehow... */
 .root :global(.mb-mantine-PillsInput-input) {
   border: none;
   min-height: 1.25rem;
@@ -8,9 +7,15 @@
 
 .root [data-combobox-option] {
   padding: 0.25rem 0.5rem;
-}
 
-.root [data-combobox-option][data-combobox-selected] {
-  background-color: var(--mb-color-bg-medium);
-  color: var(--mb-color-text-primary);
+  &:hover {
+    background-color: var(--mb-color-background-hover-light);
+    color: var(--mb-color-text-primary);
+  }
+
+  &[data-combobox-selected],
+  &[data-combobox-selected]:hover {
+    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-primary);
+  }
 }

@@ -20,7 +20,6 @@ import type {
   DatabaseId,
   DatasetQuery,
   GenerateSqlResponse,
-  TableId,
 } from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
@@ -30,6 +29,7 @@ import {
   hideEffect,
   toggleEffect,
 } from "./MetabotInlineSQLPromptWidget";
+import type { SelectedTable } from "./TablePillsInput";
 import { extractMetabotBufferContext } from "./utils";
 
 function useRegisterCodeEditorMetabotContext(
@@ -70,7 +70,7 @@ export function useInlineSQLPrompt(
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
-  const [selectedTableIds, setSelectedTableIds] = useState<TableId[]>([]);
+  const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
 
   // TODO: this should get moved into the EE implementation
   // PLUGIN_METABOT.useMetabotSQLSuggestion should take the portalTarget?.view thing
@@ -84,11 +84,11 @@ export function useInlineSQLPrompt(
   const databaseId = question.databaseId();
 
   const handleGenerated = useCallback((result: GenerateSqlResponse) => {
-    const tableIds = (result.referenced_entities ?? [])
+    const tables = (result.referenced_entities ?? [])
       .filter((e) => e.model === "table")
-      .map((e) => e.id);
-    if (tableIds.length > 0) {
-      setSelectedTableIds(tableIds);
+      .map((e) => ({ id: e.id, name: "" }));
+    if (tables.length > 0) {
+      setSelectedTables(tables);
     }
   }, []);
 
@@ -121,7 +121,7 @@ export function useInlineSQLPrompt(
   useEffect(() => {
     if (prevDatabaseIdRef.current !== databaseId) {
       setPromptValue("");
-      setSelectedTableIds([]);
+      setSelectedTables([]);
       prevDatabaseIdRef.current = databaseId;
     }
   }, [databaseId]);
@@ -242,8 +242,8 @@ export function useInlineSQLPrompt(
               getSourceSql={getSourceSql}
               value={promptValue}
               onValueChange={setPromptValue}
-              selectedTableIds={selectedTableIds}
-              onSelectedTableIdsChange={setSelectedTableIds}
+              selectedTables={selectedTables}
+              onSelectedTablesChange={setSelectedTables}
             />,
             portalTarget.container,
           )

@@ -58,7 +58,12 @@ export function useMetabotSQLSuggestion({
           setError(t`Something went wrong. Please try again.`);
         }
       } catch (err) {
-        setError(t`Something went wrong. Please try again.`);
+        const error = err as { status?: number; data?: unknown };
+        if (error.status === 400 && typeof error.data === "string") {
+          setError(error.data);
+        } else {
+          setError(t`Something went wrong. Please try again.`);
+        }
       }
     },
     [generateSql, databaseId, onGenerated],
