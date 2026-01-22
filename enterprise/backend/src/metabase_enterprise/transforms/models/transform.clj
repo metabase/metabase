@@ -27,32 +27,34 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
-;; Users with the transform permission can read ALL transforms, regardless of the database they are associated with.
 (defmethod mi/can-read? :model/Transform
-  ([_instance]
-   (transforms.util/has-any-transforms-permission? api/*current-user-id*))
-  ([_model _pk]
-   (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
+  ([instance]
+   (or api/*is-superuser?*
+       (and api/*is-data-analyst?*
+            (transforms.util/source-tables-readable? instance))))
+  ([_model pk]
+   (when-let [transform (t2/select-one :model/Transform :id pk)]
+     (mi/can-read? transform))))
 
-;; Users with the transform permission can only write transforms where they have access to the associated db.
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transforms.util/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance)))
+   (and (mi/can-read? instance)
+        (transforms.util/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+        (remote-sync/transforms-editable?)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
 
-;; Users who can write the transform can also query it. This is a duplicate, but keeps things explicit.
+;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
   ([instance]
-   (mi/can-write? instance))
+   (mi/can-read? instance))
   ([model pk]
-   (mi/can-query? model pk)))
+   (mi/can-read? model pk)))
 
 (defmethod mi/can-create? :model/Transform
-  [_model _instance]
-  (and (mi/superuser?)
-       (remote-sync/transforms-editable?)))
+  [model instance]
+  (mi/can-write? model instance))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."

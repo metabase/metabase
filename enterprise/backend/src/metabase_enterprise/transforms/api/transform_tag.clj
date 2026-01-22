@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms.api.transform-tag
   (:require
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -12,10 +11,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-any-transforms-permission
-  "Check that the current user has transforms permission for at least one database."
+(defn- check-analyst
   []
-  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
+  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -28,7 +26,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (check-any-transforms-permission)
+  (check-analyst)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -45,7 +43,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (check-any-transforms-permission)
+  (check-analyst)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -61,7 +59,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (check-any-transforms-permission)
+  (check-analyst)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
@@ -75,7 +73,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (check-any-transforms-permission)
+  (check-analyst)
   (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes

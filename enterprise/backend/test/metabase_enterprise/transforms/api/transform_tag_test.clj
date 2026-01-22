@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -14,7 +13,7 @@
 (deftest create-tag-test
   (testing "POST /api/ee/transform-tag"
     (mt/with-premium-features #{:transforms}
-      (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Creates a new tag with valid name"
           (let [tag-name (str "test-tag-" (u/generate-nano-id))
                 response (mt/user-http-request :lucky :post 200 "ee/transform-tag"
@@ -45,7 +44,7 @@
 (deftest update-tag-test
   (mt/with-premium-features #{:transforms}
     (testing "PUT /api/ee/transform-tag/:tag-id"
-      (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Updates tag name successfully"
           (mt/with-temp [:model/TransformTag tag {}]
             (let [updated-name (str "updated-" (u/generate-nano-id))
@@ -71,7 +70,7 @@
 
 (deftest delete-tag-test
   (testing "DELETE /api/ee/transform-tag/:tag-id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (testing "Deletes tag successfully"
           (mt/with-temp [:model/TransformTag tag {}]
@@ -86,7 +85,7 @@
 
 (deftest list-tags-test
   (testing "GET /api/ee/transform-tag"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (testing "Returns all tags ordered by name"
           (mt/with-temp [:model/TransformTag tag1 {:name "tag 1"}
@@ -102,7 +101,7 @@
               (is (= (sort tag-names) tag-names)))))))))
 
 (deftest permissions-test
-  (testing "Transform tag endpoints require superuser permissions"
+  (testing "Transform tag endpoints require data-analyst permissions"
     (mt/with-premium-features #{:transforms}
       (testing "POST /api/ee/transform-tag"
         (is (string? (mt/user-http-request :rasta :post 403 "ee/transform-tag"

@@ -16,7 +16,6 @@
   native-query-transform?
   python-transform?
   query-transform?
-  has-any-transforms-permission?
   has-db-transforms-permission?]
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!])

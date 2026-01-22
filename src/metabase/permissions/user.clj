@@ -1,6 +1,7 @@
 (ns metabase.permissions.user
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
@@ -11,10 +12,10 @@
   [_user-or-id]
   [])
 
-(defenterprise has-any-transforms-permission?
-  "OSS version of has-any-transforms-permission? Returns false since transforms are an EE feature."
+(defenterprise has-db-transforms-permission?
+  "OSS version of has-db-transforms-permission? Returns false since transforms are an EE feature."
   metabase-enterprise.transforms.util
-  [_user-id]
+  [_user-id _database-id]
   false)
 
 (defn user-permissions-set
@@ -33,8 +34,8 @@
                 (map permissions.path/collection-readwrite-path
                      (user->tenant-collection-and-descendant-ids user-or-id))
 
-                 ;; Current User always gets read perms for Transforms if they have access to any (1 DB Call)
-                (when (has-any-transforms-permission? user-id)
+                 ;; Current User always gets read perms for Transforms if they are an analyst (1 DB Call)
+                (when (or (data-perms/is-data-analyst? user-id) (data-perms/is-superuser? user-id))
                   (concat ["/collection/namespace/transforms/root/"]
                           (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)
                                                                            :transforms))))

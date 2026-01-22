@@ -6,26 +6,26 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- check-any-transforms-permission
+(defn- check-analyst
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms/has-any-transforms-permission? api/*current-user-id*)))
+  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*)))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
   [path]
-  (check-any-transforms-permission)
+  (check-analyst)
   (-> (python-library/get-python-library-by-path path)
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
@@ -50,7 +50,7 @@
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (check-any-transforms-permission)
+  (check-analyst)
   (python-library/update-python-library-source! path (:source body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -81,7 +81,7 @@
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (transforms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
+    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
   ;; NOTE: we do not test database support, as there is no write target.
   (with-open [shared-storage-ref (s3/open-shared-storage! source_tables)]
     (let [server-url  (transforms-python.settings/python-runner-url)

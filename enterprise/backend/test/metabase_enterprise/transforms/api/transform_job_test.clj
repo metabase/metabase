@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.test-util :refer [parse-instant utc-timestamp]]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -13,7 +12,7 @@
 
 (deftest create-job-test
   (testing "POST /api/ee/transform-job"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/TransformTag tag1 {:name "test-tag-1"}
                        :model/TransformTag tag2 {:name "test-tag-2"}]
@@ -48,7 +47,7 @@
 
 (deftest get-job-test
   (testing "GET /api/ee/transform-job/:id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
                        :model/TransformJob job {:name     "Test Job"
@@ -66,7 +65,7 @@
 
 (deftest get-job-transforms-test
   (testing "GET /api/ee/transform-job/:id/transforms"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (let [lucky-id (mt/user->id :lucky)]
           (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1" :creator_id lucky-id}
@@ -90,7 +89,7 @@
 
 (deftest list-jobs-test
   (testing "GET /api/ee/transform-job"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (let [at-5-second-schedule "5 * * * * ?"]
           (mt/with-temp [:model/TransformTag {t1-id :id} {:name "test-tag"}
@@ -150,7 +149,7 @@
 
 (deftest update-job-test
   (testing "PUT /api/ee/transform-job/:id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/TransformTag tag1 {:name "tag-1"}
                        :model/TransformTag tag2 {:name "tag-2"}]
@@ -175,7 +174,7 @@
 
 (deftest update-job-remove-tags-test
   (testing "PUT /api/ee/transform-job/:id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (testing "should be able to remove all tags from a job"
           (mt/with-temp [:model/TransformTag tag {}
@@ -187,7 +186,7 @@
 
 (deftest delete-job-test
   (testing "DELETE /api/ee/transform-job/:id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/TransformJob job {:name "To Delete" :schedule "0 0 0 * * ?"}]
           (testing "Deletes job"
@@ -199,7 +198,7 @@
 
 (deftest execute-job-test
   (testing "POST /api/ee/transform-job/:id/execute"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms}
         (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
           (testing "Returns stub run response"

@@ -361,21 +361,6 @@
     (with-advanced-permissions user)
     user))
 
-(defn- maybe-add-transforms-permissions
-  "If `transforms` is enabled, add `can_access_transforms` to the user's permissions map.
-  This is separate from advanced-permissions because transforms permission doesn't require
-  the advanced-permissions feature. Skips if already set by advanced-permissions."
-  [user]
-  (if (and (premium-features/enable-transforms?)
-           config/ee-available?
-           (not (contains? (:permissions user) :can_access_transforms)))
-    (update user :permissions
-            (fn [perms]
-              (assoc (or perms {})
-                     :can_access_transforms
-                     (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms))))
-    user))
-
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
@@ -445,7 +430,6 @@
       add-first-login
       add-query-permissions
       maybe-add-advanced-permissions
-      maybe-add-transforms-permissions
       maybe-add-sso-source
       add-custom-homepage-info
       add-can-write-any-collection))

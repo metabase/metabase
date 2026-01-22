@@ -235,7 +235,8 @@
     api/*is-superuser?*
     (t2/select-one-fn :is_superuser :model/User :id user-id)))
 
-(defn- is-data-analyst?
+(defn is-data-analyst?
+  "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-data-analyst?*

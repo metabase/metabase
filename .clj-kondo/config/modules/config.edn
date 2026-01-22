@@ -2354,6 +2354,7 @@
            driver
            lib
            lib-be
+           permissions
            query-processor
            settings
            util

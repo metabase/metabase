@@ -92,15 +92,14 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(defn- check-any-transforms-permission
-  "Check that the current user has transforms permission for at least one database."
+(defn- check-analyst
   []
-  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
+  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*)))
 
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-any-transforms-permission)
+  (check-analyst)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
@@ -234,7 +233,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (check-any-transforms-permission)
+  (check-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))

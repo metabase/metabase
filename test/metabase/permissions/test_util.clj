@@ -166,3 +166,21 @@
   group for the duration of the test."
   [group-or-id db-id perm-type value & body]
   `(do-with-db-perm-for-group! ~group-or-id ~db-id ~perm-type ~value (fn [] ~@body)))
+
+(defn do-with-data-analyst-role!
+  "Implementation of `with-data-analyst-role!`. Sets the `is_data_analyst` column to true for the given user
+  for the duration of the test, then restores the original value."
+  [user-or-id thunk]
+  (let [user-id        (u/the-id user-or-id)
+        original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
+    (try
+      (t2/update! :model/User user-id {:is_data_analyst true})
+      (thunk)
+      (finally
+        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+
+(defmacro with-data-analyst-role!
+  "Runs `body` with the given user's `is_data_analyst` column set to true.
+  Restores the original value afterwards."
+  [user-or-id & body]
+  `(do-with-data-analyst-role! ~user-or-id (fn [] ~@body)))

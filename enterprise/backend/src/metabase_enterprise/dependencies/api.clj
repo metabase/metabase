@@ -7,7 +7,6 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.transforms.schema :as transforms.schema]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -322,7 +321,7 @@
   - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
     Note: archived_at is not checked separately as archived tables always have active=false.
-  - Transform: All transforms are visible if they have transforms permission for any db"
+  - Transform: Analysts can view any transform they have source view permission to."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
@@ -338,12 +337,24 @@
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id] :from [table-name]}]])
 
-                     ;; Transform requires transforms app permission for any specific database
                      :model/Transform
-                     (when (transforms.util/has-any-transforms-permission? api/*current-user-id*)
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]])
+                     (cond api/*is-superuser?*
+                           [:and
+                            [:= entity-type-field (name entity-type)]
+                            [:in entity-id-field {:select [:id] :from [table-name]}]]
+
+                           api/*is-data-analyst?*
+                           [:and
+                            [:= entity-type-field (name entity-type)]
+                            [:in entity-id-field
+                             {:select [:id]
+                              :from [table-name]
+                              :where [:in :source_database_id
+                                      (perms/visible-database-filter-select
+                                       {:user-id api/*current-user-id*
+                                        :is-superuser? api/*is-superuser?*
+                                        :is-data-analyst? api/*is-data-analyst?*}
+                                       {:perms/create-queries [:query-builder :query-builder-and-native]})]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
