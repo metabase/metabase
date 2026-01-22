@@ -62,7 +62,7 @@ export function WhatsNewNotification() {
           </DismissIconButtonWrapper>
         </Flex>
 
-        {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This only shows for admins */}
         <Text fw="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor

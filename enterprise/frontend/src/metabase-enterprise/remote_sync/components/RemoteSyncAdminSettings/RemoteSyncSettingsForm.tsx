@@ -268,7 +268,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     tenantCollectionsData,
   ]);
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
     "installation-and-operation/remote-sync",
     {
