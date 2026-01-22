@@ -1028,8 +1028,8 @@
 
 (when (or config/is-dev? config/is-test?)
   (mr/def ::dependency-graph
-    "Map of shorthand symbols (:x1, :t1, etc.) to lists of dependencies (symbols or table name strings)."
-    [:map-of :keyword [:sequential [:or :keyword :string]]])
+    "Map of shorthand symbols to lists of dependencies. The latter are all strings, and refs need to be detected."
+    [:map-of :keyword [:sequential :string]])
 
   (api.macros/defendpoint :post "/test-resources" :- [:map
                                                       [:workspace-id [:maybe :int]]

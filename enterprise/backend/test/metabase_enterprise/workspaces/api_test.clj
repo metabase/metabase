@@ -1811,7 +1811,7 @@
                    :global-map    {(keyword orders) int?, :x1 int?, :x2 int?}
                    :workspace-map {}}
                   (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
-                                        {:global {:x1 [orders], :x2 ["x1"]}})))))
+                                        {:global {:x1 [orders], :x2 [:x1]}})))))
       (testing "complex graph with real tables, mock tables, and chained transforms"
         (let [orders   (mt/format-name :orders)
               products (mt/format-name :products)
@@ -1828,8 +1828,8 @@
                   (mt/user-http-request :crowberto :post 200 "ee/workspace/test-resources"
                                         {:global    {:x1 [orders]
                                                      :x2 [products]
-                                                     :x3 ["x1" "x2"]
-                                                     :x4 ["t4"]}
-                                         :workspace {:definitions {:x2 ["x1"]
-                                                                   :x5 [orders "x3"]
-                                                                   :x6 ["x5" people]}}}))))))
+                                                     :x3 [:x1 :x2]
+                                                     :x4 [:t4]}
+                                         :workspace {:definitions {:x2 [:x1]
+                                                                   :x5 [orders :x3]
+                                                                   :x6 [:x5 people]}}}))))))))
