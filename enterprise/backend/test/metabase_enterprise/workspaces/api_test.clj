@@ -1355,30 +1355,29 @@
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
 (deftest execute-workspace-test
-  (mt/test-drivers #{:snowflake}
-    (testing "POST /api/ee/workspace/:id/execute"
-      (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
-        (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}
-                                 ws-2 {:name "Workspace 2"}]
-          (let [body         {:name   "Transform for execute test"
-                              :source {:type  "query"
-                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
-                              :target {:type     "table"
-                                       :database (mt/id)
-                                       :schema   nil
-                                       :name     output-table}}
-                ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) ws-1 :transform nil body)
-                ws-1         (ws.tu/ws-ready (:id ws-1))]
-            (testing "returns empty when no transforms"
-              (is (= {:succeeded []
-                      :failed    []
-                      :not_run   []}
-                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
-            (testing "executes transforms in workspace"
-              (is (= {:succeeded [(:ref_id ws-transform)]
-                      :failed    []
-                      :not_run   []}
-                     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run")))))))))))
+  (testing "POST /api/ee/workspace/:id/execute"
+    (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
+      (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}
+                               ws-2 {:name "Workspace 2"}]
+        (let [body         {:name   "Transform for execute test"
+                            :source {:type  "query"
+                                     :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                            :target {:type     "table"
+                                     :database (mt/id)
+                                     :schema   nil
+                                     :name     output-table}}
+              ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) ws-1 :transform nil body)
+              ws-1         (ws.tu/ws-ready (:id ws-1))]
+          (testing "returns empty when no transforms"
+            (is (= {:succeeded []
+                    :failed    []
+                    :not_run   []}
+                   (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-2) "/run")))))
+          (testing "executes transforms in workspace"
+            (is (= {:succeeded [(:ref_id ws-transform)]
+                    :failed    []
+                    :not_run   []}
+                   (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run"))))))))))
 
 (defn- random-target [db-id]
   {:type     "table"
