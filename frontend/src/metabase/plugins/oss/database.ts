@@ -53,7 +53,6 @@ const getDefaultPluginTableEditing = () => ({
 export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
 
 const getDefaultPluginWorkspaces = () => ({
-  isDatabaseWorkspacesEnabled: (_database: DatabaseType): boolean => false,
   AdminDatabaseWorkspacesSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
     settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;

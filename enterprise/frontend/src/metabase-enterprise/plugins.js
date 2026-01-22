@@ -21,6 +21,7 @@ import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeDataStudio } from "./data-studio";
+import { initializePlugin as initializeWorkspaces } from "./data-studio/workspaces";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -49,7 +50,6 @@ import { initializePlugin as initializeTransformsPython } from "./transforms-pyt
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
-import { initializePlugin as initializeWorkspaces } from "./workspaces";
 
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.
