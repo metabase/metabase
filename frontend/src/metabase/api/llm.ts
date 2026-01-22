@@ -1,4 +1,6 @@
 import type {
+  ExtractTablesRequest,
+  ExtractTablesResponse,
   GenerateSqlRequest,
   GenerateSqlResponse,
 } from "metabase-types/api";
@@ -14,7 +16,14 @@ export const llmApi = Api.injectEndpoints({
         body,
       }),
     }),
+    extractTables: builder.query<ExtractTablesResponse, ExtractTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/llm/extract-tables",
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useGenerateSqlMutation } = llmApi;
+export const { useGenerateSqlMutation, useExtractTablesQuery } = llmApi;

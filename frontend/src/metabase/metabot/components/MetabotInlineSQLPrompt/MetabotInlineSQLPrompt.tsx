@@ -7,7 +7,7 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
-import type { DatabaseId, ReferencedEntity } from "metabase-types/api";
+import type { DatabaseId, ReferencedEntityId } from "metabase-types/api";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
 import { type SelectedTable, TablePillsInput } from "./TablePillsInput";
@@ -20,7 +20,7 @@ interface MetabotInlineSQLPromptProps {
   generate: (options: {
     prompt: string;
     sourceSql?: string;
-    referencedEntities?: ReferencedEntity[];
+    referencedEntities?: ReferencedEntityId[];
   }) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
@@ -45,19 +45,20 @@ export const MetabotInlineSQLPrompt = ({
   selectedTables,
   onSelectedTablesChange,
 }: MetabotInlineSQLPromptProps) => {
+  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
+
   const inputRef = useRef<MetabotPromptInputRef>(null);
 
-  const disabled = !value.trim() || isLoading;
+  const isSubmitDisabled = !value.trim() || isLoading;
 
   const handleSubmit = useCallback(async () => {
     const prompt = inputRef.current?.getValue?.().trim() ?? "";
     const sourceSql = getSourceSql?.();
-    const referencedEntities: ReferencedEntity[] = selectedTables.map(
-      (table) => ({
-        model: "table",
+    const referencedEntities =
+      selectedTables.map((table) => ({
+        model: "table" as const,
         id: table.id,
-      }),
-    );
+      })) ?? [];
     generate({ prompt, sourceSql, referencedEntities });
   }, [generate, getSourceSql, selectedTables]);
 
@@ -71,7 +72,7 @@ export const MetabotInlineSQLPrompt = ({
       window,
       {
         "$mod+Enter": (e) => {
-          if (!disabled) {
+          if (!isSubmitDisabled) {
             e.preventDefault();
             handleSubmit();
           }
@@ -83,11 +84,7 @@ export const MetabotInlineSQLPrompt = ({
       },
       { capture: true },
     );
-  }, [disabled, handleSubmit, handleClose]);
-
-  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
-  const shouldAutoFocusTableBar =
-    isTableBarEnabled && selectedTables.length === 0;
+  }, [isSubmitDisabled, handleSubmit, handleClose]);
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
@@ -98,7 +95,7 @@ export const MetabotInlineSQLPrompt = ({
               databaseId={databaseId}
               selectedTables={selectedTables}
               onChange={onSelectedTablesChange}
-              autoFocus={shouldAutoFocusTableBar}
+              autoFocus={isTableBarEnabled}
             />
           </Box>
         )}
@@ -110,7 +107,7 @@ export const MetabotInlineSQLPrompt = ({
               ? t`Then, ask for what you'd like to see.`
               : t`Describe what SQL you want...`
           }
-          autoFocus={!shouldAutoFocusTableBar}
+          autoFocus={!isTableBarEnabled}
           disabled={isLoading}
           onChange={onValueChange}
           onStop={handleClose}
@@ -125,15 +122,7 @@ export const MetabotInlineSQLPrompt = ({
           {error}
         </Box>
         <Flex gap="xs" flex="1 0 auto">
-          <Button
-            data-testid="metabot-inline-sql-cancel"
-            size="xs"
-            variant="subtle"
-            onClick={handleClose}
-          >
-            {t`Cancel`}
-          </Button>
-          <Tooltip label={t`Send to Metabot`}>
+          <Tooltip disabled={isLoading} label={t`Send to Metabot`}>
             <Button
               className={S.submitButton}
               data-testid="metabot-inline-sql-generate"
@@ -143,7 +132,7 @@ export const MetabotInlineSQLPrompt = ({
               w="1.875rem"
               styles={{ label: { display: "flex" } }}
               onClick={handleSubmit}
-              disabled={disabled}
+              disabled={isSubmitDisabled}
             >
               {isLoading ? (
                 <Loader size="xs" color="text-tertiary" />
@@ -152,6 +141,15 @@ export const MetabotInlineSQLPrompt = ({
               )}
             </Button>
           </Tooltip>
+          <Button
+            className={S.cancelButton}
+            data-testid="metabot-inline-sql-cancel"
+            size="xs"
+            variant="subtle"
+            onClick={handleClose}
+          >
+            {t`Cancel`}
+          </Button>
         </Flex>
       </Flex>
     </Box>

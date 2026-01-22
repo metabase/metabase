@@ -36,3 +36,7 @@
   background-color: var(--mb-color-background);
   color: var(--mb-color-text-primary);
 }
+
+.cancelButton {
+  order: -1;
+}

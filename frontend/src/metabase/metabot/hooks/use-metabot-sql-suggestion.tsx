@@ -12,7 +12,7 @@ import type {
 export interface UseMetabotSQLSuggestionOptions {
   databaseId: DatabaseId | null;
   bufferId: string;
-  onGenerated?: (result: GenerateSqlResponse) => void;
+  onGenerated?: (result?: GenerateSqlResponse) => void;
 }
 
 export function useMetabotSQLSuggestion({

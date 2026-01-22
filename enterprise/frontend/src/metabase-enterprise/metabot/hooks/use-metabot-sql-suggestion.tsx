@@ -38,6 +38,7 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
 
 export function useMetabotSQLSuggestion({
   bufferId,
+  onGenerated,
 }: UseMetabotSQLSuggestionOptions) {
   const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
 
@@ -67,9 +68,11 @@ export function useMetabotSQLSuggestion({
         !responseHasCodeEdit(action)
       ) {
         setHasError(true);
+      } else {
+        onGenerated?.();
       }
     },
-    [submitInput],
+    [submitInput, onGenerated],
   );
 
   const reject = useCallback(() => {
