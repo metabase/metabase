@@ -1,5 +1,5 @@
 /**
- * Codemod to add metabase-custom/ prefix to unprefixed custom ESLint rule names
+ * Codemod to add metabase/ prefix to unprefixed custom ESLint rule names
  *
  * Usage:
  *   npx jscodeshift -t dev/codemods/prefix-custom-eslint-rules.cjs e2e enterprise/frontend/src frontend/src --extensions=js,jsx,ts,tsx
@@ -49,10 +49,10 @@ module.exports = function transformer(file) {
         if (!rule) return rule;
 
         // Check if it's one of our custom rules without prefix
-        if (customRules.includes(rule) && !rule.startsWith('metabase-custom/')) {
+        if (customRules.includes(rule) && !rule.startsWith('metabase/')) {
           rulesModified = true;
           modified = true;
-          return `metabase-custom/${rule}`;
+          return `metabase/${rule}`;
         }
 
         return rule;

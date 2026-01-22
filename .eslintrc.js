@@ -14,7 +14,7 @@ const plugins = [
   "no-only-tests",
   "ttag",
   "i18next",
-  "metabase-custom",
+  "metabase",
 ];
 if (shouldLintCssModules) {
   plugins.push("postcss-modules");
@@ -183,11 +183,11 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
-        "metabase-custom/jtag-missing-key": "error",
-        "metabase-custom/no-unconditional-metabase-links-render": "error",
-        "metabase-custom/no-color-literals": "error",
-        "metabase-custom/no-literal-metabase-strings": "error",
-        "metabase-custom/no-oss-reinitialize-import": "error",
+        "metabase/jtag-missing-key": "error",
+        "metabase/no-unconditional-metabase-links-render": "error",
+        "metabase/no-color-literals": "error",
+        "metabase/no-literal-metabase-strings": "error",
+        "metabase/no-oss-reinitialize-import": "error",
         "depend/ban-dependencies": [
           "error",
           {
@@ -221,9 +221,9 @@ module.exports = {
         "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
-        "metabase-custom/no-color-literals": "off",
-        "metabase-custom/no-unconditional-metabase-links-render": "off",
-        "metabase-custom/no-literal-metabase-strings": "off",
+        "metabase/no-color-literals": "off",
+        "metabase/no-unconditional-metabase-links-render": "off",
+        "metabase/no-literal-metabase-strings": "off",
       },
     },
     {
@@ -344,7 +344,7 @@ module.exports = {
         "import/no-default-export": "off",
         "import/order": "off",
         "import/no-unresolved": "off",
-        "metabase-custom/no-color-literals": "off",
+        "metabase/no-color-literals": "off",
       },
     },
     {
