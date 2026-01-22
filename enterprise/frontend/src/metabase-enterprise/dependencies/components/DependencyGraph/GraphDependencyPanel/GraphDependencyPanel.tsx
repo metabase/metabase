@@ -23,7 +23,6 @@ import S from "./GraphDependencyPanel.module.css";
 import { PanelBody } from "./PanelBody";
 import { PanelHeader } from "./PanelHeader";
 import {
-  canFilter,
   getAvailableSortColumns,
   getDefaultFilterOptions,
   getDefaultSortOptions,
@@ -63,15 +62,11 @@ export function GraphDependencyPanel({
   );
 
   useLayoutEffect(() => {
-    if (!canFilter(groupType)) {
-      setFilterOptions(getDefaultFilterOptions());
-    }
-
     const availableSortColumns = getAvailableSortColumns(groupType);
     if (!availableSortColumns.includes(sortOptions.column)) {
       setSortOptions(getDefaultSortOptions(groupType));
     }
-  }, [groupType, filterOptions, sortOptions]);
+  }, [groupType, sortOptions]);
 
   return (
     <Card className={S.root} withBorder data-testid="graph-dependency-panel">
