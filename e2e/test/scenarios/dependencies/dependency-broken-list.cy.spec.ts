@@ -318,6 +318,7 @@ function createTransform() {
   );
   cy.get<TransformId>("@transformId").then((transformId) => {
     H.runTransform(transformId);
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.waitForTransformRuns(
       (runs) =>
         runs.length === 1 && runs.every((run) => run.status === "succeeded"),

@@ -86,6 +86,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-transforms
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer
