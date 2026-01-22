@@ -45,7 +45,7 @@
         (let [branch (settings/remote-sync-branch)]
           (when (str/blank? branch)
             (throw (ex-info "Remote sync is enabled with read-only type, but no branch is set." {})))
-          (when (remote-sync.object/dirty-global?)
+          (when (remote-sync.object/dirty?)
             (if (str/includes? (settings/remote-sync-allow) "overwrite-unpublished")
               (impl/async-import! branch true {})
               (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
