@@ -14,7 +14,7 @@ What is embedding, and how does it work?
 
 Embed individual dashboards, questions, or the query builder in your app with an interactive wizard and simple drop-in script, with minimal or no coding required. Control component UI and theming. Integrate your app's auth with Metabase SSO.
 
-If you're on Metabase OSS or Starter, you can only embed components without SSO. See [Guest embeds](./guest-embedding.md)
+If you're on Metabase OSS or Starter, you can only embed components without SSO. See [Guest embeds](./guest-embedding.md).
 
 ### [Modular embedding SDK](./sdk/introduction.md)
 
