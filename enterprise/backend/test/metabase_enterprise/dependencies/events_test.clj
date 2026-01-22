@@ -279,6 +279,85 @@
                       (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet :id snippet-id)))
                (is (empty? (t2/select :model/Dependency :from_entity_id snippet-id :from_entity_type :snippet)))))))))))
 
+(deftest ^:sequential native-transform-updates-dependencies-test
+  (testing "native transform update events trigger dependency calculations"
+    (run-with-dependencies-setup
+     (fn [mp]
+       (let [source {:query (lib/native-query mp "select * from orders")
+                     :type :query}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (testing "on update event"
+             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+             (is (= models.dependency/current-dependency-analysis-version
+                    (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+             (is (=? [{:from_entity_type :transform,
+                       :from_entity_id transform-id,
+                       :to_entity_type :table,
+                       :to_entity_id (mt/id :orders)}]
+                     (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform))))))))))
+
+(deftest ^:sequential mbql-transform-updates-dependencies-test
+  (testing "mbql transform update events trigger dependency calculations"
+    (run-with-dependencies-setup
+     (fn [mp]
+       (let [source {:query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     :type :query}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (testing "on update event"
+             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+             (is (= models.dependency/current-dependency-analysis-version
+                    (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+             (is (=? [{:from_entity_type :transform,
+                       :from_entity_id transform-id,
+                       :to_entity_type :table,
+                       :to_entity_id (mt/id :orders)}]
+                     (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform))))))))))
+
+(deftest ^:sequential python-transform-updates-dependencies-test
+  (testing "python transform update events trigger dependency calculations"
+    (run-with-dependencies-setup
+     (fn [_]
+       (let [source {:type :python,
+                     :source-database 2,
+                     :source-tables {"orders" {:database_id (mt/id),
+                                               :schema "public",
+                                               :table "orders",
+                                               :table_id (mt/id :orders)}},
+                     :body
+                     "import pandas as pd\n\ndef transform(orders):\n    return orders"}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (testing "on update event"
+             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+             (is (= models.dependency/current-dependency-analysis-version
+                    (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+             (is (=? [{:from_entity_type :transform,
+                       :from_entity_id transform-id,
+                       :to_entity_type :table,
+                       :to_entity_id (mt/id :orders)}]
+                     (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform))))))))))
+
+(deftest ^:sequential transform-run-updates-dependencies-test
+  (testing "transform run events trigger dependency calculations"
+    (run-with-dependencies-setup
+     (fn [_]
+       (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
+         (mt/with-temp [:model/Transform {transform-id :id} {:target target}
+                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}]
+           (testing "on run event"
+             (events/publish-event! :event/transform-run-complete
+                                    {:object {:db-id (mt/id)
+                                              :output-schema "Other"
+                                              :output-table :test_table
+                                              :transform-id transform-id}
+                                     :user-id api/*current-user-id*})
+             (is (= models.dependency/current-dependency-analysis-version
+                    (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+
 (deftest transform-dependency-calculation-error-handling-test
   (testing "When transform dependency calculation throws an error, it should be logged and the version should still be updated"
     (run-with-dependencies-setup

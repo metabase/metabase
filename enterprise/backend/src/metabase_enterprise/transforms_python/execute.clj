@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
@@ -378,7 +379,14 @@
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db))
+          (transforms.util/sync-target! target db)
+          (events/publish-event! :event/transform-run-complete
+                                 {:object {:db-id (:id db)
+                                           :database db
+                                           :transform-id transform-id
+                                           :transform-type (keyword (:type target))
+                                           :output-schema (:schema target)
+                                           :output-table (transforms.util/qualified-table-name driver target)}}))
         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id db target)
         {:run_id run-id
          :result result}))

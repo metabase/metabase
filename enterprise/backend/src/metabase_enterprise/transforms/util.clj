@@ -48,10 +48,15 @@
     (keyword schema name)
     (keyword name)))
 
+(defn transform-type
+  "Get the type of a transform"
+  [transform]
+  (-> transform :source :type keyword))
+
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
   [transform]
-  (= :query (-> transform :source :type keyword)))
+  (= :query (transform-type transform)))
 
 (defn native-query-transform?
   "Check if this is a native query transform.
@@ -64,7 +69,14 @@
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
-  (= :python (-> transform :source :type keyword)))
+  (= :python (transform-type transform)))
+
+(defn transform-source-database
+  "Get the source database from a transform"
+  [transform]
+  (case (transform-type transform)
+    :query (-> transform :source :query :database)
+    :python (-> transform :source :source-database)))
 
 (defn normalize-transform
   "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
