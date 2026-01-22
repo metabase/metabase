@@ -26442,13 +26442,13 @@ msgstr "Después de {0}"
 #: frontend/src/metabase/querying/filters/utils/dates.ts:352
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, \"[Quarter] Q YYYY\" will be rendered as \"Quarter 1 2024\"."
 msgid "[Q]Q YYYY"
-msgstr "[T]Q YYYY"
+msgstr "[Q]Q YYYY"
 
 #: frontend/src/metabase/querying/filters/utils/dates.ts:372
 #: frontend/src/metabase/ui/components/inputs/QuarterPicker/QuarterPicker.tsx:103
 msgctxt "This is a \"dayjs\" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include \"Q\" for the quarter number, and raw text can be escaped by brackets. For example, \"[Quarter] Q\" will be rendered as \"Quarter 1\"."
 msgid "[Q]Q"
-msgstr "[T]Q"
+msgstr "[Q]Q"
 
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx:162
 #, javascript-format
