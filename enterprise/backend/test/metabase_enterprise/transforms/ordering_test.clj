@@ -372,7 +372,7 @@
 
 (deftest python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
-    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+    (let [default-schema "test-ordering"]
       (mt/with-temp [;; Transform A produces table "intermediate_output"
                      :model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
@@ -396,7 +396,7 @@
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
-    (let [default-schema (driver.sql/default-schema driver/*driver*)]
+    (let [default-schema "test-ordering"]
       (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
                                                  "output_a")
