@@ -3,6 +3,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import type * as Urls from "metabase/lib/urls";
 import { Center, Stack } from "metabase/ui";
 import {
@@ -10,9 +13,6 @@ import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
 

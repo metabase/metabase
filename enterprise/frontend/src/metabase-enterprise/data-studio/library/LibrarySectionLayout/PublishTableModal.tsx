@@ -7,10 +7,10 @@ import {
   type TablePickerItem,
   type TablePickerStatePath,
 } from "metabase/common/components/Pickers/TablePicker";
+import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { Box } from "metabase/ui";
 import { usePublishTablesMutation } from "metabase-enterprise/api/table";
-import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
 import { isConcreteTableId } from "metabase-types/api";
 
 interface PublishTableModalProps {

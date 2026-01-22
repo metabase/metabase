@@ -17,7 +17,7 @@ import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/util
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { SchemaName, SearchModel } from "metabase-types/api";
 
@@ -63,7 +63,7 @@ function RootItemList() {
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
     useGetCollectionQuery({ id: "root" });
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
+    PLUGIN_LIBRARY.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading || isLoadingRootCollection) {

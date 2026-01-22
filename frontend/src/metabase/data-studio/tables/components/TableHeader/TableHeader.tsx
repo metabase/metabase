@@ -1,7 +1,7 @@
 import Link from "metabase/common/components/Link/Link";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import * as Urls from "metabase/lib/urls";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Table } from "metabase-types/api";
 
 import {

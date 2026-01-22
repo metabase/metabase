@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import { Stack } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
+import { Stack } from "metabase/ui";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../constants";

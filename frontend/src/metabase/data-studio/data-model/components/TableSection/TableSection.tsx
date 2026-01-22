@@ -8,6 +8,9 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { CreateLibraryModal } from "metabase/data-studio/common/components/CreateLibraryModal";
+import { PublishTablesModal } from "metabase/data-studio/common/components/PublishTablesModal";
+import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
@@ -31,9 +34,6 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
-import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 

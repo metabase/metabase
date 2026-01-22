@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { Transform } from "metabase-types/api";
 

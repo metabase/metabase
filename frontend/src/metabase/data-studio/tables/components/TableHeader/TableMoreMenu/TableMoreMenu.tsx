@@ -3,10 +3,10 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 

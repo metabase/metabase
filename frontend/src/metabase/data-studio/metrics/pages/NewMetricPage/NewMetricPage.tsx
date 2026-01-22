@@ -7,14 +7,14 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card as CardType } from "metabase-types/api";
 

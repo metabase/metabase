@@ -9,6 +9,10 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -31,10 +35,6 @@ import {
   rem,
 } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer/PageContainer";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { hasLibraryCollection } from "metabase-enterprise/data-studio/common/utils";
 
 import { trackMetadataChange } from "../../analytics";
 import {

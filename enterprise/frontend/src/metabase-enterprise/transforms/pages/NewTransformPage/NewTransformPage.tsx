@@ -7,19 +7,19 @@ import { t } from "ttag";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Center } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import * as Lib from "metabase-lib";
 import type {

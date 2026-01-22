@@ -1,6 +1,6 @@
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
+import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
 import { Flex, Stack } from "metabase/ui";
-import { OverviewVisualization } from "metabase-enterprise/data-studio/common/components/OverviewVisualization";
 import type { Card } from "metabase-types/api";
 
 import { DescriptionSection } from "./DescriptionSection";

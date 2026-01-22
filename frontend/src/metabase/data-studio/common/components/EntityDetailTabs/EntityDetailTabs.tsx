@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { getLocation } from "metabase/selectors/routing";
 
 export type EntityDetailTabUrls = {
   definition: string;

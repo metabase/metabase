@@ -23,12 +23,9 @@ import {
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import {
-  PLUGIN_DATA_STUDIO,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TENANTS,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getIsTenantUser,
   getUser,
@@ -241,7 +238,7 @@ export function MainNavbarView({
             />
           )}
 
-          <PLUGIN_DATA_STUDIO.NavbarLibrarySection
+          <NavbarLibrarySection
             collections={collections}
             selectedId={collectionItem?.id}
             onItemSelect={onItemSelect}

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
+import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";

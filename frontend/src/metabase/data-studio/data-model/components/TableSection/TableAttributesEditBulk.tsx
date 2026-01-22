@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import {
+  trackDataStudioBulkAttributeUpdated,
+  trackDataStudioBulkSyncSettingsClicked,
+} from "metabase/data-studio/analytics";
+import { CreateLibraryModal } from "metabase/data-studio/common/components/CreateLibraryModal";
+import { PublishTablesModal } from "metabase/data-studio/common/components/PublishTablesModal";
+import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
@@ -11,13 +18,6 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
-import {
-  trackDataStudioBulkAttributeUpdated,
-  trackDataStudioBulkSyncSettingsClicked,
-} from "metabase-enterprise/data-studio/analytics";
-import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
-import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   TableDataLayer,

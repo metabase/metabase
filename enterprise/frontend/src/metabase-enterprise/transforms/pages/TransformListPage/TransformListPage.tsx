@@ -19,6 +19,9 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -35,9 +38,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";

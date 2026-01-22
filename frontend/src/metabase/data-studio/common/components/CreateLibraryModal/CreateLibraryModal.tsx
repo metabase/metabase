@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -21,7 +22,6 @@ import {
   Title,
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
-import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {

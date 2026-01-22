@@ -8,6 +8,7 @@ import { skipToken } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -21,7 +22,6 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Database, Transform } from "metabase-types/api";
 

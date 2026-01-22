@@ -1,8 +1,8 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { TableHeader } from "../../components/TableHeader";
 

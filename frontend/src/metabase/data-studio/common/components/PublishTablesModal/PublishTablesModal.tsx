@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -25,7 +26,6 @@ import {
   useGetTableSelectionInfoQuery,
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
-import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
 import type {
   BulkTableInfo,
   DatabaseId,

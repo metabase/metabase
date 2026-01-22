@@ -2,10 +2,10 @@ import { useState } from "react";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Transform } from "metabase-types/api";
 

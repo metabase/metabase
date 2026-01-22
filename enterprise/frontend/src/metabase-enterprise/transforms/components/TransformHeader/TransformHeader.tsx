@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link/Link";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import * as Urls from "metabase/lib/urls";
 import type { StackProps } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Transform } from "metabase-types/api";
 
 import { TransformMoreMenu } from "./TransformMoreMenu";

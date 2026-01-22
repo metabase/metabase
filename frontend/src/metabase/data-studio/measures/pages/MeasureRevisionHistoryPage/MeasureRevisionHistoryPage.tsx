@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import type { Measure } from "metabase-types/api";
 
 import { MeasureHeader } from "../../components/MeasureHeader";

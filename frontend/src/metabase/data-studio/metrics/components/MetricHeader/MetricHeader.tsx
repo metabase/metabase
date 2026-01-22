@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
 import Link from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import * as Urls from "metabase/lib/urls";
 import type { Card } from "metabase-types/api";
 
 import { MetricMoreMenu } from "./MetricMoreMenu";

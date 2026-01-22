@@ -12,6 +12,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
@@ -108,18 +109,21 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        <DataStudioTab
-          label={t`Library`}
-          icon="repository"
-          to={Urls.dataStudioLibrary()}
-          isSelected={currentTab === "library"}
-          showLabel={isNavbarOpened}
-          rightSection={
-            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-            ) : null
-          }
-        />
+        {PLUGIN_LIBRARY.isEnabled && (
+          <DataStudioTab
+            label={t`Library`}
+            icon="repository"
+            to={Urls.dataStudioLibrary()}
+            isSelected={currentTab === "library"}
+            showLabel={isNavbarOpened}
+            rightSection={
+              hasDirtyChanges &&
+              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              ) : null
+            }
+          />
+        )}
 
         {canAccessDataModel && (
           <DataStudioTab

@@ -6,6 +6,9 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -21,9 +24,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { TransformJob } from "metabase-types/api";
 

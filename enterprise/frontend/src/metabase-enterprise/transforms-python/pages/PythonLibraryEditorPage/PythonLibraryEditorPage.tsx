@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -12,7 +13,6 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { PythonEditor } from "../../components/PythonEditor";
 

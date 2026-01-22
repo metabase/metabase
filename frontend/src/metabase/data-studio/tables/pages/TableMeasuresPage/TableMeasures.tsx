@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
-import { getUserCanWriteMeasures } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import {

@@ -1,15 +1,15 @@
 import { IndexRoute, Redirect, Route } from "react-router";
 
+import { DataModelMeasureDependenciesPage } from "metabase/data-studio/measures/pages/DataModelMeasureDependenciesPage";
+import { DataModelMeasureDetailPage } from "metabase/data-studio/measures/pages/DataModelMeasureDetailPage";
+import { DataModelMeasureRevisionHistoryPage } from "metabase/data-studio/measures/pages/DataModelMeasureRevisionHistoryPage";
+import { DataModelNewMeasurePage } from "metabase/data-studio/measures/pages/DataModelNewMeasurePage";
+import { DataModelNewSegmentPage } from "metabase/data-studio/segments/pages/DataModelNewSegmentPage";
+import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/pages/DataModelSegmentDependenciesPage";
+import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
+import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { IsAdmin } from "metabase/route-guards";
-import { DataModelMeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureDependenciesPage";
-import { DataModelMeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureDetailPage";
-import { DataModelMeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureRevisionHistoryPage";
-import { DataModelNewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/DataModelNewMeasurePage";
-import { DataModelNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/DataModelNewSegmentPage";
-import { DataModelSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDependenciesPage";
-import { DataModelSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDetailPage";
-import { DataModelSegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 
 import { DataModel } from "./pages/DataModel";
 

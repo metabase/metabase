@@ -61,12 +61,6 @@ export {
   type PluginDashcardMenu,
 } from "./oss/dashcard-menu";
 export {
-  PLUGIN_DATA_STUDIO,
-  type DataStudioToolbarButtonProps,
-  type LibraryCollectionType,
-  type NavbarLibrarySectionProps,
-} from "./oss/data-studio";
-export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
@@ -163,7 +157,6 @@ import { reinitialize as reinitializeContentTranslation } from "./oss/content-tr
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
-import { reinitialize as reinitializeDatastudio } from "./oss/data-studio";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
@@ -205,7 +198,6 @@ export function reinitialize() {
   reinitializeCore();
   reinitializeDashcardMenu();
   reinitializeDatabase();
-  reinitializeDatastudio();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();

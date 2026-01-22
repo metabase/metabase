@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { MoreMenu } from "metabase-enterprise/data-studio/common/components/MoreMenu/MoreMenu";
+import { MoreMenu } from "metabase/data-studio/common/components/MoreMenu/MoreMenu";
 
 type SegmentMoreMenuProps = {
   previewUrl?: string;

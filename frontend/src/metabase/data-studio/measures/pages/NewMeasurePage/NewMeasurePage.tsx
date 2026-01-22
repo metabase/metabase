@@ -6,12 +6,12 @@ import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 

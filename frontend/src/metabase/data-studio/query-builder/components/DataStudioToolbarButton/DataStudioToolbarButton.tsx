@@ -3,10 +3,13 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
-import type { DataStudioToolbarButtonProps } from "metabase/plugins";
+import * as Urls from "metabase/lib/urls";
 import { openUrl } from "metabase/redux/app";
-import { Urls } from "metabase-enterprise/urls";
+import type Question from "metabase-lib/v1/Question";
 
+type DataStudioToolbarButtonProps = {
+  question: Question;
+};
 export const DataStudioToolbarButton = ({
   question,
 }: DataStudioToolbarButtonProps) => {

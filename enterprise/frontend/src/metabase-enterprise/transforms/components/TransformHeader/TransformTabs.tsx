@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {

@@ -1,8 +1,8 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
 import { Center } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 
 import { MetricHeader } from "../../components/MetricHeader";
 

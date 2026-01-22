@@ -8,16 +8,15 @@ import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useCon
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
+import { MetricHeader } from "metabase/data-studio/metrics/components/MetricHeader";
 import * as Urls from "metabase/lib/urls";
 import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Card, Center } from "metabase/ui";
 import { getItemName } from "metabase-enterprise/caching/components/utils";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";
-
-import { MetricHeader } from "../../components/MetricHeader";
 
 const configurableModels: CacheableModel[] = ["question"];
 

@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Stack } from "metabase/ui";
-import { EntityDetailTabs } from "metabase-enterprise/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
+import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Stack } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
 
 import type { MeasureTabUrls } from "../../types";

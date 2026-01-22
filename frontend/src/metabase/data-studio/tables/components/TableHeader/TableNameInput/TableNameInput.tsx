@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import type { Table } from "metabase-types/api";
 
 import { NAME_MAX_LENGTH } from "../../../constants";

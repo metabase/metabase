@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Stack } from "metabase/ui";
-import { EntityDetailTabs } from "metabase-enterprise/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
+import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import type { SegmentTabUrls } from "metabase-enterprise/data-studio/segments/types";
+} from "metabase/data-studio/common/components/PaneHeader";
+import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Stack } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";

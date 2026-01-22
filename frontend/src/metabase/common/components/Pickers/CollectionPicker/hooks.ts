@@ -11,7 +11,7 @@ import { isRootCollection } from "metabase/collections/utils";
 import { useGetPersonalCollection, useSetting } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -63,10 +63,9 @@ export const useRootCollectionPickerItems = (
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection({
-      skip: !options.showLibrary,
-    });
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
+    skip: !options.showLibrary,
+  });
 
   const {
     data: personalCollectionItems,

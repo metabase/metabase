@@ -1,15 +1,15 @@
 import { IndexRoute, Route } from "react-router";
 
+import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
+import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
+import { PublishedTableMeasureRevisionHistoryPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureRevisionHistoryPage";
+import { PublishedTableNewMeasurePage } from "metabase/data-studio/measures/pages/PublishedTableNewMeasurePage";
+import { PublishedTableNewSegmentPage } from "metabase/data-studio/segments/pages/PublishedTableNewSegmentPage";
+import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDependenciesPage";
+import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
+import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { IsAdmin } from "metabase/route-guards";
-import { PublishedTableMeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
-import { PublishedTableMeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDetailPage";
-import { PublishedTableMeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureRevisionHistoryPage";
-import { PublishedTableNewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableNewMeasurePage";
-import { PublishedTableNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableNewSegmentPage";
-import { PublishedTableSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDependenciesPage";
-import { PublishedTableSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentDetailPage";
-import { PublishedTableSegmentRevisionHistoryPage } from "metabase-enterprise/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";

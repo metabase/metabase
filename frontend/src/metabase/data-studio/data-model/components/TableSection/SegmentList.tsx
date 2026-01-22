@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";

@@ -13,7 +13,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { SelectionProvider } from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
+import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
 import type { Database, User } from "metabase-types/api";
 import {
   createMockDatabase,

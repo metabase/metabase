@@ -12,7 +12,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   SelectionProvider,
   useSelection,
-} from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
+} from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
 import type { TableId } from "metabase-types/api";
 import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 

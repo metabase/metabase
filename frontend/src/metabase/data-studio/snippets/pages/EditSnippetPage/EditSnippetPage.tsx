@@ -14,10 +14,10 @@ import { EntityCreationInfo } from "metabase/common/components/EntityCreationInf
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Card, Center, Flex, Stack } from "metabase/ui";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";

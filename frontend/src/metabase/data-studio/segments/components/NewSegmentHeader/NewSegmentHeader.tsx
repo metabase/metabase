@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
 
