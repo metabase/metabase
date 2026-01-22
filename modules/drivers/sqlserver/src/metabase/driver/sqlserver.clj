@@ -1026,9 +1026,7 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
-;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
 ;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser typehints and classes)
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query

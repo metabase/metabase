@@ -359,9 +359,7 @@
       (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
 
-;; TODO: Refactor to use driver.u/parsed-query instead of macaw/parsed-query
 ;; TODO: Refactor to be agnostic to the SQL parsing library (remove jsqlparser typehints)
-#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
