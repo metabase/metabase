@@ -128,15 +128,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessDataModel && (
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-        )}
+        <DataStudioTab
+          label={t`Glossary`}
+          icon="glossary"
+          to={Urls.dataStudioGlossary()}
+          isSelected={currentTab === "glossary"}
+          showLabel={isNavbarOpened}
+        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
