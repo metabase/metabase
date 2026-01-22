@@ -204,10 +204,3 @@ export const logAction = (
 
   cy.log(message);
 };
-
-export const createTestQuestion = (
-  details: QuestionDetails,
-  options?: Options,
-) => {
-  return question(details, options);
-};
