@@ -1,3 +1,6 @@
+import { normalize } from "normalizr";
+
+import { EntitiesSchema } from "metabase/schema";
 import { getMetadataWithoutSettings as getMetadataFromState } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -8,9 +11,8 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
+import type { EntitiesState } from "metabase-types/store";
 
-// Manual import is needed because we can't import from test folder directly
-import { createMockEntitiesState } from "../../../../frontend/test/__support__/store";
 import { SAMPLE_DB_ID } from "../../cypress_data";
 import { SAMPLE_DATABASE } from "../../cypress_sample_database";
 
@@ -62,14 +64,25 @@ export function getMetadata({
 
   return all(requests).then((results) => {
     const [databases, tables, cards] = results as [Database[], Table[], Card[]];
-    const entities = createMockEntitiesState({
+
+    const entities: EntitiesState = {
       databases,
       tables,
       questions: cards,
-    });
 
-    const metadata = getMetadataFromState({ entities });
-    return metadata;
+      actions: {},
+      collections: {},
+      dashboards: {},
+      documents: {},
+      schemas: {},
+      fields: {},
+      segments: {},
+      measures: {},
+      snippets: {},
+      indexedEntities: {},
+    };
+    const normalizedEntities = normalize(entities, EntitiesSchema);
+    return getMetadataFromState(normalizedEntities);
   });
 }
 
