@@ -113,6 +113,7 @@ export type RemoteSyncTask = {
   last_progress_report_at: string | null;
   error_message: string | null;
   initiated_by: UserId;
+  conflicts?: string[];
 };
 
 export type RemoteSyncConflictVariant =

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import { Box, Button, Group, Icon, Modal, Text } from "metabase/ui";
 import { useGetBranchesQuery } from "metabase-enterprise/api";
-import { AllChangesView } from "metabase-enterprise/remote_sync/components/ChangesLists/AllChangesView";
+import { getCurrentTask } from "metabase-enterprise/remote_sync/selectors";
 import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
@@ -38,6 +39,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
     useDiscardChangesAndImportAction();
+  const conflictedEntityNames = useConflictedEntityNames();
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
@@ -90,45 +92,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         {variant === "setup" ? (
           <>
             <Text component="p">
-              {t`We detected your instance has unsynced items that will be overwritten by pulling changes from the remote branch.`}
+              {t`We detected your instance has unsynced items that will be overwritten by setting up Remote Sync.`}
             </Text>
-            <Text component="p" mb="sm" mt="md">
-              {t`What will be lost: `}
+            <Text component="p">
+              {t`What will be overwritten: `}
+              <Text component="em" display="inline" fw="bold" fs="normal">
+                {conflictedEntityNames}
+              </Text>
             </Text>
-            <AllChangesView
-              entities={[
-                {
-                  id: 1,
-                  sync_status: "delete",
-                  name: "Transform 1",
-                  model: "card",
-                },
-                {
-                  id: 2,
-                  sync_status: "delete",
-                  name: "Transform 2",
-                  model: "card",
-                },
-                {
-                  id: 3,
-                  sync_status: "delete",
-                  name: "Snippet 1",
-                  model: "snippet",
-                },
-                {
-                  id: 4,
-                  sync_status: "delete",
-                  name: "Snippet 2",
-                  model: "snippet",
-                },
-                {
-                  id: 5,
-                  sync_status: "delete",
-                  name: "Published table 1",
-                  model: "table",
-                },
-              ]}
-            />
           </>
         ) : (
           <ChangesLists />
@@ -174,4 +145,29 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       </Box>
     </Modal>
   );
+};
+
+const useConflictedEntityNames = () => {
+  const currentTask = useSelector(getCurrentTask);
+  const conflictKeys = (currentTask?.conflicts || []).map((key) =>
+    key.toLowerCase(),
+  );
+  const names = [];
+  const conflictNameMap: Record<string, string> = {
+    transforms: t`Transforms`,
+    snippets: t`Snippets`,
+    library: t`Library`,
+  };
+
+  for (const conflictKey of conflictKeys) {
+    if (conflictNameMap[conflictKey]) {
+      names.push(conflictNameMap[conflictKey]);
+    }
+  }
+
+  if (!names?.length) {
+    return t`Library, Transforms and Snippets.`;
+  }
+
+  return names.join(", ");
 };
