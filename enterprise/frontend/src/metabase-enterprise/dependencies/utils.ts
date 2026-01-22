@@ -593,7 +593,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   return groups.filter(({ count }) => count !== 0);
 }
 
-export function getDependentCount(node: DependencyNode): number {
+export function getDependentsCount(node: DependencyNode): number {
   if (node.dependents_count == null) {
     return 0;
   }
