@@ -153,7 +153,9 @@ export function SearchNew({
   }, [query, filters, resetSelection]);
 
   useEffect(() => {
-    if (previousIsFetchingTables === true && isFetchingTables === false) {
+    const startedFetching =
+      previousIsFetchingTables === false && isFetchingTables === true;
+    if (startedFetching) {
       trackDataStudioTablePickerSearchPerformed();
     }
   }, [previousIsFetchingTables, isFetchingTables]);
