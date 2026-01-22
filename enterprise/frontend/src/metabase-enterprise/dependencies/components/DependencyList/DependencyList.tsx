@@ -23,7 +23,7 @@ import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
-import { getAvailableGroupTypes } from "./utils";
+import { getAvailableGroupTypes, getSortOptions } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -75,15 +75,19 @@ export function DependencyList({
     onParamsChange({ ...params, query });
   };
 
-  const handleFiltersChange = (filters: DependencyFilterOptions) => {
-    onParamsChange({ ...params, ...filters });
+  const handleFilterOptionsChange = (
+    filterOptions: DependencyFilterOptions,
+  ) => {
+    onParamsChange({ ...params, ...filterOptions });
   };
 
-  const handleSortingChange = (sorting: DependencySortOptions | undefined) => {
+  const handleSortOptionsChange = (
+    sortOptions: DependencySortOptions | undefined,
+  ) => {
     onParamsChange({
       ...params,
-      sortColumn: sorting?.column,
-      sortDirection: sorting?.direction,
+      sortColumn: sortOptions?.column,
+      sortDirection: sortOptions?.direction,
     });
   };
 
@@ -104,10 +108,10 @@ export function DependencyList({
         <ListSearchBar
           mode={mode}
           query={query}
-          filters={params}
+          filterOptions={params}
           hasLoader={isFetching && !isLoading}
           onQueryChange={handleQueryChange}
-          onFiltersChange={handleFiltersChange}
+          onFilterOptionsChange={handleFilterOptionsChange}
         />
         {error != null ? (
           <Center flex={1}>
@@ -117,10 +121,10 @@ export function DependencyList({
           <ListBody
             nodes={nodes}
             mode={mode}
-            sorting={{ column: sortColumn, direction: sortDirection }}
+            sortOptions={getSortOptions(params)}
             isLoading={isLoading}
             onSelect={setSelectedEntry}
-            onSortingChange={handleSortingChange}
+            onSortOptionsChange={handleSortOptionsChange}
           />
         )}
         {!isLoading && error == null && (

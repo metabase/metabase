@@ -8,18 +8,18 @@ import type { DependencyFilterOptions } from "../../../types";
 import { getDependencyGroupTypeInfo } from "../../../utils";
 
 type TypeFilterPickerProps = {
-  filters: DependencyFilterOptions;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function TypeFilterPicker({
-  filters,
+  filterOptions,
   availableGroupTypes,
-  onFiltersChange,
+  onFilterOptionsChange,
 }: TypeFilterPickerProps) {
   const [selectedGroupTypes, setSelectedGroupTypes] = useState(
-    filters.groupTypes ?? availableGroupTypes,
+    filterOptions.groupTypes ?? availableGroupTypes,
   );
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
@@ -34,8 +34,8 @@ export function TypeFilterPicker({
     const isFullSelection = newGroupTypes.length === availableGroupTypes.length;
 
     setSelectedGroupTypes(newGroupTypes);
-    onFiltersChange({
-      ...filters,
+    onFilterOptionsChange({
+      ...filterOptions,
       groupTypes: isFullSelection ? undefined : newGroupTypes,
     });
   };

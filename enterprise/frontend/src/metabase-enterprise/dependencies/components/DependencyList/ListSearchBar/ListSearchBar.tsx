@@ -14,19 +14,19 @@ import { getAvailableGroupTypes } from "../utils";
 type ListSearchBarProps = {
   mode: DependencyListMode;
   query?: string;
-  filters: DependencyFilterOptions;
+  filterOptions: DependencyFilterOptions;
   hasLoader: boolean;
   onQueryChange: (query: string | undefined) => void;
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export const ListSearchBar = memo(function ListSearchBar({
   mode,
   query,
-  filters,
+  filterOptions,
   hasLoader,
   onQueryChange,
-  onFiltersChange,
+  onFilterOptionsChange,
 }: ListSearchBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
 
@@ -44,8 +44,10 @@ export const ListSearchBar = memo(function ListSearchBar({
     SEARCH_DEBOUNCE_DURATION,
   );
 
-  const handleFiltersChange = (newFilters: DependencyFilterOptions) => {
-    onFiltersChange({ ...filters, ...newFilters });
+  const handleFilterOptionsChange = (
+    newFilterOptions: DependencyFilterOptions,
+  ) => {
+    onFilterOptionsChange({ ...filterOptions, ...newFilterOptions });
   };
 
   return (
@@ -60,9 +62,9 @@ export const ListSearchBar = memo(function ListSearchBar({
         onChange={handleSearchChange}
       />
       <FilterOptionsPicker
-        filters={filters}
+        filterOptions={filterOptions}
         availableGroupTypes={getAvailableGroupTypes(mode)}
-        onFiltersChange={handleFiltersChange}
+        onFilterOptionsChange={handleFilterOptionsChange}
       />
     </Flex>
   );

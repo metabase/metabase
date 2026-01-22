@@ -6,16 +6,16 @@ import { Checkbox, Input, Stack } from "metabase/ui";
 import type { DependencyFilterOptions } from "../../../types";
 
 type LocationFilterPickerProps = {
-  filters: DependencyFilterOptions;
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  filterOptions: DependencyFilterOptions;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function LocationFilterPicker({
-  filters,
-  onFiltersChange,
+  filterOptions,
+  onFilterOptionsChange,
 }: LocationFilterPickerProps) {
   const defaultValue = true;
-  const { includePersonalCollections = defaultValue } = filters;
+  const { includePersonalCollections = defaultValue } = filterOptions;
 
   const handleIncludeInPersonalCollectionsChange = (
     event: ChangeEvent<HTMLInputElement>,
@@ -23,8 +23,8 @@ export function LocationFilterPicker({
     const newValue = event.target.checked;
     const isDefault = newValue === defaultValue;
 
-    onFiltersChange({
-      ...filters,
+    onFilterOptionsChange({
+      ...filterOptions,
       includePersonalCollections: isDefault ? undefined : newValue,
     });
   };

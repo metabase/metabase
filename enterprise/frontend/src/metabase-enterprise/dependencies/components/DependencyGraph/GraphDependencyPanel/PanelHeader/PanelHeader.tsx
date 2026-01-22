@@ -25,12 +25,12 @@ type PanelHeaderProps = {
   node: DependencyNode;
   groupType: DependencyGroupType;
   searchText: string;
-  filters: DependencyFilterOptions;
-  sorting: DependencySortOptions;
+  filterOptions: DependencyFilterOptions;
+  sortOptions: DependencySortOptions;
   hasSearch: boolean;
   onSearchTextChange: (searchText: string) => void;
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
-  onSortingChange: (sorting: DependencySortOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
   onClose: () => void;
 };
 
@@ -38,12 +38,12 @@ export function PanelHeader({
   node,
   groupType,
   searchText,
-  filters,
-  sorting,
+  filterOptions,
+  sortOptions,
   hasSearch,
   onSearchTextChange,
-  onFiltersChange,
-  onSortingChange,
+  onFilterOptionsChange,
+  onSortOptionsChange,
   onClose,
 }: PanelHeaderProps) {
   const hasFilterPicker = canFilter(groupType);
@@ -66,15 +66,15 @@ export function PanelHeader({
           rightSection={
             <Group gap={0} wrap="nowrap">
               <SortOptionsPicker
-                sorting={sorting}
+                sortOptions={sortOptions}
                 availableSortColumns={getAvailableSortColumns(groupType)}
-                onSortingChange={onSortingChange}
+                onSortOptionsChange={onSortOptionsChange}
               />
               {hasFilterPicker && (
                 <FilterOptionsPicker
-                  filters={filters}
+                  filterOptions={filterOptions}
                   compact
-                  onFiltersChange={onFiltersChange}
+                  onFilterOptionsChange={onFilterOptionsChange}
                 />
               )}
             </Group>

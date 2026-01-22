@@ -19,15 +19,15 @@ import type { DependencySortOptions } from "../../types";
 import { getSortColumnItems, getSortDirectionItems } from "./utils";
 
 type SortOptionsPickerProps = {
-  sorting: DependencySortOptions;
+  sortOptions: DependencySortOptions;
   availableSortColumns: DependencySortColumn[];
-  onSortingChange: (sorting: DependencySortOptions) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
 };
 
 export function SortOptionsPicker({
-  sorting,
+  sortOptions,
   availableSortColumns,
-  onSortingChange,
+  onSortOptionsChange,
 }: SortOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
@@ -40,9 +40,9 @@ export function SortOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <SortOptionsPopover
-          sorting={sorting}
+          sortOptions={sortOptions}
           availableSortColumns={availableSortColumns}
-          onSortingChange={onSortingChange}
+          onSortOptionsChange={onSortOptionsChange}
         />
       </Popover.Dropdown>
     </Popover>
@@ -50,15 +50,15 @@ export function SortOptionsPicker({
 }
 
 type SortOptionsPopoverProps = {
-  sorting: DependencySortOptions;
+  sortOptions: DependencySortOptions;
   availableSortColumns: DependencySortColumn[];
-  onSortingChange: (sorting: DependencySortOptions) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
 };
 
 function SortOptionsPopover({
-  sorting,
+  sortOptions,
   availableSortColumns,
-  onSortingChange,
+  onSortOptionsChange,
 }: SortOptionsPopoverProps) {
   const columnItems = getSortColumnItems(availableSortColumns);
 
@@ -67,7 +67,7 @@ function SortOptionsPopover({
       (column) => column === newValue,
     );
     if (newColumn != null) {
-      onSortingChange({ ...sorting, column: newColumn });
+      onSortOptionsChange({ ...sortOptions, column: newColumn });
     }
   };
 
@@ -76,14 +76,14 @@ function SortOptionsPopover({
       (direction) => direction === newValue,
     );
     if (newDirection != null) {
-      onSortingChange({ ...sorting, direction: newDirection });
+      onSortOptionsChange({ ...sortOptions, direction: newDirection });
     }
   };
 
   return (
     <Stack w="15rem" p="md" gap="lg">
       <Radio.Group
-        value={sorting.column}
+        value={sortOptions.column}
         label={t`Sort by`}
         onChange={handleColumnChange}
       >
@@ -98,7 +98,7 @@ function SortOptionsPopover({
         </Stack>
       </Radio.Group>
       <SegmentedControl
-        value={sorting.direction}
+        value={sortOptions.direction}
         data={getSortDirectionItems()}
         size="sm"
         fullWidth

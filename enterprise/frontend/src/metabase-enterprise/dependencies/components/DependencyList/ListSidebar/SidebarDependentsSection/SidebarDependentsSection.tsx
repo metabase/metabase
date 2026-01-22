@@ -54,8 +54,10 @@ export function SidebarDependentsSection({
   node,
 }: SidebarDependentsSectionProps) {
   const count = getDependentErrorNodesCount(node.dependents_errors ?? []);
-  const [filters, setFilters] = useState<DependencyFilterOptions>({});
-  const [sorting, setSorting] = useState<DependencySortOptions>({
+  const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>(
+    {},
+  );
+  const [sortOptions, setSortOptions] = useState<DependencySortOptions>({
     column: "name",
     direction: "asc",
   });
@@ -66,14 +68,14 @@ export function SidebarDependentsSection({
       type: node.type,
       broken: true,
       dependent_types: getDependencyTypes(
-        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+        filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
       ),
       dependent_card_types: getCardTypes(
-        filters.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
+        filterOptions.groupTypes ?? BROKEN_DEPENDENTS_GROUP_TYPES,
       ),
-      include_personal_collections: filters.includePersonalCollections,
-      sort_column: sorting.column,
-      sort_direction: sorting.direction,
+      include_personal_collections: filterOptions.includePersonalCollections,
+      sort_column: sortOptions.column,
+      sort_direction: sortOptions.direction,
     },
     {
       skip: count === 0,
@@ -99,15 +101,15 @@ export function SidebarDependentsSection({
         {count > DEPENDENTS_SEARCH_THRESHOLD && (
           <Group gap={0}>
             <SortOptionsPicker
-              sorting={sorting}
+              sortOptions={sortOptions}
               availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
-              onSortingChange={setSorting}
+              onSortOptionsChange={setSortOptions}
             />
             <FilterOptionsPicker
-              filters={filters}
+              filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
               compact
-              onFiltersChange={setFilters}
+              onFilterOptionsChange={setFilterOptions}
             />
           </Group>
         )}

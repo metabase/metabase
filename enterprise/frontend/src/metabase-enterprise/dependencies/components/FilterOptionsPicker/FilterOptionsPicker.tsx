@@ -17,17 +17,17 @@ import { LocationFilterPicker } from "./LocationFilterPicker";
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
 type FilterOptionsPickerProps = {
-  filters: DependencyFilterOptions;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes?: DependencyGroupType[];
   compact?: boolean;
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 export function FilterOptionsPicker({
-  filters,
+  filterOptions,
   availableGroupTypes = [],
   compact = false,
-  onFiltersChange,
+  onFilterOptionsChange,
 }: FilterOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
@@ -50,9 +50,9 @@ export function FilterOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <FilterOptionsPopover
-          filters={filters}
+          filterOptions={filterOptions}
           availableGroupTypes={availableGroupTypes}
-          onFiltersChange={onFiltersChange}
+          onFilterOptionsChange={onFilterOptionsChange}
         />
       </Popover.Dropdown>
     </Popover>
@@ -60,29 +60,29 @@ export function FilterOptionsPicker({
 }
 
 type FilterOptionsPopoverProps = {
-  filters: DependencyFilterOptions;
+  filterOptions: DependencyFilterOptions;
   availableGroupTypes: DependencyGroupType[];
-  onFiltersChange: (filters: DependencyFilterOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
 
 function FilterOptionsPopover({
-  filters,
+  filterOptions,
   availableGroupTypes,
-  onFiltersChange,
+  onFilterOptionsChange,
 }: FilterOptionsPopoverProps) {
   return (
     <Box w="20rem" p="md">
       <Stack>
         {availableGroupTypes.length > 0 && (
           <TypeFilterPicker
-            filters={filters}
+            filterOptions={filterOptions}
             availableGroupTypes={availableGroupTypes}
-            onFiltersChange={onFiltersChange}
+            onFilterOptionsChange={onFilterOptionsChange}
           />
         )}
         <LocationFilterPicker
-          filters={filters}
-          onFiltersChange={onFiltersChange}
+          filterOptions={filterOptions}
+          onFilterOptionsChange={onFilterOptionsChange}
         />
       </Stack>
     </Box>

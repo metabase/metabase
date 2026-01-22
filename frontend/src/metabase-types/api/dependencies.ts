@@ -250,6 +250,7 @@ export type ListNodeDependentsRequest = {
   type: DependencyType;
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
+  query?: string;
   broken?: boolean;
   include_personal_collections?: boolean;
   archived?: boolean;

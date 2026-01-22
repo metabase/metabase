@@ -16,8 +16,8 @@ export function getListRequest(
   node: DependencyNode,
   groupType: DependencyGroupType,
   query: string | undefined,
-  filters: DependencyFilterOptions,
-  sorting: DependencySortOptions,
+  filterOptions: DependencyFilterOptions,
+  sortOptions: DependencySortOptions,
 ): ListNodeDependentsRequest {
   const type = getDependencyType(groupType);
   const cardType = getCardType(groupType);
@@ -28,9 +28,10 @@ export function getListRequest(
     dependent_types: [type],
     dependent_card_types: cardType != null ? [cardType] : undefined,
     query: query,
-    include_personal_collections: filters.includePersonalCollections ?? true,
-    sort_column: sorting.column,
-    sort_direction: sorting.direction,
+    include_personal_collections:
+      filterOptions.includePersonalCollections ?? true,
+    sort_column: sortOptions.column,
+    sort_direction: sortOptions.direction,
   };
 }
 

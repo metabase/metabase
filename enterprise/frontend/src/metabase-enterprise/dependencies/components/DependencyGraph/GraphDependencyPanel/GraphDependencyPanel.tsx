@@ -48,10 +48,10 @@ export function GraphDependencyPanel({
     getSearchQuery(searchText),
     SEARCH_DEBOUNCE_DURATION,
   );
-  const [filters, setFilters] = useState<DependencyFilterOptions>(
+  const [filterOptions, setFilterOptions] = useState<DependencyFilterOptions>(
     getDefaultFilterOptions(),
   );
-  const [sorting, setSorting] = useState<DependencySortOptions>(
+  const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
     getDefaultSortOptions(),
   );
   const {
@@ -59,18 +59,18 @@ export function GraphDependencyPanel({
     isFetching,
     error,
   } = useListNodeDependentsQuery(
-    getListRequest(node, groupType, searchQuery, filters, sorting),
+    getListRequest(node, groupType, searchQuery, filterOptions, sortOptions),
   );
 
   useLayoutEffect(() => {
     if (!canFilter(groupType)) {
-      setFilters(getDefaultFilterOptions());
+      setFilterOptions(getDefaultFilterOptions());
     }
 
-    if (!canSortByColumn(groupType, sorting.column)) {
-      setSorting(getDefaultSortOptions());
+    if (!canSortByColumn(groupType, sortOptions.column)) {
+      setSortOptions(getDefaultSortOptions());
     }
-  }, [groupType, filters, sorting]);
+  }, [groupType, filterOptions, sortOptions]);
 
   return (
     <Card className={S.root} withBorder data-testid="graph-dependency-panel">
@@ -78,12 +78,12 @@ export function GraphDependencyPanel({
         node={node}
         groupType={groupType}
         searchText={searchText}
-        filters={filters}
-        sorting={sorting}
+        filterOptions={filterOptions}
+        sortOptions={sortOptions}
         hasSearch={nodes.length >= DEPENDENTS_SEARCH_THRESHOLD}
         onSearchTextChange={setSearchText}
-        onFiltersChange={setFilters}
-        onSortingChange={setSorting}
+        onFilterOptionsChange={setFilterOptions}
+        onSortOptionsChange={setSortOptions}
         onClose={onClose}
       />
       {isFetching || error != null ? (

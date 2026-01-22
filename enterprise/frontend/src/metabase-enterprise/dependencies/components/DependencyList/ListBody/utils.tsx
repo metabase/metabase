@@ -107,10 +107,10 @@ export function getColumnWidths(mode: DependencyListMode): number[] {
 }
 
 export function getSortingState(
-  sorting: DependencySortOptions | undefined,
+  sortOptions: DependencySortOptions | undefined,
 ): SortingState {
-  return sorting?.column != null
-    ? [{ id: sorting.column, desc: sorting.direction === "desc" }]
+  return sortOptions?.column != null
+    ? [{ id: sortOptions.column, desc: sortOptions.direction === "desc" }]
     : [];
 }
 

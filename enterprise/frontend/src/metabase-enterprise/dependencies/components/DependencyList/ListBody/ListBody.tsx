@@ -25,22 +25,25 @@ import {
 type ListBodyProps = {
   nodes: DependencyNode[];
   mode: DependencyListMode;
-  sorting: DependencySortOptions | undefined;
+  sortOptions: DependencySortOptions | undefined;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
-  onSortingChange: (sorting: DependencySortOptions | undefined) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
 };
 
 export const ListBody = function ListBody({
   nodes,
   mode,
-  sorting,
+  sortOptions,
   isLoading = false,
   onSelect,
-  onSortingChange,
+  onSortOptionsChange,
 }: ListBodyProps) {
   const columns = useMemo(() => getColumns(mode), [mode]);
-  const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
+  const sortingState = useMemo(
+    () => getSortingState(sortOptions),
+    [sortOptions],
+  );
 
   const handleRowActivate = useCallback(
     (row: Row<DependencyNode>) => onSelect(row.original),
@@ -51,9 +54,9 @@ export const ListBody = function ListBody({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getSortingOptions(newSortingState));
+      onSortOptionsChange(getSortingOptions(newSortingState));
     },
-    [sortingState, onSortingChange],
+    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<DependencyNode>({
