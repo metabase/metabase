@@ -4,9 +4,11 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Box,
+  Flex,
   Icon,
   type IconName,
   Loader,
+  Skeleton,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -128,3 +130,12 @@ export const TableListItem = ({
     </Box>
   );
 };
+
+export function TableListItemSkeleton() {
+  return (
+    <Flex align="center" gap="sm" py="xs" px="sm" h="2rem">
+      <Skeleton h={14} w={14} circle />
+      <Skeleton h={14} w="70%" />
+    </Flex>
+  );
+}
