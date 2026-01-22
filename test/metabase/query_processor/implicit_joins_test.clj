@@ -317,8 +317,9 @@
               query           (lib/query mp (lib.metadata/table mp (mt/id :logs)))
               ;; Find the event_timestamp column that's implicitly joinable via FK.
               ;; Columns with :fk-field-id are from implicit joins.
-              filterable-cols (lib/filterable-columns query)
-              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :fk-field-id)
+              event-timestamp (->> (lib/filterable-columns query)
+                                   (filter :fk-field-id)
+                                   (m/find-first (comp #{"event_timestamp"} u/lower-case-en :name)))
               _               (is (some? event-timestamp) "Should find event_timestamp via implicit join")]
           (testing "Filter on coerced field via implicit join"
             ;; This would fail with "operator does not exist: integer >= timestamp"
@@ -360,8 +361,9 @@
                                   (lib/join join-clause))
               ;; Find the event_timestamp column from the explicit join.
               ;; Columns from explicit joins have :metabase.lib.join/join-alias.
-              filterable-cols (lib/filterable-columns query)
-              event-timestamp (lib/find-column-for-name filterable-cols "event_timestamp" :metabase.lib.join/join-alias)
+              event-timestamp (->> (lib/filterable-columns query)
+                                   (filter :metabase.lib.join/join-alias)
+                                   (m/find-first (comp #{"event_timestamp"} u/lower-case-en :name)))
               _               (is (some? event-timestamp) "Should find event_timestamp via explicit join")]
           (testing "Filter on coerced field via explicit join"
             (let [query (-> query
