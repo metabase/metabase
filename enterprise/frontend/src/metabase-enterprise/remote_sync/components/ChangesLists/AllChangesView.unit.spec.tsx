@@ -1,8 +1,13 @@
-import fetchMock from "fetch-mock";
-
+import {
+  setupCollectionTreeEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
 
 import { AllChangesView } from "./AllChangesView";
@@ -31,13 +36,20 @@ const deletedEntity = createMockRemoteSyncEntity({
 const setup = ({
   entities = [updatedEntity],
   collections = [defaultCollection],
+  isTransformsSyncEnabled = false,
 }: {
   entities: RemoteSyncEntity[];
   collections?: Collection[];
+  isTransformsSyncEnabled?: boolean;
 }) => {
-  // Mock the new useListCollectionsTreeQuery endpoint format
-  fetchMock.get("path:/api/collection/tree", collections);
-  fetchMock.get("path:/api/session/properties", { "use-tenants": false });
+  // Use setupCollectionTreeEndpoint for simple tree mocking without complex filtering
+  setupCollectionTreeEndpoint(collections);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "use-tenants": false,
+      "remote-sync-transforms": isTransformsSyncEnabled,
+    }),
+  );
 
   renderWithProviders(<AllChangesView entities={entities} />);
 };
@@ -140,6 +152,96 @@ describe("AllChangesView", () => {
 
       expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
       expect(screen.getByText("Regular Item")).toBeInTheDocument();
+    });
+  });
+
+  describe("transforms namespace collections", () => {
+    it("should display transforms collections when remote-sync-transforms is enabled", async () => {
+      const transformsCollection = createMockCollection({
+        id: 100,
+        name: "My Transforms Collection",
+        namespace: "transforms",
+        effective_ancestors: [],
+      });
+      const transformEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Transform in Collection",
+        model: "transform",
+        collection_id: 100,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [transformEntity],
+        collections: [transformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("My Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Transform in Collection")).toBeInTheDocument();
+    });
+
+    it("should display transforms collection hierarchy when remote-sync-transforms is enabled", async () => {
+      const childTransformsCollection = createMockCollection({
+        id: 101,
+        name: "Child Transforms Collection",
+        namespace: "transforms",
+      });
+      const parentTransformsCollection = createMockCollection({
+        id: 100,
+        name: "Parent Transforms Collection",
+        namespace: "transforms",
+        children: [childTransformsCollection],
+      });
+      const transformEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Transform in Child",
+        model: "transform",
+        collection_id: 101,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [transformEntity],
+        collections: [parentTransformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("Parent Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Child Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Transform in Child")).toBeInTheDocument();
+    });
+
+    it("should display dirty transforms collections themselves", async () => {
+      const transformsCollection = createMockCollection({
+        id: 100,
+        name: "New Transforms Collection",
+        namespace: "transforms",
+        effective_ancestors: [],
+      });
+      const collectionEntity = createMockRemoteSyncEntity({
+        id: 100,
+        name: "New Transforms Collection",
+        model: "collection",
+        collection_id: 100,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [collectionEntity],
+        collections: [transformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("New Transforms Collection"),
+      ).toBeInTheDocument();
     });
   });
 });
