@@ -9,7 +9,6 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 
 // Manual import is needed because we can't import from test folder directly
 import { createMockEntitiesState } from "../../../frontend/test/__support__/store";
@@ -74,8 +73,7 @@ export function getMetadata({
       questions: cards,
     });
 
-    const state = createMockState({ entities });
-    const metadata = getMetadataFromState(state);
+    const metadata = getMetadataFromState({ entities });
     return metadata;
   });
 }
