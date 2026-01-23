@@ -271,36 +271,45 @@
   ;; TODO(appleby 2026-01-22) real URL
   (str (system/site-url) "/account/metabot-slackbot"))
 
+(defn- event->reply-context
+  "Extract the necessary context for a reply from the given `event`"
+  [event]
+  {:channel (:channel event)
+   :thread_ts (or (:thread_ts event)
+                  (:ts event))})
+
+(defn- send-metabot-response
+  "Send a metabot response to `client` for message `event`."
+  [client event]
+  (let [prompt (:text event)
+        thread (fetch-thread client event)
+        message-ctx (event->reply-context event)
+        thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+        {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
+    (delete-message client thinking-message)
+    (post-message client (merge message-ctx {:text text}))
+    (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
+      (doseq [viz vizs]
+        (when-let [card-id (get-in viz [:value :entity_id])]
+          (let [png-bytes (generate-card-png card-id)
+                filename (str "chart-" card-id ".png")]
+            (post-image client png-bytes filename
+                        (:channel message-ctx)
+                        (:thread_ts message-ctx))))))))
+
 (defn- process-user-message
   "Respond to an incoming user slack message"
   [client event]
   (let [slack-user-id (:user event)
-        user-id (slack-id->user-id slack-user-id)
-        message-ctx {:channel (:channel event)
-                     :thread_ts (or (:thread_ts event) (:ts event))}]
-    (if-not user-id
-      ;; No metabase user found for the given slack user. Respond with auth link.
+        user-id (slack-id->user-id slack-user-id)]
+    (if user-id
+      (request/with-current-user user-id
+        (send-metabot-response client event))
       (post-ephemeral-message client
-                              (merge message-ctx
+                              (merge (event->reply-context event)
                                      {:user slack-user-id
                                       :text (str "You need to link your slack account and authorize the Metabot app. "
-                                                 "Please visit: " slack-user-authorize-link)}))
-      ;; Found linked metabase user. Bind to current user and make-ai-request.
-      (request/with-current-user user-id
-        (let [prompt (:text event)
-              thread (fetch-thread client event)
-              thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
-              {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
-          (delete-message client thinking-message)
-          (post-message client (merge message-ctx {:text text}))
-          (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
-            (doseq [viz vizs]
-              (when-let [card-id (get-in viz [:value :entity_id])]
-                (let [png-bytes (generate-card-png card-id)
-                      filename (str "chart-" card-id ".png")]
-                  (post-image client png-bytes filename
-                              (:channel message-ctx)
-                              (:thread_ts message-ctx)))))))))))
+                                                 "Please visit: " slack-user-authorize-link)})))))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
