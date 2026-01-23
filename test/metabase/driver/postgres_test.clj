@@ -2187,6 +2187,6 @@
             (is (=? [{:name "final"
                       :lib/desired-column-alias "final"}]
                     (driver/native-result-metadata :postgres query)))
-            (is (=? {:type :validate/missing-column
+            (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
