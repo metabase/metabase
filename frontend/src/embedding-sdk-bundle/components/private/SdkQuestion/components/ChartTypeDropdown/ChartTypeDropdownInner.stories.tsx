@@ -1,4 +1,3 @@
-import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import registerVisualizations from "metabase/visualizations/register";
 
 import { ChartTypeDropdownInner } from "./ChartTypeDropdown";
@@ -11,7 +10,6 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonSdkStoryWrapper],
 };
 
 export const QuestionChartTypeSelectorList = {
