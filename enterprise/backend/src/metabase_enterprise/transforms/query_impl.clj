@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
@@ -76,13 +75,10 @@
            (transforms.util/run-cancelable-transform!
             run-id driver transform-details
             (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-           (transforms.util/sync-target! target database)
-           ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-           (events/publish-event! :event/transform-run-complete {:object transform-details}))
-         ;; Creating an index after sync means the filter column is known in the appdb.
-         ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
-         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id database target)))
+         (transforms.util/handle-transform-complete!
+          :run-id run-id
+          :transform transform
+          :db database)))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
