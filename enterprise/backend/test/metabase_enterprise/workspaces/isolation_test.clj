@@ -93,6 +93,18 @@
                                ["SELECT 1 FROM system.users WHERE name = ?" username])
                    seq boolean)}))
 
+(defmethod workspace-isolation-resources-exist? :mysql
+  [database workspace]
+  (let [db-name   (ws.u/isolation-namespace-name workspace)
+        username  (ws.u/isolation-user-name workspace)
+        conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    {:database (-> (jdbc/query conn-spec
+                               ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" db-name])
+                   seq boolean)
+     :user     (-> (jdbc/query conn-spec
+                               ["SELECT 1 FROM mysql.user WHERE user = ?" username])
+                   seq boolean)}))
+
 ;;; Tests
 
 (deftest destroy-workspace-isolation-test
