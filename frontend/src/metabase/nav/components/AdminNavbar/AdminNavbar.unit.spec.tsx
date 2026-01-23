@@ -1,3 +1,4 @@
+import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -10,6 +11,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { AdminNavbar } from "./AdminNavbar";
 
 const setup = ({ isAdmin = false, isPaidPlan = false }) => {
+  setupBugReportingDetailsEndpoint();
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings(

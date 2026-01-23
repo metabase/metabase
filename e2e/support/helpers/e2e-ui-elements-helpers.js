@@ -668,7 +668,7 @@ export function ensureParameterColumnValue({ columnName, columnValue }) {
   });
 }
 
-export function getModeSwitcher() {
+export function getProfileLink() {
   return cy.findByRole("button", { name: "Settings" });
 }
 
@@ -677,22 +677,22 @@ export const dataStudioAppLinkText = "Data studio";
 export const adminAppLinkText = "Admin";
 
 export function goToMainApp() {
-  getModeSwitcher().click();
+  getProfileLink().click();
   popover().findByText(mainAppLinkText).click();
 }
 
 export function goToAdmin() {
-  getModeSwitcher().click();
+  getProfileLink().click();
   popover().findByText(adminAppLinkText).click();
 }
 
 export function goToDataStudio() {
-  getModeSwitcher().click();
+  getProfileLink().click();
   popover().findByText(dataStudioAppLinkText).click();
 }
 
 export function goToProfile() {
-  getModeSwitcher().click();
+  getProfileLink().click();
   popover().findByTestId("mode-switcher-profile-link").click();
 }
 

@@ -9,8 +9,8 @@ import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
 import NewItemButton from "../NewItemButton";
+import { ProfileLink } from "../ProfileLink/ProfileLink";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
@@ -108,7 +108,7 @@ const AppBarLarge = ({
           {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
             <Box c="text-primary" aria-label={t`Settings menu`}>
-              <ModeSwitcher />
+              <ProfileLink />
             </Box>
           )}
         </Flex>

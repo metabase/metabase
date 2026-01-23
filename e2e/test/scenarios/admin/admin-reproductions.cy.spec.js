@@ -150,7 +150,7 @@ describe("(metabase#45042)", () => {
     //Ensure tabs are present in normal view
     cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("link", { name: "Settings" }).should("exist");
-      H.getModeSwitcher().should("exist");
+      H.getProfileLink().should("exist");
     });
 
     //Shrink viewport

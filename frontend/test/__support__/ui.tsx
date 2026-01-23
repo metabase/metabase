@@ -16,7 +16,11 @@ import { useMemo } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { Route, useRouterHistory } from "react-router";
-import { routerMiddleware, routerReducer } from "react-router-redux";
+import {
+  routerMiddleware,
+  routerReducer,
+  syncHistoryWithStore,
+} from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
@@ -202,14 +206,14 @@ export function getTestStoreAndWrapper({
     reducers,
     initialState,
     storeMiddleware,
-  ) as unknown as Store<State>;
+  ) as unknown as Store<State, any>;
 
   const wrapper = (props: any) => {
     return (
       <TestWrapper
         {...props}
         store={store}
-        history={history}
+        history={history ? syncHistoryWithStore(history, store) : undefined}
         withRouter={withRouter}
         withDND={withDND}
         withUndos={withUndos}

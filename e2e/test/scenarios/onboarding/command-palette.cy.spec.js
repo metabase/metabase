@@ -497,7 +497,7 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("?");
     H.shortcutModal().should("not.exist");
 
-    H.getModeSwitcher().click();
+    H.getProfileLink().click();
     H.popover().findByText("Help").click();
     H.getHelpSubmenu().findByText("Keyboard shortcuts").click();
     H.shortcutModal().should("exist");

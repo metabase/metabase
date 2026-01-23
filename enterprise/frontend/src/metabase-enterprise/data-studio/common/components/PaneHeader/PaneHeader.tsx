@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
-import { ModeSwitcher } from "metabase/nav/components/ModeSwitcher/ModeSwitcher";
+import { ProfileLink } from "metabase/nav/components/ProfileLink/ProfileLink";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -51,7 +51,7 @@ export const PaneHeader = ({
 
           <Group ml="auto" gap="md">
             {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
-            <ModeSwitcher className={S.ModeSwitcher} />
+            <ProfileLink className={S.ProfileLink} />
           </Group>
         </Flex>
       )}

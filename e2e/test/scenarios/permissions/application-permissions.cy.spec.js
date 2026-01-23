@@ -147,7 +147,7 @@ describe("scenarios > admin > permissions > application", () => {
       it("does not allow accessing admin tools for non-admins", () => {
         cy.signInAsNormalUser();
         cy.visit("/");
-        H.getModeSwitcher().click();
+        H.getProfileLink().click();
 
         H.popover().findByText(adminAppLinkText).should("not.exist");
 
