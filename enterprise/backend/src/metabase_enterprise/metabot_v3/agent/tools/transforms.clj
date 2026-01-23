@@ -45,16 +45,21 @@
        [:transform_description {:optional true} [:maybe :string]]
        [:source_database {:optional true} [:maybe :int]]
        [:source_tables {:optional true} [:maybe :map]]]]
-  (transforms-write-tools/write-transform-sql-tool
-   {:transform_id transform_id
-    :edit_action edit_action
-    :thinking thinking
-    :transform_name transform_name
-    :transform_description transform_description
-    :source_database source_database
-    :source_tables source_tables
-    :memory-atom shared/*memory-atom*
-    :context (shared/current-context)}))
+  (try
+    (transforms-write-tools/write-transform-sql
+     {:transform_id transform_id
+      :edit_action edit_action
+      :thinking thinking
+      :transform_name transform_name
+      :transform_description transform_description
+      :source_database source_database
+      :source_tables source_tables
+      :memory-atom shared/*memory-atom*
+      :context (shared/current-context)})
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "write_transform_python"} write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
@@ -81,13 +86,18 @@
        [:transform_description {:optional true} [:maybe :string]]
        [:source_database {:optional true} [:maybe :int]]
        [:source_tables {:optional true} [:maybe :map]]]]
-  (transforms-write-tools/write-transform-python-tool
-   {:transform_id transform_id
-    :edit_action edit_action
-    :thinking thinking
-    :transform_name transform_name
-    :transform_description transform_description
-    :source_database source_database
-    :source_tables source_tables
-    :memory-atom shared/*memory-atom*
-    :context (shared/current-context)}))
+  (try
+    (transforms-write-tools/write-transform-python
+     {:transform_id transform_id
+      :edit_action edit_action
+      :thinking thinking
+      :transform_name transform_name
+      :transform_description transform_description
+      :source_database source_database
+      :source_tables source_tables
+      :memory-atom shared/*memory-atom*
+      :context (shared/current-context)})
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}))))
