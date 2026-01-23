@@ -6,6 +6,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { userInitials } from "metabase/common/utils/user";
 import {
@@ -35,6 +36,7 @@ import {
 } from "metabase/ui";
 
 import { AboutModal } from "../AboutModal/AboutModal";
+import { useHelpLink } from "../ProfileLink/useHelpLink";
 
 const getCurrentApp = (location: Location) => {
   const [__, root] = location.pathname.split("/");
@@ -52,7 +54,7 @@ const CURRENT_APP_ICON_OVERRIDES: {
   c: ColorName;
 } = { name: "check_filled", c: "brand" };
 
-export function ModeSwitcher() {
+export function ModeSwitcher({ className }: { className?: string }) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const dispatch = useDispatch();
 
@@ -67,6 +69,7 @@ export function ModeSwitcher() {
     PLUGIN_DATA_STUDIO.canAccessDataStudio,
   );
   const isNewInstance = useSelector(getIsNewInstance);
+  const helpLink = useHelpLink();
 
   const location = useSelector(getLocation);
 
@@ -89,7 +92,7 @@ export function ModeSwitcher() {
         to="/"
         leftSection={
           <Icon
-            name={"metabot"}
+            name="dashboard"
             {...(currentApp === "main" ? CURRENT_APP_ICON_OVERRIDES : null)}
           />
         }
@@ -155,6 +158,7 @@ export function ModeSwitcher() {
             bd="1px solid var(--mb-color-border)"
             aria-label={t`Settings`}
             bdrs="50%"
+            className={className}
           >
             <Icon
               name="mode"
@@ -202,25 +206,32 @@ export function ModeSwitcher() {
                 <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>
               </Menu.Sub.Target>
               <Menu.Sub.Dropdown data-testid="help-submenu">
-                <Menu.Item onClick={() => openModal("about")}>
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
-                  {t`About ${applicationName}`}
-                </Menu.Item>
-                <Menu.Item
-                  onClick={() => dispatch(setOpenModal("help"))}
-                >{t`Keyboard shortcuts`}</Menu.Item>
+                {helpLink.visible && (
+                  <Menu.Item component={ExternalLink} href={helpLink.href}>
+                    {t`Get help`}
+                  </Menu.Item>
+                )}
                 {showOnboardingLink && (
                   <Menu.Item component={ForwardRefLink} to="/getting-started">
                     {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
                     {t`How to use Metabase`}
                   </Menu.Item>
                 )}
+
+                <Menu.Item
+                  onClick={() => dispatch(setOpenModal("help"))}
+                >{t`Keyboard shortcuts`}</Menu.Item>
+
                 <Menu.Item
                   onClick={() => {
                     trackErrorDiagnosticModalOpened("profile-menu");
                     dispatch(openDiagnostics());
                   }}
                 >{t`Download diagnostics`}</Menu.Item>
+                <Menu.Item onClick={() => openModal("about")}>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
+                  {t`About ${applicationName}`}
+                </Menu.Item>
               </Menu.Sub.Dropdown>
             </Menu.Sub>
             <Menu.Item

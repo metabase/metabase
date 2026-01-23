@@ -303,6 +303,7 @@ describe("user > settings", () => {
       cy.window().then((win) => {
         H.appBar()
           .findByLabelText("Settings")
+          .findByRole("img")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(
@@ -335,6 +336,7 @@ describe("user > settings", () => {
       cy.window().then((win) => {
         H.appBar()
           .findByLabelText("Settings")
+          .findByRole("img")
           .should("exist")
           .then(($button) => {
             cy.wrap(win.getComputedStyle($button[0]).color).should(

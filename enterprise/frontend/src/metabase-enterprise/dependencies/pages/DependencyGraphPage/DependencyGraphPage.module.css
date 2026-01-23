@@ -1,0 +1,6 @@
+.ModeSwitcher {
+  position: absolute;
+  top: 1.25rem;
+  right: 3.5rem;
+  background-color: var(--mb-color-background-secondary);
+}
