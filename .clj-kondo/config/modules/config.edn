@@ -2352,7 +2352,6 @@
            app-db
            config
            driver
-           events
            lib
            lib-be
            query-processor
