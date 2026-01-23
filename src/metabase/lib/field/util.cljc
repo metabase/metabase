@@ -2,6 +2,7 @@
   "Some small field-related helper functions which are used from a few different namespaces."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
@@ -110,20 +111,35 @@
   `:lib/original-expression-name` respectively."
   [col :- [:map
            [:lib/type [:= :metadata/column]]]]
-  (-> col
-      (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id
-                        :fk-field-name                    :lib/original-fk-field-name
-                        :fk-join-alias                    :lib/original-fk-join-alias
-                        :lib/expression-name              :lib/original-expression-name
-                        :metabase.lib.field/binning       :lib/original-binning
-                        :metabase.lib.field/temporal-unit :inherited-temporal-unit
-                        :metabase.lib.join/join-alias     :lib/original-join-alias})
-      (assoc :lib/breakout? false
-             ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
-             :lib/original-name ((some-fn :lib/original-name :name) col)
+  (let [;; Capture join alias before we strip it
+        join-alias (or (:source-alias col)
+                       (:lib/original-join-alias col)
+                       (:metabase.lib.join/join-alias col))
+        ;; Capture display-name before rotation
+        display-name (:display-name col)
+        ;; Compute new display-name with prefix baked in (if join-alias exists and display-name
+        ;; does not already have a prefix). See field-display-name-add-join-alias for the original logic.
+        new-display-name (if (and join-alias
+                                  display-name
+                                  (not (str/includes? display-name " → ")))
+                           (str join-alias " → " display-name)
+                           display-name)]
+    (-> col
+        (set/rename-keys {:display-name                     :lib/original-display-name
+                          :fk-field-id                      :lib/original-fk-field-id
+                          :fk-field-name                    :lib/original-fk-field-name
+                          :fk-join-alias                    :lib/original-fk-join-alias
+                          :lib/expression-name              :lib/original-expression-name
+                          :metabase.lib.field/binning       :lib/original-binning
+                          :metabase.lib.field/temporal-unit :inherited-temporal-unit
+                          :metabase.lib.join/join-alias     :lib/original-join-alias})
+        (assoc :lib/breakout? false
+               :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
-             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
-             :lib/source :source/previous-stage)
+               :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
+               :lib/source :source/previous-stage
+             ;; Set new display-name with prefix baked in
+               :display-name new-display-name)
       ;;
       ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context
       ;; of what is returned by the current stage, to prevent any confusion; its value is likely wrong now and we
@@ -132,13 +148,7 @@
       ;;
       ;; we should OTOH keep `:lib/deduplicated-name`, because this is used to calculate subsequent deduplicated
       ;; names, see [[metabase.lib.stage-test/return-correct-deduplicated-names-test]] for an example.
-      (dissoc :lib/desired-column-alias)
+        (dissoc :lib/desired-column-alias)
       ;; Cards should present a "flat table" abstraction - internal joins should not leak to downstream
       ;; queries. Strip join alias keys so display names do not get prefixed. See #65532.
-      ;; Also fix cached :display-name for columns that came from joins.
-      ;; Use :lib/original-display-name (the name before the join prefix was added).
-      ;; Only do this for columns that have :source-alias (i.e., came from joins).
-      (as-> $col (if (and (:source-alias $col) (:lib/original-display-name $col))
-                   (assoc $col :display-name (:lib/original-display-name $col))
-                   $col))
-      (dissoc :lib/original-join-alias :source-alias)))
+        (dissoc :lib/original-join-alias :source-alias))))

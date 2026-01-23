@@ -529,12 +529,12 @@
         card (lib.metadata/card mp 1)
         q2   (lib/query mp card)]
     (testing (str "returned-columns for a card should NEVER return `:metabase.lib.join/join-alias`, because the join"
-                  " happened within the Card itself.")
+                  " happened within the Card itself. The join prefix should be baked into :display-name. See #65532.")
       (is (=? [{:name                             "CREATED_AT"
-                :display-name                     "Created At: Month"
+                :display-name                     "Products → Created At: Month"
                 :lib/card-id                      1
                 :lib/source                       :source/card
-                :lib/original-join-alias          "Products"
+                :lib/original-join-alias          (symbol "nil #_\"key is not present.\"")
                 :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
                 :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
                 :inherited-temporal-unit          :month}
