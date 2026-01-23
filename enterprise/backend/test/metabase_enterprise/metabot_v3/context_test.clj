@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.metabot-v3.tools.api]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
