@@ -5,10 +5,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.sso.oidc.tokens :as oidc.tokens])
-  (:import
-   (java.security KeyPairGenerator)
-   (java.security.spec ECGenParameterSpec)))
+   [metabase.sso.oidc.tokens :as oidc.tokens]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,24 +64,28 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
   "Test JWKS"
   {:keys [(merge {:kid "test-key-id" :use "sig"} (buddy.keys/public-key->jwk test-rsa-public-key))]})
 
-(defn- generate-ec-keypair
-  "Generate an ECDSA keypair for the given curve (e.g., \"secp256r1\" for ES256)."
-  [curve-name]
-  (let [kpg (KeyPairGenerator/getInstance "EC")]
-    (.initialize kpg (ECGenParameterSpec. curve-name))
-    (.generateKeyPair kpg)))
+(def ^:private test-ec-private-key-pem
+  "Test EC private key PEM string for signing JWTs (P-256/secp256r1 curve for ES256)"
+  "-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEINOLAzWGZc5f3vfDUdiuh2HRs9QF1ZJ0thhCXISfP93BoAoGCCqGSM49
+AwEHoUQDQgAE8AxkRgT49uqNDRXwSJ+VxEJfljNLh0ccjghRm1/Az8L/HL+gdQmt
+Y0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
+-----END EC PRIVATE KEY-----")
 
-(def ^:private test-ec-keypair
-  "Test ECDSA keypair for ES256 algorithm"
-  (generate-ec-keypair "secp256r1"))
+(def ^:private test-ec-public-key-pem
+  "Test EC public key PEM string corresponding to test-ec-private-key-pem"
+  "-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8AxkRgT49uqNDRXwSJ+VxEJfljNL
+h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
+-----END PUBLIC KEY-----")
 
 (def ^:private test-ec-private-key
   "Test EC private key for signing JWTs"
-  (.getPrivate test-ec-keypair))
+  (buddy.keys/str->private-key test-ec-private-key-pem))
 
 (def ^:private test-ec-public-key
   "Test EC public key for verifying JWTs"
-  (.getPublic test-ec-keypair))
+  (buddy.keys/str->public-key test-ec-public-key-pem))
 
 (def ^:private test-ec-jwks
   "Test JWKS with EC key"
