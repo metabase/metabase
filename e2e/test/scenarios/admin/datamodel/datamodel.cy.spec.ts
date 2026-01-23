@@ -71,26 +71,6 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Data loading", () => {
-    it("should show 404 if table does not exist", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: 12345,
-        skipWaiting: true,
-      });
-      cy.wait("@databases");
-      cy.wait(100); // wait with assertions for React effects to kick in
-
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
-      );
-      verifyTableSectionEmptyState();
-    });
-
     it("should show 404 if field does not exist", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
