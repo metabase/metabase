@@ -34,6 +34,40 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 
+  return (
+    <ChartTypeDropdownInner
+      selectedVisualization={selectedVisualization}
+      updateQuestionVisualization={updateQuestionVisualization}
+      sensibleVisualizations={sensibleVisualizations}
+      nonSensibleVisualizations={nonSensibleVisualizations}
+      {...menuProps}
+    />
+  );
+};
+
+interface ChartTypeDropdownInnerProps extends ChartTypeDropdownProps {
+  selectedVisualization: CardDisplayType;
+  updateQuestionVisualization: (display: CardDisplayType) => void;
+  sensibleVisualizations: CardDisplayType[];
+  nonSensibleVisualizations: CardDisplayType[];
+}
+
+/**
+ * Exported for testing purposes
+ * Renders a menu with a list of visualizations to choose from
+ *
+ * @internal
+ * @param props ChartTypeDropdownInnerProps
+ */
+export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
+  const {
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+    ...menuProps
+  } = props;
+
   const getVisualizationItems = (
     visualizationType: CardDisplayType,
   ): {
