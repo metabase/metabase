@@ -1,0 +1,272 @@
+{% if is_field %}
+<field id="{{field_id}}" name="{{field_name_quoted}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}">{% if field_description %}
+## Description
+{{field_description}}{% endif %}</field>
+{% endif %}
+{% if is_collection %}
+<collection name="{{collection_name}}"{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}>{% if collection_description %}
+<description>{{collection_description}}</description>{% endif %}</collection>
+{% endif %}
+{% if is_related_table %}
+<related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
+{{related_table_fields_xml}}{% endif %}</related-table>
+{% endif %}
+{% if is_metric %}
+<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}">
+{% if metric_collection_xml %}
+The metric is stored in the following collection:
+{{metric_collection_xml}}
+{% endif %}
+{% if metric_default_time_dimension %}
+Default Time Dimension Field: {{metric_default_time_dimension}}
+{% endif %}
+
+### Metric Description
+{{metric_description}}
+{% if metric_dimensions_table %}
+### Dimensions
+The following dimensions can be used for filter- or group-by operations:
+
+{{metric_dimensions_table}}
+
+Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://metric/{{metric_id}}/dimensions/{field_id}`.
+This will help avoid errors due to unexpected data types or formats.
+{% endif %}
+</metric>
+{% endif %}
+{% if is_table %}
+<table id="{{table_id}}", name="{{table_name}}" database_id="{{table_database_id}}" database_engine="{{table_database_engine}}" fully_qualified_name="{{table_fqn}}">
+
+### Description
+{{table_description}}
+{% if table_fields_xml %}
+
+### Fields
+
+The following fields are available in this table.
+
+{{table_fields_xml}}
+{% endif %}
+{% if table_related_tables_xml %}
+### Related Tables
+Foreign key fields from related tables. Usage patterns:
+- Can be used directly in notebook queries (non-sql) as if they were part of the table.
+- For SQL queries: Use "fieldname" with explicit JOINs
+
+{{table_related_tables_xml}}
+{% endif %}
+
+Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://table/{{table_id}}/fields/{field_id}`.
+This will help avoid errors due to unexpected data types or formats.
+</table>
+{% endif %}
+{% if is_model %}
+<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}" database_engine="{{model_database_engine}}" fully_qualified_name="{{model_fqn}}">
+
+### Description
+{{model_description}}
+{% if model_fields_xml %}
+
+### Fields
+
+The following fields are available in this model.
+
+{{model_fields_xml}}
+{% endif %}
+{% if model_related_tables_xml %}
+
+### Related Tables
+Foreign key fields from related tables. Usage patterns:
+- Can be used directly in notebook queries (non-sql) as if they were part of the model.
+- For SQL queries: Use "fieldname" with explicit JOINs
+
+{{model_related_tables_xml}}
+{% endif %}
+Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://model/{{model_id}}/fields/{field_id}`.
+This will help avoid errors due to unexpected data types or formats.
+</model>
+{% endif %}
+{% if is_query_results %}
+<query_results>
+{% if result_columns_table %}
+### Result Columns
+{{result_columns_table}}
+{% endif %}
+{% if result_rows_table %}
+### Result Rows
+{{result_rows_table}}
+{% endif %}
+</query_results>
+{% endif %}
+{% if is_query %}
+<query type="{{query_type}}" id="{{query_id}}" database_id="{{query_database_id}}">
+{% if query_content %}
+{{query_content}}
+{% endif %}
+{% if query_results_xml %}
+{{query_results_xml}}
+{% endif %}
+</query>
+{% endif %}
+{% if is_visualization %}
+<chart id="{{visualization_chart_id}}">
+The chart is powered by the following queries:
+{% if visualization_queries_xml %}
+{{visualization_queries_xml}}
+{% endif %}
+{% if visualization_settings_text %}
+<visualization>{{visualization_settings_text}}</visualization>{% endif %}
+
+</chart>
+{% endif %}
+{% if is_chart %}
+<chart id="{{chart_id}}" type="{{chart_type}}" query-id="{{chart_query_id}}">
+Chart link: metabase://chart/{{chart_id}}
+</chart>
+{% endif %}
+{% if is_question %}
+<metabase_question id="{{question_id}}" is_verified="{{question_verified}}">
+<name>{{question_name}}</name>
+{% if question_description %}
+<description>{{question_description}}</description>
+{% endif %}
+{% if question_collection_xml %}
+The question is stored in the following collection:
+{{question_collection_xml}}
+{% endif %}
+{% if question_visualization_xml %}
+The question is visualized as follows:
+{{question_visualization_xml}}
+{% endif %}
+</metabase_question>
+{% endif %}
+{% if is_text_card %}
+<text_card id="{{text_card_id}}" order="{{text_card_order}}" width="{{text_card_width}}" height="{{text_card_height}}">
+{{text_card_text}}
+</text_card>
+{% endif %}
+{% if is_viz_card %}
+<viz_card id="{{viz_card_id}}" order="{{viz_card_order}}" width="{{viz_card_width}}" height="{{viz_card_height}}">
+{% if viz_card_title %}
+<title>{{viz_card_title}}</title>
+{% endif %}
+{% if viz_card_description %}
+<description>{{viz_card_description}}</description>
+{% endif %}
+{% if viz_card_chart_xml %}
+{{viz_card_chart_xml}}{% endif %}
+</viz_card>
+{% endif %}
+{% if is_dashboard %}
+<dashboard id="{{dashboard_id}}" is_verified="{{dashboard_verified}}">
+  <name>{{dashboard_name}}</name>
+{% if dashboard_description %}
+  <description>{{dashboard_description}}</description>
+{% endif %}
+{% if dashboard_collection_xml %}
+  The dashboard is stored in the following collection:
+  {{dashboard_collection_xml}}
+{% endif %}
+{% if dashboard_tabs_xml %}
+{{dashboard_tabs_xml}}{% endif %}
+</dashboard>
+{% endif %}
+{% if is_database_schema %}
+<database_schema name='{{database_schema_name}}'>{{database_schema_description}}</database_schema>
+{% endif %}
+{% if is_database %}
+<database id="{{database_id}}" name="{{database_name}}">
+{% if database_description %}
+<description>{{database_description}}</description>
+{% endif %}
+{% if database_schemas_xml %}
+<schemas>
+{{database_schemas_xml}}</schemas>
+{% endif %}
+</database>
+{% endif %}
+{% if is_user %}
+<user>
+
+### User Info
+- Name: {{user_name}}
+- User ID: {{user_id}}
+- Email: {{user_email}}
+{% if user_glossary_rows %}
+
+### Glossary Terms
+The user's company has the following glossary terms defined in Metabase. Use these to understand specific terminology
+or jargon that may be relevant to the user's questions.
+| term | definition |
+|---|---|
+{{user_glossary_rows}}
+{% endif %}
+
+</user>
+{% endif %}
+{% if is_search_result %}
+<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}>
+{% if search_description %}
+{{search_description}}
+{% endif %}
+{% if search_collection_name %}
+Collection: {{search_collection_name}}
+{% endif %}
+</{{search_tag_name}}>
+{% endif %}
+{% if is_search_results %}
+Here are the search results:
+<search-results>
+{{search_results_xml}}
+</search-results>
+{% endif %}
+{% if is_field_values_metadata %}
+{% if sample_values_table %}
+**Sample Values (for understanding format pattern)**
+The following sample values show the data format in this field. The actual dataset may contain
+other values following the same pattern:
+
+{{sample_values_table}}
+{% else %}
+**Sample Values**
+This field hasn't been sampled yet. Continue without samples.
+{% endif %}
+{% if stats_table %}
+
+**Field Statistics (SAMPLE-BASED)**
+
+The following statistics are based on a df.sample(n) of the data.
+They provide a rough idea of the data characteristics but may not reflect the complete dataset:
+
+{{stats_table}}
+{% endif %}
+{% endif %}
+{% if is_field_metadata %}
+{% if field_metadata_value_xml %}
+<field-metadata field_id="{{field_metadata_field_id}}">
+    {{field_metadata_value_xml}}
+</field-metadata>
+{% else %}
+No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
+{% endif %}
+{% endif %}
+{% if is_get_metadata_result %}
+{% if metadata_has_any %}
+{% if metadata_metrics_xml %}{{metadata_metrics_xml}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml}}{% endif %}{% if metadata_errors %}
+<errors>
+The following errors were encountered while fetching metadata:
+{{metadata_errors}}
+</errors>{% endif %}
+{% else %}
+{% if metadata_errors %}
+No metadata was returned for the requested tables, models, or metrics.
+
+<errors>
+The following errors were encountered while fetching metadata:
+{{metadata_errors}}
+</errors>
+{% else %}
+No metadata was returned for the requested tables, models, or metrics.
+{% endif %}
+{% endif %}
+{% endif %}
