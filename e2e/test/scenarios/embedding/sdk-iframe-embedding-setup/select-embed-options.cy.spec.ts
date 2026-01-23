@@ -43,6 +43,15 @@ describe("OSS", { tags: "@OSS" }, () => {
 
       getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
     });
+
+    it("should show upsell for Allow alerts option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "chart",
+        resourceName: QUESTION_NAME,
+      });
+
+      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
+    });
   });
 });
 
@@ -536,6 +545,141 @@ describe(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
       .should("be.visible");
+  });
+
+  it("cannot select alerts for question when email is not set up", () => {
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .should("not.be.checked")
+      .and("be.disabled");
+
+    cy.log("Email warning should only be shown on non-guest embedding");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .closest("[data-testid=tooltip-warning]")
+      .icon("info")
+      .realHover();
+    H.tooltip().should(
+      "contain.text",
+      "Not available if Guest Mode is selected",
+    );
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("not.exist");
+
+    cy.log("snippet should show alerts as false");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
+
+    cy.log("test non-guest embeds");
+    getEmbedSidebar().within(() => {
+      cy.button("Back").click();
+      cy.button("Back").click();
+      cy.button("Back").click();
+
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
+      cy.button("Next").click();
+      cy.button("Next").click();
+
+      cy.findByLabelText("Allow alerts")
+        .closest("[data-testid=tooltip-warning]")
+        .icon("info")
+        .realHover();
+    });
+    H.hovercard().should(
+      "contain.text",
+      "To allow alerts, set up email in admin settings",
+    );
+  });
+
+  it("toggles alerts for question when email is set up", () => {
+    H.setupSMTP();
+
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: QUESTION_NAME,
+      preselectSso: true,
+    });
+
+    getEmbedSidebar().findByLabelText("Allow alerts").should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("not.exist");
+
+    cy.log("turn on alerts");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("be.checked");
+
+    cy.log("assert that alert button appears in preview");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
+    cy.log(
+      "test that with drills off, alerts still work because it will now render <StaticQuestion /> (from <SdkQuestion />)",
+    );
+    getEmbedSidebar()
+      .findByLabelText("Allow people to drill through on data points")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts" })
+      .should("be.visible");
+
+    cy.log("assert that unchecking alerts will close the alert modal");
+    const newAlertModalTitle = "New alert";
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByRole("button", { name: "Alerts" }).should("be.visible").click();
+
+      cy.findByRole("heading", { name: newAlertModalTitle }).should(
+        "be.visible",
+      );
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", { name: newAlertModalTitle })
+      .should("not.exist");
+
+    cy.log("toggle alerts back on");
+    getEmbedSidebar()
+      .findByLabelText("Allow alerts")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    // TODO: (Kelvin 2026-01-16) Uncomment this assertion when working on (EMB-1166)
+    // H.expectUnstructuredSnowplowEvent({
+    //   event: "embed_wizard_options_completed",
+    //   event_detail:
+    //     "settings=custom,experience=chart,authType=sso,drills=true,withDownloads=false,withAlerts=true,withTitle=true,isSaveEnabled=false,theme=default",
+    // });
+
+    codeBlock().should("contain", 'with-alerts="true"');
   });
 
   ["exploration", "chart"].forEach((experience) => {

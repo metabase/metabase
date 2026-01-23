@@ -232,6 +232,7 @@ const SdkIframeEmbedView = ({
               key={rerenderKey}
               {...entityProps}
               withDownloads={settings.withDownloads}
+              withAlerts={settings.withAlerts}
               height="100%"
               initialSqlParameters={settings.initialSqlParameters}
               hiddenParameters={settings.hiddenParameters}
@@ -253,6 +254,7 @@ const SdkIframeEmbedView = ({
             questionId={settings.questionId ?? null}
             token={settings.token}
             withDownloads={settings.withDownloads}
+            withAlerts={settings.withAlerts}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
             hiddenParameters={settings.hiddenParameters}
