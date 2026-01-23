@@ -334,19 +334,24 @@
                                               [:sequential [:map
                                                             [:id ms/PositiveInt]
                                                             [:name :string]
-                                                            [:supported :boolean]
-                                                            [:reason {:optional true} :string]]]]]
-  "Get a list of databases to show in the workspace picker, along with whether they're supported."
+                                                            [:enabled :boolean]
+                                                            [:permissions_status {:optional true}
+                                                             [:map
+                                                              [:status :string]
+                                                              [:checked_at :string]
+                                                              [:error {:optional true} :string]]]]]]]
+  "Get a list supported databases, and whether they're enabled and have required permissions."
   [_url-params
    _query-params]
-  {:databases (->> (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]})
-                   ;; Omit those we don't even support
-                   (filter #(driver.u/supports? (:engine %) :workspace %))
-                   (mapv (fn [db]
-                           (merge (select-keys db [:id :name])
-                                  (if-let [reason (db-unsupported-reason db)]
-                                    {:supported false, :reason reason}
-                                    {:supported true})))))})
+  (let [databases (->> (t2/select [:model/Database :id :name :engine :settings :workspace_permissions_status]
+                                  :is_audit false :is_sample false {:order-by [:name]})
+                       (filter #(driver.u/supports? (:engine %) :workspace %)))]
+    {:databases (mapv (fn [{:keys [id name workspace_permissions_status settings]}]
+                        {:id                           id
+                         :name                         name
+                         :enabled                      (boolean (:database-enable-workspaces settings))
+                         :workspace_permissions_status (or workspace_permissions_status {:status "unknown"})})
+                      databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties.

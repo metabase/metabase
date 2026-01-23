@@ -5120,6 +5120,31 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v58.2026-01-13T10:00:01
+      author: qnkhuat
+      comment: Add workspace_permissions_status column to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: workspace_permissions_status
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspace_permissions_status
+                  type: ${text.type}
+                  remarks: Status of workspace isolation permission check (JSON)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

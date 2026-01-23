@@ -2452,6 +2452,62 @@
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
 
+;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
+
+(deftest workspace-permission-endpoint-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "POST /api/database/:id/permission/workspace/check"
+      (testing "returns cached status when available"
+        ;; First call to populate cache
+        (mt/user-http-request :crowberto :post 200
+                              (format "database/%d/permission/workspace/check" (mt/id))
+                              {:cached false})
+        ;; Second call should return cached result
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          (is (nil? (:error response)))))
+
+      (testing "runs permission check when no cache exists"
+        ;; Clear the cache
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          ;; Verify it was cached
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "cached=false forces permission check"
+        ;; Set a stale cache value
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "ok" (:status response)))
+          ;; Verify cache was updated
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (:message (mt/user-http-request :rasta :post 403
+                                               (format "database/%d/permission/workspace/check" (mt/id))))))))))
+
+(deftest workspace-permission-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns failed status when permissions check fails"
+      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
+                                  (fn [_driver _database _table]
+                                    "permission denied")]
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "failed" (:status response)))
+          (is (= "permission denied" (:error response))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+

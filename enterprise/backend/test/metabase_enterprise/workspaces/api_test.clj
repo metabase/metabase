@@ -1719,14 +1719,55 @@
       (testing "Supported driver"
         (is (= {:supported true}
                (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-1)))))
-      (testing "Listing"
-        (is (= {:databases [{:id db-1, :name "Y", :supported true}]}
-               (-> (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-                   (update :databases #(filter (comp #{db-1 db-2} :id) %))))))
       (testing "Audit not returned"
         (is (nil?
              (m/find-first (comp #{audit/audit-db-id} :id)
                            (:databases (mt/user-http-request :crowberto :get 200 "ee/workspace/database")))))))))
+
+(deftest workspace-database-listing-test
+  (testing "GET /api/ee/workspace/database"
+    (testing "databases with workspaces_enabled=true show as enabled"
+      (mt/with-temp [:model/Database {db-enabled :id} {:name "DB Enabled"
+                                                       :engine :h2
+                                                       :is_audit false
+                                                       :is_sample false
+                                                       :workspaces_enabled true
+                                                       :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}
+                     :model/Database {db-disabled :id} {:name "DB Disabled"
+                                                        :engine :h2
+                                                        :is_audit false
+                                                        :is_sample false
+                                                        :workspaces_enabled false
+                                                        :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}]
+        (let [response      (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              enabled-entry (m/find-first #(= (:id %) db-enabled) (:databases response))
+              disabled-entry (m/find-first #(= (:id %) db-disabled) (:databases response))]
+          (is (true? (:enabled enabled-entry)))
+          (is (= "ok" (get-in enabled-entry [:permissions_status :status])))
+          (is (false? (:enabled disabled-entry)))
+          (is (= "ok" (get-in disabled-entry [:permissions_status :status]))))))
+
+    (testing "databases with failed permission check include permissions_status"
+      (mt/with-temp [:model/Database {db-failed :id} {:name "DB Failed"
+                                                      :engine :h2
+                                                      :is_audit false
+                                                      :is_sample false
+                                                      :workspace_permissions_status {:status "failed" :error "permission denied" :checked_at "2025-01-01"}}]
+        (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
+          (is (false? (:enabled fail-entry)))
+          (is (= "failed" (get-in fail-entry [:permissions_status :status])))
+          (is (= "permission denied" (get-in fail-entry [:permissions_status :error]))))))
+
+    (testing "databases without permission check have unknown permissions_status"
+      (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
+                                                        :engine :h2
+                                                        :is_audit false
+                                                        :is_sample false}]
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
+          (is (false? (:enabled entry)))
+          (is (= {:status "unknown"} (:permissions_status entry))))))))
 
 (deftest checkout-endpoint-test
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"

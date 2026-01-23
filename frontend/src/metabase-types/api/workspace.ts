@@ -550,11 +550,17 @@ export type WorkspaceTransformDryRunResponse = {
   data?: WorkspaceTransformDryRunData;
 };
 
+export type WorkspacePermissionsStatus = {
+  status: "ok" | "failed" | "unknown";
+  checked_at?: string;
+  error?: string;
+};
+
 export type WorkspaceAllowedDatabase = {
   id: number;
   name: string;
-  supported: boolean;
-  reason?: string;
+  enabled: boolean;
+  workspace_permissions_status?: WorkspacePermissionsStatus;
 };
 
 export type WorkspaceAllowedDatabasesResponse = {
