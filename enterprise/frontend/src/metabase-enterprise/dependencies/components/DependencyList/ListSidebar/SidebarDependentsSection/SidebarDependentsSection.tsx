@@ -161,7 +161,11 @@ function DependentItem({ node }: DependentItemProps) {
               pl="sm"
             >
               {location.links.map((link, linkIndex) => (
-                <Box key={linkIndex} className={CS.textWrap} lh="1rem">
+                <Box
+                  key={linkIndex}
+                  className={cx(S.link, CS.textWrap)}
+                  lh="1rem"
+                >
                   {link.label}
                 </Box>
               ))}

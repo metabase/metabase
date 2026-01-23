@@ -1,3 +1,5 @@
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -68,6 +70,10 @@ export function DependencyList({
     limit: PAGE_SIZE,
   });
 
+  const { ref, width } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
 
@@ -107,7 +113,12 @@ export function DependencyList({
   }, [selectedEntry, selectedNode]);
 
   return (
-    <Flex h="100%" wrap="nowrap">
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={ref}
+      h="100%"
+      wrap="nowrap"
+    >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <ListHeader />
         <ListSearchBar
@@ -144,6 +155,9 @@ export function DependencyList({
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
+          containerWidth={width}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
           onClose={() => setSelectedEntry(undefined)}
         />
       )}
