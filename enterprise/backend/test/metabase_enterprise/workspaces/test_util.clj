@@ -260,7 +260,7 @@
   []
   (use-fixtures :each (fn [tests]
                         (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-                          (mt/with-premium-features [:workspaces :dependencies :transforms]
+                          (mt/with-premium-features [:workspaces :dependencies :transforms :transforms-python]
                             (search.tu/with-index-disabled
                               (mt/with-model-cleanup [:model/Collection
                                                       :model/Transform

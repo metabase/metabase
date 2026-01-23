@@ -2351,7 +2351,8 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.init}
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics
            api
            app-db
@@ -2393,7 +2394,8 @@
            settings
            system
            util
-           enterprise/transforms}}}
+           enterprise/transforms
+           enterprise/transforms-python}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
