@@ -82,6 +82,45 @@
         (log/warn e "Error fetching plans information")
         (handle-store-api-error e)))))
 
+;; STUB: Stubbed add-ons data for local development
+(def ^:private stub-addons-data
+  [{:active true
+    :billing_period_months 1
+    :default_base_fee 100
+    :default_included_units 0
+    :default_prepaid_units 0
+    :default_price_per_unit 0
+    :default_total_units 0
+    :deployment "cloud"
+    :description "SQL and query builder transforms"
+    :id 1
+    :is_metered false
+    :name "Transforms"
+    :product_tiers []
+    :product_type "transforms"
+    :self_service true
+    :short_name "Transforms"
+    :token_features ["transforms"]
+    :trial_days nil}
+   {:active true
+    :billing_period_months 1
+    :default_base_fee 100
+    :default_included_units 0
+    :default_prepaid_units 0
+    :default_price_per_unit 0
+    :default_total_units 0
+    :deployment "cloud"
+    :description "Python-based transforms"
+    :id 2
+    :is_metered false
+    :name "Advanced Transforms"
+    :product_tiers []
+    :product_type "python-execution"
+    :self_service true
+    :short_name "Python Transforms"
+    :token_features ["transforms_python"]
+    :trial_days nil}])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -90,16 +129,19 @@
   "Get addons information from the Metabase Store API."
   []
   (api/check-superuser)
-  (cond
-    (not (premium-features/is-hosted?))
-    response-not-hosted
+  ;; STUB: Return stubbed data for local development
+  {:status 200 :body stub-addons-data}
+  ;; PROD: Uncomment below and remove stub above for production
+  #_(cond
+      (not (premium-features/is-hosted?))
+      response-not-hosted
 
-    :else
-    (try
-      {:status 200 :body (make-public-store-request! "/addons")}
-      (catch Exception e
-        (log/warn e "Error fetching addons information")
-        (handle-store-api-error e)))))
+      :else
+      (try
+        {:status 200 :body (make-public-store-request! "/addons")}
+        (catch Exception e
+          (log/warn e "Error fetching addons information")
+          (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -108,7 +150,7 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution"]]]
+                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution" "transforms"]]]
    _query-params
    {:keys            [quantity]
     terms-of-service :terms_of_service} :- [:map
@@ -137,6 +179,10 @@
 
     (and (= product-type "python-execution")
          (not (premium-features/enable-python-transforms?)))
+    response-not-eligible
+
+    (and (= product-type "transforms")
+         (not (premium-features/enable-transforms?)))
     response-not-eligible
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))

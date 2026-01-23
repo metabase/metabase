@@ -32,6 +32,7 @@ import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
 type TableAttributesEditBulkProps = {
+  canPublish: boolean;
   hasLibrary: boolean;
   onUpdate: () => void;
 };
@@ -39,6 +40,7 @@ type TableAttributesEditBulkProps = {
 type TableModalType = "library" | "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
+  canPublish,
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
@@ -177,7 +179,7 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            {!remoteSyncReadOnly && (
+            {canPublish && !remoteSyncReadOnly && (
               <Button
                 flex={1}
                 p="sm"
@@ -187,7 +189,7 @@ export function TableAttributesEditBulk({
                 {t`Publish`}
               </Button>
             )}
-            {!remoteSyncReadOnly && hasLibrary && (
+            {canPublish && !remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"

@@ -3,9 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
@@ -57,6 +55,14 @@
                {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
                {:name "Plan" :value "Enterprise Airgap" :format "string" :display "value"}]}))
 
+;; STUB: Stubbed billing info for local development
+(def ^:private stub-billing-info
+  {:version "v1"
+   :content [{:name "Plan" :value "Starter" :format "string" :display "value"}
+             {:name "Billing period" :value "Monthly" :format "string" :display "value"}]
+   :data {:billing_period_months 1
+          :previous_add_ons []}})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -65,9 +71,12 @@
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []
-  (let [token    (premium-features/premium-embedding-token)
-        email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
-        language (i18n/user-locale-string)]
-    (if (and token (str/starts-with? token "airgap_"))
-      (billing-status)
-      (fetch-billing-status* token email language))))
+  ;; STUB: Return stubbed data for local development
+  stub-billing-info
+  ;; PROD: Uncomment below and remove stub above for production
+  #_(let [token    (premium-features/premium-embedding-token)
+          email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
+          language (i18n/user-locale-string)]
+      (if (and token (str/starts-with? token "airgap_"))
+        (billing-status)
+        (fetch-billing-status* token email language))))

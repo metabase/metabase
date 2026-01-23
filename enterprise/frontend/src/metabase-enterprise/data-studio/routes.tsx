@@ -13,6 +13,7 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
 import { TasksSectionLayout } from "./app/pages/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
@@ -27,7 +28,7 @@ export function getDataStudioRoutes(
   store: Store<State>,
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
-  CanAccessTransforms: ComponentType,
+  _CanAccessTransforms: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -42,13 +43,9 @@ export function getDataStudioRoutes(
             {getDataStudioMetadataRoutes()}
           </Route>
         </Route>
-        {PLUGIN_TRANSFORMS.isEnabled && (
-          <Route path="transforms" component={CanAccessTransforms}>
-            <Route component={TransformsSectionLayout}>
-              {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
-            </Route>
-          </Route>
-        )}
+        <Route path="transforms" component={TransformsSectionLayout}>
+          {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+        </Route>
         {getDataStudioGlossaryRoutes()}
         <Route path="library">
           <IndexRoute component={LibrarySectionLayout} />
@@ -57,16 +54,13 @@ export function getDataStudioRoutes(
           {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="tasks" component={TasksSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-          </Route>
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="dependencies" component={DependenciesSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
-          </Route>
-        )}
+        <Route path="tasks" component={TasksSectionLayout}>
+          {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
+        </Route>
+        <Route path="dependencies" component={DependenciesSectionLayout}>
+          {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+        </Route>
+        <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
     </Route>
   );

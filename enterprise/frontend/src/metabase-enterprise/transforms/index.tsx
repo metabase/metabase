@@ -8,10 +8,17 @@ import { TransformPicker } from "./components/TransformPicker";
 import { getDataStudioTransformRoutes } from "./routes";
 
 /**
- * Initialize transforms plugin features that depend on hasPremiumFeature.
+ * Initialize transforms plugin features.
+ * Transforms are available:
+ * - On self-hosted: always (no license required)
+ * - On hosted: only with transforms add-on
  */
 export function initializePlugin() {
-  if (hasPremiumFeature("transforms")) {
+  const isHosted = hasPremiumFeature("hosting");
+  const hasTransformsFeature = hasPremiumFeature("transforms");
+  const shouldEnable = !isHosted || hasTransformsFeature;
+
+  if (shouldEnable) {
     PLUGIN_TRANSFORMS.isEnabled = true;
     PLUGIN_ENTITIES.entities["transforms"] = Transforms;
     PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
