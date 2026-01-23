@@ -14,8 +14,10 @@ import {
   createMockCardDependencyNodeData,
   createMockCollection,
   createMockDashboardDependencyNode,
+  createMockDashboardDependencyNodeData,
   createMockDatabase,
   createMockDocumentDependencyNode,
+  createMockDocumentDependencyNodeData,
   createMockMeasureDependencyNode,
   createMockSandboxDependencyNode,
   createMockSegmentDependencyNode,
@@ -35,6 +37,7 @@ import type {
   NodeLink,
 } from "./types";
 import {
+  canHaveViewCount,
   getCardType,
   getCardTypes,
   getDependencyErrorGroups,
@@ -508,51 +511,64 @@ describe("getNodeLastEditedBy", () => {
   });
 });
 
+describe("canHaveViewCount", () => {
+  it.each<{ type: DependencyType; expected: boolean }>([
+    { type: "card", expected: true },
+    { type: "dashboard", expected: true },
+    { type: "document", expected: true },
+    { type: "table", expected: false },
+    { type: "transform", expected: false },
+    { type: "segment", expected: false },
+    { type: "measure", expected: false },
+    { type: "snippet", expected: false },
+    { type: "sandbox", expected: false },
+  ])("should return $expected for $type", ({ type, expected }) => {
+    expect(canHaveViewCount(type)).toBe(expected);
+  });
+});
+
 describe("getNodeViewCount", () => {
-  it("should return view count for question", () => {
-    const node = createMockCardDependencyNode({
-      data: createMockCardDependencyNodeData({
-        type: "question",
-        view_count: 100,
+  it.each<{ node: DependencyNode; expected: number | null }>([
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          view_count: 100,
+        }),
       }),
-    });
-    expect(getNodeViewCount(node)).toBe(100);
-  });
-
-  it("should return null for model", () => {
-    const node = createMockCardDependencyNode({
-      data: createMockCardDependencyNodeData({
-        type: "model",
-        view_count: 100,
+      expected: 100,
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "model",
+          view_count: 100,
+        }),
       }),
-    });
-    expect(getNodeViewCount(node)).toBeNull();
-  });
-
-  it("should return view count for dashboard", () => {
-    const node = createMockDashboardDependencyNode({
-      data: {
-        name: "Dashboard",
-        description: null,
-        created_at: "2020-01-01T00:00:00Z",
-        collection_id: null,
-        moderation_reviews: [],
-        view_count: 50,
-        "last-edit-info": {
-          id: 1,
-          email: "test@example.com",
-          first_name: "Test",
-          last_name: "User",
-          timestamp: "2020-01-01T00:00:00Z",
-        },
-      },
-    });
-    expect(getNodeViewCount(node)).toBe(50);
-  });
-
-  it("should return null for table", () => {
-    const node = createMockTableDependencyNode();
-    expect(getNodeViewCount(node)).toBeNull();
+      expected: 100,
+    },
+    {
+      node: createMockDashboardDependencyNode({
+        data: createMockDashboardDependencyNodeData({
+          view_count: 50,
+        }),
+      }),
+      expected: 50,
+    },
+    {
+      node: createMockDocumentDependencyNode({
+        data: createMockDocumentDependencyNodeData({
+          view_count: 25,
+        }),
+      }),
+      expected: 25,
+    },
+    {
+      node: createMockTableDependencyNode(),
+      expected: null,
+    },
+  ])("should return view count for $node.type", ({ node, expected }) => {
+    expect(getNodeViewCount(node)).toBe(expected);
   });
 });
 
