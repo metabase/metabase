@@ -43,6 +43,7 @@ export function SnippetDescriptionSection({
       isMarkdown
       onChange={handleChange}
       isDisabled={isDisabled}
+      isOptional
     />
   );
 }
