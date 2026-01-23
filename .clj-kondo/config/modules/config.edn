@@ -1778,6 +1778,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           audit-app
            lib
            permissions
            premium-features

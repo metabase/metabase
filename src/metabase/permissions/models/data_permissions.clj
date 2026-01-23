@@ -508,8 +508,8 @@
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
-  group, for at least one database or table."
-  [user-id perm-type]
+  group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the check."
+  [user-id perm-type & {:keys [exclude-db-ids]}]
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
@@ -519,10 +519,12 @@
                      :from [[:permissions_group_membership :pgm]]
                      :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                             [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                     :where [:and
-                             [:= :pgm.user_id user-id]
-                             [:= :p.perm_type (u/qualified-name perm-type)]
-                             [:= :p.perm_value (u/qualified-name value)]]}))))
+                     :where (into [:and
+                                   [:= :pgm.user_id user-id]
+                                   [:= :p.perm_type (u/qualified-name perm-type)]
+                                   [:= :p.perm_value (u/qualified-name value)]]
+                                  (when (seq exclude-db-ids)
+                                    [[:not-in :p.db_id exclude-db-ids]]))}))))
 
 (defn- admin-permission-graph
   "Returns the graph representing admin permissions for all groups"
