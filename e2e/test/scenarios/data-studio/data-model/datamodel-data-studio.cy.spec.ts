@@ -52,32 +52,6 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Table picker", () => {
     describe("1 database, no schemas", () => {
-      it("should allow to navigate tables", { tags: ["@external"] }, () => {
-        H.restore("mysql-8");
-        H.activateToken("bleeding-edge");
-        cy.signInAsAdmin();
-
-        H.DataModel.visitDataStudio();
-
-        TablePicker.getDatabase("QA MySQL8").click();
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getSchemas().should("have.length", 0);
-
-        cy.location("pathname").should(
-          "eq",
-          `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
-
-        TablePicker.getTable("Products").click();
-        TableSection.getNameInput().should("have.value", "Products");
-
-        cy.location("pathname").should((pathname) => {
-          return pathname.startsWith(
-            `/data-studio/data/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
-          );
-        });
-      });
-
       it("should allow searching for tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
         H.activateToken("bleeding-edge");

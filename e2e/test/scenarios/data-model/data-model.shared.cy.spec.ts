@@ -6,9 +6,12 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { TablePicker } = cy.H.DataModel;
+const { TablePicker, TableSection } = cy.H.DataModel;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
+const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
 function createContext(place: string) {
   return {
@@ -202,6 +205,34 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
         cy.location("pathname").should("eq", "/admin/databases/create");
         cy.findByRole("heading", { name: "Add a database" }).should(
           "be.visible",
+        );
+      });
+    });
+  });
+
+  describe("1 database, no schemas", () => {
+    it("should allow to navigate tables", { tags: ["@external"] }, () => {
+      H.restore("mysql-8");
+      H.activateToken("bleeding-edge");
+      cy.signInAsAdmin();
+
+      context.visit();
+
+      TablePicker.getDatabase("QA MySQL8").click();
+      TablePicker.getTables().should("have.length", 4);
+      TablePicker.getSchemas().should("have.length", 0);
+
+      cy.location("pathname").should(
+        "eq",
+        `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+      );
+
+      TablePicker.getTable("Products").click();
+      TableSection.getNameInput().should("have.value", "Products");
+
+      cy.location("pathname").should((pathname) => {
+        return pathname.startsWith(
+          `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
         );
       });
     });
