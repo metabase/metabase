@@ -7,6 +7,7 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { hasFeature } from "metabase/admin/databases/utils";
 import { useCheckWorkspacePermissionsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Group, List, Loader, Stack, Switch } from "metabase/ui";
@@ -33,6 +34,7 @@ export function AdminDatabaseWorkspacesSection({
   const isEnabled = Boolean(database.settings?.[DATABASE_WORKSPACES_SETTING]);
   const workspacesSetting = settingsAvailable?.[DATABASE_WORKSPACES_SETTING];
   const isSettingDisabled = !workspacesSetting;
+  const areWorkspacesSupported = hasFeature(database, "workspace");
 
   const [error, setError] = useState<string | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
@@ -113,7 +115,7 @@ export function AdminDatabaseWorkspacesSection({
     }
   };
 
-  if (isSettingDisabled) {
+  if (!areWorkspacesSupported || isSettingDisabled) {
     return null;
   }
 

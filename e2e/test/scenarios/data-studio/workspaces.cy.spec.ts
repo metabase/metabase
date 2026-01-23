@@ -567,7 +567,6 @@ describe("scenarios > data studio > workspaces", () => {
         enableWorkspacesInDb(testDbId);
       });
 
-      // get db id
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
