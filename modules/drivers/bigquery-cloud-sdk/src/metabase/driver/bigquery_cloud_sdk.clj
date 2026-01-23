@@ -76,15 +76,25 @@
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
-        mb-version (:tag driver-api/mb-version-info)
-        run-mode   (name driver-api/run-mode)
-        user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
+  (let [creds           (bigquery.common/database-details->service-account-credential details)
+        mb-version      (:tag driver-api/mb-version-info)
+        run-mode        (name driver-api/run-mode)
+        user-agent      (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
-        bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes))
-                  (.setHeaderProvider header-provider))]
+
+        ;; UNIVERSE_DOMAIN HANDLER
+        universe-domain (or (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
+
+        bq-bldr         (doto (BigQueryOptions/newBuilder)
+                          (.setCredentials (.createScoped creds bigquery-scopes))
+                          (.setHeaderProvider header-provider))]
+
+    ;; set UNIVERSE_DOMAIN
+    (when universe-domain
+      (.setUniverseDomain bq-bldr universe-domain))
+
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
