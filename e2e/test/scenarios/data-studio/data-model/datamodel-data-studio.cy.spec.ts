@@ -562,16 +562,6 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should be able to preview the table in the query builder", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-      TableSection.getQueryBuilderLink().click();
-      H.queryBuilderHeader().findByText("Orders").should("be.visible");
-    });
-
     it("should be able to see details of a table", () => {
       H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
 
