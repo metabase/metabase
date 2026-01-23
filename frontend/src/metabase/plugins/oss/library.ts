@@ -77,8 +77,8 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,
   UnpublishTablesModal:
     PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
-  useGetLibraryCollectionQuery: (() =>
-    undefined) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
+  useGetLibraryCollectionQuery:
+    (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
