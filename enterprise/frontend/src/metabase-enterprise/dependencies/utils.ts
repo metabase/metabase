@@ -396,17 +396,13 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
-export function canHaveViewCount(groupType: DependencyGroupType): boolean {
-  switch (groupType) {
-    case "question":
+export function canHaveViewCount(type: DependencyType): boolean {
+  switch (type) {
+    case "card":
     case "dashboard":
     case "document":
       return true;
-    // view_count is not calculated property for models and metrics since
-    // they are typically not run directly
     case "table":
-    case "model":
-    case "metric":
     case "transform":
     case "snippet":
     case "sandbox":
@@ -419,11 +415,6 @@ export function canHaveViewCount(groupType: DependencyGroupType): boolean {
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
-      // view_count is not calculated property for models and metrics since
-      // they are typically not run directly
-      return node.data.type === "question"
-        ? (node.data.view_count ?? null)
-        : null;
     case "dashboard":
     case "document":
       return node.data.view_count ?? null;

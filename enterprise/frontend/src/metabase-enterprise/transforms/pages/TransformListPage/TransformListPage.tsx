@@ -22,7 +22,6 @@ import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Card,
   EntityNameCell,
@@ -31,6 +30,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";

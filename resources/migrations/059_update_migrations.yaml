@@ -787,6 +787,20 @@ databaseChangeLog:
             path: instance_analytics_views/tasks/v2/h2-tasks.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-01-23T12:00:00
+      author: bronsa
+      comment: Insert default common.py entry in python_library if not exists
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM python_library WHERE path = 'common.py'
+      changes:
+        - sql:
+            sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
+      rollback:
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
