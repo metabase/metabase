@@ -339,23 +339,22 @@ is_sample: false
 (deftest import-transforms-from-transforms-namespace-collection-test
   (testing "Import brings in transforms located inside a transforms-namespace collection"
     (mt/with-premium-features #{:transforms}
-      (mt/as-admin
-        (mt/with-temporary-setting-values [remote-sync-enabled true]
-          (mt/with-model-cleanup [:model/Transform :model/Collection]
-            (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                  coll-entity-id      "transforms-coll-xxx"
-                  transform-entity-id "test-transform-xxxxx"
-                  test-files          {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
-                                               (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
-                                               (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
-                                               (generate-transform-yaml transform-entity-id "Test Transform" (mt/id) (mt/id :venues))}}
-                  mock-source         (test-helpers/create-mock-source :initial-files test-files)
-                  result              (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status result)))
-              (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "transforms")
-                  "Transforms-namespace collection should be imported")
-              (is (t2/exists? :model/Transform :entity_id transform-entity-id)
-                  "Transform should be imported from transforms-namespace collection"))))))))
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/Transform :model/Collection]
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                coll-entity-id      "transforms-coll-xxx"
+                transform-entity-id "test-transform-xxxxx"
+                test-files          {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
+                                             (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
+                                             (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
+                                             (generate-transform-yaml transform-entity-id "Test Transform" (mt/id) (mt/id :venues))}}
+                mock-source         (test-helpers/create-mock-source :initial-files test-files)
+                result              (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :success (:status result)))
+            (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "transforms")
+                "Transforms-namespace collection should be imported")
+            (is (t2/exists? :model/Transform :entity_id transform-entity-id)
+                "Transform should be imported from transforms-namespace collection")))))))
 
 (deftest archived-transforms-namespace-collection-excluded-from-export-test
   (testing "When a transforms-namespace collection is archived, it and its children are excluded from export"

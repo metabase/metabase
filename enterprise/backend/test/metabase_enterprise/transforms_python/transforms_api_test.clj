@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.driver :as driver]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -23,66 +24,68 @@
 (deftest create-python-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (letfn [(create-transform! []
-                (let [schema            (get-test-schema)
-                      transform-payload {:name   "My beautiful python runner"
-                                         :source {:type            "python"
-                                                  :body            "print('hello world')"
-                                                  :source-tables   {}
-                                                  :source-database (mt/id)}
-                                         :target {:type     "table"
-                                                  :schema   schema
-                                                  :name     "gadget_products"
-                                                  :database (mt/id)}}]
-                  (mt/user-http-request :crowberto :post "ee/transform"
-                                        transform-payload)))]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (letfn [(create-transform! []
+                    (let [schema            (get-test-schema)
+                          transform-payload {:name   "My beautiful python runner"
+                                             :source {:type            "python"
+                                                      :body            "print('hello world')"
+                                                      :source-tables   {}
+                                                      :source-database (mt/id)}
+                                             :target {:type     "table"
+                                                      :schema   schema
+                                                      :name     "gadget_products"
+                                                      :database (mt/id)}}]
+                      (mt/user-http-request :lucky :post "ee/transform"
+                                            transform-payload)))]
 
-        (testing "without any feature flags"
-          (mt/with-premium-features #{}
-            (testing "creating python transform without any features fails"
-              (is (= "error-premium-feature-not-available"
-                     (:status (mt/user-http-request :crowberto :post 402 "ee/transform"
-                                                    {:name   "My beautiful python runner"
-                                                     :source {:type            "python"
-                                                              :body            "print('hello world')"
-                                                              :source-tables   {}
-                                                              :source-database (mt/id)}
-                                                     :target {:type     "table"
-                                                              :schema   (get-test-schema)
-                                                              :name     "gadget_products"
-                                                              :database (mt/id)}})))))))
+            (testing "without any feature flags"
+              (mt/with-premium-features #{}
+                (testing "creating python transform without any features fails"
+                  (is (= "error-premium-feature-not-available"
+                         (:status (mt/user-http-request :lucky :post 402 "ee/transform"
+                                                        {:name   "My beautiful python runner"
+                                                         :source {:type            "python"
+                                                                  :body            "print('hello world')"
+                                                                  :source-tables   {}
+                                                                  :source-database (mt/id)}
+                                                         :target {:type     "table"
+                                                                  :schema   (get-test-schema)
+                                                                  :name     "gadget_products"
+                                                                  :database (mt/id)}})))))))
 
-        (testing "with only transforms feature flag (no transforms-python)"
-          (mt/with-premium-features #{:transforms}
-            (testing "creating python transform without transforms-python feature fails"
-              (is (= "Premium features required for this transform type are not enabled."
-                     (mt/user-http-request :crowberto :post 402 "ee/transform"
-                                           {:name   "My beautiful python runner"
-                                            :source {:type            "python"
-                                                     :body            "print('hello world')"
-                                                     :source-tables   {}
-                                                     :source-database (mt/id)}
-                                            :target {:type     "table"
-                                                     :schema   (get-test-schema)
-                                                     :name     "gadget_products"
-                                                     :database (mt/id)}}))))))
+            (testing "with only transforms feature flag (no transforms-python)"
+              (mt/with-premium-features #{:transforms}
+                (testing "creating python transform without transforms-python feature fails"
+                  (is (= "Premium features required for this transform type are not enabled."
+                         (mt/user-http-request :lucky :post 402 "ee/transform"
+                                               {:name   "My beautiful python runner"
+                                                :source {:type            "python"
+                                                         :body            "print('hello world')"
+                                                         :source-tables   {}
+                                                         :source-database (mt/id)}
+                                                :target {:type     "table"
+                                                         :schema   (get-test-schema)
+                                                         :name     "gadget_products"
+                                                         :database (mt/id)}}))))))
 
-        (testing "with transforms-python feature flag"
-          (mt/with-premium-features #{:transforms :transforms-python}
-            (with-transform-cleanup! [table-name "gadget_products"]
-              (let [transform         (create-transform!)]
-                (is (= "print('hello chris')"
-                       (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id transform))
-                                                 {:name   "My beautiful python runner"
-                                                  :source {:type            "python"
-                                                           :body            "print('hello chris')"
-                                                           :source-tables   {}
-                                                           :source-database (mt/id)}
-                                                  :target {:type     "table"
-                                                           :schema   (get-test-schema)
-                                                           :name     table-name
-                                                           :database (mt/id)}})
-                           :source :body)))))))))))
+            (testing "with transforms-python feature flag"
+              (mt/with-premium-features #{:transforms :transforms-python}
+                (with-transform-cleanup! [table-name "gadget_products"]
+                  (let [transform         (create-transform!)]
+                    (is (= "print('hello chris')"
+                           (-> (mt/user-http-request :lucky :put 200 (format "ee/transform/%s" (:id transform))
+                                                     {:name   "My beautiful python runner"
+                                                      :source {:type            "python"
+                                                               :body            "print('hello chris')"
+                                                               :source-tables   {}
+                                                               :source-database (mt/id)}
+                                                      :target {:type     "table"
+                                                               :schema   (get-test-schema)
+                                                               :name     table-name
+                                                               :database (mt/id)}})
+                               :source :body)))))))))))))
 
 (deftest update-python-transform-feature-flag-test
   (mt/with-premium-features #{:transforms}

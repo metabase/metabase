@@ -17,15 +17,17 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- check-analyst
-  "Check that the current user is a data analyst."
+(defn- check-transforms-permission
+  "Check that the current user has transform permissions."
   []
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*)))
+  (api/check-403 (or api/*is-superuser?*
+                     (and api/*is-data-analyst?*
+                          (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
   [path]
-  (check-analyst)
+  (check-transforms-permission)
   (-> (python-library/get-python-library-by-path path)
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
@@ -50,7 +52,7 @@
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (check-analyst)
+  (check-transforms-permission)
   (python-library/update-python-library-source! path (:source body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
