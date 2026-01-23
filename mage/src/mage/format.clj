@@ -46,8 +46,23 @@
                          {:babashka/exit 1})))))
 
 (defn all
-  "Formats or checks of the usual clojure files with cljfmt."
+  "Formats or checks all clojure files with cljfmt.
+
+  When --force-check is passed, runs fix then checks if any files were modified.
+  This avoids a babashka bug where check mode crashes when displaying diffs.
+  See: https://github.com/weavejester/cljfmt/issues/390"
   [{{force-check? :force-check} :options}]
-  (let [f (select-cljfmt-function force-check?)]
-    (println (format "Running %s on all clojure files, sit tight: this could take a minute..." f))
-    (f {})))
+  (println "Running cljfmt on all clojure files, sit tight: this could take a minute...")
+  (cljfmt.tool/fix {})
+  (when force-check?
+    (let [diff (u/sh "git" "diff")]
+      (when (seq diff)
+        (println)
+        (println (c/red "The following formatting changes are required:"))
+        (println)
+        (println diff)
+        (println)
+        (println (c/yellow "To fix formatting locally, run:"))
+        (println (c/cyan "  ./bin/mage cljfmt-all"))
+        (println)
+        (throw (ex-info "cljfmt check failed" {:babashka/exit 1}))))))
