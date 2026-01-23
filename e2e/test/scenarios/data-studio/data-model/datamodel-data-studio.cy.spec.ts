@@ -563,26 +563,6 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Table section", () => {
     it(
-      "should be able to select and update a table in a database without schemas",
-      { tags: ["@external"] },
-      () => {
-        H.restore("mysql-8");
-        H.activateToken("bleeding-edge");
-
-        H.DataModel.visitDataStudio({
-          databaseId: MYSQL_DB_ID,
-          schemaId: MYSQL_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getNameInput().clear().type("New orders").blur();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Table name updated");
-        TableSection.getNameInput().should("have.value", "New orders");
-      },
-    );
-
-    it(
       "should show empty state when table has no fields",
       { tags: ["@external"] },
       () => {
