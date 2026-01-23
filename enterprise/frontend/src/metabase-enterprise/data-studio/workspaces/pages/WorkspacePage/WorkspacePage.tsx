@@ -434,7 +434,7 @@ function WorkspacePageContent({
                   style={{ overflow: "auto" }}
                 >
                   {!activeEditedTransform ? (
-                    <Text c="text-medium">
+                    <Text c="text-secondary">
                       {t`Select a transform on the right.`}
                     </Text>
                   ) : (

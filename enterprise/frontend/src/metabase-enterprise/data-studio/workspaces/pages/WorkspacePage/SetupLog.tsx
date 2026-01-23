@@ -60,7 +60,7 @@ export const SetupLog = ({ setupStatus }: SetupLogProps) => {
 
       {workspace?.status === "archived" && (
         <Group gap="xs" wrap="nowrap">
-          <Icon c="text-light" name="archive" />
+          <Icon c="text-tertiary" name="archive" />
 
           {t`Workspace is archived`}
         </Group>

@@ -58,7 +58,7 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
         gap="sm"
       >
         <Loader size="sm" />
-        <Text c="text-medium">{t`Loading diff...`}</Text>
+        <Text c="text-secondary">{t`Loading diff...`}</Text>
       </Flex>
     );
   }

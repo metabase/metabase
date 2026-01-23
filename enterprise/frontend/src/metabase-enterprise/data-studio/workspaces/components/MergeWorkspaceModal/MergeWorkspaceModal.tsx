@@ -104,7 +104,7 @@ export const MergeWorkspaceModal = ({
           <Icon name="git_branch" c="brand" />
           <Flex direction="column" gap="xs">
             <Title order={3}>{t`Review Changes`}</Title>
-            <Text size="sm" c="text-medium">
+            <Text size="sm" c="text-secondary">
               {workspaceName}
             </Text>
           </Flex>
@@ -147,7 +147,7 @@ export const MergeWorkspaceModal = ({
                   )}
                   onClick={() => setSelectedTransformId("overview")}
                 >
-                  <Icon name="document" size={14} c="text-medium" />
+                  <Icon name="document" size={14} c="text-secondary" />
                   <Text>{t`Overview`}</Text>
                 </Flex>
                 {newTransforms.length > 0 && (
@@ -158,7 +158,7 @@ export const MergeWorkspaceModal = ({
                       fz="xs"
                       fw={700}
                       tt="uppercase"
-                      c="text-medium"
+                      c="text-secondary"
                     >
                       {t`New transforms`}
                     </Text>
@@ -181,7 +181,7 @@ export const MergeWorkspaceModal = ({
                       fz="xs"
                       fw={700}
                       tt="uppercase"
-                      c="text-medium"
+                      c="text-secondary"
                     >
                       {t`Modified transforms`}
                     </Text>
@@ -213,7 +213,7 @@ export const MergeWorkspaceModal = ({
                   />
                 ) : (
                   <Flex align="center" justify="center" h="100%">
-                    <Text c="text-medium">{t`Transform not found`}</Text>
+                    <Text c="text-secondary">{t`Transform not found`}</Text>
                   </Flex>
                 )}
               </Box>

@@ -296,8 +296,12 @@ function WorkspaceItem({
               wrap="nowrap"
               data-testid="workspace-status"
             >
-              <Icon name={status.icon} size={10} c={status.color} />
-              <Text size="xs" fw={500} c={status.color}>
+              <Icon
+                name={status.icon}
+                size={10}
+                style={{ color: status.color }}
+              />
+              <Text size="xs" fw={500} style={{ color: status.color }}>
                 {status.label}
               </Text>
             </Group>
@@ -380,7 +384,7 @@ type WorkspaceListStatus = {
 
 function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
   if (workspace.status === "archived") {
-    return { label: t`Archived`, icon: "archive", color: "text-light" };
+    return { label: t`Archived`, icon: "archive", color: "text-tertiary" };
   }
 
   if (workspace.status === "pending") {
