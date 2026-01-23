@@ -210,7 +210,7 @@ function TransformQueryPageBody({
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
               isEditMode={isEditMode}
-              transformId={transform.id}
+              transform={transform}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}

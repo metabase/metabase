@@ -6,16 +6,18 @@ import {
 } from "metabase/api";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Flex } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
+import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
-import type { Database, DatabaseId, TransformId } from "metabase-types/api";
+import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 
 type PythonTransformTopBarProps = {
   databaseId?: DatabaseId;
   isEditMode?: boolean;
-  transformId?: TransformId;
+  transform?: Transform;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
   canChangeDatabase?: boolean;
 };
@@ -23,11 +25,11 @@ type PythonTransformTopBarProps = {
 export function PythonTransformTopBar({
   databaseId,
   isEditMode,
-  transformId,
+  transform,
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
-  const showEditDefinitionButton = !isEditMode && transformId;
+  const showEditButton = !isEditMode && transform;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -73,16 +75,20 @@ export function PythonTransformTopBar({
           {database?.name}
         </Flex>
       )}
-      {showEditDefinitionButton && (
+      {showEditButton && (
         <Flex ml="auto" mr="lg" align="center" h="3rem">
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transformId}
-          />
+          {hasPremiumFeature("workspaces") ? (
+            <EditTransformMenu transform={transform} />
+          ) : (
+            <EditDefinitionButton
+              bg="transparent"
+              fz="sm"
+              h="1.5rem"
+              px="sm"
+              size="xs"
+              transformId={transform.id}
+            />
+          )}
         </Flex>
       )}
     </Flex>
