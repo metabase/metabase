@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
-   [metabase.audit-app.impl :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
