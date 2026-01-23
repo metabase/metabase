@@ -49,6 +49,9 @@
    ["dayjs/plugin/quarterOfYear" :as quarterOfYear]
    ["dayjs/plugin/utc" :as utc]
    ["dayjs/plugin/weekOfYear" :as weekOfYear]
+   ;; cljfmt reorders these namespaces to be out of order, then kondo complains about it.
+   ;; so let's just live with the 1 unordered namespace require for now. :skull:
+   ^{:clj-kondo/ignore [:unsorted-required-namespaces]}
    ["dayjs/plugin/weekday" :as weekday]
    [metabase.util.time.impl-common :as common]))
 
