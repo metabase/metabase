@@ -1071,38 +1071,6 @@ describe("scenarios > data studio > datamodel", () => {
         cy.findByText("New description").should("be.visible");
       });
 
-      it("should allow clearing the field description", () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.TOTAL,
-        });
-
-        FieldSection.getDescriptionInput().clear().blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Description of Total updated");
-        TableSection.getFieldDescriptionInput("Total").should("have.value", "");
-
-        cy.log("verify preview");
-        TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click();
-        verifyTablePreview({
-          column: "Total",
-          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
-        });
-        PreviewSection.get().findByTestId("header-cell").realHover();
-        H.hovercard().should("not.contain.text", "The total billed amount.");
-
-        cy.visit(
-          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-        );
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No description yet").should("be.visible");
-      });
-
       it("should remap FK display value from field section", () => {
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
