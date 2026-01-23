@@ -351,6 +351,7 @@ is_sample: false
                                                (generate-transform-yaml transform-entity-id "Test Transform")}}
                   mock-source         (test-helpers/create-mock-source :initial-files test-files)
                   result              (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= "" result))
               (is (= :success (:status result)))
               (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "transforms")
                   "Transforms-namespace collection should be imported")
