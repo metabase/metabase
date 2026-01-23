@@ -32,7 +32,7 @@
 
 ;; ------------------ SLACK CLIENT --------------------
 
-(defn slack-get
+(defn- slack-get
   "GET from slack"
   [client endpoint params]
   (-> (http/get (str "https://slack.com/api" endpoint)
@@ -41,7 +41,7 @@
       :body
       (json/decode true)))
 
-(defn slack-post-json
+(defn- slack-post-json
   "POST to slack"
   [client endpoint payload]
   (-> (http/post (str "https://slack.com/api" endpoint)
@@ -51,7 +51,7 @@
       :body
       (json/decode true)))
 
-(defn slack-post-form
+(defn- slack-post-form
   "POST form to slack"
   [client endpoint payload]
   (-> (http/post (str "https://slack.com/api" endpoint)
@@ -61,29 +61,29 @@
       :body
       (json/decode true)))
 
-(defn fetch-thread
+(defn- fetch-thread
   "Fetch an entire full Slack thread"
   [client message]
   (slack-get client "/conversations.replies"
              {:channel (:channel message)
               :ts (or (:thread_ts message) (:ts message))}))
 
-(defn get-upload-url
+(defn- get-upload-url
   "Get a URL we can upload to"
   [client args]
   (slack-post-form client "/files.getUploadURLExternal" args))
 
-(defn post-message
+(defn- post-message
   "Send a Slack message"
   [client message]
   (slack-post-json client "/chat.postMessage" message))
 
-(defn post-ephemeral-message
+(defn- post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]
   (slack-post-json client "/chat.postEphemeral" message))
 
-(defn post-image
+(defn- post-image
   "Upload a PNG image and send in a message"
   [client image-bytes filename channel thread-ts]
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
@@ -99,7 +99,7 @@
                         :thread_ts thread-ts})
       res)))
 
-(defn delete-message
+(defn- delete-message
   "Remove a Slack message"
   [client message]
   (slack-post-json client "/chat.delete" (select-keys message [:channel :ts])))
@@ -120,7 +120,7 @@
        :context     :pulse
        :card-id     card-id}))))
 
-(defn generate-card-png
+(defn- generate-card-png
   "Generate PNG for a card. Accepts either:
    - card-id (integer) - fetches saved card from database
    - adhoc-card (map) - renders ad-hoc card with :display, :visualization_settings, :results, :name"
@@ -152,7 +152,7 @@
 
 ;; -------------------- AI SERVICE ---------------------------
 
-(defn thread->history
+(defn- thread->history
   "Convert a Slack thread to an ai-service history object"
   [thread]
   (->> (:messages thread)
@@ -160,7 +160,7 @@
        (mapv #(hash-map :role (if (:bot_id %) :assistant :user)
                         :content (:text %)))))
 
-(defn make-ai-request
+(defn- make-ai-request
   "Make an AI request and return both text and data parts"
   [conversation-id prompt thread]
   (let [message    (metabot-v3.envelope/user-message prompt)
@@ -231,7 +231,7 @@
 
 ;; ------------------------- VALIDATION ----------------------------------
 
-(defn assert-valid-slack-req
+(defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
   (when-not (:slack/validated? request)
@@ -257,7 +257,7 @@
          (or has-text has-files)
          (not is-bot-message))))
 
-(def ack-msg
+(def ^:private ack-msg
   "Acknowledgement payload"
   {:status 200
    :headers {"Content-Type" "text/plain"}
