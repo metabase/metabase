@@ -10,9 +10,10 @@ import type { SdkIframeEmbedSettings } from "../types/embed";
  */
 export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
   useMemo(() => {
+    // TODO: wedon't need this change anymore, remove
     const globalDependencies = {
       token: settings.token,
-      enableInternalNavigation: settings.enableInternalNavigation,
+      enableEntityNavigation: settings.enableEntityNavigation,
     };
     const { entity, dependencies } = match(settings)
       .with({ componentName: "metabase-dashboard" }, (settings) => ({

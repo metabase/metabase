@@ -45,11 +45,6 @@ export const setPlugins = createAction<MetabasePluginsConfig | null>(
   SET_PLUGINS,
 );
 
-const SET_GLOBAL_OPTIONS = "sdk/SET_GLOBAL_OPTIONS";
-export const setGlobalOptions = createAction<{
-  enableInternalNavigation: boolean;
-}>(SET_GLOBAL_OPTIONS);
-
 const SET_EVENT_HANDLERS = "sdk/SET_EVENT_HANDLERS";
 export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
   SET_EVENT_HANDLERS,
