@@ -3,7 +3,14 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]))
+   [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [selmer.parser :as selmer]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private llm-template-name "llm_representations.selmer")
 
 (defn- escape-xml
   "Escape XML special characters in a string."
@@ -25,19 +32,47 @@
   [database-engine]
   (or database-engine "unknown"))
 
-(defn field->xml
-  "Format a field/column as XML element.
-   Matches Python Column.llm_representation exactly."
-  [{:keys [field_id name display_name base-type database_type description]}]
-  (let [display-name-or-name (or display_name name)]
-    (str "<field id=\"" (escape-xml field_id)
-         "\" name=\"\\\"" (escape-xml name) "\\\"\""
-         " display_name=\"" (escape-xml display-name-or-name) "\""
-         " type=\"" (escape-xml (when base-type (clojure.core/name base-type))) "\""
-         " database_type=\"" (escape-xml (database-type-or-unknown database_type)) "\">"
-         (when description
-           (str "\n## Description\n" (escape-xml description)))
-         "</field>")))
+(defn- type-flags
+  "Build template flags for a single representation type."
+  [type]
+  {:is_field (= type :field)
+   :is_collection (= type :collection)
+   :is_related_table (= type :related_table)
+   :is_metric (= type :metric)
+   :is_table (= type :table)
+   :is_model (= type :model)
+   :is_query_results (= type :query_results)
+   :is_query (= type :query)
+   :is_visualization (= type :visualization)
+   :is_chart (= type :chart)
+   :is_question (= type :question)
+   :is_text_card (= type :text_card)
+   :is_viz_card (= type :viz_card)
+   :is_dashboard (= type :dashboard)
+   :is_database_schema (= type :database_schema)
+   :is_database (= type :database)
+   :is_user (= type :user)
+   :is_search_result (= type :search_result)
+   :is_search_results (= type :search_results)
+   :is_field_values_metadata (= type :field_values_metadata)
+   :is_field_metadata (= type :field_metadata)
+   :is_get_metadata_result (= type :get_metadata_result)})
+
+(defn- render-llm-template
+  "Render a Selmer template with the supplied context."
+  [type context]
+  (let [template (prompts/get-cached-llm-representations-template)
+        payload (merge (type-flags type) context)]
+    (if template
+      (try
+        (-> (selmer/render template payload)
+            str/trim)
+        (catch Exception e
+          (log/error e "Error rendering LLM representations template" {:type type})
+          (pr-str payload)))
+      (do
+        (log/warn "LLM representations template missing" {:template llm-template-name})
+        (pr-str payload)))))
 
 (defn format-fields-table
   "Format fields as markdown table for LLM.
@@ -68,53 +103,55 @@
                                  " |"))
                           fields))))))
 
+(defn field->xml
+  "Format a field/column as XML element.
+   Matches Python Column.llm_representation exactly."
+  [{:keys [field_id name display_name base-type database_type description]}]
+  (render-llm-template
+   :field
+   {:field_id (escape-xml field_id)
+    :field_name_quoted (str "\\\"" (escape-xml name) "\\\"")
+    :field_display_name (escape-xml (or display_name name))
+    :field_base_type (escape-xml (when base-type (clojure.core/name base-type)))
+    :field_database_type (escape-xml (database-type-or-unknown database_type))
+    :field_description (escape-xml description)}))
+
 (defn collection->xml
   "Format collection for LLM consumption.
    Matches Python Collection.llm_representation exactly."
   [{:keys [name description authority_level]}]
-  (str "<collection"
-       (if name
-         (str " name=\"" (escape-xml name) "\"")
-         " name=\"Our analytics\"")
-       (when authority_level
-         (str " authority_level=\"" (escape-xml authority_level) "\""))
-       ">"
-       (when description
-         (str "\n<description>" (escape-xml description) "</description>"))
-       "</collection>"))
+  (render-llm-template
+   :collection
+   {:collection_name (escape-xml (or name "Our analytics"))
+    :collection_description (escape-xml description)
+    :collection_authority_level (escape-xml authority_level)}))
 
 (defn- related-table->xml
   "Format a related table for LLM consumption."
   [{:keys [id name related_by fully_qualified_name fields]}]
-  (str "<related-table"
-       (when id (str " id=\"" id "\""))
-       " name=\"" (escape-xml name) "\""
-       (when related_by (str " related_by=\"" (escape-xml related_by) "\""))
-       " fully_qualified_name=\"" (escape-xml fully_qualified_name) "\">"
-       (when (seq fields)
-         (str/join "" (map field->xml fields)))
-       "</related-table>"))
+  (render-llm-template
+   :related_table
+   {:related_table_id (when (some? id) (str id))
+    :related_table_name (escape-xml name)
+    :related_table_related_by (escape-xml related_by)
+    :related_table_fqn (escape-xml fully_qualified_name)
+    :related_table_fields_xml (when (seq fields) (str/join "" (map field->xml fields)))}))
 
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly."
   [{:keys [id name description verified queryable-dimensions collection
            default_time_dimension_field]}]
-  (str "<metric id=\"" id "\", name=\"" (escape-xml name)
-       "\" is_verified=\"" (boolean verified) "\">\n"
-       (when collection
-         (str "\nThe metric is stored in the following collection:\n"
-              (collection->xml collection) "\n"))
-       (when default_time_dimension_field
-         (str "Default Time Dimension Field: " (:name default_time_dimension_field) "\n"))
-       "\n### Metric Description\n" (escape-xml description) "\n"
-       (when (seq queryable-dimensions)
-         (str "### Dimensions\n"
-              "The following dimensions can be used for filter- or group-by operations:\n\n"
-              (format-fields-table queryable-dimensions)
-              "\n\nBefore using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://metric/" id "/dimensions/{field_id}`.\n"
-              "This will help avoid errors due to unexpected data types or formats.\n"))
-       "</metric>"))
+  (render-llm-template
+   :metric
+   {:metric_id (str id)
+    :metric_name (escape-xml name)
+    :metric_verified (boolean verified)
+    :metric_description (escape-xml description)
+    :metric_collection_xml (when collection (collection->xml collection))
+    :metric_default_time_dimension (escape-xml (:name default_time_dimension_field))
+    :metric_dimensions_table (when (seq queryable-dimensions)
+                               (format-fields-table queryable-dimensions))}))
 
 (defn- fully-qualified-name
   "Get fully qualified name for a table."
@@ -129,24 +166,17 @@
   [{:keys [id name database_id database_engine database_schema
            description fields related_tables]}]
   (let [fqn (fully-qualified-name database_schema name)]
-    (str "<table id=\"" id "\", name=\"" (escape-xml name)
-         "\" database_id=\"" database_id
-         "\" database_engine=\"" (database-engine-or-unknown database_engine)
-         "\" fully_qualified_name=\"" (escape-xml fqn) "\">\n"
-         "\n### Description\n" (escape-xml description) "\n"
-         (when (seq fields)
-           (str "\n### Fields\n\n"
-                "The following fields are available in this table.\n\n"
-                (str/join "" (map field->xml fields)) "\n"))
-         (when (seq related_tables)
-           (str "### Related Tables\n"
-                "Foreign key fields from related tables. Usage patterns:\n"
-                "- Can be used directly in notebook queries (non-sql) as if they were part of the table.\n"
-                "- For SQL queries: Use \"fieldname\" with explicit JOINs\n\n"
-                (str/join "" (map related-table->xml related_tables)) "\n"))
-         "\nBefore using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://table/" id "/fields/{field_id}`.\n"
-         "This will help avoid errors due to unexpected data types or formats.\n"
-         "</table>")))
+    (render-llm-template
+     :table
+     {:table_id (str id)
+      :table_name (escape-xml name)
+      :table_database_id (str database_id)
+      :table_database_engine (escape-xml (database-engine-or-unknown database_engine))
+      :table_fqn (escape-xml fqn)
+      :table_description (escape-xml description)
+      :table_fields_xml (when (seq fields) (str/join "" (map field->xml fields)))
+      :table_related_tables_xml (when (seq related_tables)
+                                  (str/join "" (map related-table->xml related_tables)))})))
 
 (defn- model-fully-qualified-name
   "Get fully qualified name for a model (uses slug format)."
@@ -166,120 +196,111 @@
   [{:keys [id name description verified fields database_id database_engine
            related_tables]}]
   (let [fqn (model-fully-qualified-name id name)]
-    (str "<metabase-model id=\"" id "\" name=\"" (escape-xml name)
-         "\" is_verified=\"" (boolean verified)
-         "\" database_id=\"" database_id
-         "\" database_engine=\"" (database-engine-or-unknown database_engine)
-         "\" fully_qualified_name=\"" (escape-xml fqn) "\">\n"
-         "\n### Description\n" (escape-xml description) "\n"
-         (when (seq fields)
-           (str "\n### Fields\n\n"
-                "The following fields are available in this model.\n\n"
-                (str/join "" (map field->xml fields)) "\n"))
-         (when (seq related_tables)
-           (str "\n### Related Tables\n"
-                "Foreign key fields from related tables. Usage patterns:\n"
-                "- Can be used directly in notebook queries (non-sql) as if they were part of the model.\n"
-                "- For SQL queries: Use \"fieldname\" with explicit JOINs\n\n"
-                (str/join "" (map related-table->xml related_tables)) "\n"))
-         "Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://model/" id "/fields/{field_id}`.\n"
-         "This will help avoid errors due to unexpected data types or formats.\n"
-         "</model>")))
+    (render-llm-template
+     :model
+     {:model_id (str id)
+      :model_name (escape-xml name)
+      :model_verified (boolean verified)
+      :model_database_id (str database_id)
+      :model_database_engine (escape-xml (database-engine-or-unknown database_engine))
+      :model_fqn (escape-xml fqn)
+      :model_description (escape-xml description)
+      :model_fields_xml (when (seq fields) (str/join "" (map field->xml fields)))
+      :model_related_tables_xml (when (seq related_tables)
+                                  (str/join "" (map related-table->xml related_tables)))})))
 
 (defn query-result->xml
   "Format query result for LLM consumption.
    Matches Python QueryResult.llm_representation exactly."
   [{:keys [result_columns rows]}]
-  (str "<query_results>\n"
-       (when (seq result_columns)
-         (str "### Result Columns\n"
-              (format-fields-table result_columns
-                                   {:columns {:name "Field Name"
-                                              :display_name "Display Name"
-                                              :type "Type"
-                                              :description "Description"}})
-              "\n"))
-       (when (seq rows)
-         (str "### Result Rows\n"
-              "| " (str/join " | " (map :name result_columns)) " |\n"
-              (str/join "\n"
-                        (map (fn [row]
-                               (str "| " (str/join " | " (map #(escape-xml (str %)) row)) " |"))
-                             rows))
-              "\n"))
-       "</query_results>"))
+  (let [result-columns-table (when (seq result_columns)
+                               (format-fields-table result_columns
+                                                    {:columns {:name "Field Name"
+                                                               :display_name "Display Name"
+                                                               :type "Type"
+                                                               :description "Description"}}))
+        result-rows-table (when (and (seq rows) (seq result_columns))
+                            (str "| " (str/join " | " (map :name result_columns)) " |\n"
+                                 (str/join "\n"
+                                           (map (fn [row]
+                                                  (str "| " (str/join " | " (map #(escape-xml (str %)) row)) " |"))
+                                                rows))
+                                 "\n"))]
+    (render-llm-template
+     :query_results
+     {:result_columns_table result-columns-table
+      :result_rows_table result-rows-table})))
 
 (defn query->xml
   "Format query for LLM consumption.
    Matches Python Query.llm_representation exactly."
   [{:keys [query-type query-id database_id query-content result]}]
-  (str "<query type=\"" (clojure.core/name (or query-type :unknown))
-       "\" id=\"" query-id "\""
-       " database_id=\"" database_id "\">\n"
-       (when query-content
-         (str query-content "\n"))
-       (when result
-         (query-result->xml result))
-       "</query>"))
+  (render-llm-template
+   :query
+   {:query_type (escape-xml (clojure.core/name (or query-type :unknown)))
+    :query_id (escape-xml query-id)
+    :query_database_id (str database_id)
+    :query_content query-content
+    :query_results_xml (when result (query-result->xml result))}))
 
 (defn visualization->xml
   "Format visualization/chart for LLM consumption.
    Matches Python Visualization.get_llm_representation exactly."
   [{:keys [chart-id queries visualization_settings]}]
-  (str "<chart id=\"" chart-id "\">\n"
-       "The chart is powered by the following queries:\n"
-       (when (seq queries)
-         (str/join "" (map query->xml queries)))
-       (when visualization_settings
-         (str "<visualization>" (pr-str visualization_settings) "</visualization>"))
-       "\n</chart>"))
+  (render-llm-template
+   :visualization
+   {:visualization_chart_id (escape-xml chart-id)
+    :visualization_queries_xml (when (seq queries)
+                                 (str/join "" (map query->xml queries)))
+    :visualization_settings_text (when visualization_settings
+                                   (pr-str visualization_settings))}))
 
 (defn chart->xml
   "Format chart for LLM consumption - simplified version.
    For full chart representation, use visualization->xml."
   [{:keys [chart-id query-id chart-type]}]
-  (str "<chart id=\"" chart-id "\""
-       " type=\"" (if chart-type (clojure.core/name chart-type) "table") "\""
-       " query-id=\"" query-id "\">\n"
-       "Chart link: metabase://chart/" chart-id "\n"
-       "</chart>"))
+  (render-llm-template
+   :chart
+   {:chart_id (escape-xml chart-id)
+    :chart_query_id (escape-xml query-id)
+    :chart_type (escape-xml (if chart-type (clojure.core/name chart-type) "table"))}))
 
 (defn question->xml
   "Format question for LLM consumption.
    Matches Python Question.llm_representation exactly."
   [{:keys [id name description verified collection visualization]}]
-  (str "<metabase_question id=\"" id "\" is_verified=\"" (boolean verified) "\">\n"
-       "<name>" (escape-xml name) "</name>\n"
-       (when description
-         (str "<description>" (escape-xml description) "</description>\n"))
-       (when collection
-         (str "The question is stored in the following collection:\n"
-              (collection->xml collection) "\n"))
-       (when visualization
-         (str "The question is visualized as follows:\n"
-              (visualization->xml visualization) "\n"))
-       "</metabase_question>"))
+  (render-llm-template
+   :question
+   {:question_id (str id)
+    :question_verified (boolean verified)
+    :question_name (escape-xml name)
+    :question_description (escape-xml description)
+    :question_collection_xml (when collection (collection->xml collection))
+    :question_visualization_xml (when visualization (visualization->xml visualization))}))
 
 (defn- text-card->xml
   "Format a text card for LLM consumption."
   [{:keys [id order width height text]}]
-  (str "<text_card id=\"" id "\" order=\"" order
-       "\" width=\"" width "\" height=\"" height "\">\n"
-       (escape-xml text) "\n"
-       "</text_card>"))
+  (render-llm-template
+   :text_card
+   {:text_card_id (str id)
+    :text_card_order (str order)
+    :text_card_width (str width)
+    :text_card_height (str height)
+    :text_card_text (escape-xml text)}))
 
 (defn- viz-card->xml
   "Format a viz card for LLM consumption."
   [{:keys [id order width height title description chart]}]
-  (str "<viz_card id=\"" id "\" order=\"" order
-       "\" width=\"" width "\" height=\"" height "\">\n"
-       (when title
-         (str "<title>" (escape-xml title) "</title>\n"))
-       (when description
-         (str "<description>" (escape-xml description) "</description>\n"))
-       (when chart
-         (visualization->xml chart))
-       "</viz_card>"))
+  (render-llm-template
+   :viz_card
+   {:viz_card_id (str id)
+    :viz_card_order (str order)
+    :viz_card_width (str width)
+    :viz_card_height (str height)
+    :viz_card_title (escape-xml title)
+    :viz_card_description (escape-xml description)
+    :viz_card_chart_xml (when chart (visualization->xml chart))}))
 
 (defn- dashcard->xml
   "Format a dashboard card for LLM consumption."
@@ -298,70 +319,65 @@
   [{:keys [id name description verified collection dashcards]}]
   ;; Group cards by tab and sort
   (let [tabs (group-by :dashboard_tab_id dashcards)
-        sorted-tabs (sort-by first tabs)]
-    (str "<dashboard id=\"" id "\" is_verified=\"" (boolean verified) "\">\n"
-         "  <name>" (escape-xml name) "</name>\n"
-         (when description
-           (str "  <description>" (escape-xml description) "</description>\n"))
-         (when collection
-           (str "  The dashboard is stored in the following collection:\n"
-                "  " (collection->xml collection) "\n"))
-         (when (seq dashcards)
-           (str "  <tabs>\n"
-                (str/join ""
-                          (map (fn [[tab-id cards]]
-                                 (let [sorted-cards (sort-by (juxt :row :col) cards)]
-                                   (str "    <tab id=\"" tab-id "\">\n"
-                                        "      <content>\n"
-                                        (str/join ""
-                                                  (map #(str "        " (dashcard->xml %) "\n")
-                                                       sorted-cards))
-                                        "      </content>\n"
-                                        "    </tab>\n")))
-                               sorted-tabs))
-                "  </tabs>\n"))
-         "</dashboard>")))
+        sorted-tabs (sort-by first tabs)
+        tabs-xml (when (seq dashcards)
+                   (str "  <tabs>\n"
+                        (str/join ""
+                                  (map (fn [[tab-id cards]]
+                                         (let [sorted-cards (sort-by (juxt :row :col) cards)]
+                                           (str "    <tab id=\"" tab-id "\">\n"
+                                                "      <content>\n"
+                                                (str/join ""
+                                                          (map #(str "        " (dashcard->xml %) "\n")
+                                                               sorted-cards))
+                                                "      </content>\n"
+                                                "    </tab>\n")))
+                                       sorted-tabs))
+                        "  </tabs>\n"))]
+    (render-llm-template
+     :dashboard
+     {:dashboard_id (str id)
+      :dashboard_verified (boolean verified)
+      :dashboard_name (escape-xml name)
+      :dashboard_description (escape-xml description)
+      :dashboard_collection_xml (when collection (collection->xml collection))
+      :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
   "Format database schema for LLM consumption."
   [{:keys [name description]}]
-  (str "<database_schema name='" (escape-xml name) "'>"
-       (or description "") "</database_schema>"))
+  (render-llm-template
+   :database_schema
+   {:database_schema_name (escape-xml name)
+    :database_schema_description (escape-xml description)}))
 
 (defn database->xml
   "Format database for LLM consumption.
    Matches Python Database.llm_representation exactly."
   [{:keys [id name description schemas]}]
-  (str "<database id=\"" id "\" name=\"" (escape-xml name) "\">\n"
-       (when description
-         (str "<description>" (escape-xml description) "</description>\n"))
-       (when (seq schemas)
-         (str "<schemas>\n"
-              (str/join "" (map database-schema->xml schemas))
-              "</schemas>\n"))
-       "</database>"))
+  (render-llm-template
+   :database
+   {:database_id (str id)
+    :database_name (escape-xml name)
+    :database_description (escape-xml description)
+    :database_schemas_xml (when (seq schemas)
+                            (str/join "" (map database-schema->xml schemas)))}))
 
 (defn user->xml
   "Format user for LLM consumption.
    Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly."
   [{:keys [id name email glossary]}]
-  (str "<user>\n\n"
-       "### User Info\n"
-       "- Name: " (escape-xml name) "\n"
-       "- User ID: " id "\n"
-       "- Email: " (escape-xml email) "\n"
-       (when (seq glossary)
-         (str "\n### Glossary Terms\n"
-              "The user's company has the following glossary terms defined in Metabase. Use these to understand specific terminology\n"
-              "or jargon that may be relevant to the user's questions.\n"
-              "| term | definition |\n"
-              "|---|---|\n"
-              (str/join "\n"
-                        (map (fn [[term definition]]
-                               (str "| " (escape-xml term) " | " (escape-xml definition) " |"))
-                             glossary))
-              "\n"))
-       "\n</user>"))
+  (let [glossary-rows (when (seq glossary)
+                        (str/join "\n"
+                                  (map (fn [[term definition]]
+                                         (str "| " (escape-xml term) " | " (escape-xml definition) " |"))
+                                       glossary)))]
+    (render-llm-template
+     :user
+     {:user_name (escape-xml name)
+      :user_id (str id)
+      :user_email (escape-xml email)
+      :user_glossary_rows glossary-rows})))
 
 (defn- search-result-tag-name
   "Get the XML tag name for a search result type.
@@ -384,90 +400,81 @@
 (defn search-result->xml
   "Format a single search result as XML element."
   [{:keys [id type name description verified collection]}]
-  (let [tag-name (search-result-tag-name type)]
-    (str "<" tag-name " id=\"" id "\" name=\"" (escape-xml name) "\""
-         (when (some? verified) (str " is_verified=\"" verified "\""))
-         ">\n"
-         (when description
-           (str (escape-xml description) "\n"))
-         (when (and collection (:name collection))
-           (str "Collection: " (escape-xml (:name collection)) "\n"))
-         "</" tag-name ">")))
+  (render-llm-template
+   :search_result
+   {:search_tag_name (search-result-tag-name type)
+    :search_id (str id)
+    :search_name (escape-xml name)
+    :search_has_verified (some? verified)
+    :search_verified verified
+    :search_description (escape-xml description)
+    :search_collection_name (escape-xml (:name collection))}))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
   [results]
-  (str "Here are the search results:\n"
-       "<search-results>\n"
-       (str/join "\n" (map search-result->xml results))
-       "\n</search-results>"))
+  (render-llm-template
+   :search_results
+   {:search_results_xml (str/join "\n" (map search-result->xml results))}))
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
    Matches Python FieldValuesMetadata.llm_representation exactly."
   [{:keys [field_values statistics]}]
-  (str (if (seq field_values)
-         (str "**Sample Values (for understanding format pattern)**\n"
-              "The following sample values show the data format in this field. The actual dataset may contain\n"
-              "other values following the same pattern:\n\n"
-              "| Value |\n"
-              "|---|\n"
-              (str/join "\n" (map #(str "| " (escape-xml (str %)) " |") field_values))
-              "\n")
-         (str "**Sample Values**\n"
-              "This field hasn't been sampled yet. Continue without samples.\n"))
-       (when statistics
-         (let [stats-map (into {} (filter (fn [[_ v]] (some? v)) statistics))]
-           (when (seq stats-map)
-             (str "\n**Field Statistics (SAMPLE-BASED)**\n\n"
-                  "The following statistics are based on a df.sample(n) of the data.\n"
-                  "They provide a rough idea of the data characteristics but may not reflect the complete dataset:\n\n"
-                  "| statistic | value |\n"
-                  "|---|---|\n"
-                  (str/join "\n"
-                            (map (fn [[k v]]
-                                   (str "| " (clojure.core/name k) " | " v " |"))
-                                 stats-map))
-                  "\n"))))))
+  (let [sample-values (seq field_values)
+        sample-values-table (when sample-values
+                              (str "| Value |\n"
+                                   "|---|\n"
+                                   (str/join "\n"
+                                             (map #(str "| " (escape-xml (str %)) " |") field_values))
+                                   "\n"))
+        stats-map (into {} (filter (fn [[_ v]] (some? v)) statistics))
+        stats-table (when (seq stats-map)
+                      (str "| statistic | value |\n"
+                           "|---|---|\n"
+                           (str/join "\n"
+                                     (map (fn [[k v]]
+                                            (str "| " (clojure.core/name k) " | " v " |"))
+                                          stats-map))
+                           "\n"))]
+    (render-llm-template
+     :field_values_metadata
+     {:sample_values_table sample-values-table
+      :stats_table stats-table})))
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
    Matches Python GetFieldMetadataResultSchema.llm_representation exactly."
   [{:keys [field_id value_metadata]}]
-  (if-not value_metadata
-    (str "No metadata available to display. This doesn't mean the column is empty or cannot be queried - "
-         "there may be various reasons why values aren't shown here.")
-    (str "<field-metadata field_id=\"" (escape-xml field_id) "\">\n"
-         "    " (field-values-metadata->xml value_metadata) "\n"
-         "</field-metadata>")))
+  (render-llm-template
+   :field_metadata
+   {:field_metadata_field_id (escape-xml field_id)
+    :field_metadata_value_xml (when value_metadata
+                                (field-values-metadata->xml value_metadata))}))
 
 (defn get-metadata-result->xml
   "Format get_metadata result for LLM consumption.
    Matches Python GetMetadataResultSchema.llm_representation exactly."
   [{:keys [metrics tables models errors]}]
-  (let [has-metadata (or (seq metrics) (seq tables) (seq models))]
-    (if-not has-metadata
-      (let [no-metadata-msg "No metadata was returned for the requested tables, models, or metrics."]
-        (if (seq errors)
-          (str no-metadata-msg "\n\n<errors>\nThe following errors were encountered while fetching metadata:\n"
-               (str/join "\n" errors) "\n</errors>")
-          no-metadata-msg))
-      (str (when (seq metrics)
-             (str "<metrics>\n"
-                  (str/join "\n" (map metric->xml metrics))
-                  "\n</metrics>\n"))
-           (when (seq tables)
-             (str "<tables>\n"
-                  (str/join "\n" (map table->xml tables))
-                  "\n</tables>\n"))
-           (when (seq models)
-             (str "<metabase-models>\n"
-                  (str/join "\n" (map model->xml models))
-                  "\n</metabase-models>\n"))
-           (when (seq errors)
-             (str "<errors>\nThe following errors were encountered while fetching metadata:\n"
-                  (str/join "\n" errors)
-                  "\n</errors>\n"))))))
+  (let [metadata-metrics (when (seq metrics)
+                           (str "<metrics>\n"
+                                (str/join "\n" (map metric->xml metrics))
+                                "\n</metrics>\n"))
+        metadata-tables (when (seq tables)
+                          (str "<tables>\n"
+                               (str/join "\n" (map table->xml tables))
+                               "\n</tables>\n"))
+        metadata-models (when (seq models)
+                          (str "<metabase-models>\n"
+                               (str/join "\n" (map model->xml models))
+                               "\n</metabase-models>\n"))]
+    (render-llm-template
+     :get_metadata_result
+     {:metadata_has_any (boolean (or metadata-metrics metadata-tables metadata-models))
+      :metadata_metrics_xml metadata-metrics
+      :metadata_tables_xml metadata-tables
+      :metadata_models_xml metadata-models
+      :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
 (defn entity->xml
   "Dispatch to appropriate XML formatter based on entity type."
