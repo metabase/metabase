@@ -76,7 +76,7 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
         setupEmbed(`
           <metabase-browser
             initial-collection="${collectionId}"
-            read-only="true
+            read-only="true"
           />
         `);
 
