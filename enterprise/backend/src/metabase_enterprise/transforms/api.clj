@@ -30,7 +30,7 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
-  ;; TODO (Chris 2026/01/22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
+  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql PreparedStatement)
    ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
@@ -359,7 +359,7 @@
       (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
       nil)))
 
-;; TODO (Chris 2026/01/22) -- Remove jsqlparser typehints to be SQL parser-agnostic
+;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
