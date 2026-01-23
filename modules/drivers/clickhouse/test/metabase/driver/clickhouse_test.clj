@@ -414,3 +414,24 @@
                        (lib/filter (lib/= val-col "abc"))
                        (qp/process-query)
                        (mt/rows))))))))))
+
+;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
+;;                           at the moment to avoid potential log flooding. We should revisit this during further
+;;                           parsing work.
+#_(deftest ^:parallel parse-final-identifier-test
+    (mt/test-driver
+      :clickhouse
+      (testing "`final` is not allowed as identifier on Clickhouse, parsing fails with an exception"
+        (mt/with-temp [:model/Database db {:engine "clickhouse"
+                                           :name "final"
+                                           :initial_sync_status "complete"}]
+          (mt/with-db
+            db
+            (let [mp (mt/metadata-provider)
+                  broken-query (lib/native-query mp "select final from final")]
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-query-deps :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-result-metadata :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/validate-native-query-fields :clickhouse broken-query)))))))))
