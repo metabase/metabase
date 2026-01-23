@@ -305,7 +305,7 @@
         _ (when-not profile
             (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools (agent-tools/get-tools-for-profile profile-id capabilities)
+        base-tools (profiles/get-tools-for-profile profile-id capabilities)
         out-chan (a/chan 100)
         seeded-state (seed-state-from-context (or state {}) context)
         ;; Initialize memory and load any existing state (queries, charts, transforms, todos)
