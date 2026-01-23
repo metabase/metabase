@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { Resizable } from "react-resizable";
 
@@ -75,11 +74,16 @@ export function ResizableArea(props: {
     </div>
   );
 
+  if (!resizable) {
+    return (
+      <Flex w="100%" flex="1" h="100%" className={className}>
+        {children}
+      </Flex>
+    );
+  }
+
   return (
     <Resizable
-      className={cx(S.resizableArea, {
-        [S.notResizable]: !resizable,
-      })}
       height={height}
       minConstraints={[Infinity, minHeight]}
       maxConstraints={[Infinity, maxHeight]}

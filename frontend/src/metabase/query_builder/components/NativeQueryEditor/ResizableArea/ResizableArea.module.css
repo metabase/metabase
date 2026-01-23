@@ -15,9 +15,3 @@
   background-color: var(--mb-color-border);
   border-radius: 4px;
 }
-
-.resizableArea.notResizable {
-  .dragHandle {
-    display: none;
-  }
-}
