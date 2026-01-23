@@ -29,6 +29,8 @@ interface TablePillsInputProps {
   databaseId: DatabaseId | null;
   selectedTables: SelectedTable[];
   onChange: (tables: SelectedTable[]) => void;
+  onEnterPress: () => void;
+  disabled: boolean;
   autoFocus?: boolean;
 }
 
@@ -36,6 +38,8 @@ export function TablePillsInput({
   databaseId,
   selectedTables,
   onChange,
+  onEnterPress,
+  disabled,
   autoFocus = false,
 }: TablePillsInputProps) {
   const [search, setSearch] = useState("");
@@ -87,6 +91,13 @@ export function TablePillsInput({
     }
   }, [tableOptions, combobox]);
 
+  useEffect(() => {
+    if (disabled) {
+      combobox.closeDropdown();
+      setFocusedTableId(undefined);
+    }
+  }, [disabled, combobox]);
+
   const handleValueSelect = (tableIdStr: string) => {
     const tableId = Number(tableIdStr) as TableId;
     const table = tables.find((t) => t.id === tableId);
@@ -106,8 +117,10 @@ export function TablePillsInput({
   };
 
   const handlePillClick = (tableId: TableId) => {
-    setFocusedTableId((prev) => (prev === tableId ? undefined : tableId));
-    combobox.closeDropdown();
+    if (!disabled) {
+      setFocusedTableId((prev) => (prev === tableId ? undefined : tableId));
+      combobox.closeDropdown();
+    }
   };
 
   const emptyMessage = match({
@@ -158,6 +171,7 @@ export function TablePillsInput({
                 <span style={{ display: "inline-flex", flex: 1, minWidth: 0 }}>
                   <Combobox.EventsTarget>
                     <PillsInput.Field
+                      disabled={disabled}
                       value={search}
                       placeholder={t`First, tell Metabot which tables to use`}
                       fz="0.75rem"
@@ -170,6 +184,11 @@ export function TablePillsInput({
                       onBlur={() => combobox.closeDropdown()}
                       onChange={handleFieldChange}
                       onKeyDown={(e) => {
+                        if (e.key === "Enter" && !combobox.dropdownOpened) {
+                          e.preventDefault();
+                          return onEnterPress();
+                        }
+
                         const isDelete = e.key === "Backspace";
                         const isInputEmpty =
                           search.length === 0 && selectedTables.length > 0;

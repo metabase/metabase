@@ -47,12 +47,12 @@ export const MetabotInlineSQLPrompt = ({
 }: MetabotInlineSQLPromptProps) => {
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
 
-  const inputRef = useRef<MetabotPromptInputRef>(null);
+  const promptInputRef = useRef<MetabotPromptInputRef>(null);
 
   const isSubmitDisabled = !value.trim() || isLoading;
 
   const handleSubmit = useCallback(async () => {
-    const prompt = inputRef.current?.getValue?.().trim() ?? "";
+    const prompt = promptInputRef.current?.getValue?.().trim() ?? "";
     const sourceSql = getSourceSql?.();
     const referencedEntities =
       selectedTables.map((table) => ({
@@ -91,16 +91,18 @@ export const MetabotInlineSQLPrompt = ({
       {isTableBarEnabled && (
         <Box className={S.tableBar}>
           <TablePillsInput
+            disabled={isLoading}
             databaseId={databaseId}
             selectedTables={selectedTables}
             onChange={onSelectedTablesChange}
+            onEnterPress={() => promptInputRef.current?.focus()}
             autoFocus={isTableBarEnabled}
           />
         </Box>
       )}
       <Box className={S.inputContainer}>
         <MetabotPromptInput
-          ref={inputRef}
+          ref={promptInputRef}
           value={value}
           placeholder={
             isTableBarEnabled
