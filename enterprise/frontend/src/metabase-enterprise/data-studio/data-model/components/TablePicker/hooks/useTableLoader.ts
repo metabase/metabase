@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import {
   useLazyListDatabaseSchemaTablesQuery,
-  useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
+  useLazyListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
@@ -33,7 +33,7 @@ import { merge, node, rootNode, toKey } from "../utils";
  */
 export function useTableLoader() {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
-  const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
+  const [fetchSchemas, schemas] = useLazyListSyncableDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
@@ -108,10 +108,7 @@ export function useTableLoader() {
         return [];
       }
 
-      const newArgs = {
-        id: databaseId,
-        include_hidden: true,
-      };
+      const newArgs = databaseId;
 
       if (
         schemasRef.current.isError &&
