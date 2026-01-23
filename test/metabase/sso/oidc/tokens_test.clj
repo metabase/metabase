@@ -54,15 +54,15 @@ FSQLmSztbSlqSjEJzWZgwLwL7mQsZeoO45DoOopQoWrudLLKKHHhuIewJ8HaqG4U
 
 (def ^:private test-rsa-private-key
   "Test RSA private key for signing JWTs"
-  (buddy.keys/str->private-key test-rsa-private-key-pem))
+  (delay (buddy.keys/str->private-key test-rsa-private-key-pem)))
 
 (def ^:private test-rsa-public-key
   "Test RSA public key for verifying JWTs"
-  (buddy.keys/str->public-key test-rsa-public-key-pem))
+  (delay (buddy.keys/str->public-key test-rsa-public-key-pem)))
 
 (def ^:private test-jwks
   "Test JWKS"
-  {:keys [(merge {:kid "test-key-id" :use "sig"} (buddy.keys/public-key->jwk test-rsa-public-key))]})
+  (delay {:keys [(merge {:kid "test-key-id" :use "sig"} (buddy.keys/public-key->jwk @test-rsa-public-key))]}))
 
 (def ^:private test-ec-private-key-pem
   "Test EC private key PEM string for signing JWTs (P-256/secp256r1 curve for ES256)"
@@ -81,21 +81,21 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
 
 (def ^:private test-ec-private-key
   "Test EC private key for signing JWTs"
-  (buddy.keys/str->private-key test-ec-private-key-pem))
+  (delay (buddy.keys/str->private-key test-ec-private-key-pem)))
 
 (def ^:private test-ec-public-key
   "Test EC public key for verifying JWTs"
-  (buddy.keys/str->public-key test-ec-public-key-pem))
+  (delay (buddy.keys/str->public-key test-ec-public-key-pem)))
 
 (def ^:private test-ec-jwks
   "Test JWKS with EC key"
-  {:keys [(merge {:kid "test-ec-key-id" :use "sig" :alg "ES256"}
-                 (buddy.keys/public-key->jwk test-ec-public-key))]})
+  (delay {:keys [(merge {:kid "test-ec-key-id" :use "sig" :alg "ES256"}
+                        (buddy.keys/public-key->jwk @test-ec-public-key))]}))
 
 (defn- create-test-id-token
   "Create a test ID token with the given claims"
   [claims]
-  (jwt/sign claims test-rsa-private-key {:alg :rs256 :header {:kid "test-key-id"}}))
+  (jwt/sign claims @test-rsa-private-key {:alg :rs256 :header {:kid "test-key-id"}}))
 
 (deftest validate-id-token-valid-test
   (oidc.tokens/clear-jwks-cache!)
@@ -116,7 +116,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result)))
           (is (some? (:claims result)))
@@ -133,7 +133,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -156,7 +156,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -179,7 +179,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -202,7 +202,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -225,7 +225,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -248,7 +248,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result))))))))
 
@@ -274,7 +274,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -288,7 +288,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
       (with-redefs [http/get (fn [_url _opts]
                                (swap! fetch-count inc)
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         ;; First call should fetch
         (let [result1 (oidc.tokens/get-jwks "https://provider.com/jwks")]
           (is (some? result1))
@@ -305,7 +305,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
       (with-redefs [http/get (fn [_url _opts]
                                (swap! fetch-count inc)
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         ;; First call should fetch
         (oidc.tokens/get-jwks "https://github.com/jwks")
         (is (= 1 @fetch-count))
@@ -327,7 +327,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
       (with-redefs [http/get (fn [_url _opts]
                                (swap! fetch-count inc)
                                {:status 200
-                                :body test-jwks})]
+                                :body @test-jwks})]
         ;; Populate cache
         (oidc.tokens/get-jwks "https://provider.com/jwks")
         (is (= 1 @fetch-count))
@@ -377,7 +377,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
 (defn- create-test-ec-token
   "Create a test ID token signed with ES256 algorithm"
   [claims]
-  (jwt/sign claims test-ec-private-key {:alg :es256 :header {:kid "test-ec-key-id"}}))
+  (jwt/sign claims @test-ec-private-key {:alg :es256 :header {:kid "test-ec-key-id"}}))
 
 (deftest validate-id-token-es256-algorithm-test
   (oidc.tokens/clear-jwks-cache!)
@@ -398,7 +398,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
                   :client-id "test-client-id"}]
       (with-redefs [http/get (fn [_url _opts]
                                {:status 200
-                                :body test-ec-jwks})]
+                                :body @test-ec-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result)))
           (is (some? (:claims result)))
@@ -421,7 +421,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           token (create-test-id-token claims)
           ;; JWK with unsupported algorithm
           unsupported-jwks {:keys [(merge {:kid "test-key-id" :use "sig" :alg "HS256"}
-                                          (buddy.keys/public-key->jwk test-rsa-public-key))]}
+                                          (buddy.keys/public-key->jwk @test-rsa-public-key))]}
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
@@ -448,7 +448,7 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           token (create-test-id-token claims)
           ;; JWK without alg field (should default to RS256)
           jwks-without-alg {:keys [(merge {:kid "test-key-id" :use "sig"}
-                                          (buddy.keys/public-key->jwk test-rsa-public-key))]}
+                                          (buddy.keys/public-key->jwk @test-rsa-public-key))]}
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
