@@ -24,7 +24,7 @@ describe("scenarios > data studio > library", () => {
 
     cy.log("Create library via inline empty state");
     H.DataStudio.Library.libraryPage().within(() => {
-      cy.findByText("Create your Library").should("be.visible");
+      cy.findByText("A source of truth for analytics").should("be.visible");
       cy.findByText("Create my Library").click();
     });
 
