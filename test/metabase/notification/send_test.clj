@@ -79,6 +79,30 @@
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))
 
+(deftest notification-disable-links-test
+  (testing "Card notification with links disabled based on disable_links flag"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card              {:name "Orders question"
+                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :subscriptions     [{:type          :notification-subscription/cron
+                                            :cron_schedule "0 0 0 * * ? *"}]
+                       :handlers          [{:channel_type :channel/email
+                                            :recipients   [{:type    :notification-recipient/user
+                                                            :user_id (mt/user->id :crowberto)}]}]}]
+        (let [has-link? (fn [notification]
+                          (->> (notification.tu/with-captured-channel-send!
+                                 (#'notification.send/send-notification-sync! notification))
+                               :channel/email first :message first :content
+                               (re-find #"href=")
+                               (= "href=")))]
+          (testing "test that disable_links: false will keep links in the alert email"
+            (is (true? (has-link? (assoc-in notification [:payload :disable_links] false)))))
+          (testing "test that disable_links: nil will keep links in the alert email"
+            (is (true? (has-link? (assoc-in notification [:payload :disable_links] nil)))))
+          (testing "test that disable_links: true will disable all links in the alert email"
+            (is (false? (has-link? (assoc-in notification [:payload :disable_links] true))))))))))
+
 (defn- latest-task-history-entry
   [task-name]
   (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
