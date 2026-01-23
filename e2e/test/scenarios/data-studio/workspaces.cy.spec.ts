@@ -1582,7 +1582,7 @@ describe("scenarios > data studio > workspaces", () => {
       );
 
       cy.log("Edit transform to remove model reference");
-      Transforms.editDefinition().click();
+      Transforms.editDefinition();
       H.NativeEditor.type(
         '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
       );
