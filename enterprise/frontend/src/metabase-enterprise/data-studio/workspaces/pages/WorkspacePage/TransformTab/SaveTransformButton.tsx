@@ -13,10 +13,7 @@ import {
 import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
-import {
-  isSameSource,
-  isSourceEmpty,
-} from "metabase-enterprise/transforms/utils";
+import { isSourceEmpty } from "metabase-enterprise/transforms/utils";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
@@ -52,6 +49,7 @@ type SaveTransformButtonProps = {
   workspaceTransforms: WorkspaceTransformListItem[];
   isDisabled: boolean;
   onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
+  hasChanges: boolean;
 };
 
 export const SaveTransformButton = ({
@@ -62,6 +60,7 @@ export const SaveTransformButton = ({
   workspaceTransforms,
   isDisabled,
   onSaveTransform,
+  hasChanges,
 }: SaveTransformButtonProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -83,17 +82,6 @@ export const SaveTransformButton = ({
     isWorkspaceTransform(transform) &&
     workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isNewTransform = isUnsavedTransform(transform);
-
-  // Check for changes
-  const hasSourceChanged = !isSameSource(
-    editedTransform.source,
-    transform.source,
-  );
-  const hasTargetNameChanged =
-    "target" in editedTransform &&
-    "target" in transform &&
-    transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
@@ -130,6 +118,7 @@ export const SaveTransformButton = ({
           database: databaseId,
         },
       }).unwrap();
+      // debugger;
 
       updateTransformState(updated);
     } catch (error) {

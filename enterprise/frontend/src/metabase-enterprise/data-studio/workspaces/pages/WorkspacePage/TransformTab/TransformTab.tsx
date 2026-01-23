@@ -116,7 +116,11 @@ export function TransformTab({
   const wsTransform = isWorkspaceTransform(transform) ? transform : null;
   const currentSource = providerEdited?.source ?? localSource;
   const hasSourceChanged = !isSameSource(currentSource, transform.source);
-  const hasChanges = hasSourceChanged;
+  const hasTargetNameChanged =
+    "target" in editedTransform &&
+    "target" in transform &&
+    transform.target.name !== editedTransform.target.name;
+  const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -212,6 +216,7 @@ export function TransformTab({
 
   const handleSourceChange = useCallback(
     (source: DraftTransformSource) => {
+      setLocalSource(source);
       patchEditedTransform(transformId, { source });
     },
     [transformId, patchEditedTransform],
@@ -319,6 +324,7 @@ export function TransformTab({
               workspaceTransforms={workspaceTransforms}
               isDisabled={isDisabled}
               onSaveTransform={onSaveTransform}
+              hasChanges={hasChanges}
             />
           </Group>
         </Group>
