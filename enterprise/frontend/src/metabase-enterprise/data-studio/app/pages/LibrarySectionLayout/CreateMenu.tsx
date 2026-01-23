@@ -44,7 +44,7 @@ export const CreateMenu = ({
       leftSection={<FixedSizeIcon name="publish" />}
       onClick={() => setModal("publish-table")}
     >
-      {t`Publish a table`}
+      {t`Published table`}
     </Menu.Item>,
     canCreateMetric && (
       <Menu.Item
@@ -66,7 +66,7 @@ export const CreateMenu = ({
         leftSection={<FixedSizeIcon name="snippet" />}
         aria-label={t`Create new snippet`}
       >
-        {t`New snippet`}
+        {t`Snippet`}
       </Menu.Item>
     ),
     hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled && (
@@ -75,7 +75,7 @@ export const CreateMenu = ({
         leftSection={<FixedSizeIcon name="folder" />}
         onClick={() => setModal("snippet-folder")}
       >
-        {t`New snippet folder`}
+        {t`Snippet folder`}
       </Menu.Item>
     ),
   ].filter(Boolean);

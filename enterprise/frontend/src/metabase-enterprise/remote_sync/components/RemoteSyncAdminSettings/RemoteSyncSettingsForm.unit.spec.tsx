@@ -159,4 +159,98 @@ describe("RemoteSyncSettingsForm", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("transforms sync toggle", () => {
+    it("should not display transforms toggle when remote sync is disabled and read-only mode", () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-only",
+      });
+
+      expect(screen.queryByText("Transforms")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Sync transforms with git"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should display transforms section in admin variant when read-write mode is selected during initial setup", async () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-write",
+      });
+
+      // Wait for the form to be fully rendered with read-write mode
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.getByText("Transforms")).toBeInTheDocument();
+    });
+
+    it("should display transforms section in modal variant when read-write mode is selected during initial setup", async () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-write",
+        variant: "settings-modal",
+      });
+
+      // Wait for the form to be fully rendered with read-write mode
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.getByText("Transforms")).toBeInTheDocument();
+    });
+  });
+
+  describe("collections to sync section", () => {
+    it("should display collections section in admin variant when read-write mode is selected during initial setup", async () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-write",
+      });
+
+      // Wait for the form to be fully rendered with read-write mode
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.getByText("Collections to sync")).toBeInTheDocument();
+    });
+
+    it("should not display collections section in modal variant when read-write mode is selected", async () => {
+      setup({
+        remoteSyncEnabled: false,
+        remoteSyncType: "read-write",
+        variant: "settings-modal",
+      });
+
+      // Wait for the form to be fully rendered with read-write mode
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Transforms should be visible but collections should not
+      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
+    it("should not display collections section in modal variant even when remote sync is enabled", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        variant: "settings-modal",
+      });
+
+      // Wait for the form to be fully rendered with read-write mode
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Transforms should be visible but collections should not
+      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+  });
 });

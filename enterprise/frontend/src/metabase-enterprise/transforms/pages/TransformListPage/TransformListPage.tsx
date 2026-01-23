@@ -16,7 +16,6 @@ import type { ColorName } from "metabase/lib/colors/types";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Avatar,
   Card,
@@ -26,6 +25,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";

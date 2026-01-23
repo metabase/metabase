@@ -8,17 +8,10 @@ import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
-import { Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
-
-import {
-  LayoutBody,
-  LayoutEditButton,
-  LayoutIllustration,
-  LayoutRoot,
-} from "./HomeLayout.styled";
 
 interface HomeLayoutProps {
   children?: ReactNode;
@@ -42,33 +35,63 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
   }
 
   return (
-    <LayoutRoot data-testid="home-page">
+    <Box
+      data-testid="home-page"
+      pos="relative"
+      p={{
+        base: "1rem",
+        md: "3rem 4rem",
+        lg: "4rem 7rem 2rem",
+        xl: "10rem 15rem 4rem",
+      }}
+      mih="100%"
+      bg="background-secondary"
+    >
       {landingPageIllustration &&
         (landingPageIllustration.isDefault ? (
           <LighthouseIllustration />
         ) : (
-          <LayoutIllustration
+          <Box
             data-testid="landing-page-illustration"
-            backgroundImageSrc={landingPageIllustration.src}
+            pos="absolute"
+            inset={0}
+            bgsz="100% auto"
+            bgr="no-repeat"
+            bgp="bottom"
+            style={{
+              backgroundImage: `url(${landingPageIllustration.src})`,
+            }}
           />
         ))}
       <HomeGreeting />
       {isAdmin && (
         <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
-          <LayoutEditButton
-            icon="pencil"
-            borderless
+          <Button
+            pos="absolute"
+            top="0.75rem"
+            right="1rem"
+            variant="subtle"
+            leftSection={<Icon name="pencil" />}
             onClick={() => setShowModal(true)}
           >
             {t`Customize`}
-          </LayoutEditButton>
+          </Button>
         </Tooltip>
       )}
-      <LayoutBody>{children}</LayoutBody>
+      <Box
+        pos="relative"
+        mt={{
+          base: "2.5rem",
+          md: "4rem",
+          lg: "6rem",
+        }}
+      >
+        {children}
+      </Box>
       <CustomHomePageModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
       />
-    </LayoutRoot>
+    </Box>
   );
 };

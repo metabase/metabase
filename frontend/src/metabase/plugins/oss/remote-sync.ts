@@ -42,6 +42,7 @@ const getDefaultPluginRemoteSync = () => ({
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
+  useHasTransformDirtyChanges: () => false,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -66,6 +67,7 @@ export const PLUGIN_REMOTE_SYNC: {
     currentBranch: string | null | undefined;
   };
   useHasLibraryDirtyChanges: () => boolean;
+  useHasTransformDirtyChanges: () => boolean;
 } = getDefaultPluginRemoteSync();
 
 /**

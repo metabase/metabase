@@ -272,6 +272,12 @@ config:
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
+    slack-connect-attribute-team-id: https://slack.com/team_id
+    slack-connect-authentication-mode: sso
+    slack-connect-client-id: null
+    slack-connect-client-secret: null
+    slack-connect-enabled: false
+    slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500

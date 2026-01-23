@@ -138,6 +138,8 @@
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:remote-sync-auto-import {:optional true} [:maybe :boolean]]
+       [:remote-sync-transforms {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))

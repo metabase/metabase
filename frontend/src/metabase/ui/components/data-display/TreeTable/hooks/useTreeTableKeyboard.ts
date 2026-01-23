@@ -1,13 +1,15 @@
 import type { Row, Table } from "@tanstack/react-table";
 import type { Virtualizer } from "@tanstack/react-virtual";
-import type { KeyboardEvent } from "react";
-import { useCallback, useState } from "react";
+import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
 
 import type { TreeNodeData } from "../types";
 
 interface UseTreeTableKeyboardOptions<TData extends TreeNodeData> {
   table: Table<TData>;
   virtualizer: Virtualizer<HTMLDivElement, Element>;
+  topPinnedRows: Row<TData>[];
+  centerRows: Row<TData>[];
+  bottomPinnedRows: Row<TData>[];
   enableRowSelection?: boolean;
   onRowActivate?: (row: Row<TData>) => void;
 }
@@ -21,25 +23,42 @@ interface UseTreeTableKeyboardResult {
 export function useTreeTableKeyboard<TData extends TreeNodeData>({
   table,
   virtualizer,
+  topPinnedRows,
+  centerRows,
+  bottomPinnedRows,
   enableRowSelection,
   onRowActivate,
 }: UseTreeTableKeyboardOptions<TData>): UseTreeTableKeyboardResult {
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  /**
+   * we can't use table.getRowModel().rows because it respects the original
+   * data order, not the visual order when rows are pinned
+   */
+  const allRows = useMemo(
+    () => [...topPinnedRows, ...centerRows, ...bottomPinnedRows],
+    [topPinnedRows, centerRows, bottomPinnedRows],
+  );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
-      const rows = table.getRowModel().rows;
-      const currentIndex = rows.findIndex((r) => r.id === activeRowId);
-      const currentRow: Row<TData> | undefined = rows[currentIndex];
+      const currentIndex = allRows.findIndex((r) => r.id === activeRowId);
+      const currentRow: Row<TData> | undefined = allRows[currentIndex];
+
+      const scrollToRowIfNeeded = (rowId: string) => {
+        const centerIndex = centerRows.findIndex((r) => r.id === rowId);
+        if (centerIndex >= 0) {
+          virtualizer.scrollToIndex(centerIndex);
+        }
+      };
 
       switch (event.key) {
         case "ArrowDown": {
           event.preventDefault();
-          const nextIndex = Math.min(currentIndex + 1, rows.length - 1);
-          const nextRow = rows[nextIndex];
+          const nextIndex = Math.min(currentIndex + 1, allRows.length - 1);
+          const nextRow = allRows[nextIndex];
           if (nextRow) {
             setActiveRowId(nextRow.id);
-            virtualizer.scrollToIndex(nextIndex);
+            scrollToRowIfNeeded(nextRow.id);
           }
           break;
         }
@@ -47,10 +66,10 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
         case "ArrowUp": {
           event.preventDefault();
           const prevIndex = Math.max(currentIndex - 1, 0);
-          const prevRow = rows[prevIndex];
+          const prevRow = allRows[prevIndex];
           if (prevRow) {
             setActiveRowId(prevRow.id);
-            virtualizer.scrollToIndex(prevIndex);
+            scrollToRowIfNeeded(prevRow.id);
           }
           break;
         }
@@ -68,13 +87,10 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
           if (currentRow?.getIsExpanded()) {
             currentRow.toggleExpanded(false);
           } else if (currentRow?.parentId) {
-            const parentRow = rows.find((r) => r.id === currentRow.parentId);
+            const parentRow = allRows.find((r) => r.id === currentRow.parentId);
             if (parentRow) {
               setActiveRowId(parentRow.id);
-              const parentIndex = rows.indexOf(parentRow);
-              if (parentIndex >= 0) {
-                virtualizer.scrollToIndex(parentIndex);
-              }
+              scrollToRowIfNeeded(parentRow.id);
             }
           }
           break;
@@ -100,20 +116,20 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
 
         case "Home": {
           event.preventDefault();
-          const firstRow = rows[0];
+          const firstRow = allRows[0];
           if (firstRow) {
             setActiveRowId(firstRow.id);
-            virtualizer.scrollToIndex(0);
+            scrollToRowIfNeeded(firstRow.id);
           }
           break;
         }
 
         case "End": {
           event.preventDefault();
-          const lastRow = rows[rows.length - 1];
+          const lastRow = allRows[allRows.length - 1];
           if (lastRow) {
             setActiveRowId(lastRow.id);
-            virtualizer.scrollToIndex(rows.length - 1);
+            scrollToRowIfNeeded(lastRow.id);
           }
           break;
         }
@@ -127,7 +143,15 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
         }
       }
     },
-    [table, virtualizer, activeRowId, enableRowSelection, onRowActivate],
+    [
+      table,
+      virtualizer,
+      centerRows,
+      activeRowId,
+      enableRowSelection,
+      onRowActivate,
+      allRows,
+    ],
   );
 
   return { activeRowId, setActiveRowId, handleKeyDown };

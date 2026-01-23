@@ -14,6 +14,7 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -100,6 +101,10 @@ export const setup = async ({
 
   const state = createMockState({
     currentUser,
+    entities: createMockEntitiesState({
+      databases: [createMockDatabase()],
+      questions: cards,
+    }),
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),

@@ -79,7 +79,11 @@ export function setupCollectionsEndpoints({
     const excludeOtherUserCollections =
       url.searchParams.get("exclude-other-user-collections") === "true";
 
+    // Support both singular "namespace" and plural "namespaces" params
     const namespace = url.searchParams.get("namespace");
+    const namespaces = url.searchParams.getAll("namespaces");
+    const requestedNamespaces =
+      namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
 
     return collections.filter((collection) => {
       // Filter out other users' personal collections if requested
@@ -97,16 +101,19 @@ export function setupCollectionsEndpoints({
         return false;
       }
 
-      // Filter by namespace if specified
-      if (namespace && collection.namespace !== namespace) {
-        return false;
-      }
-
-      // By default, exclude tenant collections unless explicitly requested via namespace
-      const isTenantCollection =
-        collection.namespace === "shared-tenant-collection";
-      if (isTenantCollection && namespace !== "shared-tenant-collection") {
-        return false;
+      // Filter by namespace(s) if specified
+      if (requestedNamespaces) {
+        const collectionNamespace = collection.namespace ?? "";
+        if (!requestedNamespaces.includes(collectionNamespace)) {
+          return false;
+        }
+      } else {
+        // By default, exclude tenant collections unless explicitly requested via namespace
+        const isTenantCollection =
+          collection.namespace === "shared-tenant-collection";
+        if (isTenantCollection) {
+          return false;
+        }
       }
 
       return true;
@@ -393,5 +400,47 @@ export function setupDashboardQuestionCandidatesEndpoint(
 export function setupStaleItemsEndpoint(total: number) {
   fetchMock.get("express:/api/ee/stale/:id", {
     total,
+  });
+}
+
+export function setupCreateCollectionEndpoint(
+  collection: Collection = createMockCollection(),
+) {
+  fetchMock.post("path:/api/collection", collection, {
+    name: "create-collection",
+  });
+}
+
+export function setupUpdateCollectionEndpoint(collection: Collection) {
+  fetchMock.put(`path:/api/collection/${collection.id}`, collection, {
+    name: `update-collection-${collection.id}`,
+  });
+}
+
+export function setupDeleteCollectionEndpoint(collectionId: number) {
+  fetchMock.delete(
+    `path:/api/collection/${collectionId}`,
+    { success: true },
+    {
+      name: `delete-collection-${collectionId}`,
+    },
+  );
+}
+
+export function setupGetCollectionEndpoint(collection: Collection) {
+  fetchMock.get(`path:/api/collection/${collection.id}`, collection, {
+    name: `get-collection-${collection.id}`,
+  });
+}
+
+/**
+ * Setup a simple collection tree endpoint that returns collections without filtering.
+ * Use this when you need to test components that use useListCollectionsTreeQuery
+ * without the complexity of namespace filtering.
+ */
+export function setupCollectionTreeEndpoint(collections: Collection[]) {
+  fetchMock.removeRoute("collection-tree-simple");
+  fetchMock.get("path:/api/collection/tree", collections, {
+    name: "collection-tree-simple",
   });
 }

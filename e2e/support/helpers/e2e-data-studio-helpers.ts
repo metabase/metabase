@@ -137,19 +137,19 @@ export const DataStudio = {
       cy.visit("/data-studio/tasks/unreferenced"),
     list: () => cy.findByTestId("dependency-list"),
     searchInput: () => cy.findByTestId("dependency-list-search-input"),
-    filterButton: () => cy.findByTestId("dependency-list-filter-button"),
+    filterButton: () => cy.findByTestId("dependency-filter-button"),
     sidebar: () => cy.findByTestId("dependency-list-sidebar"),
 
     Sidebar: {
       get: () => cy.findByTestId("dependency-list-sidebar"),
       header: () => cy.findByTestId("dependency-list-sidebar-header"),
-      locationInfo: () => cy.findByRole("region", { name: "Location" }),
-      transformInfo: () => cy.findByRole("region", { name: "Transform" }),
-      missingColumnsInfo: () =>
+      locationSection: () => cy.findByRole("region", { name: "Location" }),
+      transformSection: () => cy.findByRole("region", { name: "Transform" }),
+      missingColumnsSection: () =>
         cy.findByRole("region", { name: "Missing columns" }),
-      creationInfo: () =>
+      creationSection: () =>
         cy.findByRole("region", { name: "Creator and last editor" }),
-      brokenDependentsInfo: () =>
+      brokenDependentsSection: () =>
         cy.findByRole("region", { name: "Broken dependents" }),
     },
   },

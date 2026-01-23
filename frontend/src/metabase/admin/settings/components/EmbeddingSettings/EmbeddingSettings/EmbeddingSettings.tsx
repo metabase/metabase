@@ -116,12 +116,7 @@ function EmbeddingSettingsEE() {
 }
 
 function EmbeddingSettingsOSS() {
-  return (
-    <SharedCombinedEmbeddingSettings
-      showCorsSettings
-      showContentTranslationSettings
-    />
-  );
+  return <SharedCombinedEmbeddingSettings showContentTranslationSettings />;
 }
 
 export const EmbeddingSettings = () => {

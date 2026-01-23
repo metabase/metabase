@@ -18,6 +18,7 @@ import {
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
+import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { remoteSyncReducer } from "./sync-task-slice";
@@ -41,6 +42,8 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useGitSyncVisible = useGitSyncVisible;
     PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem = GitSyncSetupMenuItem;
     PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
+    PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges =
+      useHasTransformDirtyChanges;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;
