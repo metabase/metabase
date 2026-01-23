@@ -11,6 +11,8 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { RemoteSyncEntity } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
@@ -21,6 +23,27 @@ export type CollectionsNavTreeProps = {
 export interface GitSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+export interface RemoteSyncDirtyState {
+  /** Array of all dirty entities */
+  dirty: RemoteSyncEntity[];
+  /** Map of collection IDs that have dirty child entities */
+  changedCollections: Record<number, boolean>;
+  /** Whether any dirty changes exist globally */
+  isDirty: boolean;
+  /** Whether any entities have "removed" status */
+  hasRemovedItems: boolean;
+  /** Whether data is loading */
+  isLoading: boolean;
+  /** Check if a specific collection has dirty items */
+  isCollectionDirty: (collectionId: number | string | undefined) => boolean;
+  /** Check if any collection in a set has dirty items */
+  hasAnyCollectionDirty: (collectionIds: Set<number> | number[]) => boolean;
+  /** Check if any dirty entity (including collections) is in the given set of IDs */
+  hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
+  /** Refetch the dirty state data */
+  refetch: () => unknown; // TODO [OSS]: fix this type
 }
 
 const getDefaultPluginRemoteSync = () => ({
@@ -43,6 +66,8 @@ const getDefaultPluginRemoteSync = () => ({
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
+  getIsRemoteSyncReadOnly: () => false,
+  useRemoteSyncDirtyState: {} as RemoteSyncDirtyState, // TODO [OSS]: implement this
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -68,6 +93,8 @@ export const PLUGIN_REMOTE_SYNC: {
   };
   useHasLibraryDirtyChanges: () => boolean;
   useHasTransformDirtyChanges: () => boolean;
+  getIsRemoteSyncReadOnly: (state: State) => boolean;
+  useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
 } = getDefaultPluginRemoteSync();
 
 /**

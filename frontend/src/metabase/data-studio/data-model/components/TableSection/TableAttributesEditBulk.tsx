@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useEditTablesMutation } from "metabase/api";
 import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
 } from "metabase/data-studio/analytics";
-import { CreateLibraryModal } from "metabase/data-studio/common/components/CreateLibraryModal";
-import { PublishTablesModal } from "metabase/data-studio/common/components/PublishTablesModal";
-import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
@@ -16,9 +14,8 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
-import { useEditTablesMutation } from "metabase-enterprise/api";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -42,7 +39,9 @@ export function TableAttributesEditBulk({
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const {
     selectedDatabases,
     selectedSchemas,
@@ -285,7 +284,7 @@ export function TableAttributesEditBulk({
         </Box>
       </Stack>
 
-      <CreateLibraryModal
+      <PLUGIN_LIBRARY.CreateLibraryModal
         title={t`First, let's create your Library`}
         explanatorySentence={t`This is where published tables will go.`}
         isOpened={modalType === "library"}
@@ -293,7 +292,7 @@ export function TableAttributesEditBulk({
         onClose={handleCloseModal}
       />
 
-      <PublishTablesModal
+      <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
@@ -302,7 +301,7 @@ export function TableAttributesEditBulk({
         onClose={handleCloseModal}
       />
 
-      <UnpublishTablesModal
+      <PLUGIN_LIBRARY.UnpublishTablesModal
         isOpened={modalType === "unpublish"}
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}

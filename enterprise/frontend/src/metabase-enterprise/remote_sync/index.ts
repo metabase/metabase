@@ -3,6 +3,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { useRemoteSyncDirtyState } from "metabase-enterprise/remote_sync/hooks/use-remote-sync-dirty-state";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
@@ -21,6 +22,7 @@ import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes
 import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
+import { getIsRemoteSyncReadOnly } from "./selectors";
 import { remoteSyncReducer } from "./sync-task-slice";
 
 /**
@@ -44,6 +46,8 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges =
       useHasTransformDirtyChanges;
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
+    PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

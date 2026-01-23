@@ -10,8 +10,6 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
-  type BulkTableInfo,
-  type BulkTableSelectionInfo,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -298,24 +296,5 @@ export function provideSupportAccessGrantListTags(
   return [
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
-  ];
-}
-
-export function provideBulkTableInfoTags(
-  table: BulkTableInfo,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("table", table.id)];
-}
-
-export function provideBulkTableSelectionInfoTags({
-  selected_table,
-  published_downstream_tables,
-  unpublished_upstream_tables,
-}: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("table"),
-    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
-    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
-    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
   ];
 }

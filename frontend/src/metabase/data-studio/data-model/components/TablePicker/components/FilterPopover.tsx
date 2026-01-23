@@ -2,15 +2,15 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
+  trackDataStudioTablePickerFiltersApplied,
+  trackDataStudioTablePickerFiltersCleared,
+} from "metabase/data-studio/analytics";
+import {
   DataSourceInput,
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
 import { Button, Checkbox, Group, Stack } from "metabase/ui";
-import {
-  trackDataStudioTablePickerFiltersApplied,
-  trackDataStudioTablePickerFiltersCleared,
-} from "metabase-enterprise/data-studio/analytics";
 
 import type { FilterState } from "../types";
 

@@ -74,7 +74,12 @@ export {
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
-export { PLUGIN_LIBRARY } from "./oss/library";
+export {
+  PLUGIN_LIBRARY,
+  type CreateLibraryModalProps,
+  type PublishTablesModalProps,
+  type UnpublishTablesModalProps,
+} from "./oss/library";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,

@@ -24,6 +24,7 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -34,7 +35,6 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 
 import { trackMetadataChange } from "../../analytics";
 import {
@@ -116,7 +116,7 @@ function DataModelContent({ params }: Props) {
     data: libraryCollection,
     isLoading: isLoadingLibrary,
     error: libraryError,
-  } = useGetLibraryCollectionQuery();
+  } = PLUGIN_LIBRARY.useGetLibraryCollectionQuery();
 
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;

@@ -1,6 +1,43 @@
-import type { ReactNode } from "react";
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
+import type { ComponentType, ReactNode } from "react";
 
-import type { CollectionItem, CollectionType } from "metabase-types/api";
+import type { TagType } from "metabase/api/tags";
+import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type {
+  Collection,
+  CollectionItem,
+  CollectionType,
+  DatabaseId,
+  GetLibraryCollectionResponse,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
+
+export type CreateLibraryModalProps = {
+  title?: string;
+  explanatorySentence?: string;
+  isOpened: boolean;
+  onCreate?: (collection: Collection) => void;
+  onClose: () => void;
+};
+
+export type PublishTablesModalProps = {
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
+  isOpened: boolean;
+  onPublish: () => void;
+  onClose: () => void;
+};
+export type UnpublishTablesModalProps = {
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
+  isOpened: boolean;
+  onUnpublish: () => void;
+  onClose: () => void;
+};
 
 type LibraryPlugin = {
   isEnabled: boolean;
@@ -17,6 +54,12 @@ type LibraryPlugin = {
     isLoading: boolean;
     data: CollectionItem | undefined;
   };
+  CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
+  PublishTablesModal: ComponentType<PublishTablesModalProps>;
+  UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
+  useGetLibraryCollectionQuery: UseQuery<
+    QueryDefinition<void, BaseQueryFn, TagType, GetLibraryCollectionResponse>
+  >;
 };
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
@@ -28,6 +71,14 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
     isLoading: false,
     data: undefined,
   }),
+  CreateLibraryModal:
+    PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
+  PublishTablesModal:
+    PluginPlaceholder as ComponentType<PublishTablesModalProps>,
+  UnpublishTablesModal:
+    PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
+  useGetLibraryCollectionQuery: (() =>
+    undefined) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();

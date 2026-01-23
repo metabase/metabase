@@ -5,6 +5,8 @@ import type {
   Alert,
   ApiKey,
   Bookmark,
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   Card,
   CardId,
   CardQueryMetadata,
@@ -701,4 +703,23 @@ export function provideCommentTags(
   }
 
   return [idTag("comment", comment.id)];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<TagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<TagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
 }

@@ -17,8 +17,8 @@ import { useToast } from "metabase/common/hooks";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Card, Center, Flex, Stack } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
@@ -38,7 +38,9 @@ type EditSnippetPageProps = {
 export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const {
     data: snippet,

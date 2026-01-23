@@ -7,10 +7,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
-import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
-import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
-import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
+// import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
+// import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
+// import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
+// import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -130,12 +130,13 @@ const createStoreState = ({
 // Plugin Initialization
 // ============================================================================
 
-const initializePlugins = () => {
-  initializeRemoteSyncPlugin();
-  initializeFeatureLevelPermissionsPlugin();
-  initializeTransformsPlugin();
-  initializeDependenciesPlugin();
-};
+// TODO [OSS]: implement this
+// const initializePlugins = () => {
+//   initializeRemoteSyncPlugin();
+//   initializeFeatureLevelPermissionsPlugin();
+//   initializeTransformsPlugin();
+//   initializeDependenciesPlugin();
+// };
 
 // ============================================================================
 // Render Helper
@@ -152,7 +153,7 @@ const renderDataStudioLayout = (storeOptions: StoreStateOptions = {}) => {
     },
   );
 
-  initializePlugins();
+  // initializePlugins();
 };
 
 // ============================================================================

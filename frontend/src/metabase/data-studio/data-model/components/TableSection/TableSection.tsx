@@ -8,9 +8,6 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { CreateLibraryModal } from "metabase/data-studio/common/components/CreateLibraryModal";
-import { PublishTablesModal } from "metabase/data-studio/common/components/PublishTablesModal";
-import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
@@ -24,6 +21,7 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -34,7 +32,6 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
@@ -71,7 +68,9 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -356,20 +355,20 @@ const TableSectionBase = ({
         </Tabs>
       </Box>
 
-      <CreateLibraryModal
+      <PLUGIN_LIBRARY.CreateLibraryModal
         title={t`First, let's create your Library`}
         explanatorySentence={t`This is where published tables will go.`}
         isOpened={modalType === "library"}
         onCreate={() => setModalType("publish")}
         onClose={handleCloseModal}
       />
-      <PublishTablesModal
+      <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}
         tableIds={[table.id]}
         onPublish={handleCloseModal}
         onClose={handleCloseModal}
       />
-      <UnpublishTablesModal
+      <PLUGIN_LIBRARY.UnpublishTablesModal
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
         onUnpublish={handleCloseModal}

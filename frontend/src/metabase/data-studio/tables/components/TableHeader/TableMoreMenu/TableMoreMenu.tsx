@@ -3,11 +3,10 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { UnpublishTablesModal } from "metabase/data-studio/common/components/UnpublishTablesModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Table } from "metabase-types/api";
 
 type TableModalType = "unpublish";
@@ -19,7 +18,9 @@ type TableMoreMenuProps = {
 export function TableMoreMenu({ table }: TableMoreMenuProps) {
   const dispatch = useDispatch();
   const [modalType, setModalType] = useState<TableModalType>();
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const handleUnpublish = () => {
     setModalType(undefined);
@@ -53,7 +54,7 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
           )}
         </Menu.Dropdown>
       </Menu>
-      <UnpublishTablesModal
+      <PLUGIN_LIBRARY.UnpublishTablesModal
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
         onUnpublish={handleUnpublish}

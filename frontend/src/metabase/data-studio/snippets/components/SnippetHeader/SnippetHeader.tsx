@@ -10,8 +10,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import {
@@ -36,7 +35,9 @@ export function SnippetHeader({
   ...rest
 }: SnippetHeaderProps & PaneHeaderProps) {
   const dispatch = useDispatch();
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   const handleDelete = () => {
     dispatch(push(Urls.dataStudioLibrary()));

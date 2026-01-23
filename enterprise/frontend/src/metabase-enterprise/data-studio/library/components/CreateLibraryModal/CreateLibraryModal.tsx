@@ -8,6 +8,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { CreateLibraryModalProps } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -23,14 +24,6 @@ import {
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
-
-type CreateLibraryModalProps = {
-  title?: string;
-  explanatorySentence?: string;
-  isOpened: boolean;
-  onCreate?: (collection: Collection) => void;
-  onClose: () => void;
-};
 
 export function CreateLibraryModal({
   title = t`Create your Library`,

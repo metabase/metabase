@@ -362,7 +362,7 @@ remoteSyncListenerMiddleware.startListening({
   matcher: isAnyOf(
     enterpriseTableApi.endpoints.publishTables.matchFulfilled,
     enterpriseTableApi.endpoints.unpublishTables.matchFulfilled,
-    enterpriseTableApi.endpoints.editTables.matchFulfilled,
+    coreTableApi.endpoints.editTables.matchFulfilled,
   ),
   effect: async (_action, { dispatch }) => {
     invalidateRemoteSyncTags(dispatch);

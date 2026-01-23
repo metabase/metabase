@@ -12,13 +12,13 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import Modal from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
 import { capitalize } from "metabase/lib/formatting";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";

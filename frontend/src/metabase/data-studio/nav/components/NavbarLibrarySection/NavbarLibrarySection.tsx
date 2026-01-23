@@ -12,9 +12,7 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
-import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
-import { useRemoteSyncDirtyState } from "metabase-enterprise/remote_sync/hooks/use-remote-sync-dirty-state";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
@@ -32,8 +30,9 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
-  const { isVisible: isGitSyncVisible } = useGitSyncVisible();
-  const { isCollectionDirty } = useRemoteSyncDirtyState();
+  const { isVisible: isGitSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const { isCollectionDirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
 
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
@@ -83,7 +82,11 @@ export function NavbarLibrarySection({
             role="tree"
             aria-label="library-collection-tree"
             rightSection={(item) =>
-              showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
+              isGitSyncVisible &&
+              showChangesBadge(item?.id) &&
+              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge && (
+                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              )
             }
           />
         </CollapseSection>

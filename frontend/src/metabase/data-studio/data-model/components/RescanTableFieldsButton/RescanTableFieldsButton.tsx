@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { useRescanTablesFieldValuesMutation } from "metabase/api";
 import { useTemporaryState } from "metabase/common/hooks";
+import { trackDataStudioTableFieldsRescanStarted } from "metabase/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
-import { useRescanTablesFieldValuesMutation } from "metabase-enterprise/api";
-import { trackDataStudioTableFieldsRescanStarted } from "metabase-enterprise/data-studio/analytics";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 interface Props {

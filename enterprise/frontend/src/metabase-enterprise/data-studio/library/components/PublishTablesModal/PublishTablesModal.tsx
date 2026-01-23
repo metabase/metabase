@@ -1,13 +1,19 @@
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
+import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { PublishTablesModalProps } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -18,11 +24,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import {
-  useGetTableSelectionInfoQuery,
-  useUnpublishTablesMutation,
-} from "metabase-enterprise/api";
-import { trackDataStudioTableUnpublished } from "metabase-enterprise/data-studio/analytics";
+import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
   DatabaseId,
@@ -30,23 +32,14 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-type UnpublishTablesModalProps = {
-  databaseIds?: DatabaseId[];
-  schemaIds?: SchemaId[];
-  tableIds?: TableId[];
-  isOpened: boolean;
-  onUnpublish: () => void;
-  onClose: () => void;
-};
-
-export function UnpublishTablesModal({
+export function PublishTablesModal({
   databaseIds,
   schemaIds,
   tableIds,
   isOpened,
-  onUnpublish,
+  onPublish,
   onClose,
-}: UnpublishTablesModalProps) {
+}: PublishTablesModalProps) {
   return (
     <Modal
       title={
@@ -64,7 +57,7 @@ export function UnpublishTablesModal({
         databaseIds={databaseIds}
         schemaIds={schemaIds}
         tableIds={tableIds}
-        onUnpublish={onUnpublish}
+        onPublish={onPublish}
         onClose={onClose}
       />
     </Modal>
@@ -87,15 +80,15 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { selected_table, published_downstream_tables } = data;
-  return <>{getTitle(selected_table, published_downstream_tables)}</>;
+  const { selected_table, unpublished_upstream_tables } = data;
+  return <>{getTitle(selected_table, unpublished_upstream_tables)}</>;
 }
 
 type ModalBodyProps = {
   databaseIds: DatabaseId[] | undefined;
   schemaIds: SchemaId[] | undefined;
   tableIds: TableId[] | undefined;
-  onUnpublish: () => void;
+  onPublish: () => void;
   onClose: () => void;
 };
 
@@ -103,7 +96,7 @@ function ModalBody({
   databaseIds,
   schemaIds,
   tableIds,
-  onUnpublish,
+  onPublish,
   onClose,
 }: ModalBodyProps) {
   const { data, isLoading, error } = useGetTableSelectionInfoQuery({
@@ -111,38 +104,48 @@ function ModalBody({
     schema_ids: schemaIds,
     table_ids: tableIds,
   });
-  const [unpublishTables] = useUnpublishTablesMutation();
+  const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
+  const dispatch = useDispatch();
 
   if (isLoading || error != null || data == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { selected_table, published_downstream_tables } = data;
+  const { selected_table, unpublished_upstream_tables } = data;
 
   const handleSubmit = async () => {
-    await unpublishTables({
+    const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
-    sendSuccessToast(t`Unpublished`);
-    trackDataStudioTableUnpublished();
-    onUnpublish();
+
+    if (collection != null) {
+      sendSuccessToast(
+        t`Published`,
+        () => dispatch(push(Urls.dataStudioLibrary())),
+        t`Go to ${collection.name}`,
+      );
+    } else {
+      sendSuccessToast(t`Published`);
+    }
+
+    trackDataStudioTablePublished();
+
+    onPublish();
   };
 
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
         <Stack gap="sm">
-          <Text>
-            {getInfoMessage(selected_table, published_downstream_tables)}
-          </Text>
-          {published_downstream_tables.length > 0 && (
+          <Text>{t`Publishing a table saves it to the Library.`}</Text>
+          {unpublished_upstream_tables.length > 0 && (
             <>
               <Text>{getForeignKeyMessage(selected_table)}</Text>
               <List spacing="sm">
-                {published_downstream_tables.map((table) => (
+                {unpublished_upstream_tables.map((table) => (
                   <List.Item key={table.id} fw="bold">
                     {table.display_name}
                   </List.Item>
@@ -159,10 +162,9 @@ function ModalBody({
           <FormSubmitButton
             label={getSubmitButtonLabel(
               selected_table,
-              published_downstream_tables,
+              unpublished_upstream_tables,
             )}
             variant="filled"
-            color="error"
           />
         </Group>
       </Form>
@@ -172,41 +174,32 @@ function ModalBody({
 
 function getTitle(
   selectedTable: BulkTableInfo | null,
-  publishedRemappedTables: BulkTableInfo[],
+  unpublishedRemappedTables: BulkTableInfo[],
 ) {
   if (selectedTable != null) {
-    return publishedRemappedTables.length > 0
-      ? t`Unpublish ${selectedTable.display_name} and the tables that depend on it?`
-      : t`Unpublish ${selectedTable.display_name}?`;
+    return unpublishedRemappedTables.length > 0
+      ? t`Publish ${selectedTable.display_name} and the tables it depends on?`
+      : t`Publish ${selectedTable.display_name}?`;
   }
 
-  return publishedRemappedTables.length > 0
-    ? t`Unpublish these tables and the tables that depend on them?`
-    : t`Unpublish these tables?`;
-}
-
-function getInfoMessage(
-  selectedTable: BulkTableInfo | null,
-  publishedRemappedTables: BulkTableInfo[],
-) {
-  return selectedTable != null && publishedRemappedTables.length === 0
-    ? t`This will remove this table from the Library.`
-    : t`This will remove these tables from the Library.`;
+  return unpublishedRemappedTables.length > 0
+    ? t`Publish these tables and the tables they depend on?`
+    : t`Publish these tables?`;
 }
 
 function getForeignKeyMessage(selectedTable: BulkTableInfo | null) {
   return selectedTable != null
-    ? jt`Because values in ${(
+    ? jt`Because ${(
         <strong key="table">{selectedTable.display_name}</strong>
-      )} are used as display values in other published tables, you'll need to unpublish these, too:`
-    : t`Because values in some of the tables you've selected are used as display values in other published tables, you'll need to unpublish the tables below, too:`;
+      )} uses foreign keys to display values from other tables, you'll need to publish these, too:`
+    : t`Because some of the tables you've selected use foreign keys to display values from other tables, you'll need to publish the tables below, too:`;
 }
 
 function getSubmitButtonLabel(
   selectedTable: BulkTableInfo | null,
-  publishedRemappedTables: BulkTableInfo[],
+  unpublishedRemappedTables: BulkTableInfo[],
 ) {
-  return selectedTable != null && publishedRemappedTables.length === 0
-    ? t`Unpublish this table`
-    : t`Unpublish these tables`;
+  return selectedTable != null && unpublishedRemappedTables.length === 0
+    ? t`Publish this table`
+    : t`Publish these tables`;
 }

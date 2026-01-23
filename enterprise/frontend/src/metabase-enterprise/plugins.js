@@ -20,6 +20,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
+import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -29,7 +30,6 @@ import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_if
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
-import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";

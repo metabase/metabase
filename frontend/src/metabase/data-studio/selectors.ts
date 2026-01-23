@@ -1,10 +1,10 @@
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { State } from "metabase-types/store";
 
 // Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
@@ -29,7 +29,8 @@ export const getUserCanWriteSegments = (
     return false;
   }
 
-  const isRemoteSyncReadOnly = getIsRemoteSyncReadOnly(state);
+  const isRemoteSyncReadOnly =
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state);
 
   return !isRemoteSyncReadOnly || !isTablePublished;
 };
@@ -44,7 +45,8 @@ export const getUserCanWriteMeasures = (
     return false;
   }
 
-  const isRemoteSyncReadOnly = getIsRemoteSyncReadOnly(state);
+  const isRemoteSyncReadOnly =
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state);
 
   return !isRemoteSyncReadOnly || !isTablePublished;
 };
