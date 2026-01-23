@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
-   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -135,18 +134,6 @@
           result-lists (mapv deref futures)]
       (reciprocal-rank-fusion result-lists))))
 
-(defn- execute-search-with-failover
-  "Execute search for a single engine with error handling.
-   Returns results on success, nil on failure (allowing other engines to provide results)."
-  [search-fn engine queries]
-  (when (seq queries)
-    (try
-      (search-fn engine queries)
-      (catch Exception e
-        (log/warnf e "Metabot search with engine %s failed, continuing with other engines" engine)
-        (analytics/inc! :metabase-search/metabot-engine-failure {:engine (some-> engine name)})
-        nil))))
-
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
@@ -222,10 +209,10 @@
                           (u/seek (comp not semantic?) (search.engine/supported-engines)))
         fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
-                          ;; If one engine fails, the other engine's results are still returned.
-                          (let [semantic-results (execute-search-with-failover search-fn* semantic-engine semantic-queries)
-                                fallback-results (execute-search-with-failover search-fn* fallback-engine term-queries)]
-                            (reciprocal-rank-fusion [semantic-results fallback-results]))
+                          (reciprocal-rank-fusion
+                           (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
+                                {semantic-engine semantic-queries
+                                 fallback-engine term-queries}))
                           ;; Search for all the terms on equal footing, using the default engine.
                           (search-fn* nil (distinct (concat term-queries semantic-queries))))]
     (->> fused-results
