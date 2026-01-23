@@ -11,7 +11,6 @@
    [clojure.string :as str]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
-   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -31,29 +30,54 @@
   180)
 
 (defn- decode-jwt
-  "Decode and verify a JWT token. Returns the claims map if valid, nil if invalid."
+  "Decode and verify a JWT token. Returns the claims map if valid, throws on error."
   [token]
-  (try
-    (jwt/unsign token (sso-settings/jwt-shared-secret) {:max-age max-token-age-seconds})
-    (catch Exception _
-      nil)))
+  (jwt/unsign token (sso-settings/jwt-shared-secret) {:max-age max-token-age-seconds}))
+
+(defn- error-response
+  "Create a structured error response for authentication failures."
+  [error-type message]
+  {:status 401
+   :headers {"Content-Type" "application/json"}
+   :body {:error error-type
+          :message message}})
 
 (defn- enforce-jwt-authentication
   "Middleware that validates JWT bearer tokens for Agent API requests.
-   Extracts email from `sub` claim (with fallback to `email` claim) and looks up the user."
+   Extracts email from `sub` claim (with fallback to `email` claim) and looks up the user.
+   Returns structured error responses for different failure modes."
   [handler]
   (fn [{:keys [headers] :as request} respond raise]
-    (let [auth-header (get headers "authorization")
-          token       (when (and auth-header (str/starts-with? (u/lower-case-en auth-header) "bearer "))
-                        (str/trim (subs auth-header 7)))
-          claims      (when token (decode-jwt token))
-          email       (or (:sub claims) (:email claims))
-          user        (when email
-                        (t2/select-one :model/User :email email :is_active true))]
-      (if user
-        (request/with-current-user (:id user)
-          (handler request respond raise))
-        (respond api.response/response-unauthentic)))))
+    (let [auth-header (get headers "authorization")]
+      (cond
+        ;; No authorization header
+        (not auth-header)
+        (respond (error-response "missing_authorization" "Authorization header is required"))
+
+        ;; Invalid authorization header format
+        (not (str/starts-with? (u/lower-case-en auth-header) "bearer "))
+        (respond (error-response "invalid_authorization_format" "Authorization header must be 'Bearer <token>'"))
+
+        ;; JWT secret not configured
+        (not (sso-settings/jwt-shared-secret))
+        (respond (error-response "jwt_not_configured" "JWT shared secret is not configured"))
+
+        ;; Valid bearer token format - attempt authentication
+        :else
+        (let [token (str/trim (subs auth-header 7))]
+          (try
+            (let [claims (decode-jwt token)
+                  email  (or (:sub claims) (:email claims))]
+              (if-not email
+                (respond (error-response "missing_email_claim" "JWT token must contain 'sub' or 'email' claim"))
+                (let [user (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true)]
+                  (if user
+                    (request/with-current-user (:id user)
+                      (handler request respond raise))
+                    (respond (error-response "invalid_credentials" "Invalid credentials"))))))
+            (catch Exception e
+              (respond (error-response "invalid_token"
+                                       (or (ex-message e) "Invalid or expired JWT token"))))))))))
 
 (def ^:private +jwt-auth
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-jwt-authentication))
