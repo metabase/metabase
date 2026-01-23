@@ -336,7 +336,8 @@
                        detail (cards-details card-type database-id cards options)]
                    detail)
                  (group-by :type))]
-        {:structured-output {:metrics (vec metrics)
+        {:structured-output {:result-type :answer-sources
+                             :metrics (vec metrics)
                              :models  (vec models)}}))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
@@ -375,7 +376,7 @@
                       :else
                       (throw (ex-info "Invalid arguments: must provide table_id or model_id"
                                       {:agent-error? true :status-code 400})))]
-        {:structured-output details}))
+        {:structured-output (assoc details :result-type :entity)}))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
@@ -392,7 +393,7 @@
                       (metric-details metric-id options)
                       (throw (ex-info "Invalid metric_id format"
                                       {:agent-error? true :status-code 400})))]
-        {:structured-output details}))
+        {:structured-output (assoc details :result-type :entity)}))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
@@ -412,7 +413,7 @@
                             (assoc :result-columns (:fields details))))
                       (throw (ex-info "Invalid report_id format"
                                       {:agent-error? true :status-code 400})))]
-        {:structured-output details}))
+        {:structured-output (assoc details :result-type :entity)}))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
@@ -424,7 +425,8 @@
   (if (int? document-id)
     (try
       (if-let [doc (documents/get-document document-id)]
-        {:structured-output {:id (:id doc)
+        {:structured-output {:result-type :entity
+                             :id (:id doc)
                              :name (:name doc)
                              :document (:document doc)}}
         {:output "document not found"})
@@ -452,4 +454,5 @@
   "Get the details of a query (supports both MBQL v4 and v5)."
   [{:keys [query]}]
   (lib-be/with-metadata-provider-cache
-    {:structured-output (execute-query (u/generate-nano-id) query)}))
+    {:structured-output (assoc (execute-query (u/generate-nano-id) query)
+                               :result-type :query)}))
