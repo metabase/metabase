@@ -1489,7 +1489,7 @@
 
 (mr/def ::TemplateTagType
   "Schema for valid values of template tag `:type`."
-  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date])
+  [:enum {:decode/normalize keyword} :snippet :card :dimension :number :text :date :table])
 
 (mr/def ::TemplateTag.Common
   "Things required by all template tag types."
@@ -1601,6 +1601,27 @@
 
 ;; Example:
 ;;
+;;    {:id           "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+;;     :name         "orders_table"
+;;     :display-name "Orders Table"
+;;     :type         :table
+;;     :table-id     123
+;;     :partition-field-id 456
+;;     :partition-start-value "2024-01-01"
+;;     :partition-end-value "2024-12-31"}
+(mr/def ::TemplateTag.Table
+  "Schema for a table template tag."
+  [:merge
+   ::TemplateTag.Common
+   [:map
+    [:type [:= {:decode/normalize helpers/normalize-keyword} :table]]
+    [:table-id ::lib.schema.id/table]
+    [:partition-field-id {:optional true} ::lib.schema.id/field]
+    [:partition-start-value {:optional true} :any]
+    [:partition-end-value {:optional true} :any]]])
+
+;; Example:
+;;
 ;;    {:id           "35f1ecd4-d622-6d14-54be-750c498043cb"
 ;;     :name         "id"
 ;;     :display-name "Id"
@@ -1657,6 +1678,7 @@
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
    [:temporal-unit [:ref ::TemplateTag.TemporalUnit]]
+   [:table [:ref ::TemplateTag.Table]]
    [::mc/default   [:ref ::TemplateTag.RawValue]]])
 
 (mr/def ::TemplateTagMap

@@ -74,6 +74,30 @@
   [x]
   (instance? ReferencedQuerySnippet x))
 
+;; A `ReferencedTable` expands to either a simple table reference or a subquery with partition filtering.
+;;
+;; `table-id` is the integer ID of the Table in the application DB.
+;;
+;; `table` is the table metadata map.
+;;
+;; `partition-field-id` is the optional integer ID of the Field to use for partitioning.
+;;
+;; `partition-field` is the optional field metadata map for the partition field.
+;;
+;; `partition-start-value` is the optional inclusive start value for the partition range.
+;;
+;; `partition-end-value` is the optional exclusive end value for the partition range.
+(p.types/defrecord+ ReferencedTable [table-id table partition-field-id partition-field
+                                     partition-start-value partition-end-value]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTable) (into {} this))))
+
+(defn ReferencedTable?
+  "Is `x` an instance of the `ReferencedTable` record type?"
+  [x]
+  (instance? ReferencedTable x))
+
 ;; as in a literal date, defined by date-string S
 ;;
 ;; TODO - why don't we just parse this into a Temporal type and let drivers handle it.

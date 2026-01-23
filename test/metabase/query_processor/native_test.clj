@@ -96,3 +96,107 @@
                                          :card-id      2}}}]
           (is (= [["Gizmo" "Swaniawski, Casper and Hilll"]]
                  (mt/rows (qp/process-query (mt/native-query query))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Table Template Tag E2E Tests                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest table-tag-simple-e2e-test
+  (testing "Simple table tag injection returns data from the table"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (let [tag-name "input_table"
+            query {:query (format "SELECT COUNT(*) AS cnt FROM {{%s}}" tag-name)
+                   :template-tags {tag-name
+                                   {:id "table-tag-1"
+                                    :name tag-name
+                                    :display-name "Input Table"
+                                    :type :table
+                                    :table-id (mt/id :venues)}}}]
+        (is (= [[100]]
+               (mt/rows (qp/process-query (mt/native-query query)))))))))
+
+(deftest table-tag-with-partition-e2e-test
+  (testing "Table tag with partition filters data correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/dataset test-data
+        (let [tag-name "input_table"
+              query {:query (format "SELECT COUNT(*) AS cnt FROM {{%s}} AS t" tag-name)
+                     :template-tags {tag-name
+                                     {:id "table-tag-2"
+                                      :name tag-name
+                                      :display-name "Input Table"
+                                      :type :table
+                                      :table-id (mt/id :orders)
+                                      :partition-field-id (mt/id :orders :created_at)
+                                      :partition-start-value "2020-01-01"
+                                      :partition-end-value "2020-02-01"}}}
+              result (mt/rows (qp/process-query (mt/native-query query)))]
+          (is (= 1 (count result)))
+          (is (number? (ffirst result)))
+          (is (pos? (ffirst result))))))))
+
+(deftest table-tag-in-join-e2e-test
+  (testing "Table tag can be used in a JOIN"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (let [tag-name "venue_table"
+            query {:query (format "SELECT v.NAME FROM {{%s}} AS v WHERE v.ID = 1" tag-name)
+                   :template-tags {tag-name
+                                   {:id "table-tag-3"
+                                    :name tag-name
+                                    :display-name "Venues Table"
+                                    :type :table
+                                    :table-id (mt/id :venues)}}}]
+        (is (= [["Red Medicine"]]
+               (mt/rows (qp/process-query (mt/native-query query)))))))))
+
+(deftest table-tag-multiple-tables-e2e-test
+  (testing "Multiple table tags in one query"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (let [venues-tag "venues_table"
+            checkins-tag "checkins_table"
+            query {:query (format "SELECT COUNT(*) FROM {{%s}} v JOIN {{%s}} c ON v.ID = c.VENUE_ID"
+                                  venues-tag checkins-tag)
+                   :template-tags {venues-tag
+                                   {:id "table-tag-4a"
+                                    :name venues-tag
+                                    :display-name "Venues"
+                                    :type :table
+                                    :table-id (mt/id :venues)}
+                                   checkins-tag
+                                   {:id "table-tag-4b"
+                                    :name checkins-tag
+                                    :display-name "Checkins"
+                                    :type :table
+                                    :table-id (mt/id :checkins)}}}]
+        (is (= 1 (count (mt/rows (qp/process-query (mt/native-query query))))))))))
+
+(deftest table-tag-partition-one-sided-e2e-test
+  (testing "Table tag with one-sided partition range"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/dataset test-data
+        (testing "start only"
+          (let [tag-name "input_table"
+                query {:query (format "SELECT COUNT(*) FROM {{%s}} AS t" tag-name)
+                       :template-tags {tag-name
+                                       {:id "table-tag-5"
+                                        :name tag-name
+                                        :display-name "Input Table"
+                                        :type :table
+                                        :table-id (mt/id :orders)
+                                        :partition-field-id (mt/id :orders :created_at)
+                                        :partition-start-value "2025-01-01"}}}
+                result (mt/rows (qp/process-query (mt/native-query query)))]
+            (is (number? (ffirst result)))))
+        (testing "end only"
+          (let [tag-name "input_table"
+                query {:query (format "SELECT COUNT(*) FROM {{%s}} AS t" tag-name)
+                       :template-tags {tag-name
+                                       {:id "table-tag-6"
+                                        :name tag-name
+                                        :display-name "Input Table"
+                                        :type :table
+                                        :table-id (mt/id :orders)
+                                        :partition-field-id (mt/id :orders :created_at)
+                                        :partition-end-value "2020-01-01"}}}
+                result (mt/rows (qp/process-query (mt/native-query query)))]
+            (is (number? (ffirst result)))))))))

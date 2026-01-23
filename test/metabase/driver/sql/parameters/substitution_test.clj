@@ -129,3 +129,88 @@
                       ;; no extra `sql.qp/date` calls due to `nil` returned from the override
                       :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Table Template Tag Substitution                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel table-tag-simple-substitution-test
+  (testing "Simple table tag substitution returns just the qualified table name"
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :venues))
+            result (sql.params.substitution/->replacement-snippet-info
+                    :h2
+                    (params/map->ReferencedTable
+                     {:table-id (meta/id :venues)
+                      :table table}))]
+        (is (= {:replacement-snippet "\"PUBLIC\".\"VENUES\""
+                :prepared-statement-args nil}
+               result))))))
+
+(deftest ^:parallel table-tag-with-partition-substitution-test
+  (testing "Table tag with partition field and values generates a subquery"
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
+            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+            result (sql.params.substitution/->replacement-snippet-info
+                    :h2
+                    (params/map->ReferencedTable
+                     {:table-id (meta/id :orders)
+                      :table table
+                      :partition-field-id (meta/id :orders :created-at)
+                      :partition-field field
+                      :partition-start-value "2024-01-01"
+                      :partition-end-value "2024-02-01"}))]
+        (is (string? (:replacement-snippet result)))
+        (is (re-find #"SELECT \* FROM" (:replacement-snippet result)))
+        (is (re-find #"CREATED_AT" (:replacement-snippet result)))
+        (is (re-find #">=" (:replacement-snippet result)))
+        (is (re-find #"<" (:replacement-snippet result)))))))
+
+(deftest ^:parallel table-tag-partition-start-only-test
+  (testing "Table tag with only partition start value"
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
+            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+            result (sql.params.substitution/->replacement-snippet-info
+                    :h2
+                    (params/map->ReferencedTable
+                     {:table-id (meta/id :orders)
+                      :table table
+                      :partition-field-id (meta/id :orders :created-at)
+                      :partition-field field
+                      :partition-start-value "2024-01-01"}))]
+        (is (re-find #">=" (:replacement-snippet result)))
+        (is (not (re-find #"<" (:replacement-snippet result))))))))
+
+(deftest ^:parallel table-tag-partition-end-only-test
+  (testing "Table tag with only partition end value"
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
+            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+            result (sql.params.substitution/->replacement-snippet-info
+                    :h2
+                    (params/map->ReferencedTable
+                     {:table-id (meta/id :orders)
+                      :table table
+                      :partition-field-id (meta/id :orders :created-at)
+                      :partition-field field
+                      :partition-end-value "2024-02-01"}))]
+        (is (not (re-find #">=" (:replacement-snippet result))))
+        (is (re-find #"<" (:replacement-snippet result)))))))
+
+(deftest ^:parallel table-tag-no-partition-values-test
+  (testing "Table tag with partition field but no values returns simple table name"
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
+            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+            result (sql.params.substitution/->replacement-snippet-info
+                    :h2
+                    (params/map->ReferencedTable
+                     {:table-id (meta/id :orders)
+                      :table table
+                      :partition-field-id (meta/id :orders :created-at)
+                      :partition-field field}))]
+        (is (= {:replacement-snippet "\"PUBLIC\".\"ORDERS\""
+                :prepared-statement-args nil}
+               result))))))

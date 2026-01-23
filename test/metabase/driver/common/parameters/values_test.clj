@@ -909,3 +909,135 @@
                                                                              :display-name "card"
                                                                              :type         :card
                                                                              :card-id      card-2-id}}}))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Table Template Tags                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel table-tag-simple-test
+  (testing "Table template tag returns a ReferencedTable with table metadata"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :venues)}
+                    [])]
+        (is (= (meta/id :venues) (:table-id result)))
+        (is (some? (:table result)))
+        (is (= "VENUES" (:name (:table result))))))))
+
+(deftest ^:parallel table-tag-with-schema-test
+  (testing "Table template tag includes schema information"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :venues)}
+                    [])]
+        (is (= "PUBLIC" (:schema (:table result))))))))
+
+(deftest ^:parallel table-tag-validation-test
+  (testing "Table tag requires :table-id"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"table-id.*missing required key"
+           (value-for-tag
+            {:name "input_table"
+             :display-name "Input Table"
+             :type :table}
+            [])))))
+
+  (testing "Table tag throws for non-existent table"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"Valid Table metadata, got: nil"
+           (value-for-tag
+            {:name "input_table"
+             :display-name "Input Table"
+             :type :table
+             :table-id Integer/MAX_VALUE}
+            []))))))
+
+(deftest ^:parallel table-tag-with-partition-test
+  (testing "Table template tag with partition field"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :orders)
+                     :partition-field-id (meta/id :orders :created-at)}
+                    [])]
+        (is (= (meta/id :orders :created-at) (:partition-field-id result)))
+        (is (some? (:partition-field result)))))))
+
+(deftest ^:parallel table-tag-partition-field-validation-test
+  (testing "Partition field must belong to the specified table"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"Partition field.*does not belong to table"
+           (value-for-tag
+            {:name "input_table"
+             :display-name "Input Table"
+             :type :table
+             :table-id (meta/id :venues)
+             :partition-field-id (meta/id :orders :created-at)}
+            []))))))
+
+(deftest ^:parallel table-tag-with-partition-values-test
+  (testing "Table template tag with partition start and end values"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :orders)
+                     :partition-field-id (meta/id :orders :created-at)
+                     :partition-start-value "2024-01-01"
+                     :partition-end-value "2024-02-01"}
+                    [])]
+        (is (= "2024-01-01" (:partition-start-value result)))
+        (is (= "2024-02-01" (:partition-end-value result))))))
+
+  (testing "One-sided partition range (start only)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :orders)
+                     :partition-field-id (meta/id :orders :created-at)
+                     :partition-start-value "2024-01-01"}
+                    [])]
+        (is (= "2024-01-01" (:partition-start-value result)))
+        (is (nil? (:partition-end-value result))))))
+
+  (testing "One-sided partition range (end only)"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [result (value-for-tag
+                    {:name "input_table"
+                     :display-name "Input Table"
+                     :type :table
+                     :table-id (meta/id :orders)
+                     :partition-field-id (meta/id :orders :created-at)
+                     :partition-end-value "2024-02-01"}
+                    [])]
+        (is (nil? (:partition-start-value result)))
+        (is (= "2024-02-01" (:partition-end-value result)))))))
+
+(deftest ^:parallel table-tag-referenced-table-ids-test
+  (testing "referenced-table-ids extracts table IDs from table tags"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= #{(meta/id :venues)}
+             (params.values/referenced-table-ids
+              (query->params-map
+               {:query "SELECT * FROM {{input_table}}"
+                :template-tags {"input_table" {:name "input_table"
+                                               :display-name "Input Table"
+                                               :type :table
+                                               :table-id (meta/id :venues)}}})))))))

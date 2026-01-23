@@ -16,7 +16,7 @@
   "Schema for valid values of template tag `:type`."
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit :table])
 
 (mr/def ::name
   [:ref
@@ -128,6 +128,28 @@
      [:card-id ::id/card]]]
    [:ref ::disallow-dimension]])
 
+;; Example:
+;;
+;;    {:id                    "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+;;     :name                  "input_table"
+;;     :display-name          "Input Table"
+;;     :type                  :table
+;;     :table-id              123
+;;     :partition-field-id    456
+;;     :partition-start-value "2024-01-01"
+;;     :partition-end-value   "2024-02-01"}
+(mr/def ::table
+  [:and
+   [:merge
+    [:ref ::common]
+    [:map
+     [:type [:= :table]]
+     [:table-id ::id/table]
+     [:partition-field-id {:optional true} ::id/field]
+     [:partition-start-value {:optional true} any?]
+     [:partition-end-value {:optional true} any?]]]
+   [:ref ::disallow-dimension]])
+
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
   #{:number :text :date :boolean})
@@ -164,7 +186,8 @@
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]
     [:card          [:ref ::source-query]]
-    ;; :number, :text, :date
+    [:table [:ref ::table]]
+    ;; :number, :text, :date, :boolean
     [::mc/default [:ref ::raw-value]]]])
 
 ;;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.

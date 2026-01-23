@@ -203,16 +203,34 @@
      query)
     (not-empty @all-ids)))
 
+(defn- referenced-table-ids
+  "Return the union of all the `:query-permissions/referenced-table-ids` sets anywhere in the query.
+  These are table IDs from `:table` type template tags."
+  [query]
+  (let [all-ids (atom #{})]
+    (walk/postwalk
+     (fn [form]
+       (when (map? form)
+         (when-let [ids (not-empty (:query-permissions/referenced-table-ids form))]
+           (swap! all-ids set/union ids)))
+       form)
+     query)
+    (not-empty @all-ids)))
+
 (defn- native-query-perms
   [query]
+  (let [card-ids (referenced-card-ids query)
+        table-ids (referenced-table-ids query)]
   (merge
    {:perms/create-queries :query-builder-and-native
     :perms/view-data      :unrestricted}
-   (when-let [card-ids (referenced-card-ids query)]
+     (when card-ids
      {:paths (into #{}
                    (mapcat (fn [card-id]
                              (mi/perms-objects-set (card-instance card-id) :read)))
-                   card-ids)})))
+                     card-ids)})
+     (when table-ids
+       {:perms/view-data (zipmap table-ids (repeat :unrestricted))}))))
 
 (defn- legacy-mbql-required-perms
   ([query options]

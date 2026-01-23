@@ -72,6 +72,7 @@
   [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query driver-api/schema.common.non-blank-string}]]]
   (let [params-map          (params.values/query->params-map inner-query)
         referenced-card-ids (params.values/referenced-card-ids params-map)
+        referenced-table-ids (params.values/referenced-table-ids params-map)
         [query params]      (-> query
                                 params.parse/parse
                                 (sql.params.substitute/substitute params-map))]
@@ -79,7 +80,9 @@
                    :query  query
                    :params params)
       (seq referenced-card-ids)
-      (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
+      (update :query-permissions/referenced-card-ids set/union referenced-card-ids)
+      (seq referenced-table-ids)
+      (update :query-permissions/referenced-table-ids set/union referenced-table-ids))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.

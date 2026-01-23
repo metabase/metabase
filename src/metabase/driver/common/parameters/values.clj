@@ -49,6 +49,7 @@
 (def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
 (def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
 (def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private ReferencedTable (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedTable))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -271,6 +272,38 @@
     (params/map->ReferencedQuerySnippet
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
+
+(mu/defmethod parse-tag :table :- ReferencedTable
+  [{:keys [table-id partition-field-id partition-start-value partition-end-value], :as tag} :- ::mbql.s/TemplateTag
+   _params]
+  (when-not table-id
+    (throw (ex-info (tru "Invalid :table parameter: missing `:table-id`")
+                    {:tag tag, :type qp.error-type/invalid-parameter})))
+  (let [table (or (lib.metadata/table (qp.store/metadata-provider) table-id)
+                  (throw (ex-info (tru "Table {0} not found." table-id)
+                                  {:table-id table-id, :tag tag, :type qp.error-type/invalid-parameter})))
+        partition-field (when partition-field-id
+                          (let [field (lib.metadata/field (qp.store/metadata-provider) partition-field-id)]
+                            (when-not field
+                              (throw (ex-info (tru "Partition field {0} not found." partition-field-id)
+                                              {:partition-field-id partition-field-id
+                                               :tag tag
+                                               :type qp.error-type/invalid-parameter})))
+                            (when-not (= (:table-id field) table-id)
+                              (throw (ex-info (tru "Partition field {0} does not belong to table {1}."
+                                                   partition-field-id table-id)
+                                              {:partition-field-id partition-field-id
+                                               :table-id table-id
+                                               :tag tag
+                                               :type qp.error-type/invalid-parameter})))
+                            field))]
+    (params/map->ReferencedTable
+     {:table-id table-id
+      :table table
+      :partition-field-id partition-field-id
+      :partition-field partition-field
+      :partition-start-value partition-start-value
+      :partition-end-value partition-end-value})))
 
 (defmethod parse-tag :temporal-unit
   [{:keys [required dimension alias] :as tag} params]
@@ -500,4 +533,14 @@
         (keep (fn [param]
                 (when (params/ReferencedCardQuery? param)
                   (:card-id param))))
+        (vals params-map)))
+
+(mu/defn referenced-table-ids :- [:set ::lib.schema.id/table]
+  "Return a set of all Table IDs referenced in the parameters in `params-map` via `:table` template tags.
+  This should be used for permission checks to ensure users have access to the referenced tables."
+  [params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]]
+  (into #{}
+        (keep (fn [param]
+                (when (params/ReferencedTable? param)
+                  (:table-id param))))
         (vals params-map)))

@@ -17,6 +17,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [not-empty]])
@@ -31,6 +32,7 @@
     FieldFilter
     ReferencedCardQuery
     ReferencedQuerySnippet
+    ReferencedTable
     TemporalUnit)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
@@ -398,6 +400,26 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+;;; ---------------------------------- Table Template Tag replacement snippet info -----------------------------------
+
+(defmethod ->replacement-snippet-info [:sql ReferencedTable]
+  [driver {:keys [table partition-field partition-start-value partition-end-value]}]
+  (let [table-sql (first (sql.qp/format-honeysql driver (h2x/identifier :table (:schema table) (:name table))))]
+    (if (or partition-start-value partition-end-value)
+      (let [field-sql (first (sql.qp/format-honeysql driver (h2x/identifier :field (:name partition-field))))
+            clauses (cond-> []
+                      partition-start-value (conj (str field-sql " >= ?"))
+                      partition-end-value (conj (str field-sql " < ?")))
+            where-clause (str/join " AND " clauses)
+            subquery-sql (str "(SELECT * FROM " table-sql " WHERE " where-clause ")")
+            params (cond-> []
+                     partition-start-value (conj partition-start-value)
+                     partition-end-value (conj partition-end-value))]
+        {:replacement-snippet subquery-sql
+         :prepared-statement-args (not-empty params)})
+      {:replacement-snippet table-sql
+       :prepared-statement-args nil})))
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
   [driver {:keys [value field alias]}]
