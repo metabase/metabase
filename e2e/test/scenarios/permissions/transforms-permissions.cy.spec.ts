@@ -182,6 +182,7 @@ describe(
         cy.log(
           "Grant transforms permission only on Sample Database, not on Writable Postgres",
         );
+        H.setUserAsAnalyst(NORMAL_USER_ID);
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {
             [SAMPLE_DB_ID]: {
