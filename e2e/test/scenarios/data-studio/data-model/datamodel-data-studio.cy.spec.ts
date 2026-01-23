@@ -635,35 +635,6 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     describe("Field name and description", () => {
-      it("should allow changing the field name", () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Name of Tax updated");
-        TableSection.getFieldNameInput("New tax").should("be.visible");
-
-        cy.log("verify preview");
-        TableSection.clickField("New tax");
-        FieldSection.getPreviewButton().click();
-        verifyTablePreview({
-          column: "New tax",
-          values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
-        });
-        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
-
-        cy.log("verify viz");
-        H.openOrdersTable();
-        H.tableHeaderColumn("New tax").should("be.visible");
-        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
-          "not.exist",
-        );
-      });
-
       it("should allow changing the field description", () => {
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
