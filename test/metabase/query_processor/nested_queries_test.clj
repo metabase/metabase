@@ -1188,10 +1188,10 @@
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"
-                              :display_name "Products → Ean"
+                              :display_name (if (zero? level) "Products → Ean" "Ean")
                               :base_type    :type/Text
                               :id           %ean
-                              :field_ref    &Products.ean})
+                              :field_ref    (if (zero? level) &Products.ean [:field %ean nil])})
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]

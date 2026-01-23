@@ -135,4 +135,10 @@
       (dissoc :lib/desired-column-alias)
       ;; Cards should present a "flat table" abstraction - internal joins should not leak to downstream
       ;; queries. Strip join alias keys so display names do not get prefixed. See #65532.
+      ;; Also fix cached :display-name for columns that came from joins.
+      ;; Use :lib/original-display-name (the name before the join prefix was added).
+      ;; Only do this for columns that have :source-alias (i.e., came from joins).
+      (as-> $col (if (and (:source-alias $col) (:lib/original-display-name $col))
+                   (assoc $col :display-name (:lib/original-display-name $col))
+                   $col))
       (dissoc :lib/original-join-alias :source-alias)))
