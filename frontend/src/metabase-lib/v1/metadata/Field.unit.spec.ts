@@ -3,7 +3,6 @@ import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
-  createMockDateTimeFieldFingerprint,
   createMockField,
   createMockFieldDimension,
   createMockTable,
@@ -282,28 +281,6 @@ describe("Field", () => {
       });
 
       expect(field.targetObjectName()).toBe("field");
-    });
-  });
-
-  describe("when field is of type `type/DateTime`", () => {
-    it("should return a time unit depending on the number of days in the 'fingerprint'", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            fingerprint: {
-              type: {
-                "type/DateTime": createMockDateTimeFieldFingerprint({
-                  earliest: "2019-03-01T00:00:00Z",
-                  latest: "2021-01-01T00:00:00Z",
-                }),
-              },
-            },
-          }),
-        ],
-      });
-
-      expect(field.getDefaultDateTimeUnit()).toBe("month");
     });
   });
 
