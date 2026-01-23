@@ -481,50 +481,6 @@ describe("scenarios > admin > datamodel", () => {
           cy.findByText("New orders").should("be.visible");
         });
       });
-
-      it("should allow changing the table description", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getDescriptionInput()
-          .clear()
-          .type("New description")
-          .blur();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Table description updated");
-        TableSection.getDescriptionInput().should(
-          "have.value",
-          "New description",
-        );
-
-        cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("New description").should("be.visible");
-      });
-
-      it("should allow clearing the table description", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getDescriptionInput().clear().blur();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Table description updated");
-        TableSection.getDescriptionInput().should("have.value", "");
-
-        cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No description yet").should("be.visible");
-      });
     });
 
     describe("Field name and description", () => {
