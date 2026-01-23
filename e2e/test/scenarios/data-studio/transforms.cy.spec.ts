@@ -2368,7 +2368,7 @@ LIMIT
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
-          .findByText("Default Common Transform")
+          .findByText("Default Common")
           .should("be.visible");
         H.assertQueryBuilderRowCount(1);
         cy.findByTestId("scalar-value").should("have.text", "42");
