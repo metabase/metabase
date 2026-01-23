@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -48,26 +48,27 @@ import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
 
 interface Props {
   databaseId: DatabaseId;
-  editedTransform: EditedTransform;
   transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformListItem[];
   isDisabled: boolean;
-  onChange: (patch: Partial<EditedTransform>) => void;
   onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
 }
 
-export const TransformTab = ({
+export function TransformTab({
   databaseId,
-  editedTransform,
   transform,
   workspaceId,
   workspaceTransforms,
   isDisabled,
-  onChange,
   onSaveTransform,
-}: Props) => {
-  const { updateTransformState, addOpenedTab } = useWorkspace();
+}: Props) {
+  const {
+    updateTransformState,
+    addOpenedTab,
+    editedTransforms,
+    patchEditedTransform,
+  } = useWorkspace();
   const { sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
@@ -81,12 +82,40 @@ export const TransformTab = ({
   );
   const metadata = useSelector(getMetadata);
 
-  // Only WorkspaceTransforms can be run - cast for the hook
+  // Local source state to prevent re-renders on every keystroke
+  // This is the key optimization: we manage source locally and sync to provider
+  const [localSource, setLocalSource] = useState<DraftTransformSource>(() => {
+    const edited = editedTransforms.get(transformId);
+    return edited?.source ?? transform.source;
+  });
+
+  // Track previous transform ID to detect when we switch transforms
+  const prevTransformIdRef = useRef(transformId);
+
+  // Reset local source when switching to a different transform
+  useEffect(() => {
+    if (prevTransformIdRef.current !== transformId) {
+      const edited = editedTransforms.get(transformId);
+      setLocalSource(edited?.source ?? transform.source);
+      prevTransformIdRef.current = transformId;
+    }
+    // Note: editedTransforms is intentionally excluded from deps
+    // We only want to sync when transform ID changes, not on every edit
+  }, [transformId, transform.source, editedTransforms]);
+
+  // Construct editedTransform from provider state (for save button)
+  // Use providerEdited?.source for the latest source (updated via patchEditedTransform)
+  // Fall back to localSource only for initial render before any edits
+  const providerEdited = editedTransforms.get(transformId);
+  const editedTransform: EditedTransform = {
+    name: providerEdited?.name ?? transform.name,
+    source: providerEdited?.source ?? localSource,
+    target: providerEdited?.target ?? transform.target,
+  };
+
   const wsTransform = isWorkspaceTransform(transform) ? transform : null;
-  const hasSourceChanged = !isSameSource(
-    editedTransform.source,
-    transform.source,
-  );
+  const currentSource = providerEdited?.source ?? localSource;
+  const hasSourceChanged = !isSameSource(currentSource, transform.source);
   const hasChanges = hasSourceChanged;
 
   // Run transform hook - handles run state, API calls, and error handling
@@ -181,11 +210,14 @@ export const TransformTab = ({
     workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isEditable = !isDisabled;
 
-  const handleSourceChange = (source: DraftTransformSource) => {
-    onChange({ source });
-  };
+  const handleSourceChange = useCallback(
+    (source: DraftTransformSource) => {
+      patchEditedTransform(transformId, { source });
+    },
+    [transformId, patchEditedTransform],
+  );
 
-  const handleAcceptProposed = useCallback(() => {
+  const handleMetabotAcceptProposed = useCallback(() => {
     if (proposedSource == null) {
       return;
     }
@@ -200,27 +232,32 @@ export const TransformTab = ({
       return;
     }
 
-    onChange({ source: proposedSource });
+    // When accepting, we DO need to update localSource to reset the editor
+    setLocalSource(proposedSource);
+    patchEditedTransform(transformId, { source: proposedSource });
     dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
   }, [
     proposedSource,
-    onChange,
     dispatch,
     suggestedTransform?.id,
     isSaved,
     transform,
     sendErrorToast,
+    transformId,
+    patchEditedTransform,
   ]);
 
-  const handleRejectProposed = useCallback(() => {
+  const handleMetabotRejectProposed = useCallback(() => {
     if (suggestedTransform) {
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
 
       // For unsaved transforms, clear the source back to empty state when rejecting
       if (isUnsavedTransform(transform)) {
-        const emptySource = createEmptySourceForType(editedTransform.source);
+        const emptySource = createEmptySourceForType(currentSource);
         if (emptySource) {
-          onChange({ source: emptySource });
+          // When rejecting, we DO need to update localSource to reset the editor
+          setLocalSource(emptySource);
+          patchEditedTransform(transformId, { source: emptySource });
         }
       }
     }
@@ -228,8 +265,9 @@ export const TransformTab = ({
     dispatch,
     suggestedTransform,
     transform,
-    editedTransform.source,
-    onChange,
+    currentSource,
+    transformId,
+    patchEditedTransform,
   ]);
 
   const handleTargetUpdate = useCallback(
@@ -306,10 +344,10 @@ export const TransformTab = ({
         >
           <TransformEditor
             disabled={!isEditable}
-            source={editedTransform.source}
+            source={localSource}
             proposedSource={proposedSource}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={handleRejectProposed}
+            onAcceptProposed={handleMetabotAcceptProposed}
+            onRejectProposed={handleMetabotRejectProposed}
             onChange={handleSourceChange}
             onRunQueryStart={handleRunQueryStart}
             onRunTransform={handleRunTransform}
@@ -326,7 +364,7 @@ export const TransformTab = ({
       )}
     </Stack>
   );
-};
+}
 
 /**
  * Creates an empty source based on the type of the current source.
