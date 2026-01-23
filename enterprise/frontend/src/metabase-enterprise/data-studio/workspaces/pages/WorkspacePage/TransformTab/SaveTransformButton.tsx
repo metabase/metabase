@@ -30,12 +30,10 @@ import {
   isWorkspaceTransform,
 } from "metabase-types/api";
 
-import type {
-  AnyWorkspaceTransform,
-  EditedTransform,
-} from "../WorkspaceProvider";
+import type { AnyWorkspaceTransform } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
+import { useEditedTransform } from "./useEditedTransform";
 import { useTransformValidation } from "./useTransformValidation";
 
 const schemasFilter = (schema: SchemaName) =>
@@ -43,24 +41,20 @@ const schemasFilter = (schema: SchemaName) =>
 
 type SaveTransformButtonProps = {
   databaseId: DatabaseId;
-  editedTransform: EditedTransform;
-  transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformListItem[];
+  transform: AnyWorkspaceTransform;
   isDisabled: boolean;
   onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
-  hasChanges: boolean;
 };
 
 export const SaveTransformButton = ({
   databaseId,
-  editedTransform,
-  transform,
   workspaceId,
   workspaceTransforms,
+  transform,
   isDisabled,
   onSaveTransform,
-  hasChanges,
 }: SaveTransformButtonProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -72,10 +66,12 @@ export const SaveTransformButton = ({
     removeEditedTransform,
   } = useWorkspace();
 
-  const [updateTransform, { isLoading: isUpdating }] =
+  const [updateTransformMutation, { isLoading: isUpdating }] =
     useUpdateWorkspaceTransformMutation();
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  const { editedTransform, hasChanges } = useEditedTransform(transform);
 
   // Determine transform state
   const isSaved =
@@ -103,7 +99,7 @@ export const SaveTransformButton = ({
     }
 
     try {
-      const updated = await updateTransform({
+      const updated = await updateTransformMutation({
         workspaceId,
         transformId: transform.ref_id,
         source: editedTransform.source as TransformSource,
@@ -118,7 +114,6 @@ export const SaveTransformButton = ({
           database: databaseId,
         },
       }).unwrap();
-      // debugger;
 
       updateTransformState(updated);
     } catch (error) {

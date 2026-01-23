@@ -16,7 +16,6 @@ import {
   getInitialNativeSource,
   getInitialPythonSource,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -32,11 +31,7 @@ import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
-import type {
-  AnyWorkspaceTransform,
-  EditedTransform,
-  TableTab,
-} from "../WorkspaceProvider";
+import type { AnyWorkspaceTransform, TableTab } from "../WorkspaceProvider";
 import {
   getNumericTransformId,
   getTransformId,
@@ -45,6 +40,7 @@ import {
 
 import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
+import { useEditedTransform } from "./useEditedTransform";
 
 interface Props {
   databaseId: DatabaseId;
@@ -103,24 +99,11 @@ export function TransformTab({
     // We only want to sync when transform ID changes, not on every edit
   }, [transformId, transform.source, editedTransforms]);
 
-  // Construct editedTransform from provider state (for save button)
-  // Use providerEdited?.source for the latest source (updated via patchEditedTransform)
-  // Fall back to localSource only for initial render before any edits
-  const providerEdited = editedTransforms.get(transformId);
-  const editedTransform: EditedTransform = {
-    name: providerEdited?.name ?? transform.name,
-    source: providerEdited?.source ?? localSource,
-    target: providerEdited?.target ?? transform.target,
-  };
+  const { editedTransform, hasChanges, providerEdited } =
+    useEditedTransform(transform);
 
   const wsTransform = isWorkspaceTransform(transform) ? transform : null;
   const currentSource = providerEdited?.source ?? localSource;
-  const hasSourceChanged = !isSameSource(currentSource, transform.source);
-  const hasTargetNameChanged =
-    "target" in editedTransform &&
-    "target" in transform &&
-    transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -319,12 +302,10 @@ export function TransformTab({
             <SaveTransformButton
               databaseId={databaseId}
               workspaceId={workspaceId}
-              editedTransform={editedTransform}
-              transform={transform}
               workspaceTransforms={workspaceTransforms}
+              transform={transform}
               isDisabled={isDisabled}
               onSaveTransform={onSaveTransform}
-              hasChanges={hasChanges}
             />
           </Group>
         </Group>
