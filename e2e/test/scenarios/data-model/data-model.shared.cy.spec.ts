@@ -1,6 +1,7 @@
-const { TablePicker } = cy.H.DataModel;
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
+const { TablePicker } = cy.H.DataModel;
 
 function createContext(place: string) {
   return {
@@ -73,5 +74,38 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
         `${context.basePath}/database/54321`,
       );
     });
+
+    it("should show 404 if table does not exist", () => {
+      const context = createContext(area);
+      context.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: 12345,
+        skipWaiting: true,
+      });
+      cy.wait("@databases");
+      cy.wait(100); // wait with assertions for React effects to kick in
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 8);
+      H.DataModel.get().findByText("Not found.").should("be.visible");
+      cy.location("pathname").should(
+        "eq",
+        `${context.basePath}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
+      );
+
+      if (area === "admin") {
+        verifyTableSectionEmptyState();
+      }
+    });
   });
 });
+
+function verifyTableSectionEmptyState() {
+  H.DataModel.get()
+    .findByText("Start by selecting data to model")
+    .should("be.visible");
+  H.DataModel.get()
+    .findByText("Browse your databases to find the table you’d like to edit.")
+    .should("be.visible");
+}
