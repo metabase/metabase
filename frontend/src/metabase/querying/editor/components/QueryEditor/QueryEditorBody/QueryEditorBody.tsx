@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
@@ -23,7 +24,6 @@ import type {
 import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./QueryEditorBody.module.css";
-import cx from "classnames";
 
 const EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
