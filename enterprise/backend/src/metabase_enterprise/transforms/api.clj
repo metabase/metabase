@@ -419,31 +419,6 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-;; TODO: check whether used
-(defn- extract-columns-from-query
-  "Attempts to extract column names from an MBQL query without executing it.
-
-  Returns a vector of column names (as strings), or nil if extraction fails.
-
-  The query is first compiled to native SQL, hen uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (try
-    (let [{:keys [query]} (qp.compile/compile query)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database-id
-       {}
-       (fn [conn]
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
-           (when-let [rsmeta (.getMetaData stmt)]
-             (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
-               (seq (mapv :name columns))))))))
-    (catch Exception e
-      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
-      nil)))
-
 ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
