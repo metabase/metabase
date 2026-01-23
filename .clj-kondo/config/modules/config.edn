@@ -2136,6 +2136,7 @@
               api
               app-db
               audit-app
+              channel
               collections
               config
               documents
