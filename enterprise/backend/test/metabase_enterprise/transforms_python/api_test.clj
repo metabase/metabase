@@ -146,10 +146,12 @@
   (is (=? {:status 200} (test-run :features #{:transforms :transforms-python}))))
 
 (deftest test-run-permissions-test
-  (mt/with-data-analyst-role! (mt/user->id :lucky)
-    (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-      (is (=? {:status 403} (test-run :user :rasta)))
-      (is (=? {:status 200} (test-run :user :lucky))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-group-for-user [lucky-group :lucky {:name "Lucky Transforms Group"}]
+        (mt/with-db-perm-for-group! lucky-group (mt/id) :perms/transforms :yes
+          (is (=? {:status 403} (test-run :user :rasta)))
+          (is (=? {:status 200} (test-run :user :lucky))))))))
 
 (deftest test-run-input-limit-test
   (testing "maximum"
