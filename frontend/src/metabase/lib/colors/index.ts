@@ -7,7 +7,7 @@ export { ALL_COLOR_NAMES } from "./constants/color-names";
 
 export type * from "./types";
 
-export { deriveFullMetabaseTheme } from "./derive-theme";
+export { deriveFullMetabaseTheme } from "./derives/derive-theme";
 export {
   detectLightnessStep,
   generateLightnessStops,
@@ -17,4 +17,4 @@ export {
   type GeneratedColorStops,
   type LightnessStop,
   type LightnessStopInputColors,
-} from "./lightness-stops";
+} from "./derives/lightness-stops";

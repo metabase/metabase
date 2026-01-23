@@ -1,5 +1,6 @@
-import { PROTECTED_COLORS } from "./constants/protected-colors";
-import { METABASE_LIGHT_THEME } from "./constants/themes/light";
+import { PROTECTED_COLORS } from "../constants/protected-colors";
+import { METABASE_LIGHT_THEME } from "../constants/themes/light";
+
 import { deriveFullMetabaseTheme } from "./derive-theme";
 
 describe("deriveFullMetabaseTheme", () => {

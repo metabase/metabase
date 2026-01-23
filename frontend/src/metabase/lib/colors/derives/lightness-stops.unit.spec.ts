@@ -1,5 +1,6 @@
+import type { LightnessStop } from "../types/lightness-stops";
+
 import {
-  type LightnessStop,
   detectLightnessStep,
   generateLightnessStops,
   generateMultipleLightnessStops,

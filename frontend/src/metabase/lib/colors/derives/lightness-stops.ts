@@ -1,12 +1,19 @@
 import {
   BackgroundColor,
-  Color,
   type ContrastColor,
   type CssColor,
+  Color as LeonardoColor,
   Theme,
   contrast,
 } from "@adobe/leonardo-contrast-colors";
-import Color_ from "color";
+import Color from "color";
+
+import type {
+  AlphaColorStops,
+  ColorStops,
+  GeneratedColorStops,
+  LightnessStop,
+} from "../types/lightness-stops";
 
 /**
  * Contrast ratios used to generate lightness stops.
@@ -15,68 +22,6 @@ import Color_ from "color";
 const RATIOS = [
   1.05, 1.1, 1.34, 1.94, 2.86, 3.56, 5.09, 7.86, 11.56, 15.33, 18.16, 19.44,
 ];
-
-/**
- * Available lightness stop values.
- * 5 is the lightest (almost white), 110 is the darkest (almost black).
- */
-export type LightnessStop =
-  | 5
-  | 10
-  | 20
-  | 30
-  | 40
-  | 50
-  | 60
-  | 70
-  | 80
-  | 90
-  | 100
-  | 110;
-
-/**
- * A map of lightness stop values to CSS colors.
- */
-export type ColorStops = {
-  [K in LightnessStop]: CssColor;
-};
-
-/**
- * Alpha color stops map. Same structure as ColorStops but with alpha values.
- */
-export type AlphaColorStops = {
-  [K in LightnessStop]?: CssColor;
-};
-
-/**
- * Input colors for generating lightness stops.
- * Customers can provide just these main colors:
- * - brand: The primary brand color
- * - background-primary: The main background color
- * - text-primary: The main text color
- */
-export interface LightnessStopInputColors {
-  brand?: string;
-  "background-primary"?: string;
-  "text-primary"?: string;
-}
-
-/**
- * Result of generating lightness stops for a single color.
- */
-export interface GeneratedColorStops {
-  /** The solid color stops from lightest (5) to darkest (110) */
-  solid: ColorStops;
-
-  /** Alpha stops based on the original color's lightness level */
-  alpha: AlphaColorStops;
-
-  /** Inverse alpha stops (high alpha at light steps, low at dark) */
-  alphaInverse: AlphaColorStops;
-
-  /** The detected lightness step of the original color (5-110) */
-  detectedStep: LightnessStop;
-}
 
 /**
  * Maps contrast ratio indices (0-11) to lightness stop values.
@@ -139,12 +84,12 @@ export function getAccessibleTextStep(
   minContrast: number = 4.5,
   startStep: LightnessStop = 50,
 ): LightnessStop {
-  const bgRgb = Color_(backgroundColor).rgb().array() as [
+  const bgRgb = Color(backgroundColor).rgb().array() as [
     number,
     number,
     number,
   ];
-  const bgLightness = Color_(backgroundColor).lightness();
+  const bgLightness = Color(backgroundColor).lightness();
   const startIndex = INDEX_TO_STOP.indexOf(startStep);
 
   // Determine search direction based on background lightness (0-100)
@@ -158,7 +103,7 @@ export function getAccessibleTextStep(
     for (let i = 0; i < INDEX_TO_STOP.length; i++) {
       const step = INDEX_TO_STOP[i];
       const colorValue = colorStops.solid[step];
-      const colorRgb = Color_(colorValue).rgb().array() as [
+      const colorRgb = Color(colorValue).rgb().array() as [
         number,
         number,
         number,
@@ -176,7 +121,7 @@ export function getAccessibleTextStep(
     for (let i = startIndex; i < INDEX_TO_STOP.length; i++) {
       const step = INDEX_TO_STOP[i];
       const colorValue = colorStops.solid[step];
-      const colorRgb = Color_(colorValue).rgb().array() as [
+      const colorRgb = Color(colorValue).rgb().array() as [
         number,
         number,
         number,
@@ -216,7 +161,7 @@ export function getAccessibleBackgroundStep(
   for (let i = startIndex; i < INDEX_TO_STOP.length; i++) {
     const step = INDEX_TO_STOP[i];
     const colorValue = colorStops.solid[step];
-    const colorRgb = Color_(colorValue).rgb().array() as [
+    const colorRgb = Color(colorValue).rgb().array() as [
       number,
       number,
       number,
@@ -240,7 +185,7 @@ export function getAccessibleBackgroundStep(
  * @returns The closest lightness stop (5, 10, 20, ... 100, 110)
  */
 export function detectLightnessStep(color: string): LightnessStop {
-  const rgb = Color_(color).rgb().array();
+  const rgb = Color(color).rgb().array();
   const contrastRatio = contrast(
     rgb as [number, number, number],
     [255, 255, 255],
@@ -272,7 +217,7 @@ function generateAlphaStops(
   color: string,
   inverse: boolean = false,
 ): AlphaColorStops {
-  const c = Color_(color);
+  const c = Color(color);
 
   const alphaValues = {
     5: 0.02,
@@ -336,7 +281,7 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
     colorspace: "HSL",
   });
 
-  const inputColor = new Color({
+  const inputColor = new LeonardoColor({
     name: "input",
     colorKeys: [color as CssColor],
     ratios: RATIOS,
