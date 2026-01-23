@@ -39,7 +39,7 @@ export function SidebarErrorSection({
 
   return (
     <Stack role="region" aria-label={getErrorTypeLabel(type)}>
-      <Group gap="sm">
+      <Group gap="sm" wrap="nowrap">
         <Badge c="text-selected" bg="error">
           {count}
         </Badge>

@@ -72,7 +72,7 @@ function UserSection({ label, name, date }: UserSectionProps) {
         <Box className={CS.textWrap} c="text-primary">
           {name}
         </Box>
-        <DateTime value={date} unit="day" />
+        <DateTime className={CS.textNoWrap} value={date} unit="day" />
       </Group>
     </Stack>
   );

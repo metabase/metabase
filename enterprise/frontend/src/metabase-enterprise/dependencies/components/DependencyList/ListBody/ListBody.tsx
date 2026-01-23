@@ -70,7 +70,13 @@ export const ListBody = function ListBody({
   });
 
   return (
-    <Card flex={1} mih={0} p={0} withBorder data-testid="dependency-list">
+    <Card
+      flex="0 1 auto"
+      mih={0}
+      p={0}
+      withBorder
+      data-testid="dependency-list"
+    >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={getColumnWidths(mode)} />
       ) : (

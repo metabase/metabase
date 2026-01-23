@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -1028,7 +1029,7 @@
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
-              macaw/parsed-query
+              (driver.u/parsed-query driver)
               macaw/query->components
               :tables))))
 

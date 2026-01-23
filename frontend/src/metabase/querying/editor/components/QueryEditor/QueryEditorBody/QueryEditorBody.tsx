@@ -4,6 +4,7 @@ import { useWindowSize } from "react-use";
 
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
 import {
   NativeQueryEditor,
@@ -19,8 +20,6 @@ import type {
   NativeQuerySnippet,
   RecentCollectionItem,
 } from "metabase-types/api";
-
-import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./QueryEditorBody.module.css";
 

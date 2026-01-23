@@ -38,7 +38,7 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       >
         {getNodeLabel(node)}
       </Anchor>
-      <Group gap="sm">
+      <Group gap="sm" wrap="nowrap">
         <Tooltip
           label={t`View in dependency graph`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}

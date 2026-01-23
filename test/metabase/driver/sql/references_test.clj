@@ -5,6 +5,8 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.references :as sql.references]))
 
+;; TODO (Chris 2026-01-22) -- Refactor to use driver.u/parsed-query instead of macaw/parsed-query
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn- ->references [query]
   (->> query macaw/parsed-query macaw/->ast (sql.references/field-references :sql)))
 

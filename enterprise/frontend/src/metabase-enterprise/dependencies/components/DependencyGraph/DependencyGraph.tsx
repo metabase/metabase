@@ -116,8 +116,8 @@ export function DependencyGraph({
         <Background />
         <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
-        <Panel position="top-left">
-          <Group>
+        <Panel className={S.leftPanel} position="top-left">
+          <Group className={S.panelContent} wrap="nowrap">
             {withEntryPicker && (
               <GraphEntryInput
                 node={entryNode?.data ?? null}
@@ -129,7 +129,7 @@ export function DependencyGraph({
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (
-          <Panel className={S.panel} position="top-right">
+          <Panel className={S.rightPanel} position="top-right">
             {selection.groupType != null ? (
               <GraphDependencyPanel
                 node={selectedNode.data}
