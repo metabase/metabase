@@ -8,13 +8,16 @@ export const BACKGROUND_DERIVATIONS: Record<
   MetabaseColorKey,
   { light: Derivation; dark: Derivation }
 > = {
-  "background-secondary": { light: 5, dark: 110 },
-  "background-tertiary": { light: 10, dark: 80 },
-  "background-primary-inverse": { light: 80, dark: 20 },
-  "background-secondary-inverse": { light: 70, dark: 30 },
-  "background-tertiary-inverse": { light: 40, dark: 70 },
-  border: { light: 20, dark: 20 }, // dark mode border comes from text
-  "tooltip-background": { light: 80, dark: 70 },
+  "background-secondary": { light: { offset: 0 }, dark: { offset: 1 } },
+  "background-tertiary": { light: { offset: 1 }, dark: { offset: -2 } },
+  "background-primary-inverse": { light: { offset: 8 }, dark: { offset: -8 } },
+  "background-secondary-inverse": {
+    light: { offset: 7 },
+    dark: { offset: -7 },
+  },
+  "background-tertiary-inverse": { light: { offset: 4 }, dark: { offset: -3 } },
+  border: { light: { offset: 2 }, dark: { alphaInverse: 20 } },
+  "tooltip-background": { light: { offset: 8 }, dark: { offset: -3 } },
 } as Record<MetabaseColorKey, { light: Derivation; dark: Derivation }>;
 
 /**
