@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -330,3 +331,37 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+(deftest semantic-search-failover-test
+  (let [engines          [:search.engine/semantic :search.engine/appdb]
+        semantic-results [{:id 1 :model "card" :name "Semantic Card"}]
+        appdb-results    [{:id 2 :model "card" :name "AppDB Card"}]]
+    (mt/with-test-user :crowberto
+      (with-redefs [search.engine/active-engines    (constantly engines)
+                    search.engine/supported-engines (constantly engines)
+                    search.engine/disjunction       (fn [_ queries] queries)]
+
+        (testing "returns appdb results when semantic search fails"
+          (with-redefs [search-core/search (fn [ctx]
+                                             (if (= :search.engine/semantic (:search-engine ctx))
+                                               (throw (ex-info "Semantic search failed" {}))
+                                               {:data appdb-results}))]
+            (let [results (search/search {:term-queries     ["test"]
+                                          :semantic-queries ["test"]})]
+              (is (= ["AppDB Card"] (map :name results))))))
+
+        (testing "returns semantic results when appdb search fails"
+          (with-redefs [search-core/search (fn [ctx]
+                                             (if (= :search.engine/semantic (:search-engine ctx))
+                                               {:data semantic-results}
+                                               (throw (ex-info "AppDB search failed" {}))))]
+            (let [results (search/search {:term-queries     ["test"]
+                                          :semantic-queries ["test"]})]
+              (is (= ["Semantic Card"] (map :name results))))))
+
+        (testing "returns empty results when both engines fail"
+          (with-redefs [search-core/search (fn [_ctx]
+                                             (throw (ex-info "Search failed" {})))]
+            (let [results (search/search {:term-queries     ["test"]
+                                          :semantic-queries ["test"]})]
+              (is (empty? results)))))))))
