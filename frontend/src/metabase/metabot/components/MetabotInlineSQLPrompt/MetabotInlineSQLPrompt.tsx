@@ -135,7 +135,11 @@ export const MetabotInlineSQLPrompt = ({
               disabled={isSubmitDisabled}
             >
               {isLoading ? (
-                <Loader size="xs" color="text-tertiary" />
+                <Loader
+                  size="xs"
+                  color="text-tertiary"
+                  data-testid="metabot-inline-sql-generating"
+                />
               ) : (
                 <Icon name="send" />
               )}

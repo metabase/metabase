@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { skipToken, useExtractTablesQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -65,7 +65,9 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
+  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
+
   const databaseId = question.databaseId();
 
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
@@ -80,7 +82,7 @@ export function useInlineSQLPrompt(
 
   const debouncedEditorSql = useDebouncedValue(editorSql.trim(), 1000);
   const { data: extractedTablesData } = useExtractTablesQuery(
-    databaseId && debouncedEditorSql && llmSqlGenerationEnabled
+    databaseId && debouncedEditorSql && isTableBarEnabled
       ? { database_id: databaseId, sql: debouncedEditorSql }
       : skipToken,
   );
@@ -276,6 +278,7 @@ export function useInlineSQLPrompt(
               getSourceSql={getSourceSql}
               value={promptValue}
               onValueChange={setPromptValue}
+              isTableBarEnabled={isTableBarEnabled}
               selectedTables={selectedTables}
               onSelectedTablesChange={setSelectedTables}
             />,
