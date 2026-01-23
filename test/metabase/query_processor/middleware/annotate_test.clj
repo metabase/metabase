@@ -156,10 +156,10 @@
                          (field :price       $price)
                          {:name      "ID_2"
                           :id        %categories.id
-                          :field_ref &c.categories.id}
+                          :field_ref (if (zero? level) &c.categories.id [:field %categories.id nil])}
                          {:name      "NAME_2"
                           :id        %categories.name
-                          :field_ref &c.categories.name}])
+                          :field_ref (if (zero? level) &c.categories.name [:field %categories.name nil])}])
                       (map #(select-keys % [:name :id :field_ref])
                            (:cols (add-column-info nested-query {:cols []}))))))))))))
 
@@ -256,7 +256,7 @@
                 fields     #{%orders.discount %products.title %people.source}]
             (is (= [{:display_name "Discount"
                      :field_ref    [:field %orders.discount nil]}
-                    {:display_name "Products → Title"
+                    {:display_name "Title"
                      :field_ref    [:field %products.title nil]}
                     {:display_name "Q → Source"
                      :field_ref    [:field %people.source {:join-alias "Q"}]}]

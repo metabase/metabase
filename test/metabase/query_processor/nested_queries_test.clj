@@ -1083,9 +1083,9 @@
                     :field_ref    $name
                     :base_type    :type/Text}
                    {:name         (mt/format-name "name_2")
-                    :display_name "c → Name"
+                    :display_name "Name"
                     :id           %categories.name
-                    :field_ref    &c.categories.name
+                    :field_ref    [:field %categories.name nil]
                     :base_type    :type/Text}
                    {:name         "count"
                     :display_name "Count"
