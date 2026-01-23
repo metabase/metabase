@@ -74,6 +74,7 @@ describe.each<Area>(areas)(
           "updateFieldDimension",
         );
         cy.intercept("PUT", "/api/table").as("updateTables");
+        cy.intercept("PUT", "/api/table/*").as("updateTable");
       }
 
       if (area === "data studio") {
@@ -603,6 +604,25 @@ describe.each<Area>(areas)(
           "Confirmed Sample Company orders for a product, from a user.",
         );
       });
+
+      it(
+        "should be able to select and update a table in a database without schemas",
+        { tags: ["@external"] },
+        () => {
+          H.restore("mysql-8");
+
+          context.visit({
+            databaseId: MYSQL_DB_ID,
+            schemaId: MYSQL_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+          });
+
+          TableSection.getNameInput().clear().type("New orders").blur();
+          cy.wait("@updateTable");
+          verifyAndCloseToast("Table name updated");
+          TableSection.getNameInput().should("have.value", "New orders");
+        },
+      );
     });
   },
 );
@@ -633,4 +653,9 @@ function verifyFieldSectionEmptyState() {
 
 function verifyDataStudioFieldSectionEmptyState() {
   H.DataModel.FieldSection.get().should("not.exist");
+}
+
+function verifyAndCloseToast(message: string) {
+  H.undoToast().should("contain.text", message);
+  H.undoToast().icon("close").click({ force: true });
 }
