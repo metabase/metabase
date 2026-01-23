@@ -334,11 +334,12 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
       (mt/with-data-analyst-role! (mt/user->id :lucky)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-          (testing "Can list without query parameters"
-            (mt/user-http-request :lucky :get 200 "ee/transform"))
-          (testing "Can list with query parameters"
-            (mt/dataset transforms-dataset/transforms-test
+        (testing "Can list without query parameters"
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/user-http-request :lucky :get 200 "ee/transform")))
+        (testing "Can list with query parameters"
+          (mt/dataset transforms-dataset/transforms-test
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
               (with-transform-cleanup! [table-name "gadget_products"]
                 (let [body         {:name        "Gadget Products"
                                     :description "Desc"
@@ -459,11 +460,12 @@
                       (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/view-data :blocked
                         (mt/with-user-in-groups [group {:name "Transforms Only Group"}
                                                  user [group]]
-                          (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
-                            (let [get-resp (mt/user-http-request user :get 200 (format "ee/transform/%s" transform-id))]
-                              (is (contains? get-resp :source_readable))
-                              (is (false? (:source_readable get-resp))
-                                  "User without database view permission should have source_readable=false"))))))))))))))))
+                          (mt/with-data-analyst-role! (u/the-id user)
+                            (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
+                              (let [get-resp (mt/user-http-request user :get 200 (format "ee/transform/%s" transform-id))]
+                                (is (contains? get-resp :source_readable))
+                                (is (false? (:source_readable get-resp))
+                                    "User without database view permission should have source_readable=false")))))))))))))))))
 
 (defn- ->transform [transform-name query]
   {:source {:type "query",
