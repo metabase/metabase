@@ -28,6 +28,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isGuest",
     "jwtProviderUri",
     "enableInternalNavigation",
+    "enableEntityNavigation",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",

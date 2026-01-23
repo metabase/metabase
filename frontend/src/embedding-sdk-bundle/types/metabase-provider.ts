@@ -40,13 +40,6 @@ export interface MetabaseProviderProps {
   pluginsConfig?: MetabaseGlobalPluginsConfig;
 
   /**
-   * Whether to enable internal navigation via click behaviors.
-   *
-   * @default false
-   */
-  enableInternalNavigation?: boolean;
-
-  /**
    * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).
    */
   eventHandlers?: SdkEventHandlersConfig;

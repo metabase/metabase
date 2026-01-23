@@ -1,17 +1,16 @@
-import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
-import { EAJSSettingsStore } from "./eajs-settings-store";
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
 
 type HandleLinkFn = (url: string) => { handled: boolean };
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
-  enableInternalNavigation?: boolean;
+  enableEntityNavigation?: boolean;
 };
 
 export type SdkGlobalPluginsAndOptions = {
-  enableInternalNavigation?: boolean;
+  enableEntityNavigation?: boolean;
   plugins: SdkGlobalPlugins;
 };
 
@@ -20,26 +19,16 @@ export type SdkGlobalPluginsAndOptions = {
 // plugins between them. This function uses `ensureMetabaseProviderPropsStore`
 // to access the provider props across bundles
 export const getSdkGlobalPluginsAndOptions = (): SdkGlobalPluginsAndOptions => {
-  // TODO: SDK and EAJS should store data in the same place
-  if (isEmbeddingEajs()) {
-    return {
-      plugins: {},
-      enableInternalNavigation:
-        EAJSSettingsStore.getState().enableInternalNavigation,
-    };
-  }
-
   if (isEmbeddingSdk()) {
     const props = ensureMetabaseProviderPropsStore().getState().props;
     return {
       plugins: props?.pluginsConfig || {},
-      enableInternalNavigation: props?.enableInternalNavigation || false,
     };
   }
 
   return {
     plugins: {},
-    enableInternalNavigation: false,
+    enableEntityNavigation: false,
   };
 };
 

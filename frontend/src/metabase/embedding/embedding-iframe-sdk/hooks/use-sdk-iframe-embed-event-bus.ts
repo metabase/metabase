@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
-import { EAJSSettingsStore } from "embedding-sdk-shared/lib/eajs-settings-store";
 import { trackSchemaEvent } from "metabase/lib/analytics";
 import { isWithinIframe } from "metabase/lib/dom";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
@@ -42,10 +41,6 @@ export function useSdkIframeEmbedEventBus({
 
       match(event.data)
         .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
-          // store the settings so we can access them from outside react
-          EAJSSettingsStore.setState({
-            enableInternalNavigation: data.enableInternalNavigation ?? false,
-          });
           setEmbedSettings(data);
           onSettingsChanged?.(data);
         })
