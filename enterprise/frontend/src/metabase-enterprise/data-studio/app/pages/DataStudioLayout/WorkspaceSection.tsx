@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import type { MetabaseColorKey } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -296,12 +297,8 @@ function WorkspaceItem({
               wrap="nowrap"
               data-testid="workspace-status"
             >
-              <Icon
-                name={status.icon}
-                size={10}
-                style={{ color: status.color }}
-              />
-              <Text size="xs" fw={500} style={{ color: status.color }}>
+              <Icon name={status.icon} size={10} c={status.color} />
+              <Text size="xs" fw={500} c={status.color}>
                 {status.label}
               </Text>
             </Group>
@@ -379,7 +376,7 @@ function WorkspaceItem({
 type WorkspaceListStatus = {
   label: string;
   icon: IconName;
-  color: string;
+  color: MetabaseColorKey;
 };
 
 function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
