@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [get-test-schema
@@ -13,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -61,8 +63,7 @@
                                                          :query query}
                                                 :target {:type "table"
                                                          :schema schema
-                                                         :name table-name
-                                                         :database (mt/id)}})
+                                                         :name table-name}})
                 transform-id (:id response)
                 crowberto-id (mt/user->id :crowberto)
                 creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
@@ -72,7 +73,102 @@
               (is (= crowberto-id creator-id)))
             (testing "Response hydrates creator"
               (is (map? (:creator response)))
-              (is (= crowberto-id (get-in response [:creator :id]))))))))))
+              (is (= crowberto-id (get-in response [:creator :id]))))
+            (testing "Response includes owner_user_id defaulting to creator"
+              (is (= crowberto-id (:owner_user_id response))))
+            (testing "Response hydrates owner"
+              (is (map? (:owner response)))
+              (is (= crowberto-id (get-in response [:owner :id]))))))))))
+
+(deftest create-transform-with-owner-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (testing "Creating a transform with explicit owner_user_id"
+          (with-transform-cleanup! [table-name "owner_user_id_test"]
+            (let [query (make-query "Gadget")
+                  schema (get-test-schema)
+                  rasta-id (mt/user->id :rasta)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name "Transform with explicit owner"
+                                                  :source {:type "query"
+                                                           :query query}
+                                                  :target {:type "table"
+                                                           :schema schema
+                                                           :name table-name}
+                                                  :owner_user_id rasta-id})]
+              (is (= rasta-id (:owner_user_id response))
+                  "owner_user_id should match the specified user")
+              (is (nil? (:owner_email response))
+                  "owner_email should be nil when owner_user_id is set")
+              (is (= rasta-id (get-in response [:owner :id]))
+                  "Hydrated owner should match the specified user"))))
+
+        (testing "Creating a transform with external owner_email"
+          (with-transform-cleanup! [table-name "owner_email_test"]
+            (let [query (make-query "Gadget")
+                  schema (get-test-schema)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name "Transform with external owner"
+                                                  :source {:type "query"
+                                                           :query query}
+                                                  :target {:type "table"
+                                                           :schema schema
+                                                           :name table-name}
+                                                  :owner_email "external.owner@example.com"})]
+              (is (nil? (:owner_user_id response))
+                  "owner_user_id should be nil when owner_email is set")
+              (is (= "external.owner@example.com" (:owner_email response))
+                  "owner_email should match the specified email")
+              (is (= {:email "external.owner@example.com"} (:owner response))
+                  "Hydrated owner should be email-only map"))))))))
+
+(deftest update-transform-owner-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)
+                created (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                              {:name "Transform for owner update"
+                                               :source {:type "query"
+                                                        :query query}
+                                               :target {:type "table"
+                                                        :schema schema
+                                                        :name table-name}})
+                transform-id (:id created)
+                crowberto-id (mt/user->id :crowberto)
+                rasta-id (mt/user->id :rasta)]
+
+            (testing "Initial owner is the creator"
+              (is (= crowberto-id (:owner_user_id created))))
+
+            (testing "Update owner to a different user"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_user_id rasta-id})]
+                (is (= rasta-id (:owner_user_id updated)))
+                (is (nil? (:owner_email updated)))
+                (is (= rasta-id (get-in updated [:owner :id])))))
+
+            (testing "Update owner to external email"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_email "new.owner@example.com"
+                                                   :owner_user_id nil})]
+                (is (nil? (:owner_user_id updated)))
+                (is (= "new.owner@example.com" (:owner_email updated)))
+                (is (= {:email "new.owner@example.com"} (:owner updated)))))
+
+            (testing "Clear owner by setting both to nil"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_user_id nil
+                                                   :owner_email nil})]
+                (is (nil? (:owner_user_id updated)))
+                (is (nil? (:owner_email updated)))
+                (is (nil? (:owner updated)))))))))))
 
 (deftest transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"
@@ -89,8 +185,7 @@
                                                              :query mbql-query}
                                                     :target {:type   "table"
                                                              :schema schema
-                                                             :name   table-name
-                                                             :database (mt/id)}})]
+                                                             :name   table-name}})]
                 (is (= "mbql" (:source_type response))))))
 
           (testing "Native query transforms are detected as :native"
@@ -102,8 +197,7 @@
                                                              :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                     :target {:type   "table"
                                                              :schema schema
-                                                             :name   table-name
-                                                             :database (mt/id)}})]
+                                                             :name   table-name}})]
                 (is (= "native" (:source_type response))))))
 
           (testing "Python transforms are detected as :python"
@@ -135,8 +229,7 @@
                                                           :query native-query}
                                                  :target {:type   "table"
                                                           :schema schema
-                                                          :name   table-name
-                                                          :database (mt/id)}})]
+                                                          :name   table-name}})]
               (is (= "native" (:source_type created)))
 
               (testing "Type automatically changes to mbql when updating to an MBQL query"
@@ -159,8 +252,7 @@
                                                          :query query}
                                                 :target {:type   "table"
                                                          :schema schema
-                                                         :name   "test_transform"
-                                                         :database (mt/id)}})]
+                                                         :name   "test_transform"}})]
             (is (= "error-premium-feature-not-available" (:status response)))))))
 
     (testing "Creating a query transform with :transforms feature succeeds"
@@ -175,8 +267,7 @@
                                                            :query query}
                                                   :target {:type   "table"
                                                            :schema schema
-                                                           :name   table-name
-                                                           :database (mt/id)}})]
+                                                           :name   table-name}})]
               (is (some? (:id response))))))))))
 
 (deftest update-transform-feature-flag-test
@@ -192,8 +283,7 @@
                                               :query query}
                                      :target {:type   "table"
                                               :schema schema
-                                              :name   table-name
-                                              :database (mt/id)}}
+                                              :name   table-name}}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
               ;; Now test update without feature flag
               (mt/with-premium-features #{}
@@ -215,8 +305,7 @@
                                               :query query}
                                      :target {:type   "table"
                                               :schema schema
-                                              :name   table-name
-                                              :database (mt/id)}}
+                                              :name   table-name}}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
               ;; Now test run without feature flag
               (mt/with-premium-features #{}
@@ -239,8 +328,7 @@
                                               :query (make-query "Gadget")}
                                 :target      {:type   "table"
                                               :schema (get-test-schema)
-                                              :name   table-name
-                                              :database (mt/id)}}
+                                              :name   table-name}}
                   _            (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                   list-resp    (mt/user-http-request :crowberto :get 200 "ee/transform")
                   crowberto-id (mt/user->id :crowberto)]
@@ -289,8 +377,7 @@
                                             :query (make-query "Gadget")}
                               :target      {:type   "table"
                                             :schema (get-test-schema)
-                                            :name   table-name
-                                            :database (mt/id)}}
+                                            :name   table-name}}
                 resp         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                 get-resp     (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
                 crowberto-id (mt/user->id :crowberto)]
@@ -306,8 +393,7 @@
    :name transform-name
    :target {:schema "public"
             :name "orders_2"
-            :type "table"
-            :database (mt/id)}})
+            :type "table"}})
 
 (deftest get-transform-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -342,16 +428,14 @@
                                                              :query (make-query "Gadget")}
                                                     :target {:type   "table"
                                                              :schema (get-test-schema)
-                                                             :name   table-name
-                                                             :database (mt/id)}})
+                                                             :name   table-name}})
                 transform    {:name        "Gadget Products 2"
                               :description "Desc"
                               :source      {:type  "query"
                                             :query query2}
                               :target      {:type   "table"
                                             :schema (get-test-schema)
-                                            :name   table-name
-                                            :database (mt/id)}}
+                                            :name   table-name}}
                 put-resp     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                                    transform)
                 crowberto-id (mt/user->id :crowberto)]
@@ -373,8 +457,7 @@
                                    :query (make-query "Gadget")}
                           :target {:type   "table"
                                    :schema (get-test-schema)
-                                   :name   table1-name
-                                   :database (mt/id)}}
+                                   :name   table1-name}}
                 resp     (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                original)
                 updated  {:name        "Doohickey Products"
@@ -383,8 +466,7 @@
                                         :query query2}
                           :target      {:type   "table"
                                         :schema (get-test-schema)
-                                        :name   table2-name
-                                        :database (mt/id)}}]
+                                        :name   table2-name}}]
             (is (=? (-> updated
                         (m/dissoc-in [:source :query :lib/metadata]))
                     (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
@@ -402,8 +484,7 @@
                                                      :query (make-query "Gadget")}
                                             :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name   table-name
-                                                     :database (mt/id)}})]
+                                                     :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
             (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))))
 
@@ -418,8 +499,7 @@
                                                      :query (make-query "Gadget")}
                                             :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name   table-name
-                                                     :database (mt/id)}})]
+                                                     :name   table-name}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
 (defn- test-run
@@ -499,12 +579,10 @@
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
-                                                                       :name   "gadget_products"
-                                                                       :database (mt/id)}
+                                                                       :name   "gadget_products"}
                                       {table2-name :name :as target2} {:type   "table"
                                                                        :schema schema
-                                                                       :name   "doohickey_products"
-                                                                       :database (mt/id)}]
+                                                                       :name   "doohickey_products"}]
               (let [query2             (make-query "Doohickey")
                     original           {:name   "Gadget Products"
                                         :source {:type  "query"
@@ -872,7 +950,7 @@
                      (mt/user-http-request :crowberto :post 400 "ee/transform"
                                            {:name   "Gadget Products"
                                             :source {:type "query" :query query}
-                                            :target {:type "table" :schema schema :name table-name :database (mt/id)}}))))))))))
+                                            :target {:type "table" :schema schema :name table-name}}))))))))))
 
 (deftest update-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -888,7 +966,7 @@
                                                     :user_attribute "db_name"}
                            :model/Transform transform {:name   "Gadget Products"
                                                        :source {:type "query" :query query}
-                                                       :target {:type "table" :schema schema :name table-name :database (mt/id)}}]
+                                                       :target {:type "table" :schema schema :name table-name}}]
               (is (= "Transforms are not supported on databases with DB routing enabled."
                      (mt/user-http-request :crowberto :put 400 (format "ee/transform/%s" (:id transform))
                                            (assoc transform :name "Gadget Products 2")))))))))))
@@ -912,7 +990,7 @@
                                                    removed #{:id :entity_id :created_at :updated_at}]
                                                (is (every? #(not (contains? rev-transform %)) removed))
                                                ;; Compare revision with DB transform (both have in-memory representation)
-                                               (is (=? (dissoc rev-transform :source) transform)))
+                                               (is (=? (dissoc rev-transform :source :owner) transform)))
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
@@ -920,8 +998,7 @@
                                      :query (make-query "Gadget")}
                             :target {:type   "table"
                                      :schema (get-test-schema)
-                                     :name   table-name
-                                     :database (mt/id)}}
+                                     :name   table-name}}
                 transform-id (test-transform-revisions :post "ee/transform" gadget-req 1)
                 widget-req {:name   "Widget Products"
                             :description "The widget products"
@@ -930,8 +1007,7 @@
                             :tag_ids [4]
                             :target {:type   "table"
                                      :schema (get-test-schema)
-                                     :name   table-name
-                                     :database (mt/id)}}]
+                                     :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
 
 (defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
@@ -957,7 +1033,8 @@
             (testing "Successfully extracts columns from a simple SELECT query"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
                                                    {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
-                (is (= ["id" "name" "category" "price"] (:columns response)))))
+                (is (= ["id" "price"] (:columns response))
+                    "Should only return numeric (id, price) columns, filtering out text columns (name, category)")))
 
             (testing "Returns nil for invalid SQL"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
@@ -967,7 +1044,14 @@
             (testing "Extracts columns from query with aliases"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
                                                    {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
-                (is (= ["product_id" "product_name"] (:columns response)))))
+                (is (= ["product_id"] (:columns response))
+                    "Should only return numeric column (id), filtering out text column (name)")))
+
+            (testing "Filters columns by type - only returns numeric and temporal columns"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price, created_at FROM transforms_products")})]
+                (is (= ["id" "price" "created_at"] (:columns response))
+                    "Should return numeric (id, price) and temporal (created_at) columns, filtering out text columns (name, category)")))
 
             (testing "Requires superuser permissions"
               (is (= "You don't have permissions to do that."
@@ -1024,3 +1108,178 @@
                                              {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
           (is (false? (:is_simple response)))
           (is (= "Contains a CTE" (:reason response))))))))
+
+;;; ------------------------------------------------------------
+;;; User Attribution Tests
+;;; ------------------------------------------------------------
+
+(deftest manual-run-user-attribution-test
+  (testing "Manual runs are attributed to the triggering user, not the owner"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "user_attribution_test"]
+            (let [rasta-id (mt/user->id :rasta)
+                  crowberto-id (mt/user->id :crowberto)
+                  ;; Create transform owned by rasta, but run by crowberto
+                  transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Attribution Test"
+                                                   :source {:type "query"
+                                                            :query (make-query "Gadget")}
+                                                   :target {:type "table"
+                                                            :schema (get-test-schema)
+                                                            :name table-name}
+                                                   :owner_user_id rasta-id})
+                  transform-id (:id transform)]
+              ;; Verify owner is rasta
+              (is (= rasta-id (:owner_user_id transform))
+                  "Owner should be rasta")
+              ;; Run as crowberto (different from owner)
+              (mt/user-http-request :crowberto :post 202
+                                    (format "ee/transform/%d/run" transform-id))
+              ;; Wait for run to start and check attribution
+              (let [run (u/poll {:thunk #(t2/select-one :model/TransformRun :transform_id transform-id)
+                                 :done? some?
+                                 :timeout-ms 5000})]
+                (is (some? run) "Run should exist")
+                (is (= crowberto-id (:user_id run))
+                    "Run should be attributed to the triggering user (crowberto), not the owner (rasta)")))))))))
+
+;;; ------------------------------------------------------------
+;;; Collection Items Integration Tests
+;;; ------------------------------------------------------------
+
+(deftest collection-items-include-transforms-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Includes transforms in collection items"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {collection-id :id} {:name "Transforms Collection"
+                                                              :namespace :transforms}
+                       :model/Transform  {transform-id :id}
+                       {:name "Test Transform"
+                        :description "A test transform"
+                        :collection_id collection-id}]
+          ;; Test 1: Transform appears in unfiltered results
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)))]
+            (is (= 1 (count items)))
+            (is (= "transform" (:model (first items))))
+            (is (= "Test Transform" (:name (first items)))))
+
+          ;; Test 2: Transform appears when filtered by models=transform
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)
+                                                   :models "transform"))]
+            (is (= 1 (count items)))
+            (is (= transform-id (:id (first items)))))
+
+          ;; Test 3: Transform NOT returned when filtering for other models only
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)
+                                                   :models "card"))]
+            (is (empty? items)))
+
+          ;; Test 4: Non-admin users don't see transforms
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (format "collection/%d/items" collection-id)))]
+            (is (empty? items))))))))
+
+(deftest native-incremental-column-type-validated-on-create-test
+  (testing "POST /api/ee/transform column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Rejects unsupported checkpoint column type (text)"
+              (let [response (mt/user-http-request :crowberto :post 400 "ee/transform"
+                                                   {:name "Invalid Incremental Transform"
+                                                    :source {:type "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name, category, price FROM transforms_products")
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter "name"}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "invalid_incremental"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"Only numeric and temporal" response))))))))))
+
+(deftest native-incremental-column-type-validated-on-update-test
+  (testing "PUT /api/ee/transform column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (with-transform-cleanup! [table-name "update_incremental_test"]
+              (let [;; Create a non-incremental transform first
+                    created (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Test Transform"
+                                                   :source {:type "query"
+                                                            :query (lib/native-query (mt/metadata-provider)
+                                                                                     "SELECT id, name, category FROM transforms_products")}
+                                                   :target {:type "table"
+                                                            :schema schema
+                                                            :name table-name}})]
+                (testing "Rejects update to unsupported checkpoint column type (text)"
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "ee/transform/%d" (:id created))
+                                                       {:source {:type "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name, category FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter "category"}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (string? response))
+                    (is (re-find #"Only numeric and temporal" response))))))))))))
+
+(deftest mbql-incremental-column-type-validated-on-create-test
+  (testing "MBQL query with checkpoint-filter-unique-key - checkpoint column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Rejects unsupported checkpoint column type (text)"
+              (let [query (mt/mbql-query transforms_products)
+                    response (mt/user-http-request :crowberto :post 400 "ee/transform"
+                                                   {:name "Invalid MBQL Incremental"
+                                                    :source {:type "query"
+                                                             :query query
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter-unique-key "column-unique-key-v1$name"}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "invalid_mbql_incremental"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"not supported" response))))))))))
+
+(deftest native-incremental-column-validation-when-not-extractable-test
+  (testing "Native query checkpoint column validation with text input fallback"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Accepts any column if they were not extractable"
+              (with-transform-cleanup! [table-name "fallback_test_unextracted"]
+                (with-redefs [metabase-enterprise.transforms.api/extract-all-columns-from-query
+                              ;; simulate lack of driver support for extraction
+                              (fn [_driver _database-id _query] nil)]
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                       {:name "Unextracted Column - Text Input Fallback"
+                                                        :source {:type "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name, created_at FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               ;; created_at is in the query but not in our stubbed extraction
+                                                                                               :checkpoint-filter "created_at"}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (some? (:id response))
+                        "Should accept column not in extracted metadata, allowing text input fallback")))))))))))

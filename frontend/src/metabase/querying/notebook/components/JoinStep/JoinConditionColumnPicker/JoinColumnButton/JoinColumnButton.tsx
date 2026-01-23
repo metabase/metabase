@@ -2,6 +2,7 @@ import cx from "classnames";
 import { type Ref, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -33,10 +34,11 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   }: JoinColumnButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const tc = useTranslateContent();
   const expression = isLhsPicker ? lhsExpression : rhsExpression;
   const buttonLabel = useMemo(
-    () => getButtonLabel(query, stageIndex, expression),
-    [query, stageIndex, expression],
+    () => getButtonLabel(query, stageIndex, expression, tc),
+    [query, stageIndex, expression, tc],
   );
   const isEmpty = expression == null;
   const isLiteral =
@@ -60,17 +62,17 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           display="block"
           fz={11}
           lh={1}
-          c={isEmpty ? "brand" : "text-white"}
+          c={isEmpty ? "brand" : "text-primary-inverse"}
           ta="left"
           fw={400}
         >
-          {tableName}
+          {tc(tableName)}
         </Text>
       )}
       <Text
         className={S.joinCellContent}
         display="block"
-        c={isEmpty ? "brand" : "text-white"}
+        c={isEmpty ? "brand" : "text-primary-inverse"}
         ta="left"
         fw={700}
         lh={1}
@@ -85,6 +87,7 @@ function getButtonLabel(
   query: Lib.Query,
   stageIndex: number,
   expression: Lib.ExpressionClause | undefined,
+  tc: (content: string | null | undefined) => string | null | undefined,
 ) {
   if (expression == null) {
     return t`Pick a column…`;
@@ -94,7 +97,7 @@ function getButtonLabel(
     Lib.isJoinConditionLHSorRHSLiteral(expression) ||
     Lib.isJoinConditionLHSorRHSColumn(expression)
   ) {
-    return Lib.displayInfo(query, stageIndex, expression).displayName;
+    return tc(Lib.displayInfo(query, stageIndex, expression).displayName);
   }
 
   return t`Custom expression`;

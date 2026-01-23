@@ -219,3 +219,21 @@
 
     (is (= cols
            (#'mi/result-metadata-out (json/encode cols))))))
+
+;;; ---------------------------------------- can-query? tests ----------------------------------------
+
+(deftest can-query?-default-falls-back-to-can-read?-test
+  (testing "Default implementation falls back to can-read?"
+    ;; Use Card model which uses the default can-query? implementation
+    (mt/with-temp [:model/Card card {}]
+      (with-redefs [mi/can-read? (constantly true)]
+        (is (true? (mi/can-query? card))))
+      (with-redefs [mi/can-read? (constantly false)]
+        (is (false? (mi/can-query? card)))))))
+
+(deftest can-query-hydration-returns-boolean-test
+  (testing ":can_query hydration returns a boolean value"
+    (mt/with-temp [:model/Card card {}]
+      (let [hydrated (t2/hydrate card :can_query)]
+        (is (contains? hydrated :can_query))
+        (is (boolean? (:can_query hydrated)))))))

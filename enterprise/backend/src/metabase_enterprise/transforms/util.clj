@@ -1,14 +1,18 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -94,14 +98,16 @@
     (premium-features/has-feature? :transforms)))
 
 (defn try-start-unless-already-running
-  "Start a transform run, throwing an informative error if already running."
-  [id run-method]
+  "Start a transform run, throwing an informative error if already running.
+   If `user-id` is provided, it will be stored with the run for attribution purposes."
+  [id run-method user-id]
   (try
-    (transform-run/start-run! id {:run_method run-method})
+    (transform-run/start-run! id (cond-> {:run_method run-method}
+                                   user-id (assoc :user_id user-id)))
     (catch java.sql.SQLException e
       (if (= (.getSQLState e) "23505")
         (throw (ex-info "Transform is already running"
-                        {:error :already-running
+                        {:error        :already-running
                          :transform-id id}
                         e))
         (throw e)))))
@@ -208,6 +214,14 @@
   [source]
   (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
 
+(defn supported-incremental-filter-type?
+  "Returns true if the given base-type is supported for incremental filtering.
+
+  We only support temporal (timestamp/tz) and numeric (int/float) types."
+  [base-type]
+  (or (isa? base-type :type/Temporal)
+      (isa? base-type :type/Number)))
+
 (defn- source->checkpoint-filter-unique-key
   "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
   [query source-incremental-strategy]
@@ -217,24 +231,37 @@
   "Resolve the checkpoint filter column for an incremental transform.
 
   Tries to resolve the column using the unique key first.
-  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified."
+  Falls back to looking up the column by name from the target table if a `:checkpoint-filter` is specified.
+
+  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
+  Throws an exception if the column type is not supported."
   [query source-incremental-strategy table metadata-provider]
-  (or
-   (source->checkpoint-filter-unique-key query source-incremental-strategy)
-   (when-let [field-name (-> source-incremental-strategy :checkpoint-filter)]
-     (when-let [field-id (t2/select-one-pk :model/Field
-                                           :table_id (:id table)
-                                           :name field-name)]
-       (lib.metadata/field metadata-provider field-id)))))
+  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key]} source-incremental-strategy]
+    (when-some [{column-name :name
+                 :keys [base-type]
+                 :as column}
+                (cond
+                  checkpoint-filter-unique-key
+                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
+                  checkpoint-filter
+                  (when-some [field-id (t2/select-one-pk :model/Field
+                                                         :table_id (:id table)
+                                                         :name checkpoint-filter)]
+                    (lib.metadata/field metadata-provider field-id)))]
+      (when-not (supported-incremental-filter-type? base-type)
+        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
+                             "Only numeric and temporal columns are supported for incremental filtering.")
+                        {:column-name column-name
+                         :base-type   base-type})))
+      column)))
 
 (defn next-checkpoint
   "Build a query to compute the MAX of the checkpoint column from the target table.
 
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
   or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
-        db-id (transforms.i/target-db-id transform)]
+  [{:keys [source target] :as transform}]
+  (let [db-id (transforms.i/target-db-id transform)]
     (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
         (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -307,11 +334,11 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [id source]}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy] query-type :type} source]
     (case (keyword query-type)
       :query
-      (let [checkpoint (next-checkpoint id)
+      (let [checkpoint (next-checkpoint transform)
             query (:query source)
             driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
         (binding [driver/*compile-with-inline-parameters*
@@ -555,3 +582,84 @@
     (if tag-ids
       (filter #(some tag-ids (get-in % field-path)))
       identity)))
+
+(def ^:private metabase-index-prefix "mb_transform_idx_")
+
+(defn- incremental-filter-index-name [schema table-name filter-column-name]
+  (let [prefix metabase-index-prefix
+        suffix (codecs/bytes->hex (buddy-hash/md5 (str/join "|" [schema table-name filter-column-name])))]
+    (str prefix suffix)))
+
+(defn- should-index-incremental-filter-column? [driver database]
+  (and (driver.u/supports? driver :describe-indexes database)
+       (driver.u/supports? driver :transforms/index-ddl database)))
+
+(defn- metabase-owned-index? [index]
+  (str/starts-with? (:index-name index) metabase-index-prefix))
+
+(defn- metabase-incremental-filter-index [filter-column target]
+  (let [table-name  (:name target)
+        schema      (:schema target)
+        filter-name (:name filter-column)]
+    ;; match the schema used by describe-table-indexes (:value denotes the column name, assumed leading column if a composite index)
+    {:index-name (incremental-filter-index-name schema table-name filter-name)
+     :value      filter-name}))
+
+(defn- decide-secondary-index-ddl
+  "Decides which indexes should be dropped/created on the target table.
+
+  e.g. Indexing the incremental :filter-column to accelerate MAX(target.checkpoint) queries on OLTP databases.
+
+  Indexes are represented as maps with at least the keys :index-name, :value.
+  This matches the form used by [[metabase.driver/describe-table-indexes]].
+
+  Returns a map:
+  :drop   - a vector of indexes that are redundant and should be dropped.
+  :create - a vector of desirable indexes that do not exist and that should be created.
+
+  Notes:
+  - If user covering indexes exist they should be reused.
+  - Will never drop user indexes.
+  - Indexes we previously created and are no longer required are dropped."
+  [{:keys [filter-column indexes target database]}]
+  (let [[mb-indexes user-indexes] ((juxt filter remove) metabase-owned-index? indexes)
+        default-mb-index    (when filter-column (metabase-incremental-filter-index filter-column target))
+        column-name         (:name filter-column)
+        existing-user-index (first (filter #(= (:value %) column-name) user-indexes))
+        existing-mb-index   (first (filter #(= (:index-name %) (:index-name default-mb-index)) mb-indexes))
+        driver              (:engine database)
+        intended-index      (when (should-index-incremental-filter-column? driver database)
+                              ;; Prefer reuse to not create redundant indexes
+                              (or existing-user-index default-mb-index))
+        drop                (if intended-index
+                              (remove #(= (:index-name intended-index) (:index-name %)) mb-indexes)
+                              mb-indexes)
+        create              (when (and intended-index
+                                       (not= (:index-name intended-index) (:index-name existing-user-index))
+                                       (not= (:index-name intended-index) (:index-name existing-mb-index)))
+                              [intended-index])]
+    {:drop   (vec drop)
+     :create (vec create)}))
+
+(defn execute-secondary-index-ddl-if-required!
+  "If target table index modifications are required, executes those CREATE/DROP commands.
+  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details."
+  [transform run-id database target]
+  (when (driver.u/supports? (:engine database) :describe-indexes database)
+    (let [driver     (:engine database)
+          indexes    (driver/describe-table-indexes driver database target)
+          checkpoint (next-checkpoint transform)
+          {:keys [drop create]}
+          (decide-secondary-index-ddl
+           {:filter-column (:filter-column checkpoint)
+            :database      database
+            :target        target
+            :indexes       indexes})]
+      (doseq [{:keys [index-name value]} drop]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :drop-incremental-filter-index]]
+          (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name)))
+      (doseq [{:keys [index-name value]} create]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
+          (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
+          (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))

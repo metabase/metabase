@@ -141,13 +141,12 @@ visualization_settings:
     - {base-type: type/Integer, join-alias: Content - Card Qualified}
     name: entity_id
   table.pivot_column: name_2
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: vrez-ciNppijhELOxLJOY, label: dashboards_with_this_question, model: Card}
 archived_directly: false
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

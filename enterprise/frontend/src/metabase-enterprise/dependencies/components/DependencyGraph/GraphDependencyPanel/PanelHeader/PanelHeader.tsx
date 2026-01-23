@@ -7,29 +7,30 @@ import {
   Stack,
   TextInput,
   Title,
-  rem,
 } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { ACTION_ICON_PADDING } from "../../constants";
-import type { FilterOption, SortOptions } from "../types";
-import { canFilter } from "../utils";
+import { FilterOptionsPicker } from "../../../../components/FilterOptionsPicker";
+import { SortOptionsPicker } from "../../../../components/SortOptionsPicker";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
+import { canFilter, getAvailableSortColumns } from "../utils";
 
-import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import S from "./PanelHeader.module.css";
-import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
 type PanelHeaderProps = {
   node: DependencyNode;
   groupType: DependencyGroupType;
   searchText: string;
-  filterOptions: FilterOption[];
-  sortOptions: SortOptions;
+  filterOptions: DependencyFilterOptions;
+  sortOptions: DependencySortOptions;
   hasSearch: boolean;
   onSearchTextChange: (searchText: string) => void;
-  onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
-  onSortOptionsChange: (sortOptions: SortOptions) => void;
+  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
+  onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
   onClose: () => void;
 };
 
@@ -53,11 +54,7 @@ export function PanelHeader({
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon
-          m={rem(-ACTION_ICON_PADDING)}
-          aria-label={t`Close`}
-          onClick={onClose}
-        >
+        <ActionIcon m="-sm" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
@@ -67,16 +64,16 @@ export function PanelHeader({
           placeholder={t`Search`}
           leftSection={<FixedSizeIcon name="search" />}
           rightSection={
-            <Group gap={0}>
+            <Group gap={0} wrap="nowrap">
               <SortOptionsPicker
-                groupType={groupType}
                 sortOptions={sortOptions}
+                availableSortColumns={getAvailableSortColumns(groupType)}
                 onSortOptionsChange={onSortOptionsChange}
               />
               {hasFilterPicker && (
                 <FilterOptionsPicker
-                  groupType={groupType}
                   filterOptions={filterOptions}
+                  compact
                   onFilterOptionsChange={onFilterOptionsChange}
                 />
               )}

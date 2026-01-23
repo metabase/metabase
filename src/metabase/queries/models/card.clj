@@ -211,7 +211,7 @@
   (some-> card :dataset_query not-empty lib/all-source-table-ids))
 
 (mu/defn- prefetch-tables-for-cards!
-  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metadata provider caching
   enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
   [cards-with-non-empty-queries :- [:maybe
                                     [:sequential
@@ -338,27 +338,27 @@
   [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   (when (seq query)
+   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
+   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
+   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
+   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
+   (when (and (seq query)
+              (map? query)
+              (not mi/*deserializing?*))
      (merge
-      (when-let [source-id (source-card-id query)]
-        {:source_card_id source-id})
-      ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-      ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-      ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-      ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-      (when (and (map? query)
-                 (not mi/*deserializing?*))
-        (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-          ;; TODO -- not sure `query_type` is actually used for anything important anyway
-          (let [query-type (if (query/query-is-native? query)
-                             :native
-                             :query)]
-            (merge
-             {:query_type (keyword query-type)}
-             (when database-id
-               {:database_id database-id})
-             (when table-id
-               {:table_id table-id})))))))))
+      ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
+      {:source_card_id (source-card-id query)}
+      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+        ;; TODO -- not sure `query_type` is actually used for anything important anyway
+        (let [query-type (if (query/query-is-native? query)
+                           :native
+                           :query)]
+          (merge
+           {:query_type (keyword query-type)}
+           (when database-id
+             {:database_id database-id})
+           (when table-id
+             {:table_id table-id}))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -423,7 +423,10 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::queries.schema/card]]
+  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
+  (assert (not (and (query/query-is-native? query)
+                    (some? source-card)))
+          "A native SQL question cannot have a source card.")
   (when (= (keyword card-type) :model)
     (let [template-tag-types (into #{}
                                    (map :type)
@@ -539,7 +542,7 @@
                                        (let [param-id->parameter (m/index-by :id parameters)]
                                          (->> param-cards
                                               (filter (fn [param-card]
-                                                        ;; if cant find the value-field in result_metadata, then we should
+                                                        ;; if can't find the value-field in result_metadata, then we should
                                                         ;; remove it
                                                         ;; existing usage -- do not use this in new code
                                                         #_{:clj-kondo/ignore [:deprecated-var]}
@@ -630,7 +633,7 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes)))))
+      (assert-valid-type card))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
@@ -821,8 +824,9 @@
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
-        (pre-update changes)
+        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
         populate-query-fields
+        (pre-update changes)
         maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
@@ -972,7 +976,10 @@
                                                   (assoc :type :question))
                                                 (m/update-existing :dataset_query lib-be/normalize-query))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             {:query     (:dataset_query card-data)
+                                             ;; 1. This function is called when storing metadata.
+                                             ;; 2. The metadata for storage shouldn't have remaps.
+                                             ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
+                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})
@@ -1095,13 +1102,13 @@
          not-empty)))
 
 (defn- eligible-mapping?
-  "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
+  "Decide whether parameter mapping has structure so it can be updated presumably using [[update-mapping]]."
   [{[dim [ref-kind]] :target :as _mapping}]
   (and (= dim :dimension)
        (#{:field :expression} ref-kind)))
 
 (defn- update-mapping
-  "Return modifed mapping according to action."
+  "Return modified mapping according to action."
   [identifier->action {[_dim field-ref] :target :as mapping}]
   (let [identifier   (mbql-clause->identifier-for-parameter-updates field-ref)
         [action arg] (get identifier->action identifier)]
@@ -1196,7 +1203,9 @@
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
+      (events/publish-event! :event/card-update {:object card
+                                                 :previous-object card-before-update
+                                                 :user-id api/*current-user-id*}))
     card))
 
 (defn sole-dashboard-id

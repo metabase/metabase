@@ -45,9 +45,10 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (defn saved-metric?
-  "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
+  "Is this a saved aggregation clause? True for V2 Metrics and Measures."
   [metric]
-  (lib/clause-of-type? metric :metric))
+  (or (lib/clause-of-type? metric :metric)
+      (lib/clause-of-type? metric :measure)))
 
 (def ^{:arglists '([metric])} adhoc-metric?
   "Is this an adhoc metric?"

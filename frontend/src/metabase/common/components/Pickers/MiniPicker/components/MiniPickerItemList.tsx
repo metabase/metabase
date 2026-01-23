@@ -27,6 +27,7 @@ import type {
   MiniPickerDatabaseItem,
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
+  MiniPickerTableItem,
 } from "../types";
 
 import { MiniPickerItem } from "./MiniPickerItem";
@@ -56,7 +57,7 @@ export function MiniPickerItemList() {
 }
 
 function RootItemList() {
-  const { data: databases } = useListDatabasesQuery();
+  const { data: databases } = useListDatabasesQuery({ "can-query": true });
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
@@ -151,7 +152,9 @@ function DatabaseItemList({
   const { setPath, onChange, isHidden } = useMiniPickerContext();
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
-      parent.model === "database" ? { id: parent.id } : skipToken,
+      parent.model === "database"
+        ? { id: parent.id, "can-query": true }
+        : skipToken,
     );
 
   const schemaName: SchemaName | null =
@@ -169,6 +172,7 @@ function DatabaseItemList({
         ? {
             id: dbId,
             schema: schemaName,
+            "can-query": true,
           }
         : skipToken,
     );
@@ -311,7 +315,7 @@ function SearchItemList({ query }: { query: string }) {
       <Box>
         {isLoading && <MiniPickerListLoader />}
         {!isLoading && searchResults.length === 0 && (
-          <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
+          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
         )}
       </Box>
       {searchResults.map((item) => {
@@ -337,10 +341,16 @@ export const MiniPickerListLoader = () => (
   </Box>
 );
 
-const isInCollection = (
+const isTableInDb = (
   item: MiniPickerPickableItem,
-): item is MiniPickerCollectionItem => {
-  return "collection" in item && !!item.collection && !!item.collection.name;
+): item is MiniPickerTableItem => {
+  // note: if you publish a table to Our analytics, we just can't figure that out
+  return (
+    item.model === "table" &&
+    "collection" in item &&
+    !!item.collection &&
+    !item.collection.name
+  );
 };
 
 const ItemList = ({ children }: { children: React.ReactNode[] }) => {
@@ -348,27 +358,27 @@ const ItemList = ({ children }: { children: React.ReactNode[] }) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const isCollectionItem = isInCollection(item);
+  const isTable = isTableInDb(item);
 
-  const itemText = isCollectionItem
-    ? item?.collection?.name
-    : `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`;
+  const itemText = isTable
+    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
+    : (item?.collection?.name ?? t`Our analytics`);
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = isCollectionItem
-    ? getIcon({
+  const iconProps = isTable
+    ? null
+    : getIcon({
         ...item.collection,
         model: "collection",
-      })
-    : null;
+      });
 
   return (
     <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         <Ellipsified maw="18rem">{itemText}</Ellipsified>
       </Text>
     </Flex>

@@ -1,0 +1,198 @@
+name: Generate llms.txt file
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.57.0)'
+        type: string
+        required: true
+      branch:
+        description: 'Target branch (e.g. release-x.57.x)'
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.57.0)'
+        type: string
+        required: true
+      branch:
+        description: 'Target branch (e.g. release-x.57.x)'
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-version:
+    name: Check if minor or major release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      should_generate: ${{ steps.check.outputs.should_generate }}
+      target_branch: ${{ steps.check.outputs.target_branch }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Check version
+        id: check
+        run: |
+          VERSION="${{ inputs.version }}"
+          BRANCH="${{ inputs.branch }}"
+
+          # Extract version number (e.g., v0.57.0 -> 0.57.0)
+          VERSION_NUM="${VERSION#v}"
+
+          # Count dots to determine version type
+          # Metabase format: v0.MAJOR.MINOR (3 segments) or v0.MAJOR.MINOR.PATCH (4 segments)
+          DOT_COUNT=$(echo "$VERSION_NUM" | tr -cd '.' | wc -c | tr -d ' ')
+
+          # Only proceed if this is a minor or major release (3 segments)
+          # Examples of minor/major releases: v0.57.8, v0.59.0
+          # Skip for patch releases (4 segments): v0.57.8.1
+          # Note: This is a safety check even though the workflow should only be called
+          # for minor/major releases, just in case the workflow is dispatched manually.
+          if [ "$DOT_COUNT" -eq 3 ]; then
+            echo "⏭️  This is a patch release ($VERSION). Skipping llms.txt generation."
+            echo "should_generate=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ This is a minor or major release ($VERSION). Proceeding with llms.txt generation for branch: $BRANCH"
+            echo "should_generate=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "target_branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  generate-llms-txt:
+    name: Generate llms.txt
+    needs: check-version
+    if: needs.check-version.outputs.should_generate == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+
+      - name: Get the generate-llms-txt.js node script via sparse checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.ref }}
+          sparse-checkout: |
+            .github/scripts
+          path: workflow-scripts
+
+      - name: Checkout target branch for docs
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ needs.check-version.outputs.target_branch }}
+          path: metabase
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate llms.txt
+        id: generate
+        run: |
+          node workflow-scripts/.github/scripts/generate-llms-txt.js metabase/docs ${{ needs.check-version.outputs.target_branch }}
+
+      - name: Sanity check generated files
+        run: |
+          if [ ! -f "llms.txt" ]; then
+            echo "❌ Error: llms.txt was not generated"
+            exit 1
+          fi
+
+          if [ ! -f "llms-embedding-full.txt" ]; then
+            echo "❌ Error: llms-embedding-full.txt was not generated"
+            exit 1
+          fi
+
+          # Check that llms.txt contains URLs with the expected GitHub raw URL prefix
+          URL_COUNT=$(grep -o "https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ needs.check-version.outputs.target_branch }}/docs" llms.txt | wc -l)
+          if [ "$URL_COUNT" -lt 10 ]; then
+            echo "❌ Error: llms.txt appears to be malformed. Found only $URL_COUNT URLs (expected at least 10)"
+            exit 1
+          fi
+
+          echo "✅ Both llms.txt and llms-embedding-full.txt were generated successfully"
+          echo "✅ llms.txt contains $URL_COUNT documentation URLs"
+
+      - name: Set up git configuration
+        working-directory: metabase
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH_NAME="llms-txt/auto-update-${{ needs.check-version.outputs.target_branch }}-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "Branch name will be: $BRANCH_NAME"
+
+      - name: Copy generated files to metabase repo
+        run: |
+          cp llms.txt metabase/
+          cp llms-embedding-full.txt metabase/
+
+      - name: Create Pull Request
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: metabase
+          branch: ${{ env.BRANCH_NAME }}
+          base: ${{ needs.check-version.outputs.target_branch }}
+          commit-message: |
+            Update llms.txt and llms-full.txt (${{ needs.check-version.outputs.target_branch }})
+
+            Regenerated llms.txt to include all markdown files from the docs/ directory.
+            Also generated llms-full.txt files for the embedding section.
+
+            🤖 Generated automatically by llms-txt-generate workflow
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          title: "[chore] Update llms.txt for ${{ needs.check-version.outputs.target_branch }}"
+          body: |
+            ## Summary
+            This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files, triggered by a minor or major release.
+
+            ## Changes
+            - The `llms.txt` file has been regenerated to include all markdown files from the `docs/` directory.
+            - The `llms-embedding-full.txt` file has been generated for the embedding section (concatenated documentation for RAG).
+
+            ## Generation
+            These files were generated using:
+            - Script: `.github/scripts/generate-llms-txt.js`
+            - Branch: `${{ needs.check-version.outputs.target_branch }}`
+            - Base URL: `https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ needs.check-version.outputs.target_branch }}`
+
+            Please review the changes and merge if they look correct.
+
+            🤖 Generated automatically by the `llms-txt-generate` workflow.
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          labels: |
+            Type:Documentation
+            no-backport
+          add-paths: |
+            llms.txt
+            llms-embedding-full.txt
+
+      - name: Auto approve PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        working-directory: metabase
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
+
+      - name: Auto merge PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        working-directory: metabase
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash

@@ -168,10 +168,16 @@
                   :description "Lookin' for a blueberry"
                   :creator_id true
                   :creator_common_name "Rasta Toucan")
+     (table-search-results))
+    (merge
+     (make-result "measure test measure"
+                  :model "measure")
      (table-search-results))]))
 
-(defn- default-segment-results []
-  (filter #(contains? #{"segment"} (:model %)) (default-search-results)))
+(defn- default-table-scoped-results
+  "Return search results for models that are scoped to tables (not collections) - segments and measures."
+  []
+  (filter (comp #{"segment" "measure"} :model) (default-search-results)))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -222,7 +228,8 @@
                      :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                      :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
                                                               :type :metric)
-                     :model/Segment     segment        (data-map "segment %s segment")]
+                     :model/Segment     segment        (data-map "segment %s segment")
+                     :model/Measure     measure        (data-map "measure %s measure")]
         (f {:action     action
             :collection coll
             :card       card
@@ -231,7 +238,8 @@
             :dashboard  dashboard
             :metric     metric
             :table      table
-            :segment    segment})))))
+            :segment    segment
+            :measure    measure})))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -403,9 +411,9 @@
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+        (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                (get-available-models)))
-        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+        (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                (get-available-models :q search-term))))
       (testing "return a subset of model for created-by filter"
         (is (= #{"dashboard" "dataset" "card" "metric" "action"}
@@ -514,12 +522,12 @@
                                                               :archived true :q search-name))))))))))))
 
 (deftest permissions-test
-  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Segments "
-                "don't have collections, so they'll be returned")
+  (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Segments and "
+                "Measures don't have collections, so they'll be returned")
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-full-data-perms-for-all-users!
-          (is (= (default-segment-results)
+          (is (= (default-table-scoped-results)
                  (search-request-data :rasta :q "test"))))))))
 
 (deftest permissions-test-2
@@ -552,7 +560,8 @@
                                    (assoc :can_write false)))
                            (concat (map #(merge default-search-row % (table-search-results))
                                         [{:name "segment test2 segment", :description "Lookin' for a blueberry",
-                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
+                                          :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}
+                                         {:name "measure test2 measure", :model "measure"}]))
                            ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
                            reverse
                            cleaned-results)
@@ -609,7 +618,8 @@
               (is (= (->> (default-results-with-collection)
                           (concat (map #(merge default-search-row % (table-search-results))
                                        [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
-                                         :creator_id true :creator_common_name "Rasta Toucan"}]))
+                                         :creator_id true :creator_common_name "Rasta Toucan"}
+                                        {:name "measure test2 measure" :model "measure"}]))
                           (map #(cond-> %
                                   (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                   (assoc :can_write false)))
@@ -852,7 +862,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})]
+                     :model/Segment     _ (archived {:name "segment test segment"})
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
@@ -869,7 +880,8 @@
                      :model/Dashboard   _ (archived {:name "dashboard test dashboard"})
                      :model/Collection  _ (archived-collection {:name "collection test collection"})
                      :model/Card        _ (archived {:name "metric test metric" :type :metric})
-                     :model/Segment     _ (archived {:name "segment test segment"})]
+                     :model/Segment     _ (archived {:name "segment test segment"})
+                     :model/Measure     _ (archived {:name "measure test measure"})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 
@@ -1393,13 +1405,13 @@
     (let [search-term "Available models"]
       (with-search-items-in-root-collection search-term
         (testing "GET /api/search"
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+          (is (= #{"dashboard" "dataset" "segment" "measure" "collection" "action" "metric" "card" "table" "database"}
                  (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card"
                                            :calculate_available_models true)
                      :available_models
                      set)))
 
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
+          (is (= #{"dashboard" "dataset" "segment" "measure" "collection" "action" "metric" "card" "table" "database"}
                  (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard"
                                            :calculate_available_models true)
                      :available_models
@@ -1487,7 +1499,7 @@
                                                              :type     :query
                                                              :model_id model-id})]
         (testing "`archived-string` is 'false'"
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+          (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                  (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
           (is (= #{"action"}

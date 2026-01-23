@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -325,7 +326,7 @@
   "_PARTITIONTIME")
 
 (def ^:private partitioned-date-field-name
-  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  "This is also a pseudo-column, similar to [[partitioned-time-field-name]].
   In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
@@ -555,7 +556,7 @@
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 3. `execute-bigquery`
 ;;;     - Makes the initial query and checks `cancel-chan` in case the browser cancels execution.
-;;;     - Either throws approriate exceptions or takes the initial page `TableResult` to the next step.
+;;;     - Either throws appropriate exceptions or takes the initial page `TableResult` to the next step.
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 4. `bigquery-execute-response`
 ;;;     - Builds `cols` metadata response.
@@ -824,7 +825,7 @@
   * any associated Table instances will be updated to have schema set (to the dataset-id value)
   * the Database model itself will be updated to persist this change to db-details back to the app DB
 
-  Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
+  Returns the passed `database` parameter with the aforementioned changes having been made and persisted."
   [database dataset-id]
   (let [db-id (u/the-id database)]
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
@@ -854,7 +855,7 @@
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
-                     " be automatically migrated to the newer driver (since it *requires* service-account-json intead);"
+                     " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
                      " this database must therefore be updated by an administrator (by adding a service-account-json)"
                      " before sync and queries will work again")
                 (u/the-id database)))
@@ -1028,7 +1029,7 @@
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
-              macaw/parsed-query
+              (driver.u/parsed-query driver)
               macaw/query->components
               :tables))))
 

@@ -4,19 +4,16 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
-   [metabase.config.core :as config]
-   [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -28,52 +25,20 @@
 
 (use-fixtures :each disable-api-url-prefix)
 
-(defn- do-with-other-sso-types-disabled! [thunk]
-  (mt/with-temporary-setting-values
-    [ldap-enabled false
-     saml-enabled
-     false]
-    (thunk)))
-
-(def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri "/")
-(def ^:private default-jwt-secret (u.random/secure-hex 32))
 
-(defn- call-with-default-jwt-config! [f]
-  (let [current-features (token-check/*token-features*)]
-    (mt/with-additional-premium-features #{:sso-jwt}
-      (mt/with-temporary-setting-values
-        [jwt-enabled
-         true
-         jwt-identity-provider-uri
-         default-idp-uri
-         jwt-shared-secret
-         default-jwt-secret
-         site-url
-         (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
-        (mt/with-premium-features current-features
-          (f))))))
+;; Reference test-helper values for use in token creation
+(def ^:private default-idp-uri sso.test-setup/default-jwt-idp-uri)
+(def ^:private default-jwt-secret sso.test-setup/default-jwt-secret)
 
-(defmacro with-default-jwt-config! [& body]
-  `(call-with-default-jwt-config!
-    (fn []
-      ~@body)))
-
-(defmacro ^:private with-jwt-default-setup! [& body]
-  `(mt/test-helpers-set-global-values!
-     (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
-       (mt/with-premium-features #{:audit-app}
-         (do-with-other-sso-types-disabled!
-          (fn []
-            (mt/with-additional-premium-features #{:sso-jwt}
-              (saml-test/call-with-login-attributes-cleared!
-               (fn []
-                 (call-with-default-jwt-config!
-                  (fn []
-                    ~@body)))))))))))
+(defmacro ^:private with-jwt-default-setup!
+  "Set up default JWT configuration for tests.
+   Delegates to [[sso.test-setup/with-jwt-default-setup!]]."
+  [& body]
+  `(sso.test-setup/with-jwt-default-setup! ~@body))
 
 (deftest sso-prereqs-test
-  (do-with-other-sso-types-disabled!
+  (sso.test-setup/do-with-other-sso-types-disabled!
    (fn []
      (mt/with-additional-premium-features #{:sso-jwt}
        (testing "SSO requests fail if JWT hasn't been configured or enabled"
@@ -93,15 +58,16 @@
              (client/client :get 400 "/auth/sso")))
 
            (testing "SSO requests fail if they don't have a valid premium-features token"
-             (with-default-jwt-config!
-               (mt/with-premium-features #{}
-                 (is
-                  (partial=
-                   {:cause   "SSO has not been enabled and/or configured",
-                    :data    {:status "error-sso-disabled", :status-code 400},
-                    :message "SSO has not been enabled and/or configured",
-                    :status  "error-sso-disabled"}
-                   (client/client :get 400 "/auth/sso"))))))))
+             (sso.test-setup/call-with-default-jwt-config!
+              (fn []
+                (mt/with-premium-features #{}
+                  (is
+                   (partial=
+                    {:cause   "SSO has not been enabled and/or configured",
+                     :data    {:status "error-sso-disabled", :status-code 400},
+                     :message "SSO has not been enabled and/or configured",
+                     :status  "error-sso-disabled"}
+                    (client/client :get 400 "/auth/sso")))))))))
 
        (testing "SSO requests fail if JWT is enabled but hasn't been configured"
          (mt/with-temporary-setting-values
@@ -181,7 +147,7 @@
 
 (deftest jwt-saml-both-enabled-test
   (with-jwt-default-setup!
-    (saml-test/with-saml-default-setup!
+    (sso.test-setup/with-saml-default-setup!
       (mt/with-temporary-setting-values [jwt-enabled true]
         (testing "with SAML and JWT configured, a GET request with JWT params should sign in correctly"
           (let [response (client/client-real-response :get 302 "/auth/sso"
@@ -195,7 +161,7 @@
                                                         :extra      "keypairs"
                                                         :are        "also present"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "redirect URI"
               (is
                (= default-redirect-uri
@@ -209,7 +175,7 @@
           (let [response (client/client-full-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
                                                       :return_to default-redirect-uri)]
-            (is (not (saml-test/successful-login? response)))))
+            (is (not (sso.test-setup/successful-login? response)))))
 
         (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
           (let [response (client/client-real-response :get 302 "/auth/sso"
@@ -224,7 +190,7 @@
                                                         :extra      "keypairs"
                                                         :are        "also present"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "redirect URI (preferred_method=jwt)"
               (is
                (= default-redirect-uri
@@ -239,7 +205,7 @@
                                                       {:request-options {:redirect-strategy :none}}
                                                       :return_to default-redirect-uri
                                                       :preferred_method "saml")]
-            (is (not (saml-test/successful-login? response)))))))))
+            (is (not (sso.test-setup/successful-login? response)))))))))
 
 (deftest happy-path-test
   (testing
@@ -255,12 +221,12 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                       ;; registerd claims should not be synced as login attributes
+                                                       ;; registered claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
                                                    default-jwt-secret))]
-        (is (saml-test/successful-login? response))
+        (is (sso.test-setup/successful-login? response))
         (testing "redirect URI"
           (is
            (= default-redirect-uri
@@ -326,20 +292,20 @@
                                                         :more       "stuff"
                                                         :for        "the new user"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
               (testing "new user"
                 (is
-                 (=
-                  {:email        "newuser@metabase.com"
-                   :first_name   "New"
-                   :is_qbnewb    true
-                   :is_superuser false
-                   :id           true
-                   :last_name    "User"
-                   :date_joined  true
-                   :common_name  "New User"
-                   :tenant_id    false}
+                 (=?
+                  {:email           "newuser@metabase.com"
+                   :first_name      "New"
+                   :is_qbnewb       true
+                   :is_superuser    false
+                   :id              true
+                   :last_name       "User"
+                   :date_joined     true
+                   :common_name     "New User"
+                   :tenant_id       false}
                   (-> (mt/boolean-ids-and-timestamps [new-user])
                       first
                       (dissoc :last_login)))))
@@ -371,19 +337,19 @@
                                                       :jwt
                                                       (jwt/sign {:email "newuser@metabase.com"}
                                                                 default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "new user with no first or last name"
               (is
-               (=
-                [{:email        "newuser@metabase.com"
-                  :first_name   nil
-                  :is_qbnewb    true
-                  :is_superuser false
-                  :id           true
-                  :last_name    nil
-                  :date_joined  true
-                  :common_name  "newuser@metabase.com"
-                  :tenant_id    false}]
+               (=?
+                [{:email           "newuser@metabase.com"
+                  :first_name      nil
+                  :is_qbnewb       true
+                  :is_superuser    false
+                  :id              true
+                  :last_name       nil
+                  :date_joined     true
+                  :common_name     "newuser@metabase.com"
+                  :tenant_id       false}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login)))))))
@@ -396,10 +362,10 @@
                                                         :first_name "New"
                                                         :last_name  "User"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "update user first and last name"
               (is
-               (=
+               (=?
                 [{:email        "newuser@metabase.com"
                   :first_name   "New"
                   :is_qbnewb    true
@@ -442,7 +408,7 @@
                                                           :GrOuPs     ["my_group"]
                                                           :for        "the new user"}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (sso.test-setup/successful-login? response))
               (is
                (=
                 #{"All Users"
@@ -471,7 +437,7 @@
                                                           :last_name  "User"
                                                           :groups     ["developers" "analysts"]}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (sso.test-setup/successful-login? response))
               (testing "user is assigned to groups matching the names from JWT claims"
                 (is (= #{"All Users" "developers" "analysts"}
                        (group-memberships
@@ -496,7 +462,7 @@
                                                         :first_name "New"
                                                         :last_name "User"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response)))
+            (is (sso.test-setup/successful-login? response)))
 
           ;; then log in again
           (let [response (client/client-real-response :get 302 "/auth/sso"
@@ -508,7 +474,7 @@
                                                         :first_name "New"
                                                         :last_name "User"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))))))
+            (is (sso.test-setup/successful-login? response))))))
 
     (testing "Existing user login attributes are not changed on subsequent logins"
       (with-jwt-default-setup!
@@ -525,7 +491,7 @@
                                                         :department "Engineering"
                                                         :role       "Developer"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "initial login attributes are stored"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com")))))
@@ -543,7 +509,7 @@
                                                         :role       "Manager"
                                                         :location   "Remote"}
                                                        default-jwt-secret))]
-            (is (saml-test/successful-login? response))
+            (is (sso.test-setup/successful-login? response))
             (testing "login attributes remain unchanged from initial login"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
@@ -562,7 +528,7 @@
                                                       :first_name "New"
                                                       :last_name "User"}
                                                      default-jwt-secret))]
-          (is (saml-test/successful-login? response)))
+          (is (sso.test-setup/successful-login? response)))
 
         ;; deactivate the user
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
@@ -577,7 +543,7 @@
                                                       :first_name "New"
                                                       :last_name "User"}
                                                      default-jwt-secret))]
-          (is (saml-test/successful-login? response))
+          (is (sso.test-setup/successful-login? response))
           (is (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
 
         ;; deactivate the user again
@@ -613,7 +579,7 @@
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (saml-test/successful-login? response))
+                (is (sso.test-setup/successful-login? response))
                 (is (some? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))
                 (is (t2/exists? :model/Tenant :slug "tenant-mctenantson")))
               (testing "they should be able to log in again"
@@ -627,7 +593,7 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response)))))))))))
+                  (is (sso.test-setup/successful-login? response)))))))))))
 
 (deftest new-users-should-be-set-to-the-correct-tenant
   (with-jwt-default-setup!
@@ -647,7 +613,7 @@
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (sso.test-setup/successful-login? response))
               (is
                (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))
             (testing "they should be able to log in again"
@@ -661,7 +627,7 @@
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (saml-test/successful-login? response))
+                (is (sso.test-setup/successful-login? response))
                 (is
                  (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))))))))
 
@@ -683,7 +649,7 @@
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))
+              (is (not (sso.test-setup/successful-login? response)))
               (is
                (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
           (testing "they should be able to log in without the tenant bit, of course"
@@ -696,7 +662,7 @@
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (sso.test-setup/successful-login? response))
               (is
                (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
 
@@ -722,11 +688,11 @@
                                                            {:email email
                                                             "@tenant" "tenant-mctenantson"}
                                                            default-jwt-secret))]
-                (is (saml-test/successful-login? response))
+                (is (sso.test-setup/successful-login? response))
                 (testing "their name is unchanged"
                   (is (= [first-name last-name] (t2/select-one-fn (juxt :first_name :last_name) :model/User :email email))))))))))))
 
-(deftest a-user-cannot-log-in-with-a-deactivated-tenant
+(deftest a-user-can-log-in-with-a-deactivated-tenant
   (with-jwt-default-setup!
     (mt/with-additional-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
@@ -736,9 +702,9 @@
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           (mt/with-temporary-setting-values [use-tenants true]
-            (testing "a new user fails to log in with correct error message"
+            (testing "a new user can log into a deactivated tenant"
               (mt/with-model-cleanup [:model/User]
-                (let [response (client/client-real-response :get 403 "/auth/sso"
+                (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
                                                             :jwt
@@ -748,10 +714,10 @@
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
-                  (is (not (saml-test/successful-login? response)))
-                  (is (str/includes? (:body response) "Tenant is not active")))))
+                  (is (sso.test-setup/successful-login? response))
+                  (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))))
             (testing "an existing user also fails to log in with correct error message"
-              (let [response (client/client-real-response :get 403 "/auth/sso"
+              (let [response (client/client-real-response :get 302 "/auth/sso"
                                                           {:request-options {:redirect-strategy :none}}
                                                           :return_to default-redirect-uri
                                                           :jwt
@@ -761,8 +727,48 @@
                                                             :first_name "Existing"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (not (saml-test/successful-login? response)))
-                (is (str/includes? (:body response) "Tenant is not active"))))))))))
+                (is (sso.test-setup/successful-login? response))
+                (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))
+
+(deftest users-cannot-log-into-deactivated-tenant-with-provisioning-disabled
+  (with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
+                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                      :name "Tenant McTenantson"
+                                                      :is_active false}
+                       :model/User {existing-email :email} {:tenant_id tenant-id}]
+          (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
+            (testing "with user provisioning turned off"
+              (testing "a new user cannot log into a deactivated tenant, and the tenant doesn't get activated"
+                (mt/with-model-cleanup [:model/User]
+                  (let [response (client/client-real-response :get 401 "/auth/sso"
+                                                              {:request-options {:redirect-strategy :none}}
+                                                              :return_to default-redirect-uri
+                                                              :jwt
+                                                              (jwt/sign
+                                                               {:email "newuser@metabase.com"
+                                                                "@tenant" "tenant-mctenantson"
+                                                                :first_name "New"
+                                                                :last_name "User"}
+                                                               default-jwt-secret))]
+                    (is (not (sso.test-setup/successful-login? response)))
+                    (is (not (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))
+              (testing "an existing user cannot log into a deactivated tenant"
+                (let [response (client/client-real-response :get 403 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email existing-email
+                                                              "@tenant" "tenant-mctenantson"
+                                                              :first_name "Existing"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (not (sso.test-setup/successful-login? response)))
+                  (is (str/includes? (:body response) "Tenant is not active"))
+                  (is (not (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))))
 
 ;; not yet - we need to figure out what to do about personal collections here first
 #_(deftest existing-users-can-be-updated-with-a-tenant
@@ -781,7 +787,7 @@
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (saml-test/successful-login? response))
+                (is (sso.test-setup/successful-login? response))
                 (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
             (testing "now log in WITH a tenant"
               (let [response (client/client-real-response :get 302 "/auth/sso"
@@ -794,7 +800,7 @@
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
-                (is (saml-test/successful-login? response))
+                (is (sso.test-setup/successful-login? response))
                 (is
                  (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
 
@@ -814,7 +820,7 @@
                                                         :jwt
                                                         (jwt/sign {:email email-with-tenant "@tenant" "other"}
                                                                   default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))
+              (is (not (sso.test-setup/successful-login? response)))
               (is (str/includes? (:body response) "Tenant ID mismatch with existing user")))))))))
 
 (deftest external-user-requires-tenant-claim
@@ -832,7 +838,7 @@
                                                         (jwt/sign
                                                          {:email email-with-tenant}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))
+              (is (not (sso.test-setup/successful-login? response)))
               (is (str/includes? (:body response) "Tenant claim required for external user")))))))))
 
 (deftest internal-user-cannot-have-tenant-claim
@@ -851,7 +857,7 @@
                                                          {:email email-without-tenant
                                                           "@tenant" "tenant-mctenantson"}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))
+              (is (not (sso.test-setup/successful-login? response)))
               (is (str/includes? (:body response) "Cannot add tenant claim to internal user")))))))))
 
 (deftest internal-user-cannot-login-with-tenant-claim-if-tenants-disabled
@@ -871,7 +877,7 @@
                                                           "@tenant" "tenant-mctenantson"
                                                           :foo "bar"}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))
+              (is (not (sso.test-setup/successful-login? response)))
               ;; the `@tenant` key is special, does not become a user attribute
               (is (nil? (t2/select-one-fn :jwt_attributes :model/User :email email-without-tenant))))))))))
 
@@ -911,7 +917,7 @@
                                                       :null_attr nil
                                                       "@attribute" "foo"}
                                                      default-jwt-secret))]
-          (is (saml-test/successful-login? response))
+          (is (sso.test-setup/successful-login? response))
 
           (testing "only string attributes are saved to jwt_attributes"
             (is (= {"string_attr" "valid-string"
@@ -1059,7 +1065,7 @@
                                                               "@tenant" "test-tenant"
                                                               :groups ["engineers"]}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [user (t2/select-one :model/User :email "tenant-user@metabase.com")]
                     (testing "user is assigned to the correct tenant"
                       (is (= tenant-id (:tenant_id user))))
@@ -1097,7 +1103,7 @@
                                                               "@tenant" "test-tenant"
                                                               :groups ["tenant-developers" "tenant-analysts"]}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [user (t2/select-one :model/User :email "tenant-user@metabase.com")]
                     (testing "user is assigned to the correct tenant"
                       (is (= tenant-id (:tenant_id user))))
@@ -1123,7 +1129,7 @@
                                                           :last_name "User"
                                                           "@tenant" 123}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (sso.test-setup/successful-login? response))
               (is (t2/exists? :model/Tenant :slug "123"))))
           (testing "Other non-string values are rejected"
             (let [response (client/client-real-response :get 401 "/auth/sso"
@@ -1137,7 +1143,7 @@
                                                           "@tenant" false}
                                                          default-jwt-secret))]
               (is (= "Value of `@tenant` must be a string" (:body response)))
-              (is (not (saml-test/successful-login? response)))))
+              (is (not (sso.test-setup/successful-login? response)))))
           (testing "Other non-string values are rejected"
             (let [response (client/client-real-response :get 401 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
@@ -1150,7 +1156,7 @@
                                                           "@tenant" {"foo" "bar"}}
                                                          default-jwt-secret))]
               (is (= "Value of `@tenant` must be a string" (:body response)))
-              (is (not (saml-test/successful-login? response))))))))))
+              (is (not (sso.test-setup/successful-login? response))))))))))
 
 (deftest tenant-user-group-sync-on-subsequent-login-test
   (testing "JWT tenant user group memberships are synced correctly on subsequent logins"
@@ -1179,7 +1185,7 @@
                                                               "@tenant" "test-tenant"
                                                               :groups ["Group A"]}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [user (t2/select-one :model/User :email "tenant-user@metabase.com")]
                     (is (= tenant-id (:tenant_id user)))
                     (is (= #{"All tenant users" "Group A"}
@@ -1195,7 +1201,7 @@
                                                               "@tenant" "test-tenant"
                                                               :groups ["Group B"]}
                                                              default-jwt-secret))]
-                  (is (saml-test/successful-login? response))
+                  (is (sso.test-setup/successful-login? response))
                   (let [user (t2/select-one :model/User :email "tenant-user@metabase.com")]
                     (testing "user remains assigned to the same tenant"
                       (is (= tenant-id (:tenant_id user))))

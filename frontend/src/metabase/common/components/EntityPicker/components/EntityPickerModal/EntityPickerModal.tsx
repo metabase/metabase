@@ -229,62 +229,79 @@ export function EntityPickerModal<
     return recentFilter(relevantModelRecents);
   }, [recentItems, recentFilter, searchModels]);
 
-  const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
-    const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
-    const hasRecentsTab =
-      hydratedOptions.hasRecents && filteredRecents.length > 0;
-    const hasSearchTab = !!searchQuery;
-    // This is to prevent different tab being initially open and then flickering back
-    // to recents tab once recents have loaded (due to computeInitialTab)
-    const shouldOptimisticallyAddRecentsTabWhileLoading =
-      defaultToRecentTab && isLoadingRecentItems;
+  const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(
+    function getTabs() {
+      const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
+      const hasRecentsTab =
+        hydratedOptions.hasRecents && filteredRecents.length > 0;
+      const hasSearchTab = !!searchQuery;
+      // This is to prevent different tab being initially open and then flickering back
+      // to recents tab once recents have loaded (due to computeInitialTab)
+      const shouldOptimisticallyAddRecentsTabWhileLoading =
+        defaultToRecentTab && isLoadingRecentItems;
 
-    if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
-      computedTabs.push({
-        id: RECENTS_TAB_ID,
-        models: [],
-        folderModels: [],
-        displayName: t`Recents`,
-        icon: "clock",
-        render: ({ onItemSelect }) => (
-          <RecentsTab
-            isLoading={isLoadingRecentItems}
-            recentItems={filteredRecents}
-            selectedItem={selectedItem}
-            onItemSelect={onItemSelect}
-          />
-        ),
-      });
-    }
+      if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
+        computedTabs.push({
+          id: RECENTS_TAB_ID,
+          models: [],
+          folderModels: [],
+          displayName: t`Recents`,
+          icon: "clock",
+          render: ({ onItemSelect }) => (
+            <RecentsTab
+              isLoading={isLoadingRecentItems}
+              recentItems={filteredRecents}
+              selectedItem={selectedItem}
+              onItemSelect={onItemSelect}
+            />
+          ),
+        });
+      }
 
-    computedTabs.push(...passedTabs);
+      computedTabs.push(...passedTabs);
 
-    if (hasSearchTab) {
-      computedTabs.push({
-        id: SEARCH_TAB_ID,
-        models: [],
-        folderModels: [],
-        displayName: getSearchTabText(finalSearchResults, searchQuery),
-        icon: "search",
-        render: ({ onItemSelect }) => (
-          <SearchTab
-            folder={selectedFolder}
-            isLoading={isFetching}
-            searchScope={searchScope}
-            searchResults={finalSearchResults ?? []}
-            searchEngine={data?.engine}
-            searchRequestId={requestId}
-            searchTerm={searchQuery}
-            selectedItem={selectedItem}
-            onItemSelect={onItemSelect}
-            onSearchScopeChange={setSearchScope}
-          />
-        ),
-      });
-    }
+      if (hasSearchTab) {
+        computedTabs.push({
+          id: SEARCH_TAB_ID,
+          models: [],
+          folderModels: [],
+          displayName: getSearchTabText(finalSearchResults, searchQuery),
+          icon: "search",
+          render: ({ onItemSelect }) => (
+            <SearchTab
+              folder={selectedFolder}
+              isLoading={isFetching}
+              searchScope={searchScope}
+              searchResults={finalSearchResults ?? []}
+              searchEngine={data?.engine}
+              searchRequestId={requestId}
+              searchTerm={searchQuery}
+              selectedItem={selectedItem}
+              onItemSelect={onItemSelect}
+              onSearchScopeChange={setSearchScope}
+            />
+          ),
+        });
+      }
 
-    return computedTabs;
-  })();
+      return computedTabs;
+    },
+    [
+      data?.engine,
+      defaultToRecentTab,
+      filteredRecents,
+      finalSearchResults,
+      hydratedOptions.hasRecents,
+      isFetching,
+      isLoadingRecentItems,
+      passedTabs,
+      requestId,
+      searchQuery,
+      searchScope,
+      selectedFolder,
+      selectedItem,
+    ],
+  );
 
   const hasTabs = tabs.length > 1;
   const initialTabId = useMemo(
@@ -425,7 +442,7 @@ export function EntityPickerModal<
           px="2.5rem"
           pt="1rem"
           pb={hasTabs ? "1rem" : "1.5rem"}
-          bg="var(--mb-color-background)"
+          bg="background-primary"
         >
           <Modal.Title id={titleId} lh="2.5rem">
             {title}

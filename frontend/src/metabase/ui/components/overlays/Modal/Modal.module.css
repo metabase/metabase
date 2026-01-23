@@ -1,14 +1,14 @@
 .root {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .title {
   font-size: var(--mantine-font-size-xl);
   font-weight: var(--mantine-heading-font-weight);
   line-height: var(--mantine-line-height-md);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .overlay {
@@ -17,12 +17,12 @@
 }
 
 .content {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
 }
 
 .header {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 }
 
 .ModalCloseButton {

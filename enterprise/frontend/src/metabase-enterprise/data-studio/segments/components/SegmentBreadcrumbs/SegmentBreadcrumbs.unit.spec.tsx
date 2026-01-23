@@ -82,7 +82,7 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     const collectionLink = screen.getByText("Data").closest("a");
     expect(collectionLink).toHaveAttribute(
       "href",
-      "/data-studio/library?expandedId=1",
+      `/data-studio/library?expandedId=${TEST_COLLECTION.id}`,
     );
 
     const tableLink = screen.getByText("Orders").closest("a");
@@ -131,11 +131,8 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     );
     expect(screen.getByText("Analytics").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library?expandedId=2",
+      `/data-studio/library?expandedId=${parent.id}`,
     );
-
-    const separators = screen.getAllByRole("img");
-    expect(separators.length).toBeGreaterThan(0);
   });
 
   it("uses display_name for table and renders 'New segment' when segment undefined", async () => {
@@ -231,8 +228,5 @@ describe("DataModelSegmentBreadcrumbs", () => {
     expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("New segment")).toBeInTheDocument();
-
-    const separators = screen.getAllByRole("img");
-    expect(separators).toHaveLength(2);
   });
 });

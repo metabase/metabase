@@ -11,6 +11,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   userId: UserId | "unknown" | null;
   onEmailChange: (email: string) => void;
   onUserIdChange: (value: UserId | "unknown" | null) => void;
+  unknownUserLabel?: string;
 }
 
 export const UserInput = ({
@@ -20,12 +21,16 @@ export const UserInput = ({
   onEmailChange,
   onFocus,
   onUserIdChange,
+  unknownUserLabel = t`Unspecified`,
   ...props
 }: Props) => {
   const [search, setSearch] = useState(email ?? "");
   const { data: usersData } = useListUsersQuery();
   const users = useMemo(() => usersData?.data ?? [], [usersData]);
-  const data = useMemo(() => getData(search, users), [search, users]);
+  const data = useMemo(
+    () => getData(search, users, unknownUserLabel),
+    [search, unknownUserLabel, users],
+  );
 
   const userName = useMemo(() => {
     if (userId == null) {
@@ -76,7 +81,9 @@ export const UserInput = ({
             <Icon name="mail" />
           </Avatar>
         ) : userId === "unknown" ? (
-          <Avatar name={t`?`} />
+          <Avatar color="background-secondary" name="unknown">
+            <Icon name="person" c="text-secondary" />
+          </Avatar>
         ) : null
       }
       placeholder={t`Pick someone, or type an email`}
@@ -88,15 +95,18 @@ export const UserInput = ({
         return (
           <Group gap="sm" p="sm">
             {option.type === "user" && <Avatar name={item.option.label} />}
-            {option.type === "unknown" && <Avatar name={t`?`} />}
+            {option.type === "unknown" && (
+              <Avatar>
+                <Icon name="person" c="text-secondary" />
+              </Avatar>
+            )}
             {option.type === "email" && (
               <Avatar color="initials" name="emails">
                 <Icon name="mail" />
               </Avatar>
             )}
 
-            {option.type === "unknown" && <i>{item.option.label}</i>}
-            {option.type !== "unknown" && <span>{item.option.label}</span>}
+            <span>{item.option.label}</span>
           </Group>
         );
       }}
@@ -116,10 +126,14 @@ type Option = {
   type: "email" | "user" | "unknown";
 };
 
-function getData(email: string | null, users: User[]): Option[] {
+function getData(
+  email: string | null,
+  users: User[],
+  unknownUserLabel?: string,
+): Option[] {
   return [
     {
-      label: t`Unspecified`,
+      label: unknownUserLabel ?? t`Unspecified`,
       value: "unknown",
       type: "unknown" as const,
     },

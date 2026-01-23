@@ -6,7 +6,11 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  ListBrokenGraphNodesRequest,
+  ListBrokenGraphNodesResponse,
   ListNodeDependentsRequest,
+  ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -39,6 +43,30 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (nodes) =>
         nodes ? provideDependencyNodeListTags(nodes) : [],
+    }),
+    listBrokenGraphNodes: builder.query<
+      ListBrokenGraphNodesResponse,
+      ListBrokenGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/broken",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
+    }),
+    listUnreferencedGraphNodes: builder.query<
+      ListUnreferencedGraphNodesResponse,
+      ListUnreferencedGraphNodesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph/unreferenced",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideDependencyNodeListTags(response.data) : [],
     }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
@@ -76,6 +104,8 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,

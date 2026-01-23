@@ -146,6 +146,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
+  "Should we enable Slack Connect (OIDC) authentication?"
+  :sso-slack)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +167,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-slack?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -316,7 +321,7 @@
   :data-studio)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
-  "Is this a development instance that should have watermarks?"
+  "Should the multi-tenant feature be enabled?"
   :tenants)
 
 (defn- -token-features []
@@ -365,6 +370,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
@@ -378,4 +384,12 @@
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

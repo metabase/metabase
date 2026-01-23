@@ -138,7 +138,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statement]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close` (metabase#40010)
 
@@ -753,7 +753,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -798,9 +798,9 @@
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]
            (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
+                ;; Following cancels the statement on the dbms side.
                 ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                 ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                 ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                 (finally

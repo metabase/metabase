@@ -25,6 +25,7 @@ import type {
   Group,
   GroupListQuery,
   LoggerPreset,
+  Measure,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -38,6 +39,7 @@ import type {
   Segment,
   Table,
   Task,
+  TaskRun,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -544,6 +546,21 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideMeasureListTags(
+  measures: Measure[],
+): TagDescription<TagType>[] {
+  return [listTag("measure"), ...measures.flatMap(provideMeasureTags)];
+}
+
+export function provideMeasureTags(
+  measure: Measure,
+): TagDescription<TagType>[] {
+  return [
+    idTag("measure", measure.id),
+    ...(measure.table ? provideTableTags(measure.table) : []),
+  ];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -588,6 +605,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
@@ -602,6 +620,18 @@ export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
+}
+
+export function provideTaskRunListTags(
+  taskRuns: TaskRun[],
+): TagDescription<TagType>[] {
+  return [listTag("task-run"), ...taskRuns.flatMap(provideTaskRunTags)];
+}
+
+export function provideTaskRunTags(
+  taskRun: TaskRun,
+): TagDescription<TagType>[] {
+  return [idTag("task-run", taskRun.id)];
 }
 
 export function provideTimelineEventListTags(

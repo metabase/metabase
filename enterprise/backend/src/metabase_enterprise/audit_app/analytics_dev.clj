@@ -104,7 +104,7 @@
   "Transform YAML from dev format to canonical format.
 
   Replaces user email with canonical creator_id.
-  For the Database entitiy, strips down to minimal required fields and sets is_audit to true."
+  For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
   (let [transformed (walk/postwalk
                      (fn [node]
@@ -211,6 +211,8 @@
   (doseq [^File file (file-seq (io/file export-dir))
           :when (and (.isFile file)
                      (.endsWith (.getName file) ".yaml")
+                     (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
+                     (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
                          (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
                               (or (= (.getName file) (str canonical-db-id ".yaml"))

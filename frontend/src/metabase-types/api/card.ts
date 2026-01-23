@@ -32,7 +32,9 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+export const CARD_TYPES = ["model", "question", "metric"] as const;
+export type CardType = (typeof CARD_TYPES)[number];
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -84,6 +86,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+  view_count?: number;
 
   download_perms?: DownloadPermission;
 }
@@ -312,6 +315,7 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+  "scalar.segments"?: ScalarSegment[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];
@@ -490,4 +494,11 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
+};
+
+export type ScalarSegment = {
+  min: number;
+  max: number;
+  color: string;
+  label?: string;
 };

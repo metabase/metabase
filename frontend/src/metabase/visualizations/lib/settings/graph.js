@@ -12,6 +12,7 @@ import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getBreakoutCardinality } from "metabase/visualizations/lib/settings/validation";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
 import {
@@ -164,11 +165,13 @@ export const GRAPH_DATA_SETTINGS = {
         truncateAfter: 10,
       };
     },
-    getHidden: (_series, settings, extra) => {
-      const seriesCount = extra.transformedSeries?.length ?? 0;
-      return (
-        settings["graph.dimensions"]?.length < 2 || seriesCount > MAX_SERIES
-      );
+    getHidden: (rawSeries, settings) => {
+      const { cols, rows } = rawSeries?.[0]?.data ?? {};
+      if (!cols || !rows) {
+        return true;
+      }
+      const cardinality = getBreakoutCardinality(cols, rows, settings);
+      return cardinality == null || cardinality > MAX_SERIES;
     },
     dashboard: false,
     readDependencies: [
@@ -597,7 +600,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     ],
   },
   "graph.other_category_color": {
-    default: color("text-light"),
+    default: color("text-tertiary"),
   },
   "graph.other_category_aggregation_fn": {
     hidden: true,

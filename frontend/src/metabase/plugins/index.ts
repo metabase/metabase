@@ -144,6 +144,7 @@ export { PLUGIN_TENANTS } from "./oss/tenants";
 // Re-export types that are used by other files
 export type {
   GetAuthProviders,
+  GitSyncSetupMenuItemProps,
   PluginGroupManagersType,
   SyncedCollectionsSidebarSectionProps,
 } from "./types";

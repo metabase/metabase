@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   position: relative;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-bg-light);
+  background: var(--mb-color-background-secondary);
   animation: pulse 5s ease-in-out 1s infinite;
 }
 
@@ -85,7 +85,7 @@
   &:disabled,
   &:disabled:hover {
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     border-color: var(--mb-color-brand);
     opacity: 0.35;
   }
@@ -112,7 +112,7 @@
     opacity 150ms ease;
 
   &:hover {
-    background: var(--mb-color-bg-light);
+    background: var(--mb-color-background-secondary);
     color: var(--mb-color-text-primary);
   }
 }
@@ -152,10 +152,10 @@
 @keyframes pulse {
   0%,
   100% {
-    background: var(--mb-color-bg-light);
+    background: var(--mb-color-background-secondary);
   }
 
   50% {
-    background: var(--mb-color-bg-medium);
+    background: var(--mb-color-background-tertiary);
   }
 }

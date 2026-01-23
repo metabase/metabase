@@ -77,7 +77,7 @@
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
-   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expresions that check for equality of a column
+   `[:= {...} [:field {:temporal-unit :week} 11] \"2024-05-12\"]` -- expressions that check for equality of a column
    with `:temporal-unit` set to value other than `:day` or `:minute` to some date time value.
 
    To mitigate that expressions are converted to `:between` form which is handled correctly by filter picker. For more
@@ -129,6 +129,7 @@
                         :dispatch-type/keyword
                         :dispatch-type/nil
                         :metadata/column
+                        :metadata/measure
                         :metadata/segment
                         :metadata/metric]]
   (defmethod expression-parts-method dispatch-value
@@ -153,6 +154,14 @@
    {:lib/type :metadata/segment
     :id (last segment-ref)
     :display-name (i18n/tru "Unknown Segment")}))
+
+(defmethod expression-parts-method :measure
+  [query _stage-number measure-ref]
+  (or
+   (lib.metadata/measure query (last measure-ref))
+   {:lib/type :metadata/measure
+    :id (last measure-ref)
+    :display-name (i18n/tru "Unknown Measure")}))
 
 (defmethod expression-parts-method :metric
   [query _stage-number metric-ref]
@@ -226,6 +235,7 @@
   value)
 
 (doseq [dispatch-value [:metadata/column
+                        :metadata/measure
                         :metadata/segment
                         :metadata/metric]]
   (defmethod expression-clause-method dispatch-value

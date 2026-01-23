@@ -17,7 +17,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
   classNames,
   styles,
   isMeasured = true,
-  totalContentWidth,
   headerVariant = "pill",
 }: TreeTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
@@ -27,16 +26,14 @@ export function TreeTableHeader<TData extends TreeNodeData>({
       className={cx(S.header, classNames?.header, {
         [S.measuring]: !isMeasured,
       })}
-      pos="sticky"
-      top={0}
       style={styles?.header}
     >
       {headerGroups.map((headerGroup) => (
         <Flex
           key={headerGroup.id}
-          className={cx(S.row, classNames?.headerRow)}
+          className={cx(S.headerRow, classNames?.headerRow)}
           w="100%"
-          style={{ minWidth: totalContentWidth, ...styles?.headerRow }}
+          style={styles?.headerRow}
         >
           {showCheckboxes && (
             <Flex

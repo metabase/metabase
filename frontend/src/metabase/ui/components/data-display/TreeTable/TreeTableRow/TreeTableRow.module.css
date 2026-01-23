@@ -1,5 +1,34 @@
 .root {
-  border-bottom: 1px solid var(--mb-color-border);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  &:not(:last-child) .content {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}
+
+.pinned {
+  position: relative;
+  background-color: var(--mb-color-background-primary);
+
+  --border-style: 1px solid var(--mb-color-border);
+
+  &[data-position="top"]:not(:last-child),
+  &[data-position="top"].hasCenterRows {
+    border-bottom: var(--border-style);
+  }
+
+  &[data-position="bottom"]:not(:first-child),
+  &[data-position="bottom"].hasCenterRows,
+  &[data-position="bottom"].hasTopPinned {
+    border-top: var(--border-style);
+  }
+}
+
+.content {
+  display: flex;
   cursor: pointer;
 
   &:hover {
@@ -13,10 +42,6 @@
 
   &:focus-visible {
     box-shadow: inset 0 0 0 2px var(--mb-color-focus);
-  }
-
-  &:last-child {
-    border-bottom: none;
   }
 }
 
@@ -46,4 +71,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }
