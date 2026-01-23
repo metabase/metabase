@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
