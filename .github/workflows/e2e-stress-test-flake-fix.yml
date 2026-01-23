@@ -123,9 +123,6 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-
       - name: Generate default database snapshot
         if: inputs.qa_db == false # true boolean, do not use string here!
         run: |

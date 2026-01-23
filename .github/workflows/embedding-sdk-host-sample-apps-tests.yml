@@ -150,9 +150,6 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -276,12 +273,6 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
 
       - name: Generate database snapshots
         run: |
