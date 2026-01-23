@@ -340,6 +340,9 @@ is_sample: false
   (testing "Import brings in transforms located inside a transforms-namespace collection"
     (mt/with-premium-features #{:transforms}
       (mt/as-admin
+        (is (= "DEBUG" (str "Database 1 exists: " (t2/exists? :model/Database :id 1)
+                            " | (mt/id): " (mt/id)
+                            " | All DB IDs: " (t2/select-fn-vec :id :model/Database))))
         (mt/with-temporary-setting-values [remote-sync-enabled true]
           (mt/with-model-cleanup [:model/Transform :model/Collection]
             (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})

@@ -103,6 +103,7 @@
   "Returns true if the current user the transforms permission for the given source db."
   :feature :transforms
   [user-id database-id]
+  (assert database-id "database-id is required")
   (or (perms/is-superuser? user-id)
       (perms/user-has-permission-for-database? user-id
                                                :perms/transforms
