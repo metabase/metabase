@@ -1,6 +1,5 @@
 (ns metabase.request.util-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -8,6 +7,7 @@
    [java-time.api :as t]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
 
 (deftest ^:parallel cacheable?-test
