@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.create-chart :as create-chart-tools]
    [metabase-enterprise.metabot-v3.tools.edit-chart :as edit-chart-tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -20,10 +21,19 @@
                        [:chart_type [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
                                      "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
                                      "smartscalar" "gauge" "progress" "funnel" "object" "map"]]]]]]
-  (create-chart-tools/create-chart-tool
-   {:query-id (get data_source :query_id)
-    :chart-type (keyword (get viz_settings :chart_type))
-    :queries-state (shared/current-queries-state)}))
+  (try
+    (let [result (create-chart-tools/create-chart
+                  {:query-id (get data_source :query_id)
+                   :chart-type (keyword (get viz_settings :chart_type))
+                   :queries-state (shared/current-queries-state)})
+          reactions (:reactions result)]
+      (cond-> {:structured-output (assoc (dissoc result :reactions) :result-type :chart)}
+        (seq reactions) (assoc :reactions reactions)))
+    (catch Exception e
+      (log/error e "Error creating chart")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "edit_chart"} edit-chart-tool
   "Edit an existing chart's visualization type.
@@ -36,7 +46,14 @@
                            [:chart_type [:enum "table" "bar" "line" "pie" "sunburst" "area" "combo"
                                          "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
                                          "smartscalar" "gauge" "progress" "funnel" "object" "map"]]]]]]
-  (edit-chart-tools/edit-chart-tool
-   {:chart-id chart_id
-    :new-chart-type (keyword (get new_viz_settings :chart_type))
-    :charts-state (shared/current-charts-state)}))
+  (try
+    (let [result (edit-chart-tools/edit-chart
+                  {:chart-id chart_id
+                   :new-chart-type (keyword (get new_viz_settings :chart_type))
+                   :charts-state (shared/current-charts-state)})]
+      {:structured-output (assoc result :result-type :chart)})
+    (catch Exception e
+      (log/error e "Error editing chart")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
