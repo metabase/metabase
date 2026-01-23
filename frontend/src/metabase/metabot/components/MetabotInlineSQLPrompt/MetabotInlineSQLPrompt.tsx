@@ -88,17 +88,17 @@ export const MetabotInlineSQLPrompt = ({
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
+      {isTableBarEnabled && (
+        <Box className={S.tableBar}>
+          <TablePillsInput
+            databaseId={databaseId}
+            selectedTables={selectedTables}
+            onChange={onSelectedTablesChange}
+            autoFocus={isTableBarEnabled}
+          />
+        </Box>
+      )}
       <Box className={S.inputContainer}>
-        {isTableBarEnabled && (
-          <Box className={S.tableBar}>
-            <TablePillsInput
-              databaseId={databaseId}
-              selectedTables={selectedTables}
-              onChange={onSelectedTablesChange}
-              autoFocus={isTableBarEnabled}
-            />
-          </Box>
-        )}
         <MetabotPromptInput
           ref={inputRef}
           value={value}
