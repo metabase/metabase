@@ -4,78 +4,10 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
+   [metabase-enterprise.metabot-v3.agent.tool-results :as tool-results]
    [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
-   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
-   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
-
-(defn- format-with-instructions
-  "Wrap data with instructions in InstructionResultSchema format.
-   Matches Python AI Service pattern for consistent LLM outputs."
-  [data instruction-text]
-  (str "<result>\n" data "\n</result>\n"
-       "<instructions>\n" instruction-text "\n</instructions>"))
-
-(defn- format-query-result
-  "Format a query result (from query_model, query_metric, etc.) for the LLM.
-  Creates an XML-like structure matching Python ai-service exactly."
-  [{:keys [type query-id database_id query-content result]}]
-  (let [query-xml (llm-rep/query->xml {:query-type type
-                                       :query-id query-id
-                                       :database_id database_id
-                                       :query-content query-content
-                                       :result result})]
-    (format-with-instructions query-xml instructions/query-created-instructions)))
-
-(defn- format-chart-result
-  "Format a chart result for the LLM."
-  [{:keys [chart-id query-id chart-type]}]
-  (let [chart-xml (llm-rep/chart->xml {:chart-id chart-id
-                                       :query-id query-id
-                                       :chart-type chart-type})]
-    (format-with-instructions chart-xml (instructions/chart-created-instructions chart-id))))
-
-(defn- format-search-result
-  "Format search results for the LLM."
-  [{:keys [data total_count]}]
-  (let [results-xml (llm-rep/search-results->xml data)]
-    (format-with-instructions
-     (str results-xml "\n\nTotal results: " total_count)
-     instructions/search-result-instructions)))
-
-(defn- format-entity-result
-  "Format entity details (table, model, metric, etc.) for the LLM."
-  [structured]
-  (let [entity-xml (llm-rep/entity->xml structured)]
-    (format-with-instructions entity-xml instructions/entity-metadata-instructions)))
-
-(defn- format-metadata-result
-  "Format get_metadata result for the LLM."
-  [structured]
-  (llm-rep/get-metadata-result->xml structured))
-
-(defn- format-field-metadata-result
-  "Format field metadata result for the LLM."
-  [{:keys [field_id value_metadata]}]
-  (format-with-instructions
-   (llm-rep/field-metadata->xml {:field_id field_id
-                                 :value_metadata value_metadata})
-   instructions/field-metadata-instructions))
-
-(defn- format-answer-sources-result
-  "Format answer sources (metrics and models list) for the LLM.
-  Uses <metabase-models> tag to match Python AI Service exactly."
-  [{:keys [metrics models]}]
-  (let [content (str (when (seq metrics)
-                       (str "<metrics>\n"
-                            (str/join "\n" (map llm-rep/metric->xml metrics))
-                            "\n</metrics>\n"))
-                     (when (seq models)
-                       (str "<metabase-models>\n"
-                            (str/join "\n" (map llm-rep/model->xml models))
-                            "\n</metabase-models>")))]
-    (format-with-instructions content instructions/answer-sources-instructions)))
 
 (defn- get-structured-output
   "Extract structured output from result, handling both key formats.
@@ -84,14 +16,6 @@
   [result]
   (or (:structured-output result)
       (:structured_output result)))
-
-(defn- normalize-entity-type
-  "Normalize entity type to keyword."
-  [type-val]
-  (cond
-    (keyword? type-val) type-val
-    (string? type-val) (keyword type-val)
-    :else nil))
 
 (defn- format-tool-result
   "Format tool result for LLM consumption.
@@ -106,43 +30,7 @@
     ;; Structured output - format based on type
     (get-structured-output result)
     (let [structured (get-structured-output result)]
-      (cond
-        ;; Search results - has :data and :total_count
-        (and (:data structured) (:total_count structured))
-        (format-search-result structured)
-
-        ;; Metadata results - has :tables or :errors
-        (or (contains? structured :tables) (contains? structured :errors))
-        (format-metadata-result structured)
-
-        ;; Answer sources - has :metrics and :models
-        (and (contains? structured :metrics) (contains? structured :models))
-        (format-answer-sources-result structured)
-
-        ;; Field metadata results
-        (and (:field_id structured) (contains? structured :value_metadata))
-        (format-field-metadata-result structured)
-
-        ;; Query results (from query_model, query_metric, etc.)
-        (and (:query-id structured) (:query structured))
-        (format-query-result structured)
-
-        ;; Chart results (from create_chart, edit_chart)
-        (:chart-id structured)
-        (format-chart-result structured)
-
-        ;; Entity details (table, model, metric) - has :type
-        (#{:table :model :metric :question :user :dashboard} (normalize-entity-type (:type structured)))
-        (format-entity-result (assoc structured :type (normalize-entity-type (:type structured))))
-
-        ;; Fallback with instructions if present in the result
-        (:instructions structured)
-        (format-with-instructions (pr-str (dissoc structured :instructions))
-                                  (:instructions structured))
-
-        ;; Generic structured output - just stringify it
-        :else
-        (pr-str structured)))
+      (tool-results/format-structured-result structured))
 
     ;; Fallback - stringify the whole result
     :else

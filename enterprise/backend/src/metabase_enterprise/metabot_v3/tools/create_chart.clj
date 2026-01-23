@@ -106,7 +106,7 @@
     (let [result (create-chart args)
           reactions (:reactions result)]
       ;; Return structured output with reactions at top level for streaming
-      (cond-> {:structured-output (dissoc result :reactions)}
+      (cond-> {:structured-output (assoc (dissoc result :reactions) :result-type :chart)}
         (seq reactions) (assoc :reactions reactions)))
     (catch Exception e
       (log/error e "Error creating chart")
