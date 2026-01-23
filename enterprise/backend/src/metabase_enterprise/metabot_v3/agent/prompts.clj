@@ -58,6 +58,15 @@
           (log/debug "Tool prompt template not found:" path)
           nil))))
 
+(defn load-llm-representations-template
+  "Load the LLM representations template from resources/metabot/prompts/."
+  [template-name]
+  (let [path (str "metabot/prompts/" template-name)]
+    (or (load-resource path)
+        (do
+          (log/warn "LLM representations template not found:" path)
+          nil))))
+
 ;;; Template Rendering
 
 (defn render-system-prompt
@@ -138,6 +147,13 @@
   Returns template string or nil."
   [template-path]
   (:template (cached-load-template "tool" template-path load-tool-prompt-template)))
+
+(defn get-cached-llm-representations-template
+  "Get the LLM representations template from cache or load it."
+  []
+  (:template (cached-load-template "llm-representations"
+                                   "llm_representations.selmer"
+                                   load-llm-representations-template)))
 
 (defn clear-cache!
   "Clear the template cache. Useful for development/testing."
