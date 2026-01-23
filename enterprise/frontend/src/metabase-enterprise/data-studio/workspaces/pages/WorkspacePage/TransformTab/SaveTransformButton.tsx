@@ -271,6 +271,7 @@ export const SaveTransformButton = ({
           validateOnMount
           handleSubmit={handleCreateNewTransform}
           targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
+          showIncrementalSettings={true}
         />
       )}
     </>

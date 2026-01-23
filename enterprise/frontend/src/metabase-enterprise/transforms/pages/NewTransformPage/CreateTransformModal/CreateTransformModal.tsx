@@ -55,6 +55,7 @@ type CreateTransformModalProps = {
   ) => Promise<Transform | WorkspaceTransform>;
   targetDescription?: string;
   validateOnMount?: boolean;
+  showIncrementalSettings?: boolean;
 };
 
 export function CreateTransformModal({
@@ -67,6 +68,7 @@ export function CreateTransformModal({
   handleSubmit,
   targetDescription,
   validateOnMount,
+  showIncrementalSettings,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -133,6 +135,7 @@ export function CreateTransformModal({
           schemas={schemas}
           onClose={onClose}
           targetDescription={targetDescription}
+          showIncrementalSettings={showIncrementalSettings}
         />
       </FormProvider>
     </Modal>
@@ -145,6 +148,7 @@ type CreateTransformFormFieldsProps = {
   schemas: string[];
   onClose: () => void;
   targetDescription?: string;
+  showIncrementalSettings?: boolean;
 };
 
 function CreateTransformForm({
@@ -153,6 +157,7 @@ function CreateTransformForm({
   schemas,
   onClose,
   targetDescription,
+  showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
   const { checkComplexity } = useQueryComplexityChecks();
@@ -191,11 +196,13 @@ function CreateTransformForm({
           type="transform-collections"
           style={{ marginBottom: 0 }}
         />
-        <IncrementalTransformSettings
-          source={source}
-          incremental={values.incremental}
-          onIncrementalChange={handleIncrementalChange}
-        />
+        {showIncrementalSettings && (
+          <IncrementalTransformSettings
+            source={source}
+            incremental={values.incremental}
+            onIncrementalChange={handleIncrementalChange}
+          />
+        )}
         {complexity && (
           <QueryComplexityWarning complexity={complexity} variant="standout" />
         )}

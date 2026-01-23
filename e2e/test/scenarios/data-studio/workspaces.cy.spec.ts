@@ -898,6 +898,7 @@ describe("scenarios > data studio > workspaces", () => {
         "Check that table name gets automatically populated based on transform name",
       );
       H.modal().within(() => {
+        cy.findByText("Incremental transformation").should("not.exist");
         cy.findByLabelText(/Table name/).should("have.value", "new_transform");
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
@@ -999,6 +1000,7 @@ describe("scenarios > data studio > workspaces", () => {
         "Check that table name gets automatically populated based on transform name",
       );
       H.modal().within(() => {
+        cy.findByText("Incremental transformation").should("not.exist");
         cy.findByLabelText(/Table name/).should("have.value", "new_transform");
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
