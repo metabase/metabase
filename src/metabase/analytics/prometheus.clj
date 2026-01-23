@@ -486,6 +486,9 @@
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
+                        :labels [:status]})
+   (prometheus/counter :metabase-token-check/attempt
+                       {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})])
 
 (defn- quartz-collectors
@@ -622,6 +625,19 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
+
+(defn inc-if-initialized!
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric] (when system (inc! metric nil 1)))
+  ([metric labels-or-amount]
+   (when system
+     (if (number? labels-or-amount)
+       (inc! metric nil labels-or-amount)
+       (inc! metric labels-or-amount 1))))
+  ([metric labels amount]
+   (when system
+     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
