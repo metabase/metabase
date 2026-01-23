@@ -5,11 +5,7 @@ import type {
   GeneratedColorStops,
 } from "../types/lightness-stops";
 
-import {
-  getAccessibleBackgroundStep,
-  getAccessibleTextStep,
-  getRelativeStep,
-} from "./lightness-stops";
+import { getRelativeStep } from "./lightness-stops";
 
 /**
  * Resolves a single derivation rule to a color string.
@@ -27,21 +23,6 @@ export function resolveDerivation(
   if ("offset" in derivation) {
     const step = getRelativeStep(stops.detectedStep, derivation.offset);
     return stops.solid[step];
-  }
-
-  // Accessor functions
-  if ("accessor" in derivation) {
-    if (derivation.accessor === "accessibleText") {
-      const step = getAccessibleTextStep(stops);
-      if ("offsetFromResult" in derivation) {
-        return stops.solid[getRelativeStep(step, derivation.offsetFromResult)];
-      }
-      return stops.solid[step];
-    }
-    if (derivation.accessor === "accessibleBackground") {
-      const step = getAccessibleBackgroundStep(stops);
-      return stops.solid[step];
-    }
   }
 
   // Alpha derivations
@@ -71,7 +52,6 @@ export function resolveConditionalDerivation(
   if (
     typeof rule === "number" ||
     "offset" in rule ||
-    "accessor" in rule ||
     "alpha" in rule ||
     "alphaInverse" in rule
   ) {

@@ -15,12 +15,6 @@ import type {
   LightnessStop,
 } from "../types/lightness-stops";
 
-// Re-export accessible step functions
-export {
-  getAccessibleBackgroundStep,
-  getAccessibleTextStep,
-} from "./accessible-steps";
-
 /**
  * Contrast ratios used to generate lightness stops.
  * These are carefully tuned to produce perceptually even steps.

@@ -64,7 +64,7 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, DerivationRule> = {
     },
     lightTheme: {
       darkBrand: { offset: -3 }, // lighter to work on brand backgrounds
-      lightBrand: { accessor: "accessibleText" },
+      lightBrand: { offset: 4 }, // go darker for contrast on white
     },
   },
 
@@ -76,14 +76,14 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, DerivationRule> = {
     },
     lightTheme: {
       darkBrand: { offset: -2 },
-      lightBrand: { accessor: "accessibleText", offsetFromResult: 1 },
+      lightBrand: { offset: 5 }, // slightly darker than text-brand
     },
   },
 
   // background-brand: needs contrast with text on top
   "background-brand": {
     darkTheme: { default: { offset: 3 } },
-    lightTheme: { default: { accessor: "accessibleBackground" } },
+    lightTheme: { default: { offset: 4 } }, // go darker to support white text
   },
 
   // focus: subtle tint, same direction as brand-light

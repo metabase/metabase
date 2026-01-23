@@ -53,14 +53,8 @@ export interface GeneratedColorStops {
  * A step derivation can be:
  * - Assign a fixed step number (5, 10, 20, ... 110)
  * - Use a relative offset from the detected step (e.g. offset: -2)
- * - A special accessor function name
  */
-export type StepDerivation =
-  | LightnessStop
-  | { offset: number }
-  | { accessor: "accessibleText" }
-  | { accessor: "accessibleText"; offsetFromResult: number }
-  | { accessor: "accessibleBackground" };
+export type StepDerivation = LightnessStop | { offset: number };
 
 /**
  * Alpha derivation uses alpha or alphaInverse stops
