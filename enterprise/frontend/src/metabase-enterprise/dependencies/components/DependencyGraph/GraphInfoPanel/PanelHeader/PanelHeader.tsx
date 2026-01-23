@@ -41,7 +41,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         </Title>
         {location != null && <GraphBreadcrumbs links={location.links} />}
       </Stack>
-      <Group m="-sm" gap="xs">
+      <Group m="-sm" gap="xs" wrap="nowrap">
         {link != null && (
           <GraphExternalLink label={link.label} url={link.url} />
         )}

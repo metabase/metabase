@@ -67,7 +67,7 @@ export const GraphNode = memo(function ItemNode({
         onClick={handleClick}
       >
         <Stack gap="sm">
-          <Group c={typeInfo.color} gap="xs">
+          <Group c={typeInfo.color} gap="xs" wrap="nowrap">
             <FixedSizeIcon name={getNodeIcon(node)} />
             <Box fz="sm" fw="bold" lh="1rem">
               {typeInfo.label}

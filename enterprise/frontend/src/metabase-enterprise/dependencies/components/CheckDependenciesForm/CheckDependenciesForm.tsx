@@ -60,7 +60,7 @@ export function CheckDependenciesForm({
             <DependencyItemCard key={index} item={item} />
           ))}
         </Stack>
-        <Group px="xl">
+        <Group px="xl" wrap="nowrap">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>
