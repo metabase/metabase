@@ -54,9 +54,19 @@
 
 (mu/defn ^:private database-details->client
   ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
-        bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes)))]
+  (let [creds           (bigquery.common/database-details->service-account-credential details)
+        ;; Read environment variable or system property
+        universe-domain (or (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
+
+        bq-bldr         (doto (BigQueryOptions/newBuilder)
+                          (.setCredentials (.createScoped creds bigquery-scopes)))]
+
+    ;; Apply configuration if present
+    (when universe-domain
+       (println "S3NS PATCH: Configured Universe Domain:" universe-domain)
+       (.setUniverseDomain bq-bldr universe-domain))
+
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
