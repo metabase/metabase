@@ -34,6 +34,40 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
   const { sensibleVisualizations, nonSensibleVisualizations } =
     useSensibleVisualizations();
 
+  return (
+    <ChartTypeDropdownInner
+      selectedVisualization={selectedVisualization}
+      updateQuestionVisualization={updateQuestionVisualization}
+      sensibleVisualizations={sensibleVisualizations}
+      nonSensibleVisualizations={nonSensibleVisualizations}
+      {...menuProps}
+    />
+  );
+};
+
+interface ChartTypeDropdownInnerProps extends ChartTypeDropdownProps {
+  selectedVisualization: CardDisplayType;
+  updateQuestionVisualization: (display: CardDisplayType) => void;
+  sensibleVisualizations: CardDisplayType[];
+  nonSensibleVisualizations: CardDisplayType[];
+}
+
+/**
+ * Exported for testing purposes
+ * Renders a menu with a list of visualizations to choose from
+ *
+ * @internal
+ * @param props ChartTypeDropdownInnerProps
+ */
+export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
+  const {
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+    ...menuProps
+  } = props;
+
   const getVisualizationItems = (
     visualizationType: CardDisplayType,
   ): {
@@ -63,7 +97,7 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
     [nonSensibleVisualizations],
   );
 
-  const selectedElem = useMemo(
+  const selectedElement = useMemo(
     () =>
       getVisualizationItems(selectedVisualization) ??
       sensibleItems[0] ??
@@ -76,9 +110,9 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
       <Menu.Target>
         <ToolbarButton
           data-testid="chart-type-selector-button"
-          disabled={!selectedElem}
-          label={selectedElem?.label}
-          icon={selectedElem?.iconName}
+          disabled={!selectedElement}
+          label={selectedElement?.label}
+          icon={selectedElement?.iconName}
           isHighlighted={false}
           variant="default"
           px={undefined}
@@ -87,7 +121,8 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
           className={ToolbarButtonS.PrimaryToolbarButton}
         />
       </Menu.Target>
-      <Menu.Dropdown h="30rem">
+      {/* Using  overflow: "auto" because Menus have a default overflow: "visible" */}
+      <Menu.Dropdown h="30rem" style={{ overflow: "auto" }}>
         {sensibleItems.map(({ iconName, label, value }, index) => (
           <Menu.Item
             key={`${value}/${index}`}
