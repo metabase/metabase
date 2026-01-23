@@ -23,7 +23,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -164,17 +166,19 @@
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
         profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
-        response-stream (metabot-v3.client/streaming-request
-                         {:context         (metabot-v3.context/create-context {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                                                                               :capabilities []})
-                          :metabot-id      metabot-id
-                          :profile-id      profile-id
-                          :session-id      session-id
-                          :conversation-id conversation-id
-                          :message         message
-                          :history         (thread->history thread)
-                          :state           {}
-                          :on-complete     (fn [lines] :store-in-db)})
+        ^StreamingResponse response-stream
+        (metabot-v3.client/streaming-request
+         {:context         (metabot-v3.context/create-context
+                            {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                             :capabilities []})
+          :metabot-id      metabot-id
+          :profile-id      profile-id
+          :session-id      session-id
+          :conversation-id conversation-id
+          :message         message
+          :history         (thread->history thread)
+          :state           {}
+          :on-complete     (fn [lines] :store-in-db)})
         baos (java.io.ByteArrayOutputStream.)
         _ ((.-f response-stream) baos (a/chan))
         lines (-> (.toString baos) str/split-lines)
