@@ -113,12 +113,13 @@ export function deriveColorsFromInputs(
       // Alpha values on light text don't provide enough contrast on dark backgrounds
       derived["text-secondary"] = textStops.solid[20]; // Light gray, solid
       derived["text-tertiary"] = textStops.solid[30]; // Slightly darker
-      derived["text-primary-inverse"] = textStops.alpha[80];
+      // text-primary-inverse needs to be DARK for use on light backgrounds (like buttons)
+      derived["text-primary-inverse"] = textStops.solid[80]; // Dark color
       // Derive border from text-primary (light color) with low alpha
       // This gives a subtle light border visible against dark backgrounds
       derived["border"] = textStops.alpha[20];
-      derived["text-secondary-inverse"] = textStops.alpha[60];
-      derived["text-tertiary-inverse"] = textStops.alpha[40];
+      derived["text-secondary-inverse"] = textStops.solid[60];
+      derived["text-tertiary-inverse"] = textStops.solid[40];
     }
   }
 
@@ -165,18 +166,39 @@ export function deriveColorsFromInputs(
     // Light theme: check against white background (need darker text)
     // Dark theme: check against dark background (need lighter text)
     if (isDarkTheme) {
-      // For dark theme, text-brand should be light (like step 40) for contrast
-      // This matches built-in dark theme: text-brand=40, text-hover=30
-      derived["text-brand"] =
-        brandStops.solid[getRelativeStep(detectedStep, 0)]; // Use detected or lighter
-      derived["text-hover"] =
-        brandStops.solid[getRelativeStep(detectedStep, -1)]; // One step lighter
+      // For dark theme, text-brand should be light for contrast against dark backgrounds
+      // If brand is already dark (step >= 50), use a much lighter step
+      const brandIsDark = detectedStep >= 50;
+      if (brandIsDark) {
+        // Dark brand on dark theme - use much lighter steps for visibility
+        derived["text-brand"] =
+          brandStops.solid[getRelativeStep(detectedStep, -4)]; // 4 steps lighter
+        derived["text-hover"] =
+          brandStops.solid[getRelativeStep(detectedStep, -3)]; // 3 steps lighter
+      } else {
+        // Light brand on dark theme - use detected step or slightly lighter
+        derived["text-brand"] =
+          brandStops.solid[getRelativeStep(detectedStep, 0)];
+        derived["text-hover"] =
+          brandStops.solid[getRelativeStep(detectedStep, -1)];
+      }
     } else {
-      // For light theme, text-brand needs contrast against white
-      const accessibleTextStep = getAccessibleTextStep(brandStops);
-      derived["text-brand"] = brandStops.solid[accessibleTextStep];
-      derived["text-hover"] =
-        brandStops.solid[getRelativeStep(accessibleTextStep, 1)];
+      // For light theme, text-brand needs contrast against white AND brand backgrounds
+      // If brand is dark (step >= 50), use a lighter tint so it works on brand backgrounds too
+      const brandIsDark = detectedStep >= 50;
+      if (brandIsDark) {
+        // Use a lighter step that contrasts with both white and dark brand backgrounds
+        derived["text-brand"] =
+          brandStops.solid[getRelativeStep(detectedStep, -3)]; // 3 steps lighter
+        derived["text-hover"] =
+          brandStops.solid[getRelativeStep(detectedStep, -2)]; // 2 steps lighter
+      } else {
+        // Brand is light, use accessible dark text for white backgrounds
+        const accessibleTextStep = getAccessibleTextStep(brandStops);
+        derived["text-brand"] = brandStops.solid[accessibleTextStep];
+        derived["text-hover"] =
+          brandStops.solid[getRelativeStep(accessibleTextStep, 1)];
+      }
     }
 
     // Background-brand: needs sufficient contrast with text on top
@@ -195,6 +217,18 @@ export function deriveColorsFromInputs(
     // Focus: subtle tint relative to detected step (same direction as brand-light)
     derived["focus"] =
       brandStops.solid[getRelativeStep(detectedStep, lightDirection * 2)];
+
+    // text-primary-inverse: used on brand-colored buttons
+    // Needs to contrast with the brand color itself
+    // Light brand (step <= 40) needs dark text, dark brand needs light text
+    const brandIsLight = detectedStep <= 40;
+    if (brandIsLight) {
+      // Light brand background needs dark text
+      derived["text-primary-inverse"] = brandStops.solid[100]; // Very dark
+    } else {
+      // Dark brand background needs light text
+      derived["text-primary-inverse"] = brandStops.solid[5]; // Very light
+    }
   }
 
   return derived;
