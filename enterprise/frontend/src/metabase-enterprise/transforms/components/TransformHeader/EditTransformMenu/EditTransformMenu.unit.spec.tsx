@@ -96,6 +96,38 @@ describe("EditTransformMenu", () => {
     );
   });
 
+  describe("workspaces feature availability", () => {
+    it("should not render workspace options when workspaces feature is not available", async () => {
+      mockHasPremiumFeature.mockReturnValue(false);
+      setup();
+
+      await openMenu();
+
+      expect(screen.getByText("Edit definition")).toBeInTheDocument();
+      expect(screen.queryByText("Add to workspace")).not.toBeInTheDocument();
+      expect(screen.queryByText("New workspace")).not.toBeInTheDocument();
+    });
+
+    it("should render workspace options when workspaces feature is available", async () => {
+      mockHasPremiumFeature.mockImplementation(
+        (feature) => feature === "workspaces",
+      );
+      setup();
+
+      // Wait for button to finish loading before clicking
+      const editButton = await screen.findByRole("button", { name: /Edit/i });
+      await waitFor(() => {
+        expect(editButton).not.toHaveAttribute("data-loading", "true");
+      });
+
+      await userEvent.click(editButton);
+
+      expect(screen.getByText("Edit definition")).toBeInTheDocument();
+      expect(screen.getByText("Add to workspace")).toBeInTheDocument();
+      expect(screen.getByText("New workspace")).toBeInTheDocument();
+    });
+  });
+
   it("should render menu items and sort workspaces with existing checkouts first", async () => {
     setup({
       workspaces: [
@@ -118,7 +150,13 @@ describe("EditTransformMenu", () => {
       },
     });
 
-    await openMenu();
+    // Wait for button to finish loading before clicking
+    const editButton = await screen.findByRole("button", { name: /Edit/i });
+    await waitFor(() => {
+      expect(editButton).not.toHaveAttribute("data-loading", "true");
+    });
+
+    await userEvent.click(editButton);
 
     // Verify basic menu structure renders
     expect(screen.getByText("Add to workspace")).toBeInTheDocument();

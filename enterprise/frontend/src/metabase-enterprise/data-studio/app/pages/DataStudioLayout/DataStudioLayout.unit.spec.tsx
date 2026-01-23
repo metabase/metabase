@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 
-import { setup } from "./DataStudioLayout.setup.spec";
+import { mockHasPremiumFeature, setup } from "./DataStudioLayout.setup.spec";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -134,6 +134,36 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
+    });
+  });
+
+  describe("workspaces feature", () => {
+    afterEach(() => {
+      mockHasPremiumFeature.mockReset();
+    });
+
+    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
+      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId("workspaces-section"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+    });
+
+    it("should render WorkspacesSection when workspaces feature is available", async () => {
+      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
+      expect(screen.getByText("Workspaces")).toBeInTheDocument();
     });
   });
 });

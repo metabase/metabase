@@ -5,12 +5,14 @@ import {
   setupRemoteSyncEndpoints,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
+  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
 import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
 import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
 import type { RemoteSyncEntity } from "metabase-types/api";
 import {
@@ -24,12 +26,21 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DataStudioLayout } from "./DataStudioLayout";
 
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+export const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
+
 interface SetupEndpointsOpts {
   isNavbarOpened?: boolean;
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   remoteSyncType?: "read-only" | "read-write";
   hasDirtyChanges?: boolean;
+  hasWorkspacesFeature?: boolean;
 }
 
 const setupEndpoints = ({
@@ -38,6 +49,7 @@ const setupEndpoints = ({
   remoteSyncBranch = null,
   remoteSyncType = "read-write",
   hasDirtyChanges = false,
+  hasWorkspacesFeature = false,
 }: SetupEndpointsOpts = {}) => {
   // Mock session properties for settings (used by useAdminSetting and useSetting)
   setupPropertiesEndpoints(
@@ -82,6 +94,20 @@ const setupEndpoints = ({
     "express:/api/user-key-value/namespace/data_studio/key/isNavbarOpened",
     { status: 200 },
   );
+
+  // Setup workspaces feature mock and endpoint
+  // Return true for all features except workspaces (controlled by hasWorkspacesFeature)
+  mockHasPremiumFeature.mockImplementation((feature) => {
+    if (feature === "workspaces") {
+      return hasWorkspacesFeature;
+    }
+    // Allow other features to pass (e.g., remote_sync for git sync tests)
+    return true;
+  });
+
+  if (hasWorkspacesFeature) {
+    setupWorkspacesEndpoint([]);
+  }
 };
 
 const createStoreState = ({
@@ -123,6 +149,7 @@ interface SetupOpts {
   isAdmin?: boolean;
   hasDirtyChanges?: boolean;
   isNavbarOpened?: boolean;
+  hasWorkspacesFeature?: boolean;
 }
 
 export const setup = ({
@@ -131,6 +158,7 @@ export const setup = ({
   isAdmin = true,
   hasDirtyChanges = false,
   isNavbarOpened = true,
+  hasWorkspacesFeature = false,
 }: SetupOpts = {}) => {
   // Derive API state from the visibility flags
   // useGitSyncVisible returns isVisible when: isAdmin && remoteSyncEnabled && currentBranch && syncType === "read-write"
@@ -159,6 +187,7 @@ export const setup = ({
     remoteSyncBranch,
     remoteSyncType,
     hasDirtyChanges,
+    hasWorkspacesFeature,
   });
 
   renderWithProviders(
