@@ -11,7 +11,7 @@ import { Api } from "metabase/api";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
+import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";
 
 import { MODEL_MUTATION_CONFIGS } from "./model-configs";
 import {
@@ -48,9 +48,14 @@ function shouldInvalidateForRemoteSyncedModel(
   return oldSynced !== newSynced || newSynced;
 }
 
+function isTransformsSyncEnabled(state: State): boolean {
+  return !!state.settings?.values?.[TRANSFORMS_KEY];
+}
+
 function shouldInvalidateForCollection(
   oldCollection: Collection | undefined,
   newCollection: Collection | undefined,
+  state?: State,
 ): boolean {
   if (!newCollection) {
     return false;
@@ -59,7 +64,21 @@ function shouldInvalidateForCollection(
   const oldSynced = oldCollection?.is_remote_synced ?? false;
   const newSynced = newCollection.is_remote_synced ?? false;
 
-  return oldSynced || newSynced;
+  // Invalidate if the collection is remote synced (or was)
+  if (oldSynced || newSynced) {
+    return true;
+  }
+
+  // Also invalidate for transforms namespace collections when transforms sync is enabled
+  if (
+    state &&
+    isTransformsSyncEnabled(state) &&
+    newCollection.namespace === "transforms"
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -96,7 +115,7 @@ function registerCreateListeners(
     matcher: createMatcher(config.createEndpoints),
     effect: async (
       action: UnknownAction,
-      { dispatch }: AppListenerEffectAPI,
+      { dispatch, getState }: AppListenerEffectAPI,
     ) => {
       const { invalidation } = config;
 
@@ -115,7 +134,9 @@ function registerCreateListeners(
 
         case InvalidationType.CollectionBased: {
           const collection = getActionPayload<Collection>(action);
-          if (collection?.is_remote_synced) {
+          if (
+            shouldInvalidateForCollection(undefined, collection, getState())
+          ) {
             invalidateRemoteSyncTags(dispatch);
           }
           break;
@@ -168,11 +189,18 @@ function registerUpdateListeners(
           if (!newCollection) {
             break;
           }
+          const originalState = getOriginalState();
           const oldCollection = invalidation.getOriginalCollection(
-            getOriginalState(),
+            originalState,
             newCollection.id,
           );
-          if (shouldInvalidateForCollection(oldCollection, newCollection)) {
+          if (
+            shouldInvalidateForCollection(
+              oldCollection,
+              newCollection,
+              originalState,
+            )
+          ) {
             invalidateRemoteSyncTags(dispatch);
           }
           break;
@@ -227,11 +255,14 @@ function registerDeleteListeners(
           if (id == null) {
             break;
           }
+          const originalState = getOriginalState();
           const collection = invalidation.getOriginalCollection(
-            getOriginalState(),
+            originalState,
             id,
           );
-          if (collection?.is_remote_synced) {
+          if (
+            shouldInvalidateForCollection(undefined, collection, originalState)
+          ) {
             invalidateRemoteSyncTags(dispatch);
           }
           break;

@@ -244,7 +244,7 @@ describe("AllChangesView", () => {
       ).toBeInTheDocument();
     });
   });
-  
+
   describe("table child models", () => {
     it("should display measures nested under their parent table", async () => {
       const tableEntity = createMockRemoteSyncEntity({
