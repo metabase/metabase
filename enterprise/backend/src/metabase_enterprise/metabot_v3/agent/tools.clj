@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.ask-clarification :as ask-clarification-tools]
@@ -64,7 +63,7 @@
   (when (seq entity-types)
     (seq (remove allowed entity-types))))
 
-(mu/defn search-tool
+(mu/defn ^{:tool-name "search"} search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
                                                                [:semantic_queries [:sequential :string]]
@@ -79,7 +78,7 @@
                                :entity-types entity_types
                                :limit 10})))
 
-(mu/defn sql-search-tool
+(mu/defn ^{:tool-name "search"} sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [semantic_queries keyword_queries entity_types database_id]} :- [:map {:closed true}
                                                                            [:semantic_queries [:sequential :string]]
@@ -96,7 +95,7 @@
                                :database-id database_id
                                :limit 10})))
 
-(mu/defn nlq-search-tool
+(mu/defn ^{:tool-name "search"} nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
   [{:keys [semantic_queries keyword_queries entity_types]} :- [:map {:closed true}
                                                                [:semantic_queries [:sequential :string]]
@@ -112,7 +111,7 @@
                                :profile-id "nlq"
                                :limit 10})))
 
-(mu/defn transform-search-tool
+(mu/defn ^{:tool-name "search"} transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [semantic_queries keyword_queries entity_types search_native_query]} :- [:map {:closed true}
                                                                                    [:semantic_queries [:sequential :string]]
@@ -301,7 +300,7 @@
     (string? query-type) (keyword query-type)
     :else query-type))
 
-(mu/defn construct-notebook-query-tool
+(mu/defn ^{:tool-name "construct_notebook_query"} construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [reasoning query visualization]} :- [:map {:closed true}
                                                [:reasoning :string]
@@ -366,13 +365,13 @@
 
 ;;; Metadata & Details Tools
 
-(mu/defn list-available-data-sources-tool
+(mu/defn ^{:tool-name "list_available_data_sources"} list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:map {:closed true}]]
   (entity-details-tools/answer-sources {:metabot-id metabot-v3.config/embedded-metabot-id
                                         :with-field-values? false}))
 
-(mu/defn list-available-fields-tool
+(mu/defn ^{:tool-name "list_available_fields"} list-available-fields-tool
   "Retrieve metadata for tables, models, and metrics."
   [{:keys [table_ids model_ids metric_ids]} :- [:map {:closed true}
                                                 [:table_ids [:sequential :int]]
@@ -382,7 +381,7 @@
                                 :model-ids model_ids
                                 :metric-ids metric_ids}))
 
-(mu/defn get-field-values-tool
+(mu/defn ^{:tool-name "get_field_values"} get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- [:map {:closed true}
                                                 [:data_source [:enum "table" "model" "metric"]]
@@ -395,13 +394,13 @@
 
 ;;; Transform Tools
 
-(mu/defn get-transform-details-tool
+(mu/defn ^{:tool-name "get_transform_details"} get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true}
                               [:transform_id :int]]]
   (transform-tools/get-transform-details {:transform-id transform_id}))
 
-(mu/defn get-transform-python-library-details-tool
+(mu/defn ^{:tool-name "get_transform_python_library_details"} get-transform-python-library-details-tool
   "Get information about a Python library by path."
   [{:keys [path]} :- [:map {:closed true}
                       [:path :string]]]
@@ -436,7 +435,7 @@
                              :mode "rewrite"
                              :value sql}))
 
-(mu/defn create-sql-query-tool
+(mu/defn ^{:tool-name "create_sql_query"} create-sql-query-tool
   "Create a new SQL query."
   [{:keys [database_id sql_query]}
    :- [:map {:closed true}
@@ -446,7 +445,7 @@
    {:database-id database_id
     :sql sql_query}))
 
-(mu/defn create-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "create_sql_query"} create-sql-query-code-edit-tool
   "Create a new SQL query and update the code editor buffer."
   [{:keys [database_id sql_query]}
    :- [:map {:closed true}
@@ -462,7 +461,7 @@
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
-(mu/defn edit-sql-query-tool
+(mu/defn ^{:tool-name "edit_sql_query"} edit-sql-query-tool
   "Edit an existing SQL query using structured edits."
   [{:keys [query_id edits checklist]}
    :- [:map {:closed true}
@@ -478,7 +477,7 @@
     :checklist checklist
     :queries-state (current-queries-state)}))
 
-(mu/defn edit-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "edit_sql_query"} edit-sql-query-code-edit-tool
   "Edit an existing SQL query and update the code editor buffer."
   [{:keys [query_id edits checklist]}
    :- [:map {:closed true}
@@ -500,7 +499,7 @@
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
 
-(mu/defn replace-sql-query-tool
+(mu/defn ^{:tool-name "replace_sql_query"} replace-sql-query-tool
   "Replace the SQL content of an existing query entirely."
   [{:keys [query_id new_query checklist]}
    :- [:map {:closed true}
@@ -513,7 +512,7 @@
     :checklist checklist
     :queries-state (current-queries-state)}))
 
-(mu/defn replace-sql-query-code-edit-tool
+(mu/defn ^{:tool-name "replace_sql_query"} replace-sql-query-code-edit-tool
   "Replace an SQL query and update the code editor buffer."
   [{:keys [query_id new_query checklist]}
    :- [:map {:closed true}
@@ -534,7 +533,7 @@
 
 ;;; Chart Tools
 
-(mu/defn create-chart-tool
+(mu/defn ^{:tool-name "create_chart"} create-chart-tool
   "Create a chart from a query.
 
   Provide a query_id in data_source and a chart_type in viz_settings."
@@ -551,7 +550,7 @@
     :chart-type (keyword (get viz_settings :chart_type))
     :queries-state (current-queries-state)}))
 
-(mu/defn edit-chart-tool
+(mu/defn ^{:tool-name "edit_chart"} edit-chart-tool
   "Edit an existing chart's visualization type.
 
   Provide a new chart_type in new_viz_settings."
@@ -569,7 +568,7 @@
 
 ;;; Resource Reading Tools
 
-(mu/defn read-resource-tool
+(mu/defn ^{:tool-name "read_resource"} read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 
   Supports fetching multiple resources in parallel using metabase:// URIs:
@@ -585,7 +584,7 @@
 
 ;;; Todo Tools
 
-(mu/defn todo-write-tool
+(mu/defn ^{:tool-name "todo_write"} todo-write-tool
   "Create and manage a structured task list.
   Write or update the todo list with tasks for tracking progress.
 
@@ -604,7 +603,7 @@
   (todo-tools/todo-write-tool {:todos todos
                                :memory-atom *memory-atom*}))
 
-(mu/defn todo-read-tool
+(mu/defn ^{:tool-name "todo_read"} todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."
   [_args :- [:map {:closed true}]]
@@ -612,7 +611,7 @@
 
 ;;; Navigation Tools
 
-(mu/defn navigate-user-tool
+(mu/defn ^{:tool-name "navigate_user"} navigate-user-tool
   "Navigate the user to a specific page or entity in Metabase.
 
   Use this tool to direct users to:
@@ -639,7 +638,7 @@
 
 ;;; Snippet Tools
 
-(mu/defn list-snippets-tool
+(mu/defn ^{:tool-name "list_snippets"} list-snippets-tool
   "List all SQL snippets available in the Metabase instance.
 
   Use this tool before editing or creating SQL transforms to understand what
@@ -648,7 +647,7 @@
   [_args :- [:map {:closed true}]]
   (snippet-tools/get-snippets {}))
 
-(mu/defn get-snippet-details-tool
+(mu/defn ^{:tool-name "get_snippet_details"} get-snippet-details-tool
   "Get the full details of a SQL snippet including its content.
 
   Use this tool to retrieve the actual SQL content of a snippet after identifying
@@ -660,7 +659,7 @@
 
 ;;; Ask Clarification Tool
 
-(mu/defn ask-for-sql-clarification-tool
+(mu/defn ^{:tool-name "ask_for_sql_clarification"} ask-for-sql-clarification-tool
   "Ask the user for clarification about their SQL query request.
 
   Use this tool when you need more information from the user to properly
@@ -674,7 +673,7 @@
 
 ;;; Transform Write Tools
 
-(mu/defn write-transform-sql-tool
+(mu/defn ^{:tool-name "write_transform_sql"} write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
 
   Supports two modes:
@@ -710,7 +709,7 @@
     :memory-atom *memory-atom*
     :context (current-context)}))
 
-(mu/defn write-transform-python-tool
+(mu/defn ^{:tool-name "write_transform_python"} write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
 
   Supports two modes:
@@ -748,7 +747,7 @@
 
 ;;; Autogenerated Dashboard Tool
 
-(mu/defn create-autogenerated-dashboard-tool
+(mu/defn ^{:tool-name "create_autogenerated_dashboard"} create-autogenerated-dashboard-tool
   "Create an automatically generated dashboard using Metabase's X-ray feature.
 
   X-ray builds complete dashboards with multiple visualizations that showcase
@@ -772,75 +771,6 @@
   (autogen-dashboard-tools/create-autogenerated-dashboard-tool
    {:source source
     :memory-atom *memory-atom*}))
-
-;; Tool registry - maps tool name to var
-(def all-tools
-  "Registry of all available tools."
-  {"search"                        #'search-tool
-   "construct_notebook_query"      #'construct-notebook-query-tool
-   "list_available_data_sources"   #'list-available-data-sources-tool
-   "list_available_fields"         #'list-available-fields-tool
-   "get_field_values"              #'get-field-values-tool
-   "get_transform_details"         #'get-transform-details-tool
-   "get_transform_python_library_details" #'get-transform-python-library-details-tool
-   "create_sql_query"              #'create-sql-query-tool
-   "edit_sql_query"                #'edit-sql-query-tool
-   "replace_sql_query"             #'replace-sql-query-tool
-   "read_resource"                 #'read-resource-tool
-   "create_chart"                  #'create-chart-tool
-   "edit_chart"                    #'edit-chart-tool
-   "todo_write"                    #'todo-write-tool
-   "todo_read"                     #'todo-read-tool
-   "navigate_user"                 #'navigate-user-tool
-   "list_snippets"                 #'list-snippets-tool
-   "get_snippet_details"           #'get-snippet-details-tool
-   "ask_for_sql_clarification"     #'ask-for-sql-clarification-tool
-   "write_transform_sql"           #'write-transform-sql-tool
-   "write_transform_python"        #'write-transform-python-tool
-   "create_autogenerated_dashboard" #'create-autogenerated-dashboard-tool})
-
-(def ^:private profile-tool-overrides
-  {:embedding_next {"list_available_data_sources" #'list-available-data-sources-tool}
-   :sql {"search" #'sql-search-tool
-         "create_sql_query" #'create-sql-query-code-edit-tool
-         "edit_sql_query" #'edit-sql-query-code-edit-tool
-         "replace_sql_query" #'replace-sql-query-code-edit-tool}
-   :nlq {"search" #'nlq-search-tool}
-   :transforms_codegen {"search" #'transform-search-tool}})
-
-;;; Capability-Based Tool Filtering
-;;
-;; Some tools require specific capabilities to be available.
-;; Capabilities are passed in the request context and represent features/permissions.
-
-(def ^:private tool-capabilities
-  "Map of tool names to required capabilities.
-  Tools not listed here have no special capability requirements."
-  {"navigate_user"                  #{:frontend-navigate-user-v1}
-   "create_autogenerated_dashboard" #{:automagic-dashboards}
-   "write_transform_sql"            #{:feature-transforms :permission-write-transforms}
-   "write_transform_python"         #{:feature-transforms :feature-transforms-python :permission-write-transforms}
-   "list_snippets"                  #{:feature-snippets}
-   "get_snippet_details"            #{:feature-snippets}})
-
-(defn filter-by-capabilities
-  "Filter tool names by user capabilities.
-  Removes tools that require capabilities the user doesn't have."
-  [tool-names capabilities]
-  (let [capabilities-set (set capabilities)]
-    (filter (fn [tool-name]
-              (let [required (get tool-capabilities tool-name #{})]
-                (every? capabilities-set required)))
-            tool-names)))
-
-(defn get-tools-for-profile
-  "Get tool registry filtered by profile configuration and user capabilities."
-  [profile-id capabilities]
-  (let [profile (profiles/get-profile profile-id)
-        tool-names (or (:tools profile) [])
-        base-tools (select-keys all-tools (filter-by-capabilities tool-names capabilities))
-        overrides (get profile-tool-overrides profile-id {})]
-    (merge base-tools overrides)))
 
 ;;; State-aware tool wrapping
 ;;
