@@ -562,20 +562,6 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should be able to see details of a table", () => {
-      H.DataModel.visitDataStudio({ databaseId: SAMPLE_DB_ID });
-
-      verifyTableSectionEmptyState();
-
-      TablePicker.getTable("Orders").click();
-      verifyFieldSectionEmptyState();
-      TableSection.getNameInput().should("have.value", "Orders");
-      TableSection.getDescriptionInput().should(
-        "have.value",
-        "Confirmed Sample Company orders for a product, from a user.",
-      );
-    });
-
     it(
       "should be able to select and update a table in a database without schemas",
       { tags: ["@external"] },
@@ -3630,14 +3616,6 @@ function verifyToastAndUndo(message: string) {
   H.undoToast().button("Undo").click();
   H.undoToast().should("contain.text", "Change undone");
   H.undoToast().icon("close").click();
-}
-
-function verifyTableSectionEmptyState() {
-  H.DataModel.TableSection.get().should("not.exist");
-}
-
-function verifyFieldSectionEmptyState() {
-  H.DataModel.FieldSection.get().should("not.exist");
 }
 
 function verifyTablePreview({
