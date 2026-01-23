@@ -19,7 +19,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("smoke UI test", () => {
@@ -608,6 +608,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.visit("/");
       H.getModeSwitcher().click();
+      H.popover().findByText("Help").click();
       helpLink().should("not.exist");
 
       cy.log("Set custom Help link");
@@ -637,6 +638,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       H.getModeSwitcher().click();
+      H.popover().findByText("Help").click();
       helpLink().should(
         "have.attr",
         "href",
@@ -656,6 +658,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.visit("/");
       H.getModeSwitcher().click();
+      H.popover().findByText("Help").click();
 
       helpLink()
         .should("have.attr", "href")
@@ -664,6 +667,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       H.getModeSwitcher().click();
+      H.popover().findByText("Help").click();
 
       helpLink()
         .should("have.attr", "href")
@@ -676,7 +680,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       H.getModeSwitcher().click();
-
+      H.popover().findByText("Help").click();
       helpLink()
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
@@ -734,7 +738,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.url().should("include", "/test-1");
     });
 
@@ -756,7 +760,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.url().should("include", "/test-2");
     });
   });
@@ -773,7 +777,8 @@ function setApplicationFontTo(font) {
   H.updateSetting("application-font", font);
 }
 
-const helpLink = () => H.popover().findByRole("menuitem", { name: "Help" });
+const helpLink = () =>
+  H.getHelpSubmenu().findByRole("menuitem", { name: "Get help" });
 
 const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");

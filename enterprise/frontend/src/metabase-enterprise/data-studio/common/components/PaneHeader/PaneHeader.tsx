@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 export interface PaneHeaderProps extends Omit<StackProps, "title"> {
@@ -50,7 +51,7 @@ export const PaneHeader = ({
 
           <Group ml="auto" gap="md">
             {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
-            <ModeSwitcher />
+            <ModeSwitcher className={S.ModeSwitcher} />
           </Group>
         </Flex>
       )}

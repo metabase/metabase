@@ -21,7 +21,6 @@ import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
   AdminButtons,
-  AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
   AdminLogoText,
@@ -119,13 +118,16 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
         p="0.25rem"
-      >
-        <Icon
-          name="burger"
-          size={32}
-          className={AdminNavCS.MobileHamburgerIcon}
-        />
-      </Button>
+        leftSection={
+          <Icon
+            name="burger"
+            size={32}
+            className={AdminNavCS.MobileHamburgerIcon}
+          />
+        }
+      />
+      <ModeSwitcher />
+
       {mobileNavOpen && (
         <AdminMobileNavBarItems aria-label={t`Navigation links`}>
           {adminPaths.map(({ name, key, path }) => (
@@ -138,7 +140,6 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               {name}
             </AdminNavLink>
           ))}
-          <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}
     </AdminMobileNavbar>
