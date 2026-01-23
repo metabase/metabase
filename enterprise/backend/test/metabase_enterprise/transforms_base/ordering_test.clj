@@ -1,9 +1,9 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.ordering-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-base.interface :as transforms-base.i]
+   [metabase-enterprise.transforms-base.ordering :as ordering]
    [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.compile :as qp.compile]
@@ -54,7 +54,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'transforms.i/table-dependencies transform)))
+    (#'transforms-base.i/table-dependencies transform)))
 
 (deftest not-run-transform-dependency-ordering-test
   (mt/test-driver :postgres
@@ -386,7 +386,7 @@
                                                           :table "intermediate_output"}}
                                                "final_output")]
       (testing "table-dependencies returns table-ref for unresolved name reference"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+        (let [deps (transforms-base.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "intermediate_output"}}))))
@@ -410,7 +410,7 @@
                                                                   :table "output_a"}}
                                                "output_b")]
       (testing "table-dependencies includes both types"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+        (let [deps (transforms-base.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
           (is (contains? deps {:table (mt/id :products)}))
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"

@@ -49,7 +49,7 @@
                                          :target (assoc target :database (mt/id))}
                       {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                                transform-payload)]
-                  (transforms.tu/test-run transform-id)
+                  (transforms.tu/test-run! transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
                   (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
 
@@ -79,7 +79,7 @@
                                         :target  (assoc target :database (mt/id))}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)]
-                (transforms.tu/test-run transform-id)
+                (transforms.tu/test-run! transform-id)
                 (transforms.tu/wait-for-table table-name 5000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
                 (is (= [["Alice" 25] ["Bob" 30]]

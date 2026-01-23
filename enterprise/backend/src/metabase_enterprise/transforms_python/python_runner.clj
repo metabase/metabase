@@ -4,10 +4,10 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [medley.core :as m]
+   [metabase-enterprise.transforms-base.util :as transforms-base.u]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
@@ -274,7 +274,7 @@
         table-metadata    (lib.metadata/table metadata-provider table-id)
         transform         (t2/select-one :model/Transform transform-id)]
     (cond-> (lib/query metadata-provider table-metadata)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
+      source-incremental-strategy (transforms-base.u/preprocess-incremental-query source-incremental-strategy (transforms-base.u/next-checkpoint transform))
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.

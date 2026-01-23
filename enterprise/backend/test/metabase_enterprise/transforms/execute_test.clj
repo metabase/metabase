@@ -1,11 +1,11 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -138,7 +138,7 @@
                                   {:name "name" :type :type/Text :nullable? true}]}]
       (mt/as-admin
         (testing "create-table-from-schema! should create the table successfully"
-          (transforms.util/create-table-from-schema! driver db-id table-schema)
+          (transforms-base.util/create-table-from-schema! driver db-id table-schema)
           (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
             (is (some? table-exists?) "Table should exist in the database schema")
             (driver/drop-table! driver db-id (:name table-schema))))))))

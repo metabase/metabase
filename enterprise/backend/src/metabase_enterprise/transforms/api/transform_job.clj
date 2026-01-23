@@ -1,10 +1,10 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
    [medley.core :as m]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -159,7 +159,7 @@
 (defn- add-next-run
   [{id :id :as job}]
   (if-let [start-time (-> id transforms.schedule/existing-trigger :next-fire-time)]
-    (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
+    (assoc job :next_run {:start_time (str (transforms-base.util/->instant start-time))})
     job))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -198,12 +198,12 @@
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)
-                (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map #(update % :next_run transforms.util/localize-run-timestamps)))
+                (transforms-base.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms-base.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
+                (transforms-base.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms-base.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (map #(update % :last_run transforms-base.util/localize-run-timestamps))
+                (map #(update % :next_run transforms-base.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes
