@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -17,14 +19,24 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 
 export function LibraryEmptyState() {
-  const [createLibrary, { isLoading }] = useCreateLibraryMutation();
+  const [createLibrary, { isLoading, isSuccess }] = useCreateLibraryMutation();
   const { sendSuccessToast } = useMetadataToasts();
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    const collection = await createLibrary().unwrap();
-    sendSuccessToast(t`Library created`);
-    trackDataStudioLibraryCreated(collection.id);
+    try {
+      setError(null);
+      const collection = await createLibrary().unwrap();
+      sendSuccessToast(t`Library created`);
+      trackDataStudioLibraryCreated(collection.id);
+    } catch (error) {
+      setError(getErrorMessage(error));
+    }
   };
+
+  if (isSuccess) {
+    return null;
+  }
 
   return (
     <Card bg="background-primary" p={48} maw={640} mx="auto" withBorder>
@@ -36,13 +48,16 @@ export function LibraryEmptyState() {
               {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
             </Text>
           </Stack>
-          <Group gap="sm">
-            <Button
-              variant="filled"
-              onClick={handleSubmit}
-              loading={isLoading}
-            >{t`Create my Library`}</Button>
-          </Group>
+          <Stack gap="sm">
+            <Group gap="sm">
+              <Button
+                variant="filled"
+                onClick={handleSubmit}
+                loading={isLoading}
+              >{t`Create my Library`}</Button>
+            </Group>
+            {error && <Text c="error">{error}</Text>}
+          </Stack>
         </Stack>
         <SimpleGrid cols={2} spacing="sm">
           <FeatureCard

@@ -34,6 +34,6 @@ describe("LibraryEmptyState", () => {
   it("should show a library creation error", async () => {
     setup({ hasCreateError: true });
     await userEvent.click(screen.getByText("Create my Library"));
-    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });
 });
