@@ -15,5 +15,8 @@
    :- [:map {:closed true}
        [:question :string]
        [:options {:optional true} [:maybe [:sequential :string]]]]]
-  (ask-clarification-tools/ask-for-sql-clarification-tool {:question question
-                                                           :options options}))
+  (try
+    (ask-clarification-tools/ask-for-sql-clarification {:question question
+                                                        :options options})
+    (catch Exception e
+      {:output (str "Failed to ask clarification: " (or (ex-message e) "Unknown error"))})))
