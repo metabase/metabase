@@ -6,7 +6,8 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { TablePicker, TableSection, FieldSection } = cy.H.DataModel;
+const { TablePicker, TableSection, FieldSection, PreviewSection } =
+  cy.H.DataModel;
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -711,6 +712,37 @@ describe.each<Area>(areas)(
         cy.findByText("No description yet").should("be.visible");
       });
     });
+
+    describe("Field name and description", () => {
+      it("should allow changing the field name", () => {
+        context.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        TableSection.getFieldNameInput("Tax").clear().type("New tax").blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Name of Tax updated");
+        TableSection.getFieldNameInput("New tax").should("be.visible");
+
+        cy.log("verify preview");
+        TableSection.clickField("New tax");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "New tax",
+          values: ["2.07", "6.1", "2.9", "6.01", "7.03"],
+        });
+        verifyObjectDetailPreview({ rowNumber: 4, row: ["New tax", "2.07"] });
+
+        cy.log("verify viz");
+        H.openOrdersTable();
+        H.tableHeaderColumn("New tax").should("be.visible");
+        H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
+          "not.exist",
+        );
+      });
+    });
   },
 );
 
@@ -745,4 +777,58 @@ function verifyDataStudioFieldSectionEmptyState() {
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
+}
+
+function verifyTablePreview({
+  column,
+  description,
+  values,
+}: {
+  column: string;
+  description?: string;
+  values: string[];
+}) {
+  PreviewSection.getPreviewTypeInput().findByText("Table").click();
+  cy.wait("@dataset");
+
+  PreviewSection.get().within(() => {
+    H.assertTableData({
+      columns: [column],
+      firstRows: values.map((value) => [value]),
+    });
+
+    if (description != null) {
+      cy.findByTestId("header-cell").realHover();
+    }
+  });
+
+  if (description != null) {
+    H.hovercard().should("contain.text", description);
+  }
+}
+
+function verifyObjectDetailPreview({
+  rowNumber,
+  row,
+}: {
+  rowNumber: number;
+  row: [string, string];
+}) {
+  const [label, value] = row;
+
+  PreviewSection.getPreviewTypeInput().findByText("Detail").click();
+  cy.wait("@dataset");
+
+  cy.findAllByTestId("column-name").then(($els) => {
+    const foundRowIndex = $els
+      .toArray()
+      .findIndex((el) => el.textContent?.trim() === label);
+
+    expect(rowNumber).to.eq(foundRowIndex);
+
+    cy.findAllByTestId("value")
+      .should("have.length.gte", foundRowIndex)
+      .eq(foundRowIndex)
+      .should("contain", value);
+  });
 }
