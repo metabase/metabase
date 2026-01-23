@@ -9,6 +9,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private test-signing-secret "test-slack-signing-secret-12345")
 
 (defn- compute-slack-signature
@@ -89,22 +91,37 @@
    Options:
    - :ai-text - The text response from make-ai-request
    - :data-parts - The data-parts returned from make-ai-request (default [])
+   - :user - The user returned by slack-id->user. If not provided, defaults to rasta.
+             Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :fake-png-bytes}"
-  [{:keys [ai-text data-parts]
-    :or {data-parts []}}
+   {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :ephemeral-calls, :fake-png-bytes}"
+  [{:keys [ai-text data-parts user]
+    :or {data-parts []
+         user ::default}}
    body-fn]
   (let [post-calls (atom [])
         delete-calls (atom [])
         image-calls (atom [])
         generate-png-calls (atom [])
-        fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])]
+        ephemeral-calls (atom [])
+        fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
+        mock-user (cond
+                    (= user ::default) (mt/fetch-user :rasta)
+                    (= user ::no-user) nil
+                    :else user)]
     (mt/with-dynamic-fn-redefs
-      [slackbot/fetch-thread (constantly {:ok true :messages []})
+      [slackbot/slack-id->user (constantly mock-user)
+       slackbot/fetch-thread (constantly {:ok true, :messages []})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)
-                               {:ok true :ts "123" :channel (:channel msg) :message msg})
+                               {:ok true
+                                :ts "123"
+                                :channel (:channel msg)
+                                :message msg})
+       slackbot/post-ephemeral-message (fn [_ msg]
+                                         (swap! ephemeral-calls conj msg)
+                                         {:ok true, :message_ts "1234567890.123456"})
        slackbot/delete-message (fn [_ msg]
                                  (swap! delete-calls conj msg)
                                  {:ok true})
@@ -122,6 +139,7 @@
                 :delete-calls delete-calls
                 :image-calls image-calls
                 :generate-png-calls generate-png-calls
+                :ephemeral-calls ephemeral-calls
                 :fake-png-bytes fake-png-bytes}))))
 
 (deftest user-message-triggers-response-test
@@ -204,3 +222,34 @@
                   ;; Check image bytes match fake PNG
                   (is (every? #(java.util.Arrays/equals fake-png-bytes ^bytes (:image-bytes %))
                               @image-calls)))))))))))
+
+(deftest user-not-linked-sends-auth-message-test
+  (testing "POST /events with unlinked user sends ephemeral auth message"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [metabot.settings/metabot-slack-signing-secret test-signing-secret
+                                         metabot.settings/metabot-slack-bot-token "test-token"]
+        (let [event-body {:type "event_callback"
+                          :event {:type "message"
+                                  :text "Hello!"
+                                  :user "U-UNKNOWN-USER"
+                                  :channel "C123"
+                                  :ts "1234567890.000001"}}]
+          (with-slackbot-mocks
+            {:ai-text "Should not be called"
+             :user ::no-user} ;; Simulate no linked user
+            (fn [{:keys [post-calls ephemeral-calls]}]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                ;; Wait for ephemeral message
+                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+                         :done? true?
+                         :timeout-ms 5000})
+                (testing "no regular messages should be posted"
+                  (is (= 0 (count @post-calls))))
+                (testing "ephemeral auth message sent to user"
+                  (is (=? [{:user "U-UNKNOWN-USER"
+                            :channel "C123"
+                            :text #".*link your slack account.*"}]
+                          @ephemeral-calls)))))))))))

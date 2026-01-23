@@ -74,6 +74,11 @@
   [client message]
   (slack-post-json client "/chat.postMessage" message))
 
+(defn post-ephemeral-message
+  "Send a Slack ephemeral message (visible only to the specified user)"
+  [client message]
+  (slack-post-json client "/chat.postEphemeral" message))
+
 (defn post-image
   "Upload a PNG image and send in a message"
   [client image-bytes filename channel thread-ts]
@@ -255,31 +260,50 @@
    :headers {"Content-Type" "text/plain"}
    :body "ok"})
 
+(defn- slack-id->user
+  "Look up a Metabase user by their Slack user ID."
+  [slack-user-id]
+  (when-let [auth-identity (t2/select-one :model/AuthIdentity
+                                          :provider "slack-connect"
+                                          :provider_id slack-user-id)]
+    (t2/select-one :model/User :id (:user_id auth-identity))))
+
+(def ^:private slack-user-authorize-link
+  "Link to page where user can initiate SSO auth flow to authorize slackbot"
+  ;; TODO(appleby 2026-01-22) real URL
+  (str (system/site-url) "/account/metabot-slackbot"))
+
 (defn- process-user-message
   "Respond to an incoming user slack message"
   [client event]
-  (let [admin-user (t2/select-one :model/User :is_superuser true)]
-    ;; Bind admin user context for the entire operation
-    (binding [api/*current-user* (delay admin-user)
-              api/*current-user-id* (:id admin-user)]
-      (let [prompt (:text event)
-            thread (fetch-thread client event)
-            message-ctx {:channel (:channel event) :thread_ts (or (:thread_ts event) (:ts event))}
-            thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
-            {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
-
-        (delete-message client thinking-message)
-        (post-message client (merge message-ctx {:text text}))
-
-        ;; Process visualization images
-        (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
-          (doseq [viz vizs]
-            (when-let [card-id (get-in viz [:value :entity_id])]
-              (let [png-bytes (generate-card-png card-id)
-                    filename (str "chart-" card-id ".png")]
-                (post-image client png-bytes filename
-                            (:channel message-ctx)
-                            (:thread_ts message-ctx))))))))))
+  (let [slack-user-id (:user event)
+        user (slack-id->user slack-user-id)
+        message-ctx {:channel (:channel event)
+                     :thread_ts (or (:thread_ts event) (:ts event))}]
+    (if-not user
+      ;; No metabase user found for the given slack user. Respond with auth link.
+      (post-ephemeral-message client
+                              (merge message-ctx
+                                     {:user slack-user-id
+                                      :text (str "You need to link your slack account and authorize the Metabot app. "
+                                                 "Please visit: " slack-user-authorize-link)}))
+      ;; Found linked metabase user. Bind to current user and make-ai-request.
+      (binding [api/*current-user* (delay user)
+                api/*current-user-id* (:id user)]
+        (let [prompt (:text event)
+              thread (fetch-thread client event)
+              thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
+              {:keys [text data-parts]} (make-ai-request (str (random-uuid)) prompt thread)]
+          (delete-message client thinking-message)
+          (post-message client (merge message-ctx {:text text}))
+          (let [vizs (filter #(= (:type %) "static_viz") data-parts)]
+            (doseq [viz vizs]
+              (when-let [card-id (get-in viz [:value :entity_id])]
+                (let [png-bytes (generate-card-png card-id)
+                      filename (str "chart-" card-id ".png")]
+                  (post-image client png-bytes filename
+                              (:channel message-ctx)
+                              (:thread_ts message-ctx)))))))))))
 
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
@@ -293,7 +317,6 @@
 
 ;; ----------------------- ROUTES --------------------------
 
-;; TODO: add auth middleware + check that user has admin settings access
 (api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
