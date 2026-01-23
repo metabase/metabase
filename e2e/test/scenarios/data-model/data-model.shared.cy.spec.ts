@@ -8,7 +8,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { H } = cy;
 const { TablePicker, TableSection } = cy.H.DataModel;
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
@@ -39,7 +39,7 @@ class DataModelContext {
       : H.DataModel.visitDataStudio(...args);
   }
 
-  checkCocation(path: string) {
+  checkLocation(path: string) {
     cy.location("pathname").should("eq", `${this.basePath}${path}`);
   }
 }
@@ -104,7 +104,7 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 0);
       H.DataModel.get().findByText("Not found.").should("be.visible");
-      context.checkCocation("/database/54321");
+      context.checkLocation("/database/54321");
     });
 
     it("should show 404 if table does not exist", () => {
@@ -120,7 +120,7 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 8);
       H.DataModel.get().findByText("Not found.").should("be.visible");
-      context.checkCocation(
+      context.checkLocation(
         `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
       );
       if (area === "admin") {
@@ -149,7 +149,7 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
 
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getTables().should("have.length", 8);
-        context.checkCocation(
+        context.checkLocation(
           `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
         );
 
@@ -296,6 +296,66 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       cy.log("ensure navigation to another db works");
       TablePicker.getDatabase("Sample Database").click();
       TablePicker.getTables().should("have.length", 12);
+    });
+  });
+
+  describe("1 database, 1 schema", () => {
+    it("should allow to navigate databases, schemas, and tables", () => {
+      context.visit();
+
+      cy.log("should auto-open the only schema in the only database");
+      context.checkLocation(
+        `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
+      );
+
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getDatabase("Sample Database").should("be.visible");
+      TablePicker.getSchemas().should("have.length", 0);
+      TablePicker.getTables().should("have.length", 8);
+      TableSection.get().should("not.exist");
+      TablePicker.getTable("Orders").should("be.visible").click();
+
+      context.checkLocation(
+        `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
+      TableSection.get().should("be.visible");
+      if (area === "admin") {
+        verifyFieldSectionEmptyState();
+      }
+
+      TablePicker.getTable("Products").should("be.visible").click();
+      context.checkLocation(
+        `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PRODUCTS_ID}`,
+      );
+
+      TableSection.get().should("be.visible");
+      if (area === "admin") {
+        verifyFieldSectionEmptyState();
+      }
+    });
+
+    it("should allow to search for tables", () => {
+      context.visit();
+
+      TablePicker.getSearchInput().type("or");
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getSchemas().should("have.length", 1);
+      TablePicker.getTables().should("have.length", 2);
+      TablePicker.getTable("Orders").should("be.visible").click();
+      context.checkLocation(
+        `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
+      TableSection.getNameInput().should("have.value", "Orders");
+
+      cy.log("no results");
+      TablePicker.getSearchInput().clear().type("xyz");
+      TablePicker.get().findByText("No results.").should("be.visible");
+
+      cy.log("go back to browsing");
+      TablePicker.getSearchInput().clear();
+      TablePicker.getDatabases().should("have.length", 1);
+      TablePicker.getSchemas().should("have.length", 0);
+      TablePicker.getTables().should("have.length", 8);
     });
   });
 });
