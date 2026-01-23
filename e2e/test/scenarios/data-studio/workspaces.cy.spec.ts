@@ -800,6 +800,8 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Save the transform to add it to workspace");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Save button should be disabled after saving");
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       cy.log("Transform should be removed from available list after saving");
       Workspaces.getMainlandTransforms()
