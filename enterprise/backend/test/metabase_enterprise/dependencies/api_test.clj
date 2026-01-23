@@ -2430,3 +2430,69 @@
                   (is (= (:id model-card-a) (-> asc-response :data first :id))))
                 (testing "descending order puts more errors first"
                   (is (= (:id model-card-b) (-> desc-response :data first :id))))))))))))
+
+(deftest ^:sequential broken-endpoint-sort-by-visible-errors-only-test
+  (testing "GET /api/ee/dependencies/graph/broken - sorting counts only visible errors, not archived"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Setup: Model A has fewer VISIBLE errors but more TOTAL errors (due to archived dependents)
+          ;;        Model B has more VISIBLE errors but fewer TOTAL errors
+          ;; If sorting counts all errors: A (3 total) > B (2 total) -> B first in asc
+          ;; If sorting counts only visible: A (1 visible) < B (2 visible) -> A first in asc
+          (let [[model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card-a (create-model-card! user "A Model - sortviserr")
+                        model-card-b (create-model-card! user "B Model - sortviserr")
+                        visible-dep-a (create-dependent-card-on-model! user model-card-a "Visible Dep A - sortviserr")
+                        visible-dep-b (create-dependent-card-on-model! user model-card-b "Visible Dep B - sortviserr")
+                        archived-dep-a-1 (create-dependent-card-on-model! user model-card-a "Archived Dep A1 - sortviserr")
+                        archived-dep-a-2 (create-dependent-card-on-model! user model-card-a "Archived Dep A2 - sortviserr")]
+                    [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]))]
+            ;; Archive model-a's extra dependents
+            (t2/update! :model/Card (:id archived-dep-a-1) {:archived true})
+            (t2/update! :model/Card (:id archived-dep-a-2) {:archived true})
+            ;; Insert errors directly to ensure we control exactly what's in the DB
+            ;; Model A: 1 visible error, 2 archived errors = 3 total
+            ;; Model B: 2 visible errors = 2 total
+            (t2/insert! :model/AnalysisFindingError
+                        [{:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-a)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col1"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-1)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col2"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-2)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col3"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col4"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col5"}])
+            (let [asc-response (mt/user-http-request :crowberto :get 200
+                                                     "ee/dependencies/graph/broken"
+                                                     :types "card"
+                                                     :query "sortviserr"
+                                                     :sort_column "dependents-errors"
+                                                     :sort_direction "asc")]
+              (testing "ascending order should put A first (1 visible error < 2 visible errors)"
+                ;; BUG: Without fix, this fails because sort counts total errors (A=3, B=2)
+                ;; so B comes first. With fix, sort counts visible errors (A=1, B=2) so A comes first.
+                (is (= (:id model-card-a) (-> asc-response :data first :id)))))))))))
