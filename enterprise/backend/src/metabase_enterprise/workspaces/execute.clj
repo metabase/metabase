@@ -119,7 +119,7 @@
         flatrows               (apply juxt (map (fn [c] (let [cname (:name c)] #(get % cname))) cols))]
     (if (= :succeeded (:status result))
       {:status :succeeded
-       ;; idk if logs will be needed but they are nice to have
+       ;; return logs for debugging
        :logs   (str/join "\n" (:logs result))
        :data   {:cols cols
                 :rows (mapv flatrows rows)}}

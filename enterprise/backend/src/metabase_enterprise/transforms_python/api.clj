@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]))
 
 (defn get-python-library-by-path
@@ -44,7 +45,7 @@
 (api.macros/defendpoint :post "/test-run"
   :- [:map
       [:logs :string]
-      [:error {:optional true} [:map [:message :string]]]
+      [:error {:optional true} [:map [:message i18n/LocalizedString]]]
       [:output {:optional true} [:map
                                  [:cols [:sequential [:map [:name :string]]]]
                                  [:rows [:sequential :any]]]]]
