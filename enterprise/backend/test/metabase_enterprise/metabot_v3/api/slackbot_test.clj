@@ -220,7 +220,7 @@
                   (is (= #{"chart-101.png" "chart-202.png"}
                          (set (map :filename @image-calls))))
                   ;; Check image bytes match fake PNG
-                  (is (every? #(java.util.Arrays/equals fake-png-bytes ^bytes (:image-bytes %))
+                  (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
                               @image-calls)))))))))))
 
 (deftest user-not-linked-sends-auth-message-test
