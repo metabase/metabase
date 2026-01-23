@@ -15,6 +15,7 @@ import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collec
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
@@ -40,6 +41,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const isReadOnly = settings.readOnly ?? true;
 
   const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
+  const tc = useTranslateContent();
 
   const { canWrite: canWriteToInitialCollection } =
     useCollectionData(initialCollection);
@@ -88,7 +90,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
             reportLocation({
               type: "collection",
               id: dashboard.collection.id,
-              name: dashboard.collection.name,
+              name: tc(dashboard.collection.name),
             });
           }
 
