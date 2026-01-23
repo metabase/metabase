@@ -48,8 +48,8 @@
    ["dayjs/plugin/objectSupport" :as objectSupport]
    ["dayjs/plugin/quarterOfYear" :as quarterOfYear]
    ["dayjs/plugin/utc" :as utc]
-   ["dayjs/plugin/weekday" :as weekday]
    ["dayjs/plugin/weekOfYear" :as weekOfYear]
+   ["dayjs/plugin/weekday" :as weekday]
    [metabase.util.time.impl-common :as common]))
 
 ;; Initialize dayjs plugins
