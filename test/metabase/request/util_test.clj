@@ -1,5 +1,8 @@
 (ns metabase.request.util-test
   (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
@@ -115,47 +118,65 @@
           (is (= "127.0.0.1"
                  (req.util/ip-address mock-request))))))))
 
-(deftest ^:parallel geocode-ip-addresses-test
-  (are [ip-addresses expected] (malli= [:maybe expected]
-                                       (req.util/geocode-ip-addresses ip-addresses))
-    ;; Google DNS
-    ["8.8.8.8"]
-    [:map
-     ["8.8.8.8" [:map
-                 [:description [:re #"United States"]]
-                 [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+(def ^:private mock-geojs-responses
+  "Canned GeoJS responses for test IPs. These mock what GeoJS would return."
+  {"8.8.8.8"              {:city "" :region "" :country "United States" :timezone "America/Chicago"}
+   "185.233.100.23"       {:city "Paris" :region "" :country "France" :timezone "Europe/Paris"}
+   "127.0.0.1"            {:city "" :region "" :country "" :timezone nil}
+   "0:0:0:0:0:0:0:1"      {:city "" :region "" :country "" :timezone nil}
+   "52.206.149.9"         {:city "" :region "Virginia" :country "United States" :timezone "America/New_York"}
+   "2001:4860:4860::8844" {:city "" :region "" :country "United States" :timezone "America/Chicago"}})
 
-    ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
-    ["185.233.100.23"]
-    [:map
-     ["185.233.100.23" [:map
-                        [:description [:re #"France"]]
-                        [:timezone    [:= (t/zone-id "Europe/Paris")]]]]]
+(defn- mock-geojs-http-get
+  "Mock HTTP GET that returns canned GeoJS responses for test IPs."
+  [url _opts]
+  (let [ips (-> url (str/split #"\?ip=") second (str/split #","))]
+    {:body (json/encode (mapv #(assoc (get mock-geojs-responses % {}) :ip %) ips))}))
 
-    ["127.0.0.1"]
-    [:map
-     ["127.0.0.1" [:map
-                   [:description [:= "Unknown location"]]
-                   [:timezone    :nil]]]]
+(deftest geocode-ip-addresses-test
+  ;; Not ^:parallel because with-redefs mutates global state
+  (with-redefs [http/get mock-geojs-http-get]
+    (are [ip-addresses expected] (malli= expected
+                                         (req.util/geocode-ip-addresses ip-addresses))
+      ;; Google DNS
+      ["8.8.8.8"]
+      [:map
+       ["8.8.8.8" [:map
+                   [:description [:= "United States"]]
+                   [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
 
-    ["0:0:0:0:0:0:0:1"]
-    [:map
-     ["0:0:0:0:0:0:0:1" [:map
-                         [:description [:= "Unknown location"]]
-                         [:timezone    :nil]]]]
+      ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
+      ["185.233.100.23"]
+      [:map
+       ["185.233.100.23" [:map
+                          [:description [:= "Paris, France"]]
+                          [:timezone    [:= (t/zone-id "Europe/Paris")]]]]]
 
-    ;; multiple addresses at once
-    ;; store.metabase.com, Google DNS
-    ["52.206.149.9" "2001:4860:4860::8844"]
-    [:map
-     ["52.206.149.9"         [:map
-                              [:description [:re #"United States"]]
-                              [:timezone    [:= (t/zone-id "America/New_York")]]]]
-     ["2001:4860:4860::8844" [:map
-                              [:description [:re #"United States"]]
-                              [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+      ["127.0.0.1"]
+      [:map
+       ["127.0.0.1" [:map
+                     [:description [:= "Unknown location"]]
+                     [:timezone    :nil]]]]
 
-    ["wow"] :nil
-    ["   "] :nil
-    []      :nil
-    nil     :nil))
+      ["0:0:0:0:0:0:0:1"]
+      [:map
+       ["0:0:0:0:0:0:0:1" [:map
+                           [:description [:= "Unknown location"]]
+                           [:timezone    :nil]]]]
+
+      ;; multiple addresses at once
+      ;; store.metabase.com, Google DNS
+      ["52.206.149.9" "2001:4860:4860::8844"]
+      [:map
+       ["52.206.149.9"         [:map
+                                [:description [:= "Virginia, United States"]]
+                                [:timezone    [:= (t/zone-id "America/New_York")]]]]
+       ["2001:4860:4860::8844" [:map
+                                [:description [:= "United States"]]
+                                [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+
+      ;; invalid inputs - these don't make HTTP calls, filtered before request
+      ["wow"] :nil
+      ["   "] :nil
+      []      :nil
+      nil     :nil)))
