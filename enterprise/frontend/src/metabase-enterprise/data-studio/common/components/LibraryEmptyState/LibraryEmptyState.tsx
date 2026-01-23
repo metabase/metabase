@@ -94,7 +94,7 @@ type FeatureCardProps = {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <Paper bg="background-secondary" p="md" radius="8px">
+    <Paper bg="background-secondary" p="md" radius="8px" shadow="none">
       <Group gap="sm" align="flex-start" wrap="nowrap">
         <Icon name={icon} size={16} c="brand" style={{ flexShrink: 0 }} />
         <Stack gap="xs">
