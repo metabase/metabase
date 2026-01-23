@@ -81,7 +81,8 @@
    [:attributes {:optional true} [:maybe tenant/Attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
-(mu/defn- update-tenant!
+(mu/defn update-tenant!
+  "Updates a tenant, publishing any necessary events after doing so"
   [tenant-id :- ms/PositiveInt
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (when (false? is_active)

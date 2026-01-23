@@ -510,19 +510,19 @@ function checkSidebar({
       .findByText(entityName)
       .should("be.visible");
     if (transformName) {
-      H.DataStudio.Tasks.Sidebar.transformInfo()
+      H.DataStudio.Tasks.Sidebar.transformSection()
         .findByText(transformName)
         .should("exist");
     }
     if (missingColumns) {
-      H.DataStudio.Tasks.Sidebar.missingColumnsInfo().within(() => {
+      H.DataStudio.Tasks.Sidebar.missingColumnsSection().within(() => {
         missingColumns.forEach((column) => {
           cy.findByText(column).should("exist");
         });
       });
     }
     if (brokenDependents) {
-      H.DataStudio.Tasks.Sidebar.brokenDependentsInfo().within(() => {
+      H.DataStudio.Tasks.Sidebar.brokenDependentsSection().within(() => {
         brokenDependents.forEach((dependent) => {
           cy.findByText(dependent).should("exist");
         });

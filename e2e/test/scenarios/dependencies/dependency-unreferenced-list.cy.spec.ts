@@ -1020,12 +1020,12 @@ function checkSidebar({
       .findByText(entityName)
       .should("be.visible");
     if (locationName) {
-      H.DataStudio.Tasks.Sidebar.locationInfo()
+      H.DataStudio.Tasks.Sidebar.locationSection()
         .findByText(locationName)
         .should("be.visible");
     }
     if (creatorName) {
-      H.DataStudio.Tasks.Sidebar.creationInfo().should(
+      H.DataStudio.Tasks.Sidebar.creationSection().should(
         "contain.text",
         creatorName,
       );
