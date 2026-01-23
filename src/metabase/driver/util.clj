@@ -815,8 +815,10 @@
         #_{:clj-kondo/ignore [:discouraged-var]}
         (macaw/parsed-query sql (merge (macaw-options driver)
                                        opts))]
-    (when (and (map? result) (some? (:error result)))
-      (throw (ex-info "SQL parsing failed."
-                      {:macaw-error (:error result)}
-                      (-> result :context :cause))))
+    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
+    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
+    #_(when (and (map? result) (some? (:error result)))
+        (throw (ex-info "SQL parsing failed."
+                        {:macaw-error (:error result)}
+                        (-> result :context :cause))))
     result))
