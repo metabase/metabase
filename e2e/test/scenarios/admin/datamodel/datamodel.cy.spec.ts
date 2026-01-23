@@ -455,20 +455,6 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should be able to see details of a table", () => {
-      H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
-
-      verifyTableSectionEmptyState();
-
-      TablePicker.getTable("Orders").click();
-      verifyFieldSectionEmptyState();
-      TableSection.getNameInput().should("have.value", "Orders");
-      TableSection.getDescriptionInput().should(
-        "have.value",
-        "Confirmed Sample Company orders for a product, from a user.",
-      );
-    });
-
     it(
       "should be able to select and update a table in a database without schemas",
       { tags: ["@external"] },
@@ -3411,30 +3397,6 @@ const setDataModelPermissions = ({
     },
   });
 };
-
-function verifyTableSectionEmptyState() {
-  H.DataModel.get()
-    .findByText("Start by selecting data to model")
-    .should("be.visible");
-  H.DataModel.get()
-    .findByText("Browse your databases to find the table you’d like to edit.")
-    .should("be.visible");
-}
-
-function verifyFieldSectionEmptyState() {
-  H.DataModel.get()
-    .findByText("Edit the table and fields")
-    .should("be.visible");
-  H.DataModel.get()
-    .findByText(
-      "Select a field to edit its name, description, formatting, and more.",
-    )
-    .should("be.visible");
-}
-
-function clickAway() {
-  cy.get("body").click(0, 0);
-}
 
 function verifyTablePreview({
   column,

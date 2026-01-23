@@ -131,7 +131,7 @@ describe.each<Area>(areas)(
           `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
         );
         if (area === "admin") {
-          verifyTableSectionEmptyState();
+          verifyAdminTableSectionEmptyState();
         }
       });
 
@@ -581,17 +581,43 @@ describe.each<Area>(areas)(
         TableSection.getQueryBuilderLink().click();
         H.queryBuilderHeader().findByText("Orders").should("be.visible");
       });
+
+      it("should be able to see details of a table", () => {
+        context.visit({ databaseId: SAMPLE_DB_ID });
+
+        if (area === "admin") {
+          verifyAdminTableSectionEmptyState();
+        } else {
+          verifyDataStudioTableSectionEmptyState();
+        }
+
+        TablePicker.getTable("Orders").click();
+        if (area === "admin") {
+          verifyFieldSectionEmptyState();
+        } else {
+          verifyDataStudioFieldSectionEmptyState();
+        }
+        TableSection.getNameInput().should("have.value", "Orders");
+        TableSection.getDescriptionInput().should(
+          "have.value",
+          "Confirmed Sample Company orders for a product, from a user.",
+        );
+      });
     });
   },
 );
 
-function verifyTableSectionEmptyState() {
+function verifyAdminTableSectionEmptyState() {
   H.DataModel.get()
     .findByText("Start by selecting data to model")
     .should("be.visible");
   H.DataModel.get()
     .findByText("Browse your databases to find the table you’d like to edit.")
     .should("be.visible");
+}
+
+function verifyDataStudioTableSectionEmptyState() {
+  H.DataModel.TableSection.get().should("not.exist");
 }
 
 function verifyFieldSectionEmptyState() {
@@ -603,4 +629,8 @@ function verifyFieldSectionEmptyState() {
       "Select a field to edit its name, description, formatting, and more.",
     )
     .should("be.visible");
+}
+
+function verifyDataStudioFieldSectionEmptyState() {
+  H.DataModel.FieldSection.get().should("not.exist");
 }
