@@ -741,7 +741,7 @@ databaseChangeLog:
             sql: SELECT count(*) FROM python_library WHERE path = 'common.py'
       changes:
         - sql:
-            sql: INSERT INTO python_library (path) VALUES ('common.py')
+            sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
       rollback:
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
