@@ -2,12 +2,10 @@ import { type FocusEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { isEmail } from "metabase/lib/email";
-import { Avatar, Grid, Icon, Select, type SelectProps } from "metabase/ui";
+import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
-
-import S from "./UserInput.module.css";
-
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;
   userId: UserId | "unknown" | null;
@@ -95,24 +93,20 @@ export const UserInput = ({
       renderOption={(item) => {
         const option = item.option as Option;
         return (
-          <Grid columns={2} p="sm" gutter="sm" w="100%">
-            <Grid.Col span="content">
-              {option.type === "user" && <Avatar name={item.option.label} />}
-              {option.type === "unknown" && (
-                <Avatar color="background-secondary">
-                  <Icon name="person" c="text-secondary" />
-                </Avatar>
-              )}
-              {option.type === "email" && (
-                <Avatar color="initials" name="emails">
-                  <Icon name="mail" />
-                </Avatar>
-              )}
-            </Grid.Col>
-            <Grid.Col span="content" className={S.OptionLabel}>
-              <span className={S.OptionLabelContent}>{item.option.label}</span>
-            </Grid.Col>
-          </Grid>
+          <Flex align="center" gap="sm" p="sm" w="100%">
+            {option.type === "user" && <Avatar name={item.option.label} />}
+            {option.type === "unknown" && (
+              <Avatar color="background-secondary">
+                <Icon name="person" c="text-secondary" />
+              </Avatar>
+            )}
+            {option.type === "email" && (
+              <Avatar color="initials" name="emails">
+                <Icon name="mail" />
+              </Avatar>
+            )}
+            <Ellipsified>{item.option.label}</Ellipsified>
+          </Flex>
         );
       }}
       value={email ? email : userId ? String(userId) : null}
