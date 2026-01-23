@@ -2079,7 +2079,8 @@
 
   enterprise/metabot-v3
   {:team "Metabot"
-   :api  #{metabase-enterprise.metabot-v3.api
+   :api  #{metabase-enterprise.metabot-v3.agent-api.api
+           metabase-enterprise.metabot-v3.api
            metabase-enterprise.metabot-v3.client
            metabase-enterprise.metabot-v3.core
            metabase-enterprise.metabot-v3.init
@@ -2113,8 +2114,8 @@
            util
            warehouse-schema
            warehouses-rest
-           enterprise/sso
            enterprise/dependencies
+           enterprise/sso
            enterprise/transforms
            enterprise/transforms-python}}
 
