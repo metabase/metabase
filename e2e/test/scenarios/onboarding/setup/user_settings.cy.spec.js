@@ -81,7 +81,7 @@ describe("user > settings", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
-    H.getModeSwitcher().click();
+    H.getProfileLink().click();
     H.popover().findByText("Sign out").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");

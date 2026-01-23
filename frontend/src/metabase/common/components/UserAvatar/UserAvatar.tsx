@@ -11,7 +11,7 @@ interface UserAvatarProps extends AvatarProps {
 }
 
 interface GroupProps {
-  user: Group;
+  user: Pick<Group, "name">;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

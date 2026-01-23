@@ -1,85 +1,78 @@
-import cx from "classnames";
-import { useState } from "react";
+import type { Location } from "history";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { Modal } from "metabase/common/components/Modal";
-import { useSetting } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
+import { userInitials } from "metabase/common/utils/user";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import { capitalize } from "metabase/lib/formatting";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import type { ColorName } from "metabase/lib/colors/types";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
+import { getLocation } from "metabase/selectors/routing";
+import { getUser } from "metabase/selectors/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
-  getApplicationName,
-  getIsWhiteLabeling,
-} from "metabase/selectors/whitelabel";
-import { ActionIcon, Icon, type IconName, Menu, Tooltip } from "metabase/ui";
-import type { MetabaseInfo } from "metabase-types/api";
-import type { AdminPath, State } from "metabase-types/store";
+  ActionIcon,
+  Avatar,
+  Box,
+  Divider,
+  Group,
+  Icon,
+  type IconName,
+  Menu,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 
 import { useHelpLink } from "./useHelpLink";
 
-// generate the proper set of list items for the current user
-// based on whether they're an admin or not
-const mapStateToProps = (state: State) => ({
-  adminItems: getAdminPaths(state),
-  canAccessOnboardingPage: getCanAccessOnboardingPage(state),
-  canAccessDataStudio: PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
-  isNewInstance: getIsNewInstance(state),
-});
-
-const mapDispatchToProps = {
-  onOpenDiagnostics: openDiagnostics,
-  onLogout: logout,
+const getCurrentApp = (location: Location) => {
+  const [__, root] = location.pathname.split("/");
+  switch (root) {
+    case "admin":
+    case "data-studio":
+      return root;
+    default:
+      return "main";
+  }
 };
 
-interface ProfileLinkProps {
-  adminItems: AdminPath[];
-  canAccessOnboardingPage: boolean;
-  canAccessDataStudio: boolean;
-  isNewInstance: boolean;
-  onOpenDiagnostics: () => void;
-  onLogout: () => void;
-}
+const CURRENT_APP_ICON_OVERRIDES: {
+  name: IconName;
+  c: ColorName;
+} = { name: "check_filled", c: "brand" };
 
-interface MenuItem {
-  title?: string;
-  icon?: IconName | null;
-  externalLink?: boolean;
-  link?: string;
-  action?: () => void;
-  separator?: boolean;
-}
-
-function ProfileLinkInner({
-  adminItems,
-  canAccessOnboardingPage,
-  canAccessDataStudio,
-  isNewInstance,
-  onLogout,
-  onOpenDiagnostics,
-}: ProfileLinkProps) {
+export function ProfileLink({ className }: { className?: string }) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
-  const version = useSetting("version") as MetabaseInfo["version"];
-  const applicationName = useSelector(getApplicationName);
-  const { tag, date, ...versionExtra } = version;
-  const helpLink = useHelpLink();
   const dispatch = useDispatch();
+
+  const user = useSelector(getUser);
+  const applicationName = useSelector(getApplicationName);
+
+  // generate the proper set of list items for the current user
+  // based on whether they're an admin or not
+  const adminItems = useSelector(getAdminPaths);
+  const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
+  const canAccessDataStudio = useSelector(
+    PLUGIN_DATA_STUDIO.canAccessDataStudio,
+  );
+  const isNewInstance = useSelector(getIsNewInstance);
+  const helpLink = useHelpLink();
+
+  const location = useSelector(getLocation);
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -89,228 +82,170 @@ function ProfileLinkInner({
     setModalOpen(null);
   };
 
-  const generateOptionsForUser = (): MenuItem[] => {
+  const currentApp = getCurrentApp(location);
+
+  const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
-    // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
-    const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
+    const items: React.ReactNode[] = [
+      <Menu.Item
+        key="main-app-link"
+        component={ForwardRefLink}
+        to="/"
+        leftSection={
+          <Icon
+            name="dashboard"
+            {...(currentApp === "main" ? CURRENT_APP_ICON_OVERRIDES : null)}
+          />
+        }
+      >
+        {t`Main app`}
+      </Menu.Item>,
+    ];
 
-    const menuItems: MenuItem[] = [];
-    menuItems.push({
-      title: t`Account settings`,
-      icon: null,
-      link: Urls.accountSettings(),
-    });
-    if (showAdminSettingsItem) {
-      menuItems.push({
-        title: t`Admin settings`,
-        icon: null,
-        link: "/admin",
-      });
-    }
     if (canAccessDataStudio) {
-      menuItems.push({
-        title: t`Data studio`,
-        icon: null,
-        link: Urls.dataStudio(),
-      });
+      items.push(
+        <Menu.Item
+          key="data-studio-app-link"
+          component={ForwardRefLink}
+          to={Urls.dataStudio()}
+          leftSection={
+            <Icon
+              name="table"
+              {...(currentApp === "data-studio"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
+            />
+          }
+        >
+          {t`Data studio`}
+        </Menu.Item>,
+      );
     }
-    menuItems.push({ separator: true });
-    if (helpLink.visible) {
-      menuItems.push({
-        title: t`Help`,
-        icon: null,
-        link: helpLink.href,
-        externalLink: true,
-      });
+    if (showAdminSettingsItem) {
+      items.push(
+        <Menu.Item
+          key="admin-app-link"
+          component={ForwardRefLink}
+          to={"/admin"}
+          leftSection={
+            <Icon
+              name="io"
+              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
+            />
+          }
+        >{t`Admin`}</Menu.Item>,
+      );
     }
-    if (showOnboardingLink) {
-      menuItems.push({
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-        title: t`How to use Metabase`,
-        icon: null,
-        link: "/getting-started",
-      });
-    }
-    menuItems.push(
-      {
-        title: t`Keyboard shortcuts`,
-        icon: null,
-        action: () => dispatch(setOpenModal("help")),
-      },
-      {
-        title: t`Download diagnostics`,
-        icon: null,
-        action: () => {
-          trackErrorDiagnosticModalOpened("profile-menu");
-          onOpenDiagnostics();
-        },
-      },
-      {
-        title: t`About ${applicationName}`,
-        icon: null,
-        action: () => openModal("about"),
-      },
-      {
-        separator: true,
-      },
-      {
-        title: t`Sign out`,
-        icon: null,
-        action: () => onLogout(),
-      },
-    );
 
-    return menuItems;
-  };
+    return items.length > 1 ? (
+      <>
+        <Divider key="app-sectiondivider" w="100%" my="sm" />
+        <Box px="md">{items}</Box>
+      </>
+    ) : null;
+  }, [canAccessDataStudio, adminItems, currentApp]);
 
-  // show trademark if application name is not whitelabeled
-  const isWhiteLabeling = useSelector(getIsWhiteLabeling);
-  const showTrademark = !isWhiteLabeling;
-  const menuItems = generateOptionsForUser();
+  // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
+  const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
 
   return (
     <>
-      <Menu position="bottom-end" shadow="md" width={200}>
+      <Menu position="bottom-end" shadow="md" width={200} offset={9}>
         <Menu.Target>
-          <Tooltip label={t`Settings`}>
-            <ActionIcon
-              size="2.25rem"
-              p="sm"
-              variant="outline"
-              color="text-primary"
-              bd="1px solid var(--mb-color-border)"
-              aria-label={t`Settings`}
-            >
-              <Icon name="gear" size={16} />
-            </ActionIcon>
-          </Tooltip>
+          <ActionIcon
+            size="2.25rem"
+            p="sm"
+            variant="outline"
+            bd="1px solid var(--mb-color-border)"
+            aria-label={t`Settings`}
+            bdrs="50%"
+            className={className}
+          >
+            <Icon
+              name="mode"
+              // Need an escape hatch here for the white color in admin settings
+              style={{
+                color:
+                  currentApp === "admin"
+                    ? "var(--mantine-color-white)"
+                    : "var(--mb-color-text-primary)",
+              }}
+              size={16}
+            />
+          </ActionIcon>
         </Menu.Target>
-        <Menu.Dropdown>
-          {menuItems.map((item, index) => {
-            if (!item) {
-              return null;
-            }
+        <Menu.Dropdown w={320} px="0">
+          {/* Avatar Stuff */}
+          <Box px="md">
+            <Menu.Item
+              component={ForwardRefLink}
+              to={Urls.accountSettings()}
+              data-testid="mode-switcher-profile-link"
+            >
+              <Group wrap="nowrap">
+                <Avatar color="brand" radius="lg">
+                  {user ? userInitials(user) : "?"}
+                </Avatar>
+                <Stack gap={0}>
+                  <Text>{user?.first_name}</Text>
+                  <Text c="text-tertiary" fz="md">
+                    {user?.email}
+                  </Text>
+                </Stack>
+              </Group>
+            </Menu.Item>
+          </Box>
 
-            if (item.separator) {
-              return <Menu.Divider key={index} />;
-            }
+          {/* Apps */}
+          {appsSection}
 
-            const component = item.externalLink
-              ? "a"
-              : item.link
-                ? ForwardRefLink
-                : "button";
+          {/* Logout and Help */}
+          <Divider w="100%" my="sm" />
+          <Box px="md">
+            <Menu.Sub position="left-start" offset={20} closeDelay={350}>
+              <Menu.Sub.Target>
+                <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>
+              </Menu.Sub.Target>
+              <Menu.Sub.Dropdown data-testid="help-submenu">
+                {helpLink.visible && (
+                  <Menu.Item component={ExternalLink} href={helpLink.href}>
+                    {t`Get help`}
+                  </Menu.Item>
+                )}
+                {showOnboardingLink && (
+                  <Menu.Item component={ForwardRefLink} to="/getting-started">
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
+                    {t`How to use Metabase`}
+                  </Menu.Item>
+                )}
 
-            const commonProps = {
-              leftSection: item.icon && <Icon name={item.icon} />,
-              onClick: () => {
-                if (item.action) {
-                  item.action();
-                }
-              },
-            };
+                <Menu.Item
+                  onClick={() => dispatch(setOpenModal("help"))}
+                >{t`Keyboard shortcuts`}</Menu.Item>
 
-            if (component === ForwardRefLink && item.link) {
-              return (
-                <Menu.Item<typeof ForwardRefLink>
-                  key={item.title}
-                  {...commonProps}
-                  component={ForwardRefLink}
-                  to={item.link}
-                >
-                  {item.title}
+                <Menu.Item
+                  onClick={() => {
+                    trackErrorDiagnosticModalOpened("profile-menu");
+                    dispatch(openDiagnostics());
+                  }}
+                >{t`Download diagnostics`}</Menu.Item>
+                <Menu.Item onClick={() => openModal("about")}>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
+                  {t`About ${applicationName}`}
                 </Menu.Item>
-              );
-            }
-
-            if (component === "a" && item.link) {
-              return (
-                <Menu.Item<"a">
-                  key={item.title}
-                  {...commonProps}
-                  component="a"
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {item.title}
-                </Menu.Item>
-              );
-            }
-
-            return (
-              <Menu.Item<"button">
-                key={item.title}
-                {...commonProps}
-                component="button"
-              >
-                {item.title}
-              </Menu.Item>
-            );
-          })}
+              </Menu.Sub.Dropdown>
+            </Menu.Sub>
+            <Menu.Item
+              onClick={() => dispatch(logout())}
+            >{t`Sign out`}</Menu.Item>
+          </Box>
         </Menu.Dropdown>
       </Menu>
 
-      <AboutModal opened={modalOpen === "about"} onClose={closeModal} />
-      {modalOpen === "aboutttt" ? (
-        <Modal small onClose={closeModal}>
-          <div
-            className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
-          >
-            <div className={cx(CS.textBrand, CS.pb2)}>
-              <LogoIcon height={48} />
-            </div>
-            <h2
-              style={{ fontSize: "1.75em" }}
-              className={CS.textDark}
-            >{t`Thanks for using ${applicationName}!`}</h2>
-            <div className={CS.pt2}>
-              <h3 className={cx(CS.textDark, CS.mb1)}>
-                {t`You're on version`} {tag}
-              </h3>
-              <p className={cx(CS.textMedium, CS.textBold)}>
-                {t`Built on`} {date}
-              </p>
-              {tag && !/^v\d+\.\d+\.\d+$/.test(tag) && (
-                <div>
-                  {_.map(versionExtra, (value, key) => (
-                    <p key={key} className={cx(CS.textMedium, CS.textBold)}>
-                      {capitalize(key)}: {String(value)}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          {showTrademark && (
-            <div
-              style={{ borderWidth: "2px" }}
-              className={cx(
-                CS.p2,
-                CS.h5,
-                CS.textCentered,
-                CS.textMedium,
-                CS.borderTop,
-              )}
-            >
-              <span className={CS.block}>
-                {/* eslint-disable-next-line i18next/no-literal-string, metabase/no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className={CS.textBold}>Metabase</span>{" "}
-                {/* eslint-disable-next-line i18next/no-literal-string, metabase/no-literal-metabase-strings -- This only shows on OSS instance */}
-                {t`is a Trademark of`} Metabase, Inc
-              </span>
-              <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
-            </div>
-          )}
-        </Modal>
-      ) : null}
+      <AboutModal onClose={closeModal} opened={modalOpen === "about"} />
       {modalOpen === "diagnostic" && (
         <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
       )}
     </>
   );
 }
-
-const connector = connect(mapStateToProps, mapDispatchToProps);
-
-export const ProfileLink = connector(ProfileLinkInner);

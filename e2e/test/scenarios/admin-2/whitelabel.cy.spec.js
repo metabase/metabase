@@ -76,7 +76,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
     it("should show the new name in the main app", () => {
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
       H.getHelpSubmenu().findByText(`About ${NEW_COMPANY_NAME}`).click();
       H.modal()
@@ -607,7 +607,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.signInAsNormalUser();
 
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
       helpLink().should("not.exist");
 
@@ -637,7 +637,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
       helpLink().should(
         "have.attr",
@@ -657,7 +657,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.wait("@putHelpLink");
 
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
 
       helpLink()
@@ -666,7 +666,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
 
       helpLink()
@@ -679,7 +679,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      H.getModeSwitcher().click();
+      H.getProfileLink().click();
       H.popover().findByText("Help").click();
       helpLink()
         .should("have.attr", "href")

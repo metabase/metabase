@@ -23,7 +23,7 @@ describe("scenarios > auth > signin", () => {
     cy.signInAsAdmin();
     cy.visit("/auth/login");
     cy.url().should("not.contain", "auth/login");
-    H.getModeSwitcher().should("exist");
+    H.getProfileLink().should("exist");
   });
 
   it("should display an error for incorrect passwords", () => {

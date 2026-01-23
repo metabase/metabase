@@ -13,7 +13,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
 import type { AdminPath } from "metabase-types/store";
 
-import { ModeSwitcher } from "../ModeSwitcher/ModeSwitcher";
+import { ProfileLink } from "../ProfileLink/ProfileLink";
 import StoreLink from "../StoreLink";
 
 import { AdminNavItem } from "./AdminNavItem";
@@ -95,7 +95,7 @@ export const AdminNavbar = ({
         {!isPaidPlan && isAdmin && <StoreLink />}
 
         <AdminButtons>
-          <ModeSwitcher />
+          <ProfileLink />
         </AdminButtons>
       </MobileHide>
     </AdminNavbarRoot>
@@ -126,7 +126,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           />
         }
       />
-      <ModeSwitcher />
+      <ProfileLink />
 
       {mobileNavOpen && (
         <AdminMobileNavBarItems aria-label={t`Navigation links`}>
