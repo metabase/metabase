@@ -20,7 +20,11 @@ function createContext(place: string) {
 const areas = ["admin", "data studio"];
 
 describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
+  let context: ReturnType<typeof createContext>;
+
   beforeEach(() => {
+    context = createContext(area);
+
     if (area === "admin") {
       H.restore();
       cy.signInAsAdmin();
@@ -176,6 +180,31 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
           .should("not.exist");
       },
     );
+  });
+
+  describe("Table picker", () => {
+    describe("No databases", () => {
+      beforeEach(() => {
+        cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`);
+      });
+
+      it("should allow to navigate databases, schemas, and tables", () => {
+        context.visit();
+
+        cy.get("main")
+          .findByText("No connected databases")
+          .should("be.visible");
+
+        cy.findByRole("link", { name: "Connect a database" })
+          .should("be.visible")
+          .click();
+
+        cy.location("pathname").should("eq", "/admin/databases/create");
+        cy.findByRole("heading", { name: "Add a database" }).should(
+          "be.visible",
+        );
+      });
+    });
   });
 });
 
