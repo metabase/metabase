@@ -117,7 +117,7 @@ export function DependencyGraph({
         <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
         <Panel position="top-left">
-          <Group>
+          <Group wrap="nowrap">
             {withEntryPicker && (
               <GraphEntryInput
                 node={entryNode?.data ?? null}

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
   Center,
@@ -36,7 +37,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>
-        <Title order={3} lh="1.5rem">
+        <Title className={CS.textWrap} order={3} lh="1.5rem">
           {getNodeLabel(node)}
         </Title>
         {location != null && <GraphBreadcrumbs links={location.links} />}

@@ -8,6 +8,7 @@ import {
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   Box,
   Card,
@@ -73,7 +74,7 @@ export const GraphNode = memo(function ItemNode({
               {typeInfo.label}
             </Box>
           </Group>
-          <Box fw="bold" lh="1rem">
+          <Box className={CS.textWrap} fw="bold" lh="1rem">
             {label}
           </Box>
         </Stack>

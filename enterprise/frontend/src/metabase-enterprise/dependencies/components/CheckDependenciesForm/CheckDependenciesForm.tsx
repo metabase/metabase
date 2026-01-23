@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -106,7 +107,7 @@ function DependencyItemCard({ item }: DependencyItemCardProps) {
       shadow="none"
       withBorder
     >
-      <Stack gap="xs">
+      <Stack className={CS.textWrap} gap="xs">
         <Group c="brand" gap="sm" wrap="nowrap">
           <FixedSizeIcon name={getItemIcon(item)} />
           <Box fw="bold" lh="h4">
@@ -228,7 +229,14 @@ type BreadcrumbProps = {
 
 function Breadcrumb({ item }: BreadcrumbProps) {
   return (
-    <Anchor component={Link} to={item.to} c="text-secondary" fz="sm" lh="h5">
+    <Anchor
+      component={Link}
+      className={CS.textWrap}
+      to={item.to}
+      c="text-secondary"
+      fz="sm"
+      lh="h5"
+    >
       {item.title}
     </Anchor>
   );
