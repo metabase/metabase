@@ -17,7 +17,6 @@ import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/Collection
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import EmptyState from "metabase/common/components/EmptyState";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
@@ -119,7 +118,6 @@ export const CollectionBrowserInner = ({
 
   const { isBreadcrumbEnabled: isGlobalBreadcrumbEnabled, reportLocation } =
     useSdkBreadcrumbs();
-  const tc = useTranslateContent();
 
   useEffect(() => {
     setInternalCollectionId(baseCollectionId);
@@ -130,7 +128,7 @@ export const CollectionBrowserInner = ({
       reportLocation({
         type: "collection",
         id: collection.id,
-        name: tc(collection.name) || "Collection",
+        name: collection.name || "Collection",
       });
     }
   }, [
@@ -138,7 +136,6 @@ export const CollectionBrowserInner = ({
     isFetchingCollection,
     collection,
     reportLocation,
-    tc,
   ]);
 
   if (
@@ -161,7 +158,7 @@ export const CollectionBrowserInner = ({
         reportLocation({
           type: "collection",
           id: item.id,
-          name: tc(item.name),
+          name: item.name,
         });
         return;
       }
