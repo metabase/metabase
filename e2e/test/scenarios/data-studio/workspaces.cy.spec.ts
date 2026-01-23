@@ -824,9 +824,29 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.log("Save it again");
+      cy.log(
+        "Add delay to API response to verify button is disabled immediately on click",
+      );
+      cy.intercept(
+        { method: "PUT", url: "/api/ee/workspace/*/transform/*" },
+        (req) => {
+          req.on("response", (res) => {
+            res.setDelay(500);
+          });
+        },
+      ).as("updateTransformSlow");
+
       Workspaces.getWorkspaceContent().within(() => {
         Workspaces.getSaveTransformButton().click();
+        cy.log("Save button should show loading state immediately after click");
+        Workspaces.getSaveTransformButton().should("have.attr", "data-loading");
       });
+      cy.log("Wait for save to complete");
+      cy.wait("@updateTransformSlow");
+      cy.log(
+        "Save button should be disabled after save completes (no changes)",
+      );
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       cy.log("Check that yellow dot doesn't exist anymore after saving");
       Workspaces.getWorkspaceTransforms().within(() => {
