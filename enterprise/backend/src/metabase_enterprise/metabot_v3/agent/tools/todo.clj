@@ -23,11 +23,19 @@
                              [:content :string]
                              [:status [:enum "pending" "in_progress" "completed" "cancelled"]]
                              [:priority [:enum "high" "medium" "low"]]]]]]]
-  (todo-tools/todo-write-tool {:todos todos
-                               :memory-atom shared/*memory-atom*}))
+  (try
+    (todo-tools/todo-write {:todos todos
+                            :memory-atom shared/*memory-atom*})
+    (catch Exception e
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "todo_read"} todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."
   [_args :- [:map {:closed true}]]
-  (todo-tools/todo-read-tool {:memory-atom shared/*memory-atom*}))
+  (try
+    (todo-tools/todo-read {:memory-atom shared/*memory-atom*})
+    (catch Exception e
+      {:output (str "Failed to read todo list: " (or (ex-message e) "Unknown error"))})))
