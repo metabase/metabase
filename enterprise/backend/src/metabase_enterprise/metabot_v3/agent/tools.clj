@@ -345,6 +345,7 @@
                              :queries-state {(:query-id structured) (:query structured)}})
               navigate-url (get-in chart-result [:reactions 0 :url])]
           {:structured-output (assoc structured
+                                     :result-type :query
                                      :chart-id (:chart-id chart-result)
                                      :chart-type (:chart-type chart-result)
                                      :chart-link (:chart-link chart-result)
@@ -456,7 +457,7 @@
                  :sql sql_query})
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output result
+      {:structured-output (assoc result :result-type :query)
        :instructions instructions/query-created-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
@@ -494,7 +495,7 @@
                  :queries-state (current-queries-state)})
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output result
+      {:structured-output (assoc result :result-type :query)
        :instructions instructions/edit-sql-query-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
@@ -526,7 +527,7 @@
                  :queries-state (current-queries-state)})
         buffer-id (first-code-editor-buffer-id)]
     (if buffer-id
-      {:structured-output result
+      {:structured-output (assoc result :result-type :query)
        :instructions instructions/query-created-instructions
        :data-parts [(code-edit-part buffer-id (:query-content result))]}
       {:output "No active code editor buffer found for SQL editing."})))
