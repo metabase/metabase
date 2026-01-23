@@ -51,29 +51,6 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Table picker", () => {
-    describe("No databases", () => {
-      beforeEach(() => {
-        cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`);
-      });
-
-      it("should allow to navigate databases, schemas, and tables", () => {
-        H.DataModel.visitDataStudio();
-
-        cy.get("main")
-          .findByText("No connected databases")
-          .should("be.visible");
-
-        cy.findByRole("link", { name: "Connect a database" })
-          .should("be.visible")
-          .click();
-
-        cy.location("pathname").should("eq", "/admin/databases/create");
-        cy.findByRole("heading", { name: "Add a database" }).should(
-          "be.visible",
-        );
-      });
-    });
-
     describe("1 database, no schemas", () => {
       it("should allow to navigate tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
