@@ -19,7 +19,7 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet").click();
+      H.popover().findByText("Snippet").click();
 
       H.DataStudio.Snippets.newPage().should("be.visible");
       H.DataStudio.Snippets.saveButton().should("be.disabled");
@@ -178,7 +178,7 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet folder").click();
+      H.popover().findByText("Snippet folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Give your folder a name").type("Test Folder");
@@ -194,7 +194,7 @@ describe("scenarios > data studio > snippets", () => {
         .should("be.visible");
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("New snippet").click();
+      H.popover().findByText("Snippet").click();
 
       H.DataStudio.Snippets.nameInput().clear().type("Folder snippet");
       H.DataStudio.Snippets.editor.type("SELECT 1");

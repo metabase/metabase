@@ -1,4 +1,3 @@
-import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { NodeViewProps } from "@tiptap/core";
 import { OrderedList } from "@tiptap/extension-ordered-list";
 import {
@@ -7,20 +6,9 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -58,34 +46,19 @@ export const OrderedListNodeView = ({
   editor,
   getPos,
 }: NodeViewProps) => {
-  const childTargetId = useSelector(getChildTargetId);
-  const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-  const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
-  const [hovered, setHovered] = useState(false);
-  const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
-  const { _id } = node.attrs;
-  const isOpen = childTargetId === _id;
-  const isHovered = hoveredChildTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
-  const { refs, floatingStyles } = useFloating({
-    placement: "right-start",
-    whileElementsMounted: autoUpdate,
-    strategy: "fixed",
-    open: rendered,
-  });
-
-  useEffect(() => {
-    if (!rendered) {
-      setRendered(true);
-    }
-  }, [rendered]);
+  const {
+    _id,
+    isOpen,
+    isHovered,
+    hovered,
+    setHovered,
+    threads,
+    document,
+    shouldShowMenus,
+    setReferenceElement,
+    commentsRefs,
+    commentsFloatingStyles,
+  } = useBlockMenus({ node, editor, getPos });
 
   return (
     <>
@@ -94,7 +67,8 @@ export const OrderedListNodeView = ({
         className={cx(S.root, {
           [S.open]: isOpen || isHovered,
         })}
-        ref={refs.setReference}
+        data-node-id={_id}
+        ref={setReferenceElement}
         // onMouseEnter/onMouseLeave do not work on list elements living in contentEditable
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
@@ -102,19 +76,16 @@ export const OrderedListNodeView = ({
         <NodeViewContent<"ol"> as="ol" />
       </NodeViewWrapper>
 
-      {document &&
-        rendered &&
-        !isWithinIframe() &&
-        isTopLevel({ editor, getPos }) && (
-          <CommentsMenu
-            active={isOpen}
-            href={`/document/${document.id}/comments/${_id}`}
-            ref={refs.setFloating}
-            show={isOpen || hovered}
-            threads={threads}
-            style={floatingStyles}
-          />
-        )}
+      {shouldShowMenus && document && (
+        <CommentsMenu
+          active={isOpen}
+          href={`/document/${document.id}/comments/${_id}`}
+          ref={commentsRefs.setFloating}
+          show={isOpen || hovered}
+          style={commentsFloatingStyles}
+          threads={threads}
+        />
+      )}
     </>
   );
 };

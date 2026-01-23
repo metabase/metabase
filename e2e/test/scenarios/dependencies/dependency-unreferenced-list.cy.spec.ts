@@ -1,5 +1,3 @@
-const { H } = cy;
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -15,6 +13,7 @@ import type {
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
+const { H } = cy;
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MODEL_FOR_QUESTION_DATA_SOURCE = "Model for question data source";
@@ -1021,12 +1020,12 @@ function checkSidebar({
       .findByText(entityName)
       .should("be.visible");
     if (locationName) {
-      H.DataStudio.Tasks.Sidebar.locationInfo()
+      H.DataStudio.Tasks.Sidebar.locationSection()
         .findByText(locationName)
         .should("be.visible");
     }
     if (creatorName) {
-      H.DataStudio.Tasks.Sidebar.creationInfo().should(
+      H.DataStudio.Tasks.Sidebar.creationSection().should(
         "contain.text",
         creatorName,
       );

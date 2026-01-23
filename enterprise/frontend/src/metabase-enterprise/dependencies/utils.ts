@@ -4,20 +4,23 @@ import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  AnalysisFindingError,
+  AnalysisFindingErrorType,
   CardType,
   DependencyEntry,
-  DependencyError,
-  DependencyErrorType,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
   DependencyType,
   LastEditInfo,
+  Transform,
   UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
 
 import type {
+  DependencyError,
+  DependencyErrorGroup,
   DependencyErrorInfo,
   DependencyGroupTypeInfo,
   DependentGroup,
@@ -393,6 +396,26 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
+export function canHaveViewCount(groupType: DependencyGroupType): boolean {
+  switch (groupType) {
+    case "question":
+    case "dashboard":
+    case "document":
+      return true;
+    // view_count is not calculated property for models and metrics since
+    // they are typically not run directly
+    case "table":
+    case "model":
+    case "metric":
+    case "transform":
+    case "snippet":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return false;
+  }
+}
+
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
@@ -414,15 +437,15 @@ export function getNodeViewCount(node: DependencyNode): number | null {
   }
 }
 
-export function getNodeDependentsCount(node: DependencyNode): number {
-  const dependentsCount = node.dependents_count;
-  if (dependentsCount == null) {
-    return 0;
+export function getNodeViewCountLabel(viewCount: number): string {
+  return ngettext(msgid`${viewCount} view`, `${viewCount} views`, viewCount);
+}
+
+export function getNodeTransform(node: DependencyNode): Transform | null {
+  if (node.type === "table") {
+    return node.data.transform ?? null;
   }
-  return Object.values(dependentsCount).reduce(
-    (total, count) => total + count,
-    0,
-  );
+  return null;
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {
@@ -570,6 +593,16 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   return groups.filter(({ count }) => count !== 0);
 }
 
+export function getDependentsCount(node: DependencyNode): number {
+  if (node.dependents_count == null) {
+    return 0;
+  }
+  return Object.values(node.dependents_count).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
 export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
@@ -628,24 +661,27 @@ export function getDependentGroupLabel({
   }
 }
 
-export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
+export function getErrorTypeLabel(
+  type: AnalysisFindingErrorType,
+  count = 0,
+): string {
   switch (type) {
     case "missing-column":
-      return t`Missing column`;
+      return count === 1 ? t`Missing column` : t`Missing columns`;
     case "missing-table-alias":
-      return t`Missing table alias`;
+      return count === 1 ? t`Missing table alias` : t`Missing table aliases`;
     case "duplicate-column":
-      return t`Duplicate column`;
+      return count === 1 ? t`Duplicate column` : t`Duplicate columns`;
     case "syntax-error":
-      return t`Syntax error`;
+      return count === 1 ? t`Syntax error` : t`Syntax errors`;
     case "validation-error":
-      return t`Unknown problem`;
+      return count === 1 ? t`Unknown problem` : t`Unknown problems`;
   }
 }
 
-export function getDependencyErrorTypeCountMessage(
-  type: DependencyErrorType,
-  count: number,
+export function getErrorTypeLabelWithCount(
+  type: AnalysisFindingErrorType,
+  count = 0,
 ): string {
   switch (type) {
     case "missing-column":
@@ -681,6 +717,40 @@ export function getDependencyErrorTypeCountMessage(
   }
 }
 
+export function getDependentErrorNodesLabel(count = 0): string {
+  return count === 1 ? t`Broken dependent` : t`Broken dependents`;
+}
+
+export function getDependencyErrors(
+  errors: AnalysisFindingError[],
+): DependencyError[] {
+  const errorByKey = new Map<string, DependencyError>();
+  for (const error of errors) {
+    const { error_type: type, error_detail: detail } = error;
+    const key = `${type}-${detail}`;
+    errorByKey.set(key, { type, detail });
+  }
+  return Array.from(errorByKey.values());
+}
+
+export function getDependencyErrorGroups(
+  errors: DependencyError[],
+): DependencyErrorGroup[] {
+  const groups = new Map<AnalysisFindingErrorType, DependencyError[]>();
+  for (const error of errors) {
+    const group = groups.get(error.type);
+    if (group != null) {
+      group.push(error);
+    } else {
+      groups.set(error.type, [error]);
+    }
+  }
+  return Array.from(groups.entries()).map(([type, errors]) => ({
+    type,
+    errors,
+  }));
+}
+
 export function getDependencyErrorInfo(
   errors: DependencyError[],
 ): DependencyErrorInfo | undefined {
@@ -690,7 +760,7 @@ export function getDependencyErrorInfo(
 
   if (errors.length === 1) {
     const [error] = errors;
-    const label = getDependencyErrorTypeLabel(error.type);
+    const label = getErrorTypeLabel(error.type, errors.length);
     const detail = error.detail;
     return { label, detail };
   }
@@ -699,7 +769,7 @@ export function getDependencyErrorInfo(
   if (types.size === 1) {
     const [type] = types;
     return {
-      label: getDependencyErrorTypeCountMessage(type, errors.length),
+      label: getErrorTypeLabelWithCount(type, errors.length),
       detail: null,
     };
   }
@@ -714,12 +784,24 @@ export function getDependencyErrorInfo(
   };
 }
 
+export function getDependentErrorNodesCount(
+  errors: AnalysisFindingError[],
+): number {
+  const nodeIds = new Set();
+  errors.forEach((error) => {
+    nodeIds.add(
+      getNodeId(error.analyzed_entity_id, error.analyzed_entity_type),
+    );
+  });
+  return nodeIds.size;
+}
+
 export function parseString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
 export function parseNumber(value: unknown): number | undefined {
-  if (typeof value === "string") {
+  if (typeof value === "string" && value.trim() !== "") {
     const number = Number(value);
     return Number.isFinite(number) ? number : undefined;
   }

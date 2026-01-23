@@ -188,7 +188,7 @@
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         set-ks          [:data_authority
                          :data_source
@@ -214,7 +214,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         selected-tables   (t2/select fields {:where where :limit 2})
@@ -235,7 +235,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
                                                               :type collection/library-data-collection-type
                                                               {:limit 2}))]
@@ -267,7 +267,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         downstream-ids  (all-downstream-table-ids where)
         update-where    (if (seq downstream-ids)
@@ -299,7 +299,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (t2/select :model/Database :id [:in db-ids])]
@@ -318,7 +318,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
@@ -331,7 +331,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
     (let [field-ids-to-delete-q {:select [:id]
                                  :from   [(t2/table-name :model/Field)]
