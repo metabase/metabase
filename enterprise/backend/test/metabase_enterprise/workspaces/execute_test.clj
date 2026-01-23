@@ -62,9 +62,9 @@
 
 (deftest dry-run-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
-    (let [workspace    (ws.tu/create-ready-ws! "dry-run Test Workspace")
+    (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
           db-id        (:database_id workspace)
-          body         {:name   "dry-run Transform"
+          body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
                                  :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
                         :target {:type     "table"
@@ -93,9 +93,9 @@
 (deftest ^:mb/transforms-python-test dry-run-python-workspace-transform-test
   (testing "Dry-running a Python workspace transform returns rows without persisting"
     (mt/test-drivers #{:mysql :postgres}
-      (let [workspace    (ws.tu/create-ready-ws! "Python dry-run Test")
+      (let [workspace    (ws.tu/create-ready-ws! "Python Dry-Run Test")
             db-id        (:database_id workspace)
-            body         {:name   "Python dry-run Transform"
+            body         {:name   "Python Dry-Run Transform"
                           :source {:type          "python"
                                    :source-tables {}
                                    :body          (str "import pandas as pd\n"

@@ -1378,9 +1378,7 @@
                   :not_run   []}
                  (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run")))))))))
 
-;;; ---------------------------------------- Dry-Run Tests ----------------------------------------
-
-(deftest dry-run-workspace-transform
+(deftest dry-run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
     (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
                              ws2 {:name "Workspace 2"}]

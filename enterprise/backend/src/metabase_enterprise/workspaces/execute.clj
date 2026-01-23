@@ -8,19 +8,15 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms-python.s3 :as s3]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -114,55 +110,21 @@
   [{:keys [source]} remapping]
   (let [table-mapping          (:tables remapping no-mapping)
         remapped-source        (remap-python-source table-mapping source)
-        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))]
-    (try
-      (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
-        (let [server-url (transforms-python.settings/python-runner-url)
-              _          (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
-                                                            :source         (assoc remapped-source
-                                                                                   :source-tables resolved-source-tables)
-                                                            :limit          preview-row-limit})
-              {:keys [status body]}
-              (python-runner/execute-python-code-http-call!
-               {:server-url     server-url
-                :code           (:body remapped-source)
-                :request-id     (u/generate-nano-id)
-                :table-name->id resolved-source-tables
-                :shared-storage @shared-storage-ref})]
-          (cond
-            (:timeout body)
-            {:status  :failed
-             :message "Python execution timed out"}
-
-            (not= 200 status)
-            {:status  :failed
-             :message (str "Python execution failed (exit code " (:exit_code body "?") ")")}
-
-            :else
-            (let [output-manifest  (python-runner/read-output-manifest @shared-storage-ref)
-                  {:keys [fields]} output-manifest]
-              (when-not (seq fields)
-                (throw (ex-info "No fields in output metadata" {:manifest output-manifest})))
-              (with-open [in  (python-runner/open-output @shared-storage-ref)
-                          rdr (io/reader in)]
-                (let [cols     (mapv (fn [c]
-                                       {:name      (:name c)
-                                        :base_type (some-> c :base_type keyword)})
-                                     fields)
-                      colnames (mapv :name cols)
-                      rows     (into []
-                                     (comp
-                                      (remove str/blank?)
-                                      (take preview-row-limit)
-                                      (map json/decode)
-                                      (map (fn [row] (mapv #(get row %) colnames))))
-                                     (line-seq rdr))]
-                  {:status :succeeded
-                   :data   {:rows rows
-                            :cols cols}}))))))
-      (catch Exception e
-        {:status  :failed
-         :message (ex-message e)}))))
+        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))
+        {:as   result
+         :keys [cols rows]}    (python-runner/execute-and-read-output!
+                                {:code          (:body remapped-source)
+                                 :source-tables resolved-source-tables
+                                 :row-limit     preview-row-limit})
+        flatrows               (apply juxt (map (fn [c] (let [cname (:name c)] #(get % cname))) cols))]
+    (if (= :succeeded (:status result))
+      {:status :succeeded
+       ;; idk if logs will be needed but they are nice to have
+       :logs   (str/join "\n" (:logs result))
+       :data   {:cols cols
+                :rows (mapv flatrows rows)}}
+      {:status  :failed
+       :message (:message result)})))
 
 (defn- dry-run-sql
   "Run SQL transform query and return first 2000 rows without persisting.
@@ -173,16 +135,16 @@
           table-mapping   (:tables remapping no-mapping)
           field-mapping   (:fields remapping no-mapping)
           remapped-source (remap-source table-mapping field-mapping s-type source)
-          query           (:query remapped-source)]
-      (let [result (qp/process-query
-                    (assoc query :constraints {:max-results           preview-row-limit
-                                               :max-results-bare-rows preview-row-limit}))
-            data   (:data result)]
-        (if (= :completed (:status result))
-          {:status :succeeded
-           :data   (select-keys data [:rows :cols :results_metadata])}
-          {:status  :failed
-           :message (or (:error result) "Query execution failed")})))
+          query           (:query remapped-source)
+          result          (qp/process-query
+                           (assoc query :constraints {:max-results           preview-row-limit
+                                                      :max-results-bare-rows preview-row-limit}))
+          data            (:data result)]
+      (if (= :completed (:status result))
+        {:status :succeeded
+         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status  :failed
+         :message (or (:error result) "Query execution failed")}))
     (catch Exception e
       {:status  :failed
        :message (ex-message e)})))
