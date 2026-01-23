@@ -742,6 +742,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: INSERT INTO python_library (path) VALUES ('common.py')
+      rollback:
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
