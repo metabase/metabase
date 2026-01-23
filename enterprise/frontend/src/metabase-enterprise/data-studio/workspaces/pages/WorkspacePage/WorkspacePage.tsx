@@ -51,7 +51,6 @@ import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
-  type EditedTransform,
   WorkspaceProvider,
   type WorkspaceTab,
   getTransformId,
@@ -93,7 +92,6 @@ function WorkspacePageContent({
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
-    patchEditedTransform,
     hasUnsavedChanges,
     unsavedTransforms,
   } = useWorkspace();
@@ -158,16 +156,6 @@ function WorkspacePageContent({
     handleNavigateToTransform,
     dispatch,
   ]);
-
-  const handleTransformChange = useCallback(
-    (patch: Partial<EditedTransform>) => {
-      patchEditedTransform(
-        getTransformId(checkNotNull(activeTransform)),
-        patch,
-      );
-    },
-    [activeTransform, patchEditedTransform],
-  );
 
   const handleTabClose = useCallback(
     (event: React.MouseEvent, tab: WorkspaceTab, index: number) => {
@@ -453,11 +441,9 @@ function WorkspacePageContent({
                     <TransformTab
                       databaseId={checkNotNull(workspace.database_id)}
                       transform={activeTransform}
-                      editedTransform={activeEditedTransform}
                       workspaceId={workspaceId}
                       workspaceTransforms={workspaceTransforms}
                       isDisabled={isArchived || isPending}
-                      onChange={handleTransformChange}
                       onSaveTransform={(transform) => {
                         // After adding first transform to a workspace,
                         // show 'Setup' tab with initialization status log.
