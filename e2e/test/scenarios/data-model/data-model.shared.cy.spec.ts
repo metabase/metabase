@@ -1,7 +1,10 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
 const { TablePicker } = cy.H.DataModel;
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 function createContext(place: string) {
   return {
@@ -98,6 +101,42 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
         verifyTableSectionEmptyState();
       }
     });
+
+    it(
+      "should show 404 if field does not exist",
+      // We eliminate the flakiness by removing the need to scroll horizontally
+      { viewportWidth: 1600 },
+      () => {
+        const context = createContext(area);
+        context.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: 12345, // we're force navigating to a fake field id
+          skipWaiting: true,
+        });
+        if (area === "admin") {
+          cy.wait("@databases");
+          cy.wait(100); // wait with assertions for React effects to kick in
+        } else {
+          cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
+        }
+
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 8);
+        cy.location("pathname").should(
+          "eq",
+          `${context.basePath}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        );
+
+        if (area === "data-studio") {
+          H.DataModel.get().within(() => {
+            cy.findByText("Field details").should("be.visible");
+            cy.findByText("Not found.").should("be.visible");
+          });
+        }
+      },
+    );
   });
 });
 

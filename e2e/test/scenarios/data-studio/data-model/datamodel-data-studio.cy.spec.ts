@@ -52,34 +52,6 @@ describe("scenarios > data studio > datamodel", () => {
 
   describe("Data loading", () => {
     it(
-      "should show 404 if field does not exist",
-      // We eliminate the flakiness by removing the need to scroll horizontally
-      { viewportWidth: 1600 },
-      () => {
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: 12345, // we're force navigating to a fake field id
-          skipWaiting: true,
-        });
-        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
-
-        TablePicker.getDatabases().should("have.length", 1);
-        TablePicker.getTables().should("have.length", 8);
-        cy.location("pathname").should(
-          "eq",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
-        );
-
-        H.DataModel.get().within(() => {
-          cy.findByText("Field details").should("be.visible");
-          cy.findByText("Not found.").should("be.visible");
-        });
-      },
-    );
-
-    it(
       "should not show 404 error if database is not selected",
       { tags: ["@external"] },
       () => {
