@@ -277,6 +277,9 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
       - name: Generate database snapshots
         run: |
           node e2e/runner/run_cypress_ci.js snapshot \
