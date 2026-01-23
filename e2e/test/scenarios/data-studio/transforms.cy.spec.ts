@@ -2741,6 +2741,10 @@ LIMIT
 
   describe("read-only remote sync", () => {
     beforeEach(() => {
+      cy.log("create a transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+      });
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGit("read-only");
@@ -2753,12 +2757,8 @@ LIMIT
     });
 
     it("should not allow editing a transform", () => {
-      cy.log("create and visit a new transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-      });
-
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
       H.DataStudio.Transforms.editDefinition().should("not.exist");
 
       cy.log("visiting edit mode url directly redirects to view-only mode");
@@ -2767,11 +2767,8 @@ LIMIT
     });
 
     it("should not show the move or delete menu items", () => {
-      cy.log("create and visit a new transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-      });
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
 
       H.DataStudio.Transforms.header()
         .findByRole("img", { name: "ellipsis icon" })
@@ -2785,11 +2782,8 @@ LIMIT
     });
 
     it("should not allow to change run tags on the Run tab", () => {
-      cy.log("create and visit a new transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-      });
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
 
       cy.log("visit the Run tab");
       H.DataStudio.Transforms.runTab().click();
@@ -2799,11 +2793,8 @@ LIMIT
     });
 
     it("should show the Settings tab in read-only mode", () => {
-      cy.log("create and visit a new transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-      });
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
 
       cy.log("visit the Settings tab");
       H.DataStudio.Transforms.settingsTab().click();
