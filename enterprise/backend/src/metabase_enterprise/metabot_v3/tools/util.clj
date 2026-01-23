@@ -15,11 +15,14 @@
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
-  "Return an agent output for agent errors, re-throw `e` otherwise."
+  "Return an agent output for agent errors, re-throw `e` otherwise.
+   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
   [e]
-  (if (-> e ex-data :agent-error?)
-    {:output (ex-message e)}
-    (throw e)))
+  (let [data (ex-data e)]
+    (if (:agent-error? data)
+      (cond-> {:output (ex-message e)}
+        (:status-code data) (assoc :status-code (:status-code data)))
+      (throw e))))
 
 (defn convert-field-type
   "Return tool type for `column`."
@@ -127,12 +130,14 @@
                   (re-matches expected-prefix field-id))
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
+                         :status-code 400
                          :field-id field-id
                          :expected-prefix expected-prefix})))
       (if-let [column (get columns field-index)]
         (assoc item :column column)
         (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
                         {:agent-error? true
+                         :status-code 404
                          :field-id field-id
                          :model-tag model-tag
                          :model-id model-id
@@ -140,6 +145,7 @@
                          :available-columns-count (count columns)}))))
     (throw (ex-info (str "invalid field_id format: " field-id)
                     {:agent-error? true
+                     :status-code 400
                      :field-id field-id}))))
 
 (defn get-database

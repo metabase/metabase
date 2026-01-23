@@ -346,37 +346,58 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
-                    (int? table-id)    (table-details table-id options)
-                    (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                         (card-details (parse-long card-id) options)
-                                         (if (re-matches #"\d+" table-id)
-                                           (table-details (parse-long table-id) options)
-                                           "invalid table_id"))
-                    :else "invalid arguments")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "table not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (cond
+                      (int? model-id)
+                      (let [card (card-details model-id (assoc options :only-model true))]
+                        (if (= :model (:type card))
+                          card
+                          (throw (ex-info (format "ID %s is not a valid model id, it's a question" model-id)
+                                          {:agent-error? true :status-code 400}))))
+
+                      (int? table-id)
+                      (or (table-details table-id options)
+                          (throw (ex-info (str "Table " table-id " not found")
+                                          {:agent-error? true :status-code 404})))
+
+                      (string? table-id)
+                      (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                        (or (card-details (parse-long card-id) options)
+                            (throw (ex-info (str "Model " card-id " not found")
+                                            {:agent-error? true :status-code 404})))
+                        (if (re-matches #"\d+" table-id)
+                          (or (table-details (parse-long table-id) options)
+                              (throw (ex-info (str "Table " table-id " not found")
+                                              {:agent-error? true :status-code 404})))
+                          (throw (ex-info "invalid table_id format"
+                                          {:agent-error? true :status-code 400}))))
+
+                      :else
+                      (throw (ex-info "invalid arguments: must provide table-id or model-id"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? metric-id)
-                    (metric-details metric-id options)
-                    "invalid metric_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "metric not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? metric-id)
+                      (or (metric-details metric-id options)
+                          (throw (ex-info (str "Metric " metric-id " not found")
+                                          {:agent-error? true :status-code 404})))
+                      (throw (ex-info "invalid metric_id format"
+                                      {:agent-error? true :status-code 400})))]
+        {:structured-output details}))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
