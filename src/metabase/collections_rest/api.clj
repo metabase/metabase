@@ -16,7 +16,6 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -1418,8 +1417,7 @@
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))
-    (when config/ee-available?
-      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
+    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1631,8 +1629,7 @@
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (when config/ee-available?
-        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
