@@ -14,6 +14,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.util.date-2 :as u.date]))
 
 (deftest ^:parallel basic-internal-remapping-test
@@ -218,29 +219,32 @@
   ;; `created_by` column which references the PK column in that same table. This tests that remapping table aliases are
   ;; handled correctly
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::self-referencing-fks)
-    (mt/dataset test-data-self-referencing-user
-      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
-                                           (lib.tu/remap-metadata-provider (mt/id :users :created_by)
-                                                                           (mt/id :users :name))
+    ;; MySQL 9.6+ enforces FK constraints row-by-row during bulk INSERT, so we need to disable FK checks
+    ;; when loading data for this self-referencing dataset
+    (binding [load-data/*disable-fk-checks* true]
+      (mt/dataset test-data-self-referencing-user
+        (qp.store/with-metadata-provider (-> (mt/metadata-provider)
+                                             (lib.tu/remap-metadata-provider (mt/id :users :created_by)
+                                                                             (mt/id :users :name))
                                            ;; simulate this being a real FK so implicit joins work
-                                           (lib.tu/merged-mock-metadata-provider
-                                            {:fields [{:id                 (mt/id :users :created_by)
-                                                       :fk-target-field-id (mt/id :users :id)}]}))
-        (let [results (mt/run-mbql-query users
-                        {:order-by [[:asc $name]]
-                         :limit    4})]
-          (when (= driver/*driver* :h2)
-            (is (= ["ID"
-                    "NAME"
-                    "LAST_LOGIN"
-                    "CREATED_BY"
-                    "USERS__via__CREATED_BY__NAME"] ; <- remapped column
-                   (map :lib/desired-column-alias (mt/cols results)))))
-          (is (= [[14 "Broen Olujimi"       "2014-10-03T13:45:00Z" 13 "Dwight Gresham"]
-                  [7  "Conchúr Tihomir"     "2014-08-02T09:30:00Z" 6  "Shad Ferdynand"]
-                  [13 "Dwight Gresham"      "2014-08-01T10:30:00Z" 12 "Kfir Caj"]
-                  [2  "Felipinho Asklepios" "2014-12-05T15:15:00Z" 1  "Plato Yeshua"]]
-                 (mt/rows results))))))))
+                                             (lib.tu/merged-mock-metadata-provider
+                                              {:fields [{:id                 (mt/id :users :created_by)
+                                                         :fk-target-field-id (mt/id :users :id)}]}))
+          (let [results (mt/run-mbql-query users
+                          {:order-by [[:asc $name]]
+                           :limit    4})]
+            (when (= driver/*driver* :h2)
+              (is (= ["ID"
+                      "NAME"
+                      "LAST_LOGIN"
+                      "CREATED_BY"
+                      "USERS__via__CREATED_BY__NAME"] ; <- remapped column
+                     (map :lib/desired-column-alias (mt/cols results)))))
+            (is (= [[14 "Broen Olujimi"       "2014-10-03T13:45:00Z" 13 "Dwight Gresham"]
+                    [7  "Conchúr Tihomir"     "2014-08-02T09:30:00Z" 6  "Shad Ferdynand"]
+                    [13 "Dwight Gresham"      "2014-08-01T10:30:00Z" 12 "Kfir Caj"]
+                    [2  "Felipinho Asklepios" "2014-12-05T15:15:00Z" 1  "Plato Yeshua"]]
+                   (mt/rows results)))))))))
 
 (defn- remappings-with-metadata
   [metadata]
