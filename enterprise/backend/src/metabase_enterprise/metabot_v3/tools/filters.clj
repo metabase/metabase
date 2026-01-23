@@ -217,7 +217,7 @@
     (if (int? metric-id)
       (let [result (query-metric* arguments)
             results-url (query->results-url (:query result))]
-        {:structured-output result
+        {:structured-output (assoc result :result-type :query)
          :instructions instructions/query-created-instructions
          :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid metric_id " metric-id)
@@ -342,7 +342,7 @@
     (if (int? model-id)
       (let [result (query-model* arguments)
             results-url (query->results-url (:query result))]
-        {:structured-output result
+        {:structured-output (assoc result :result-type :query)
          :instructions instructions/query-created-instructions
          :data-parts [(streaming/navigate-to-part results-url)]})
       (throw (ex-info (str "Invalid model_id " model-id)
@@ -418,27 +418,18 @@
   [{:keys [table-id model-id] :as arguments}]
   (try
     (cond
-      (and table-id model-id)
-      (throw (ex-info "Cannot provide both table_id and model_id"
-                      {:agent-error? true :status-code 400}))
-
-      (int? model-id)
-      {:structured-output (query-datasource* arguments)}
-
-      (int? table-id)
-      {:structured-output (query-datasource* arguments)}
-
-      model-id
-      (throw (ex-info (str "Invalid model_id " model-id)
-                      {:agent-error? true :status-code 400}))
-
-      table-id
-      (throw (ex-info (str "Invalid table_id " table-id)
-                      {:agent-error? true :status-code 400}))
-
-      :else
-      (throw (ex-info "Either table_id or model_id must be provided"
-                      {:agent-error? true :status-code 400})))
+      (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id"
+                                       {:agent-error? true :status-code 400}))
+      (int? model-id)         {:structured-output (-> (query-datasource* arguments)
+                                                      (assoc :result-type :query))}
+      (int? table-id)         {:structured-output (-> (query-datasource* arguments)
+                                                      (assoc :result-type :query))}
+      model-id                (throw (ex-info (str "Invalid model_id " model-id)
+                                       {:agent-error? true :status-code 400}))
+      table-id                (throw (ex-info (str "Invalid table_id " table-id)
+                                       {:agent-error? true :status-code 400}))
+      :else                   (throw (ex-info "Either table_id or model_id must be provided"
+                                       {:agent-error? true :status-code 400})))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
         {:output (ex-message e) :status-code 404}
@@ -495,7 +486,8 @@
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
-       {:type :query
+       {:result-type :query
+        :type :query
         :query-id query-id
         :query query
         :result-columns (into []
