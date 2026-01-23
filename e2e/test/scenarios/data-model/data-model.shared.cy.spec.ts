@@ -249,6 +249,54 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
         );
       });
     });
+
+    it("should allow searching for tables", { tags: ["@external"] }, () => {
+      H.restore("mysql-8");
+      context.visit();
+
+      TablePicker.getSearchInput().type("rEvIeWs");
+      TablePicker.getDatabases().should("have.length", 2);
+      TablePicker.getDatabase("QA MySQL8").should("be.visible");
+      TablePicker.getDatabase("Sample Database").should("be.visible");
+      TablePicker.getTables().should("have.length", 2);
+
+      TablePicker.getTables().eq(0).click();
+      TableSection.getNameInput().should("have.value", "Reviews");
+      if (area === "admin") {
+        verifyFieldSectionEmptyState();
+      }
+      cy.location("pathname").should((pathname) => {
+        return pathname.startsWith(
+          `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+        );
+      });
+    });
+
+    it("should restore previously selected table when expanding the tree", () => {
+      H.restore("mysql-8");
+      cy.signInAsAdmin();
+
+      context.visit({
+        databaseId: MYSQL_DB_ID,
+        schemaId: MYSQL_DB_SCHEMA_ID,
+      });
+
+      TablePicker.getDatabase("QA MySQL8").click();
+      cy.location("pathname").should(
+        "eq",
+        `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+      );
+
+      TablePicker.getDatabase("QA MySQL8").click();
+      cy.location("pathname").should(
+        "eq",
+        `${context.basePath}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+      );
+
+      cy.log("ensure navigation to another db works");
+      TablePicker.getDatabase("Sample Database").click();
+      TablePicker.getTables().should("have.length", 12);
+    });
   });
 });
 
@@ -258,5 +306,16 @@ function verifyTableSectionEmptyState() {
     .should("be.visible");
   H.DataModel.get()
     .findByText("Browse your databases to find the table you’d like to edit.")
+    .should("be.visible");
+}
+
+function verifyFieldSectionEmptyState() {
+  H.DataModel.get()
+    .findByText("Edit the table and fields")
+    .should("be.visible");
+  H.DataModel.get()
+    .findByText(
+      "Select a field to edit its name, description, formatting, and more.",
+    )
     .should("be.visible");
 }

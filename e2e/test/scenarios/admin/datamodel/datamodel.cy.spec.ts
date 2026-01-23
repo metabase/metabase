@@ -71,52 +71,6 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Table picker", () => {
-    describe("1 database, no schemas", () => {
-      it("should allow searching for tables", { tags: ["@external"] }, () => {
-        H.restore("mysql-8");
-        H.DataModel.visit();
-
-        TablePicker.getSearchInput().type("rEvIeWs");
-        TablePicker.getDatabases().should("have.length", 2);
-        TablePicker.getDatabase("QA MySQL8").should("be.visible");
-        TablePicker.getDatabase("Sample Database").should("be.visible");
-        TablePicker.getTables().should("have.length", 2);
-
-        TablePicker.getTables().eq(0).click();
-        TableSection.getNameInput().should("have.value", "Reviews");
-        verifyFieldSectionEmptyState();
-        cy.location("pathname").should((pathname) => {
-          return pathname.startsWith(
-            `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
-          );
-        });
-      });
-
-      it("should restore previously selected table when expanding the tree (SEM-435)", () => {
-        H.restore("mysql-8");
-        H.DataModel.visit({
-          databaseId: MYSQL_DB_ID,
-          schemaId: MYSQL_DB_SCHEMA_ID,
-        });
-
-        TablePicker.getDatabase("QA MySQL8").click();
-        cy.location("pathname").should(
-          "eq",
-          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
-
-        TablePicker.getDatabase("QA MySQL8").click();
-        cy.location("pathname").should(
-          "eq",
-          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
-
-        cy.log("ensure navigation to another db works");
-        TablePicker.getDatabase("Sample Database").click();
-        TablePicker.getTables().should("have.length", 12);
-      });
-    });
-
     describe("1 database, 1 schema", () => {
       it("should allow to navigate databases, schemas, and tables", () => {
         H.DataModel.visit();
