@@ -76,12 +76,12 @@ jobs:
           mysql: true
           mongo: true
 
-      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
-        uses: ./.github/actions/fetch-artifact
-        with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          extract-path: "target/uberjar"
-          output-name: "metabase.jar"
+      # - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+      #   uses: ./.github/actions/fetch-artifact
+      #   with:
+      #     name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+      #     extract-path: "target/uberjar"
+      #     output-name: "metabase.jar"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -105,10 +105,16 @@ jobs:
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: yarn build-release:cljs
+
+      - name: Build frontend
+        run: yarn build-release:js
+
+      - name: Build translations
+        run: ./bin/build.sh :steps [:translations]
 
       - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+        run: node e2e/runner/run_cypress_ci.js run
 
       - name: Generate database snapshots
         env:

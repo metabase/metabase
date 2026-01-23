@@ -7,7 +7,7 @@ const { resolveSdkE2EConfig } = require("./resolve-sdk-e2e-config");
 const command = process.argv?.[2]?.trim();
 const cliArguments = process.argv.slice(3);
 
-const availableModes = ["start", "snapshot"];
+const availableModes = ["run", "start", "snapshot"];
 const availableTestingTypes = ["e2e", "component"];
 const availableSDKTestSuites = [
   "metabase-nodejs-react-sdk-embedding-sample-e2e",
@@ -31,8 +31,13 @@ if (!permittedCommands.includes(command)) {
 }
 
 const startServer = async () => {
-  printBold("Starting backend");
+  printBold("Starting backend from a JAR");
   await CypressBackend.runFromJar();
+};
+
+const startLiveBackend = async () => {
+  printBold("Starting backend from source (live)");
+  await CypressBackend.runFromSource();
 };
 
 const runTests = async (config, cliArguments = []) => {
@@ -43,6 +48,10 @@ const runTests = async (config, cliArguments = []) => {
 // Custom "modes"
 if (command === "start") {
   startServer();
+}
+
+if (command === "run") {
+  startLiveBackend();
 }
 
 if (command === "snapshot") {
