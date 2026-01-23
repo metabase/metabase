@@ -11,7 +11,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return cy.get(`[data-testid=${testId}] .cm-content`);
     },
     focus() {
-      helpers.get().should("be.visible").click("right", { force: true });
+      helpers.get().should("be.visible").focus();
+      // Move caret to end
+      const isMac = Cypress.platform === "darwin";
+      cy.realPress([isMac ? "Meta" : "Control", "End"]);
+
       helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       return helpers;
     },
