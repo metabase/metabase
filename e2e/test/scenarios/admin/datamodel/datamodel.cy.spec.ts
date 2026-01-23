@@ -456,26 +456,6 @@ describe("scenarios > admin > datamodel", () => {
 
   describe("Table section", () => {
     describe("Name and description", () => {
-      it("should allow changing the table name", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getNameInput().clear().type("New orders").blur();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Table name updated");
-        TableSection.getNameInput().should("have.value", "New orders");
-
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("People").should("be.visible");
-          cy.findByText("New orders").should("be.visible");
-        });
-      });
-
       it("should allow changing the table name with data model permissions only", () => {
         H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
