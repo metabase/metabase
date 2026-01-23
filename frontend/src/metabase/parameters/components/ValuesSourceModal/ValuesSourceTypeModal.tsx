@@ -32,7 +32,7 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
-  Field,
+  FieldReference,
   Parameter,
   ParameterValue,
   ParameterValues,
@@ -59,6 +59,7 @@ import {
 } from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
+const STAGE_INDEX = 0;
 interface ModalOwnProps {
   parameter: UiParameter;
   sourceType: ValuesSourceType;
@@ -268,13 +269,19 @@ const CardSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
-  const fields = useMemo(() => {
-    return question ? getSupportedFields(question, parameter) : [];
-  }, [question, parameter]);
+  const query = useMemo(() => {
+    return question != null ? getQuestionBasedQuery(question) : undefined;
+  }, [question]);
+
+  const columns = useMemo(() => {
+    return query != null ? getSupportedColumns(query, parameter) : [];
+  }, [query, parameter]);
 
   const selectedField = useMemo(() => {
-    return getFieldByReference(fields, sourceConfig.value_field);
-  }, [fields, sourceConfig]);
+    return query != null && sourceConfig.value_field != null
+      ? getColumnByReference(query, columns, sourceConfig.value_field)
+      : undefined;
+  }, [query, columns, sourceConfig.value_field]);
 
   const { values, isError } = useParameterValues({
     parameter,
@@ -289,13 +296,16 @@ const CardSourceModal = ({
   );
 
   const handleFieldChange = useCallback(
-    (event: SelectChangeEvent<Field>) => {
+    (event: SelectChangeEvent<Lib.ColumnMetadata>) => {
+      if (query == null) {
+        return;
+      }
       onChangeSourceConfig({
         ...sourceConfig,
-        value_field: event.target.value.field_ref,
+        value_field: Lib.legacyRef(query, STAGE_INDEX, event.target.value),
       });
     },
-    [sourceConfig, onChangeSourceConfig],
+    [query, sourceConfig, onChangeSourceConfig],
   );
 
   return (
@@ -321,14 +331,20 @@ const CardSourceModal = ({
         {question && (
           <ModalSection>
             <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-            {fields.length ? (
+            {query != null && columns.length ? (
               <Select
                 value={selectedField}
                 placeholder={t`Pick a column…`}
                 onChange={handleFieldChange}
               >
-                {fields.map((field, index) => (
-                  <Option key={index} name={field.display_name} value={field} />
+                {columns.map((column, index) => (
+                  <Option
+                    key={index}
+                    name={
+                      Lib.displayInfo(query, STAGE_INDEX, column).displayName
+                    }
+                    value={column}
+                  />
                 ))}
               </Select>
             ) : (
@@ -467,23 +483,30 @@ const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
 };
 
-const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find((field) => _.isEqual(field.field_ref, fieldReference));
+const getQuestionBasedQuery = (question: Question) => {
+  const adhocQuestion = question.composeQuestion();
+  return adhocQuestion.query();
 };
 
-const getFieldFilter = (parameter: Parameter) => {
+const getColumnByReference = (
+  query: Lib.Query,
+  columns: Lib.ColumnMetadata[],
+  columnRef: FieldReference,
+) => {
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(query, 0, columns, [
+    columnRef,
+  ]);
+  return columns[columnIndex];
+};
+
+const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
   const type = getParameterType(parameter);
-  if (type === "number") {
-    return (field: Field) => Lib.isNumeric(Lib.legacyColumnTypeInfo(field));
-  }
-  return (field: Field) =>
-    Lib.isStringOrStringLike(Lib.legacyColumnTypeInfo(field));
-};
-
-const getSupportedFields = (question: Question, parameter: Parameter) => {
-  const fieldFilter = getFieldFilter(parameter);
-  const fields = question.getResultMetadata();
-  return fields.filter(fieldFilter);
+  return Lib.fieldableColumns(query, 0).filter((column) => {
+    if (type === "number") {
+      return Lib.isNumeric(column);
+    }
+    return Lib.isStringOrStringLike(column);
+  });
 };
 
 /**

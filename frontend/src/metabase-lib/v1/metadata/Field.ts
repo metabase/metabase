@@ -262,17 +262,6 @@ export default class Field extends Base {
     return getIconForField(this);
   }
 
-  reference() {
-    if (Array.isArray(this.id)) {
-      // if ID is an array, it's a MBQL field reference, typically "field"
-      return this.id;
-    } else if (this.field_ref) {
-      return this.field_ref;
-    } else {
-      return ["field", this.id, null];
-    }
-  }
-
   // BREAKOUTS
 
   /**
