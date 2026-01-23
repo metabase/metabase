@@ -20,13 +20,37 @@ function createContext(place: string) {
   };
 }
 
+class DataModelContext {
+  constructor(public readonly area: string) {
+    this.area = area;
+  }
+
+  get basePath() {
+    return this.area === "admin" ? "/admin/datamodel" : "/data-studio/data";
+  }
+
+  visit(
+    ...args:
+      | Parameters<typeof H.DataModel.visit>
+      | Parameters<typeof H.DataModel.visitDataStudio>
+  ) {
+    this.area === "admin"
+      ? H.DataModel.visit(...args)
+      : H.DataModel.visitDataStudio(...args);
+  }
+
+  checkCocation(path: string) {
+    cy.location("pathname").should("eq", `${this.basePath}${path}`);
+  }
+}
+
 const areas = ["admin", "data studio"];
 
 describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
-  let context: ReturnType<typeof createContext>;
+  let context: DataModelContext;
 
   beforeEach(() => {
-    context = createContext(area);
+    context = new DataModelContext(area);
 
     if (area === "admin") {
       H.restore();
@@ -46,8 +70,6 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
       cy.intercept("PUT", "/api/table").as("updateTables");
     }
-
-    cy.log("area is " + area);
 
     if (area === "data studio") {
       H.restore();
@@ -75,7 +97,6 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
 
   describe("Data loading", () => {
     it("should show 404 if database does not exist (metabase#14652)", () => {
-      const context = createContext(area);
       context.visit({ databaseId: 54321, skipWaiting: true });
       cy.wait("@databases");
       cy.wait(100); // wait with assertions for React effects to kick in
@@ -83,14 +104,10 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 0);
       H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        `${context.basePath}/database/54321`,
-      );
+      context.checkCocation("/database/54321");
     });
 
     it("should show 404 if table does not exist", () => {
-      const context = createContext(area);
       context.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -103,11 +120,9 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 8);
       H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        `${context.basePath}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
+      context.checkCocation(
+        `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
       );
-
       if (area === "admin") {
         verifyTableSectionEmptyState();
       }
@@ -118,7 +133,6 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
       // We eliminate the flakiness by removing the need to scroll horizontally
       { viewportWidth: 1600 },
       () => {
-        const context = createContext(area);
         context.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -135,9 +149,8 @@ describe.each<string>(areas)("scenarios > admin > data model > %s", (area) => {
 
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getTables().should("have.length", 8);
-        cy.location("pathname").should(
-          "eq",
-          `${context.basePath}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        context.checkCocation(
+          `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
         );
 
         if (area === "data-studio") {
