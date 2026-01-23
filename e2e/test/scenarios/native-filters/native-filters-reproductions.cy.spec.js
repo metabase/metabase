@@ -435,7 +435,7 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.NativeEditor.get().should("not.be.visible");
+      H.NativeEditor.get().should("not.exist");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");

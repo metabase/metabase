@@ -141,7 +141,7 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
   ({ children }) => children,
 );
 
-// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/utils.ts
+// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/selectors.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
     UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),

@@ -181,6 +181,8 @@ describe("Embed JS modal display", () => {
 
       H.openSharingMenu("Embed");
 
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       H.embedModalEnableEmbeddingCard().within(() => {
         cy.findByText(/modular embedding/).should("be.visible");
       });
@@ -196,8 +198,9 @@ describe("Embed JS modal display", () => {
         H.visitDashboard("@dashboardId");
         H.openSharingMenu("Embed");
 
-        it("should open Embed JS modal with the `enable simple embedding` card", () => {
+        it("should open Embed JS modal with the `enable guest embedding` card", () => {
           H.activateToken("pro-self-hosted");
+          H.updateSetting("enable-embedding-static", false);
           H.visitDashboard("@dashboardId");
 
           H.openSharingMenu("Embed");
