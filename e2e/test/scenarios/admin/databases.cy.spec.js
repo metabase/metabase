@@ -85,7 +85,7 @@ describe(
       );
     });
 
-    it("should not allow to enable workspaces in mysql database", () => {
+    it("should not show workspaces setting for unsupported mysql database", () => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
@@ -95,7 +95,23 @@ describe(
       cy.findByLabelText("Enable workspaces").should("not.exist");
     });
 
-    it("should not allow to enable workspaces for a db user that cannot create schemas", () => {});
+    it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      visitDatabase(SAMPLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+      cy.findByLabelText("Enable workspaces").parent().click();
+      cy.wait("@checkPermissions");
+
+      cy.findByTestId("database-workspaces-section").should(
+        "contain.text",
+        "Failed to initialize workspace isolation",
+      );
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+    });
   },
 );
 
