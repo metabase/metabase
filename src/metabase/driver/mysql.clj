@@ -1231,9 +1231,12 @@
         read-user {:user     (driver.u/workspace-isolation-user-name workspace)
                    :password (driver.u/random-workspace-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Use mysql_native_password to avoid RSA key exchange issues with caching_sha2_password in MySQL 8+
       (let [user-sql (if (mysql-user-exists? t-conn (:user read-user))
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'" (:user read-user) (:password read-user))
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" (:user read-user) (:password read-user)))]
+                       (format "ALTER USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'"
+                               (:user read-user) (:password read-user))
+                       (format "CREATE USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'"
+                               (:user read-user) (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
                        (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
@@ -1274,7 +1277,7 @@
 
 ;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
 ;; to manually clean up after testing rather than relying on transaction rollback.
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+(def ^:private perm-check-workspace-id "-1337")
 
 (defmethod driver/check-isolation-permissions :mysql
   [driver database test-table]
