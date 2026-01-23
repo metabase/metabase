@@ -646,6 +646,26 @@ describe.each<Area>(areas)(
           TableSection.getSortButton().should("not.exist");
         },
       );
+
+      it("should allow changing the table name", () => {
+        context.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        TableSection.getNameInput().clear().type("New orders").blur();
+        cy.wait("@updateTable");
+        verifyAndCloseToast("Table name updated");
+        TableSection.getNameInput().should("have.value", "New orders");
+
+        H.startNewQuestion();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("People").should("be.visible");
+          cy.findByText("New orders").should("be.visible");
+        });
+      });
     });
   },
 );
