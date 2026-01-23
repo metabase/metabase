@@ -47,7 +47,7 @@
 (declare the-driver)
 
 (defn do-with-driver
-  "Impl for `with-driver`."
+  "Impl for `with-driver`. Oh yes, it very much is. You got it!"
   [driver f]
   {:pre [(keyword? driver)]}
   (binding [*driver* (the-driver driver)]
