@@ -1,18 +1,14 @@
 import { t } from "ttag";
 
-import {
-  Form,
-  FormErrorMessage,
-  FormProvider,
-  FormSubmitButton,
-} from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  Box,
-  Center,
-  FixedSizeIcon,
+  Button,
+  Card,
   Group,
-  List,
+  Icon,
+  type IconName,
+  Paper,
+  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -21,7 +17,7 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 
 export function LibraryEmptyState() {
-  const [createLibrary] = useCreateLibraryMutation();
+  const [createLibrary, { isLoading }] = useCreateLibraryMutation();
   const { sendSuccessToast } = useMetadataToasts();
 
   const handleSubmit = async () => {
@@ -31,63 +27,70 @@ export function LibraryEmptyState() {
   };
 
   return (
-    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
-      <Form>
-        <Center h="100%">
-          <Stack gap="lg" maw={480}>
-            <Group gap="sm">
-              <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
-                <FixedSizeIcon name="repository" />
-              </Center>
-              <Title order={3}>{t`Create your Library`}</Title>
-            </Group>
-            <Stack gap="sm">
-              <Text>
-                {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
-              </Text>
-              <List spacing="sm">
-                <ListItem
-                  title={t`Tables`}
-                  description={t`Cleaned, pre-transformed data sources ready for exploring`}
-                />
-                <ListItem
-                  title={t`Metrics`}
-                  description={t`Standardized calculations with known dimensions`}
-                />
-                <ListItem
-                  title={t`Version control`}
-                  description={t`Sync your Library to Git`}
-                />
-                <ListItem
-                  title={t`High trust`}
-                  description={t`Default to reliable sources your data team prescribes`}
-                />
-              </List>
-            </Stack>
-            <Group gap="sm">
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
-              <FormSubmitButton label={t`Create my Library`} variant="filled" />
-            </Group>
+    <Card bg="background-primary" p={48} maw={640} mx="auto" withBorder>
+      <Stack gap="3rem">
+        <Stack gap="md">
+          <Stack gap="sm">
+            <Title order={3}>{t`A source of truth for analytics`}</Title>
+            <Text c="text-secondary" lh="1.25rem">
+              {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+            </Text>
           </Stack>
-        </Center>
-      </Form>
-    </FormProvider>
+          <Group gap="sm">
+            <Button
+              variant="filled"
+              onClick={handleSubmit}
+              loading={isLoading}
+            >{t`Create my Library`}</Button>
+          </Group>
+        </Stack>
+        <SimpleGrid cols={2} spacing="sm">
+          <FeatureCard
+            icon="table"
+            title={t`Tables`}
+            description={t`Cleaned, pre-transformed data sources ready for exploring`}
+          />
+          <FeatureCard
+            icon="metric"
+            title={t`Metrics`}
+            description={t`Standardized calculations with known dimensions`}
+          />
+          <FeatureCard
+            icon="git_branch"
+            title={t`Version control`}
+            description={t`Sync your Library to Git`}
+          />
+          <FeatureCard
+            icon="verified_round"
+            title={t`High trust`}
+            description={t`Default to reliable sources your data team prescribes`}
+          />
+        </SimpleGrid>
+      </Stack>
+    </Card>
   );
 }
 
-type ListItemProps = {
+type FeatureCardProps = {
+  icon: IconName;
   title: string;
   description: string;
 };
 
-function ListItem({ title, description }: ListItemProps) {
+function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <List.Item>
-      <strong>{title}</strong>
-      {": "}
-      {description}
-    </List.Item>
+    <Paper bg="background-secondary" p="md" radius="8px">
+      <Group gap="sm" align="flex-start" wrap="nowrap">
+        <Icon name={icon} size={16} c="brand" style={{ flexShrink: 0 }} />
+        <Stack gap="xs">
+          <Text fw="bold" lh="1rem">
+            {title}
+          </Text>
+          <Text c="text-secondary" lh="1rem">
+            {description}
+          </Text>
+        </Stack>
+      </Group>
+    </Paper>
   );
 }
