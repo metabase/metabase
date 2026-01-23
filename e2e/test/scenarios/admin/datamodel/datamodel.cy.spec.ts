@@ -522,42 +522,6 @@ describe("scenarios > admin > datamodel", () => {
         );
       });
 
-      it("should allow changing the field description", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TableSection.getFieldDescriptionInput("Total")
-          .clear()
-          .type("New description")
-          .blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Description of Total updated");
-        TableSection.getFieldDescriptionInput("Total").should(
-          "have.value",
-          "New description",
-        );
-
-        cy.log("verify preview");
-        TableSection.clickField("Total");
-        FieldSection.getPreviewButton().click();
-        verifyTablePreview({
-          column: "Total",
-          description: "New description",
-          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
-        });
-
-        cy.visit(
-          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-        );
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("New description").should("be.visible");
-      });
-
       it("should allow clearing the field description", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,

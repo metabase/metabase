@@ -9,7 +9,7 @@ const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } =
   cy.H.DataModel;
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
@@ -741,6 +741,42 @@ describe.each<Area>(areas)(
         H.tableHeaderColumn("Tax", { scrollIntoView: false }).should(
           "not.exist",
         );
+      });
+
+      it("should allow changing the field description", () => {
+        context.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+        });
+
+        TableSection.getFieldDescriptionInput("Total")
+          .clear()
+          .type("New description")
+          .blur();
+        cy.wait("@updateField");
+        verifyAndCloseToast("Description of Total updated");
+        TableSection.getFieldDescriptionInput("Total").should(
+          "have.value",
+          "New description",
+        );
+
+        cy.log("verify preview");
+        TableSection.clickField("Total");
+        FieldSection.getPreviewButton().click();
+        verifyTablePreview({
+          column: "Total",
+          description: "New description",
+          values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
+        });
+
+        cy.visit(
+          `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Total").should("be.visible");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("New description").should("be.visible");
       });
     });
   },
