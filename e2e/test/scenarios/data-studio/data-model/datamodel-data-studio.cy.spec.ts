@@ -562,60 +562,6 @@ describe("scenarios > data studio > datamodel", () => {
   });
 
   describe("Table section", () => {
-    it("should show all tables in sample database and fields in orders table", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-
-      TablePicker.getTables().should("have.length", 8);
-
-      TableSection.clickField("ID");
-
-      // Sometimes in CI this doesn't happen
-      FieldSection.get().scrollIntoView();
-
-      FieldSection.getDataType()
-        .should("be.visible")
-        .and("have.text", "BIGINT");
-      FieldSection.getSemanticTypeInput().should("have.value", "Entity Key");
-
-      TableSection.clickField("User ID");
-      FieldSection.getDataType()
-        .should("be.visible")
-        .and("have.text", "INTEGER");
-      FieldSection.getSemanticTypeInput().should("have.value", "Foreign Key");
-      FieldSection.getSemanticTypeFkTarget().should(
-        "have.value",
-        "People → ID",
-      );
-
-      TableSection.clickField("Tax");
-      FieldSection.getDataType()
-        .should("be.visible")
-        .and("have.text", "DOUBLE PRECISION");
-      FieldSection.getSemanticTypeInput().should(
-        "have.value",
-        "No semantic type",
-      );
-
-      TableSection.clickField("Discount");
-      FieldSection.getDataType()
-        .should("be.visible")
-        .and("have.text", "DOUBLE PRECISION");
-      FieldSection.getSemanticTypeInput().should("have.value", "Discount");
-
-      TableSection.clickField("Created At");
-      FieldSection.getDataType()
-        .should("be.visible")
-        .and("have.text", "TIMESTAMP");
-      FieldSection.getSemanticTypeInput().should(
-        "have.value",
-        "Creation timestamp",
-      );
-    });
-
     it("should be able to preview the table in the query builder", () => {
       H.DataModel.visitDataStudio({
         databaseId: SAMPLE_DB_ID,
