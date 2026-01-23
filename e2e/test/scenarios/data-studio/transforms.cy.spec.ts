@@ -2319,6 +2319,62 @@ LIMIT
       },
     );
 
+    it(
+      "should be able to run a transform with default import common even without custom library code",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+
+        visitTransformListPage();
+        cy.button("Create a transform").click();
+        H.popover().findByText("Python script").click();
+
+        cy.log("import common should be included by default");
+        H.PythonEditor.value().should("contain", "import common");
+
+        cy.log(
+          "write a transform that imports common but does not use it - should still run",
+        );
+        H.PythonEditor.clear().type(
+          dedent`
+            import common
+            import pandas as pd
+
+            def transform():
+                return pd.DataFrame([{"result": 42}])
+          `,
+          { allowFastSet: true },
+        );
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a table…")
+          .click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Schema a").click();
+          cy.findByText("Animals").click();
+        });
+
+        getQueryEditor().button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Default common transform");
+          cy.findByLabelText("Table name").clear().type("default_common");
+          cy.button("Save").click();
+        });
+
+        H.DataStudio.Transforms.runTab().click();
+        runTransformAndWaitForSuccess();
+        H.DataStudio.Transforms.settingsTab().click();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Default Common Transform")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "42");
+      },
+    );
+
     function visitCommonLibrary(path = "common.py") {
       cy.visit(`/data-studio/transforms/library/${path}`);
     }
