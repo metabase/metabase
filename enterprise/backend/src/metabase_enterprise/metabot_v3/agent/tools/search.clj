@@ -2,6 +2,7 @@
   "Search tool wrappers for Metabot v3."
   (:require
    [metabase-enterprise.metabot-v3.tools.search :as search-tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -21,10 +22,17 @@
   (if-let [invalid (invalid-entity-types entity_types #{"table" "model" "metric" "dashboard" "question"})]
     {:output (str "Invalid entity_types for search: " (pr-str (vec invalid))
                   ". Allowed types: table, model, metric, dashboard, question.")}
-    (search-tools/search-tool {:semantic-queries semantic_queries
-                               :term-queries keyword_queries
-                               :entity-types entity_types
-                               :limit 10})))
+    (try
+      (let [results (search-tools/search {:semantic-queries semantic_queries
+                                          :term-queries keyword_queries
+                                          :entity-types entity_types
+                                          :limit 10})]
+        {:structured-output {:result-type :search
+                             :data results
+                             :total_count (count results)}})
+      (catch Exception e
+        (log/error e "Error in search")
+        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "search"} sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
@@ -37,11 +45,18 @@
   (if-let [invalid (invalid-entity-types entity_types #{"table" "model"})]
     {:output (str "Invalid entity_types for SQL search: " (pr-str (vec invalid))
                   ". Allowed types: table, model.")}
-    (search-tools/search-tool {:semantic-queries semantic_queries
-                               :term-queries keyword_queries
-                               :entity-types entity_types
-                               :database-id database_id
-                               :limit 10})))
+    (try
+      (let [results (search-tools/search {:semantic-queries semantic_queries
+                                          :term-queries keyword_queries
+                                          :entity-types entity_types
+                                          :database-id database_id
+                                          :limit 10})]
+        {:structured-output {:result-type :search
+                             :data results
+                             :total_count (count results)}})
+      (catch Exception e
+        (log/error e "Error in SQL search")
+        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "search"} nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."
@@ -53,11 +68,18 @@
   (if-let [invalid (invalid-entity-types entity_types #{"model" "metric" "table"})]
     {:output (str "Invalid entity_types for NLQ search: " (pr-str (vec invalid))
                   ". Allowed types: model, metric, table.")}
-    (search-tools/search-tool {:semantic-queries semantic_queries
-                               :term-queries keyword_queries
-                               :entity-types entity_types
-                               :profile-id "nlq"
-                               :limit 10})))
+    (try
+      (let [results (search-tools/search {:semantic-queries semantic_queries
+                                          :term-queries keyword_queries
+                                          :entity-types entity_types
+                                          :profile-id "nlq"
+                                          :limit 10})]
+        {:structured-output {:result-type :search
+                             :data results
+                             :total_count (count results)}})
+      (catch Exception e
+        (log/error e "Error in NLQ search")
+        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "search"} transform-search-tool
   "Search for transforms, tables, and models."
@@ -70,8 +92,15 @@
   (if-let [invalid (invalid-entity-types entity_types #{"table" "model" "transform"})]
     {:output (str "Invalid entity_types for transform search: " (pr-str (vec invalid))
                   ". Allowed types: table, model, transform.")}
-    (search-tools/search-tool {:semantic-queries semantic_queries
-                               :term-queries keyword_queries
-                               :entity-types entity_types
-                               :search-native-query search_native_query
-                               :limit 10})))
+    (try
+      (let [results (search-tools/search {:semantic-queries semantic_queries
+                                          :term-queries keyword_queries
+                                          :entity-types entity_types
+                                          :search-native-query search_native_query
+                                          :limit 10})]
+        {:structured-output {:result-type :search
+                             :data results
+                             :total_count (count results)}})
+      (catch Exception e
+        (log/error e "Error in transform search")
+        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))

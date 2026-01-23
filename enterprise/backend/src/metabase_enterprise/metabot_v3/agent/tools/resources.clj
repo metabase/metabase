@@ -2,6 +2,7 @@
   "Resource reading tool wrappers."
   (:require
    [metabase-enterprise.metabot-v3.tools.read-resource :as read-resource-tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -18,4 +19,9 @@
   [{:keys [uris]}
    :- [:map {:closed true}
        [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
-  (read-resource-tools/read-resource-tool {:uris uris}))
+  (try
+    (let [result (read-resource-tools/read-resource {:uris uris})]
+      {:structured-output {:content (:formatted result)}})
+    (catch Exception e
+      (log/error e "Error in read_resource tool")
+      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))

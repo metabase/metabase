@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.navigate :as navigate-tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -29,5 +30,14 @@
                        [:query_id :string]]
                       [:map {:closed true}
                        [:chart_id :string]]]]]]
-  (navigate-tools/navigate-tool {:destination destination
-                                 :memory-atom shared/*memory-atom*}))
+  (try
+    (let [result (navigate-tools/navigate {:destination destination
+                                           :memory-atom shared/*memory-atom*})
+          reactions (:reactions result)]
+      (cond-> {:structured-output (:structured-output result)}
+        (seq reactions) (assoc :reactions reactions)))
+    (catch Exception e
+      (log/error e "Error navigating")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))}))))
