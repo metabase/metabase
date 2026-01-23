@@ -731,25 +731,6 @@
                   query stage-number)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
-(mu/defn find-column-for-name :- [:maybe ::lib.schema.metadata/column]
-  "Find the first column in `columns` whose `:name` matches `column-name`.
-  Matching is case-insensitive.
-
-  Optionally pass a `pred` function for additional filtering; only columns
-  satisfying `(pred column)` will be considered."
-  ([columns :- [:sequential ::lib.schema.metadata/column]
-    column-name :- :string]
-   (find-column-for-name columns column-name nil))
-
-  ([columns :- [:sequential ::lib.schema.metadata/column]
-    column-name :- :string
-    pred :- [:maybe ifn?]]
-   (let [lower-name (u/lower-case-en column-name)]
-     (m/find-first (fn [col]
-                     (and (= (u/lower-case-en (:name col)) lower-name)
-                          (or (nil? pred) (pred col))))
-                   columns))))
-
 (defn json-field?
   "Return true if field is a JSON field, false if not."
   [field]
