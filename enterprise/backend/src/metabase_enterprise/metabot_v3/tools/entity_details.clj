@@ -333,7 +333,8 @@
                        detail (cards-details card-type database-id cards options)]
                    detail)
                  (group-by :type))]
-        {:structured-output {:metrics (vec metrics)
+        {:structured-output {:result-type :answer-sources
+                             :metrics (vec metrics)
                              :models  (vec models)}}))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
@@ -362,7 +363,7 @@
                                            "invalid table_id"))
                     :else "invalid arguments")]
       (if (map? details)
-        {:structured-output details}
+        {:structured-output (assoc details :result-type :entity)}
         {:output (or details "table not found")}))))
 
 (defn get-metric-details
@@ -375,7 +376,7 @@
                     (metric-details metric-id options)
                     "invalid metric_id")]
       (if (map? details)
-        {:structured-output details}
+        {:structured-output (assoc details :result-type :entity)}
         {:output (or details "metric not found")}))))
 
 (defn get-report-details
@@ -391,7 +392,7 @@
                               (assoc :result-columns (:fields details))))
                     "invalid report_id")]
       (if (map? details)
-        {:structured-output details}
+        {:structured-output (assoc details :result-type :entity)}
         {:output (or details "report not found")}))))
 
 (defn get-document-details
@@ -400,7 +401,8 @@
   (if (int? document-id)
     (try
       (if-let [doc (documents/get-document document-id)]
-        {:structured-output {:id (:id doc)
+        {:structured-output {:result-type :entity
+                             :id (:id doc)
                              :name (:name doc)
                              :document (:document doc)}}
         {:output "document not found"})
@@ -428,4 +430,5 @@
   "Get the details of a query (supports both MBQL v4 and v5)."
   [{:keys [query]}]
   (lib-be/with-metadata-provider-cache
-    {:structured-output (execute-query (u/generate-nano-id) query)}))
+    {:structured-output (assoc (execute-query (u/generate-nano-id) query)
+                               :result-type :query)}))

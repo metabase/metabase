@@ -215,7 +215,7 @@
     (if (int? metric-id)
       (let [result (query-metric* arguments)
             results-url (query->results-url (:query result))]
-        {:structured-output result
+        {:structured-output (assoc result :result-type :query)
          :instructions instructions/query-created-instructions
          :data-parts [(streaming/navigate-to-part results-url)]})
       {:output (str "Invalid metric_id " metric-id)})
@@ -329,7 +329,7 @@
     (if (int? model-id)
       (let [result (query-model* arguments)
             results-url (query->results-url (:query result))]
-        {:structured-output result
+        {:structured-output (assoc result :result-type :query)
          :instructions instructions/query-created-instructions
          :data-parts [(streaming/navigate-to-part results-url)]})
       {:output (str "Invalid model_id " model-id)})
@@ -394,8 +394,8 @@
   (try
     (cond
       (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id" {:agent-error? true}))
-      (int? model-id) {:structured-output (query-datasource* arguments)}
-      (int? table-id) {:structured-output (query-datasource* arguments)}
+      (int? model-id) {:structured-output (assoc (query-datasource* arguments) :result-type :query)}
+      (int? table-id) {:structured-output (assoc (query-datasource* arguments) :result-type :query)}
       model-id        {:output (str "Invalid model_id " model-id)}
       table-id        {:output (str "Invalid table_id " table-id)}
       :else           {:output "Either table_id or model_id must be provided"})
@@ -458,7 +458,8 @@
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
-       {:type :query
+       {:result-type :query
+        :type :query
         :query-id query-id
         :query query
         :result-columns (into []
