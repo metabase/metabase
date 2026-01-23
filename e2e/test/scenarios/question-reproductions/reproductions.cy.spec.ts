@@ -1424,7 +1424,7 @@ describe("issue #47005", () => {
     H.createTestQuestion({
       name: "Question A",
       query: {
-        database: SAMPLE_DB_ID,
+        databaseId: SAMPLE_DB_ID,
         stages: [
           {
             source: {
