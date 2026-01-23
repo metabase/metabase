@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.io OutputStream)
    (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
@@ -166,6 +167,7 @@
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
         profile-id (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+        lines      (atom nil)
         ^StreamingResponse response-stream
         (metabot-v3.client/streaming-request
          {:context         (metabot-v3.context/create-context
@@ -178,11 +180,10 @@
           :message         message
           :history         (thread->history thread)
           :state           {}
-          :on-complete     (fn [lines] :store-in-db)})
-        baos (java.io.ByteArrayOutputStream.)
-        _ ((.-f response-stream) baos (a/chan))
-        lines (-> (.toString baos) str/split-lines)
-        messages (metabot-v3.util/aisdk->messages :assistant lines)]
+          :on-complete     (fn [the-lines] (reset! lines the-lines))})
+        null-stream (OutputStream/nullOutputStream)
+        _ ((.-f response-stream) null-stream (a/chan))
+        messages (metabot-v3.util/aisdk->messages :assistant @lines)]
     {:text (->> messages
                 (filter #(= (:_type %) :TEXT))
                 (map :content)
