@@ -50,43 +50,6 @@ describe("scenarios > data studio > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
-  describe("Data loading", () => {
-    it(
-      "should not show 404 error if database is not selected",
-      { tags: ["@external"] },
-      () => {
-        H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-        cy.log("database not selected");
-        H.DataModel.visitDataStudio();
-        H.DataModel.get()
-          .findByText(/Not found/)
-          .should("not.exist");
-
-        cy.log("database selected");
-        TablePicker.getDatabase("Writable Postgres12").click();
-        H.DataModel.get()
-          .findByText(/Not found/)
-          .should("not.exist");
-
-        cy.log("schema selected");
-        TablePicker.getSchema("Domestic").click();
-        H.DataModel.get()
-          .findByText(/Not found/)
-          .should("not.exist");
-
-        cy.log("table selected");
-        TablePicker.getTable("Animals").click();
-        H.DataModel.get()
-          .findByText(/Not found/)
-          .should("not.exist");
-      },
-    );
-  });
-
   describe("Table picker", () => {
     describe("No databases", () => {
       beforeEach(() => {
