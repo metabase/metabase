@@ -131,7 +131,7 @@ export function TablePillsInput({
           width={300}
           position="bottom-start"
         >
-          <PillsInput data-testid="metabot-table-input" fz="xs">
+          <PillsInput data-testid="metabot-table-input" fz="0.75rem">
             <Pill.Group style={{ gap: "0.25rem" }}>
               {selectedTables.map((table) => (
                 <Pill
@@ -160,7 +160,7 @@ export function TablePillsInput({
                     <PillsInput.Field
                       value={search}
                       placeholder={t`First, tell Metabot which tables to use`}
-                      fz="xs"
+                      fz="0.75rem"
                       onClick={() => {
                         setFocusedTableId(undefined);
                         if (search.length > 0) {

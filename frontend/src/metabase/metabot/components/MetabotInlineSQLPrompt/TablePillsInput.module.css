@@ -1,7 +1,7 @@
 .root :global(.mb-mantine-PillsInput-input) {
   border: none;
   min-height: 1.25rem;
-  font-size: var(--mantine-font-size-sm);
+  font-size: 0.75rem;
   padding: 0;
 }
 
