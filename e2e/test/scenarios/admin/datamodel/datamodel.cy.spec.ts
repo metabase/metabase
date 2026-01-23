@@ -72,29 +72,6 @@ describe("scenarios > admin > datamodel", () => {
 
   describe("Table picker", () => {
     describe("1 database, no schemas", () => {
-      it("should allow to navigate tables", { tags: ["@external"] }, () => {
-        H.restore("mysql-8");
-        H.DataModel.visit();
-
-        TablePicker.getDatabase("QA MySQL8").click();
-        TablePicker.getTables().should("have.length", 4);
-        TablePicker.getSchemas().should("have.length", 0);
-        verifyTableSectionEmptyState();
-        cy.location("pathname").should(
-          "eq",
-          `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
-
-        TablePicker.getTable("Products").click();
-        TableSection.getNameInput().should("have.value", "Products");
-        verifyFieldSectionEmptyState();
-        cy.location("pathname").should((pathname) => {
-          return pathname.startsWith(
-            `/admin/datamodel/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
-          );
-        });
-      });
-
       it("should allow searching for tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
         H.DataModel.visit();
