@@ -66,7 +66,7 @@
   (try
     (let [result (create-sql-query args)
           results-url (streaming/query->question-url (:query result))]
-      {:structured-output result
+      {:structured-output (assoc result :result-type :query)
        :instructions instructions/query-created-instructions
        :data-parts [(streaming/navigate-to-part results-url)]})
     (catch Exception e

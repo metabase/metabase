@@ -82,7 +82,8 @@
           errors (->> (concat table-results model-results metric-results)
                       (keep :error)
                       vec)]
-      {:structured-output {:tables tables
+      {:structured-output {:result-type :metadata
+                           :tables tables
                            :models models
                            :metrics metrics
                            :errors errors}})

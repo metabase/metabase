@@ -226,7 +226,8 @@
   [args]
   (try
     (let [results (search args)]
-      {:structured_output {:data        results
+      {:structured_output {:result-type :search
+                           :data        results
                            :total_count (count results)}})
     (catch Exception e
       (log/error e "Error in search")

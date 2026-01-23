@@ -39,7 +39,8 @@
           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
           visible-cols    (lib/visible-columns query)
           col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
-      {:structured-output {:field_id       agent-field-id
+      {:structured-output {:result-type    :field-metadata
+                           :field_id       agent-field-id
                            :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
@@ -53,7 +54,8 @@
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
           visible-cols    (lib/visible-columns query)
           col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
-      {:structured-output {:field_id       agent-field-id
+      {:structured-output {:result-type    :field-metadata
+                           :field_id       agent-field-id
                            :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
@@ -67,7 +69,8 @@
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
           filterable-cols (lib/filterable-columns query)
           col             (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
-      {:structured-output {:field_id       agent-field-id
+      {:structured-output {:result-type    :field-metadata
+                           :field_id       agent-field-id
                            :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))

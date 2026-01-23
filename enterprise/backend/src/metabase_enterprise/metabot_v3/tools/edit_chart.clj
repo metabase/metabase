@@ -91,7 +91,7 @@
   [{:keys [chart-id new-chart-type] :as args}]
   (try
     (let [result (edit-chart args)]
-      {:structured-output result})
+      {:structured-output (assoc result :result-type :chart)})
     (catch Exception e
       (log/error e "Error editing chart")
       (if (:agent-error? (ex-data e))
