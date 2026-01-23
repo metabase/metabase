@@ -81,7 +81,12 @@ export function ResizableArea(props: {
       onResize={handleResize}
       onResizeStop={handleResize}
     >
-      <Flex w="100%" flex="1" h={height} className={className}>
+      <Flex
+        w="100%"
+        flex="1"
+        h={resizable ? height : "100%"}
+        className={className}
+      >
         {children}
       </Flex>
     </Resizable>
