@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -43,9 +44,19 @@
    :- [:map {:closed true}
        [:database_id :int]
        [:sql_query :string]]]
-  (create-sql-query-tools/create-sql-query-tool
-   {:database-id database_id
-    :sql sql_query}))
+  (try
+    (let [result (create-sql-query-tools/create-sql-query
+                  {:database-id database_id
+                   :sql sql_query})
+          results-url (streaming/query->question-url (:query result))]
+      {:structured-output (assoc result :result-type :query)
+       :instructions instructions/query-created-instructions
+       :data-parts [(streaming/navigate-to-part results-url)]})
+    (catch Exception e
+      (log/error e "Error creating SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "create_sql_query"} create-sql-query-code-edit-tool
   "Create a new SQL query and update the code editor buffer."
@@ -73,11 +84,21 @@
                              [:old_string :string]
                              [:new_string :string]
                              [:replace_all {:optional true} [:maybe :boolean]]]]]]]
-  (edit-sql-query-tools/edit-sql-query-tool
-   {:query-id query_id
-    :edits edits
-    :checklist checklist
-    :queries-state (shared/current-queries-state)}))
+  (try
+    (let [result (edit-sql-query-tools/edit-sql-query
+                  {:query-id query_id
+                   :edits edits
+                   :checklist checklist
+                   :queries-state (shared/current-queries-state)})
+          results-url (streaming/query->question-url (:query result))]
+      {:structured-output (assoc result :result-type :query)
+       :instructions instructions/query-created-instructions
+       :data-parts [(streaming/navigate-to-part results-url)]})
+    (catch Exception e
+      (log/error e "Error editing SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "edit_sql_query"} edit-sql-query-code-edit-tool
   "Edit an existing SQL query and update the code editor buffer."
@@ -108,11 +129,21 @@
        [:query_id [:or :string :int]]
        [:checklist :string]
        [:new_query :string]]]
-  (replace-sql-query-tools/replace-sql-query-tool
-   {:query-id query_id
-    :sql new_query
-    :checklist checklist
-    :queries-state (shared/current-queries-state)}))
+  (try
+    (let [result (replace-sql-query-tools/replace-sql-query
+                  {:query-id query_id
+                   :sql new_query
+                   :checklist checklist
+                   :queries-state (shared/current-queries-state)})
+          results-url (streaming/query->question-url (:query result))]
+      {:structured-output (assoc result :result-type :query)
+       :instructions instructions/query-created-instructions
+       :data-parts [(streaming/navigate-to-part results-url)]})
+    (catch Exception e
+      (log/error e "Error replacing SQL query")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "replace_sql_query"} replace-sql-query-code-edit-tool
   "Replace an SQL query and update the code editor buffer."
