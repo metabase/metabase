@@ -87,6 +87,14 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    duplicateAlert: builder.mutation<unknown, number>({
+      query: (alertId) => ({
+        method: "POST",
+        url: `/api/alert/${alertId}/duplicate`,
+      }),
+      invalidatesTags: (result, error) =>
+        invalidateTags(error, [listTag("notification")]),
+    }),
   }),
 });
 
@@ -101,4 +109,5 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useDuplicateAlertMutation,
 } = notificationApi;

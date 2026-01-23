@@ -33,6 +33,7 @@ type AlertListItemProps = {
   onEdit: (alert: Notification) => void;
   onUnsubscribe: (alert: Notification) => void;
   onDelete: (alert: Notification) => void;
+  onDuplicate: (alert: Notification) => void;
 };
 
 export const AlertListItem = ({
@@ -43,6 +44,7 @@ export const AlertListItem = ({
   onEdit,
   onUnsubscribe,
   onDelete,
+  onDuplicate,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
@@ -68,6 +70,12 @@ export const AlertListItem = ({
     e.stopPropagation();
 
     onDelete(alert);
+  };
+
+  const handleDuplicate = (e: MouseEvent) => {
+    e.stopPropagation();
+
+    onDuplicate(alert);
   };
 
   const handleMouseEnter = () => {
@@ -139,11 +147,18 @@ export const AlertListItem = ({
       {showHoverActions && (
         <div className={S.actionButtonContainer}>
           {canEdit ? (
-            <AlertListItemActionButton
-              label={t`Delete this alert`}
-              iconName="trash"
-              onClick={handleDelete}
-            />
+            <>
+              <AlertListItemActionButton
+                label={t`Duplicate this alert`}
+                iconName="copy"
+                onClick={handleDuplicate}
+              />
+              <AlertListItemActionButton
+                label={t`Delete this alert`}
+                iconName="trash"
+                onClick={handleDelete}
+              />
+            </>
           ) : (
             <AlertListItemActionButton
               label={t`Unsubscribe from this`}
