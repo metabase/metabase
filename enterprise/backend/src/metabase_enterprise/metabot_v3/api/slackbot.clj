@@ -18,6 +18,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -130,15 +131,12 @@
       (let [card (t2/select-one :model/Card :id card-or-id)]
         (when-not card
           (throw (ex-info "Card not found" {:card-id card-or-id})))
-        ;; TODO; is this even needed, we're binding higher up in the call stack i think?
-        (binding [api/*is-superuser?* true
-                  api/*current-user-permissions-set* (atom #{"/"})]
-          ;; TODO: should we use the user's timezone for this?
-          (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                   card
-                                                   (pulse-card-query-results card)
-                                                   width
-                                                   options)))
+        ;; TODO: should we use the user's timezone for this?
+        (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                 card
+                                                 (pulse-card-query-results card)
+                                                 width
+                                                 options))
       ;; Ad-hoc card path
       (let [{:keys [display visualization_settings results name]} card-or-id]
         (channel.render/render-adhoc-card-to-png
@@ -260,13 +258,13 @@
    :headers {"Content-Type" "text/plain"}
    :body "ok"})
 
-(defn- slack-id->user
-  "Look up a Metabase user by their Slack user ID."
+(defn- slack-id->user-id
+  "Look up a Metabase user ID from Slack user ID."
   [slack-user-id]
-  (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                          :provider "slack-connect"
-                                          :provider_id slack-user-id)]
-    (t2/select-one :model/User :id (:user_id auth-identity))))
+  (t2/select-one-fn :user_id
+                    :model/AuthIdentity
+                    :provider "slack-connect"
+                    :provider_id slack-user-id))
 
 (def ^:private slack-user-authorize-link
   "Link to page where user can initiate SSO auth flow to authorize slackbot"
@@ -277,10 +275,10 @@
   "Respond to an incoming user slack message"
   [client event]
   (let [slack-user-id (:user event)
-        user (slack-id->user slack-user-id)
+        user-id (slack-id->user-id slack-user-id)
         message-ctx {:channel (:channel event)
                      :thread_ts (or (:thread_ts event) (:ts event))}]
-    (if-not user
+    (if-not user-id
       ;; No metabase user found for the given slack user. Respond with auth link.
       (post-ephemeral-message client
                               (merge message-ctx
@@ -288,8 +286,7 @@
                                       :text (str "You need to link your slack account and authorize the Metabot app. "
                                                  "Please visit: " slack-user-authorize-link)}))
       ;; Found linked metabase user. Bind to current user and make-ai-request.
-      (binding [api/*current-user* (delay user)
-                api/*current-user-id* (:id user)]
+      (request/with-current-user user-id
         (let [prompt (:text event)
               thread (fetch-thread client event)
               thinking-message (post-message client (merge message-ctx {:text "_Thinking..._"}))
@@ -389,10 +386,9 @@
   (def thread (fetch-thread client message))
   (def history (thread->history thread))
 
-  (def user (t2/select-one :model/User :is_superuser true))
+  (def admin-user (t2/select-one :model/User :is_superuser true))
   (def response-stream
-    (binding [api/*current-user* (delay (t2/select-one :model/User :is_superuser true))
-              api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
+    (request/with-current-user (:id admin-user)
       (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
   (log/debug "Response stream:" response-stream)
   (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))

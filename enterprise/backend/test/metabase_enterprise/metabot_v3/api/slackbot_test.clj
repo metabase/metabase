@@ -91,14 +91,14 @@
    Options:
    - :ai-text - The text response from make-ai-request
    - :data-parts - The data-parts returned from make-ai-request (default [])
-   - :user - The user returned by slack-id->user. If not provided, defaults to rasta.
-             Pass ::no-user to simulate an unlinked Slack user (returns nil).
+   - :user-id - The user ID returned by slack-id->user-id. If not provided, defaults to rasta.
+                Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
    {:post-calls, :delete-calls, :image-calls, :generate-png-calls, :ephemeral-calls, :fake-png-bytes}"
-  [{:keys [ai-text data-parts user]
+  [{:keys [ai-text data-parts user-id]
     :or {data-parts []
-         user ::default}}
+         user-id ::default}}
    body-fn]
   (let [post-calls (atom [])
         delete-calls (atom [])
@@ -106,12 +106,12 @@
         generate-png-calls (atom [])
         ephemeral-calls (atom [])
         fake-png-bytes (byte-array [0x89 0x50 0x4E 0x47])
-        mock-user (cond
-                    (= user ::default) (mt/fetch-user :rasta)
-                    (= user ::no-user) nil
-                    :else user)]
+        mock-user-id (cond
+                       (= user-id ::default) (mt/user->id :rasta)
+                       (= user-id ::no-user) nil
+                       :else user-id)]
     (mt/with-dynamic-fn-redefs
-      [slackbot/slack-id->user (constantly mock-user)
+      [slackbot/slack-id->user-id (constantly mock-user-id)
        slackbot/fetch-thread (constantly {:ok true, :messages []})
        slackbot/post-message (fn [_ msg]
                                (swap! post-calls conj msg)
@@ -236,7 +236,7 @@
                                   :ts "1234567890.000001"}}]
           (with-slackbot-mocks
             {:ai-text "Should not be called"
-             :user ::no-user} ;; Simulate no linked user
+             :user-id ::no-user} ;; Simulate no linked user
             (fn [{:keys [post-calls ephemeral-calls]}]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options event-body)
