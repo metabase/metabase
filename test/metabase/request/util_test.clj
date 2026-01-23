@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -180,3 +181,15 @@
       ["   "] :nil
       []      :nil
       nil     :nil)))
+
+(deftest geocode-ip-addresses-metrics-test
+  (testing "increments :metabase-geocoding/requests on successful geocoding"
+    (mt/with-prometheus-system! [_ system]
+      (with-redefs [http/get mock-geojs-http-get]
+        (req.util/geocode-ip-addresses ["8.8.8.8"])
+        (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
+  (testing "increments :metabase-geocoding/errors on failed geocoding"
+    (mt/with-prometheus-system! [_ system]
+      (with-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+        (req.util/geocode-ip-addresses ["8.8.8.8"])
+        (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
