@@ -183,34 +183,7 @@
         (is (re-find #">=" (:replacement-snippet result)))
         (is (not (re-find #"<" (:replacement-snippet result))))))))
 
-(deftest ^:parallel table-tag-partition-end-only-test
-  (testing "Table tag with only partition end value"
-    (mt/with-metadata-provider meta/metadata-provider
-      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
-            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
-            result (sql.params.substitution/->replacement-snippet-info
-                    :h2
-                    (params/map->ReferencedTable
-                     {:table-id (meta/id :orders)
-                      :table table
-                      :partition-field-id (meta/id :orders :created-at)
-                      :partition-field field
-                      :partition-end-value "2024-02-01"}))]
-        (is (not (re-find #">=" (:replacement-snippet result))))
-        (is (re-find #"<" (:replacement-snippet result)))))))
+;; NOTE: end-only partition ranges are no longer valid per schema constraints.
+;; partition-start-value is required when partition-field-id is set.
 
-(deftest ^:parallel table-tag-no-partition-values-test
-  (testing "Table tag with partition field but no values returns simple table name"
-    (mt/with-metadata-provider meta/metadata-provider
-      (let [table (lib.metadata/table (qp.store/metadata-provider) (meta/id :orders))
-            field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
-            result (sql.params.substitution/->replacement-snippet-info
-                    :h2
-                    (params/map->ReferencedTable
-                     {:table-id (meta/id :orders)
-                      :table table
-                      :partition-field-id (meta/id :orders :created-at)
-                      :partition-field field}))]
-        (is (= {:replacement-snippet "\"PUBLIC\".\"ORDERS\""
-                :prepared-statement-args nil}
-               result))))))
+;; NOTE: partition-field-id without partition-start-value is no longer valid per schema constraints.

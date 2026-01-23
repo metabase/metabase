@@ -3,11 +3,14 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (deftest ^:parallel native-test
   (is (=? {:rows
@@ -171,32 +174,132 @@
         (is (= 1 (count (mt/rows (qp/process-query (mt/native-query query))))))))))
 
 (deftest table-tag-partition-one-sided-e2e-test
-  (testing "Table tag with one-sided partition range"
+  (testing "Table tag with start-only partition range (end is optional)"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
       (mt/dataset test-data
-        (testing "start only"
+        (let [tag-name "input_table"
+              query {:query (format "SELECT COUNT(*) FROM {{%s}} AS t" tag-name)
+                     :template-tags {tag-name
+                                     {:id "table-tag-5"
+                                      :name tag-name
+                                      :display-name "Input Table"
+                                      :type :table
+                                      :table-id (mt/id :orders)
+                                      :partition-field-id (mt/id :orders :created_at)
+                                      :partition-start-value "2025-01-01"}}}
+              result (mt/rows (qp/process-query (mt/native-query query)))]
+          (is (number? (ffirst result))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Table Template Tag Permission Tests                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest table-tag-permissions-denied-test
+  (testing "Table tag query fails when user lacks permission to the referenced table"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant native query permission at database level but block access to venues table
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          ;; Block access to the venues table specifically
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
           (let [tag-name "input_table"
-                query {:query (format "SELECT COUNT(*) FROM {{%s}} AS t" tag-name)
-                       :template-tags {tag-name
-                                       {:id "table-tag-5"
-                                        :name tag-name
-                                        :display-name "Input Table"
-                                        :type :table
-                                        :table-id (mt/id :orders)
-                                        :partition-field-id (mt/id :orders :created_at)
-                                        :partition-start-value "2025-01-01"}}}
-                result (mt/rows (qp/process-query (mt/native-query query)))]
-            (is (number? (ffirst result)))))
-        (testing "end only"
+                query (mt/native-query
+                       {:query (format "SELECT COUNT(*) FROM {{%s}}" tag-name)
+                        :template-tags {tag-name
+                                        {:id "table-tag-perms-1"
+                                         :name tag-name
+                                         :display-name "Input Table"
+                                         :type :table
+                                         :table-id (mt/id :venues)}}})]
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (mt/with-test-user :rasta
+                   (qp/process-query query))))))))))
+
+(deftest table-tag-permissions-granted-test
+  (testing "Table tag query succeeds when user has permission to the referenced table"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant native query permission and access to venues table
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
           (let [tag-name "input_table"
-                query {:query (format "SELECT COUNT(*) FROM {{%s}} AS t" tag-name)
-                       :template-tags {tag-name
-                                       {:id "table-tag-6"
-                                        :name tag-name
-                                        :display-name "Input Table"
-                                        :type :table
-                                        :table-id (mt/id :orders)
-                                        :partition-field-id (mt/id :orders :created_at)
-                                        :partition-end-value "2020-01-01"}}}
-                result (mt/rows (qp/process-query (mt/native-query query)))]
-            (is (number? (ffirst result)))))))))
+                query (mt/native-query
+                       {:query (format "SELECT COUNT(*) FROM {{%s}}" tag-name)
+                        :template-tags {tag-name
+                                        {:id "table-tag-perms-2"
+                                         :name tag-name
+                                         :display-name "Input Table"
+                                         :type :table
+                                         :table-id (mt/id :venues)}}})]
+            (mt/with-test-user :rasta
+              (is (= [[100]]
+                     (mt/rows (qp/process-query query)))))))))))
+
+(deftest table-tag-multiple-tables-permissions-test
+  (testing "Query with multiple table tags fails if user lacks permission to ANY referenced table"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant native query permission
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          ;; Grant access to venues but block checkins
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+          (let [venues-tag "venues_table"
+                checkins-tag "checkins_table"
+                query (mt/native-query
+                       {:query (format "SELECT COUNT(*) FROM {{%s}} v JOIN {{%s}} c ON v.ID = c.VENUE_ID"
+                                       venues-tag checkins-tag)
+                        :template-tags {venues-tag
+                                        {:id "table-tag-perms-3a"
+                                         :name venues-tag
+                                         :display-name "Venues"
+                                         :type :table
+                                         :table-id (mt/id :venues)}
+                                        checkins-tag
+                                        {:id "table-tag-perms-3b"
+                                         :name checkins-tag
+                                         :display-name "Checkins"
+                                         :type :table
+                                         :table-id (mt/id :checkins)}}})]
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (mt/with-test-user :rasta
+                   (qp/process-query query)))))))))
+
+  (testing "Query with multiple table tags succeeds when user has permission to ALL referenced tables"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant native query permission and access to both tables
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (let [venues-tag "venues_table"
+                checkins-tag "checkins_table"
+                query (mt/native-query
+                       {:query (format "SELECT COUNT(*) FROM {{%s}} v JOIN {{%s}} c ON v.ID = c.VENUE_ID"
+                                       venues-tag checkins-tag)
+                        :template-tags {venues-tag
+                                        {:id "table-tag-perms-4a"
+                                         :name venues-tag
+                                         :display-name "Venues"
+                                         :type :table
+                                         :table-id (mt/id :venues)}
+                                        checkins-tag
+                                        {:id "table-tag-perms-4b"
+                                         :name checkins-tag
+                                         :display-name "Checkins"
+                                         :type :table
+                                         :table-id (mt/id :checkins)}}})]
+            (mt/with-test-user :rasta
+              (is (= 1 (count (mt/rows (qp/process-query query))))))))))))

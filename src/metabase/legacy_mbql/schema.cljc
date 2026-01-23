@@ -1599,26 +1599,24 @@
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]]])
 
-;; Example:
-;;
-;;    {:id           "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-;;     :name         "orders_table"
-;;     :display-name "Orders Table"
-;;     :type         :table
-;;     :table-id     123
-;;     :partition-field-id 456
-;;     :partition-start-value "2024-01-01"
-;;     :partition-end-value "2024-12-31"}
+;; TODO: Clarification needed - is requiring partition-start-value when partition-field-id
+;; is set the right constraint? Or should both start and end be optional even when
+;; partition field is specified? Current implementation requires start, end is optional.
 (mr/def ::TemplateTag.Table
   "Schema for a table template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map
-    [:type [:= {:decode/normalize helpers/normalize-keyword} :table]]
-    [:table-id ::lib.schema.id/table]
-    [:partition-field-id {:optional true} ::lib.schema.id/field]
-    [:partition-start-value {:optional true} :any]
-    [:partition-end-value {:optional true} :any]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map
+     [:type [:= {:decode/normalize helpers/normalize-keyword} :table]]
+     [:table-id ::lib.schema.id/table]
+     [:partition-field-id {:optional true} ::lib.schema.id/field]
+     [:partition-start-value {:optional true} :any]
+     [:partition-end-value {:optional true} :any]]]
+   [:fn {:error/message "partition-start-value is required when partition-field-id is set"}
+    (fn [{:keys [partition-field-id partition-start-value]}]
+      (or (nil? partition-field-id)
+          (some? partition-start-value)))]])
 
 ;; Example:
 ;;

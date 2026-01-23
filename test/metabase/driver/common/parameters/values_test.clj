@@ -960,6 +960,19 @@
              :display-name "Input Table"
              :type :table
              :table-id Integer/MAX_VALUE}
+            [])))))
+
+  (testing "Table tag requires partition-start-value when partition-field-id is set"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"partition-start-value is required when partition-field-id is set"
+           (value-for-tag
+            {:name "input_table"
+             :display-name "Input Table"
+             :type :table
+             :table-id (meta/id :orders)
+             :partition-field-id (meta/id :orders :created-at)}
             []))))))
 
 (deftest ^:parallel table-tag-with-partition-test
@@ -970,7 +983,8 @@
                      :display-name "Input Table"
                      :type :table
                      :table-id (meta/id :orders)
-                     :partition-field-id (meta/id :orders :created-at)}
+                     :partition-field-id (meta/id :orders :created-at)
+                     :partition-start-value "2024-01-01"}
                     [])]
         (is (= (meta/id :orders :created-at) (:partition-field-id result)))
         (is (some? (:partition-field result)))))))
@@ -986,7 +1000,8 @@
              :display-name "Input Table"
              :type :table
              :table-id (meta/id :venues)
-             :partition-field-id (meta/id :orders :created-at)}
+             :partition-field-id (meta/id :orders :created-at)
+             :partition-start-value "2024-01-01"}
             []))))))
 
 (deftest ^:parallel table-tag-with-partition-values-test
@@ -1004,7 +1019,7 @@
         (is (= "2024-01-01" (:partition-start-value result)))
         (is (= "2024-02-01" (:partition-end-value result))))))
 
-  (testing "One-sided partition range (start only)"
+  (testing "Partition range with start only (end is optional)"
     (qp.store/with-metadata-provider meta/metadata-provider
       (let [result (value-for-tag
                     {:name "input_table"
@@ -1015,20 +1030,7 @@
                      :partition-start-value "2024-01-01"}
                     [])]
         (is (= "2024-01-01" (:partition-start-value result)))
-        (is (nil? (:partition-end-value result))))))
-
-  (testing "One-sided partition range (end only)"
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (let [result (value-for-tag
-                    {:name "input_table"
-                     :display-name "Input Table"
-                     :type :table
-                     :table-id (meta/id :orders)
-                     :partition-field-id (meta/id :orders :created-at)
-                     :partition-end-value "2024-02-01"}
-                    [])]
-        (is (nil? (:partition-start-value result)))
-        (is (= "2024-02-01" (:partition-end-value result)))))))
+        (is (nil? (:partition-end-value result)))))))
 
 (deftest ^:parallel table-tag-referenced-table-ids-test
   (testing "referenced-table-ids extracts table IDs from table tags"

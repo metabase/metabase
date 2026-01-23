@@ -403,6 +403,13 @@
 
 ;;; ---------------------------------- Table Template Tag replacement snippet info -----------------------------------
 
+;; TODO: Clarification needed - when partition filtering generates a subquery, some databases
+;; (e.g., MySQL, Oracle) require an alias in the FROM clause. Currently the user must provide
+;; this alias in their SQL, e.g., "SELECT * FROM {{table}} AS t". If they forget, they get a
+;; cryptic SQL syntax error. Options to consider:
+;; 1. Document this requirement clearly
+;; 2. Automatically generate an alias (e.g., "AS __table_tag_alias__")
+;; 3. Detect missing alias and provide a helpful error message
 (defmethod ->replacement-snippet-info [:sql ReferencedTable]
   [driver {:keys [table partition-field partition-start-value partition-end-value]}]
   (let [table-sql (first (sql.qp/format-honeysql driver (h2x/identifier :table (:schema table) (:name table))))]

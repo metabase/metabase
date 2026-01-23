@@ -128,16 +128,9 @@
      [:card-id ::id/card]]]
    [:ref ::disallow-dimension]])
 
-;; Example:
-;;
-;;    {:id                    "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-;;     :name                  "input_table"
-;;     :display-name          "Input Table"
-;;     :type                  :table
-;;     :table-id              123
-;;     :partition-field-id    456
-;;     :partition-start-value "2024-01-01"
-;;     :partition-end-value   "2024-02-01"}
+;; TODO: Clarification needed - is requiring partition-start-value when partition-field-id
+;; is set the right constraint? Or should both start and end be optional even when
+;; partition field is specified? Current implementation requires start, end is optional.
 (mr/def ::table
   [:and
    [:merge
@@ -148,7 +141,11 @@
      [:partition-field-id {:optional true} ::id/field]
      [:partition-start-value {:optional true} any?]
      [:partition-end-value {:optional true} any?]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-dimension]
+   [:fn {:error/message "partition-start-value is required when partition-field-id is set"}
+    (fn [{:keys [partition-field-id partition-start-value]}]
+      (or (nil? partition-field-id)
+          (some? partition-start-value)))]])
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."

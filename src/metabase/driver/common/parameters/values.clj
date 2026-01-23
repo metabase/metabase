@@ -273,11 +273,16 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
+;; TODO: Clarification needed - is requiring partition-start-value when partition-field-id
+;; is set the right constraint? Current implementation requires start, end is optional.
 (mu/defmethod parse-tag :table :- ReferencedTable
   [{:keys [table-id partition-field-id partition-start-value partition-end-value], :as tag} :- ::mbql.s/TemplateTag
    _params]
   (when-not table-id
     (throw (ex-info (tru "Invalid :table parameter: missing `:table-id`")
+                    {:tag tag, :type qp.error-type/invalid-parameter})))
+  (when (and partition-field-id (nil? partition-start-value))
+    (throw (ex-info (tru "partition-start-value is required when partition-field-id is set")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
   (let [table (or (lib.metadata/table (qp.store/metadata-provider) table-id)
                   (throw (ex-info (tru "Table {0} not found." table-id)
