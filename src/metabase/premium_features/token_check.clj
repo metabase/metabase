@@ -416,7 +416,8 @@
     (-check-token [_ token]
       (try (-check-token token-checker token)
            (catch Exception e
-             (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))
+             (when-not (-> e ex-data :cause #{:circuit-breaker})
+               (log/infof "Error checking token: %s" (ex-message e)))
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
@@ -453,12 +454,16 @@
   "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
   handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-                                   :delay-ms                          (u/seconds->ms 30)
-                                   :success-threshold                 1}
-                 :timeout-ms      (u/seconds->ms 10)
-                 :ttl-ms          (u/hours->ms 12)
-                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+
+                                   :delay-ms          (u/seconds->ms 30)
+                                   :success-threshold 1
+                                   :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
+                                   :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
+                                   :on-close          (fn [_] (log/info "Token Check restored"))}
+                 :timeout-ms   (u/seconds->ms 10)
+                 :ttl-ms       (u/hours->ms 12)
+                 :grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
