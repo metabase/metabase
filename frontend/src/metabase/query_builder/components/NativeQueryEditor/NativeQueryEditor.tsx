@@ -275,7 +275,7 @@ export const NativeQueryEditor = forwardRef<
 
   return (
     <div
-      className={cx(S.queryEditor, className)}
+      className={cx(S.queryEditor, className, { [S.readOnlyEditor]: readOnly })}
       data-testid="native-query-editor-container"
       ref={ref}
     >
@@ -342,7 +342,13 @@ export const NativeQueryEditor = forwardRef<
               onFormatQuery={handleFormatQuery}
             />
 
-            <Stack m="1rem" gap="md" mt="auto">
+            <Stack
+              bottom="0.75rem"
+              display={readOnly ? "none" : undefined}
+              gap="md"
+              left="0.75rem"
+              pos="absolute"
+            >
               {proposedQuestion && onRejectProposed && onAcceptProposed && (
                 <>
                   <Tooltip label={t`Accept proposed changes`} position="top">
