@@ -340,12 +340,22 @@
 ;; --------------------------------------------
 
 (comment
-  ;; settings, get these from https://api.slack.com/apps
-  (metabot.settings/metabot-slack-signing-secret! "XXXXXXXXX")
-  (metabot.settings/metabot-slack-bot-token! "XXXXXXXXXX")
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id!) "XXXXXXXX")
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret!) "XXXXXXXXX")
-  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode!) "link-only")
+  ;; env vars, get these from https://api.slack.com/apps
+  ;;
+  ;; MB_METABOT_SLACK_BOT_TOKEN
+  ;; MB_METABOT_SLACK_SIGNING_SECRET
+  ;; MB_SLACK_CONNECT_CLIENT_ID
+  ;; MB_SLACK_CONNECT_CLIENT_SECRET
+  ;;
+  ;; Optional, either: "link-only" or "sso" (default)
+  ;; MB_SLACK_CONNECT_AUTHENTICATION_MODE
+  ;;
+  ;; for verifying values are set:
+  (metabot.settings/metabot-slack-signing-secret)
+  (metabot.settings/metabot-slack-bot-token)
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id))
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret))
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode))
 
   ;; constants for hacking
   (def user-id "XXXXXXXXXXX") ; your slack user id (not the bot's)
@@ -357,10 +367,13 @@
   ;; page of your app settings (remember to verify the url after saving -- a warning w/
   ;; link appears at the top of the page after saving)
   (require '[clojure.java.shell :refer [sh]])
-  (let [clipboard-content (:out (sh "pbpaste"))
-        manifest (slackbot-manifest clipboard-content)]
-    (assert (str/starts-with? "https://" clipboard-content))
-    (system/site-url! public-mb-url)
+  (let [new-url (:out (sh "pbpaste"))
+        ;; Sanity check clipboard-content. site-url! validates and normalizes the URL, but random clipboard content
+        ;; like "ababa" will validate and get normalized to https://ababa.
+        _ (assert (str/starts-with? new-url "https://"))
+        _ (assert (str/ends-with? new-url ".com"))
+        manifest (slackbot-manifest new-url)]
+    (system/site-url! new-url)
     (sh "pbcopy" :in (json/encode manifest {:pretty true})))
 
   (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
