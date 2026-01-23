@@ -340,9 +340,17 @@
 ;; --------------------------------------------
 
 (comment
+  ;; settings, get these from https://api.slack.com/apps
+  (metabot.settings/metabot-slack-signing-secret! "XXXXXXXXX")
+  (metabot.settings/metabot-slack-bot-token! "XXXXXXXXXX")
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-id!) "XXXXXXXX")
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-client-secret!) "XXXXXXXXX")
+  ((requiring-resolve 'metabase-enterprise.sso.settings/slack-connect-authentication-mode!) "link-only")
+
   ;; constants for hacking
-  (def channel "XXXXXXXXXXX")
-  (def thread-ts "XXXXXXXXXXXXXXXXX")
+  (def user-id "XXXXXXXXXXX") ; your slack user id (not the bot's)
+  (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
+  (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
   ;; create a tunnel via `cloudflared tunnel --url http://localhost:3000` copy tunnel url
   ;; to clipboard and execute to get a manifest file you can paste into the app manifest
@@ -351,13 +359,19 @@
   (require '[clojure.java.shell :refer [sh]])
   (let [clipboard-content (:out (sh "pbpaste"))
         manifest (slackbot-manifest clipboard-content)]
+    (assert (str/starts-with? "https://" clipboard-content))
+    (system/site-url! public-mb-url)
     (sh "pbcopy" :in (json/encode manifest {:pretty true})))
 
   (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
-
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (delete-message client message)
   (select-keys message [:channel :ts])
+
+  (post-ephemeral-message client {:channel channel
+                                  :user user-id
+                                  :text "sssh"
+                                  :thread_ts thread-ts})
 
   (def thread (fetch-thread client message))
   (def history (thread->history thread))
@@ -368,4 +382,6 @@
               api/*current-user-id* (:id (t2/select-one :model/User :is_superuser true))]
       (make-ai-request (str (random-uuid)) "hi metabot!" thread)))
   (log/debug "Response stream:" response-stream)
-  (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
+  (def ai-message (post-message client {:channel channel :text response-stream :thread_ts (:ts thread)}))
+  (delete-message client ai-message))
+
