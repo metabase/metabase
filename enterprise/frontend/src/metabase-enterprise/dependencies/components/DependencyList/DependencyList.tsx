@@ -107,7 +107,7 @@ export function DependencyList({
   }, [selectedEntry, selectedNode]);
 
   return (
-    <Flex h="100%">
+    <Flex h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <ListHeader />
         <ListSearchBar

@@ -88,7 +88,7 @@ export function SidebarDependentsSection({
           {isFetching && <Loader size="sm" />}
         </Group>
         {count > DEPENDENTS_SEARCH_THRESHOLD && (
-          <Group gap={0}>
+          <Group gap={0} wrap="nowrap">
             <SortOptionsPicker
               sortOptions={sortOptions}
               availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
