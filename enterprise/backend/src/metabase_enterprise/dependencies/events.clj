@@ -277,19 +277,22 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
 
-(defn- check-dependents! [type object recur-through-transforms?]
+(defn- check-all-dependents! [type->objects recur-through-transforms?]
   (let [graph (if recur-through-transforms?
                 (models.dependency/graph-dependents)
                 (models.dependency/filtered-graph-dependents
                  nil
                  (fn [type-field _id-field]
                    [:not= type-field "transform"])))
-        children-map (models.dependency/transitive-mbql-dependents graph {type [object]})]
+        children-map (models.dependency/transitive-mbql-dependents graph type->objects)]
     (doseq [[type children] children-map
             :when (deps.findings/supported-entities type)
             instances (partition 50 50 nil children)]
       (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
           deps.findings/analyze-instances!))))
+
+(defn- check-dependents! [type object recur-through-transforms?]
+  (check-all-dependents! {type [object]} recur-through-transforms?))
 
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
@@ -336,3 +339,49 @@
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (check-dependents! :transform {:id (:transform-id object)} true))))
+
+(defn- synced-db->direct-dependents-of-changed-tables
+  "Given the `:db_id` of a freshly synced database, this examines all tables in the DB which were updated, or have
+  fields which were updated, since the last time any cards depending on them were analyzed.
+
+  It is important that this doesn't re-run the analysis for all dependents of every table whose DB got synced -
+  most of the tables have no change every time.
+
+  Returns the set of table IDs which have dependents that need re-analysis, possibly empty."
+  [db-id]
+  (t2/select-fn-set :table_id :model/AnalysisFinding
+                    {:select    [:field_updates/table_id]
+                     :from      [[{:select    [[:table/id :table_id]
+                                               [:table/updated_at :last_table_update]
+                                               [[:max :field/updated_at] :last_field_update]]
+                                   :from      [[(t2/table-name :model/Table) :table]]
+                                   :left-join [[(t2/table-name :model/Field) :field]
+                                               [:= :field/table_id :table/id]]
+                                   :where     [:= :table/db_id db-id]
+                                   :group-by  [:table/id
+                                               :table/updated_at]}
+                                  :field_updates]]
+                     :inner-join [[(t2/table-name :model/Dependency) :dep]
+                                  [:and
+                                   [:= :dep/to_entity_type [:inline "table"]]
+                                   [:= :field_updates/table_id :dep/to_entity_id]]
+                                  [(t2/table-name :model/AnalysisFinding) :finding]
+                                  [:and
+                                   [:= :finding/analyzed_entity_type :dep/from_entity_type]
+                                   [:= :finding/analyzed_entity_id   :dep/from_entity_id]]]
+                     :where      [:and
+                                  [:!= :finding/analyzed_entity_id nil]
+                                  [:or
+                                   [:< :finding/analyzed_at :field_updates/last_table_update]
+                                   [:< :finding/analyzed_at :field_updates/last_field_update]]]}))
+
+(derive ::sync-completed-on-database :metabase/event)
+(derive :event/sync-end ::sync-completed-on-database)
+
+(methodical/defmethod events/publish-event! ::sync-completed-on-database
+  [_ {db-id :database_id}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
+        (when (seq changes)
+          (check-all-dependents! {:table changes} true))))))

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.api
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
@@ -474,8 +475,42 @@
                        (apply merge-with +)))
                 children-map)))
 
+(defn- entity-archived?
+  "Returns true if the entity is archived."
+  [entity-type entity]
+  (case entity-type
+    (:card :dashboard :document :snippet :segment :measure) (:archived entity)
+    :table                                                  (or (not (:active entity))
+                                                                (some? (:visibility_type entity)))
+    ;; transform and sandbox have no archived field
+    false))
+
+(defn- entity-visible?
+  "Returns falsy if the entity specified by `entity-type` and `entity-id` doesn't exist, is archived,
+  or user can't read it, true otherwise.
+  Loads the entity from DB."
+  [entity-type entity-id]
+  (when-let [model (deps.dependency-types/dependency-type->model entity-type)]
+    (when-let [entity (t2/select-one model :id entity-id)]
+      (and (not (entity-archived? entity-type entity))
+           (mi/can-read? entity)))))
+
+(defn- source-error-visible?
+  "Determines if `_error` should be returned based on the visibility of its source entity.
+  Errors with no source entity are always included."
+  [entity-visible-fn {:keys [source_entity_type source_entity_id] :as _error}]
+  (or (nil? source_entity_type)
+      (nil? source_entity_id)
+      (entity-visible-fn source_entity_type source_entity_id)))
+
+(defn- analyzed-error-visible?
+  "Applies `entity-visible-fn` to determine if `_error` should be included based on analyzed entity visibility."
+  [entity-visible-fn {:keys [analyzed_entity_type analyzed_entity_id] :as _error}]
+  (entity-visible-fn analyzed_entity_type analyzed_entity_id))
+
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
+   Filters out errors where the analyzed entity is not visible to the current user.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
    the entity is causing in other entities that depend on it."
   [nodes-by-type]
@@ -485,13 +520,16 @@
                                               :source_entity_type source-type
                                               :source_entity_id [:in ids])]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
-                            identity conj #{} finding-errors))))]
+                            identity conj #{}
+                            (filter (partial analyzed-error-visible? entity-visible?)
+                                    finding-errors)))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
+   Filters out errors where the source entity is not visible to the current user.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
   [nodes-by-type]
   (letfn [(normalize-finding-error
@@ -504,7 +542,9 @@
                                               :analyzed_entity_type type
                                               :analyzed_entity_id [:in ids])]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
-                            normalize-finding-error conj #{} finding-errors))))]
+                            normalize-finding-error conj #{}
+                            (filter (partial source-error-visible? entity-visible?)
+                                    finding-errors)))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
@@ -587,20 +627,84 @@
       {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
        :edges edges})))
 
+(def ^:private sort-directions
+  "Valid sort directions for dependency item endpoints."
+  #{:asc :desc})
+
+(def ^:private dependents-sort-columns
+  "Valid sort columns for the /graph/dependents endpoint."
+  #{:name :location :view-count})
+
+(defn- entity-name
+  "Returns the name string for an entity based on its type. Might return nil."
+  [entity]
+  (let [data (:data entity)]
+    (case (:type entity)
+      :table   (:display_name data)
+      :sandbox nil
+      (:name data))))
+
+(defn- entity-location
+  "Returns the location string for an entity based on its type. Might return nil."
+  [entity]
+  (let [data (:data entity)]
+    (case (:type entity)
+      :card                                      (or (-> data :dashboard :name)
+                                                     (-> data :document :name)
+                                                     (-> data :collection :name))
+      :table                                     (-> data :db :name)
+      (:transform :snippet :dashboard :document) (-> data :collection :name)
+      :sandbox                                   nil
+      (:segment :measure)                        (-> data :table :display_name)
+      nil)))
+
+(defn- string-matches-query?
+  "Returns true if `s` is a string and its lower-case version contains the string `query`.
+  `query` is expected to be lower-case."
+  [s query]
+  (some-> s u/lower-case-en (str/includes? query)))
+
+(defn- entity-matches-query?
+  "Returns true if `entity`'s name or location contains the string `query` (case-insensitive)."
+  [entity query]
+  (let [q (u/lower-case-en query)]
+    (or (string-matches-query? (entity-name entity) q)
+        (string-matches-query? (entity-location entity) q))))
+
+(defn- in-personal-collection?
+  "Returns true if `entity` is in a personal collection."
+  [entity]
+  (get-in entity [:data :collection :is_personal]))
+
+(defn- sort-dependents
+  "Sort `entities` by `sort-column` in `sort-direction`."
+  [entities sort-column sort-direction]
+  (let [key-fn  (case sort-column
+                  :name       #(some-> (entity-name %) u/lower-case-en)
+                  :location   #(some-> (entity-location %) u/lower-case-en)
+                  :view-count #(or (-> % :data :view_count) 0))
+        comp-fn (cond->> compare
+                  (= sort-direction :desc) (comp -))]
+    (sort-by key-fn comp-fn entities)))
+
 (def ^:private dependents-args
   [:map
-   [:id                   ms/PositiveInt]
-   [:type                 ::deps.dependency-types/dependency-types]
-   [:dependent_types      {:optional true}
+   [:id                            ms/PositiveInt]
+   [:type                          ::deps.dependency-types/dependency-types]
+   [:dependent_types               {:optional true}
     [:or
      ::deps.dependency-types/dependency-types
      [:sequential ::deps.dependency-types/dependency-types]]]
-   [:dependent_card_types {:optional true}
+   [:dependent_card_types          {:optional true}
     [:or
      (ms/enum-decode-keyword lib.schema.metadata/card-types)
      [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:archived             {:optional true} :boolean]
-   [:broken               {:optional true} :boolean]])
+   [:archived                      {:optional true} :boolean]
+   [:broken                        {:optional true} :boolean]
+   [:query                         {:optional true} :string]
+   [:include_personal_collections  {:optional true} :boolean]
+   [:sort_column                   {:optional true} (ms/enum-decode-keyword dependents-sort-columns)]
+   [:sort_direction                {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
   "Returns a list of dependents for the specified entity.
@@ -615,9 +719,17 @@
    - `dependent_card_types`: Card types to filter by when dependent_types includes :card.
      Ignored if dependent_types doesn't include :card. Example: ?dependent_card_types=question&dependent_card_types=model
    - `archived`: Include entities in archived collections (default: false)
-   - `broken`: Return only broken entities (default: false)"
+   - `broken`: Return only broken entities (default: false)
+   - `query`: Search string to filter results by name or location (case-insensitive)
+   - `include_personal_collections`: Include items in personal collections (default: false)
+   - `sort_column`: Column to sort by - name, location, or view-count (default: name)
+   - `sort_direction`: Sort direction - asc or desc (default: asc)"
   [_route-params
-   {:keys [id type dependent_types dependent_card_types archived broken]} :- dependents-args]
+   {:keys [id type dependent_types dependent_card_types archived broken
+           query include_personal_collections sort_column sort_direction]
+    :or {include_personal_collections false
+         sort_column :name
+         sort_direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
     (let [graph-opts {:include-archived-items (if archived :all :exclude)
@@ -632,14 +744,26 @@
           card-types-set (cond
                            (nil? dependent_card_types) lib.schema.metadata/card-types
                            (sequential? dependent_card_types) (set dependent_card_types)
-                           :else #{dependent_card_types})]
-      (->> (expanded-nodes downstream-graph nodes {:include-errors? false})
+                           :else #{dependent_card_types})
+          dependents-filter
+          (comp
+           ;; Filter by dependent types and card types
            (filter (fn [node]
                      (and (or (nil? dep-types-set)
                               (contains? dep-types-set (:type node)))
                           (or (not= (:type node) :card)
                               (nil? card-types-set)
-                              (contains? card-types-set (-> node :data :type))))))))))
+                              (contains? card-types-set (-> node :data :type))))))
+           ;; Filter out personal collections unless explicitly included
+           (if include_personal_collections
+             identity
+             (remove in-personal-collection?))
+           ;; Filter by query (sandboxes are excluded since they have no name or location)
+           (if query
+             (filter #(entity-matches-query? % query))
+             identity))]
+      (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
+          (sort-dependents sort_column sort_direction)))))
 
 (defn- entity-type-config
   [entity-type]
@@ -792,13 +916,9 @@
      :left-join (build-left-joins join all-required-joins)
      :where (into [:and filter] (keep identity) filters)}))
 
-(def ^:private sort-columns
-  "Valid sort columns for dependency item endpoints."
+(def ^:private breaking-items-sort-columns
+  "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."
   #{:name :location :dependents-with-errors :dependents-errors})
-
-(def ^:private sort-directions
-  "Valid sort directions for dependency item endpoints."
-  #{:asc :desc})
 
 (def ^:private dependency-items-args
   [:map
@@ -811,7 +931,7 @@
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
    [:include_personal_collections {:optional true} :boolean]
-   [:sort_column {:optional true} (ms/enum-decode-keyword sort-columns)]
+   [:sort_column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
    [:sort_direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
 (def ^:private dependency-items-response

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
@@ -2147,3 +2148,228 @@
                                 "Card 1 sorterrorstest"]
                          (= sort-direction :desc) reverse)
                        names))))))))))
+
+(defn- get-dependents
+  "Helper to call the /graph/dependents endpoint."
+  [base-card-id & opts]
+  (apply mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+         :id base-card-id :type "card" opts))
+
+(defn- create-dependent!
+  "Create a dependent card with the given name."
+  [base-card user card-name & opts]
+  (card/create-card! (apply assoc (wrap-card base-card) :name card-name opts) user))
+
+(defmacro ^:private with-dependents-test!
+  [[user-binding base-card-binding] & body]
+  `(mt/with-premium-features #{:dependencies}
+     (mt/with-model-cleanup [:model/Card :model/Dependency]
+       (mt/with-temp [:model/User user# {:email "test@test.com"}]
+         (let [~user-binding user#
+               ~base-card-binding (card/create-card! (basic-card "Base") user#)]
+           ~@body)))))
+
+(deftest ^:sequential dependents-query-filter-test
+  (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (create-dependent! base-card user "Alpha")
+      (create-dependent! base-card user "Beta")
+      (create-dependent! base-card user "Gamma")
+      (testing "filters by name"
+        (is (=? [{:data {:name "Alpha"}}]
+                (get-dependents base-card-id :query "Alpha"))))
+      (testing "query is case-insensitive"
+        (is (=? [{:data {:name "Beta"}}]
+                (get-dependents base-card-id :query "BETA"))))
+      (testing "no query returns all dependents"
+        (is (= 3 (count (get-dependents base-card-id))))))))
+
+(deftest ^:sequential dependents-query-filter-by-location-test
+  (testing "GET /api/ee/dependencies/graph/dependents query filters by location (collection name)"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "SpecialCollection"}]
+        (create-dependent! base-card user "Card in root")
+        (create-dependent! base-card user "Card in collection" :collection_id coll-id)
+        (is (=? [{:data {:name "Card in collection"}}]
+                (get-dependents base-card-id :query "SpecialCollection")))))))
+
+(deftest ^:sequential dependents-personal-collections-test
+  (testing "GET /api/ee/dependencies/graph/dependents with include_personal_collections parameter"
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (with-dependents-test! [{user-id :id :as user} {base-card-id :id :as base-card}]
+        (mt/with-temp [:model/Collection {personal-coll-id :id} {:personal_owner_id user-id}
+                       :model/Collection {sub-coll-id :id} {:location (format "/%d/" personal-coll-id)}]
+          (create-dependent! base-card user "In Personal" :collection_id personal-coll-id)
+          (create-dependent! base-card user "In Sub" :collection_id sub-coll-id)
+          (create-dependent! base-card user "Regular")
+          (testing "default excludes personal collections"
+            (is (=? [{:data {:name "Regular"}}]
+                    (get-dependents base-card-id))))
+          (testing "include_personal_collections=true includes them"
+            (is (= 3 (count (get-dependents base-card-id :include_personal_collections true))))))))))
+
+(deftest ^:sequential dependents-sort-by-name-test
+  (testing "GET /api/ee/dependencies/graph/dependents - sorting by name"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (create-dependent! base-card user "C Card")
+      (create-dependent! base-card user "A Card")
+      (create-dependent! base-card user "B Card")
+      (is (=? [{:data {:name "A Card"}} {:data {:name "B Card"}} {:data {:name "C Card"}}]
+              (get-dependents base-card-id :sort_column :name :sort_direction :asc)))
+      (is (=? [{:data {:name "C Card"}} {:data {:name "B Card"}} {:data {:name "A Card"}}]
+              (get-dependents base-card-id :sort_column :name :sort_direction :desc))))))
+
+(deftest ^:sequential dependents-sort-by-location-test
+  (testing "GET /api/ee/dependencies/graph/dependents - sorting by location"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (mt/with-temp [:model/Collection {coll-a :id} {:name "A Collection"}
+                     :model/Collection {coll-b :id} {:name "B Collection"}
+                     :model/Collection {coll-c :id} {:name "C Collection"}]
+        (create-dependent! base-card user "In C" :collection_id coll-c)
+        (create-dependent! base-card user "In A" :collection_id coll-a)
+        (create-dependent! base-card user "In B" :collection_id coll-b)
+        (is (=? [{:data {:name "In A"}} {:data {:name "In B"}} {:data {:name "In C"}}]
+                (get-dependents base-card-id :sort_column :location :sort_direction :asc)))
+        (is (=? [{:data {:name "In C"}} {:data {:name "In B"}} {:data {:name "In A"}}]
+                (get-dependents base-card-id :sort_column :location :sort_direction :desc)))))))
+
+(deftest ^:sequential dependents-sort-by-view-count-test
+  (testing "GET /api/ee/dependencies/graph/dependents - sorting by view-count"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (let [{low-id :id} (create-dependent! base-card user "Low")
+            {mid-id :id} (create-dependent! base-card user "Mid")
+            {high-id :id} (create-dependent! base-card user "High")]
+        (t2/update! :model/Card low-id {:view_count 10})
+        (t2/update! :model/Card mid-id {:view_count 50})
+        (t2/update! :model/Card high-id {:view_count 100})
+        (is (=? [{:data {:view_count 10}} {:data {:view_count 50}} {:data {:view_count 100}}]
+                (get-dependents base-card-id :sort_column :view-count :sort_direction :asc)))
+        (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
+                (get-dependents base-card-id :sort_column :view-count :sort_direction :desc)))))))
+
+(deftest ^:sequential dependents-sort-view-count-mixed-types-test
+  (testing "GET /api/ee/dependencies/graph/dependents - view-count sorting with mixed entity types"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (mt/with-model-cleanup [:model/DashboardCard]
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard" :view_count 200}]
+          (let [{low-id :id} (create-dependent! base-card user "Low")
+                {high-id :id} (create-dependent! base-card user "High")]
+            (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id base-card-id
+                                              :row 0 :col 0 :size_x 4 :size_y 4})
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (t2/update! :model/Card low-id {:view_count 10})
+            (t2/update! :model/Card high-id {:view_count 100})
+            (is (=? [{:data {:view_count 10}} {:data {:view_count 100}} {:data {:view_count 200}}]
+                    (get-dependents base-card-id :sort_column :view-count :sort_direction :asc)))
+            (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
+                    (get-dependents base-card-id :sort_column :view-count :sort_direction :desc)))))))))
+
+(deftest ^:sequential dependents-query-and-sort-combined-test
+  (testing "GET /api/ee/dependencies/graph/dependents with query and sort together"
+    (with-dependents-test! [user {base-card-id :id :as base-card}]
+      (create-dependent! base-card user "C Match")
+      (create-dependent! base-card user "A Match")
+      (create-dependent! base-card user "B Match")
+      (create-dependent! base-card user "Should not appear")
+      (is (=? [{:data {:name "A Match"}} {:data {:name "B Match"}} {:data {:name "C Match"}}]
+              (get-dependents base-card-id :query "Match" :sort_column :name :sort_direction :asc))))))
+
+(deftest ^:parallel entity-archived-test
+  (testing "entity-archived? for collection-based types uses :archived field"
+    (doseq [entity-type [:card :dashboard :document :snippet :segment :measure]
+            archived?   [false true]]
+      (is (= archived? (#'deps.api/entity-archived? entity-type {:archived archived?})))))
+
+  (testing "entity-archived? for tables uses active and visibility_type"
+    (are [entity expected]
+         (= expected (#'deps.api/entity-archived? :table entity))
+      {:active true  :visibility_type nil}      false
+      {:active false :visibility_type nil}      true
+      {:active true  :visibility_type "hidden"} true
+      {:active false :visibility_type "hidden"} true))
+
+  (testing "entity-archived? for types without archived field always returns false"
+    (are [entity-type]
+         (false? (#'deps.api/entity-archived? entity-type {}))
+      :transform
+      :sandbox)))
+
+(deftest ^:sequential entity-visible-test
+  (testing "entity-visible? loads entity and checks visibility"
+    (testing "returns falsy for non-existent entity"
+      (with-redefs [t2/select-one (constantly nil)]
+        (is (not (#'deps.api/entity-visible? :card 999)))))
+    (testing "returns falsy for unknown entity type"
+      (is (not (#'deps.api/entity-visible? :unknown-type 1))))))
+
+(deftest ^:parallel source-error-visible-test
+  (testing "source-error-visible? predicate"
+    (are [visible? error expected]
+         (= expected (#'deps.api/source-error-visible? (constantly visible?) error))
+      true  {:source_entity_type nil   :source_entity_id nil} true
+      false {:source_entity_type nil   :source_entity_id nil} true
+      true  {:source_entity_type :card :source_entity_id 1}   true
+      false {:source_entity_type :card :source_entity_id 1}   false
+      false {:source_entity_type :card :source_entity_id nil} true
+      false {:source_entity_type nil   :source_entity_id 1}   true)))
+
+(deftest ^:sequential node-errors-filtering-test
+  (testing "node-errors filters by source visibility"
+    (let [visible-error    {:analyzed_entity_type :card
+                            :analyzed_entity_id   1
+                            :source_entity_type   :card
+                            :source_entity_id     10
+                            :error_type           :missing-column
+                            :error_detail         "col1"}
+          hidden-error     {:analyzed_entity_type :card
+                            :analyzed_entity_id   1
+                            :source_entity_type   :card
+                            :source_entity_id     20
+                            :error_type           :missing-column
+                            :error_detail         "col2"}
+          nil-source-error {:analyzed_entity_type :card
+                            :analyzed_entity_id   1
+                            :source_entity_type   nil
+                            :source_entity_id     nil
+                            :error_type           :invalid-query}]
+      (with-redefs [t2/select (constantly [visible-error hidden-error nil-source-error])
+                    deps.api/entity-visible? (fn [_ id] (= id 10))]
+        (let [result      (#'deps.api/node-errors {:card [1]})
+              card-errors (get result [:card 1])]
+          (testing "includes errors with visible source"
+            (is (contains? card-errors {:type :missing-column :detail "col1"})))
+          (testing "excludes errors with hidden source"
+            (is (not (contains? card-errors {:type :missing-column :detail "col2"}))))
+          (testing "includes errors with nil source"
+            (is (contains? card-errors {:type :invalid-query}))))))))
+
+(deftest ^:parallel analyzed-error-visible-test
+  (testing "analyzed-error-visible? predicate delegates to visibility function"
+    (are [visible?]
+         (= visible?
+            (#'deps.api/analyzed-error-visible?
+             (constantly visible?)
+             {:analyzed_entity_type :card :analyzed_entity_id 1}))
+      true
+      false)))
+
+(deftest ^:sequential node-downstream-errors-filtering-test
+  (testing "node-downstream-errors filters by analyzed entity visibility"
+    (let [visible-error {:analyzed_entity_type :card
+                         :analyzed_entity_id   100
+                         :source_entity_type   :card
+                         :source_entity_id     1
+                         :error_type           :missing-column}
+          hidden-error  {:analyzed_entity_type :card
+                         :analyzed_entity_id   200
+                         :source_entity_type   :card
+                         :source_entity_id     1
+                         :error_type           :missing-column}]
+      (with-redefs [t2/select (constantly [visible-error hidden-error])
+                    deps.api/entity-visible? (fn [_ id] (= id 100))]
+        (let [result      (#'deps.api/node-downstream-errors {:card [1]})
+              card-errors (get result [:card 1])]
+          (testing "includes errors with visible analyzed entity"
+            (is (= 1 (count card-errors))))
+          (testing "the included error is the visible one"
+            (is (= 100 (:analyzed_entity_id (first card-errors))))))))))

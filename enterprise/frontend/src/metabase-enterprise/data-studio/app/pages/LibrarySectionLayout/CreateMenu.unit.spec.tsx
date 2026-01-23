@@ -62,12 +62,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual([
-      "Publish a table",
-      "Metric",
-      "New snippet",
-      "New snippet folder",
-    ]);
+    ).toEqual(["Published table", "Metric", "Snippet", "Snippet folder"]);
   });
 
   it("renders publish option for data analysts", async () => {
@@ -77,7 +72,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Publish a table"]);
+    ).toEqual(["Published table"]);
   });
 
   it("renders publish and metric options if user only has query builder access", async () => {
@@ -87,7 +82,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Publish a table", "Metric"]);
+    ).toEqual(["Published table", "Metric"]);
   });
 
   it("does not render Metric option when canWriteToMetricCollection is false", async () => {
@@ -106,7 +101,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Publish a table", "New snippet", "New snippet folder"]);
+    ).toEqual(["Published table", "Snippet", "Snippet folder"]);
   });
 
   it("renders nothing if remote sync is set to read-only", () => {

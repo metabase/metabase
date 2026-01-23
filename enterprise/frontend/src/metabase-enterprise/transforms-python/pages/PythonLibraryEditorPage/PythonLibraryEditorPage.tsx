@@ -75,6 +75,8 @@ export function PythonLibraryEditorPage({
   useLayoutEffect(() => {
     if (library != null) {
       setSource(library.source);
+    } else {
+      setSource(EMPTY_LIBRARY_SOURCE);
     }
   }, [library]);
 
