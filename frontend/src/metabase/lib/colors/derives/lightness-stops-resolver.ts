@@ -2,8 +2,8 @@ import type {
   ConditionalDerivation,
   Derivation,
   DerivationRule,
-} from "../constants/lightness-stops";
-import type { GeneratedColorStops } from "../types/lightness-stops";
+  GeneratedColorStops,
+} from "../types/lightness-stops";
 
 import {
   getAccessibleBackgroundStep,

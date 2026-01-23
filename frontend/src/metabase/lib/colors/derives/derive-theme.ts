@@ -43,17 +43,12 @@ export function deriveFullMetabaseTheme({
     ...filteredEmbeddingColors,
   };
 
-  // For color derivation (especially dark mode detection), we need background-primary
-  // and text-primary even if the user didn't explicitly set them. Fall back to base theme.
-  const deriveInputsWithBaseThemeFallback = {
+  const userColorDerives = deriveColorsFromInputs({
     "background-primary": baseTheme.colors["background-primary"],
     "text-primary": baseTheme.colors["text-primary"],
+    brand: baseTheme.colors["brand"],
     ...userColorDeriveInputs,
-  };
-
-  const userColorDerives = deriveColorsFromInputs(
-    deriveInputsWithBaseThemeFallback,
-  );
+  });
 
   return {
     version: 2,

@@ -15,6 +15,12 @@ import type {
   LightnessStop,
 } from "../types/lightness-stops";
 
+// Re-export accessible step functions
+export {
+  getAccessibleBackgroundStep,
+  getAccessibleTextStep,
+} from "./accessible-steps";
+
 /**
  * Contrast ratios used to generate lightness stops.
  * These are carefully tuned to produce perceptually even steps.
@@ -55,126 +61,6 @@ export function getRelativeStep(
     Math.min(INDEX_TO_STOP.length - 1, currentIndex + offset),
   );
   return INDEX_TO_STOP[targetIndex];
-}
-
-/**
- * Find the first lightness step (starting from a given step and going darker)
- * that meets a minimum contrast ratio against a background color.
- *
- * This is useful for ensuring text colors are readable on a given background.
- *
- * @param colorStops - The generated color stops to search through
- * @param backgroundColor - The background color to check contrast against (default: white)
- * @param minContrast - Minimum contrast ratio required (default: 4.5 for WCAG AA)
- * @param startStep - The step to start searching from (default: 50)
- * @returns The first step that meets the contrast requirement, or 110 if none found
- *
- * @example
- * ```ts
- * const stops = generateLightnessStops("#af60ff");
- * const textStep = getAccessibleTextStep(stops);  // Finds step with 4.5:1 contrast
- * ```
- */
-// eslint-disable-next-line no-color-literals
-const WHITE = "#ffffff";
-
-export function getAccessibleTextStep(
-  colorStops: GeneratedColorStops,
-  backgroundColor: string = WHITE,
-  minContrast: number = 4.5,
-  startStep: LightnessStop = 50,
-): LightnessStop {
-  const bgRgb = Color(backgroundColor).rgb().array() as [
-    number,
-    number,
-    number,
-  ];
-  const bgLightness = Color(backgroundColor).lightness();
-  const startIndex = INDEX_TO_STOP.indexOf(startStep);
-
-  // Determine search direction based on background lightness (0-100)
-  // Dark background (low lightness): search toward lighter steps (lower index)
-  // Light background (high lightness): search toward darker steps (higher index)
-  const isDarkBg = bgLightness < 50;
-
-  if (isDarkBg) {
-    // For dark backgrounds, we want the LIGHTEST step that has enough contrast
-    // Start from the lightest (step 5) and find the first with sufficient contrast
-    for (let i = 0; i < INDEX_TO_STOP.length; i++) {
-      const step = INDEX_TO_STOP[i];
-      const colorValue = colorStops.solid[step];
-      const colorRgb = Color(colorValue).rgb().array() as [
-        number,
-        number,
-        number,
-      ];
-      const contrastRatio = contrast(colorRgb, bgRgb);
-
-      if (contrastRatio >= minContrast) {
-        return step;
-      }
-    }
-    // If no step meets the requirement, return the lightest
-    return 5;
-  } else {
-    // Search toward darker steps (higher index)
-    for (let i = startIndex; i < INDEX_TO_STOP.length; i++) {
-      const step = INDEX_TO_STOP[i];
-      const colorValue = colorStops.solid[step];
-      const colorRgb = Color(colorValue).rgb().array() as [
-        number,
-        number,
-        number,
-      ];
-      const contrastRatio = contrast(colorRgb, bgRgb);
-
-      if (contrastRatio >= minContrast) {
-        return step;
-      }
-    }
-    // If no step meets the requirement, return the darkest
-    return 110;
-  }
-}
-
-/**
- * Find a background color step that has sufficient contrast with white text.
- * Searches from the detected step toward darker steps until contrast is met.
- *
- * This is useful for ensuring background colors can support white text overlays.
- *
- * @param colorStops - The generated color stops to search through
- * @param minContrast - Minimum contrast ratio required (default: 4.5 for WCAG AA)
- * @param startStep - The step to start searching from (default: detected step)
- * @returns The first step that meets the contrast requirement with white
- */
-export function getAccessibleBackgroundStep(
-  colorStops: GeneratedColorStops,
-  minContrast: number = 4.5,
-  startStep?: LightnessStop,
-): LightnessStop {
-  const whiteRgb: [number, number, number] = [255, 255, 255];
-  const effectiveStartStep = startStep ?? colorStops.detectedStep;
-  const startIndex = INDEX_TO_STOP.indexOf(effectiveStartStep);
-
-  // Search from startStep toward darker steps
-  for (let i = startIndex; i < INDEX_TO_STOP.length; i++) {
-    const step = INDEX_TO_STOP[i];
-    const colorValue = colorStops.solid[step];
-    const colorRgb = Color(colorValue).rgb().array() as [
-      number,
-      number,
-      number,
-    ];
-    const contrastRatio = contrast(whiteRgb, colorRgb);
-
-    if (contrastRatio >= minContrast) {
-      return step;
-    }
-  }
-
-  // If no step meets the requirement, return the darkest
-  return 110;
 }
 
 /**
@@ -238,6 +124,7 @@ function generateAlphaStops(
 
   for (const [stop, alpha] of Object.entries(alphaValues)) {
     const numStop = Number(stop) as LightnessStop;
+
     const effectiveAlpha = inverse
       ? alphaValues[
           INDEX_TO_STOP[
@@ -253,7 +140,7 @@ function generateAlphaStops(
 }
 
 /**
- * Generate all 11 lightness stops for a single color using Adobe Leonardo.
+ * Generate all 11 lightness stops for a single color using Leonardo.
  *
  * This uses contrast-based color generation to produce perceptually even
  * lightness steps. The original color is detected within the scale, and
@@ -262,14 +149,6 @@ function generateAlphaStops(
  * @param color - A CSS color string (hex, rgb, hsl, etc.)
  * @returns An object containing solid stops, alpha stops, inverse alpha stops,
  *          and the detected step of the original color
- *
- * @example
- * ```ts
- * const result = generateLightnessStops("#509ee3");
- * // result.solid[40] might be the original color
- * // result.solid[5] is the lightest variation
- * // result.solid[110] is the darkest variation
- * ```
  */
 export function generateLightnessStops(color: string): GeneratedColorStops {
   const background = new BackgroundColor({
@@ -337,39 +216,4 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
     alphaInverse: generateAlphaStops(colorAtDetectedStep, true),
     detectedStep,
   };
-}
-
-/**
- * Generate lightness stops for multiple colors at once.
- *
- * This is useful for generating a complete theme from a few input colors.
- * Customers can provide just brand, background-primary, and text-primary,
- * and this function will generate all the derived color stops.
- *
- * @param colors - An object mapping color names to CSS color values
- * @returns An object mapping each color name to its generated stops
- *
- * @example
- * ```ts
- * const theme = generateMultipleLightnessStops({
- *   brand: "#509ee3",
- *   "background-primary": "#ffffff",
- *   "text-primary": "#303030",
- * });
- *
- * theme.brand.solid[40]  // Brand color at step 40
- * theme.brand.detectedStep  // Where the original brand color sits (e.g., 40)
- * theme["background-primary"].solid[5]  // Lightest background variation
- * ```
- */
-export function generateMultipleLightnessStops<T extends string>(
-  colors: Record<T, string>,
-): Record<T, GeneratedColorStops> {
-  const result = {} as Record<T, GeneratedColorStops>;
-
-  for (const [name, color] of Object.entries(colors) as [T, string][]) {
-    result[name] = generateLightnessStops(color);
-  }
-
-  return result;
 }

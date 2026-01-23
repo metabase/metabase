@@ -33,20 +33,6 @@ export type AlphaColorStops = {
 };
 
 /**
- * Input colors for generating lightness stops.
- *
- * Customers can provide just these main colors:
- * - brand: The primary brand color (thru appearance settings and modular embedding theming)
- * - background-primary: The main background color
- * - text-primary: The main text color
- */
-export interface LightnessStopInputColors {
-  brand?: string;
-  "background-primary"?: string;
-  "text-primary"?: string;
-}
-
-/**
  * Result of generating lightness stops for a single color.
  */
 export interface GeneratedColorStops {
@@ -62,3 +48,47 @@ export interface GeneratedColorStops {
   /** The detected lightness step of the original color (5-110) */
   detectedStep: LightnessStop;
 }
+
+/**
+ * A step derivation can be:
+ * - Assign a fixed step number (5, 10, 20, ... 110)
+ * - Use a relative offset from the detected step (e.g. offset: -2)
+ * - A special accessor function name
+ */
+export type StepDerivation =
+  | LightnessStop
+  | { offset: number }
+  | { accessor: "accessibleText" }
+  | { accessor: "accessibleText"; offsetFromResult: number }
+  | { accessor: "accessibleBackground" };
+
+/**
+ * Alpha derivation uses alpha or alphaInverse stops
+ */
+export type AlphaDerivation =
+  | { alpha: LightnessStop }
+  | { alphaInverse: LightnessStop };
+
+export type Derivation = StepDerivation | AlphaDerivation;
+
+/**
+ * Conditional derivation based on theme and brand lightness
+ */
+export interface ConditionalDerivation {
+  darkTheme?: {
+    darkBrand?: Derivation; // brand step >= 50
+    lightBrand?: Derivation; // brand step < 50
+    default?: Derivation; // fallback if no brand condition
+  };
+
+  lightTheme?: {
+    darkBrand?: Derivation;
+    lightBrand?: Derivation;
+    default?: Derivation;
+  };
+
+  // Simple case: same for both themes
+  default?: Derivation;
+}
+
+export type DerivationRule = Derivation | ConditionalDerivation;

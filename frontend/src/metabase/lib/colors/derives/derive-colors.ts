@@ -1,8 +1,6 @@
 import {
   BACKGROUND_DERIVATIONS,
   BRAND_DERIVATIONS,
-  DEFAULT_LIGHT_BACKGROUND,
-  DEFAULT_LIGHT_TEXT,
   TEXT_DERIVATIONS,
 } from "../constants/lightness-stops";
 import type { MetabaseColorKey } from "../types";
@@ -18,18 +16,11 @@ type DeriveInputColor = "background-primary" | "text-primary" | "brand";
 /**
  * Detects whether the theme is dark based on background and text colors.
  */
-function detectIsDarkTheme(
-  backgroundPrimary: string | undefined,
-  textPrimary: string | undefined,
-): boolean {
-  const bgColor = backgroundPrimary ?? DEFAULT_LIGHT_BACKGROUND;
-  const textColor = textPrimary ?? DEFAULT_LIGHT_TEXT;
-
-  const bgStep = detectLightnessStep(bgColor);
-  const textStep = detectLightnessStep(textColor);
-
-  return bgStep > textStep;
-}
+const detectIsDarkTheme = (
+  backgroundPrimary: string,
+  textPrimary: string,
+): boolean =>
+  detectLightnessStep(backgroundPrimary) > detectLightnessStep(textPrimary);
 
 /**
  * Derives additional color keys from the 3 main input colors:
@@ -43,7 +34,7 @@ function detectIsDarkTheme(
  * Dark/light theme is auto-detected from background-primary and text-primary.
  */
 export function deriveColorsFromInputs(
-  colors: Partial<Record<DeriveInputColor, string>> | null | undefined,
+  colors: Record<DeriveInputColor, string>,
 ): Partial<Record<MetabaseColorKey, string>> {
   if (!colors) {
     return {};
@@ -90,30 +81,35 @@ export function deriveColorsFromInputs(
   if (colors["brand"]) {
     const brandStops = generateLightnessStops(colors["brand"]);
     const detectedStep = brandStops.detectedStep;
+
     const isDarkTheme = detectIsDarkTheme(
       colors["background-primary"],
       colors["text-primary"],
     );
+
     const brandIsDark = detectedStep >= 50;
 
-    for (const [key, rule] of Object.entries(BRAND_DERIVATIONS)) {
-      // Special handling for text-primary-inverse (based on brand lightness, not theme)
-      if (key === "text-primary-inverse") {
+    for (const [colorKey, rule] of Object.entries(BRAND_DERIVATIONS)) {
+      // text-primary-inverse is based on brand color lightness
+      if (colorKey === "text-primary-inverse") {
         const brandIsLight = detectedStep <= 40;
-        derived[key as MetabaseColorKey] = brandIsLight
+
+        derived[colorKey as MetabaseColorKey] = brandIsLight
           ? brandStops.solid[100] // Light brand needs dark text
           : brandStops.solid[5]; // Dark brand needs light text
+
         continue;
       }
 
-      const result = resolveConditionalDerivation(
+      const derivedColorValue = resolveConditionalDerivation(
         rule,
         brandStops,
         isDarkTheme,
         brandIsDark,
       );
-      if (result) {
-        derived[key as MetabaseColorKey] = result;
+
+      if (derivedColorValue) {
+        derived[colorKey as MetabaseColorKey] = derivedColorValue;
       }
     }
   }

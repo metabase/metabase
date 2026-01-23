@@ -3,7 +3,6 @@ import type { LightnessStop } from "../types/lightness-stops";
 import {
   detectLightnessStep,
   generateLightnessStops,
-  generateMultipleLightnessStops,
   getAccessibleBackgroundStep,
   getAccessibleTextStep,
   getRelativeStep,
@@ -93,45 +92,6 @@ describe("lightness-stops", () => {
       // Named color
       const namedResult = generateLightnessStops("blue");
       expect(namedResult.solid[40]).toBeDefined();
-    });
-  });
-
-  describe("generateMultipleLightnessStops", () => {
-    it("should generate stops for multiple colors", () => {
-      const result = generateMultipleLightnessStops({
-        brand: "#509ee3",
-        "background-primary": "#ffffff",
-        "text-primary": "#303030",
-      });
-
-      expect(result.brand).toBeDefined();
-      expect(result["background-primary"]).toBeDefined();
-      expect(result["text-primary"]).toBeDefined();
-    });
-
-    it("should detect appropriate steps for each color type", () => {
-      const result = generateMultipleLightnessStops({
-        brand: "#509ee3",
-        "background-primary": "#ffffff",
-        "text-primary": "#303030",
-      });
-
-      // Background should be detected as a light color
-      expect([5, 10]).toContain(result["background-primary"].detectedStep);
-
-      // Text should be detected as a dark color
-      expect([80, 90, 100, 110]).toContain(result["text-primary"].detectedStep);
-    });
-
-    it("should preserve color names in the result", () => {
-      const input = {
-        customBrand: "#ff0000",
-        customBackground: "#eeeeee",
-      };
-
-      const result = generateMultipleLightnessStops(input);
-
-      expect(Object.keys(result)).toEqual(["customBrand", "customBackground"]);
     });
   });
 
