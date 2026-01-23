@@ -1,6 +1,7 @@
 import { useFormikContext } from "formik";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -48,7 +49,6 @@ type CreateTransformModalProps = {
   onCreate?: (transform: Transform) => void;
   onClose: () => void;
   schemasFilter?: SchemasFilter;
-  showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (
     values: NewTransformValues,
@@ -57,15 +57,12 @@ type CreateTransformModalProps = {
   validateOnMount?: boolean;
 };
 
-function identity(v: any) { return v };
-
 export function CreateTransformModal({
   source,
   defaultValues,
   onCreate,
   onClose,
   schemasFilter,
-  showIncrementalSettings = true,
   validationSchemaExtension,
   handleSubmit,
   targetDescription,
@@ -89,7 +86,7 @@ export function CreateTransformModal({
   );
 
   const schemas = useMemo(() => {
-    return (fetchedSchemas ?? []).filter(schemasFilter || identity);
+    return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
   }, [schemasFilter, fetchedSchemas]);
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
@@ -135,6 +132,7 @@ export function CreateTransformModal({
           supportsSchemas={supportsSchemas}
           schemas={schemas}
           onClose={onClose}
+          targetDescription={targetDescription}
         />
       </FormProvider>
     </Modal>
@@ -146,7 +144,6 @@ type CreateTransformFormFieldsProps = {
   supportsSchemas: boolean | undefined;
   schemas: string[];
   onClose: () => void;
-  showIncrementalSettings?: boolean;
   targetDescription?: string;
 };
 
@@ -155,7 +152,6 @@ function CreateTransformForm({
   supportsSchemas,
   schemas,
   onClose,
-  showIncrementalSettings,
   targetDescription,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
@@ -195,13 +191,11 @@ function CreateTransformForm({
           type="transform-collections"
           style={{ marginBottom: 0 }}
         />
-        {showIncrementalSettings && (
-          <IncrementalTransformSettings
-            source={source}
-            incremental={values.incremental}
-            onIncrementalChange={handleIncrementalChange}
-          />
-        )}
+        <IncrementalTransformSettings
+          source={source}
+          incremental={values.incremental}
+          onIncrementalChange={handleIncrementalChange}
+        />
         {complexity && (
           <QueryComplexityWarning complexity={complexity} variant="standout" />
         )}

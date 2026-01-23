@@ -17,6 +17,7 @@ type PythonTransformTopBarProps = {
   isEditMode?: boolean;
   transformId?: TransformId;
   onDatabaseChange?: (databaseId: DatabaseId) => void;
+  canChangeDatabase?: boolean;
 };
 
 export function PythonTransformTopBar({
@@ -24,6 +25,7 @@ export function PythonTransformTopBar({
   isEditMode,
   transformId,
   onDatabaseChange,
+  canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
   const showEditDefinitionButton = !isEditMode && transformId;
 
@@ -46,7 +48,7 @@ export function PythonTransformTopBar({
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
-      {isEditMode ? (
+      {isEditMode && canChangeDatabase ? (
         <Flex h="3rem" ml="sm" align="center" data-testid="selected-database">
           <DatabaseDataSelector
             className={S.databaseSelector}

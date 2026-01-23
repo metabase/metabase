@@ -267,7 +267,6 @@ export const SaveTransformButton = ({
           defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
           schemasFilter={schemasFilter}
-          showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
           validateOnMount
           handleSubmit={handleCreateNewTransform}

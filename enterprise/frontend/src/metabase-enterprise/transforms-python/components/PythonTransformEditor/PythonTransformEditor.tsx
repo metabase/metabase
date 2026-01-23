@@ -116,13 +116,13 @@ export function PythonTransformEditor({
         isEditMode={isEditMode}
         transformId={transformId}
         onDatabaseChange={handleDatabaseChange}
+        canChangeDatabase={uiOptions?.canChangeDatabase}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
         {isEditMode && (
           <PythonDataPicker
             disabled={uiOptions?.readOnly}
             database={source["source-database"]}
-            canChangeDatabase={uiOptions?.canChangeDatabase}
             tables={source["source-tables"]}
             onChange={handleDataChange}
           />
