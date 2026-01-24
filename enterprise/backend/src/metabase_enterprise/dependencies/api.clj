@@ -475,39 +475,6 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- entity-archived?
-  "Returns true if the entity is archived."
-  [entity-type entity]
-  (case entity-type
-    (:card :dashboard :document :snippet :segment :measure) (:archived entity)
-    :table                                                  (or (not (:active entity))
-                                                                (some? (:visibility_type entity)))
-    ;; transform and sandbox have no archived field
-    false))
-
-(defn- entity-visible?
-  "Returns falsy if the entity specified by `entity-type` and `entity-id` doesn't exist, is archived,
-  or user can't read it, true otherwise.
-  Loads the entity from DB."
-  [entity-type entity-id]
-  (when-let [model (deps.dependency-types/dependency-type->model entity-type)]
-    (when-let [entity (t2/select-one model :id entity-id)]
-      (and (not (entity-archived? entity-type entity))
-           (mi/can-read? entity)))))
-
-(defn- source-error-visible?
-  "Determines if `_error` should be returned based on the visibility of its source entity.
-  Errors with no source entity are always included."
-  [entity-visible-fn {:keys [source_entity_type source_entity_id] :as _error}]
-  (or (nil? source_entity_type)
-      (nil? source_entity_id)
-      (entity-visible-fn source_entity_type source_entity_id)))
-
-(defn- analyzed-error-visible?
-  "Applies `entity-visible-fn` to determine if `_error` should be included based on analyzed entity visibility."
-  [entity-visible-fn {:keys [analyzed_entity_type analyzed_entity_id] :as _error}]
-  (entity-visible-fn analyzed_entity_type analyzed_entity_id))
-
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
    Filters out errors where the analyzed entity is not visible to the current user.
@@ -517,12 +484,13 @@
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              :source_entity_type source-type
-                                              :source_entity_id [:in ids])]
+                                              {:where [:and
+                                                       [:= :source_entity_type (name source-type)]
+                                                       [:in :source_entity_id ids]
+                                                       (visible-entities-filter-clause
+                                                        :analyzed_entity_type :analyzed_entity_id)]})]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
-                            identity conj #{}
-                            (filter (partial analyzed-error-visible? entity-visible?)
-                                    finding-errors)))))]
+                            identity conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-source-type-and-id))
          not-empty)))
@@ -539,12 +507,15 @@
           (errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              :analyzed_entity_type type
-                                              :analyzed_entity_id [:in ids])]
+                                              {:where [:and
+                                                       [:= :analyzed_entity_type (name type)]
+                                                       [:in :analyzed_entity_id ids]
+                                                       [:or
+                                                        [:= :source_entity_type nil]
+                                                        (visible-entities-filter-clause
+                                                         :source_entity_type :source_entity_id)]]})]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
-                            normalize-finding-error conj #{}
-                            (filter (partial source-error-visible? entity-visible?)
-                                    finding-errors)))))]
+                            normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
@@ -879,7 +850,9 @@
                                       :from [:analysis_finding_error]
                                       :where [:and
                                               [:= :source_entity_id :entity.id]
-                                              [:= :source_entity_type (name entity-type)]]}
+                                              [:= :source_entity_type (name entity-type)]
+                                              (visible-entities-filter-clause
+                                               :analyzed_entity_type :analyzed_entity_id)]}
                         :sort-joins #{}}
     :dependents-with-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
                                                                           [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
@@ -887,7 +860,9 @@
                                            :from [:analysis_finding_error]
                                            :where [:and
                                                    [:= :source_entity_id :entity.id]
-                                                   [:= :source_entity_type (name entity-type)]]}
+                                                   [:= :source_entity_type (name entity-type)]
+                                                   (visible-entities-filter-clause
+                                                    :analyzed_entity_type :analyzed_entity_id)]}
                              :sort-joins #{}}
     {:sort-column name-column
      :sort-joins #{}}))

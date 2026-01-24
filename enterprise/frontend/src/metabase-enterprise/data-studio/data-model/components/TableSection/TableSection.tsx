@@ -262,7 +262,7 @@ const TableSectionBase = ({
 
       {table.is_published && <TableCollection table={table} />}
 
-      <Box px="lg">
+      <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
             <Tabs.Tab
@@ -311,7 +311,11 @@ const TableSectionBase = ({
               </Group>
 
               {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
+                />
               )}
 
               {hasFields && (
