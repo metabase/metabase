@@ -17,6 +17,7 @@ import {
   useGetDocumentQuery,
   useGetSegmentQuery,
   useGetTableQuery,
+  useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
@@ -343,7 +344,7 @@ export const useEntityData = (
     },
   );
 
-  const transformQuery = PLUGIN_TRANSFORMS.useGetTransformQuery(entityId!, {
+  const transformQuery = useGetTransformQuery(entityId!, {
     skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 

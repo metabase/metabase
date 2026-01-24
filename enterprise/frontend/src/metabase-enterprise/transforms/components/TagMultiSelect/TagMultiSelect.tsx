@@ -2,6 +2,10 @@ import cx from "classnames";
 import { type MouseEvent, useState } from "react";
 import { jt, t } from "ttag";
 
+import {
+  useCreateTransformTagMutation,
+  useListTransformTagsQuery,
+} from "metabase/api/transform-tag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   ActionIcon,
@@ -13,10 +17,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import {
-  useCreateTransformTagMutation,
-  useListTransformTagsQuery,
-} from "metabase-enterprise/api/transform-tag";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
 import { DeleteTagModal } from "./DeleteTagModal";

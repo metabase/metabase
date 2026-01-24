@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useLazyCheckQueryComplexityQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
 import { CHECKPOINT_TEMPLATE_TAG } from "metabase-enterprise/transforms/constants";
 import { getLibQuery, isMbqlQuery } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";

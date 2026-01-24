@@ -14,6 +14,7 @@ import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
+  useListTransformsQuery,
 } from "metabase/api";
 import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -37,7 +38,6 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { useListTransformsQuery } from "metabase-enterprise/api";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";

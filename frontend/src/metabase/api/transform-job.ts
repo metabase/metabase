@@ -7,7 +7,7 @@ import type {
   UpdateTransformJobRequest,
 } from "metabase-types/api";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -18,7 +18,7 @@ import {
   tag,
 } from "./tags";
 
-export const transformJobApi = EnterpriseApi.injectEndpoints({
+export const transformJobApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTransformJobs: builder.query<TransformJob[], ListTransformJobsRequest>({
       query: (params) => ({

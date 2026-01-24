@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListTransformJobsQuery } from "metabase/api";
 import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -23,7 +24,6 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { TransformJob } from "metabase-types/api";
 

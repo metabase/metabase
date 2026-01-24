@@ -3,16 +3,16 @@ import { Link } from "react-router";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import {
+  useCancelCurrentTransformRunMutation,
+  useRunTransformMutation,
+  useUpdateTransformMutation,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
-import {
-  useCancelCurrentTransformRunMutation,
-  useRunTransformMutation,
-  useUpdateTransformMutation,
-} from "metabase-enterprise/api";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { trackTransformTriggerManualRun } from "../../../analytics";

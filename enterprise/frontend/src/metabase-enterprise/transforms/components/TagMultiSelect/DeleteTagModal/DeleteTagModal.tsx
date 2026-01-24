@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useDeleteTransformTagMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -7,7 +8,6 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
-import { useDeleteTransformTagMutation } from "metabase-enterprise/api";
 import type { TransformTag } from "metabase-types/api";
 
 type DeleteTagModalProps = {

@@ -5,6 +5,7 @@ import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
+  useUpdateTransformMutation,
 } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -24,7 +25,6 @@ import {
 import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import type { Transform, UserId } from "metabase-types/api";
 
-import { useUpdateTransformMutation } from "../../../../api/transform";
 import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 

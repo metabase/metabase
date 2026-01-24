@@ -14,7 +14,7 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -25,7 +25,7 @@ import {
   tag,
 } from "./tags";
 
-export const transformApi = EnterpriseApi.injectEndpoints({
+export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTransforms: builder.query<Transform[], ListTransformsRequest>({
       query: (params) => ({
@@ -137,9 +137,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
             // completed (in either succeeded, failed, timeout or canceled state).
             // We just don't know which state it is, so we leave it in canceling
             // state and trigger a re-fetch of the transform to get the latest state.
-            dispatch(
-              EnterpriseApi.util.invalidateTags([idTag("transform", id)]),
-            );
+            dispatch(Api.util.invalidateTags([idTag("transform", id)]));
           }
         }
       },

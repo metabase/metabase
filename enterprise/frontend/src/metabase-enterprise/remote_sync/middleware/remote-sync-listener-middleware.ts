@@ -11,14 +11,14 @@ import { segmentApi } from "metabase/api/segment";
 import { tableApi as coreTableApi } from "metabase/api/table";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
+import { transformApi } from "metabase/api/transform";
+import { transformTagApi } from "metabase/api/transform-tag";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { getSetting } from "metabase/selectors/settings";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import { tag } from "metabase-enterprise/api/tags";
-import { transformApi } from "metabase-enterprise/api/transform";
-import { transformTagApi } from "metabase-enterprise/api/transform-tag";
 import type {
   Card,
   CardId,

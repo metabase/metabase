@@ -23,11 +23,7 @@ import {
   type SnippetDependencyNode,
   type SupportAccessGrant,
   type TableDependencyNode,
-  type Transform,
   type TransformDependencyNode,
-  type TransformJob,
-  type TransformRun,
-  type TransformTag,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -38,10 +34,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "sandbox",
-  "transform-tag",
-  "transform-job",
-  "transform-job-via-tag",
-  "transform-run",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -81,64 +73,6 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
-}
-
-export function provideTransformTags(
-  transform: Transform,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform", transform.id),
-    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
-  ];
-}
-
-export function provideTransformListTags(
-  transforms: Transform[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
-}
-
-export function provideTransformRunTags(
-  run: TransformRun,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform-run", run.id),
-    ...(run.transform ? provideTransformTags(run.transform) : []),
-  ];
-}
-
-export function provideTransformRunListTags(
-  runs: TransformRun[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
-}
-
-export function provideTransformTagTags(
-  tag: TransformTag,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-tag", tag.id)];
-}
-
-export function provideTransformTagListTags(
-  tags: TransformTag[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
-}
-
-export function provideTransformJobTags(
-  job: TransformJob,
-): TagDescription<EnterpriseTagType>[] {
-  return [
-    idTag("transform-job", job.id),
-    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
-      []),
-  ];
-}
-
-export function provideTransformJobListTags(
-  jobs: TransformJob[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
 }
 
 export function providePythonLibraryTags(

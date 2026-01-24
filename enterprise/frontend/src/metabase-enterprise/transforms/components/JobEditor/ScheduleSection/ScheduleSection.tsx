@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
+import { useRunTransformJobMutation } from "metabase/api";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
-import { useRunTransformJobMutation } from "metabase-enterprise/api";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,

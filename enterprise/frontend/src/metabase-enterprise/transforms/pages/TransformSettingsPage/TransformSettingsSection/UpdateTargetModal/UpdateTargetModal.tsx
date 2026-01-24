@@ -5,8 +5,10 @@ import * as Yup from "yup";
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
+  useDeleteTransformTargetMutation,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
+  useUpdateTransformMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -26,10 +28,6 @@ import {
   Radio,
   Stack,
 } from "metabase/ui";
-import {
-  useDeleteTransformTargetMutation,
-  useUpdateTransformMutation,
-} from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";

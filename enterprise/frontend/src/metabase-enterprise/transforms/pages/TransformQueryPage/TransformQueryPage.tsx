@@ -4,7 +4,11 @@ import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import {
+  skipToken,
+  useGetTransformQuery,
+  useUpdateTransformMutation,
+} from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,10 +22,6 @@ import {
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { Box, Center, Icon } from "metabase/ui";
-import {
-  useGetTransformQuery,
-  useUpdateTransformMutation,
-} from "metabase-enterprise/api";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Database, Transform } from "metabase-types/api";
 

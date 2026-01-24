@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
+import { useExtractColumnsFromQueryMutation } from "metabase/api";
 import { FormSelect, FormTextInput } from "metabase/forms";
 import {
   type DataAttributes,
   type InputDescriptionProps,
   Loader,
 } from "metabase/ui";
-import { useExtractColumnsFromQueryMutation } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
 
 type NativeQueryColumnSelectProps = {

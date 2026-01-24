@@ -5,7 +5,7 @@ import type {
   UpdateTransformTagRequest,
 } from "metabase-types/api";
 
-import { EnterpriseApi } from "./api";
+import { Api } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -13,7 +13,7 @@ import {
   provideTransformTagListTags,
 } from "./tags";
 
-export const transformTagApi = EnterpriseApi.injectEndpoints({
+export const transformTagApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTransformTags: builder.query<TransformTag[], void>({
       query: (params) => ({

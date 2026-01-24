@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { useListTransformsQuery } from "metabase/api";
 import {
   AutoScrollBox,
   ItemList,
@@ -10,7 +11,6 @@ import type {
   TransformPickerProps,
 } from "metabase/plugins";
 import { Flex } from "metabase/ui";
-import { useListTransformsQuery } from "metabase-enterprise/api";
 import type { TransformId } from "metabase-types/api";
 
 export function TransformPicker({ value, onItemSelect }: TransformPickerProps) {

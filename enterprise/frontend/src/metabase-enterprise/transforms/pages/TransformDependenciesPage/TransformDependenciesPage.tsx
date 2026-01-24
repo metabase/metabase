@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useGetTransformQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
-import { useGetTransformQuery } from "metabase-enterprise/api";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 
 import { TransformHeader } from "../../components/TransformHeader";

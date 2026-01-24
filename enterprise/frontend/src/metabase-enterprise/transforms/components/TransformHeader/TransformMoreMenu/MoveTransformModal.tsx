@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
+import { useUpdateTransformMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerOptions,
 } from "metabase/common/components/Pickers/CollectionPicker";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 const TRANSFORM_COLLECTION_PICKER_OPTIONS: CollectionPickerOptions = {
