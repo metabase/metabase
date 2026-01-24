@@ -8,16 +8,16 @@ export const BACKGROUND_DERIVATIONS: Record<
   MetabaseColorKey,
   { light: Derivation; dark: Derivation }
 > = {
-  "background-secondary": { light: { offset: 0 }, dark: { offset: 1 } },
-  "background-tertiary": { light: { offset: 1 }, dark: { offset: -2 } },
+  "background-secondary": { light: { offset: -1 }, dark: { offset: 1 } },
+  "background-tertiary": { light: { offset: -2 }, dark: { offset: 2 } },
   "background-primary-inverse": { light: { offset: 8 }, dark: { offset: -8 } },
   "background-secondary-inverse": {
     light: { offset: 7 },
     dark: { offset: -7 },
   },
-  "background-tertiary-inverse": { light: { offset: 4 }, dark: { offset: -3 } },
-  border: { light: { offset: 2 }, dark: { alphaInverse: 20 } },
-  "tooltip-background": { light: { offset: 8 }, dark: { offset: -3 } },
+  "background-tertiary-inverse": { light: { offset: 4 }, dark: { offset: -4 } },
+  border: { light: { offset: 2 }, dark: { offset: -2 } },
+  "tooltip-background": { light: { offset: 3 }, dark: { offset: -3 } },
 } as Record<MetabaseColorKey, { light: Derivation; dark: Derivation }>;
 
 /**
@@ -39,13 +39,13 @@ export const TEXT_DERIVATIONS: Record<
  * Brand color derivations
  */
 export const BRAND_DERIVATIONS: Record<MetabaseColorKey, DerivationRule> = {
-  // brand-light/lighter: fixed steps in dark theme, relative in light theme
+  // brand-light/lighter: opposite direction based on theme
   "brand-light": {
-    darkTheme: { default: 80 },
+    darkTheme: { default: { offset: 2 } },
     lightTheme: { default: { offset: -2 } },
   },
   "brand-lighter": {
-    darkTheme: { default: 90 },
+    darkTheme: { default: { offset: 3 } },
     lightTheme: { default: { offset: -3 } },
   },
 
@@ -62,12 +62,10 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, DerivationRule> = {
   // text-brand: needs good contrast on both backgrounds and brand surfaces
   "text-brand": {
     darkTheme: {
-      darkBrand: { offset: -4 }, // much lighter for visibility
-      lightBrand: { offset: 0 },
+      default: { offset: -1 },
     },
     lightTheme: {
-      darkBrand: { offset: -3 }, // lighter to work on brand backgrounds
-      lightBrand: { offset: 4 }, // go darker for contrast on white
+      default: { offset: 1 },
     },
   },
 
