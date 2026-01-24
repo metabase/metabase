@@ -134,7 +134,7 @@ function useCheckDependencies<TChange>({
 }
 
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
-  isEnabled: false,
+  isEnabled: true,
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
