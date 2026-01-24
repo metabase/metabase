@@ -796,7 +796,7 @@
                                                          (lib/breakoutable-columns $query)
                                                          {:display-name "Nested: Products + Q1: Orders + People"}
                                                          ;; not sure this is the right column?
-                                                         {:display-name "Name"})))
+                                                         {:display-name "People - User → Name"})))
                       (lib/limit 3))]
         (is (= [[nil 0 3]
                 [nil 1 3]]
