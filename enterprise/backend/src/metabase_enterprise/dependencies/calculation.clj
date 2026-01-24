@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -43,19 +44,31 @@
             query-deps
             param-card-ids)))
 
+(mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
+  "Given a Python Transform (in Toucan form), return its upstream dependencies."
+  [transform]
+  {:table (->> (get-in transform [:source :source-tables])
+               vals
+               (into #{}
+                     (keep #(if (map? %)
+                              (:table_id %)
+                              %))))})
+
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query], source-type :type} :source :as transform} :-
+  [{{:keys [query]} :source :as transform} :-
    [:map
     [:source [:multi {:dispatch (comp keyword :type)}
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
                [:map]]]]]]
-  (if (= (keyword source-type) :query)
-    (upstream-deps:query query)
-    (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
-        {})))
+  (let [source-type (transforms/transform-type transform)]
+    (case source-type
+      :query (upstream-deps:query query)
+      :python (upstream-deps:python-transform transform)
+      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
+          {}))))
 
 (mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
   "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
