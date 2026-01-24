@@ -2501,7 +2501,7 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced - pagination works correctly with archived items"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency]
-        (mt/with-temp [:model/Card {card1-id :id} {:name "A Card - unreftest" :archived true}
+        (mt/with-temp [:model/Card _              {:name "A Card - unreftest" :archived true}
                        :model/Card {card2-id :id} {:name "B Card - unreftest"}
                        :model/Card {card3-id :id} {:name "C Card - unreftest"}]
           (while (#'dependencies.backfill/backfill-dependencies!))
@@ -2524,7 +2524,7 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency]
         (mt/with-temp [:model/Card {card1-id :id, :as card1} {:name "A Card - unreftest"}
-                       :model/Card {card2-id :id, :as card2} {:name "B Card - unreftest"}
+                       :model/Card card2                     {:name "B Card - unreftest"}
                        :model/Card _                         {:name "C Card - unreftest"
                                                               :dataset_query (wrap-card-query card1)
                                                               :archived true}
