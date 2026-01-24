@@ -772,16 +772,31 @@
   (case query-type
     :unreferenced {:join [:dependency [:and
                                        [:= :dependency.to_entity_id :entity.id]
-                                       [:= :dependency.to_entity_type (name entity-type)]]]
-                   :filter [:= :dependency.id nil]}
+                                       [:= :dependency.to_entity_type (name entity-type)
+                                        (visible-entities-filter-clause
+                                         :dependency.from_entity_type
+                                         :dependency.from_entity_id)]]]
+                   :filter [:and [:= :dependency.id nil]
+                            (visible-entities-filter-clause
+                             :dependency.to_entity_type
+                             :dependency.to_entity_id)]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
                                        [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-             :filter [:= :analysis_finding.result false]}
+             :filter [:and [:= :analysis_finding.result false]
+                      (visible-entities-filter-clause
+                       :analysis_finding.analyzed_entity_type
+                       :analysis_finding.analyzed_entity_id)]}
     :breaking {:join [:analysis_finding_error [:and
                                                [:= :analysis_finding_error.source_entity_id :entity.id]
-                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]]]
-               :filter [:!= :analysis_finding_error.id nil]}))
+                                               [:= :analysis_finding_error.source_entity_type (name entity-type)
+                                                (visible-entities-filter-clause
+                                                 :analysis_finding_error.analyzed_entity_type
+                                                 :analysis_finding_error.analyzed_entity_id)]]]
+               :filter [:and [:!= :analysis_finding_error.id nil]
+                        (visible-entities-filter-clause
+                         :analysis_finding_error.source_entity_type
+                         :analysis_finding_error.source_entity_id)]}))
 
 (defn- location-joins-for-entity
   "Returns the set of join keywords needed for location-based operations."
