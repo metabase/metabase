@@ -776,18 +776,18 @@
                                        (visible-entities-filter-clause
                                         :dependency.from_entity_type
                                         :dependency.from_entity_id)]]
-                   :filter [:= :dependency.id nil]}
+                   :join-filter [:= :dependency.id nil]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
                                        [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-             :filter [:= :analysis_finding.result false]}
+             :join-filter [:= :analysis_finding.result false]}
     :breaking {:join [:analysis_finding_error [:and
                                                [:= :analysis_finding_error.source_entity_id :entity.id]
                                                [:= :analysis_finding_error.source_entity_type (name entity-type)]
                                                (visible-entities-filter-clause
                                                 :analysis_finding_error.analyzed_entity_type
                                                 :analysis_finding_error.analyzed_entity_id)]]
-               :filter [:!= :analysis_finding_error.id nil]}))
+               :join-filter [:!= :analysis_finding_error.id nil]}))
 
 (defn- location-joins-for-entity
   "Returns the set of join keywords needed for location-based operations."
@@ -886,9 +886,9 @@
   [{:keys [query-type entity-type sort-column] :as params}]
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
         {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type)
-        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id)
         {:keys [filters filter-joins]} (build-optional-filters params config)
         {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
+        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id)
         all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
