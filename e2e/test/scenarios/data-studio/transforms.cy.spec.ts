@@ -2750,67 +2750,17 @@ LIMIT
       H.configureGit("read-only");
     });
 
-    it("should not show the 'Create a transform' menu button", () => {
+    it("should make the transform list page read-only", () => {
       cy.log("visit transforms page");
       visitTransformListPage();
+
+      cy.log("'Create a transform' menu button is not displayed");
       cy.button("Create a transform").should("not.exist");
-    });
 
-    it("should not allow editing a transform", () => {
-      cy.log("visit transform");
-      cy.visit("/data-studio/transforms/1");
-      H.DataStudio.Transforms.editDefinition().should("not.exist");
-
-      cy.log("visiting edit mode url directly redirects to view-only mode");
-      cy.visit("/data-studio/transforms/1/edit");
-      cy.url().should("not.include", "/edit");
-    });
-
-    it("should not show the move or delete menu items", () => {
-      cy.log("visit transform");
-      cy.visit("/data-studio/transforms/1");
-
-      H.DataStudio.Transforms.header()
-        .findByRole("img", { name: "ellipsis icon" })
-        .click();
-
-      cy.findByRole("menu").within(() => {
-        cy.findByRole("menuitem", { name: /History/ }).should("be.visible");
-        cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
-        cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
-      });
-    });
-
-    it("should not allow to change run tags on the Run tab", () => {
-      cy.log("visit transform");
-      cy.visit("/data-studio/transforms/1");
-
-      cy.log("visit the Run tab");
-      H.DataStudio.Transforms.runTab().click();
-
-      cy.findByLabelText("Tags").should("be.visible");
-      cy.findByLabelText("Tags").should("be.disabled");
-    });
-
-    it("should show the Settings tab in read-only mode", () => {
-      cy.log("visit transform");
-      cy.visit("/data-studio/transforms/1");
-
-      cy.log("visit the Settings tab");
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.findByRole("button", { name: /Change target/ }).should("not.exist");
-      cy.findByRole("switch", {
-        name: /Only process new and changed data/,
-      }).should("be.disabled");
-    });
-
-    it("should show the python library in read-only mode", () => {
-      cy.log("visit transforms page");
-      visitTransformListPage();
       cy.log("clicking Python library navigates to the library editor");
       getTransformsList().findByText("Python library").click();
 
+      cy.log("python library editor is read-only");
       cy.url().should("include", "/data-studio/transforms/library/common.py");
       cy.findByRole("alert")
         .contains(/The Python library is not editable/)
@@ -2823,6 +2773,47 @@ LIMIT
           "false",
         );
         cy.findByRole("textbox").should("have.attr", "aria-readonly", "true");
+      });
+    });
+
+    it("should not allow editing a transform", () => {
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
+
+      cy.log("'edit definition' button is not displayed");
+      H.DataStudio.Transforms.editDefinition().should("not.exist");
+
+      cy.log("visit the Run tab");
+      H.DataStudio.Transforms.runTab().click();
+
+      cy.log("schedule tags are not editable");
+      cy.findByLabelText("Tags").should("be.visible");
+      cy.findByLabelText("Tags").should("be.disabled");
+
+      cy.log("visit the Settings tab");
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("'Change target' button is not displayed");
+      cy.findByRole("button", { name: /Change target/ }).should("not.exist");
+
+      cy.log("'Only process new and changed data' switch is not displayed");
+      cy.findByRole("switch", {
+        name: /Only process new and changed data/,
+      }).should("be.disabled");
+
+      cy.log("visiting edit mode url directly redirects to view-only mode");
+      cy.visit("/data-studio/transforms/1/edit");
+      cy.url().should("not.include", "/edit");
+
+      H.DataStudio.Transforms.header()
+        .findByRole("img", { name: "ellipsis icon" })
+        .click();
+
+      cy.log("ellipsis menu does not have move or delete options");
+      cy.findByRole("menu").within(() => {
+        cy.findByRole("menuitem", { name: /History/ }).should("be.visible");
+        cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
+        cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
       });
     });
   });
