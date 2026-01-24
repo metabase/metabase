@@ -473,9 +473,7 @@
       (is (=? {:name                      "CATEGORY"
                :display-name              "Products → Category"
                :lib/model-display-name    (symbol "nil #_\"key is not present.\"")
-               :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                              "Category"} ;I'll accept either as correct.
-                                            %)
+               :lib/original-display-name "Products → Category"
                :effective-type            :type/Text}
               (m/find-first #(= (:name %) "CATEGORY")
                             (lib/returned-columns query))))))
@@ -485,8 +483,7 @@
         (is (=? {:name                   "CATEGORY"
                  :display-name           "Products → Category"
                  :lib/model-display-name "Products → Category"
-                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                "Category"} %)
+                 :lib/original-display-name "Products → Category"
                  :effective-type         :type/Text}
                 (m/find-first #(= (:name %) "CATEGORY")
                               (lib/returned-columns query))))))))
