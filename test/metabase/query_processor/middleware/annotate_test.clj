@@ -156,10 +156,10 @@
                          (field :price       $price)
                          {:name      "ID_2"
                           :id        %categories.id
-                          :field_ref (if (zero? level) &c.categories.id [:field %categories.id nil])}
+                          :field_ref &c.categories.id}
                          {:name      "NAME_2"
                           :id        %categories.name
-                          :field_ref (if (zero? level) &c.categories.name [:field %categories.name nil])}])
+                          :field_ref &c.categories.name}])
                       (map #(select-keys % [:name :id :field_ref])
                            (:cols (add-column-info nested-query {:cols []}))))))))))))
 
@@ -220,14 +220,12 @@
               (testing (format "%d level(s) of nesting" level)
                 (let [nested-query (nth (iterate lib/append-stage base-query) level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
-                    ;; Level 0 still has the join present, so expect join-alias in field_ref and prefixed display_name.
-                    ;; Levels 1+ have the join alias stripped when crossing stage boundaries. See #65532.
                     (is (= (lib.tu.macros/$ids products
                              {:name          "EAN"
-                              :display_name  (if (zero? level) "Products → Ean" "Ean")
+                              :display_name  "Products → Ean"
                               :base_type     :type/Text
                               :id            %ean
-                              :field_ref     (if (zero? level) &Products.ean [:field %ean nil])})
+                              :field_ref     &Products.ean})
                            (ean-metadata (add-column-info nested-query {:cols []}))))))))))))))
 
 (deftest ^:parallel col-info-for-fields-from-card-test
@@ -256,7 +254,7 @@
                 fields     #{%orders.discount %products.title %people.source}]
             (is (= [{:display_name "Discount"
                      :field_ref    [:field %orders.discount nil]}
-                    {:display_name "Title"
+                    {:display_name "Products → Title"
                      :field_ref    [:field %products.title nil]}
                     {:display_name "Q → Source"
                      :field_ref    [:field %people.source {:join-alias "Q"}]}]

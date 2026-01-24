@@ -1826,16 +1826,6 @@
                 (mapv :display-name (lib/returned-columns query))))))))
 
 ;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
-(defn- find-unique
-  "Find exactly one item matching pred in coll. Throws if zero or multiple matches."
-  [pred coll]
-  (let [matches (filter pred coll)]
-    (case (count matches)
-      0 (throw (ex-info "No match found" {:found (map :display-name coll)}))
-      1 (first matches)
-      (throw (ex-info "Multiple matches found (expected exactly one)"
-                      {:matches (map :display-name matches)})))))
-
 (deftest ^:parallel model-self-join-test-display-name-test
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [mp       meta/metadata-provider
@@ -1857,50 +1847,46 @@
                     {:cards [{:id            2
                               :dataset-query (binding [lib.metadata.calculation/*display-name-style* :long]
                                                (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                                                 ;; Use Products.price (unique)
                                                  (lib/aggregate $q (lib/sum (->> $q
                                                                                  lib/available-aggregation-operators
                                                                                  (m/find-first (comp #{:sum} :short))
                                                                                  :columns
-                                                                                 (find-unique (comp #{"Price"} :display-name)))))
-                                                 ;; Use Products.created_at (disambiguate by field id)
-                                                 (lib/breakout $q (-> (find-unique #(and (= "Created At" (:display-name %))
-                                                                                         (= (meta/id :products :created-at) (:id %)))
-                                                                                   (lib/breakoutable-columns $q))
+                                                                                 (m/find-first (comp #{"Price"} :display-name)))))
+                                                 (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                                                    (lib/breakoutable-columns $q))
                                                                       (lib/with-temporal-bucket :month)))))
                               :database-id   (meta/id)
                               :name          "Products+Reviews Summary"
                               :type          :model}]})
           question (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                     ;; Use Products.created_at (disambiguate by field id)
-                     (lib/breakout $q (-> (find-unique #(and (= "Created At" (:display-name %))
-                                                             (= (meta/id :products :created-at) (:id %)))
-                                                       (lib/breakoutable-columns $q))
+                     (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                        (lib/breakoutable-columns $q))
                                           (lib/with-temporal-bucket :month)))
-                     ;; Use Reviews.rating (disambiguate by field id)
                      (lib/aggregate $q (lib/avg (->> $q
                                                      lib/available-aggregation-operators
                                                      (m/find-first (comp #{:avg} :short))
                                                      :columns
-                                                     (find-unique #(and (= "Rating" (:display-name %))
-                                                                        (= (meta/id :reviews :rating) (:id %)))))))
+                                                     (m/find-first (comp #{"Rating"} :display-name)))))
                      (lib/append-stage $q)
                      (letfn [(find-col [query display-name]
-                               (find-unique #(= (:display-name %) display-name)
-                                            (lib/breakoutable-columns query)))]
+                               (or (m/find-first #(= (:display-name %) display-name)
+                                                 (lib/breakoutable-columns query))
+                                   (throw (ex-info "Failed to find column with display name"
+                                                   {:display-name display-name
+                                                    :found        (map :display-name (lib/breakoutable-columns query))}))))]
                        (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
                                                          [(lib/=
-                                                           (lib/with-temporal-bucket (find-col $q "Created At: Month")
+                                                           (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
                                                              :month)
                                                            (lib/with-temporal-bucket (find-col
                                                                                       (lib/query mp (lib.metadata/card mp 2))
-                                                                                      "Created At: Month")
+                                                                                      "Reviews → Created At: Month")
                                                              :month))])
                                         (lib/with-join-fields :all)))))]
-      (is (= ["Created At: Month"
+      (is (= ["Reviews → Created At: Month"
               "Average of Rating"
-              "Products+Reviews Summary - Created At: Month → Created At: Month"
-              "Products+Reviews Summary - Created At: Month → Sum of Price"]
+              "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"
+              "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"]
              (mapv :display-name (lib/returned-columns question)))))))
 
 (deftest ^:parallel short-display-names-include-bucketing-units-test
@@ -1920,7 +1906,7 @@
         "We should be able to build a query specifically using these display names")))
 
 (deftest ^:parallel short-display-names-include-joins-from-previous-stage
-  (testing "Join prefixes are stripped when columns cross card boundaries (#65532)"
+  (testing "SHORT field display names ACTUALLY should include join alias if the join happened in a source saved question"
     (let [card-query (lib.tu.macros/mbql-query orders
                        {:joins  [{:source-table $$people
                                   :alias        "People"
@@ -1938,7 +1924,7 @@
       ;; lib.tu.notebook-helpers/add-breakout will throw if it can't find a matching column name
       (is (-> (lib/query mp (lib.metadata/card mp 1))
               (lib/aggregate (lib/count))
-              (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "Birth Date"} {}))))))
+              (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
 
 ;;; adapted from [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test
