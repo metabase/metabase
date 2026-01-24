@@ -776,14 +776,16 @@
                                         (visible-entities-filter-clause
                                          :dependency.from_entity_type
                                          :dependency.from_entity_id)]]]
-                   :filter [:and [:= :dependency.id nil]
+                   :filter [:and
+                            [:= :dependency.id nil]
                             (visible-entities-filter-clause
                              :dependency.to_entity_type
                              :dependency.to_entity_id)]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
                                        [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-             :filter [:and [:= :analysis_finding.result false]
+             :filter [:and
+                      [:= :analysis_finding.result false]
                       (visible-entities-filter-clause
                        :analysis_finding.analyzed_entity_type
                        :analysis_finding.analyzed_entity_id)]}
@@ -793,7 +795,8 @@
                                                 (visible-entities-filter-clause
                                                  :analysis_finding_error.analyzed_entity_type
                                                  :analysis_finding_error.analyzed_entity_id)]]]
-               :filter [:and [:!= :analysis_finding_error.id nil]
+               :filter [:and
+                        [:!= :analysis_finding_error.id nil]
                         (visible-entities-filter-clause
                          :analysis_finding_error.source_entity_type
                          :analysis_finding_error.source_entity_id)]}))
