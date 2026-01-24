@@ -36,7 +36,7 @@
   "GET from slack"
   [client endpoint params]
   (-> (http/get (str "https://slack.com/api" endpoint)
-                {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                {:headers {"Authorization" (str "Bearer " (:token client))}
                  :query-params params})
       :body
       (json/decode true)))
@@ -45,7 +45,7 @@
   "POST to slack"
   [client endpoint payload]
   (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:bot-token client))}
+                 {:headers {"Authorization" (str "Bearer " (:token client))}
                   :content-type "application/json; charset=utf-8"
                   :body (json/encode payload)})
       :body
@@ -55,7 +55,7 @@
   "POST form to slack"
   [client endpoint payload]
   (-> (http/post (str "https://slack.com/api" endpoint)
-                 {:headers {"Authorization" (str "Bearer " (:bot-token client))
+                 {:headers {"Authorization" (str "Bearer " (:token client))
                             "Content-Type" "application/x-www-form-urlencoded; charset=utf-8"}
                   :form-params payload})
       :body
@@ -319,7 +319,7 @@
 (defn- handle-event-callback
   "Respond to an event_callback request (docs: TODO)"
   [payload]
-  (let [client {:bot-token (metabot.settings/metabot-slack-bot-token)}
+  (let [client {:token (metabot.settings/metabot-slack-bot-token)}
         event (:event payload)]
     (when (user-message? event)
       ;; TODO: should we queue work up another way?
@@ -387,7 +387,7 @@
     (system/site-url! new-url)
     (sh "pbcopy" :in (json/encode manifest {:pretty true})))
 
-  (def client {:bot-token (metabot.settings/metabot-slack-bot-token)})
+  (def client {:token (metabot.settings/metabot-slack-bot-token)})
   (def message (post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (delete-message client message)
   (select-keys message [:channel :ts])
