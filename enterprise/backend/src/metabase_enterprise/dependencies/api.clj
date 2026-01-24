@@ -892,7 +892,7 @@
         {:keys [filters filter-joins]} (build-optional-filters params config)
         {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
         visible-filter (visible-entities-filter-clause (name entity-type) :entity.id
-                                                       {:include-archived-items include-archived-items})]
+                                                       {:include-archived-items include-archived-items})
         all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
