@@ -1150,9 +1150,9 @@
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
             (let [results (qp/process-query legacy-query)]
-              (is (= [["Category"                               "Products__CATEGORY"]
+              (is (= [["Products → Category"                     "Products__CATEGORY"]
                       ["Count"                                   "count"]
-                      ["Card 2 - Category → Category"            "Card 2 - Category__CATEGORY"]]
+                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                      (map (juxt :display_name :lib/desired-column-alias)
                           (mt/cols results))))
               (is (= [["Doohickey" 3976 "Doohickey"]
