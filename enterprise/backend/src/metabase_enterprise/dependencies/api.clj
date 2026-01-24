@@ -776,30 +776,18 @@
                                        (visible-entities-filter-clause
                                         :dependency.from_entity_type
                                         :dependency.from_entity_id)]]
-                   :filter [:and
-                            [:= :dependency.id nil]
-                            (visible-entities-filter-clause
-                             :dependency.to_entity_type
-                             :dependency.to_entity_id)]}
+                   :filter [:= :dependency.id nil]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
                                        [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-             :filter [:and
-                      [:= :analysis_finding.result false]
-                      (visible-entities-filter-clause
-                       :analysis_finding.analyzed_entity_type
-                       :analysis_finding.analyzed_entity_id)]}
+             :filter [:= :analysis_finding.result false]}
     :breaking {:join [:analysis_finding_error [:and
                                                [:= :analysis_finding_error.source_entity_id :entity.id]
                                                [:= :analysis_finding_error.source_entity_type (name entity-type)]
                                                (visible-entities-filter-clause
                                                 :analysis_finding_error.analyzed_entity_type
                                                 :analysis_finding_error.analyzed_entity_id)]]
-               :filter [:and
-                        [:!= :analysis_finding_error.id nil]
-                        (visible-entities-filter-clause
-                         :analysis_finding_error.source_entity_type
-                         :analysis_finding_error.source_entity_id)]}))
+               :filter [:!= :analysis_finding_error.id nil]}))
 
 (defn- location-joins-for-entity
   "Returns the set of join keywords needed for location-based operations."
@@ -897,7 +885,8 @@
 (defn- dependency-items-query
   [{:keys [query-type entity-type sort-column] :as params}]
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        {:keys [join filter]} (query-type-join-and-filter query-type entity-type)
+        {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type)
+        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id)
         {:keys [filters filter-joins]} (build-optional-filters params config)
         {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
         all-required-joins (set/union filter-joins sort-joins)
@@ -907,7 +896,7 @@
     {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
      :left-join (build-left-joins join all-required-joins)
-     :where (into [:and filter] (keep identity) filters)}))
+     :where (into [:and join-filter visible-filter] (keep identity) filters)}))
 
 (def ^:private breaking-items-sort-columns
   "Valid sort columns for /graph/broken and /graph/unreferenced endpoints."
