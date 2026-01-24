@@ -2496,3 +2496,24 @@
                 ;; BUG: Without fix, this fails because sort counts total errors (A=3, B=2)
                 ;; so B comes first. With fix, sort counts visible errors (A=1, B=2) so A comes first.
                 (is (= (:id model-card-a) (-> asc-response :data first :id)))))))))))
+
+(deftest ^:sequential unreferenced-pagination-with-archived-items-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - pagination works correctly with archived items"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Card {card1-id :id} {:name "A Card - unreftest" :archived true}
+                       :model/Card {card2-id :id} {:name "B Card - unreftest"}
+                       :model/Card {card3-id :id} {:name "C Card - unreftest"}]
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "card"
+                                               :query "unreftest"
+                                               :offset 0
+                                               :limit 2
+                                               :sort_column "name"
+                                               :sort_direction "asc")]
+            (is (=? {:data   [{:id card2-id} {:id card3-id}]
+                     :total  2
+                     :offset 0
+                     :limit  2}
+                    response))))))))
