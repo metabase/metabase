@@ -338,4 +338,63 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
     });
   });
+
+  describe("read-only remote sync", () => {
+    const SEGMENT_NAME = "Existing segment";
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      cy.log("set up remote sync");
+      H.setupGitSync();
+      H.configureGit("read-only");
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      cy.log("create a segment");
+      H.createSegment({
+        name: SEGMENT_NAME,
+        description: "Hey oh",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
+        },
+      }).then(({ body }) => {
+        cy.wrap(body.id).as("segmentId");
+      });
+    });
+
+    it("can't edit published segment from segment list", () => {
+      cy.visit("/admin/datamodel/segments");
+
+      cy.log("don't show edit or retire menu options");
+      cy.findByTestId("segment-list-app")
+        .contains(SEGMENT_NAME)
+        .parent()
+        .parent()
+        .parent()
+        .find(".Icon-ellipsis")
+        .click();
+      H.popover().contains("Edit Segment").should("not.exist");
+      H.popover().contains("Retire Segment").should("not.exist");
+    });
+
+    it("can't edit published segment from segment detail page", () => {
+      cy.visit("/admin/datamodel/segment/1");
+
+      cy.findByRole("alert", {
+        name: /This segment can't be edited/,
+      });
+      cy.findByLabelText("Name Your Segment").should("have.attr", "readonly");
+      cy.findByLabelText("Describe Your Segment").should(
+        "have.attr",
+        "readonly",
+      );
+      cy.findByRole("button", { name: /Save changes/ }).should("not.exist");
+    });
+  });
 });
