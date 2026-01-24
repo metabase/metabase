@@ -123,8 +123,6 @@ export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
   PLUGIN_DEPENDENCIES,
-  type TransformPickerItem,
-  type TransformPickerProps,
   type TransformsPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,

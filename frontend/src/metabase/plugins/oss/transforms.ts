@@ -16,18 +16,6 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-// Types
-export type TransformPickerItem = {
-  id: TransformId;
-  name: string;
-  model: "transform";
-};
-
-export type TransformPickerProps = {
-  value: TransformPickerItem | undefined;
-  onItemSelect: (transform: TransformPickerItem) => void;
-};
-
 export type TransformsPlugin = {
   isEnabled: boolean;
 };

@@ -6,12 +6,19 @@ import {
   ItemList,
   ListBox,
 } from "metabase/common/components/EntityPicker";
-import type {
-  TransformPickerItem,
-  TransformPickerProps,
-} from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { TransformId } from "metabase-types/api";
+
+export type TransformPickerItem = {
+  id: TransformId;
+  name: string;
+  model: "transform";
+};
+
+export type TransformPickerProps = {
+  value: TransformPickerItem | undefined;
+  onItemSelect: (transform: TransformPickerItem) => void;
+};
 
 export function TransformPicker({ value, onItemSelect }: TransformPickerProps) {
   const [selectedTransformId, setSelectedTransformId] = useState(value?.id);
