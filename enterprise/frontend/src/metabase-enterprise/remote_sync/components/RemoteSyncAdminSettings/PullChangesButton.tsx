@@ -1,9 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { dismissAllUndo } from "metabase/redux/undo";
 import { Button, Tooltip } from "metabase/ui";
 import { useImportChangesMutation } from "metabase-enterprise/api";
+import { getCurrentTask } from "metabase-enterprise/remote_sync/selectors";
 
 import { trackPullChanges } from "../../analytics";
 
@@ -17,6 +20,8 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
   const { branch, forcePull, dirty } = props;
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
+  const dispatch = useDispatch();
+  const currentTask = useSelector(getCurrentTask);
   const [sendToast] = useToast();
 
   const handlePullChanges = useCallback(async () => {
@@ -29,8 +34,8 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
       });
 
       sendToast({
-        message: t`Latest changes have been pulled successfully`,
-        icon: "check",
+        message: t`Pulling latest changes...`,
+        icon: "info",
       });
     } catch (error) {
       sendToast({
@@ -39,6 +44,15 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
       });
     }
   }, [importChanges, branch, forcePull, sendToast]);
+
+  useEffect(() => {
+    if (
+      currentTask?.sync_task_type === "import" &&
+      ["conflict", "successful"].includes(currentTask?.status)
+    ) {
+      dispatch(dismissAllUndo());
+    }
+  }, [currentTask, dispatch]);
 
   return (
     <Tooltip label={t`Save settings before pulling changes`} disabled={!dirty}>

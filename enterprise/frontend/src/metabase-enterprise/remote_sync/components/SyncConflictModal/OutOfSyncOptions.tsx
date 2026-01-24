@@ -2,14 +2,15 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { Box, Radio, Stack, Text } from "metabase/ui";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
-import type { OptionValue, SyncConflictVariant } from "./utils";
+import type { OptionValue } from "./utils";
 
 interface BranchSwitchOptionsProps {
   currentBranch: string;
   handleOptionChange: (value: OptionValue) => void;
   optionValue?: OptionValue;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 interface OutOfSyncOption {
@@ -44,6 +45,8 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
         return [newBranchOption, forcePushOption];
       case "switch-branch":
         return [pushOption, newBranchOption, discardOption];
+      case "setup":
+        return [newBranchOption, discardOption];
       default: // pull
         return [forcePushOption, newBranchOption, discardOption];
     }

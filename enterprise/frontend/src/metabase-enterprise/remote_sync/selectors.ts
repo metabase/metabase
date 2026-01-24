@@ -56,3 +56,8 @@ export const getHasPendingMutation = createSelector(
     );
   },
 );
+
+export const getSyncConflictVariant = createSelector(
+  getRemoteSyncState,
+  (state) => state.syncConflictVariant,
+);
