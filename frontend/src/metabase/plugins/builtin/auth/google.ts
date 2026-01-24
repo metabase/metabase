@@ -8,6 +8,7 @@ PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
   const googleProvider = {
     name: "google",
     // circular dependencies
+    /* eslint-disable @typescript-eslint/no-var-requires */
     Button: require("metabase/auth/components/GoogleButton").GoogleButton,
   };
 

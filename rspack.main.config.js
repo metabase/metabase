@@ -224,7 +224,7 @@ const config = {
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.js`,
+      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.ts`,
       cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,

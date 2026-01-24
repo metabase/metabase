@@ -3,6 +3,7 @@ import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/
 
 import LoginHistoryList from "../../components/LoginHistory";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function LoginHistoryApp() {
   const { data: loginHistory, error, isLoading } = useGetLoginHistoryQuery();
 
