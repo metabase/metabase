@@ -2504,6 +2504,7 @@
         (mt/with-temp [:model/Card {card1-id :id} {:name "A Card - unreftest" :archived true}
                        :model/Card {card2-id :id} {:name "B Card - unreftest"}
                        :model/Card {card3-id :id} {:name "C Card - unreftest"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
                                                :types "card"
@@ -2516,4 +2517,29 @@
                      :total  2
                      :offset 0
                      :limit  2}
+                    response))))))))
+
+(deftest ^:sequential unreferenced-pagination-with-archived-dependents-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced - should return items if all dependents are archived"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency]
+        (mt/with-temp [:model/Card {card1-id :id, :as card1} {:name "A Card - unreftest"}
+                       :model/Card {card2-id :id, :as card2} {:name "B Card - unreftest"}
+                       :model/Card _                         {:name "C Card - unreftest"
+                                                              :dataset_query (wrap-card-query card1)
+                                                              :archived true}
+                       :model/Card {card4-id :id}            {:name "D Card - unreftest"
+                                                              :dataset_query (wrap-card-query card2)}
+                       :model/Card _                         {:name "E Card - unreftest"
+                                                              :dataset_query (wrap-card-query card2)
+                                                              :archived true}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               "ee/dependencies/graph/unreferenced"
+                                               :types "card"
+                                               :query "unreftest"
+                                               :sort_column "name"
+                                               :sort_direction "asc")]
+            (is (=? {:data  [{:id card1-id}, {:id card4-id}]
+                     :total 2}
                     response))))))))
