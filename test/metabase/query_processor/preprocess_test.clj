@@ -555,9 +555,9 @@
               query))
       (testing `lib/returned-columns
         (binding [lib.metadata.calculation/*display-name-style* :long]
-          (is (= [["Category"                               "Products__CATEGORY"]
+          (is (= [["Products → Category"                     "Products__CATEGORY"]
                   ["Count"                                   "count"]
-                  ["Card 2 - Category → Category"            "Card 2 - Category__CATEGORY"]]
+                  ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                  (mapv (juxt :display-name :lib/desired-column-alias)
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
@@ -577,9 +577,9 @@
                                      :stages [{:breakout [[:field {} (meta/id :products :category)]]}
                                               {:fields [[:field {} "CATEGORY"]]}]}]}]}
                 (qp.preprocess/preprocess query)))
-        (is (= [["Category"                               "Products__CATEGORY"]
+        (is (= [["Products → Category"                     "Products__CATEGORY"]
                 ["Count"                                   "count"]
-                ["Card 2 - Category → Category"            "Card 2 - Category__CATEGORY"]]
+                ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                (map (juxt :display_name :lib/desired-column-alias)
                     (qp.preprocess/query->expected-cols query))))))))
 
