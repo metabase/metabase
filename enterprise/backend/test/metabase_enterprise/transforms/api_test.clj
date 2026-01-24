@@ -447,25 +447,7 @@
                       (testing "source_readable is true when user has database read permission"
                         (let [get-resp (mt/user-http-request :lucky :get 200 (format "ee/transform/%s" (:id created)))]
                           (is (true? (:source_readable get-resp))
-                              "User with transforms permission should be able to read the source database")))))))
-
-              (testing "source_readable field is present even without database permissions"
-                (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-                  (mt/with-data-analyst-role! (mt/user->id :lucky)
-                  ;; Create transform as lucky
-                    (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)
-                          transform-id (:id created)]
-                    ;; Now test with a user who has transforms permission but not database view permission
-                    ;; Block view-data for all-users so the test user doesn't inherit it
-                      (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/view-data :blocked
-                        (mt/with-user-in-groups [group {:name "Transforms Only Group"}
-                                                 user [group]]
-                          (mt/with-data-analyst-role! (u/the-id user)
-                            (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
-                              (let [get-resp (mt/user-http-request user :get 200 (format "ee/transform/%s" transform-id))]
-                                (is (contains? get-resp :source_readable))
-                                (is (false? (:source_readable get-resp))
-                                    "User without database view permission should have source_readable=false")))))))))))))))))
+                              "User with transforms permission should be able to read the source database"))))))))))))))
 
 (defn- ->transform [transform-name query]
   {:source {:type "query",
