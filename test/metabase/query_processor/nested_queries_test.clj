@@ -1083,9 +1083,9 @@
                     :field_ref    $name
                     :base_type    :type/Text}
                    {:name         (mt/format-name "name_2")
-                    :display_name "Name"
+                    :display_name "c → Name"
                     :id           %categories.name
-                    :field_ref    [:field %categories.name nil]
+                    :field_ref    &c.categories.name
                     :base_type    :type/Text}
                    {:name         "count"
                     :display_name "Count"
@@ -1188,10 +1188,10 @@
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"
-                              :display_name (if (zero? level) "Products → Ean" "Ean")
+                              :display_name "Products → Ean"
                               :base_type    :type/Text
                               :id           %ean
-                              :field_ref    (if (zero? level) &Products.ean [:field %ean nil])})
+                              :field_ref    &Products.ean})
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
