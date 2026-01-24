@@ -400,3 +400,15 @@
   #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
                          (eval '(lib.util.match/match-lite [1]
                                   [(a :guard (fn [x] (odd? x)))] a))))))
+
+(t/deftest ^:parallel return-nil-matches-test
+  (t/testing "a clause can return nil and that is still considered a match"
+    (t/is (= nil (lib.util.match/match-lite [:a nil]
+                   [:a x] x
+                   _ :default)))))
+
+(t/deftest ^:parallel recur-test
+  (t/testing "clause can choose to &recur the match with a different value"
+    (t/is (= :inside (lib.util.match/match-lite [[[[[[:inside]]]]]]
+                       [in] (&recur in)
+                       _ &match)))))
