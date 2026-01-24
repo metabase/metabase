@@ -9,6 +9,8 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
+import { canAccessTransforms } from "metabase/transforms/selectors";
 import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
@@ -41,7 +43,7 @@ export function getDataStudioRoutes(
         {PLUGIN_TRANSFORMS.isEnabled && (
           <Route path="transforms" component={CanAccessTransforms}>
             <Route component={TransformsSectionLayout}>
-              {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
+              {getDataStudioTransformRoutes()}
             </Route>
           </Route>
         )}
@@ -67,7 +69,7 @@ function getIndexPath(state: State) {
   if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
     return Urls.dataStudioData();
   }
-  if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
+  if (canAccessTransforms(state)) {
     return Urls.transformList();
   }
   return Urls.dataStudioLibrary();

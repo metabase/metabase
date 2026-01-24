@@ -275,7 +275,10 @@ export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  return canPlaceEntityInCollectionOrDescendantsImpl(entityType, collectionType);
+  return canPlaceEntityInCollectionOrDescendantsImpl(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {

@@ -30,7 +30,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { CreateLibraryModal } from "../components/CreateLibraryModal";

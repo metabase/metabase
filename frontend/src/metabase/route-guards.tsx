@@ -5,15 +5,13 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
-import {
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 import { getCanAccessOnboardingPage } from "./home/selectors";
 import { getIsEmbeddingIframe } from "./selectors/embed";
+import { canAccessTransforms } from "./transforms/selectors";
 
 type Props = { children: React.ReactElement };
 
@@ -115,8 +113,7 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessTransforms",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    PLUGIN_TRANSFORMS.canAccessTransforms(state),
+  authenticatedSelector: (state) => canAccessTransforms(state),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });

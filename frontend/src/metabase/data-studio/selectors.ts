@@ -1,10 +1,10 @@
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { canAccessTransforms } from "metabase/transforms/selectors";
 import type { State } from "metabase-types/store";
 
 // Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
@@ -14,7 +14,7 @@ export function canAccessDataStudio(state: State) {
   }
   return (
     getUserIsAdmin(state) ||
-    PLUGIN_TRANSFORMS.canAccessTransforms(state) ||
+    canAccessTransforms(state) ||
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
   );
 }

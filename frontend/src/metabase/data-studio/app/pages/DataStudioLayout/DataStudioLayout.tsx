@@ -14,9 +14,9 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
   ActionIcon,
   Box,
@@ -86,9 +86,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
-  const canAccessTransforms = useSelector(
-    PLUGIN_TRANSFORMS.canAccessTransforms,
-  );
+  const canAccessTransforms = useSelector(canAccessTransformsSelector);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
