@@ -25,7 +25,7 @@ const propTypes = {
   onToggleSeriesVisibility: PropTypes.func,
 };
 
-const LegendItem = ({
+const LegendItemInner = ({
   item,
   dotSize = "8px",
   index,
@@ -82,8 +82,6 @@ const LegendItem = ({
   );
 };
 
-LegendItem.propTypes = propTypes;
+LegendItemInner.propTypes = propTypes;
 
-const LegendItemMemo = memo(LegendItem);
-
-export { LegendItemMemo as LegendItem };
+export const LegendItem = memo(LegendItemInner);
