@@ -1,5 +1,9 @@
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import type { PivotTableColumnSplitSetting } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import {
   CELL_PADDING,
@@ -10,6 +14,7 @@ import {
 import type { HeaderItem } from "./types";
 import {
   addMissingCardBreakouts,
+  checkRenderable,
   getColumnValues,
   getLeftHeaderWidths,
   isColumnValid,
@@ -353,6 +358,84 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { values: ["bar1", "bar2"], hasSubtotal: false },
         { values: ["baz1"], hasSubtotal: true },
       ]);
+    });
+  });
+
+  describe("checkRenderable", () => {
+    it("should throw ChartSettingsError for queries with only one aggregation (no breakouts)", () => {
+      const data = createMockDatasetData({
+        cols: [createMockColumn({ source: "aggregation", name: "count" })],
+        rows: [[100]],
+      });
+
+      expect(() => checkRenderable([{ data }], {})).toThrow(ChartSettingsError);
+      expect(() => checkRenderable([{ data }], {})).toThrow(
+        "Pivot tables can only be used with aggregated queries.",
+      );
+    });
+
+    it("should throw ChartSettingsError for queries with multiple aggregations but no breakouts", () => {
+      const data = createMockDatasetData({
+        cols: [
+          createMockColumn({ source: "aggregation", name: "count" }),
+          createMockColumn({ source: "aggregation", name: "sum" }),
+        ],
+        rows: [[100, 500]],
+      });
+
+      expect(() => checkRenderable([{ data }], {})).toThrow(ChartSettingsError);
+      expect(() => checkRenderable([{ data }], {})).toThrow(
+        "Pivot tables can only be used with aggregated queries.",
+      );
+    });
+
+    it("should throw ChartSettingsError for queries with pivot-grouping and aggregation but no real breakouts", () => {
+      // This simulates the real scenario where backend adds pivot-grouping column
+      const data = createMockDatasetData({
+        cols: [
+          createMockColumn({ source: "breakout", name: "pivot-grouping" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [[0, 100]],
+      });
+
+      expect(() => checkRenderable([{ data }], {})).toThrow(ChartSettingsError);
+      expect(() => checkRenderable([{ data }], {})).toThrow(
+        "Pivot tables can only be used with aggregated queries.",
+      );
+    });
+
+    it("should throw ChartSettingsError for queries with invalid columns (e.g., fields source)", () => {
+      const data = createMockDatasetData({
+        cols: [
+          createMockColumn({ source: "fields", name: "id" }),
+          createMockColumn({ source: "fields", name: "name" }),
+        ],
+        rows: [
+          [1, "Alice"],
+          [2, "Bob"],
+        ],
+      });
+
+      expect(() => checkRenderable([{ data }], {})).toThrow(ChartSettingsError);
+      expect(() => checkRenderable([{ data }], {})).toThrow(
+        "Pivot tables can only be used with aggregated queries.",
+      );
+    });
+
+    it("should not throw for valid aggregated queries with breakouts", () => {
+      const data = createMockDatasetData({
+        cols: [
+          createMockColumn({ source: "breakout", name: "category" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [
+          ["Electronics", 100],
+          ["Clothing", 50],
+        ],
+      });
+
+      expect(() => checkRenderable([{ data }], {})).not.toThrow();
     });
   });
 });
