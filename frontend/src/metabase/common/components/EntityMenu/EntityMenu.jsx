@@ -10,7 +10,7 @@ import { Divider, Popover } from "metabase/ui";
 /**
  * @deprecated: use Menu from "metabase/ui"
  */
-class EntityMenu extends Component {
+export class EntityMenu extends Component {
   state = {
     open: false,
     freezeMenu: false,
@@ -180,5 +180,3 @@ class EntityMenu extends Component {
     );
   }
 }
-
-export { EntityMenu };

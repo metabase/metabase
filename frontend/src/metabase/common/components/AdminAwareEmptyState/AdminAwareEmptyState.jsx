@@ -49,9 +49,7 @@ class AdminAwareEmptyStateInner extends Component {
   }
 }
 
-const AdminAwareEmptyState = connect(
+export const AdminAwareEmptyState = connect(
   mapStateToProps,
   null,
 )(AdminAwareEmptyStateInner);
-
-export { AdminAwareEmptyState };

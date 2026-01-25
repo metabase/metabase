@@ -13,7 +13,7 @@ type Props = {
   "data-testid"?: string;
 };
 
-function EditBar({
+export function EditBar({
   title,
   center,
   buttons,
@@ -36,5 +36,3 @@ function EditBar({
     </Root>
   );
 }
-
-export { EditBar };

@@ -13,7 +13,7 @@ interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children?: ReactNode;
 }
 
-const ExternalLink = forwardRef(function ExternalLink(
+export const ExternalLink = forwardRef(function ExternalLink(
   { href, target = getUrlTarget(href), className, children, ...props }: Props,
   ref: Ref<HTMLAnchorElement>,
 ) {
@@ -40,5 +40,3 @@ export const ButtonLink = forwardRef(function ButtonLink(
 ) {
   return <ExternalLink {...props} className={S.ButtonLink} ref={ref} />;
 });
-
-export { ExternalLink };

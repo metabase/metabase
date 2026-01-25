@@ -13,7 +13,7 @@ export interface ColorPickerTriggerProps
   onChange?: (value?: string) => void;
 }
 
-const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
+export const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   {
     value,
     placeholder,
@@ -36,5 +36,3 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     </Group>
   );
 });
-
-export { ColorPickerTrigger };

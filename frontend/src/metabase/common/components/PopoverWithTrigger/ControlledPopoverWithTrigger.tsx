@@ -47,7 +47,7 @@ type RenderTriggerArgs = {
 /**
  * @deprecated prefer Popover from "metabase/ui" instead
  */
-function ControlledPopoverWithTrigger({
+export function ControlledPopoverWithTrigger({
   triggerClasses,
   triggerStyle,
   triggerClassesOpen,
@@ -108,5 +108,3 @@ function ControlledPopoverWithTrigger({
     </TippyPopover>
   );
 }
-
-export { ControlledPopoverWithTrigger };

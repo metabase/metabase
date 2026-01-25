@@ -57,7 +57,7 @@ function getPopperOptions({
 /**
  * @deprecated prefer Popover from "metabase/ui" instead
  */
-function TippyPopover({
+export function TippyPopover({
   className,
   disableContentSandbox,
   content,
@@ -150,5 +150,3 @@ function TippyPopover({
     />
   );
 }
-
-export { TippyPopover };

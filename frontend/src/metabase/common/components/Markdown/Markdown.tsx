@@ -33,7 +33,7 @@ export interface MarkdownProps
   components?: Record<string, any>;
 }
 
-const Markdown = ({
+export const Markdown = ({
   className,
   children = "",
   dark,
@@ -71,5 +71,3 @@ const Markdown = ({
     </MarkdownRoot>
   );
 };
-
-export { Markdown };

@@ -16,7 +16,7 @@ type Props = {
   onConnectedTableClick?: (table: Table) => void;
 };
 
-function ConnectedTables({ table, onConnectedTableClick }: Props) {
+export function ConnectedTables({ table, onConnectedTableClick }: Props) {
   const fkTables = table.connectedTables();
 
   return fkTables.length ? (
@@ -60,5 +60,3 @@ function ConnectedTableLink({ table }: { table: Table }) {
     </LabelLink>
   );
 }
-
-export { ConnectedTables };

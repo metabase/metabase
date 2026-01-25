@@ -27,7 +27,7 @@ export interface EntityMenuItemProps {
   htmlId?: string;
 }
 
-const EntityMenuItem = ({
+export const EntityMenuItem = ({
   title,
   icon,
   action,
@@ -141,5 +141,3 @@ const LinkMenuItem = ({
     )}
   </Tooltip>
 );
-
-export { EntityMenuItem };

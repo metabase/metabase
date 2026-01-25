@@ -6,10 +6,8 @@ import { t } from "ttag";
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 export const BEFORE_UNLOAD_UNSAVED_MESSAGE = t`You have unsaved changes.`;
 
-const useBeforeUnload = (
+export const useBeforeUnload = (
   condition: Parameters<typeof useBeforeUnloadHook>[0],
 ) => {
   return useBeforeUnloadHook(condition, BEFORE_UNLOAD_UNSAVED_MESSAGE);
 };
-
-export { useBeforeUnload };

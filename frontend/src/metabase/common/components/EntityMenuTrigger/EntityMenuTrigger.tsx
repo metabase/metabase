@@ -16,7 +16,7 @@ type EntityMenuTriggerProps = {
   ariaLabel?: string;
 };
 
-const EntityMenuTrigger = ({
+export const EntityMenuTrigger = ({
   icon,
   onClick,
   open,
@@ -46,5 +46,3 @@ const EntityMenuTrigger = ({
     triggerContent
   );
 };
-
-export { EntityMenuTrigger };

@@ -23,7 +23,7 @@ export interface FormNumericInputProps
 /**
  * @deprecated: use FormNumberInput from "metabase/forms"
  */
-const FormNumericInput = forwardRef(function FormNumericInput(
+export const FormNumericInput = forwardRef(function FormNumericInput(
   {
     name,
     className,
@@ -72,5 +72,3 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     </FormField>
   );
 });
-
-export { FormNumericInput };

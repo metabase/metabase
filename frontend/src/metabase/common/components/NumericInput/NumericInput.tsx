@@ -18,7 +18,7 @@ export interface NumericInputProps extends NumericInputAttributes {
 /**
  * @deprecated: use NumberInput from "metabase/ui"
  */
-const NumericInput = forwardRef(function NumericInput(
+export const NumericInput = forwardRef(function NumericInput(
   { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -69,5 +69,3 @@ const NumericInput = forwardRef(function NumericInput(
     />
   );
 });
-
-export { NumericInput };

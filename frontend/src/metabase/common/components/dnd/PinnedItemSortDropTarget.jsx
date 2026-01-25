@@ -7,7 +7,7 @@ import { DropArea } from "./DropArea";
 
 import { PinnableDragTypes } from ".";
 
-const PinnedItemSortDropTarget = DropTarget(
+export const PinnedItemSortDropTarget = DropTarget(
   PinnableDragTypes,
   {
     drop(props, monitor, component) {
@@ -53,5 +53,3 @@ PinnedItemSortDropTarget.propTypes = {
   itemModel: PropTypes.string,
   pinIndex: PropTypes.number,
 };
-
-export { PinnedItemSortDropTarget };

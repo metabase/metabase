@@ -50,7 +50,7 @@ type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 /**
  * @deprecated HOCs are deprecated
  */
-function ExplicitSize<T>({
+export function ExplicitSize<T>({
   selector,
   wrapped = false,
   refreshMode = "throttle",
@@ -273,5 +273,3 @@ function ExplicitSize<T>({
     ));
   };
 }
-
-export { ExplicitSize };

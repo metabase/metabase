@@ -171,10 +171,8 @@ StyledButton.displayName = "Button";
 /**
  * @deprecated: use Button from "metabase/ui"
  */
-const Button = Object.assign(StyledButton, {
+export const Button = Object.assign(StyledButton, {
   Root: ButtonRoot,
   Content: ButtonContent,
   TextContainer: ButtonTextContainer,
 });
-
-export { Button };

@@ -18,7 +18,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
   onChange?: (color?: string) => void;
 }
 
-const ColorPicker = forwardRef(function ColorPicker(
+export const ColorPicker = forwardRef(function ColorPicker(
   { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -40,5 +40,3 @@ const ColorPicker = forwardRef(function ColorPicker(
     />
   );
 });
-
-export { ColorPicker };

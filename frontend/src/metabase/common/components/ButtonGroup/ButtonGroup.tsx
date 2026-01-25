@@ -7,7 +7,7 @@ export interface ButtonGroupProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
-const ButtonGroup = forwardRef(function ButtonGroup(
+export const ButtonGroup = forwardRef(function ButtonGroup(
   { children, ...props }: ButtonGroupProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -17,5 +17,3 @@ const ButtonGroup = forwardRef(function ButtonGroup(
     </ButtonGroupRoot>
   );
 });
-
-export { ButtonGroup };

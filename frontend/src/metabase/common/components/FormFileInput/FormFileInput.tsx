@@ -18,7 +18,7 @@ export interface FormFileInputProps
   optional?: boolean;
 }
 
-const FormFileInput = forwardRef(function FormFileInput(
+export const FormFileInput = forwardRef(function FormFileInput(
   {
     name,
     encoding,
@@ -84,5 +84,3 @@ const getFieldValue = (
     }
   });
 };
-
-export { FormFileInput };

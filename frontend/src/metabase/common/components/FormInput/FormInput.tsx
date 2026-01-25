@@ -24,7 +24,7 @@ export interface FormInputProps
 /**
  * @deprecated: use FormTextInput from "metabase/forms"
  */
-const FormInput = forwardRef(function FormInput(
+export const FormInput = forwardRef(function FormInput(
   {
     name,
     className,
@@ -76,5 +76,3 @@ const FormInput = forwardRef(function FormInput(
     </FormField>
   );
 });
-
-export { FormInput };

@@ -9,7 +9,7 @@ import { DropArea } from "./DropArea";
 
 import { MoveableDragTypes } from ".";
 
-const CollectionDropTarget = DropTarget(
+export const CollectionDropTarget = DropTarget(
   MoveableDragTypes,
   {
     drop(props) {
@@ -42,5 +42,3 @@ const CollectionDropTarget = DropTarget(
     connectDropTarget: connect.dropTarget(),
   }),
 )(DropArea);
-
-export { CollectionDropTarget };

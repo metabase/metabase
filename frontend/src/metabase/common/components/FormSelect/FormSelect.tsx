@@ -25,7 +25,7 @@ export interface FormSelectProps<
 /**
  * @deprecated: use FormSelect from "metabase/forms"
  */
-const FormSelect = forwardRef(function FormSelect<
+export const FormSelect = forwardRef(function FormSelect<
   TValue,
   TOption extends object = SelectOption<TValue>,
 >(
@@ -74,5 +74,3 @@ const FormSelect = forwardRef(function FormSelect<
     </FormField>
   );
 });
-
-export { FormSelect };

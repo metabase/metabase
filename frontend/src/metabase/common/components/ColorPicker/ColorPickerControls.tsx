@@ -17,7 +17,7 @@ const saturationStyles = {
   },
 };
 
-const ColorPickerControls = CustomPicker(function ColorControls(
+export const ColorPickerControls = CustomPicker(function ColorControls(
   props: CustomPickerInjectedProps,
 ) {
   return (
@@ -35,5 +35,3 @@ const ColorPickerControls = CustomPicker(function ColorControls(
     </ControlsRoot>
   );
 });
-
-export { ColorPickerControls };

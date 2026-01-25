@@ -4,7 +4,7 @@ import { Label, LabelContainer } from "../MetadataInfo.styled";
 
 import { TableIcon } from "./TableLabel.styled";
 
-function TableLabel({
+export function TableLabel({
   className,
   table,
 }: {
@@ -18,5 +18,3 @@ function TableLabel({
     </LabelContainer>
   );
 }
-
-export { TableLabel };

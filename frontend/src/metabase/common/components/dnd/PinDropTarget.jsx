@@ -7,7 +7,7 @@ import { DropArea } from "./DropArea";
 
 import { PinnableDragTypes } from ".";
 
-const PinDropTarget = DropTarget(
+export const PinDropTarget = DropTarget(
   PinnableDragTypes,
   {
     drop(props, monitor, component) {
@@ -39,5 +39,3 @@ const PinDropTarget = DropTarget(
 PinDropTarget.propTypes = {
   variant: PropTypes.oneOf(["pin", "unpin"]).isRequired,
 };
-
-export { PinDropTarget };

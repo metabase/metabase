@@ -16,7 +16,7 @@ export interface ColorInputProps extends ColorInputAttributes {
   onChange?: (value?: string) => void;
 }
 
-const ColorInput = forwardRef(function ColorInput(
+export const ColorInput = forwardRef(function ColorInput(
   { value, onFocus, onBlur, onChange, ...props }: ColorInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
@@ -69,5 +69,3 @@ const getColorHex = (value?: string) => {
     return undefined;
   }
 };
-
-export { ColorInput };

@@ -28,7 +28,7 @@ type CollapseSectionProps = {
   rightAction?: React.ReactNode;
 } & HTMLAttributes<HTMLDivElement>;
 
-const CollapseSection = ({
+export const CollapseSection = ({
   initialState = "collapsed",
   iconVariant = "right-down",
   iconPosition = "left",
@@ -113,5 +113,3 @@ const CollapseSection = ({
     </div>
   );
 };
-
-export { CollapseSection };

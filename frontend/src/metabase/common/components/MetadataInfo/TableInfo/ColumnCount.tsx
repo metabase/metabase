@@ -4,7 +4,7 @@ import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Label, LabelContainer } from "../MetadataInfo.styled";
 
-function ColumnCount({ table }: { table: Table }) {
+export function ColumnCount({ table }: { table: Table }) {
   const fieldCount = table.numFields();
   return (
     <LabelContainer color="text-primary">
@@ -18,5 +18,3 @@ function ColumnCount({ table }: { table: Table }) {
     </LabelContainer>
   );
 }
-
-export { ColumnCount };

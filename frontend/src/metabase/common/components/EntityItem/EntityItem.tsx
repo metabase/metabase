@@ -272,7 +272,7 @@ function EntityItemMenu({
   );
 }
 
-const EntityItem = ({
+export const EntityItem = ({
   name,
   iconName,
   onPin,
@@ -351,5 +351,3 @@ const EntityItem = ({
 EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
-
-export { EntityItem };

@@ -11,7 +11,7 @@ export interface ColorRangeToggleProps extends FlexProps {
   showToggleButton?: boolean;
 }
 
-const ColorRangeToggle = ({
+export const ColorRangeToggle = ({
   value,
   isQuantile,
   onToggleClick,
@@ -41,8 +41,6 @@ const ColorRangeToggle = ({
     )}
   </Flex>
 );
-
-export { ColorRangeToggle };
 
 export function getColorRangeLabel(value: string[]) {
   return value.join("-");

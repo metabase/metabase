@@ -52,7 +52,7 @@ type EmptyStateProps = {
   spacing?: EmptyStateIllustrationProps["spacing"];
 };
 
-const EmptyState = ({
+export const EmptyState = ({
   title,
   message,
   action,
@@ -109,5 +109,3 @@ const EmptyState = ({
     </Flex>
   </div>
 );
-
-export { EmptyState };

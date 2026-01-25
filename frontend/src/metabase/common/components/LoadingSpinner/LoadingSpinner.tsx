@@ -31,8 +31,6 @@ const BaseLoadingSpinner = ({
 /**
  * @deprecated: use Loader from "metabase/ui"
  */
-const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
+export const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
   Root: SpinnerRoot,
 });
-
-export { LoadingSpinner };

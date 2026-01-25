@@ -26,7 +26,7 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
 }
 
-const NewItemMenuView = ({
+export const NewItemMenuView = ({
   collectionId,
   trigger,
   hasDataAccess,
@@ -139,5 +139,3 @@ const NewItemMenuView = ({
     </Menu>
   );
 };
-
-export { NewItemMenuView };

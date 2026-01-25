@@ -15,7 +15,7 @@ export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   optional?: boolean;
 }
 
-const FormToggle = forwardRef(function FormToggle(
+export const FormToggle = forwardRef(function FormToggle(
   {
     name,
     className,
@@ -63,5 +63,3 @@ const FormToggle = forwardRef(function FormToggle(
     </FormField>
   );
 });
-
-export { FormToggle };

@@ -35,7 +35,7 @@ const filterOptionsByValue = (value: string | undefined, options: string[]) => {
   });
 };
 
-const AutocompleteInput = ({
+export const AutocompleteInput = ({
   value,
   onChange,
   options = [],
@@ -127,5 +127,3 @@ const AutocompleteInput = ({
     />
   );
 };
-
-export { AutocompleteInput };

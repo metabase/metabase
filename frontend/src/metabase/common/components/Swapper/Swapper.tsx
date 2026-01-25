@@ -13,7 +13,7 @@ export interface SwapperProps extends HTMLAttributes<HTMLDivElement> {
   isSwapped?: boolean;
 }
 
-const Swapper = forwardRef(function Swapper(
+export const Swapper = forwardRef(function Swapper(
   { defaultElement, swappedElement, isSwapped = false, ...props }: SwapperProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -38,5 +38,3 @@ const Swapper = forwardRef(function Swapper(
     </SwapperRoot>
   );
 });
-
-export { Swapper };

@@ -13,7 +13,7 @@ export interface FormErrorMessageProps
 /**
  * @deprecated: use FormErrorMessage from "metabase/forms"
  */
-const FormErrorMessage = forwardRef(function FormErrorMessage(
+export const FormErrorMessage = forwardRef(function FormErrorMessage(
   { inline, ...props }: FormErrorMessageProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -28,5 +28,3 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
     </ErrorMessageRoot>
   );
 });
-
-export { FormErrorMessage };

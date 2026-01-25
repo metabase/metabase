@@ -212,7 +212,7 @@ function isDefaultOption<TValue>(
 /**
  * @deprecated: use Radio from "metabase/ui"
  */
-const Radio = Object.assign(BaseRadio, {
+export const Radio = Object.assign(BaseRadio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
   RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
   RadioLabelText: RadioLabelText,
@@ -222,5 +222,3 @@ const Radio = Object.assign(BaseRadio, {
     RadioContainerUnderlined,
   ],
 });
-
-export { Radio };

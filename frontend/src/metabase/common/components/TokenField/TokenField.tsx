@@ -694,9 +694,7 @@ const DefaultTokenFieldLayout = ({
 /**
  * @deprecated use MultiSelect or Autocomplete from metabase/ui
  */
-const TokenField = Object.assign(_TokenField, {
+export const TokenField = Object.assign(_TokenField, {
   FieldItem: TokenFieldItem,
   NewItemInputContainer: TokenInputItem,
 });
-
-export { TokenField };
