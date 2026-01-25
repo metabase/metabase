@@ -385,13 +385,16 @@
         collected (collect-common (map :bindings processed) (map :conditions processed))]
     (emit-clause collected (mapv :return processed) value-sym value-binding)))
 
-(defn- match-lite* [value clauses recursive?]
+(defn- match-lite* [value clauses]
   (when (odd? (count clauses))
     (throw (ex-info "match-lite requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
-        [pairs default] (if (= (first (last pairs)) '_)
+        has-default? (= (first (last pairs)) '_)
+        [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
+        ;; match-lite is always recursive unless there is a default clause
+        recursive? (not has-default?)
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
         [value-sym value-binding] (cond recursive? [(gensym "value") nil]
@@ -431,13 +434,7 @@
   - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same returned value."
   {:style/indent :defn}
   [value & clauses]
-  (match-lite* value clauses false))
-
-(defmacro match-lite-recursive
-  "Like [[match-lite]], but tries to match children recursively if the top-level match failed."
-  {:style/indent :defn}
-  [value & clauses]
-  (match-lite* value clauses true))
+  (match-lite* value clauses))
 
 (defmacro replace*
   "Internal implementation for `replace`. Generate a pattern-matching function with `core.match`, and use it to replace
