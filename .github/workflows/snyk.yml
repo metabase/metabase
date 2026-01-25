@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses:
           oven-sh/setup-bun@v2
-          # snyk doesn't support bun yetso we generate yarn.lock and scan that
+          # snyk doesn't support bun yet so we generate yarn.lock and scan that
       - name: Generate yarn.lock for Snyk compatibility
         run: |
           bun install --yarn
