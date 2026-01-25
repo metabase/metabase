@@ -3,4 +3,4 @@ export {
   createQuery,
   createNativeQuery,
 } from "./wrappers";
-export { createTestQuestion } from "./question";
+export { createCardWithQuery, createCardWithNativeQuery } from "./question";

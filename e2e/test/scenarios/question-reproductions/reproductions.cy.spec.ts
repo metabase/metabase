@@ -1421,7 +1421,7 @@ describe("issue #47005", () => {
     H.restore("postgres-12");
     cy.signInAsNormalUser();
 
-    H.createTestQuestion({
+    H.createCardWithQuery({
       name: "Question A",
       query: {
         databaseId: SAMPLE_DB_ID,
@@ -1435,7 +1435,7 @@ describe("issue #47005", () => {
         ],
       },
     }).then(({ body: question }) => {
-      H.createTestQuestion(
+      H.createCardWithQuery(
         {
           name: "Question B",
           metadata: {
@@ -1473,7 +1473,7 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createTestQuestion({
+    H.createCardWithQuery({
       name: METRIC_NAME,
       type: "metric",
       query: {

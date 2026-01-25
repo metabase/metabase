@@ -1,6 +1,6 @@
 import type * as Lib from "metabase-lib";
 import type { CreateTestQueryOpts } from "metabase-lib/test-helpers";
-import type { Card, DatabaseId } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
 import type { QuestionDetails } from "../api";
 import { type Options, question } from "../api/createQuestion";
@@ -8,51 +8,18 @@ import { type Options, question } from "../api/createQuestion";
 import type { GetMetadataOpts } from "./types";
 import { createNativeQuery, createQuery } from "./wrappers";
 
-type TestQuestionDetails =
-  | QuestionDetails
-  | StructuredTestQuestionDetails
-  | NativeTestQuestionDetails;
-
-type NativeTestQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
-  metadata?: GetMetadataOpts | Lib.MetadataProvider;
-  databaseId: DatabaseId;
-  query: string;
-};
-
-type StructuredTestQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
-  metadata?: GetMetadataOpts | Lib.MetadataProvider;
-  query: CreateTestQueryOpts;
-};
-
 /**
- * Create a test question using the provided details.
+ * Create a card using the provided details and a MBQL query.
  *
- * The details can either be a plain question using `dataset_query`.
- *
- * @example -
- *   //  Legacy dataset_query
- *   H.createTestQuestion({
- *     name: "My question",
- *     dataset_query: {
- *       type: "query",
- *       "source-table": ORDERS_ID,
- *     }
- *   })
- *
+ * @param details.metadata -
+ *  The metadata provider to use for the query,
+ *  or options used to create one on the fly.
+ *  If no metadata is provided, the query will be created with
+ *  the default metadata provider.
  *
  * @example
- *   // Custom mbql query
- *   H.createQuery(...).then(dataset_query) => {
- *    H.createTestQuestion({
- *      name: "My question",
- *      dataset_query,
- *    })
- *  })
- *
- * @example
- *
- *    // Directly provide the mbql query details to avoid nesting
- *    // Equivalent to the example above.
+ *    // If no metadata is provided, the card will be created with
+ *    // the default metadata provider.
  *    H.createTestQuestion({
  *      name: "My question",
  *      query: {
@@ -65,7 +32,7 @@ type StructuredTestQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
  *  })
  *
  * @example
- *    // Directly provide the native mbql query details to avoid nesting
+ *    // Provide custom metadata entities relevant to your query.
  *    H.createTestQuestion({
  *      name: "My question",
  *      databaseId: SAMPLE_DATABASE_ID,
@@ -73,63 +40,65 @@ type StructuredTestQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
  *    })
  *  })
  *
+ */
+
+type CardWithQueryDetails = Omit<QuestionDetails, "dataset_query"> & {
+  metadata?: GetMetadataOpts | Lib.MetadataProvider;
+  query: CreateTestQueryOpts;
+};
+
+export function createCardWithQuery(
+  { metadata = {}, query, ...details }: CardWithQueryDetails,
+  options: Options = {},
+) {
+  return createQuery(metadata, query).then((dataset_query) =>
+    question({ ...details, dataset_query }, options),
+  );
+}
+
+type CardWithNativeQueryDetails = Omit<QuestionDetails, "dataset_query"> & {
+  metadata?: GetMetadataOpts | Lib.MetadataProvider;
+  databaseId: DatabaseId;
+  query: string;
+};
+
+/**
+ * Create a card using the provided details and a native query.
+ *
+ * @param details.metadata -
+ *  The metadata provider to use for the query,
+ *  or options used to create one on the fly.
+ *  If no metadata is provided, the query will be created with
+ *  the default metadata provider.
+ *
  * @example
- *    // Pass custom metadata options
- *    H.createTestQuestion({
+ *    // If no metadata is provided, the card will be created with
+ *    // the default metadata provider.
+ *    H.createCardWithNativeQuery({
+ *      name: "My question",
+ *      databaseId: SAMPLE_DATABASE_ID,
+ *      query: "SELECT * FROM orders"
+ *    })
+ *  })
+ *
+ * @example
+ *    // Provide custom metadata entities relevant to your query.
+ *    H.createCardWithNativeQuery({
  *      name: "My question",
  *      databaseId: SAMPLE_DATABASE_ID,
  *      metadata: {
  *        databaseId: SAMPLE_DATABASE_ID,
- *        cards: [SAMPLE_CARD_ID],
+ *        cardIds: [SAMPLE_CARD_ID],
  *      },
  *      query: "SELECT * FROM orders"
  *    })
  *  })
  */
-export function createTestQuestion(
-  details: TestQuestionDetails,
-  options?: Options,
-): Cypress.Chainable<Cypress.Response<Card>> {
-  if ("dataset_query" in details) {
-    // Plain question details, pass through details as is
-    return question(details, options);
-  } else if (isStructuredTestQuestionDetails(details)) {
-    // MBQL question details, pass through createTestJsQuery
-    const { metadata = {}, query, ...rest } = details;
-    return createQuery(metadata, query).then((dataset_query) =>
-      question(
-        {
-          ...rest,
-          dataset_query,
-        },
-        options,
-      ),
-    );
-  } else if (isNativeTestQuestionDetails(details)) {
-    // Native question details, pass through createTestNativeJsQuery
-    const { metadata = {}, databaseId, query, ...rest } = details;
-    return createNativeQuery(metadata, databaseId, query).then(
-      (dataset_query) =>
-        question(
-          {
-            ...rest,
-            dataset_query,
-          },
-          options,
-        ),
-    );
-  }
-  throw new Error("Invalid question details");
-}
-
-function isNativeTestQuestionDetails(
-  details: TestQuestionDetails,
-): details is NativeTestQuestionDetails {
-  return "query" in details && typeof details.query === "string";
-}
-
-function isStructuredTestQuestionDetails(
-  details: TestQuestionDetails,
-): details is StructuredTestQuestionDetails {
-  return "query" in details && typeof details.query === "object";
+export function createCardWithNativeQuery(
+  { metadata = {}, databaseId, query, ...details }: CardWithNativeQueryDetails,
+  options: Options = {},
+) {
+  return createNativeQuery(metadata, databaseId, query).then((dataset_query) =>
+    question({ ...details, dataset_query }, options),
+  );
 }
