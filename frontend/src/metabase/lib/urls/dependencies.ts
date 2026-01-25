@@ -7,7 +7,7 @@ import type {
 
 const BASE_URL = `/data-studio`;
 const GRAPH_URL = `${BASE_URL}/dependencies`;
-const DIAGNOSTICS_URL = `${BASE_URL}/diagnostics`;
+const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;

@@ -132,9 +132,10 @@ export const DataStudio = {
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
   DependencyDiagnostics: {
-    visitBrokenEntities: () => cy.visit("/data-studio/diagnostics/broken"),
+    visitBrokenEntities: () =>
+      cy.visit("/data-studio/dependency-diagnostics/broken"),
     visitUnreferencedEntities: () =>
-      cy.visit("/data-studio/diagnostics/unreferenced"),
+      cy.visit("/data-studio/dependency-diagnostics/unreferenced"),
     list: () => cy.findByTestId("dependency-list"),
     searchInput: () => cy.findByTestId("dependency-list-search-input"),
     filterButton: () => cy.findByTestId("dependency-filter-button"),

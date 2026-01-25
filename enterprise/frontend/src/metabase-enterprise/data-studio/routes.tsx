@@ -64,7 +64,7 @@ export function getDataStudioRoutes(
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
-            path="diagnostics"
+            path="dependency-diagnostics"
             component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
