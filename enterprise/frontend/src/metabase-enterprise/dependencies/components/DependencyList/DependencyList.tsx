@@ -70,7 +70,7 @@ export function DependencyList({
     limit: PAGE_SIZE,
   });
 
-  const { ref, width } = useElementSize();
+  const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
 
@@ -122,7 +122,7 @@ export function DependencyList({
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
-      ref={ref}
+      ref={containerRef}
       h="100%"
       wrap="nowrap"
     >
@@ -162,7 +162,7 @@ export function DependencyList({
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
-          containerWidth={width}
+          containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
           onClose={() => setSelectedEntry(undefined)}
