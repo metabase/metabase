@@ -6,8 +6,8 @@ type TabName =
   | "transforms"
   | "jobs"
   | "runs"
-  | "dependency-diagnostics"
   | "dependencies"
+  | "dependency-diagnostics"
   | "glossary";
 
 export const getCurrentTab = (pathname: string): TabName => {
