@@ -244,7 +244,6 @@ jobs:
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: ${{ env.BUG_FIX_PROMPT }}
           claude_args: |
-            --model opus
             --allowedTools "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
@@ -306,11 +305,12 @@ jobs:
           body: |
             This PR automatically fixes the bug reported in #${{ env.ISSUE_NUMBER }}.
 
+            ${{ steps.find_linear.outputs.linear_issue && format('Closes {0}', steps.find_linear.outputs.linear_issue) || '' }}
+
             ## Bug Report
             **Original Issue:** #${{ env.ISSUE_NUMBER }}
             **Reporter:** @${{ env.ISSUE_AUTHOR }}
             **Issue Title:** ${{ env.ISSUE_TITLE }}
-            Closes ${{ steps.find_linear.outputs.linear_issue && format(' {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             ## Automated Fix
             🤖 This fix was generated automatically by Claude Code based on the issue description.
