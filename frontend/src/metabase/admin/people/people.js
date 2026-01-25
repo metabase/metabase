@@ -30,6 +30,4 @@ const temporaryPasswords = handleActions(
   {},
 );
 
-const people = combineReducers({ temporaryPasswords });
-
-export { people };
+export const people = combineReducers({ temporaryPasswords });

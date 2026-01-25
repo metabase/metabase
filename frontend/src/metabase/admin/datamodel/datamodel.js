@@ -38,6 +38,4 @@ const revisions = handleActions(
   null,
 );
 
-const datamodel = combineReducers({ previewSummary, revisions });
-
-export { datamodel };
+export const datamodel = combineReducers({ previewSummary, revisions });

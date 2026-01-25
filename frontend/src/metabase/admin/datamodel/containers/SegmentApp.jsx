@@ -113,7 +113,7 @@ const CreateSegmentForm = ({
   );
 };
 
-const SegmentApp = (props) => {
+const SegmentAppInner = (props) => {
   if (props.params.id) {
     return <UpdateSegmentForm {...props} />;
   }
@@ -121,9 +121,7 @@ const SegmentApp = (props) => {
   return <CreateSegmentForm {...props} />;
 };
 
-const SegmentAppConnected = connect(
+export const SegmentApp = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentApp);
-
-export { SegmentAppConnected as SegmentApp };
+)(SegmentAppInner);

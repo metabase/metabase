@@ -18,7 +18,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = { fetchSegmentRevisions };
 
-class RevisionHistoryApp extends Component {
+class RevisionHistoryAppInner extends Component {
   componentDidMount() {
     const { id } = this.props;
     this.props.fetchSegmentRevisions(id);
@@ -29,12 +29,10 @@ class RevisionHistoryApp extends Component {
   }
 }
 
-const RevisionHistoryAppConnected = connect(
+export const RevisionHistoryApp = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(RevisionHistoryApp);
-
-export { RevisionHistoryAppConnected as RevisionHistoryApp };
+)(RevisionHistoryAppInner);
 
 class SegmentRevisionHistoryInner extends Component {
   render() {
