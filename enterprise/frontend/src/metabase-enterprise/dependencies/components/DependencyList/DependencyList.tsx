@@ -83,13 +83,19 @@ export function DependencyList({
       : undefined;
 
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query });
+    onParamsChange({ ...params, query, page: undefined });
   };
 
-  const handleFilterOptionsChange = (
-    filterOptions: DependencyFilterOptions,
-  ) => {
-    onParamsChange({ ...params, ...filterOptions });
+  const handleFilterOptionsChange = ({
+    groupTypes,
+    includePersonalCollections,
+  }: DependencyFilterOptions) => {
+    onParamsChange({
+      ...params,
+      groupTypes,
+      includePersonalCollections,
+      page: undefined,
+    });
   };
 
   const handleSortOptionsChange = (
@@ -99,6 +105,7 @@ export function DependencyList({
       ...params,
       sortColumn: sortOptions?.column,
       sortDirection: sortOptions?.direction,
+      page: undefined,
     });
   };
 
