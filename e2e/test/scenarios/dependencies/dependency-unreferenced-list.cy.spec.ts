@@ -14,7 +14,6 @@ import type {
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { H } = cy;
-const DependencyDiagnostics = H.DataStudio.DependencyDiagnostics;
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MODEL_FOR_QUESTION_DATA_SOURCE = "Model for question data source";
@@ -105,8 +104,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("analysis", () => {
     it("should show unreferenced entities", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.list().within(() => {
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
           cy.findByText(name).should("be.visible");
         });
@@ -115,8 +114,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should not show referenced entities", () => {
       createEntities({ withReferences: true });
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.list().within(() => {
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
           cy.findByText(name).should("not.exist");
         });
@@ -127,8 +126,10 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("search", () => {
     it("should search for entities", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.searchInput().type(MODEL_FOR_QUESTION_DATA_SOURCE);
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type(
+        MODEL_FOR_QUESTION_DATA_SOURCE,
+      );
       checkList({
         visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
         hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
@@ -137,8 +138,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should search for entities with type filters", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.searchInput().type("tag");
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("tag");
       checkList({
         visibleEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
@@ -147,7 +148,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         hiddenEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
       });
 
-      DependencyDiagnostics.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Snippet").click();
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
@@ -159,10 +160,10 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("filters", () => {
     it("should filter entities by type", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: ENTITY_NAMES });
 
-      DependencyDiagnostics.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Model").click();
       checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
@@ -189,7 +190,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should filter by location", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -198,7 +199,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         ],
       });
 
-      DependencyDiagnostics.filterButton().click();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
@@ -222,8 +223,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("sorting", () => {
     it("should sort by name", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.searchInput().type("Model for");
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
 
       cy.log("sorted by name by default");
       checkListSorting({
@@ -231,13 +232,13 @@ describe("scenarios > dependencies > unreferenced list", () => {
       });
 
       cy.log("sorted by name ascending");
-      DependencyDiagnostics.list().findByText("Name").click();
+      H.DependencyDiagnostics.list().findByText("Name").click();
       checkListSorting({
         visibleEntities: MODELS_SORTED_BY_NAME,
       });
 
       cy.log("sorted by name descending");
-      DependencyDiagnostics.list().findByText("Name").click();
+      H.DependencyDiagnostics.list().findByText("Name").click();
       checkListSorting({
         visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
       });
@@ -245,17 +246,17 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should sort by location", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
-      DependencyDiagnostics.searchInput().type("Model for");
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
 
       cy.log("sorted by location ascending");
-      DependencyDiagnostics.list().findByText("Location").click();
+      H.DependencyDiagnostics.list().findByText("Location").click();
       checkListSorting({
         visibleEntities: MODELS_SORTED_BY_LOCATION,
       });
 
       cy.log("sorted by location descending");
-      DependencyDiagnostics.list().findByText("Location").click();
+      H.DependencyDiagnostics.list().findByText("Location").click();
       checkListSorting({
         visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
       });
@@ -265,9 +266,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("sidebar", () => {
     it("should show the sidebar for supported entities", () => {
       createEntities();
-      DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
         .click();
       checkSidebar({
@@ -276,7 +277,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(MODEL_FOR_MODEL_DATA_SOURCE)
         .click();
       checkSidebar({
@@ -285,7 +286,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(SEGMENT_FOR_QUESTION_FILTER)
         .click();
       checkSidebar({
@@ -294,7 +295,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(METRIC_FOR_QUESTION_AGGREGATION)
         .click();
       checkSidebar({
@@ -303,7 +304,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(METRIC_FOR_MODEL_AGGREGATION)
         .click();
       checkSidebar({
@@ -312,7 +313,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         creatorName: "Bobby Tables",
       });
 
-      DependencyDiagnostics.list()
+      H.DependencyDiagnostics.list()
         .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
         .click();
       checkSidebar({
@@ -991,7 +992,7 @@ function checkList({
   visibleEntities?: string[];
   hiddenEntities?: string[];
 }) {
-  DependencyDiagnostics.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
       cy.findByText(name).should("be.visible");
     });
@@ -1002,7 +1003,7 @@ function checkList({
 }
 
 function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
-  DependencyDiagnostics.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name, index) => {
       cy.findByText(name)
         .parents("[data-index]")
@@ -1020,17 +1021,17 @@ function checkSidebar({
   locationName?: string;
   creatorName?: string;
 }) {
-  DependencyDiagnostics.sidebar().within(() => {
-    DependencyDiagnostics.Sidebar.header()
+  H.DependencyDiagnostics.sidebar().within(() => {
+    H.DependencyDiagnostics.Sidebar.header()
       .findByText(entityName)
       .should("be.visible");
     if (locationName) {
-      DependencyDiagnostics.Sidebar.locationSection()
+      H.DependencyDiagnostics.Sidebar.locationSection()
         .findByText(locationName)
         .should("be.visible");
     }
     if (creatorName) {
-      DependencyDiagnostics.Sidebar.creationSection().should(
+      H.DependencyDiagnostics.Sidebar.creationSection().should(
         "contain.text",
         creatorName,
       );
