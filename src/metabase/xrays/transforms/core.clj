@@ -30,7 +30,7 @@
 
 (defn- mbql-reference->col-name
   [field-clause]
-  (lib.util.match/match-one field-clause
+  (lib.util.match/match-lite field-clause
     [:field (field-name :guard string?) _]
     field-name
 

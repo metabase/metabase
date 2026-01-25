@@ -260,28 +260,27 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (lib.util.match/match-one x
+  (lib.util.match/match-lite x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
     [:field (id :guard pos-int?) nil]
     (every? can-symbolize? (field-and-table-name id))
 
-    [:field (field-name :guard string?) (opts :guard #(= (set (keys %)) #{:base-type}))]
+    [:field (field-name :guard string?) {:base-type _}]
     (can-symbolize? field-name)
 
-    [:field _ (opts :guard :join-alias)]
-    (and (can-symbolize? (:join-alias opts))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :join-alias)))
+    [:field _ {:join-alias join-alias}]
+    (and (can-symbolize? join-alias)
+         (can-symbolize? (mbql.u/update-field-options x dissoc :join-alias)))
 
-    [:field _ (opts :guard :temporal-unit)]
-    (and (can-symbolize? (name (:temporal-unit opts)))
-         (can-symbolize? (mbql.u/update-field-options &match dissoc :temporal-unit)))
+    [:field _ {:temporal-unit temporal-unit}]
+    (and (can-symbolize? (name temporal-unit))
+         (can-symbolize? (mbql.u/update-field-options x dissoc :temporal-unit)))
 
-    [:field _ (opts :guard :source-field)]
-    (let [source-field-id (:source-field opts)]
-      (and (can-symbolize? [:field source-field-id nil])
-           (can-symbolize? (mbql.u/update-field-options &match dissoc :source-field))))
+    [:field _ {:source-field source-field-id}]
+    (and (can-symbolize? [:field source-field-id nil])
+         (can-symbolize? (mbql.u/update-field-options x dissoc :source-field)))
 
     _
     false))

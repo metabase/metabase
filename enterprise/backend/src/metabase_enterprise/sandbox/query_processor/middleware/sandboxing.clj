@@ -95,7 +95,8 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-one target-field-clause [:field (field-id :guard pos-int?) _opts] field-id)]
+  (when-let [field-id (lib.util.match/match-lite target-field-clause
+                        [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
 (defn- attr-value->param-value
@@ -401,8 +402,8 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (lib.util.match/match-one query
-                                                          (m :guard (every-pred map? :query-permissions/sandboxed-table)))))
+    (let [metadata (assoc metadata :is_sandboxed (lib.util.match/match-lite query
+                                                   {:query-permissions/sandboxed-table (_ :guard some?)} true))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]
