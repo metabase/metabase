@@ -107,4 +107,6 @@
 
            ;; then do another pass and update `:lib/original-binning` options
            [:field (_opts :guard :lib/original-binning) _id-or-name]
-           (propagate-original-binning query path clause)))))))
+           (propagate-original-binning query path clause)
+
+           _ nil))))))

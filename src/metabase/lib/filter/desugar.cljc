@@ -243,7 +243,7 @@
                                      (some (fn [arg]
                                              (lib.util.match/match-one arg [:relative-datetime _opts :current]))
                                            args)))]
-    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+    (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field {:temporal-unit temporal-unit} _]
                               temporal-unit)
                             :default)]

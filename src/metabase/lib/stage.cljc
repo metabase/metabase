@@ -167,7 +167,7 @@
          ;; Only include "late" expressions when required.
          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
          :when (or include-late-exprs?
-                   (not (lib.util.match/match-lite-recursive clause :offset clause)))]
+                   (not (lib.util.match/match-lite clause :offset clause)))]
      (-> col
          (assoc :lib/source :source/expressions, :lib/source-column-alias (:name col))
          (u/assoc-default :effective-type (or (:base-type col) :type/*))))))
