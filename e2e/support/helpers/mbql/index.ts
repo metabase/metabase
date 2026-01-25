@@ -1,6 +1,6 @@
 export {
   getMetadataProvider,
-  createTestJsQuery,
-  createTestNativeJsQuery,
+  createQuery,
+  createNativeQuery,
 } from "./wrappers";
 export { createTestQuestion } from "./question";

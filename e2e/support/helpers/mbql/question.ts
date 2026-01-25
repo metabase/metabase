@@ -6,7 +6,7 @@ import type { QuestionDetails } from "../api";
 import { type Options, question } from "../api/createQuestion";
 
 import type { GetMetadataOpts } from "./types";
-import { createTestJsQuery, createTestNativeJsQuery } from "./wrappers";
+import { createNativeQuery, createQuery } from "./wrappers";
 
 type TestQuestionDetails =
   | QuestionDetails
@@ -42,7 +42,7 @@ type StructuredTestQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
  *
  * @example
  *   // Custom mbql query
- *   H.createTestJsQuestion(...).then(dataset_query) => {
+ *   H.createQuery(...).then(dataset_query) => {
  *    H.createTestQuestion({
  *      name: "My question",
  *      dataset_query,
@@ -96,7 +96,7 @@ export function createTestQuestion(
   } else if (isStructuredTestQuestionDetails(details)) {
     // MBQL question details, pass through createTestJsQuery
     const { metadata = {}, query, ...rest } = details;
-    return createTestJsQuery(metadata, query).then((dataset_query) =>
+    return createQuery(metadata, query).then((dataset_query) =>
       question(
         {
           ...rest,
@@ -108,7 +108,7 @@ export function createTestQuestion(
   } else if (isNativeTestQuestionDetails(details)) {
     // Native question details, pass through createTestNativeJsQuery
     const { metadata = {}, databaseId, query, ...rest } = details;
-    return createTestNativeJsQuery(metadata, databaseId, query).then(
+    return createNativeQuery(metadata, databaseId, query).then(
       (dataset_query) =>
         question(
           {

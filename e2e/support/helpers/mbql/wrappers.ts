@@ -39,19 +39,19 @@ async function _getMetadataProvider(
  * @param metadataProvider - A Lib.MetadataProvider instance or a GetMetadataOpts object that will be user to instantiate a Lib.MetadataProvider
  * @param opts - The details of the query to create
  */
-export function createTestJsQuery(
+export function createQuery(
   metadataProvider: Lib.MetadataProvider | GetMetadataOpts,
   opts: CreateTestQueryOpts,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
   return ensureProvider(metadataProvider).then((provider) => {
-    return _createTestJsQuery(provider, opts);
+    return createTestJsQuery(provider, opts);
   });
 }
 
 // Helper function which calls createTestJsQuery from metabase-lib/test-helpers.
 // This module needs to imported lazily not to crash Cypress and to avoid importing
 // cljs in tests that don't need it.
-async function _createTestJsQuery(
+async function createTestJsQuery(
   metadataProvider: Lib.MetadataProvider,
   opts: CreateTestQueryOpts,
 ): Promise<OpaqueDatasetQuery> {
@@ -66,20 +66,20 @@ async function _createTestJsQuery(
  * @param databaseId - The database the query is for
  * @param query - The native query string
  */
-export function createTestNativeJsQuery(
+export function createNativeQuery(
   metadataProvider: Lib.MetadataProvider | GetMetadataOpts,
   databaseId: DatabaseId,
   query: string,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
   return ensureProvider(metadataProvider).then((provider) =>
-    _createTestNativeJsQuery(provider, databaseId, query),
+    createTestNativeJsQuery(provider, databaseId, query),
   );
 }
 
 // Helper function which calls createTestNativeJsQuery from metabase-lib/test-helpers.
 // This module needs to imported lazily not to crash Cypress and to avoid importing
 // cljs in tests that don't need it.
-async function _createTestNativeJsQuery(
+async function createTestNativeJsQuery(
   metadataProvider: Lib.MetadataProvider,
   databaseId: DatabaseId,
   query: string,
