@@ -184,16 +184,19 @@
   [token base-url site-uuid]
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
-    (cond
-      (http/success? resp) (some-> body json/decode+kw)
-      (<= 400 status 499) (or (some-> body json/decode+kw)
-                              {:valid false
-                               :status "Unable to validate token"
-                               :error-details "Token validation provided no response"})
+    (if (or (http/success? resp)
+            (http/client-error? resp))
+      (try
+        (json/decode+kw body)
+        (catch Exception e
+          (log/errorf "Token check responded with invalid JSON: %s" {:body body :error (ex-message e)})
+          {:valid false
+           :status (str status)
+           :error-details body}))
 
-      ;; exceptions are not cached.
-      :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                :body body})))))
+             ;; exceptions are not cached.
+      (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                          :body body})))))
 
 (defn- metering-url
   [token base-url]

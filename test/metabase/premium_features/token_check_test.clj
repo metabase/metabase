@@ -40,7 +40,15 @@
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
         (token-check/-clear-cache! token-check/token-checker)
         (dotimes [_ 10] (token-check/check-token token))
-        (is (= 1 @call-count))))))
+        (is (= 1 @call-count))))
+    (testing "Even if a 4XX response is not JSON, it is still cached"
+      (let [call-count (atom 0)
+            token (tu/random-token)]
+        (binding [http/request (fn [& _]
+                                 (swap! call-count inc)
+                                 {:status 400 :body "you'll never guess"})]
+          (dotimes [_ 10] (token-check/check-token token))
+          (is (= 1 @call-count)))))))
 
 (deftest fetch-token-does-not-cache-exceptions
   (let [call-count (atom 0)
@@ -64,7 +72,6 @@
         (reset! response :500)
         (dotimes [_ 5] (token-check/check-token checker token))
         (is (= 5 @call-count))))))
-
 (deftest not-found-test
   (mt/with-log-level :fatal
     (is (=? {:valid false, :status "Token does not exist."}
