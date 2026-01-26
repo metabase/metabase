@@ -23,7 +23,7 @@ interface SavedEntityListProps {
   onSelect: (tableOrModelId: string) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
   selectedId,
   databaseId,
@@ -95,5 +95,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-export { SavedEntityList };

@@ -41,7 +41,7 @@ function QuestionTimelineAcknowledgement({
   );
 }
 
-const QuestionTimelineWidget = ({
+export const QuestionTimelineWidget = ({
   className,
 }: QuestionTimelineWidgetProps): JSX.Element => {
   const { isShowingTimelineSidebar } = useSelector(getUiControls);
@@ -78,5 +78,3 @@ QuestionTimelineWidget.shouldRender = ({
 }: QuestionTimelineWidgetOpts) => {
   return isTimeseries;
 };
-
-export { QuestionTimelineWidget };

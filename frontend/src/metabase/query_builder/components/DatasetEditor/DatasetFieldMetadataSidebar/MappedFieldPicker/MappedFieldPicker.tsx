@@ -23,7 +23,7 @@ type MappedFieldPickerProps = {
   onChange: (value: FieldId | null) => void;
 };
 
-function MappedFieldPicker({
+export function MappedFieldPicker({
   className,
   databaseId = null,
   onChange,
@@ -124,4 +124,3 @@ function MappedFieldPicker({
     </>
   );
 }
-export { MappedFieldPicker };

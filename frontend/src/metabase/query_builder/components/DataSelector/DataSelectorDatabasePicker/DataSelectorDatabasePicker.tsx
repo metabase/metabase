@@ -34,7 +34,7 @@ type Item = {
   database: Database;
 };
 
-const DataSelectorDatabasePicker = ({
+export const DataSelectorDatabasePicker = ({
   databases,
   selectedDatabase,
   onChangeDatabase,
@@ -102,5 +102,3 @@ const DataSelectorDatabasePicker = ({
     />
   );
 };
-
-export { DataSelectorDatabasePicker };

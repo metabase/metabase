@@ -5,7 +5,9 @@ import type { DataSelectorSectionHeaderProps } from "../DataSelectorSectionHeade
 import { DataSelectorSectionHeader } from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";
 
-const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
+export const DataSelectorLoading = ({
+  header,
+}: DataSelectorSectionHeaderProps) =>
   header ? (
     <Box component="section" w={CONTAINER_WIDTH}>
       <DataSelectorSectionHeader header={header} />
@@ -14,5 +16,3 @@ const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
   ) : (
     <LoadingAndErrorWrapper loading />
   );
-
-export { DataSelectorLoading };

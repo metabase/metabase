@@ -16,7 +16,9 @@ interface NativeQueryEditorRunButtonProps {
   runQuery?: () => void;
 }
 
-const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
+export const NativeQueryEditorRunButton = (
+  props: NativeQueryEditorRunButtonProps,
+) => {
   const {
     cancelQuery,
     isResultDirty,
@@ -57,5 +59,3 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
     />
   );
 };
-
-export { NativeQueryEditorRunButton };

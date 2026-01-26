@@ -35,7 +35,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
   );
 };
 
-const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
+export const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
   <div className={cx(className, CS.textBold, CS.textMedium)}>
     <Radio
       vertical
@@ -63,5 +63,3 @@ const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
     />
   </div>
 );
-
-export { LimitPopover };

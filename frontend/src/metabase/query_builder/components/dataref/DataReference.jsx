@@ -25,7 +25,7 @@ const DataReferencePropTypes = {
   onBack: PropTypes.func,
 };
 
-const DataReference = ({
+export const DataReference = ({
   dataReferenceStack,
   popDataReferenceStack,
   pushDataReferenceStack,
@@ -56,5 +56,3 @@ const DataReference = ({
 };
 
 DataReference.propTypes = DataReferencePropTypes;
-
-export { DataReference };

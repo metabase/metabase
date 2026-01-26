@@ -10,7 +10,7 @@ type DataSelectorDataBucketPickerProps = {
   onChangeDataBucket: (id: DataTypeInfoItem["id"]) => void;
 };
 
-const DataSelectorDataBucketPicker = ({
+export const DataSelectorDataBucketPicker = ({
   dataTypes,
   onChangeDataBucket,
 }: DataSelectorDataBucketPickerProps) => (
@@ -69,5 +69,3 @@ const DataBucketListItem = ({
     </Box>
   </SelectList.BaseItem>
 );
-
-export { DataSelectorDataBucketPicker };

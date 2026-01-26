@@ -23,7 +23,7 @@ export interface TimelineSidebarProps {
   onClose?: () => void;
 }
 
-const TimelineSidebar = ({
+export const TimelineSidebar = ({
   question,
   timelines,
   visibleTimelineEventIds,
@@ -92,5 +92,3 @@ const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
 const formatDate = (date: Dayjs) => {
   return date.format("ll");
 };
-
-export { TimelineSidebar };

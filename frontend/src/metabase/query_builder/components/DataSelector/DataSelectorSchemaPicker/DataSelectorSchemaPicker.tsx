@@ -18,7 +18,7 @@ type DataSelectorSchemaPickerProps = {
   onChangeSchema: (item: { schema: Schema }) => void;
 };
 
-const DataSelectorSchemaPicker = ({
+export const DataSelectorSchemaPicker = ({
   schemas,
   selectedSchemaId,
   onChangeSchema,
@@ -55,5 +55,3 @@ const DataSelectorSchemaPicker = ({
     </Box>
   );
 };
-
-export { DataSelectorSchemaPicker };

@@ -17,7 +17,7 @@ interface ConnectedTableListProps {
   onTableClick: (table: Table) => void;
 }
 
-const ConnectedTableList = ({
+export const ConnectedTableList = ({
   tables,
   onTableClick,
 }: ConnectedTableListProps) => (
@@ -36,5 +36,3 @@ const ConnectedTableList = ({
     ))}
   </NodeListContainer>
 );
-
-export { ConnectedTableList };

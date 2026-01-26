@@ -38,7 +38,7 @@ type FieldWithName = {
   field: Field;
 };
 
-const DataSelectorFieldPicker = ({
+export const DataSelectorFieldPicker = ({
   isLoading,
   fields,
   selectedTable,
@@ -112,5 +112,3 @@ const Header = ({ onBack, selectedTable }: HeaderProps) => (
     </Box>
   </Box>
 );
-
-export { DataSelectorFieldPicker };

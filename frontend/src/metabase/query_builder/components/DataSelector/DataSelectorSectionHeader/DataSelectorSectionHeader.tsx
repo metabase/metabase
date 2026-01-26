@@ -8,7 +8,7 @@ export type DataSelectorSectionHeaderProps = {
   header?: React.ReactElement;
 };
 
-const DataSelectorSectionHeader = ({
+export const DataSelectorSectionHeader = ({
   header,
 }: DataSelectorSectionHeaderProps) => (
   <Flex p="md" align="center" className={DataSelectorSectionHeaderS.Container}>
@@ -17,5 +17,3 @@ const DataSelectorSectionHeader = ({
     </Box>
   </Flex>
 );
-
-export { DataSelectorSectionHeader };

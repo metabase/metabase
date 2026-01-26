@@ -55,7 +55,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   databaseIsDisabled?: (database: Database) => boolean;
 }
 
-const NativeQueryEditorTopBar = forwardRef<
+export const NativeQueryEditorTopBar = forwardRef<
   HTMLDivElement,
   NativeQueryEditorTopBarProps
 >(function NativeQueryEditorTopBarInner(props, ref) {
@@ -182,5 +182,3 @@ const NativeQueryEditorTopBar = forwardRef<
     </Flex>
   );
 });
-
-export { NativeQueryEditorTopBar };

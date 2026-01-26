@@ -49,7 +49,7 @@ type Item = {
   database: Database;
 };
 
-const DataSelectorTablePicker = ({
+export const DataSelectorTablePicker = ({
   schemas,
   tables,
   selectedDatabase,
@@ -205,5 +205,3 @@ const Header = ({
     )}
   </Flex>
 );
-
-export { DataSelectorTablePicker };

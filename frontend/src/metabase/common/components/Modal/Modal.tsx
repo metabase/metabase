@@ -5,9 +5,7 @@ import { useDisableCommandPalette } from "metabase/palette/hooks/useDisableComma
 export type ModalProps = WindowModalProps;
 
 /** @deprecated use Modal from metabase/ui */
-const Modal = ({ isOpen = true, ...props }: ModalProps) => {
+export const Modal = ({ isOpen = true, ...props }: ModalProps) => {
   useDisableCommandPalette({ disabled: isOpen });
   return <WindowModal isOpen={isOpen} {...props} />;
 };
-
-export { Modal };

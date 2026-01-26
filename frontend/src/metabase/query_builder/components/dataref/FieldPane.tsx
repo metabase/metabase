@@ -8,7 +8,7 @@ interface FieldPaneProps {
   field: Field;
 }
 
-const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
+export const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
   return (
     <SidebarContent
       title={field.name}
@@ -27,5 +27,3 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
     </SidebarContent>
   );
 };
-
-export { FieldPane };

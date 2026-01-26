@@ -37,7 +37,7 @@ type Section = BaseSection<Item> & {
   active?: boolean;
 };
 
-const DataSelectorDatabaseSchemaPicker = ({
+export const DataSelectorDatabaseSchemaPicker = ({
   databases,
   selectedDatabase,
   selectedSchema,
@@ -135,5 +135,3 @@ const DataSelectorDatabaseSchemaPicker = ({
     />
   );
 };
-
-export { DataSelectorDatabaseSchemaPicker };
