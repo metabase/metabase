@@ -566,9 +566,8 @@
 
 (defn- referred-expressions
   [expr]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match expr :expression)))
+  ;; TODO: verify refactor is correct
+  (set (lib.util.match/match-many expr [:expression & args] (second args))))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -576,9 +575,8 @@
 
 (defn- referred-aggregations
   [agg]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match agg :aggregation)))
+  ;; TODO: verify refactor is correct
+  (set (lib.util.match/match agg [:aggregation & args] (second args))))
 
 (defn- cyclic-definition
   ([node->children]

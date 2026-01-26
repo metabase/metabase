@@ -458,6 +458,44 @@
   [value & clauses]
   (match-lite* value clauses))
 
+(defn- match-many* [value clauses]
+  (when (odd? (count clauses))
+    (throw (ex-info "match-many requires even number of clauses" {})))
+  (let [pairs (partition 2 clauses)
+        has-default? (= (first (last pairs)) '_)
+        [pairs default] (if has-default?
+                          [(butlast pairs) (second (last pairs))]
+                          [pairs nil])
+        ;; match-lite is always recursive unless there is a default clause
+        recursive? (not has-default?)
+        contains-&recur? (volatile! false)
+        ;; Search for &recur usage in clauses.
+        _ (perf/postwalk #(when (= % '&recur) (vreset! contains-&recur? true)) (map second pairs))
+        ;; Wrap explicit nil values.
+        value (if (nil? value) `(identity nil) value)
+        [value-sym value-binding] (if (or recursive? @contains-&recur?)
+                                    ['&match nil]
+                                    ['&match value])
+        body (process-clauses pairs value-sym value-binding)]
+    `(let [acc# (volatile! [])]
+       ((fn ~'&recur [~value-sym]
+          (if-some [result# (metabase.lib.util.match.impl/unwrap-nil
+                             ~(expand-or-some
+                               (cond-> [body]
+                                 (some? default) (conj default))))]
+            (do (vswap! acc# conj result#) nil)
+            (metabase.lib.util.match.impl/match-lite-in-collection ~'&recur ~value-sym)))
+        ~value)
+       @acc#)))
+
+(defmacro match-many
+  "Like `match-lite`, but returns multiple matches.
+
+  TODO: proper docs."
+  {:style/indent :defn}
+  [value & clauses]
+  (match-many* value clauses))
+
 (defmacro replace*
   "Internal implementation for `replace`. Generate a pattern-matching function with `core.match`, and use it to replace
   matching values in `form`."

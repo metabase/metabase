@@ -111,3 +111,20 @@
               (when-let [match (match-fn v)]
                 (reduced match)))
             nil form)))
+
+(defn match-many-in-collection
+  "Internal impl for `match-many`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
+  [match-fn form]
+  {:pre [(fn? match-fn)]}
+  (cond
+    (map? form)
+    (reduce-kv (fn [_ _ v]
+                 (when-let [match (match-fn v)]
+                   (reduced match)))
+               nil form)
+
+    (sequential? form)
+    (reduce (fn [_ v]
+              (when-let [match (match-fn v)]
+                (reduced match)))
+            nil form)))

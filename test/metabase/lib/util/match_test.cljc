@@ -412,3 +412,19 @@
     (t/is (= :inside (lib.util.match/match-lite [[[[[[:inside]]]]]]
                        [in] (&recur in)
                        _ &match)))))
+
+(t/deftest ^:parallel match-many-test
+  (t/is (= [6 15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                             [a b c] (+ a b c))))
+  (t/is (= [1 2 3 4 5 6] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                                    (_ :guard number?) &match)))
+  (t/is (= [] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                         (_ :guard keyword?) &match)))
+  (t/is (= [100] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                            (_ :guard keyword?) &match
+                                            _ 100)))
+
+  (t/testing "nils aren't recorded into the result"
+    (t/is (= [15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                             [a b c] (when (> a 1)
+                                                       (+ a b c)))))))

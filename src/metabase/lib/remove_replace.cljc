@@ -375,8 +375,8 @@
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
     (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (lib.util.match/match (lib.util/query-stage query next-stage-number)
-           [:field _ target-ref-id] &match))))
+         (lib.util.match/match-many (lib.util/query-stage query next-stage-number)
+                                    [:field _ target-ref-id] &match))))
 
 (defn- typed-expression
   [query stage-number expression]

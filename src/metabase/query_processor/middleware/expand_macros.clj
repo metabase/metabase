@@ -43,9 +43,9 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (lib.util.match/match stage
-         [macro-type _opts (id :guard pos-int?)]
-         (conj! ids id))
+       (lib.util.match/match-many stage
+                                  [macro-type _opts (id :guard pos-int?)]
+                                  (conj! ids id))
        nil))
     (not-empty (persistent! ids))))
 

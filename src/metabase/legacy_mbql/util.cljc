@@ -722,9 +722,9 @@
   (not-empty
    (into #{}
          (comp cat (filter some?))
-         (lib.util.match/match coll
-           [:field (id :guard integer?) opts]
-           [id (:source-field opts)]))))
+         (lib.util.match/match-many coll
+                                    [:field (id :guard integer?) opts]
+                                    [id (:source-field opts)]))))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field` clause if needed.
