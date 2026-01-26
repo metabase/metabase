@@ -8,6 +8,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[clojure-write](.claude/skills/clojure-write/SKILL.md)** - Clojure/ClojureScript development with REPL-driven workflow and coding conventions
 - **[clojure-review](.claude/skills/clojure-review/SKILL.md)** - Clojure/ClojureScript code review guidelines and style enforcement
+- **[clojure-eval](.claude/skills/clojure-eval/SKILL.md)** - Clojure code evaluation against running nREPL
 
 ## TypeScript
 
