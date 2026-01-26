@@ -1060,10 +1060,11 @@
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
-      (let [pending-settings (into {}
+      (let [existing-settings (:settings existing-database)
+            pending-settings (into {}
                                    ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                    (remove (fn [[_k v]] (nil? v)))
-                                   (merge (:settings existing-database) settings))
+                                   (merge existing-settings settings))
             updates    (merge
                         ;; TODO - is there really a reason to let someone change the engine on an existing database?
                         ;;       that seems like the kind of thing that will almost never work in any practical way
@@ -1089,13 +1090,17 @@
                           (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db (merge existing-database updates)]
         ;; pass in this predicate to break circular dependency
-        (let [driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))
-              existing-settings (:settings existing-database)]
+        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
+          ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
-                  :when (not= new-value (get existing-settings setting-kw))]
-            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
+                  :when (and (some? new-value)
+                             (not= new-value (get existing-settings setting-kw)))]
+            (try
+              (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
+              (catch Exception e
+                (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
         (t2/update! :model/Database id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.

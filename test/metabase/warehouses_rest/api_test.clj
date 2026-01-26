@@ -651,12 +651,19 @@
       ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
                                                   :settings {:api-test-disabled-for-database true}}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Setting api-test-disabled-for-database is not enabled for this database"
-             (mt/user-http-request :crowberto :put 400
-                                   (format "database/%s" db-id)
-                                   {:settings {:api-test-disabled-for-database false}})))))))
+        (is (= "Setting api-test-disabled-for-database is not enabled for this database"
+               (:message (mt/user-http-request :crowberto :put 400
+                                               (format "database/%s" db-id)
+                                               {:settings {:api-test-disabled-for-database false}}))))))
+
+    (testing "should not validate settings being reset to nil (default)"
+      ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database nil}}))))))))
 
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
