@@ -1,8 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
-   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
-   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -58,19 +56,3 @@
      :query-content sql
      :query         dataset-query
      :database      database-id}))
-
-(defn create-sql-query-tool
-  "Tool handler for create_sql_query tool.
-  Returns structured output with query details and a navigate_to data part."
-  [args]
-  (try
-    (let [result (create-sql-query args)
-          results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
-       :instructions instructions/query-created-instructions
-       :data-parts [(streaming/navigate-to-part results-url)]})
-    (catch Exception e
-      (log/error e "Error creating SQL query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create SQL query: " (or (ex-message e) "Unknown error"))}))))
