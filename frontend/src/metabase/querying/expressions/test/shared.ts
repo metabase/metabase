@@ -2,9 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
 import {
-  type ExpressionClauseOpts,
-  createQuery,
-  createQueryWithClauses,
+  createMetadataProvider,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import {
   COMMON_DATABASE_FEATURES,
@@ -90,78 +89,199 @@ const metadata = createMockMetadata({
   ],
 });
 
-const exprs: ExpressionClauseOpts[] = [
+export const query = createTestQuery(
+  createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
   {
-    name: "foo",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "bool",
-    operator: "=",
-    args: [1, 1],
-  },
-  {
-    name: "name with [brackets]",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "name with \\ slash",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "stringly",
-    operator: "concat",
-    args: ["foo", "bar"],
-  },
-  {
-    name: "bar",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "BAR",
-    operator: "+",
-    args: [1, 2],
-  },
-];
-
-export const query = createQueryWithClauses({
-  query: createQuery({
-    metadata,
-    query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: createMockStructuredQuery({
-        "source-table": ORDERS_ID,
+    databaseId: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
         fields: [],
-      }),
-    }),
-  }),
-  expressions: exprs,
-});
-
-export const queryWithAggregation = createQueryWithClauses({
-  query: createQuery({
-    metadata,
-    query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: createMockStructuredQuery({
-        "source-table": ORDERS_ID,
-        fields: [],
-        aggregation: [
-          [
-            "aggregation-options",
-            ["sum", ["field", ORDERS.TOTAL, null]],
-            { name: "Bar Aggregation", "display-name": "Bar Aggregation" },
-          ],
+        expressions: [
+          {
+            name: "foo",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "bool",
+            value: {
+              type: "operator",
+              operator: "=",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+          {
+            name: "name with [brackets]",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "name with \\ slash",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "stringly",
+            value: {
+              type: "operator",
+              operator: "concat",
+              args: [
+                { type: "literal", value: "foo" },
+                { type: "literal", value: "bar" },
+              ],
+            },
+          },
+          {
+            name: "bar",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "BAR",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
         ],
-      }),
-    }),
-  }),
-  expressions: exprs,
-});
+      },
+    ],
+  },
+);
+
+export const queryWithAggregation = createTestQuery(
+  createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
+  {
+    databaseId: SAMPLE_DB_ID,
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: [],
+        aggregations: [
+          {
+            name: "Bar Aggregation",
+            value: {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          },
+        ],
+        expressions: [
+          {
+            name: "foo",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "bool",
+            value: {
+              type: "operator",
+              operator: "=",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+          {
+            name: "name with [brackets]",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "name with \\ slash",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "stringly",
+            value: {
+              type: "operator",
+              operator: "concat",
+              args: [
+                { type: "literal", value: "foo" },
+                { type: "literal", value: "bar" },
+              ],
+            },
+          },
+          {
+            name: "bar",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "BAR",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  },
+);
 
 export const stageIndex = -1;
 

@@ -2,10 +2,10 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
-  columnFinder,
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
   createQuery,
-  createQueryWithClauses,
-  getJoinQueryHelpers,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -32,6 +32,7 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS_ID,
@@ -58,57 +59,78 @@ const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
 const queryOrders = createQuery();
 
-const queryNonDateBreakout = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [{ tableName: "ORDERS", columnName: "QUANTITY" }],
-});
-
-const query1DateBreakout = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
+const queryNonDateBreakout = createTestQuery(SAMPLE_PROVIDER, {
+  databaseId: SAMPLE_DATABASE.id,
+  stages: [
     {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [{ name: "QUANTITY", groupName: "Orders" }],
     },
   ],
 });
 
-const query2DateBreakouts = createQueryWithClauses({
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
+const query1DateBreakout = createTestQuery(SAMPLE_PROVIDER, {
+  databaseId: SAMPLE_DATABASE.id,
+  stages: [
     {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
-    },
-    {
-      tableName: "PRODUCTS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Month",
-    },
-  ],
-});
-
-const queryDateBreakoutsMultiStage = createQueryWithClauses({
-  query: Lib.appendStage(
-    createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
       breakouts: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          name: "CREATED_AT",
+          groupName: "Orders",
+          unit: "month",
         },
       ],
-    }),
-  ),
-  aggregations: [{ operatorName: "count" }],
-  breakouts: [
+    },
+  ],
+});
+
+const query2DateBreakouts = createTestQuery(SAMPLE_PROVIDER, {
+  databaseId: SAMPLE_DATABASE.id,
+  stages: [
     {
-      tableName: "ORDERS",
-      columnName: "CREATED_AT",
-      temporalBucketName: "Year",
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [
+        {
+          name: "CREATED_AT",
+          groupName: "Orders",
+          unit: "month",
+        },
+        {
+          name: "CREATED_AT",
+          groupName: "Product",
+          unit: "month",
+        },
+      ],
+    },
+  ],
+});
+
+const queryDateBreakoutsMultiStage = createTestQuery(SAMPLE_PROVIDER, {
+  databaseId: SAMPLE_DATABASE.id,
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [
+        {
+          name: "CREATED_AT",
+          groupName: "Orders",
+          unit: "month",
+        },
+      ],
+    },
+    {
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [
+        {
+          name: "CREATED_AT",
+          unit: "year",
+        },
+      ],
     },
   ],
 });
@@ -576,105 +598,186 @@ describe("parameters/utils/targets", () => {
 });
 
 function createComplex1StageQuery() {
-  const baseQuery = ordersJoinReviewsOnProductId();
-  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
-  const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
-
-  return createQueryWithClauses({
-    query: baseQuery,
-    expressions: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        name: "User's 18th birthday",
-        operator: "datetime-add",
-        args: [checkNotNull(userBirthdayColumn), 18, "year"],
-      },
-    ],
-    aggregations: [
-      { operatorName: "count" },
-      { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
-    ],
-    breakouts: [
-      {
-        tableName: "ORDERS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Month",
-      },
-      {
-        tableName: "PRODUCTS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Year",
-      },
-      {
-        tableName: "REVIEWS",
-        columnName: "CREATED_AT",
-        temporalBucketName: "Quarter",
-      },
-      {
-        columnName: "User's 18th birthday",
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  groupName: "Orders",
+                },
+                right: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  groupName: "Reviews",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "User's 18th birthday",
+            value: {
+              type: "operator",
+              operator: "datetime-add",
+              args: [
+                { type: "column", name: "BIRTH_DATE", groupName: "User" },
+                { type: "literal", value: 18 },
+                { type: "literal", value: "year" },
+              ],
+            },
+          },
+        ],
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+          },
+        ],
+        breakouts: [
+          {
+            name: "CREATED_AT",
+            groupName: "Orders",
+            unit: "month",
+          },
+          {
+            name: "CREATED_AT",
+            groupName: "Product",
+            unit: "year",
+          },
+          {
+            name: "CREATED_AT",
+            groupName: "Reviews",
+            unit: "quarter",
+          },
+          {
+            name: "User's 18th birthday",
+          },
+        ],
       },
     ],
   });
 }
 
 function createComplex2StageQuery() {
-  const baseQuery = Lib.appendStage(createComplex1StageQuery());
-  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
-  const countColumn = findColumn(null, "count");
-
-  const stageIndex = -1;
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(baseQuery, stageIndex, REVIEWS_ID);
-
-  const createdAt = findLHSColumn("ORDERS", "CREATED_AT");
-  const reviewsCreatedAt = findRHSColumn("REVIEWS", "CREATED_AT");
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    reviewsCreatedAt,
-    createdAt,
-  );
-  const join = Lib.joinClause(table, [condition], defaultStrategy);
-  const queryWithJoin = Lib.join(baseQuery, stageIndex, join);
-
-  return createQueryWithClauses({
-    query: queryWithJoin,
-    expressions: [
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
       {
-        name: "Count + 1",
-        operator: "+",
-        args: [checkNotNull(countColumn), 1],
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  groupName: "Orders",
+                },
+                right: {
+                  type: "column",
+                  name: "PRODUCT_ID",
+                  groupName: "Reviews",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "User's 18th birthday",
+            value: {
+              type: "operator",
+              operator: "datetime-add",
+              args: [
+                { type: "column", name: "BIRTH_DATE", groupName: "User" },
+                { type: "literal", value: 18 },
+                { type: "literal", value: "year" },
+              ],
+            },
+          },
+        ],
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+          },
+        ],
+        breakouts: [
+          {
+            name: "CREATED_AT",
+            unit: "month",
+          },
+          {
+            name: "CREATED_AT",
+            unit: "year",
+          },
+          {
+            name: "CREATED_AT",
+            unit: "quarter",
+          },
+          {
+            name: "User's 18th birthday",
+          },
+        ],
+      },
+      {
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  name: "CREATED_AT",
+                  groupName: "Summaries",
+                },
+                right: {
+                  type: "column",
+                  name: "CREATED_AT",
+                  groupName: "Reviews",
+                },
+              },
+            ],
+          },
+        ],
+        expressions: [
+          {
+            name: "Count + 1",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", name: "count" },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [{ name: "User's 18th birthday" }],
       },
     ],
-    aggregations: [{ operatorName: "count" }],
-    breakouts: [{ columnName: "User's 18th birthday" }],
   });
-}
-
-function ordersJoinReviewsOnProductId() {
-  const stageIndex = -1;
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(queryOrders, stageIndex, REVIEWS_ID);
-
-  const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    reviewsProductId,
-    productsId,
-  );
-  const join = Lib.joinClause(table, [condition], defaultStrategy);
-  const query = Lib.join(queryOrders, stageIndex, join);
-
-  return query;
 }
 
 function createUnitOfTimeParameter() {

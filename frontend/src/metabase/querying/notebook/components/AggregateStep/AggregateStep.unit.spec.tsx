@@ -7,8 +7,13 @@ import {
   screen,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -20,9 +25,22 @@ import type { NotebookStep } from "../../types";
 import { AggregateStep } from "./AggregateStep";
 
 function createAggregatedQuery() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "avg", tableName: "ORDERS", columnName: "QUANTITY" },
+  return createTestQuery(SAMPLE_PROVIDER, {
+    databaseId: SAMPLE_DATABASE.id,
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [
+          {
+            type: "operator",
+            operator: "avg",
+            args: [{ type: "column", groupName: "Orders", name: "QUANTITY" }],
+          },
+        ],
+      },
     ],
   });
 }
@@ -85,12 +103,26 @@ describe("AggregateStep", () => {
   it("should use foreign key name for foreign table columns", () => {
     setup({
       step: createMockNotebookStep({
-        query: createQueryWithClauses({
-          aggregations: [
+        query: createTestQuery(SAMPLE_PROVIDER, {
+          databaseId: SAMPLE_DATABASE.id,
+          stages: [
             {
-              operatorName: "avg",
-              tableName: "PRODUCTS",
-              columnName: "RATING",
+              source: {
+                type: "table",
+                id: ORDERS_ID,
+              },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "avg",
+                  args: [
+                    {
+                      type: "column",
+                      name: "RATING",
+                    },
+                  ],
+                },
+              ],
             },
           ],
         }),
@@ -180,8 +212,17 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should not allow to use temporal comparisons for metrics", async () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
+      const query = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
       });
       const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
       const step = createMockNotebookStep({ question, query });
@@ -195,8 +236,17 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to use temporal comparisons for non-metrics", async () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
+      const query = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
       });
       const question = DEFAULT_QUESTION.setType("question").setQuery(query);
       const step = createMockNotebookStep({ question, query });

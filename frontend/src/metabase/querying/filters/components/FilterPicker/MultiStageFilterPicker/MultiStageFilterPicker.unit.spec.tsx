@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  createTestQuery,
+} from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { MultiStageFilterPicker } from "./MultiStageFilterPicker";
 
@@ -34,9 +39,15 @@ function setup({ query, canAppendStage = true }: SetupOpts) {
 describe("MultiStageFilterPicker", () => {
   it("should drop empty stages if there is no filter in a post-aggregation stage (metabase#57573)", async () => {
     const { getNewQuery } = setup({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [{ tableName: "PRODUCTS", columnName: "CATEGORY" }],
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ name: "CATEGORY" }],
+          },
+        ],
       }),
     });
     expect(screen.getByText("Summaries")).toBeInTheDocument();
@@ -52,9 +63,15 @@ describe("MultiStageFilterPicker", () => {
 
   it("should not drop the post-aggregation stage if there is a new filter", async () => {
     const { getNewQuery } = setup({
-      query: createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-        breakouts: [{ tableName: "PRODUCTS", columnName: "CATEGORY" }],
+      query: createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ name: "CATEGORY" }],
+          },
+        ],
       }),
     });
     expect(screen.getByText("Summaries")).toBeInTheDocument();

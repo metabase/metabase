@@ -670,10 +670,10 @@ function getGroupColumns(
     });
     if (!group) {
       const groupNames = groups.map(
-        (group) => Lib.displayInfo(query, 0, group).displayName,
+        (group) => `"${Lib.displayInfo(query, stageIndex, group).displayName}"`,
       );
       throw new Error(
-        `Could not find group named ${column.groupName}, available names are: ${groupNames.join(", ")}`,
+        `Could not find group named "${column.groupName}", available names are: ${groupNames.join(", ")}`,
       );
     }
     return Lib.getColumnsFromColumnGroup(group);

@@ -2,9 +2,11 @@ import { createMockMetadata } from "__support__/metadata";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createQueryWithClauses,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import type {
   ParameterTarget,
@@ -368,12 +370,18 @@ describe("applyParameter", () => {
   });
 
   describe("temporal unit parameters", () => {
-    const query = createQueryWithClauses({
-      breakouts: [
+    const query = createTestQuery(SAMPLE_PROVIDER, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              name: "CREATED_AT",
+              groupName: "Orders",
+              unit: "month",
+            },
+          ],
         },
       ],
     });

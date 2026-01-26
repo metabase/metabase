@@ -1,9 +1,11 @@
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_DATABASE,
   SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
   columnFinder,
   createQuery,
-  createQueryWithClauses,
+  createTestQuery,
 } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
@@ -13,7 +15,7 @@ import {
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
   type ColumnInfo,
@@ -477,18 +479,44 @@ describe("syncVizSettingsWithQuery", () => {
 
   describe("graph.metrics", () => {
     it("should handle adding new columns", () => {
-      const oldQuery = createQueryWithClauses({
-        aggregations: [
-          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+      const oldQuery = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+              },
+            ],
+            breakouts: [{ name: "CREATED_AT", groupName: "Orders" }],
+          },
         ],
-        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
       });
-      const newQuery = createQueryWithClauses({
-        aggregations: [
-          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
-          { operatorName: "sum", tableName: "ORDERS", columnName: "SUBTOTAL" },
+      const newQuery = createTestQuery(SAMPLE_PROVIDER, {
+        databaseId: SAMPLE_DATABASE.id,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", groupName: "Orders" }],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  { type: "column", name: "SUBTOTAL", groupName: "Orders" },
+                ],
+              },
+            ],
+            breakouts: [{ name: "CREATED_AT", groupName: "Orders" }],
+          },
         ],
-        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
       });
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["sum"],
