@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
@@ -128,7 +129,7 @@
                        :model/TransformTag tag {:name "Existing Tag"}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
               "Should have no transform tracking entries initially")
-          (impl/sync-transform-tracking! true)
+          (settings/sync-transform-tracking! true)
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
                           :model_id coll-id
@@ -154,14 +155,13 @@
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}
                        :model/TransformTag tag {:name "Test Tag"}]
           (mt/with-temporary-setting-values [remote-sync-transforms true]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform" :model_id (:id transform) :model_name "Test Transform" :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "TransformTag" :model_id (:id tag) :model_name "Test Tag" :status "synced" :status_changed_at (t/offset-date-time)}])
-            (is (= 3 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "Transform" "TransformTag"]]
-                               :model_id [:in [coll-id (:id transform) (:id tag)]]))
-                "Should have 3 tracking entries")
-            (impl/sync-transform-tracking! false)
+            (is (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+                "Collection tracking entry should exist")
+            (is (t2/exists? :model/RemoteSyncObject :model_type "Transform" :model_id (:id transform))
+                "Transform tracking entry should exist")
+            (is (t2/exists? :model/RemoteSyncObject :model_type "TransformTag" :model_id (:id tag))
+                "TransformTag tracking entry should exist")
+            (settings/sync-transform-tracking! false)
             (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
                 "Transform and TransformTag tracking entries should be removed")
             (is (zero? (t2/count :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
