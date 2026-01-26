@@ -126,17 +126,3 @@
     {:structured-output {:message message
                          :path path}
      :reactions [{:type :metabot.reaction/redirect :url path}]}))
-
-(defn navigate-tool
-  "Tool handler for navigate_user tool."
-  [args]
-  (try
-    (let [result (navigate args)
-          reactions (:reactions result)]
-      (cond-> {:structured-output (:structured-output result)}
-        (seq reactions) (assoc :reactions reactions)))
-    (catch Exception e
-      (log/error e "Error navigating")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))}))))
