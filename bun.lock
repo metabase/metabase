@@ -249,7 +249,6 @@
         "@types/leaflet": "^1.7.5",
         "@types/leaflet-draw": "^0.4.14",
         "@types/leaflet.heat": "^0.2.1",
-        "@types/lodash.clonedeep": "^4.5.9",
         "@types/lodash.debounce": "^4.0.9",
         "@types/lodash.orderby": "^4.6.9",
         "@types/mustache": "^4.1.2",
@@ -308,6 +307,7 @@
         "eslint-plugin-jest": "^27.2.0",
         "eslint-plugin-jest-dom": "^5.4.0",
         "eslint-plugin-jest-formatting": "^3.1.0",
+        "eslint-plugin-metabase": "file:./frontend/lint/eslint-rules",
         "eslint-plugin-no-only-tests": "^2.4.0",
         "eslint-plugin-postcss-modules": "^2.0.0",
         "eslint-plugin-react": "^7.32.2",
@@ -1691,8 +1691,6 @@
 
     "@types/lodash": ["@types/lodash@4.14.202", "", {}, "sha512-OvlIYQK9tNneDlS0VN54LLd5uiPCBOp7gS5Z0f1mjoJYBrtStzgmJBxONW3U6OZqdtNzZPmn9BS/7WI7BFFcFQ=="],
 
-    "@types/lodash.clonedeep": ["@types/lodash.clonedeep@4.5.9", "", { "dependencies": { "@types/lodash": "*" } }, "sha512-19429mWC+FyaAhOLzsS8kZUsI+/GmBAQ0HFiCPsKGU+7pBXOQWhyrY6xNNDwUSX8SMZMJvuFVMF9O5dQOlQK9Q=="],
-
     "@types/lodash.debounce": ["@types/lodash.debounce@4.0.9", "", { "dependencies": { "@types/lodash": "*" } }, "sha512-Ma5JcgTREwpLRwMM+XwBR7DaWe96nC38uCBDFKZWbNKD+osjVzdpnUSwBcqCptrp16sSOLBAUb50Car5I0TCsQ=="],
 
     "@types/lodash.orderby": ["@types/lodash.orderby@4.6.9", "", { "dependencies": { "@types/lodash": "*" } }, "sha512-T9o2wkIJOmxXwVTPTmwJ59W6eTi2FseiLR369fxszG649Po/xe9vqFNhf/MtnvT5jrbDiyWKxPFPZbpSVK0SVQ=="],
@@ -2778,6 +2776,8 @@
     "eslint-plugin-jest-dom": ["eslint-plugin-jest-dom@5.4.0", "", { "dependencies": { "@babel/runtime": "^7.16.3", "requireindex": "^1.2.0" } }, "sha512-yBqvFsnpS5Sybjoq61cJiUsenRkC9K32hYQBFS9doBR7nbQZZ5FyO+X7MlmfM1C48Ejx/qTuOCgukDUNyzKZ7A=="],
 
     "eslint-plugin-jest-formatting": ["eslint-plugin-jest-formatting@3.1.0", "", {}, "sha512-XyysraZ1JSgGbLSDxjj5HzKKh0glgWf+7CkqxbTqb7zEhW7X2WHo5SBQ8cGhnszKN+2Lj3/oevBlHNbHezoc/A=="],
+
+    "eslint-plugin-metabase": ["eslint-plugin-metabase@file:frontend/lint/eslint-rules", {}],
 
     "eslint-plugin-no-only-tests": ["eslint-plugin-no-only-tests@2.4.0", "", {}, "sha512-azP9PwQYfGtXJjW273nIxQH9Ygr+5/UyeW2wEjYoDtVYPI+WPKwbj0+qcAKYUXFZLRumq4HKkFaoDBAwBoXImQ=="],
 
