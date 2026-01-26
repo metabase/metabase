@@ -7,6 +7,8 @@ import { getQuestionTitle } from "../QuestionTitle";
 import { SdkInternalNavigationBackButton } from "../SdkInternalNavigationProvider";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
+import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
+
 interface DefaultViewTitleTextProps
   extends Pick<SdkQuestionDefaultViewProps, "withResetButton" | "title"> {
   isQuestionChanged?: boolean;
