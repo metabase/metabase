@@ -2256,6 +2256,50 @@ describe("scenarios > data studio > workspaces", () => {
         .findByText("No workspaces yet")
         .should("be.visible");
     });
+
+    it("should show correct run status when switching tabs (GDGT-1571)", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Create first SQL transform that will succeed");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Run the successful transform");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should(
+        "have.text",
+        "Ran successfully",
+      );
+
+      cy.log("Create second SQL transform that will fail");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+      H.NativeEditor.type("INVALID SQL QUERY");
+      Workspaces.getSaveTransformButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Failing transform");
+        cy.findByText("Save").click();
+      });
+
+      cy.log("Run the failing transform");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should("have.text", "Run failed");
+      Workspaces.getRunStatus().should("contain.text", "Last run failed");
+
+      cy.log("Switch to the first transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "SQL transform" }).click();
+      });
+      Workspaces.getRunStatus().should(
+        "have.text",
+        "Last ran a few seconds ago successfully.",
+      );
+    });
   });
 });
 
