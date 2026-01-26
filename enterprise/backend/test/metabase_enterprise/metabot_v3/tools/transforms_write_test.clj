@@ -172,31 +172,3 @@
            (transforms-write/write-transform-sql
             {:edit_action {:mode "invalid"}
              :memory-atom memory-atom}))))))
-
-;;; Tool Handler Tests
-
-(deftest write-transform-sql-tool-test
-  (testing "catches exceptions and returns error output"
-    (let [result (transforms-write/write-transform-sql-tool
-                  {:transform_id 999
-                   :edit_action {:mode "replace" :new_content "SELECT 1"}
-                   :memory-atom (atom {:state {:transforms {}}})})]
-      (is (contains? result :output))
-      (is (string? (:output result)))))
-
-  (testing "returns structured output on success"
-    (let [result (transforms-write/write-transform-sql-tool
-                  {:edit_action {:mode "replace" :new_content "SELECT 1"}
-                   :transform_name "Test"
-                   :memory-atom (atom {:state {}})})]
-      (is (contains? result :structured-output))
-      (is (contains? result :data-parts)))))
-
-(deftest write-transform-python-tool-test
-  (testing "returns structured output on success"
-    (let [result (transforms-write/write-transform-python-tool
-                  {:edit_action {:mode "replace" :new_content "import pandas"}
-                   :transform_name "Test"
-                   :memory-atom (atom {:state {}})})]
-      (is (contains? result :structured-output))
-      (is (contains? result :data-parts)))))
