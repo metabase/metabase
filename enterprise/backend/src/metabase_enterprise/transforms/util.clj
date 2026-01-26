@@ -524,7 +524,8 @@
                         :ref   v})]
     (when (seq unresolved)
       (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
-                      {:unresolved unresolved})))
+                      {:unresolved unresolved
+                       :transform-message "Input table not found"})))
     resolved))
 
 (defn- matching-timestamp?

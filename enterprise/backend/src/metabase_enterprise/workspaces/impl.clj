@@ -81,6 +81,32 @@
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
                 (log/warn e "Error granting RO table permissions")))))))))
 
+(defn- batch-lookup-table-ids
+  "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
+  [db-id schema-key table-key table-refs]
+  (when (seq table-refs)
+    (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
+                      [:model/Table :id :schema :name]
+                      :db_id db-id
+                      {:where (into [:or] (for [tr table-refs]
+                                            [:and
+                                             [:= :schema (get tr schema-key)]
+                                             [:= :name (get tr table-key)]]))})))
+
+(defn table-ids-fallbacks
+  "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
+  ([table-refs]
+   (table-ids-fallbacks :schema :name :id table-refs))
+  ([schema-key table-key id-key table-refs]
+   (when-let [table-refs (seq (remove id-key table-refs))]
+     ;; These are ordered by db, so this will partition fine.
+     (u/for-map [table-refs (partition-by :db_id table-refs)
+                 :let [db_id (:db_id (first table-refs))]
+                 ;; Guesstimating a number that prevents this query being too large.
+                 table-refs (partition-all 20 table-refs)
+                 map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
+       map-entry))))
+
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
@@ -102,14 +128,21 @@
                            (t2/select-fn->fn :id #(driver.sql/default-schema (:engine %))
                                              [:model/Database :id :engine]
                                              :id [:in db-ids]))
+        fallback-map     (merge
+                          (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
+                          (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
         table-map        (reduce
                           (fn [m {:keys [db_id global_schema global_table global_table_id
                                          isolated_schema isolated_table isolated_table_id]}]
-                            (let [replacement    {:db-id  db_id
-                                                  :schema isolated_schema
-                                                  :table  isolated_table
-                                                  :id     isolated_table_id}
-                                  default-schema (get db-id->default db_id)]
+                            (let [global_table_id   (or global_table_id
+                                                        (fallback-map [db_id global_schema global_table]))
+                                  isolated_table_id (or isolated_table_id
+                                                        (fallback-map [db_id isolated_schema isolated_table]))
+                                  replacement       {:db-id  db_id
+                                                     :schema isolated_schema
+                                                     :table  isolated_table
+                                                     :id     isolated_table_id}
+                                  default-schema    (get db-id->default db_id)]
                               (cond-> (assoc m [db_id global_schema global_table] replacement)
                                 global_table_id (assoc global_table_id replacement)
                                 ;; Add nil-schema entry for tables in the default schema
@@ -348,6 +381,7 @@
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
+                                 ;; TODO (Chris 2026-01-26) 2N + 1 is really not great here...
                                  global-table-id   (t2/select-one-fn :id [:model/Table :id]
                                                                      :db_id database :schema schema :name name)
                                  isolated-table-id (t2/select-one-fn :id [:model/Table :id]
