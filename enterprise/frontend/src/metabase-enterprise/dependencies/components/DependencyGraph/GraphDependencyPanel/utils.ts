@@ -63,14 +63,16 @@ export function getAvailableSortColumns(
   return [
     "name",
     "location",
-    ...(canHaveViewCount(groupType) ? ["view-count" as const] : []),
+    ...(canHaveViewCount(getDependencyType(groupType))
+      ? ["view-count" as const]
+      : []),
   ];
 }
 
 export function getDefaultSortOptions(
   groupType: DependencyGroupType,
 ): DependencySortOptions {
-  return canHaveViewCount(groupType)
+  return canHaveViewCount(getDependencyType(groupType))
     ? { column: "view-count", direction: "desc" }
     : { column: "name", direction: "asc" };
 }

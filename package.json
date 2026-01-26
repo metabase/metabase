@@ -218,7 +218,6 @@
     "@types/leaflet": "^1.7.5",
     "@types/leaflet-draw": "^0.4.14",
     "@types/leaflet.heat": "^0.2.1",
-    "@types/lodash.clonedeep": "^4.5.9",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.orderby": "^4.6.9",
     "@types/mustache": "^4.1.2",

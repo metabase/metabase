@@ -224,7 +224,7 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate-browse-metric",
-        name: t`Browse Metrics`,
+        name: t`Browse metrics`,
         section: "basic",
         icon: "metric",
         perform: () => {

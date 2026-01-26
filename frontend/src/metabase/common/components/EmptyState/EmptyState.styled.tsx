@@ -17,10 +17,15 @@ export const EmptyStateActions = styled.div`
   margin: 0 auto;
 `;
 
-export const EmptyStateIllustration = styled.div`
+export interface EmptyStateIllustrationProps {
+  spacing: "sm" | "md";
+}
+
+export const EmptyStateIllustration = styled.div<EmptyStateIllustrationProps>`
   margin-bottom: 1rem;
 
+  /* Defaults to "md" spacing, "sm" forces always 1rem */
   ${breakpointMinSmall} {
-    margin-bottom: 2rem;
+    margin-bottom: ${(props) => (props.spacing === "sm" ? "1rem" : "2rem")};
   }
 `;
