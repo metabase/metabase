@@ -1,10 +1,12 @@
 import { useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase-enterprise/data-studio/analytics";
 import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -98,7 +100,11 @@ export function SearchNew({
 }: SearchNewProps) {
   const { resetSelection } = useSelection();
   const routeParams = parseRouteParams(params);
-  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
+  const {
+    data: tables,
+    isLoading: isLoadingTables,
+    isFetching: isFetchingTables,
+  } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
     "data-source":
@@ -114,13 +120,13 @@ export function SearchNew({
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+    useListDatabasesQuery();
   const { isExpanded, toggle } = useExpandedState(
     {},
-    {
-      defaultExpanded: true,
-    },
+    { defaultExpanded: true },
   );
+
+  const previousIsFetchingTables = usePrevious(isFetchingTables);
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -145,6 +151,16 @@ export function SearchNew({
   useEffect(() => {
     resetSelection();
   }, [query, filters, resetSelection]);
+
+  useEffect(() => {
+    const startedFetching =
+      (previousIsFetchingTables === false ||
+        previousIsFetchingTables === undefined) &&
+      isFetchingTables === true;
+    if (startedFetching) {
+      trackDataStudioTablePickerSearchPerformed();
+    }
+  }, [previousIsFetchingTables, isFetchingTables]);
 
   if (isLoading) {
     return (

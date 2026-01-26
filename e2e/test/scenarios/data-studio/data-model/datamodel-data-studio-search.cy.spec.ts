@@ -7,6 +7,7 @@ describe("Search", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
     H.restore("postgres-writable");
+    H.resetSnowplow();
     H.activateToken("bleeding-edge");
     H.resetTestTable({ type: "postgres", table: "multi_schema" });
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -19,6 +20,9 @@ describe("Search", () => {
     TablePicker.getTables().should("have.length", 3);
     TablePicker.getTable("Analytic Events").should("be.visible");
     TablePicker.getTable("Animals").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_table_picker_search_performed",
+    });
   });
 
   it("should support wildcard search with *", () => {
@@ -26,10 +30,19 @@ describe("Search", () => {
 
     TablePicker.getSearchInput().type("irds");
     TablePicker.get().findByText("No tables found").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_table_picker_search_performed",
+    });
 
     TablePicker.getSearchInput().clear().type("*irds");
     TablePicker.getTables().should("have.length", 1);
     TablePicker.getTable("Birds").should("be.visible");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "data_studio_table_picker_search_performed",
+      },
+      2,
+    );
   });
 
   it("should allow using shift key to select multiple tables", () => {
@@ -105,6 +118,8 @@ describe("Search", () => {
   it("should select/deselect databases and schemas", () => {
     H.DataModel.visitDataStudio();
     TablePicker.getSearchInput().type("a");
+    // wait for the tables to be loaded
+    TablePicker.getTables().should("have.length", 4);
     const postgres = "Writable Postgres12";
     const sampleDatabaseName = "Sample Database";
     const domesticSchema = "Domestic";

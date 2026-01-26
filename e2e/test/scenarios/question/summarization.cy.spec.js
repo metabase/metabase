@@ -83,7 +83,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     H.getRemoveDimensionButton({ name: "User → State" }).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → State").should("not.exist");
   });
 
@@ -138,7 +138,7 @@ describe("scenarios > question > summarize sidebar", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
   });
 
@@ -159,7 +159,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("318.7");
   });
 
@@ -205,7 +205,7 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -270,7 +270,7 @@ describe("scenarios > question > summarize sidebar", () => {
       H.openReviewsTable();
 
       H.summarize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Group by")
         .parent()
         .findByText("Title")

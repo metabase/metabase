@@ -281,6 +281,10 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
+export function dataStudioMetricCaching(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/caching`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
@@ -307,16 +311,4 @@ export function newDataStudioSegment(tableId: TableId) {
 
 export function dataStudioSegmentDependencies(segmentId: SegmentId) {
   return `${dataStudioSegment(segmentId)}/dependencies`;
-}
-
-export function dataStudioDependencyDiagnostics() {
-  return `${ROOT_URL}/dependency-diagnostics`;
-}
-
-export function dataStudioBrokenEntities() {
-  return `${dataStudioDependencyDiagnostics()}/broken`;
-}
-
-export function dataStudioUnreferencedEntities() {
-  return `${dataStudioDependencyDiagnostics()}/unreferenced`;
 }

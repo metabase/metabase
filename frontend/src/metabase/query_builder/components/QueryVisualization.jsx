@@ -16,14 +16,14 @@ import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
-import RunButtonWithTooltip from "./RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
-import VisualizationResult from "./VisualizationResult";
-import Warnings from "./Warnings";
+import { VisualizationResult } from "./VisualizationResult";
+import { Warnings } from "./Warnings";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
-export default function QueryVisualization(props) {
+export function QueryVisualization(props) {
   const {
     className,
     question,

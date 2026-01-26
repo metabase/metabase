@@ -1,11 +1,15 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { ActionIcon, FixedSizeIcon, Group, Title, Tooltip } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
+import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
+import S from "../ListSidebar.module.css";
 
 type SidebarHeaderProps = {
   node: DependencyNode;
@@ -20,24 +24,34 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       gap="0.75rem"
       wrap="nowrap"
       align="start"
+      justify="space-between"
       data-testid="dependency-list-sidebar-header"
     >
-      <Title flex={1} order={3} lh="1.5rem">
+      <Anchor
+        className={cx(CS.textWrap, S.link)}
+        component={ForwardRefLink}
+        fz="h3"
+        fw="bold"
+        lh="h3"
+        to={link?.url ?? ""}
+        target="_blank"
+      >
         {getNodeLabel(node)}
-      </Title>
-      <Group gap="xs" wrap="nowrap">
-        {link != null && (
-          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
-            <ActionIcon
-              component={ForwardRefLink}
-              to={link.url}
-              target="_blank"
-              aria-label={link.label}
-            >
-              <FixedSizeIcon name="external" />
-            </ActionIcon>
-          </Tooltip>
-        )}
+      </Anchor>
+      <Group gap="sm" wrap="nowrap">
+        <Tooltip
+          label={t`View in dependency graph`}
+          openDelay={TOOLTIP_OPEN_DELAY_MS}
+        >
+          <ActionIcon
+            component={ForwardRefLink}
+            to={Urls.dependencyGraph({ entry: node })}
+            target="_blank"
+            aria-label={t`View in dependency graph`}
+          >
+            <FixedSizeIcon name="dependencies" />
+          </ActionIcon>
+        </Tooltip>
         <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>

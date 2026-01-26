@@ -11,7 +11,7 @@ import {
   onOpenChartSettings,
   onOpenChartType,
 } from "metabase/query_builder/actions";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
+import { ViewButton } from "metabase/query_builder/components/view/ViewButton";
 import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
 import type { QueryBuilderUIControls } from "metabase-types/store";

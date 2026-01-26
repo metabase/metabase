@@ -228,7 +228,7 @@ const SampleDatabaseIndicator = () => {
         <Text ml="sm" mr="xs">
           {t`Sample Database for testing`}
         </Text>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- only shown to admins during setup */}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
         <Text inline c="text-tertiary">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xs">

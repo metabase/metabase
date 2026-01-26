@@ -47,7 +47,7 @@ export const EmbedJsContent = ({
         id="embed-js-title"
       >{t`Modular embedding`}</Text>
       <Text mb="md">
-        {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
         {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
       {showImage && (

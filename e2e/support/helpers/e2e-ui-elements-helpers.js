@@ -195,12 +195,12 @@ export function filterWidget({ isEditing = false, name = null } = {}) {
 }
 
 export function clearFilterWidget(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("close").click();
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("revert").click();
 }
 
@@ -308,40 +308,14 @@ export const moveColumnDown = (column, distance) => {
 };
 
 /**
- * @deprecated Use `moveDnDKitElementByAlias` instead.
- * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ * Moves an element within a dnd-kit sortable list from one position to another.
+ *
+ * @param {string | RegExp} dataTestId - The data-testid pattern to match list elements
+ * @param {Object} options
+ * @param {number} options.startIndex - The index of the element to drag
+ * @param {number} options.dropIndex - The index where the element should be dropped
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
-export const moveDnDKitElement = (
-  element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
-) => {
-  element
-    .trigger("pointerdown", 0, 0, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    // This initial move needs to be greater than the activation constraint
-    // of the pointer sensor
-    .trigger("pointermove", 20, 20, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    .trigger("pointermove", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200);
-
-  onBeforeDragEnd?.();
-
-  cy.document().trigger("pointerup").wait(200);
-};
-
 export const moveDnDKitListElement = (
   dataTestId,
   { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
@@ -354,27 +328,34 @@ export const moveDnDKitListElement = (
     return { clientX: x + width / 2, clientY: y + height / 2 };
   };
 
-  cy.findAllByTestId(selector)
-    .then(($all) => {
-      const dragEl = $all.get(startIndex);
-      const dropEl = $all.get(dropIndex);
-      const dragPoint = getCenter(dragEl);
-      const dropPoint = getCenter(dropEl);
+  cy.findAllByTestId(selector).then(($all) => {
+    const dragEl = $all.get(startIndex);
+    const dropEl = $all.get(dropIndex);
+    const dragPoint = getCenter(dragEl);
+    const dropPoint = getCenter(dropEl);
 
-      return { dragPoint, dropPoint, dragEl };
-    })
-    .then(({ dragPoint, dropPoint, dragEl }) => {
-      moveDnDKitElement(cy.wrap(dragEl), {
-        vertical: dropPoint.clientY - dragPoint.clientY,
-        horizontal: dropPoint.clientX - dragPoint.clientX,
-        onBeforeDragEnd,
-      });
+    cy.wrap(dragEl).as("dragElement");
+
+    moveDnDKitElementByAlias("@dragElement", {
+      vertical: dropPoint.clientY - dragPoint.clientY,
+      horizontal: dropPoint.clientX - dragPoint.clientX,
+      onBeforeDragEnd,
     });
+  });
 };
 
+/**
+ * Moves a dnd-kit draggable element by a specified offset using a Cypress alias.
+ *
+ * @param {string} alias - The Cypress alias for the element to drag (e.g., "@dragElement")
+ * @param {Object} options
+ * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
+ * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
 export const moveDnDKitElementByAlias = (
   alias,
-  { horizontal = 0, vertical = 0 } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
   // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
   // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
@@ -401,8 +382,11 @@ export const moveDnDKitElementByAlias = (
       button: 0,
     })
     .wait(200);
-  cy.get(alias)
-    .trigger("pointerup", horizontal, vertical, {
+
+  onBeforeDragEnd();
+
+  cy.document()
+    .trigger("pointerup", {
       force: true,
       isPrimary: true,
       button: 0,
@@ -455,7 +439,7 @@ export function tableInteractiveFooter() {
 }
 
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)
     .eq(elementIndex)
     .trigger("mousedown", {
@@ -499,7 +483,7 @@ export function assertTableRowsCount(value) {
 }
 
 export function lastTableRow() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return tableInteractiveScrollContainer()
     .scrollTo("bottomLeft")
     .findAllByRole("row")
@@ -563,7 +547,7 @@ export function assertTableData({ columns, firstRows = [] }) {
     .should("have.length", columns.length);
 
   columns.forEach((column, index) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
       .eq(index)
@@ -572,7 +556,7 @@ export function assertTableData({ columns, firstRows = [] }) {
 
   firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
         .eq(columns.length * rowIndex + cellIndex)
@@ -612,12 +596,12 @@ export function fieldValuesTextbox() {
 }
 
 export function fieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("token-field").eq(index);
 }
 
 export function removeFieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByTestId("token-field")
     .findAllByLabelText("Remove")
@@ -626,7 +610,7 @@ export function removeFieldValuesValue(index) {
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)

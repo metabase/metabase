@@ -13,9 +13,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -30,6 +30,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -297,7 +298,8 @@
     "snippet"
     "no_models"
     "timeline"
-    "table"})
+    "table"
+    "transform"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -487,7 +489,11 @@
    :from   [[:transform :transform]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]]})
+            [:= :collection_id (:id collection)]
+            (when-not api/*is-superuser?*
+              [:=
+               [:inline 0]
+               [:inline 1]])]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -587,18 +593,28 @@
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [hydration (cond-> [:can_write
-                           :can_restore
-                           :can_delete
-                           :dashboard_count
-                           :is_remote_synced
-                           :collection_namespace
-                           [:dashboard :moderation_status]]
-                    include-can-run-adhoc-query (conj :can_run_adhoc_query))]
+  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
+        card-count             (count rows)
+        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
+                                             (pos? threshold)
+                                             (> card-count threshold))
+                                 (when <>
+                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
+                                              card-count threshold)))
+        hydration              (cond-> [:can_write
+                                        :can_restore
+                                        :can_delete
+                                        :dashboard_count
+                                        :is_remote_synced
+                                        :collection_namespace
+                                        [:dashboard :moderation_status]]
+                                 (and include-can-run-adhoc-query
+                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload
+        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -808,6 +824,16 @@
                (into #{}))
           #{})
 
+        collections-containing-transforms
+        (if (premium-features/has-feature? :transforms)
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :transform
+                            :where [:in :collection_id descendant-collection-ids]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
                (t2/query {:select-distinct [:collection_id]
@@ -830,7 +856,8 @@
         (merge child-type->coll-id-set
                {:table collections-containing-tables
                 :collection collections-containing-collections
-                :dashboard collections-containing-dashboards})
+                :dashboard collections-containing-dashboards
+                :transform collections-containing-transforms})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -949,9 +976,9 @@
   [select-columns necessary-columns]
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
-           (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
-                                     [(h2x/cast typpe nil) col-name]
+           (let [[col-name type'] (u/one-or-many col)]
+             (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
+                                     [(h2x/cast type' nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
 
@@ -1087,7 +1114,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document  :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
                                       ;; Tables in collections are an EE feature (data-studio)
                                       (premium-features/has-feature? :data-studio) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
@@ -1401,8 +1428,7 @@
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))
-    (when config/ee-available?
-      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
+    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1614,8 +1640,7 @@
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (when config/ee-available?
-        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
+      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))

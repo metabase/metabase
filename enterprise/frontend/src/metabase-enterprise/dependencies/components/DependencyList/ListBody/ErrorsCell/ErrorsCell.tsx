@@ -1,14 +1,14 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getDependencyErrorInfo } from "../../../../utils";
+import { getDependencyErrorInfo, getDependencyErrors } from "../../../../utils";
 
 type ErrorsCellProps = {
   node: DependencyNode;
 };
 
 export function ErrorsCell({ node }: ErrorsCellProps) {
-  const errors = node.errors ?? [];
+  const errors = getDependencyErrors(node.dependents_errors ?? []);
   const errorsInfo = getDependencyErrorInfo(errors);
 
   if (!errorsInfo) {
@@ -20,7 +20,7 @@ export function ErrorsCell({ node }: ErrorsCellProps) {
     : errorsInfo.label;
 
   return (
-    <Ellipsified tooltip={fullText}>
+    <Ellipsified tooltip={fullText} tooltipProps={{ openDelay: 300 }}>
       <span>{errorsInfo.label}</span>{" "}
       {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
     </Ellipsified>

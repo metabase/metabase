@@ -39,7 +39,7 @@ export const SdkUsageProblemBanner = ({
   // we fall back to the system font.
   const fontFamily = `${DEFAULT_FONT}, sans-serif`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- shown in development
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- shown in development
   const pillTitle = "Metabase SDK";
 
   return (

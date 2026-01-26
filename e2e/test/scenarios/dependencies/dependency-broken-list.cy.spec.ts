@@ -1,470 +1,479 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { TransformId } from "metabase-types/api";
+
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { CardId, CardType, FieldId, TableId } from "metabase-types/api";
+const TABLE_NAME = "test_transform_table";
+const TABLE_DISPLAY_NAME = "Test Transform Table";
+const TABLE_TRANSFORM = "Test Transform";
+const TABLE_BASED_QUESTION_BROKEN_FIELD =
+  "Table-based question with broken field";
+const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
+  "Table-based question with broken expression";
+const TABLE_BASED_QUESTION_BROKEN_FILTER =
+  "Table-based question with broken filter";
+const TABLE_BASED_QUESTION_BROKEN_BREAKOUT =
+  "Table-based question with broken breakout";
+const TABLE_BASED_QUESTION_BROKEN_AGGREGATION =
+  "Table-based question with broken aggregation";
+const TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN =
+  "Table-based question with broken explicit join";
+const TABLE_BASED_QUESTION = "Table-based question";
+const QUESTION_BASED_QUESTION_BROKEN_FILTER =
+  "Question-based question with broken filter";
+const TABLE_BASED_MODEL = "Table-based model";
+const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
+  "Model-based model with broken aggregation";
 
-const { ORDERS_ID, ORDERS, REVIEWS } = SAMPLE_DATABASE;
+const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
+const BROKEN_TABLE_DEPENDENTS = [
+  TABLE_BASED_QUESTION_BROKEN_FIELD,
+  TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
+  TABLE_BASED_QUESTION_BROKEN_FILTER,
+  TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
+  TABLE_BASED_QUESTION_BROKEN_AGGREGATION,
+  TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN,
+];
+const BROKEN_QUESTION_DEPENDENCIES = [TABLE_BASED_QUESTION];
+const BROKEN_QUESTION_DEPENDENTS = [QUESTION_BASED_QUESTION_BROKEN_FILTER];
+const BROKEN_MODEL_DEPENDENCIES = [TABLE_BASED_MODEL];
+const BROKEN_MODEL_DEPENDENTS = [MODEL_BASED_MODEL_BROKEN_AGGREGATION];
 
-const WRITABLE_TABLE_NAME = "scoreboard_actions";
-
-const VALID_CARD_COLUMN_ID = "Valid card column with id";
-const VALID_CARD_COLUMN_NAME = "Valid card column with name";
-const VALID_NATIVE_CARD = "Valid native card";
-const VALID_SEGMENT = "Valid segment";
-const VALID_METRIC = "Valid metric";
-
-const VALID_ENTITY_NAMES = [
-  VALID_CARD_COLUMN_ID,
-  VALID_CARD_COLUMN_NAME,
-  VALID_NATIVE_CARD,
-  VALID_SEGMENT,
-  VALID_METRIC,
+const BROKEN_DEPENDENCIES = [
+  ...BROKEN_TABLE_DEPENDENCIES,
+  ...BROKEN_QUESTION_DEPENDENCIES,
+  ...BROKEN_MODEL_DEPENDENCIES,
 ];
 
-const CARD_COLUMN_ID_MISSING = "Card with a non-existing column with an id";
-const CARD_COLUMN_WRONG_TABLE = "Card with a column on a wrong table";
-const CARD_COLUMN_NAME_MISSING = "Card with a non-existing column with a name";
-const NATIVE_CARD_COLUMN_MISSING = "Native card with a non-existing column";
-const NATIVE_CARD_TABLE_ALIAS_MISSING =
-  "Native card with a missing table alias";
-const NATIVE_CARD_SYNTAX_ERROR = "Native card with a syntax error";
-
-const BROKEN_MBQL_CARD_NAMES = [
-  CARD_COLUMN_ID_MISSING,
-  CARD_COLUMN_WRONG_TABLE,
-  CARD_COLUMN_NAME_MISSING,
+const BROKEN_DEPENDENCIES_SORTED_BY_NAME = [
+  TABLE_BASED_MODEL,
+  TABLE_BASED_QUESTION,
+  TABLE_DISPLAY_NAME,
 ];
 
-const BROKEN_MBQL_CARD_ERRORS = {
-  [CARD_COLUMN_ID_MISSING]: { "1 missing column": ["Unknown Field"] },
-  [CARD_COLUMN_WRONG_TABLE]: { "1 missing column": ["RATING"] },
-  [CARD_COLUMN_NAME_MISSING]: { "1 missing column": ["BAD_NAME"] },
-};
-
-const BROKEN_NATIVE_CARD_NAMES = [
-  NATIVE_CARD_COLUMN_MISSING,
-  NATIVE_CARD_TABLE_ALIAS_MISSING,
-  NATIVE_CARD_SYNTAX_ERROR,
+const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
+  TABLE_BASED_QUESTION, // Bobby Tables's personal collection
+  TABLE_BASED_MODEL, // Our analytics
+  TABLE_DISPLAY_NAME, // Writable Postgres
 ];
 
-const BROKEN_NATIVE_CARD_ERRORS = {
-  [NATIVE_CARD_COLUMN_MISSING]: { "1 missing column": ["RATING"] },
-  [NATIVE_CARD_TABLE_ALIAS_MISSING]: { "1 missing table alias": ["P"] },
-  [NATIVE_CARD_SYNTAX_ERROR]: { "1 syntax error": [] },
-};
-
-const BROKEN_CARD_NAMES = [
-  ...BROKEN_MBQL_CARD_NAMES,
-  ...BROKEN_NATIVE_CARD_NAMES,
+const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
+  TABLE_BASED_QUESTION, // 1 error: PRICE
+  TABLE_BASED_MODEL, // 1 error: AMOUNT
+  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
 ];
 
-const BROKEN_CARD_ERRORS = {
-  ...BROKEN_MBQL_CARD_ERRORS,
-  ...BROKEN_NATIVE_CARD_ERRORS,
-};
-
-const SEGMENT_COLUMN_ID_MISSING =
-  "Segment with a non-existing column with an id";
-const BROKEN_SEGMENT_NAMES = [SEGMENT_COLUMN_ID_MISSING];
-
-const TRANSFORM_COLUMN_ID_MISSING =
-  "Transform with a non-existing column with an id";
-const TRANSFORM_COLUMN_WRONG_TABLE = "Transform with a column on a wrong table";
-const TRANSFORM_CARD_COLUMN_MISSING =
-  "Native transform with a non-existing column";
-const TRANSFORM_CARD_TABLE_ALIAS_MISSING =
-  "Native transform with a missing table alias";
-const TRANSFORM_CARD_SYNTAX_ERROR = "Native transform with a syntax error";
-
-const BROKEN_TRANSFORM_NAMES = [
-  TRANSFORM_COLUMN_ID_MISSING,
-  TRANSFORM_COLUMN_WRONG_TABLE,
-  TRANSFORM_CARD_COLUMN_MISSING,
-  TRANSFORM_CARD_TABLE_ALIAS_MISSING,
-  TRANSFORM_CARD_SYNTAX_ERROR,
+const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
+  TABLE_BASED_QUESTION, // 1 question
+  TABLE_BASED_MODEL, // 1 model
+  TABLE_DISPLAY_NAME, // 6 questions
 ];
 
-const BROKEN_TRANSFORM_ERRORS = {
-  [TRANSFORM_COLUMN_ID_MISSING]: { "1 missing column": ["Unknown Field"] },
-  [TRANSFORM_COLUMN_WRONG_TABLE]: { "1 missing column": ["Unknown Field"] },
-  [TRANSFORM_CARD_COLUMN_MISSING]: { "1 missing column": ["rating"] },
-  [TRANSFORM_CARD_TABLE_ALIAS_MISSING]: { "1 missing table alias": ["P"] },
-  [TRANSFORM_CARD_SYNTAX_ERROR]: { "1 syntax error": [] },
-};
+const BROKEN_DEPENDENTS = [
+  ...BROKEN_TABLE_DEPENDENTS,
+  ...BROKEN_QUESTION_DEPENDENTS,
+  ...BROKEN_MODEL_DEPENDENTS,
+];
 
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resetTestTable({ type: "postgres", table: WRITABLE_TABLE_NAME });
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TABLE_NAME });
-    cy.viewport(1600, 1400);
+    createContent();
+  });
+
+  afterEach(() => {
+    dropTransformTable();
   });
 
   describe("analysis", () => {
-    it("should not show valid entities", () => {
-      createValidEntities();
-      createBrokenCards({ type: "question" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        VALID_ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
-        });
+    it("should show broken dependencies", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      checkList({
+        visibleEntities: BROKEN_DEPENDENCIES,
+        hiddenEntities: BROKEN_DEPENDENTS,
       });
     });
+  });
 
-    it("should show broken questions", () => {
-      createBrokenCards({ type: "question" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_CARD_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
+  describe("sidebar", () => {
+    it("should show broken dependents", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+
+      cy.log("table dependents");
+      H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+      checkSidebar({
+        entityName: TABLE_DISPLAY_NAME,
+        transformName: TABLE_TRANSFORM,
+        missingColumns: ["score", "status"],
+        brokenDependents: BROKEN_TABLE_DEPENDENTS,
       });
-    });
 
-    it("should show broken models", () => {
-      createBrokenCards({ type: "model" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_CARD_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
+      cy.log("question dependents");
+      H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
+      checkSidebar({
+        entityName: TABLE_BASED_QUESTION,
+        missingColumns: ["PRICE"],
+        brokenDependents: BROKEN_QUESTION_DEPENDENTS,
       });
-    });
 
-    it("should show broken metrics", () => {
-      createBrokenCards({ type: "metric" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_MBQL_CARD_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
-    });
-
-    it("should show broken segments", () => {
-      createBrokenSegments();
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_SEGMENT_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
-    });
-
-    it("should show broken transforms", () => {
-      createBrokenTransforms();
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.list().within(() => {
-        BROKEN_TRANSFORM_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
+      cy.log("model dependents");
+      H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
+      checkSidebar({
+        entityName: TABLE_BASED_MODEL,
+        missingColumns: ["AMOUNT"],
+        brokenDependents: BROKEN_MODEL_DEPENDENTS,
       });
     });
   });
 
   describe("search", () => {
     it("should search for entities", () => {
-      createBrokenCards({ type: "question" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.searchInput().type(CARD_COLUMN_ID_MISSING);
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type(TABLE_DISPLAY_NAME);
       checkList({
-        visibleEntities: [CARD_COLUMN_ID_MISSING],
-        hiddenEntities: [CARD_COLUMN_WRONG_TABLE],
+        visibleEntities: [TABLE_DISPLAY_NAME],
+        hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
       });
     });
   });
 
-  describe("filters", () => {
+  describe("filtering", () => {
     it("should filter entities by type", () => {
-      createBrokenCards({ type: "question" });
-      createBrokenSegments();
-      createBrokenTransforms();
-      H.DataStudio.Tasks.visitBrokenEntities();
-      checkList({
-        visibleEntities: [...BROKEN_CARD_NAMES, ...BROKEN_TRANSFORM_NAMES],
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().within(() => {
+        cy.findByText("Table").click();
+        cy.findByText("Question").click();
+        cy.findByText("Model").click();
       });
 
-      H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Question").click();
+      cy.log("only tables");
+      H.popover().findByText("Table").click();
       checkList({
-        visibleEntities: [...BROKEN_CARD_NAMES],
-        hiddenEntities: [...BROKEN_TRANSFORM_NAMES],
+        visibleEntities: BROKEN_TABLE_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_QUESTION_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+      });
+
+      cy.log("only questions");
+      H.popover().within(() => {
+        cy.findByText("Table").click();
+        cy.findByText("Question").click();
+      });
+      checkList({
+        visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+      });
+
+      cy.log("only models");
+      H.popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Model").click();
+      });
+      checkList({
+        visibleEntities: BROKEN_MODEL_DEPENDENCIES,
+        hiddenEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_QUESTION_DEPENDENCIES,
+        ],
+      });
+    });
+
+    it("should filter entities by location", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().within(() => {
+        cy.findByText("Include items in personal collections").click();
+      });
+      checkList({
+        visibleEntities: [
+          ...BROKEN_TABLE_DEPENDENCIES,
+          ...BROKEN_MODEL_DEPENDENCIES,
+        ],
+        hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
       });
     });
   });
 
-  describe("sidebar", () => {
-    it("should show the sidebar for questions with error info", () => {
-      createBrokenCards({ type: "question" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      openSidebarAndCheckErrors(BROKEN_CARD_ERRORS);
+  describe("sorting", () => {
+    it("should sort by name", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+
+      cy.log("sorted by name by default");
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name ascending");
+      H.DependencyDiagnostics.list().findByText("Dependency").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
+      });
+
+      cy.log("sorted by name descending");
+      H.DependencyDiagnostics.list().findByText("Dependency").click();
+      checkListSorting({
+        visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
+      });
     });
 
-    it("should show the sidebar for models with error info", () => {
-      createBrokenCards({ type: "model" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      openSidebarAndCheckErrors(BROKEN_CARD_ERRORS);
+    it("should sort by location", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+
+      cy.log("sorted by location ascending");
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
+      });
+
+      cy.log("sorted by location descending");
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({
+        visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_LOCATION].reverse(),
+      });
     });
 
-    it("should show the sidebar for metrics with error info", () => {
-      createBrokenCards({ type: "metric" });
-      H.DataStudio.Tasks.visitBrokenEntities();
-      openSidebarAndCheckErrors(BROKEN_MBQL_CARD_ERRORS);
+    it("should sort by dependents errors", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+
+      cy.log("sorted by dependents errors ascending");
+      H.DependencyDiagnostics.list().findByText("Problems").click();
+      checkListSorting({
+        visibleEntities: [
+          ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+        ].reverse(),
+      });
+
+      cy.log("sorted by dependents errors descending");
+      H.DependencyDiagnostics.list().findByText("Problems").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+      });
     });
 
-    it("should show the sidebar for transforms with error info", () => {
-      createBrokenTransforms();
-      H.DataStudio.Tasks.visitBrokenEntities();
-      openSidebarAndCheckErrors(BROKEN_TRANSFORM_ERRORS);
+    it("should sort by dependents with errors", () => {
+      H.DependencyDiagnostics.visitBrokenDependencies();
+
+      cy.log("sorted by dependents with errors ascending");
+      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+      checkListSorting({
+        visibleEntities: [
+          ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+        ].reverse(),
+      });
+
+      cy.log("sorted by dependents with errors descending");
+      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+      checkListSorting({
+        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+      });
     });
   });
 });
 
-function createValidEntities() {
-  createCardWithFieldIdRef({
-    name: VALID_CARD_COLUMN_ID,
-    type: "question",
-    tableId: ORDERS_ID,
-    fieldId: ORDERS.TOTAL,
-  });
-  createCardWithFieldNameRef({
-    name: VALID_CARD_COLUMN_NAME,
-    type: "model",
-    cardId: ORDERS_QUESTION_ID,
-    fieldName: "TOTAL",
-    baseType: "type/Float",
-  });
-  createNativeCard({
-    name: VALID_NATIVE_CARD,
-    type: "metric",
-    query: "SELECT ID, TOTAL FROM ORDERS",
-  });
-  createSegmentWithFieldIdRef({
-    name: VALID_SEGMENT,
-    tableId: ORDERS_ID,
-    fieldId: ORDERS.TOTAL,
+function createContent() {
+  createTransform();
+  createTableContent();
+  createQuestionContent();
+  createModelContent();
+  breakTransform();
+}
+
+function dropTransformTable() {
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    cy.request("DELETE", `/api/ee/transform/${transformId}/table`);
   });
 }
 
-function createBrokenCards({ type }: { type: CardType }) {
-  createCardWithFieldIdRef({
-    name: CARD_COLUMN_WRONG_TABLE,
-    type,
-    tableId: ORDERS_ID,
-    fieldId: REVIEWS.RATING,
-  });
-  createCardWithFieldIdRef({
-    name: CARD_COLUMN_ID_MISSING,
-    type,
-    tableId: ORDERS_ID,
-    fieldId: 1000,
-  });
-  createCardWithFieldNameRef({
-    name: CARD_COLUMN_NAME_MISSING,
-    type,
-    cardId: ORDERS_QUESTION_ID,
-    fieldName: "BAD_NAME",
-    baseType: "type/Integer",
-  });
-
-  if (type !== "metric") {
-    createNativeCard({
-      name: NATIVE_CARD_COLUMN_MISSING,
-      type,
-      query: "SELECT ID, RATING FROM ORDERS",
-    });
-    createNativeCard({
-      name: NATIVE_CARD_TABLE_ALIAS_MISSING,
-      type,
-      query: "SELECT P.ID, P.PRICE FROM ORDERS",
-    });
-    createNativeCard({
-      name: NATIVE_CARD_SYNTAX_ERROR,
-      type,
-      query: "SELECT FROM",
-    });
-  }
-}
-
-function createBrokenSegments() {
-  createSegmentWithFieldIdRef({
-    name: SEGMENT_COLUMN_ID_MISSING,
-    tableId: ORDERS_ID,
-    fieldId: REVIEWS.RATING,
-  });
-}
-
-function createBrokenTransforms() {
-  H.getTableId({ name: WRITABLE_TABLE_NAME, databaseId: WRITABLE_DB_ID }).then(
-    (tableId) => {
-      createTransformWithFieldIdRef({
-        name: TRANSFORM_COLUMN_ID_MISSING,
-        tableId: tableId,
-        fieldId: 1000,
-      });
-      createTransformWithFieldIdRef({
-        name: TRANSFORM_COLUMN_WRONG_TABLE,
-        tableId: tableId,
-        fieldId: ORDERS.TOTAL,
-      });
-      createNativeTransform({
-        name: TRANSFORM_CARD_COLUMN_MISSING,
-        query: `SELECT RATING FROM "${WRITABLE_TABLE_NAME}"`,
-      });
-      createNativeTransform({
-        name: TRANSFORM_CARD_TABLE_ALIAS_MISSING,
-        query: `SELECT P.ID, P.PRICE FROM "${WRITABLE_TABLE_NAME}"`,
-      });
-      createNativeTransform({
-        name: TRANSFORM_CARD_SYNTAX_ERROR,
-        query: "SELECT FROM",
-      });
-    },
-  );
-}
-
-function createCardWithFieldIdRef({
-  name,
-  type,
-  tableId,
-  fieldId,
-}: {
-  name: string;
-  type: CardType;
-  tableId: TableId;
-  fieldId: FieldId;
-}) {
-  return H.createQuestion({
-    name,
-    type,
-    query: {
-      "source-table": tableId,
-      filter: ["not-null", ["field", fieldId, null]],
-      aggregation: [["count"]],
-    },
-  });
-}
-
-function createCardWithFieldNameRef({
-  name,
-  type,
-  cardId,
-  fieldName,
-  baseType,
-}: {
-  name: string;
-  type: CardType;
-  cardId: CardId;
-  fieldName: string;
-  baseType: string;
-}) {
-  return H.createQuestion({
-    name,
-    type,
-    query: {
-      "source-table": `card__${cardId}`,
-      filter: ["not-null", ["field", fieldName, { "base-type": baseType }]],
-      aggregation: [["count"]],
-    },
-  });
-}
-
-function createNativeCard({
-  name,
-  type,
-  query,
-}: {
-  name: string;
-  type: CardType;
-  query: string;
-}) {
-  return H.createNativeQuestion({
-    name,
-    type,
-    native: {
-      query,
-    },
-  });
-}
-
-function createSegmentWithFieldIdRef({
-  name,
-  tableId,
-  fieldId,
-}: {
-  name: string;
-  tableId: TableId;
-  fieldId: FieldId;
-}) {
-  return H.createSegment({
-    name,
-    table_id: tableId,
-    definition: {
-      "source-table": tableId,
-      filter: ["not-null", ["field", fieldId, null]],
-    },
-  });
-}
-
-function createTransformWithFieldIdRef({
-  name,
-  tableId,
-  fieldId,
-}: {
-  name: string;
-  tableId: TableId;
-  fieldId: FieldId;
-}) {
-  return H.createTransform({
-    name,
-    source: {
-      type: "query",
-      query: {
+function createTransform() {
+  H.createTransform(
+    {
+      name: TABLE_TRANSFORM,
+      source: {
         type: "query",
-        database: WRITABLE_DB_ID,
         query: {
-          "source-table": tableId,
-          filter: ["not-null", ["field", fieldId, null]],
+          type: "native",
+          database: WRITABLE_DB_ID,
+          native: {
+            query: "SELECT 1 as score, 'active' as status",
+          },
         },
       },
+      target: {
+        type: "table",
+        database: WRITABLE_DB_ID,
+        schema: "public",
+        name: TABLE_NAME,
+      },
     },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      name,
-      schema: "public",
-    },
+    { wrapId: true },
+  );
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    H.runTransform(transformId);
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
+    H.waitForTransformRuns(
+      (runs) =>
+        runs.length === 1 && runs.every((run) => run.status === "succeeded"),
+    );
   });
 }
 
-function createNativeTransform({
-  name,
-  query,
-}: {
-  name: string;
-  query: string;
-}) {
-  return H.createTransform({
-    name,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: { query },
+function breakTransform() {
+  cy.get<TransformId>("@transformId").then((transformId) => {
+    cy.request("PUT", `/api/ee/transform/${transformId}`, {
+      source: {
+        type: "query",
+        query: {
+          type: "native",
+          database: WRITABLE_DB_ID,
+          native: {
+            query: "SELECT 1 as score_new, 'active' as status_new",
+          },
+        },
       },
-    },
-    target: {
-      type: "table",
+    });
+    H.runTransform(transformId);
+    H.waitForTransformRuns(
+      (runs) =>
+        runs.length === 2 && runs.every((run) => run.status === "succeeded"),
+    );
+  });
+}
+
+function createTableContent() {
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    H.getFieldId({ tableId, name: "score" }).then((scoreFieldId) => {
+      H.getFieldId({ tableId, name: "status" }).then((statusFieldId) => {
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_FIELD,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            fields: [["field", statusFieldId, null]],
+          },
+        });
+
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            expressions: {
+              Expression: ["+", ["field", scoreFieldId, null], 0],
+            },
+          },
+        });
+
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_FILTER,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            filter: ["=", ["field", scoreFieldId, null], 0],
+          },
+        });
+
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            breakout: [["field", scoreFieldId, null]],
+          },
+        });
+
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_AGGREGATION,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            aggregation: [["avg", ["field", scoreFieldId, null]]],
+          },
+        });
+
+        H.createQuestion({
+          name: TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN,
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
+            joins: [
+              {
+                "source-table": tableId,
+                alias: TABLE_DISPLAY_NAME,
+                condition: [
+                  "=",
+                  ["field", statusFieldId, null],
+                  [
+                    "field",
+                    statusFieldId,
+                    { "join-alias": TABLE_DISPLAY_NAME },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [
+              [
+                "max",
+                ["field", scoreFieldId, { "join-alias": TABLE_DISPLAY_NAME }],
+              ],
+            ],
+          },
+        });
+      });
+    });
+  });
+}
+
+function createQuestionContent() {
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    H.createQuestion({
+      name: TABLE_BASED_QUESTION,
       database: WRITABLE_DB_ID,
-      name,
-      schema: "public",
-    },
+      query: {
+        "source-table": tableId,
+      },
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    }).then(({ body: card }) => {
+      H.createQuestion({
+        name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
+        query: {
+          "source-table": `card__${card.id}`,
+          filter: [">", ["field", "PRICE", { "base-type": "type/Float" }], 10],
+        },
+      });
+    });
+  });
+}
+
+function createModelContent() {
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    H.createQuestion({
+      name: TABLE_BASED_MODEL,
+      type: "model",
+      database: WRITABLE_DB_ID,
+      query: {
+        "source-table": tableId,
+      },
+    }).then(({ body: card }) => {
+      H.createQuestion({
+        name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
+        type: "model",
+        query: {
+          "source-table": `card__${card.id}`,
+          aggregation: [
+            ["distinct", ["field", "AMOUNT", { "base-type": "type/Integer" }]],
+          ],
+        },
+      });
+    });
   });
 }
 
@@ -475,9 +484,9 @@ function checkList({
   visibleEntities?: string[];
   hiddenEntities?: string[];
 }) {
-  H.DataStudio.Tasks.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
-      cy.findByText(name).should("be.visible");
+      cy.findByText(name).should("exist");
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
@@ -487,34 +496,47 @@ function checkList({
 
 function checkSidebar({
   entityName,
-  errors = {},
+  transformName,
+  missingColumns,
+  brokenDependents,
 }: {
   entityName: string;
-  locationName?: string;
-  creatorName?: string;
-  errors?: Record<string, string[]>;
+  transformName?: string;
+  missingColumns?: string[];
+  brokenDependents?: string[];
 }) {
-  H.DataStudio.Tasks.Sidebar.header()
-    .findByText(entityName)
-    .should("be.visible");
-
-  Object.entries(errors).forEach(([label, errors]) => {
-    H.DataStudio.Tasks.Sidebar.errorInfo(label).within(() => {
-      errors.forEach((error) => {
-        cy.findByText(error).should("be.visible");
+  H.DependencyDiagnostics.sidebar().within(() => {
+    H.DependencyDiagnostics.Sidebar.header()
+      .findByText(entityName)
+      .should("be.visible");
+    if (transformName) {
+      H.DependencyDiagnostics.Sidebar.transformSection()
+        .findByText(transformName)
+        .should("exist");
+    }
+    if (missingColumns) {
+      H.DependencyDiagnostics.Sidebar.missingColumnsSection().within(() => {
+        missingColumns.forEach((column) => {
+          cy.findByText(column).should("exist");
+        });
       });
-    });
+    }
+    if (brokenDependents) {
+      H.DependencyDiagnostics.Sidebar.brokenDependentsSection().within(() => {
+        brokenDependents.forEach((dependent) => {
+          cy.findByText(dependent).should("exist");
+        });
+      });
+    }
   });
 }
 
-function openSidebarAndCheckErrors(
-  errors: Record<string, Record<string, string[]>>,
-) {
-  Object.entries(errors).forEach(([entityName, errors]) => {
-    H.DataStudio.Tasks.list().findByText(entityName).click();
-    checkSidebar({
-      entityName,
-      errors,
+function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
+  H.DependencyDiagnostics.list().within(() => {
+    visibleEntities.forEach((name, index) => {
+      cy.findByText(name)
+        .parents("[data-index]")
+        .should("have.attr", "data-index", index.toString());
     });
   });
 }
