@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -1421,17 +1421,36 @@ describe("issue #47005", () => {
     H.restore("postgres-12");
     cy.signInAsNormalUser();
 
-    H.createQuestion({
+    H.createCardWithQuery({
       name: "Question A",
       query: {
-        "source-table": ORDERS_ID,
+        databaseId: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+          },
+        ],
       },
     }).then(({ body: question }) => {
-      H.createQuestion(
+      H.createCardWithQuery(
         {
           name: "Question B",
+          metadata: {
+            cardIds: [question.id],
+          },
           query: {
-            "source-table": "card__" + question.id,
+            databaseId: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: {
+                  type: "card",
+                  id: question.id,
+                },
+              },
+            ],
           },
         },
         { visitQuestion: true },
@@ -1454,13 +1473,30 @@ describe("issue 66210", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.createQuestion({
+    H.createCardWithQuery({
       name: METRIC_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
       type: "metric",
+      query: {
+        databaseId: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [
+              {
+                name: "Count",
+                value: {
+                  type: "operator",
+                  operator: "count",
+                  args: [],
+                },
+              },
+            ],
+          },
+        ],
+      },
     });
 
     cy.visit("/");

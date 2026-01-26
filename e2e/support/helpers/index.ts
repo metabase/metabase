@@ -1,4 +1,5 @@
 export * from "./api";
+export * from "./mbql";
 export * from "./e2e-action-helpers";
 export * from "./e2e-ad-hoc-question-helpers";
 export * from "./e2e-api-key-helpers";
