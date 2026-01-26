@@ -650,11 +650,11 @@
     (testing "should still validate settings that are actually being changed to a new value"
       ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
-                                                  :settings {:api-test-disabled-for-database true}}]
+                                                  :settings {:api-test-disabled-for-database false}}]
         (is (= "Setting api-test-disabled-for-database is not enabled for this database"
                (:message (mt/user-http-request :crowberto :put 400
                                                (format "database/%s" db-id)
-                                               {:settings {:api-test-disabled-for-database false}}))))))
+                                               {:settings {:api-test-disabled-for-database true}}))))))
 
     (testing "should not validate settings being reset to nil (default)"
       ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
@@ -663,7 +663,16 @@
         (is (= {}
                (:settings (mt/user-http-request :crowberto :put 200
                                                 (format "database/%s" db-id)
-                                                {:settings {:api-test-disabled-for-database nil}}))))))))
+                                                {:settings {:api-test-disabled-for-database nil}}))))))
+
+    (testing "should not validate settings being reset to default value (literally)"
+      ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database false}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database false}}))))))))
 
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
@@ -2432,6 +2441,7 @@
 (setting/defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
+  :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 

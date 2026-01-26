@@ -1096,6 +1096,9 @@
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
                   :when (and (some? new-value)
+                             ;; Allow explicit default value as well (typically this is what FE will actually do)
+                             ;; Should we translate this into setting it to NULL? That seems too opinionated.
+                             (not= new-value (setting/default-value setting-kw))
                              (not= new-value (get existing-settings setting-kw)))]
             (try
               (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
