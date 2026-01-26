@@ -1,6 +1,6 @@
 import { type ReactNode, createContext, useCallback, useState } from "react";
 
-import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbsContextType,

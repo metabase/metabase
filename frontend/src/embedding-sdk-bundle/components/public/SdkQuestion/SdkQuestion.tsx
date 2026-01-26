@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
+// import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
 import {
   BackButton,
   Breakout,
@@ -145,42 +145,42 @@ export const _SdkQuestion = ({
   withChartTypeSelector = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
-  <SdkInternalNavigationProvider>
-    <SdkQuestionProvider
-      questionId={questionId}
-      token={token}
-      options={options}
-      deserializedCard={deserializedCard}
-      componentPlugins={plugins}
-      onNavigateBack={onNavigateBack}
-      onBeforeSave={onBeforeSave}
-      onSave={onSave}
-      onRun={onRun}
-      isSaveEnabled={isSaveEnabled}
-      entityTypes={entityTypes}
-      targetCollection={targetCollection}
-      initialSqlParameters={initialSqlParameters}
-      hiddenParameters={hiddenParameters}
-      withDownloads={withDownloads}
-      targetDashboardId={targetDashboardId}
-      backToDashboard={backToDashboard}
-      getClickActionMode={getClickActionMode}
-      navigateToNewCard={navigateToNewCard}
-      onVisualizationChange={onVisualizationChange}
-    >
-      {children ?? (
-        <SdkQuestionDefaultView
-          height={height}
-          width={width}
-          className={className}
-          style={style}
-          title={title}
-          withResetButton={withResetButton}
-          withChartTypeSelector={withChartTypeSelector}
-        />
-      )}
-    </SdkQuestionProvider>
-  </SdkInternalNavigationProvider>
+  // <SdkInternalNavigationProvider>
+  <SdkQuestionProvider
+    questionId={questionId}
+    token={token}
+    options={options}
+    deserializedCard={deserializedCard}
+    componentPlugins={plugins}
+    onNavigateBack={onNavigateBack}
+    onBeforeSave={onBeforeSave}
+    onSave={onSave}
+    onRun={onRun}
+    isSaveEnabled={isSaveEnabled}
+    entityTypes={entityTypes}
+    targetCollection={targetCollection}
+    initialSqlParameters={initialSqlParameters}
+    hiddenParameters={hiddenParameters}
+    withDownloads={withDownloads}
+    targetDashboardId={targetDashboardId}
+    backToDashboard={backToDashboard}
+    getClickActionMode={getClickActionMode}
+    navigateToNewCard={navigateToNewCard}
+    onVisualizationChange={onVisualizationChange}
+  >
+    {children ?? (
+      <SdkQuestionDefaultView
+        height={height}
+        width={width}
+        className={className}
+        style={style}
+        title={title}
+        withResetButton={withResetButton}
+        withChartTypeSelector={withChartTypeSelector}
+      />
+    )}
+  </SdkQuestionProvider>
+  // </SdkInternalNavigationProvider>
 );
 
 const subComponents: SdkQuestionComponents = {

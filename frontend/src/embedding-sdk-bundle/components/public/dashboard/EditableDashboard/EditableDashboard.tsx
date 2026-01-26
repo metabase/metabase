@@ -1,10 +1,8 @@
 import { useCallback, useEffect } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import {
-  SdkInternalNavigationProvider,
-  useSdkInternalNavigation,
-} from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
+import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";

@@ -4,7 +4,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { Stack, Text } from "metabase/ui";
 
 import { getQuestionTitle } from "../QuestionTitle";
-import { SdkInternalNavigationBackButton } from "../SdkInternalNavigationProvider";
+import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";

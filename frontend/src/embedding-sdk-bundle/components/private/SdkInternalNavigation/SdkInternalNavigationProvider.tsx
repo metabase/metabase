@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
   type ReactNode,
-  createContext,
   useCallback,
   useContext,
   useMemo,
@@ -10,98 +9,22 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import type {
-  NavigateToNewCardParams,
-  SdkQuestionId,
-} from "embedding-sdk-bundle/types/question";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import * as Urls from "metabase/lib/urls";
-import { Button, Icon } from "metabase/ui";
 
-import { SdkQuestion } from "../public/SdkQuestion";
-import { InteractiveDashboardContent } from "../public/dashboard/InteractiveDashboard/InteractiveDashboard";
-import type { SdkDashboardInnerProps } from "../public/dashboard/SdkDashboard";
+import { SdkQuestion } from "../../public/SdkQuestion";
+import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
+import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
+import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
 
-import { SdkAdHocQuestion } from "./SdkAdHocQuestion";
-
-export type SdkInternalNavigationEntry =
-  | {
-      type: "dashboard";
-      id: SdkDashboardId;
-      name: string;
-      parameters?: ParameterValues;
-    }
-  | {
-      type: "question";
-      id: SdkQuestionId;
-      name: string;
-      parameters?: ParameterValues;
-    }
-  | {
-      type: "adhoc-question";
-      /** The URL path for the ad-hoc question (e.g., /question#... with serialized card) */
-      questionPath: string;
-      name: string;
-    };
-
-type SdkInternalNavigationContextValue = {
-  stack: SdkInternalNavigationEntry[];
-  push: (entry: SdkInternalNavigationEntry) => void;
-  pop: () => void;
-  currentEntry: SdkInternalNavigationEntry | undefined;
-  canGoBack: boolean;
-  previousEntry: SdkInternalNavigationEntry | undefined;
-  navigateToNewCard: (params: NavigateToNewCardParams) => Promise<void>;
-  initWithDashboard: (dashboard: { id: number; name: string }) => void;
-};
-
-const SdkInternalNavigationContext =
-  createContext<SdkInternalNavigationContextValue | null>(null);
-
-export const useSdkInternalNavigation = () => {
-  const ctx = useContext(SdkInternalNavigationContext);
-  if (!ctx) {
-    throw new Error(
-      "useSdkInternalNavigation must be used within SdkInternalNavigationProvider",
-    );
-  }
-  return ctx;
-};
-
-/**
- * Optional version of useSdkInternalNavigation that returns null if outside provider.
- * Useful for components that may be rendered outside the navigation context.
- */
-export const useSdkInternalNavigationOptional = () => {
-  return useContext(SdkInternalNavigationContext);
-};
+import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
+import {
+  SdkInternalNavigationContext,
+  type SdkInternalNavigationEntry,
+} from "./context";
 
 type Props = {
   children: ReactNode;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
-};
-
-export const SdkInternalNavigationBackButton = () => {
-  const { previousEntry, canGoBack, pop } = useSdkInternalNavigation();
-
-  if (!canGoBack) {
-    return null;
-  }
-
-  return (
-    <Button
-      variant="subtle"
-      color="text-secondary"
-      size="sm"
-      leftSection={<Icon name="chevronleft" />}
-      onClick={pop}
-      // TODO: REMOVE BEFORE MERGING
-      style={{ border: `var(--debug-border-red)` }}
-    >
-      {t`Back to ${previousEntry?.name}`}
-    </Button>
-  );
 };
 
 export const SdkInternalNavigationProvider = ({
@@ -157,7 +80,7 @@ export const SdkInternalNavigationProvider = ({
   // Custom navigateToNewCard that pushes to the navigation stack
   // This is used when drilling from a question to another ad-hoc question
   const navigateToNewCard = useCallback(
-    async (params: NavigateToNewCardParams) => {
+    async (params: { nextCard: { name?: string | null } }) => {
       const { nextCard } = params;
       // Generate URL for the ad-hoc question
       const url = Urls.question(null, { hash: nextCard });

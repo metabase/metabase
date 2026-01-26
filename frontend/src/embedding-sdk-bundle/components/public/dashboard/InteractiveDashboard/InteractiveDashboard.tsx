@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import {
-  SdkInternalNavigationProvider,
-  useSdkInternalNavigation,
-} from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
+import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { useSdkSelector, useSdkStore } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
