@@ -56,5 +56,5 @@
   :default    3600
   :visibility :settings-manager
   :feature    :metabot-v3
-  :export?    true
+  :export?    false
   :audit      :getter)

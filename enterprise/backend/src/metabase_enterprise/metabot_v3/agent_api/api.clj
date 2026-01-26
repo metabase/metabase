@@ -32,17 +32,13 @@
 ;;
 ;; 1. **Session-based**: Client exchanges JWT at `/auth/sso` endpoint to get a session token,
 ;;    then uses that session token for all subsequent requests. The session token is a UUID
-;;    that references a server-side session. Good for long-running connections.
+;;    that references a server-side session. Similar to how normal JWT SSO works in Metabase.
 ;;
 ;; 2. **Stateless JWT**: Client passes a JWT directly on each request. The JWT is validated
 ;;    and the user is looked up from claims, but no session is created. Good for simple
 ;;    integrations and one-off API calls.
 ;;
 ;; Both modes use Bearer token authentication: `Authorization: Bearer <token>`
-
-(def ^:private uuid-pattern
-  "Pattern matching UUID format (session tokens are UUIDs)."
-  #"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 (defn- extract-bearer-token
   "Extract the token from a Bearer authorization header."
@@ -152,7 +148,7 @@
                                  "Authorization header must use Bearer scheme: Authorization: Bearer <token>"))
 
         ;; UUID format = session token
-        (re-matches uuid-pattern bearer-token)
+        (re-matches u/uuid-regex bearer-token)
         (let [result (authenticate-with-session bearer-token)]
           (if-let [user (:user result)]
             (request/with-current-user (:id user)
