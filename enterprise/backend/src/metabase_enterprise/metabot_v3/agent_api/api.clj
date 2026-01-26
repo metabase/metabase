@@ -34,8 +34,7 @@
 
 (defn- check-tool-result
   "Extract :structured-output from a tool result, or throw 404 with the error message.
-   Tool functions return {:structured-output ...} on success, {:output \"error\"} on failure.
-   Note: Not all errors are true 404s - see OPEN_QUESTIONS.md."
+   Tool functions return {:structured-output ...} on success, {:output \"error\"} on failure."
   [{:keys [structured-output output]}]
   (or structured-output
       (api/check false [404 (or output "Not found.")])))

@@ -414,4 +414,3 @@
                      :total_count 1}
                     (agent-client :rasta :post 200 "agent/v1/search"
                                   {:term_queries ["AgentSearchTestMetric"]})))))))))
-
