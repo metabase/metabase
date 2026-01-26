@@ -97,19 +97,3 @@
                           "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
                           "where 'Chart' is a meaningful description.")
        :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
-
-(defn create-chart-tool
-  "Tool handler for create_chart tool.
-  Returns structured output with chart details and navigation reactions."
-  [args]
-  (try
-    (let [result (create-chart args)
-          reactions (:reactions result)]
-      ;; Return structured output with reactions at top level for streaming
-      (cond-> {:structured-output (assoc (dissoc result :reactions) :result-type :chart)}
-        (seq reactions) (assoc :reactions reactions)))
-    (catch Exception e
-      (log/error e "Error creating chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create chart: " (or (ex-message e) "Unknown error"))}))))

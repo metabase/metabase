@@ -84,16 +84,3 @@
                           "- Always provide a direct link using: `[Chart](" (format-chart-link new-chart-id) ")` "
                           "where Chart is a meaningful link text\n"
                           "- If creating multiple charts, present all chart links")})))
-
-(defn edit-chart-tool
-  "Tool handler for edit_chart tool.
-  Returns structured output with chart details."
-  [{:keys [chart-id new-chart-type] :as args}]
-  (try
-    (let [result (edit-chart args)]
-      {:structured-output (assoc result :result-type :chart)})
-    (catch Exception e
-      (log/error e "Error editing chart")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit chart: " (or (ex-message e) "Unknown error"))}))))
