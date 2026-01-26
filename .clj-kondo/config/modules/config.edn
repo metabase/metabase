@@ -1200,7 +1200,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME

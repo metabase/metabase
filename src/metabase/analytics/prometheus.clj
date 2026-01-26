@@ -241,6 +241,10 @@
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})
+   (prometheus/counter :metabase-geocoding/requests
+                       {:description "Number of successful IP geocoding requests via GeoJS."})
+   (prometheus/counter :metabase-geocoding/errors
+                       {:description "Number of errors when geocoding IP addresses via GeoJS."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
