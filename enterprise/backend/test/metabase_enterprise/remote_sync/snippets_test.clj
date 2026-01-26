@@ -336,27 +336,27 @@ serdes/meta:
 
 (deftest import-snippets-from-yaml-test
   (testing "Import brings in snippets from YAML files"
-    (with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/NativeQuerySnippet :model/Collection :model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                coll-entity-id "snippets-coll-importx"
-                snippet-entity-id "test-snippet-importxx"
-                test-files {"main" {(str "collections/" coll-entity-id "_snippets_collection/" coll-entity-id "_snippets_collection.yaml")
-                                    (generate-snippets-namespace-collection-yaml coll-entity-id "Snippets Collection")
-                                    (str "snippets/" coll-entity-id "_snippets_collection/" snippet-entity-id "_test_snippet.yaml")
-                                    (generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result (impl/import! (source.p/snapshot mock-source) task-id)]
-            (is (= :success (:status result))
-                (str "Import should succeed. Result: " result))
-            (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "snippets")
-                "Snippets-namespace collection should be imported")
-            (is (t2/exists? :model/NativeQuerySnippet :entity_id snippet-entity-id)
-                "Snippet should be imported")
-            (when-let [snippet (t2/select-one :model/NativeQuerySnippet :entity_id snippet-entity-id)]
-              (is (= "Test Snippet" (:name snippet)))
-              (is (= "SELECT 42" (:content snippet))))))))))
+    (mt/with-model-cleanup [:model/NativeQuerySnippet :model/Collection :model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (with-library-synced
+          (mt/with-temporary-setting-values [remote-sync-enabled true]
+            (let [coll-entity-id "snippets-coll-importx"
+                  snippet-entity-id "test-snippet-importxx"
+                  test-files {"main" {(str "collections/" coll-entity-id "_snippets_collection/" coll-entity-id "_snippets_collection.yaml")
+                                      (generate-snippets-namespace-collection-yaml coll-entity-id "Snippets Collection")
+                                      (str "snippets/" coll-entity-id "_snippets_collection/" snippet-entity-id "_test_snippet.yaml")
+                                      (generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Import should succeed. Result: " result))
+              (is (t2/exists? :model/Collection :entity_id coll-entity-id :namespace "snippets")
+                  "Snippets-namespace collection should be imported")
+              (is (t2/exists? :model/NativeQuerySnippet :entity_id snippet-entity-id)
+                  "Snippet should be imported")
+              (when-let [snippet (t2/select-one :model/NativeQuerySnippet :entity_id snippet-entity-id)]
+                (is (= "Test Snippet" (:name snippet)))
+                (is (= "SELECT 42" (:content snippet)))))))))))
 
 (deftest all-syncable-collection-ids-includes-all-namespace-types-test
   (testing "Snippet collections are included when Library is synced"
