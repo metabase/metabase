@@ -1987,7 +1987,6 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
@@ -2099,7 +2098,6 @@
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
               metabase-enterprise.metabot-v3.tools.api}
-   :friends #{enterprise/agent-api}
    :uses    #{activity-feed
               api
               app-db
@@ -2115,7 +2113,6 @@
               native-query-snippets
               permissions
               premium-features
-              pulse
               query-processor
               request
               search
@@ -2125,11 +2122,9 @@
               sync
               system
               task
-              users-rest
               util
               warehouse-schema
               warehouses-rest
-              enterprise/dependencies
               enterprise/llm
               enterprise/transforms
               enterprise/transforms-python}}
