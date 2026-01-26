@@ -205,7 +205,7 @@
           {}
           deps-map))
 
-(defn bfs-traverse
+(defn bfs-descendants
   "BFS traversal from start node(s) through an edge map.
 
    edges-map - adjacency map from node to its neighbors
@@ -213,35 +213,30 @@
 
    Options:
    - :include-start? - include start node(s) in result (default: false)
-   - :node-filter    - predicate controlling which nodes are visited and included
-                       (default: all nodes). Nodes failing filter are ignored entirely.
 
    Returns a vector of reachable nodes in BFS order (no duplicates)."
-  [edges-map start & {:keys [include-start? node-filter]
+  [edges-map start & {:keys [include-start?]
                       :or   {include-start? false}}]
   (let [start-nodes   (if (or (sequential? start) (set? start)) start [start])
-        init-nodes    (if node-filter (filterv node-filter start-nodes) (vec start-nodes))
+        init-nodes    (vec start-nodes)
         init-set      (set init-nodes)
-        get-children  (if node-filter
-                        #(filterv node-filter (get edges-map % []))
-                        #(get edges-map % []))
+        get-children  #(get edges-map % [])
         ;; Queue always starts with children of start nodes (excluding start nodes themselves)
         init-children (into [] (comp (mapcat get-children) (remove init-set)) init-nodes)]
     (loop [queue   init-children
-           idx     0
            ;; Only mark start nodes as visited if we're including them in result
-           ;; This allows cycles back to start to be detected when include-start? is false
+           ;; This allows routes between start nodes to be detected when include-start? is false
            visited (transient (if include-start? init-set #{}))
            result  (transient (if include-start? init-nodes []))]
-      (if (>= idx (count queue))
+      (if (empty? queue)
         (persistent! result)
-        (let [current (nth queue idx)]
+        (let [current (first queue)
+              queue   (subvec queue 1)]
           (if (visited current)
-            (recur queue (inc idx) visited result)
+            (recur queue visited result)
             (let [children  (get-children current)
                   new-nodes (remove visited children)]
               (recur (into queue new-nodes)
-                     (inc idx)
                      (conj! visited current)
                      (conj! result current)))))))))
 

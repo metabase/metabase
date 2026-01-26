@@ -170,27 +170,27 @@
     (is (= {:a [:x], :b [:x], :c [:x]}
            (ws.dag/reverse-graph {:x [:a :b :c]})))))
 
-(deftest bfs-traverse-test
+(deftest bfs-descendants-test
   (testing "empty adjacency returns empty"
-    (is (= [] (ws.dag/bfs-traverse {} :a))))
+    (is (= [] (ws.dag/bfs-descendants {} :a))))
 
   (testing "no neighbors returns empty"
-    (is (= [] (ws.dag/bfs-traverse {:a []} :a))))
+    (is (= [] (ws.dag/bfs-descendants {:a []} :a))))
 
   (testing "single hop"
     (is (= [:b :c]
-           (ws.dag/bfs-traverse {:a [:b :c]} :a))))
+           (ws.dag/bfs-descendants {:a [:b :c]} :a))))
 
   (testing "chain traversal - collects all reachable nodes"
     (let [graph {:a [:b], :b [:c], :c [:d], :d []}]
-      (is (= [:b :c :d] (ws.dag/bfs-traverse graph :a)))
-      (is (= [:c :d] (ws.dag/bfs-traverse graph :b)))
-      (is (= [:d] (ws.dag/bfs-traverse graph :c)))
-      (is (= [] (ws.dag/bfs-traverse graph :d)))))
+      (is (= [:b :c :d] (ws.dag/bfs-descendants graph :a)))
+      (is (= [:c :d] (ws.dag/bfs-descendants graph :b)))
+      (is (= [:d] (ws.dag/bfs-descendants graph :c)))
+      (is (= [] (ws.dag/bfs-descendants graph :d)))))
 
   (testing "diamond graph - no duplicates (a -> b -> d, a -> c -> d)"
     (let [graph {:a [:b :c], :b [:d], :c [:d], :d []}]
-      (is (= [:b :c :d] (ws.dag/bfs-traverse graph :a)))))
+      (is (= [:b :c :d] (ws.dag/bfs-descendants graph :a)))))
 
   (testing "works with map nodes (like workspace transform nodes)"
     (let [tx1 {:node-type :workspace-transform :id "tx1"}
@@ -198,35 +198,29 @@
           tx3 {:node-type :workspace-transform :id "tx3"}
           tbl {:node-type :table :id {:db 1 :schema "public" :table "foo"}}
           graph {tx1 [tx2 tbl], tx2 [tx3], tx3 [], tbl []}]
-      (is (= [tx2 tbl tx3] (ws.dag/bfs-traverse graph tx1)))
-      (is (= [tx3] (ws.dag/bfs-traverse graph tx2)))))
+      (is (= [tx2 tbl tx3] (ws.dag/bfs-descendants graph tx1)))
+      (is (= [tx3] (ws.dag/bfs-descendants graph tx2)))))
 
   (testing "handles cycles gracefully - a -> b -> c -> a (cycle), should not infinite loop"
     (let [graph {:a [:b], :b [:c], :c [:a]}]
-      (is (= [:b :c :a] (ws.dag/bfs-traverse graph :a)))))
+      (is (= [:b :c :a] (ws.dag/bfs-descendants graph :a)))))
 
   (testing "include-start? option"
     (let [graph {:a [:b], :b [:c], :c []}]
-      (is (= [:a :b :c] (ws.dag/bfs-traverse graph :a :include-start? true)))
-      (is (= [:b :c] (ws.dag/bfs-traverse graph :a :include-start? false)))))
+      (is (= [:a :b :c] (ws.dag/bfs-descendants graph :a :include-start? true)))
+      (is (= [:b :c] (ws.dag/bfs-descendants graph :a :include-start? false)))))
 
   (testing "multiple start nodes"
     (let [graph {:a [:x], :b [:y], :x [], :y []}]
-      (is (= [:x :y] (ws.dag/bfs-traverse graph [:a :b])))
-      (is (= [:a :b :x :y] (ws.dag/bfs-traverse graph [:a :b] :include-start? true)))))
+      (is (= [:x :y] (ws.dag/bfs-descendants graph [:a :b])))
+      (is (= [:a :b :x :y] (ws.dag/bfs-descendants graph [:a :b] :include-start? true)))))
 
-  (testing "node-filter option"
+  (testing "traverses through different node types"
     (let [tx1 {:node-type :workspace-transform :id "tx1"}
           tx2 {:node-type :workspace-transform :id "tx2"}
           ext {:node-type :external-transform :id "ext"}
-          graph {tx1 [ext], ext [tx2], tx2 []}
-          ws-only? #(= :workspace-transform (:node-type %))]
-      (testing "without filter: traverses through ext to reach tx2"
-        (is (= [ext tx2] (ws.dag/bfs-traverse graph tx1))))
-      (testing "with filter: stops at ext, doesn't reach tx2"
-        (is (= [] (ws.dag/bfs-traverse graph tx1 :node-filter ws-only?))))
-      (testing "with filter and include-start"
-        (is (= [tx1] (ws.dag/bfs-traverse graph tx1 :include-start? true :node-filter ws-only?)))))))
+          graph {tx1 [ext], ext [tx2], tx2 []}]
+      (is (= [ext tx2] (ws.dag/bfs-descendants graph tx1))))))
 
 (deftest collapse-test
   (is (= {:x1 [:x2 :x3]
