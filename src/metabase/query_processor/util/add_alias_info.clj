@@ -207,24 +207,12 @@
      :source/aggregations
      :source/native)              ::none))
 
-(defn- add-source-to-field-ref [query path [_type {source-field :source-field} _id-or-name :as field-ref] col]
-  (let [join-alias (:metabase.lib.join/join-alias col)
-        ;; For implicit joins, use the original column name since that's what exists
-        ;; in the actual database table (#67002).
-        source-col-alias (if source-field
-                           ((some-fn :lib/original-name :name) col)
-                           (:lib/source-column-alias col))]
-    (lib/update-options
-     field-ref #(-> %
-                    (assoc ::source-table (source-table query path col)
-                           ::source-alias (escaped-source-alias query path join-alias source-col-alias))
-                    ;; For implicit joins, ::source-table will be a string (join alias) rather than an
-                    ;; integer table ID. We need to explicitly enable coercion since the SQL QP checks
-                    ;; for (pos-int? ::source-table) to determine if coercion should be applied. This
-                    ;; follows the same pattern used by the SparkSQL driver. See #67704.
-                    (cond-> source-field
-                      (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
-                    (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
+(defn- add-source-to-field-ref [query path field-ref col]
+  (lib/update-options
+   field-ref #(-> %
+                  (assoc ::source-table (source-table query path col)
+                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
   "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
@@ -394,11 +382,7 @@
                                                    :join join
                                                    :ref  field-ref
                                                    :col  col})))
-        ;; if we have an implicit join, we will be joining with the table directly instead of renaming things, so we
-        ;; need to use the original name of the field instead of our remapped/deduplicated version
-        source-alias          (if (:qp/is-implicit-join opts)
-                                ((some-fn :lib/original-name :name) col)
-                                (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias))
+        source-alias          (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias)
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions
