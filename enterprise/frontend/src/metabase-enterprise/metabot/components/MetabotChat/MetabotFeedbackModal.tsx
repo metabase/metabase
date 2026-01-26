@@ -153,7 +153,7 @@ export const MetabotFeedbackModal = ({
             </Stack>
 
             <Text size="sm" color="text-secondary">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
+              {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>

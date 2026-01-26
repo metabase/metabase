@@ -383,7 +383,6 @@
    :uses #{api
            app-db
            collections
-           config
            eid-translation
            events
            lib-be
@@ -828,6 +827,7 @@
            lib-be
            models
            permissions
+           remote-sync
            search
            util}}
 
@@ -988,7 +988,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1219,7 +1220,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -1519,7 +1521,6 @@
    :uses #{analytics
            api
            collections
-           config
            events
            models
            util}}
@@ -1669,7 +1670,6 @@
    :uses #{analytics
            api
            app-db
-           config
            database-routing
            driver
            events

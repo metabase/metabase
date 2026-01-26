@@ -41,7 +41,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
       cy.findByText("ID").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Name").click();
 
     H.popover().within(() => {
@@ -58,14 +58,14 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
         "email@example.com__text__12345",
       );
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("textbox").last().clear();
       cy.findByTestId("combine-example").should(
         "have.text",
         "email@example.com__text12345",
       );
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("textbox").last().clear().type("+");
       cy.findByTestId("combine-example").should(
         "have.text",
@@ -75,7 +75,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
       cy.findByText("Done").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
       .last()
       .should("have.text", "Combined Email, Name, ID");

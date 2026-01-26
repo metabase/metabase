@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [get-test-schema
@@ -1032,7 +1033,8 @@
             (testing "Successfully extracts columns from a simple SELECT query"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
                                                    {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
-                (is (= ["id" "name" "category" "price"] (:columns response)))))
+                (is (= ["id" "price"] (:columns response))
+                    "Should only return numeric (id, price) columns, filtering out text columns (name, category)")))
 
             (testing "Returns nil for invalid SQL"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
@@ -1042,7 +1044,14 @@
             (testing "Extracts columns from query with aliases"
               (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
                                                    {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
-                (is (= ["product_id" "product_name"] (:columns response)))))
+                (is (= ["product_id"] (:columns response))
+                    "Should only return numeric column (id), filtering out text column (name)")))
+
+            (testing "Filters columns by type - only returns numeric and temporal columns"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price, created_at FROM transforms_products")})]
+                (is (= ["id" "price" "created_at"] (:columns response))
+                    "Should return numeric (id, price) and temporal (created_at) columns, filtering out text columns (name, category)")))
 
             (testing "Requires superuser permissions"
               (is (= "You don't have permissions to do that."
@@ -1175,3 +1184,138 @@
           (let [items (:data (mt/user-http-request :rasta :get 200
                                                    (format "collection/%d/items" collection-id)))]
             (is (empty? items))))))))
+
+(deftest transforms-appear-in-here-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Transforms in a collection appear in its :here field"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
+                                                          :namespace :transforms}
+                       :model/Collection {child-id :id} {:name "Child"
+                                                         :location (format "/%d/" parent-id)
+                                                         :namespace :transforms}
+                       :model/Transform _ {:name "Test Transform"
+                                           :collection_id child-id}]
+          ;; Check child collection shows transform in :here
+          (let [child-coll (first (:data (mt/user-http-request :crowberto :get 200
+                                                               (format "collection/%d/items" parent-id))))]
+            (is (= ["transform"] (:here child-coll)))))))))
+
+(deftest transforms-appear-in-below-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Transforms in descendant collections appear in :below field"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
+                                                          :namespace :transforms}
+                       :model/Collection {child-id :id} {:name "Child"
+                                                         :location (format "/%d/" parent-id)
+                                                         :namespace :transforms}
+                       :model/Collection {grandchild-id :id} {:name "Grandchild"
+                                                              :location (format "/%d/%d/" parent-id child-id)
+                                                              :namespace :transforms}
+                       :model/Transform _ {:name "Nested Transform"
+                                           :collection_id grandchild-id}]
+          ;; Check child collection shows transform in :below
+          (let [child-coll (first (:data (mt/user-http-request :crowberto :get 200
+                                                               (format "collection/%d/items" parent-id))))]
+            (is (= ["collection"] (:here child-coll)))
+            (is (= ["transform"] (:below child-coll)))))))))
+
+(deftest native-incremental-column-type-validated-on-create-test
+  (testing "POST /api/ee/transform column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Rejects unsupported checkpoint column type (text)"
+              (let [response (mt/user-http-request :crowberto :post 400 "ee/transform"
+                                                   {:name "Invalid Incremental Transform"
+                                                    :source {:type "query"
+                                                             :query (lib/native-query (mt/metadata-provider)
+                                                                                      "SELECT id, name, category, price FROM transforms_products")
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter "name"}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "invalid_incremental"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"Only numeric and temporal" response))))))))))
+
+(deftest native-incremental-column-type-validated-on-update-test
+  (testing "PUT /api/ee/transform column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (with-transform-cleanup! [table-name "update_incremental_test"]
+              (let [;; Create a non-incremental transform first
+                    created (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                  {:name "Test Transform"
+                                                   :source {:type "query"
+                                                            :query (lib/native-query (mt/metadata-provider)
+                                                                                     "SELECT id, name, category FROM transforms_products")}
+                                                   :target {:type "table"
+                                                            :schema schema
+                                                            :name table-name}})]
+                (testing "Rejects update to unsupported checkpoint column type (text)"
+                  (let [response (mt/user-http-request :crowberto :put 400
+                                                       (format "ee/transform/%d" (:id created))
+                                                       {:source {:type "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name, category FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               :checkpoint-filter "category"}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (string? response))
+                    (is (re-find #"Only numeric and temporal" response))))))))))))
+
+(deftest mbql-incremental-column-type-validated-on-create-test
+  (testing "MBQL query with checkpoint-filter-unique-key - checkpoint column type validation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Rejects unsupported checkpoint column type (text)"
+              (let [query (mt/mbql-query transforms_products)
+                    response (mt/user-http-request :crowberto :post 400 "ee/transform"
+                                                   {:name "Invalid MBQL Incremental"
+                                                    :source {:type "query"
+                                                             :query query
+                                                             :source-incremental-strategy {:type "checkpoint"
+                                                                                           :checkpoint-filter-unique-key "column-unique-key-v1$name"}}
+                                                    :target {:type "table-incremental"
+                                                             :schema schema
+                                                             :name "invalid_mbql_incremental"
+                                                             :target-incremental-strategy {:type "append"}}})]
+                (is (string? response))
+                (is (re-find #"not supported" response))))))))))
+
+(deftest native-incremental-column-validation-when-not-extractable-test
+  (testing "Native query checkpoint column validation with text input fallback"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (get-test-schema)]
+            (testing "Accepts any column if they were not extractable"
+              (with-transform-cleanup! [table-name "fallback_test_unextracted"]
+                (with-redefs [metabase-enterprise.transforms.api/extract-all-columns-from-query
+                              ;; simulate lack of driver support for extraction
+                              (fn [_driver _database-id _query] nil)]
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                       {:name "Unextracted Column - Text Input Fallback"
+                                                        :source {:type "query"
+                                                                 :query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT id, name, created_at FROM transforms_products")
+                                                                 :source-incremental-strategy {:type "checkpoint"
+                                                                                               ;; created_at is in the query but not in our stubbed extraction
+                                                                                               :checkpoint-filter "created_at"}}
+                                                        :target {:type "table-incremental"
+                                                                 :schema schema
+                                                                 :name table-name
+                                                                 :target-incremental-strategy {:type "append"}}})]
+                    (is (some? (:id response))
+                        "Should accept column not in extracted metadata, allowing text input fallback")))))))))))

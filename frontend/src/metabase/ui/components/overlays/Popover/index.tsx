@@ -50,7 +50,5 @@ PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
 // @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover = MantinePopover;
-
-export { Popover };
+export const Popover = MantinePopover;
 export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";

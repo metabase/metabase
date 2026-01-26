@@ -41,7 +41,7 @@ export const LegaleseStep = ({
             )}`}
           </Text>
           <Text>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This only shows for admins */}
             {t`When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`}
           </Text>
           <Text>

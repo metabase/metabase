@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Revision from "metabase/admin/datamodel/components/revisions/Revision";
+import { Revision } from "metabase/admin/datamodel/components/revisions/Revision";
 import EmptyState from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

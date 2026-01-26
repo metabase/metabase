@@ -22,7 +22,7 @@ export const DatabaseFormError = () => {
   const ref = useRef<HTMLDivElement>(null);
   const title = isHostAndPortError
     ? t`Hmm, we couldn't connect to the database`
-    : // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins
       t`Metabase tried, but couldn't connect`;
 
   useMount(() => {
