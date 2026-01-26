@@ -2319,6 +2319,62 @@ LIMIT
       },
     );
 
+    it(
+      "should be able to run a transform with default import common even without custom library code",
+      { tags: ["@python"] },
+      () => {
+        setPythonRunnerSettings();
+
+        visitTransformListPage();
+        cy.button("Create a transform").click();
+        H.popover().findByText("Python script").click();
+
+        cy.log("import common should be included by default");
+        H.PythonEditor.value().should("contain", "import common");
+
+        cy.log(
+          "write a transform that imports common but does not use it - should still run",
+        );
+        H.PythonEditor.clear().type(
+          dedent`
+            import common
+            import pandas as pd
+
+            def transform():
+                return pd.DataFrame([{"result": 42}])
+          `,
+          { allowFastSet: true },
+        );
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a table…")
+          .click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Schema a").click();
+          cy.findByText("Animals").click();
+        });
+
+        getQueryEditor().button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Default common transform");
+          cy.findByLabelText("Table name").clear().type("default_common");
+          cy.button("Save").click();
+        });
+
+        H.DataStudio.Transforms.runTab().click();
+        runTransformAndWaitForSuccess();
+        H.DataStudio.Transforms.settingsTab().click();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Default Common")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "42");
+      },
+    );
+
     function visitCommonLibrary(path = "common.py") {
       cy.visit(`/data-studio/transforms/library/${path}`);
     }
@@ -2333,7 +2389,7 @@ LIMIT
       cy.log("create a collection from the transforms list");
       visitTransformListPage();
       cy.button("Create a transform").click();
-      H.popover().findByText("New collection").click();
+      H.popover().findByText("Transform folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Marketing Transforms");
@@ -2346,7 +2402,7 @@ LIMIT
 
       cy.log("create a nested collection");
       cy.button("Create a transform").click();
-      H.popover().findByText("New collection").click();
+      H.popover().findByText("Transform folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Q4 Reports");
@@ -2771,6 +2827,85 @@ LIMIT
       cy.findByTestId("transform-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+    });
+  });
+
+  describe("read-only remote sync", () => {
+    beforeEach(() => {
+      cy.log("create a transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+      });
+      cy.log("set up remote sync");
+      H.setupGitSync();
+      H.configureGit("read-only");
+    });
+
+    it("should make the transform list page read-only", () => {
+      cy.log("visit transforms page");
+      visitTransformListPage();
+
+      cy.log("'Create a transform' menu button is not displayed");
+      cy.button("Create a transform").should("not.exist");
+
+      cy.log("clicking Python library navigates to the library editor");
+      getTransformsList().findByText("Python library").click();
+
+      cy.log("python library editor is read-only");
+      cy.url().should("include", "/data-studio/transforms/library/common.py");
+      cy.findByRole("alert")
+        .contains(/The Python library is not editable/)
+        .should("be.visible");
+
+      H.DataStudio.PythonLibrary.editor().within(() => {
+        cy.findByRole("textbox").should(
+          "have.attr",
+          "contenteditable",
+          "false",
+        );
+        cy.findByRole("textbox").should("have.attr", "aria-readonly", "true");
+      });
+    });
+
+    it("should not allow editing a transform", () => {
+      cy.log("visit transform");
+      cy.visit("/data-studio/transforms/1");
+
+      cy.log("'edit definition' button is not displayed");
+      H.DataStudio.Transforms.editDefinition().should("not.exist");
+
+      cy.log("visit the Run tab");
+      H.DataStudio.Transforms.runTab().click();
+
+      cy.log("schedule tags are not editable");
+      cy.findByLabelText("Tags").should("be.visible");
+      cy.findByLabelText("Tags").should("be.disabled");
+
+      cy.log("visit the Settings tab");
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("'Change target' button is not displayed");
+      cy.findByRole("button", { name: /Change target/ }).should("not.exist");
+
+      cy.log("'Only process new and changed data' switch is not displayed");
+      cy.findByRole("switch", {
+        name: /Only process new and changed data/,
+      }).should("be.disabled");
+
+      cy.log("visiting edit mode url directly redirects to view-only mode");
+      cy.visit("/data-studio/transforms/1/edit");
+      cy.url().should("not.include", "/edit");
+
+      H.DataStudio.Transforms.header()
+        .findByRole("img", { name: "ellipsis icon" })
+        .click();
+
+      cy.log("ellipsis menu does not have move or delete options");
+      cy.findByRole("menu").within(() => {
+        cy.findByRole("menuitem", { name: /History/ }).should("be.visible");
+        cy.findByRole("menuitem", { name: /Move/ }).should("not.exist");
+        cy.findByRole("menuitem", { name: /Delete/ }).should("not.exist");
+      });
     });
   });
 });

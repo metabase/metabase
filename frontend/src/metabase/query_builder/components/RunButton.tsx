@@ -50,6 +50,7 @@ const RunButton = forwardRef(function RunButton(
       }}
       icon={icon}
       primary={isDirty}
+      white={!isDirty}
       data-testid="run-button"
       aria-label={ariaLabel}
       onClick={isRunning ? onCancel : onRun}
