@@ -13,6 +13,7 @@ import { isPythonTransformSource } from "../../utils";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import S from "./PythonTransformEditor.module.css";
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
 import { useTestPythonTransform } from "./hooks";
 import { updateTransformSignature } from "./utils";
@@ -88,7 +89,7 @@ export function PythonTransformEditor({
         transformId={transformId}
         onDatabaseChange={handleDatabaseChange}
       />
-      <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
+      <Flex className={S.editorBodyWrapper}>
         {isEditMode && (
           <PythonDataPicker
             database={source["source-database"]}

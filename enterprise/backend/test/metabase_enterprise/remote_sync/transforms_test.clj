@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -128,7 +129,7 @@
                        :model/TransformTag tag {:name "Existing Tag"}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
               "Should have no transform tracking entries initially")
-          (impl/sync-transform-tracking! true)
+          (settings/sync-transform-tracking! true)
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
                           :model_id coll-id
@@ -160,7 +161,7 @@
               (is (= 3 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "Transform" "TransformTag"]]
                                  :model_id [:in [coll-id (:id transform) (:id tag)]]))
                   "Should have 3 tracking entries")
-              (impl/sync-transform-tracking! false)
+              (settings/sync-transform-tracking! false)
               (is (zero? (t2/count :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag"]]))
                   "Transform and TransformTag tracking entries should be removed")
               (is (zero? (t2/count :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
@@ -523,4 +524,3 @@ is_sample: false
                     "Local transforms collection should be deleted after import")
                 (is (t2/exists? :model/Collection :entity_id remote-coll-entity-id :namespace "transforms")
                     "Remote transforms collection should be imported")))))))))
-

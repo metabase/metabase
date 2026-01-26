@@ -43,7 +43,7 @@ describe("issue 18009", { tags: "@external" }, () => {
       .click();
 
     // Click anywhere to close the popover that covers the "Send email now" button
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
     H.sendEmailAndAssert((email) => {
@@ -83,21 +83,21 @@ describe("issue 18344", { tags: "@external" }, () => {
     });
 
     H.saveDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("OrdersFoo");
   });
 
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
     H.openSharingMenu("Subscriptions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
     H.sendEmailAndAssert((email) => {
@@ -136,14 +136,14 @@ describe("issue 18352", { tags: "@external" }, () => {
   it("should send the card with the INT64 values (metabase#18352)", () => {
     H.openSharingMenu("Subscriptions");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
     H.sendEmailAndAssert(({ html }) => {
@@ -206,7 +206,7 @@ describe("issue 18669", { tags: "@external" }, () => {
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
     H.openSharingMenu("Subscriptions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")
@@ -264,7 +264,7 @@ describe("issue 20393", () => {
     H.popover().contains("CREATED_AT").click();
 
     // save the dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
@@ -279,7 +279,7 @@ describe("issue 20393", () => {
     });
 
     // verify that the card is visible on the page
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2");
   });
 });
@@ -391,7 +391,7 @@ describe("issue 22524", () => {
     H.editDashboard();
     H.setFilter("Text or Category", "Is");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("City").click();
 
@@ -411,7 +411,7 @@ describe("issue 22524", () => {
     cy.findByPlaceholderText("Text").clear().type("Rye{enter}");
 
     // Check results
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2-7900 Cuerno Verde Road");
   });
 });
@@ -558,7 +558,7 @@ describe("issue 25473", () => {
   };
 
   function assertOnResults() {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("columnheader").last().should("have.text", ccName);
     cy.findAllByText("xavier").should("have.length", 2);
 
@@ -772,7 +772,7 @@ describe("issue 17657", () => {
 
     H.openSharingMenu("Subscriptions");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
     H.sidebar().within(() => {
@@ -782,7 +782,7 @@ describe("issue 17657", () => {
     // Open the popover with all users
     cy.findByPlaceholderText("Enter user names or email addresses").click();
     // Pick admin as a recipient
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
 
     H.sidebar().within(() => {
@@ -867,12 +867,12 @@ describe("issue 17658", { tags: "@external" }, () => {
 
     H.openSharingMenu("Subscriptions");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Delete this subscription").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^This dashboard will no longer be emailed to/).click();
 
     cy.button("Delete").click();

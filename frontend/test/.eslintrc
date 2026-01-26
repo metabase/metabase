@@ -1,7 +1,7 @@
 {
   "rules": {
     "import/no-commonjs": 0,
-    "no-color-literals": 0
+    "metabase/no-color-literals": 0
   },
   "env": {
     "node": true

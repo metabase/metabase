@@ -1,1 +1,1 @@
-export * from "./NativeQueryEditor";
+export { NativeQueryEditor } from "./NativeQueryEditor";

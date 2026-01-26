@@ -63,12 +63,10 @@ class SegmentListAppInner extends Component {
   }
 }
 
-const SegmentListApp = _.compose(
+export const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable("segments"),
   connect((state, props) => ({ isAdmin: getUserIsAdmin(state) }), {
     setArchived: Segments.actions.setArchived,
   }),
 )(SegmentListAppInner);
-
-export default SegmentListApp;
