@@ -314,6 +314,38 @@
 
 ;;; -------------------------------------------------- Main Inspection ---------------------------------------------------
 
+(mu/defn inspect-tables :- ::transforms.schema/generic-inspector-result
+  "Generic inspection of input tables vs output table.
+   Does not require a transform definition - works with any table IDs.
+   Useful for inspecting transform subgraphs or arbitrary table comparisons."
+  [input-table-ids :- [:sequential pos-int?]
+   output-table-id :- pos-int?]
+  (let [output-table (t2/select-one :model/Table :id output-table-id)
+        db-id (:db_id output-table)
+
+        ;; Collect stats for all tables
+        source-stats (mapv collect-table-stats input-table-ids)
+        target-stats (collect-table-stats output-table-id)
+
+        ;; Column matching (same logic as before)
+        column-matches (match-columns source-stats target-stats)
+
+        ;; Generate comparison cards
+        column-groups (mapv #(make-column-comparison-group % db-id output-table-id (:table-name target-stats))
+                            column-matches)
+
+        ;; Summary
+        summary (make-summary-stats source-stats target-stats)]
+
+    {:name "Table Inspector"
+     :description (tru "Comparison of input tables to output table")
+     :status :ready
+
+     :summary summary
+     :sources source-stats
+     :target target-stats
+     :column-comparisons column-groups}))
+
 (mu/defn inspect-transform :- ::transforms.schema/inspector-result
   "Generate inspection data for a transform.
    Returns a dashboard-like structure with summary stats, join info, and visualization cards."
@@ -327,16 +359,13 @@
       {:name (str "Transform Inspector: " (:name transform))
        :description (tru "Transform has not been run yet. Run the transform to see inspection data.")
        :status :not-run
-       :source-type source-type
        :sources (mapv #(select-keys % [:table-name :schema]) sources)}
 
-      ;; Target exists - generate full inspection
-      (let [target-table-id (:id target-table)
-            db-id (:db_id target-table)
-            source-stats (mapv #(collect-table-stats (:table-id %)) sources)
-            target-stats (collect-table-stats target-table-id)
+      ;; Target exists - delegate to generic inspect-tables, then add transform-specific data
+      (let [input-ids (mapv :table-id sources)
+            base-result (inspect-tables input-ids (:id target-table))
 
-            ;; Join analysis (MBQL only)
+            ;; Add transform-specific enrichments: join analysis (MBQL only)
             joins (when (= source-type :mbql)
                     (try
                       (let [query (-> transform :source :query
@@ -345,39 +374,14 @@
                         (extract-joins query))
                       (catch Exception e
                         (log/warn e "Failed to extract joins")
-                        nil)))
+                        nil)))]
 
-            ;; Column matching
-            column-matches (match-columns source-stats target-stats)
-
-            ;; Generate column comparison cards
-            column-groups (mapv #(make-column-comparison-group % db-id target-table-id (:table-name target-stats))
-                                column-matches)
-
-            ;; Summary
-            summary (make-summary-stats source-stats target-stats)]
-
-        {:name (str "Transform Inspector: " (:name transform))
-         :description (tru "Analysis of transform inputs, outputs, and joins")
-         :status :ready
-         :source-type source-type
-
-         ;; Summary section
-         :summary summary
-
-         ;; Join stats (MBQL only)
-         :joins (when (seq joins)
-                  (mapv (fn [join]
-                          {:strategy (:strategy join)
-                           :alias (:alias join)
-                           :source-table (:source-table join)})
-                        joins))
-
-         ;; Source table details
-         :sources source-stats
-
-         ;; Target table details
-         :target target-stats
-
-         ;; Column comparison groups
-         :column-comparisons column-groups}))))
+        (assoc base-result
+               :name (str "Transform Inspector: " (:name transform))
+               :description (tru "Analysis of transform inputs, outputs, and joins")
+               :joins (when (seq joins)
+                        (mapv (fn [join]
+                                {:strategy (:strategy join)
+                                 :alias (:alias join)
+                                 :source-table (:source-table join)})
+                              joins)))))))

@@ -188,9 +188,27 @@
    [:name :string]
    [:description :string]
    [:status ::inspector-status]
-   [:source-type ::inspector-source-type]
    [:summary {:optional true} ::inspector-summary]
    [:joins {:optional true} [:maybe [:sequential ::inspector-join]]]
    [:sources [:sequential ::inspector-source-detail]]
    [:target {:optional true} ::inspector-target-detail]
    [:column-comparisons {:optional true} [:sequential ::inspector-column-comparison]]])
+
+;;; -------------------------------------------------- Generic Table Inspector Schemas ---------------------------------------------------
+
+(mr/def ::inspect-tables-request
+  "Request to inspect a set of input tables against an output table."
+  [:map
+   [:input-table-ids [:sequential pos-int?]]
+   [:output-table-id pos-int?]])
+
+(mr/def ::generic-inspector-result
+  "Result from generic table inspection (no transform context)."
+  [:map
+   [:name :string]
+   [:description :string]
+   [:status ::inspector-status]
+   [:summary ::inspector-summary]
+   [:sources [:sequential ::inspector-source-detail]]
+   [:target ::inspector-target-detail]
+   [:column-comparisons [:sequential ::inspector-column-comparison]]])

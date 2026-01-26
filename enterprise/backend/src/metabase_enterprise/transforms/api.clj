@@ -502,6 +502,21 @@
     (check-feature-enabled! transform)
     (transforms.inspector/inspect-transform transform)))
 
+(api.macros/defendpoint :post "/inspect"
+  :- ::transforms.schema/generic-inspector-result
+  "Inspect a set of input tables against an output table.
+   Generic endpoint that works without a transform definition.
+   Useful for inspecting transform subgraphs or arbitrary table comparisons."
+  [_route-params
+   _query-params
+   {:keys [input-table-ids output-table-id]} :- ::transforms.schema/inspect-tables-request]
+  (api/check-400 (seq input-table-ids)
+                 (deferred-tru "At least one input table is required."))
+  ;; Check read access on all tables
+  (doseq [table-id (conj input-table-ids output-table-id)]
+    (api/read-check :model/Table table-id))
+  (transforms.inspector/inspect-tables input-table-ids output-table-id))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
   (handlers/routes
