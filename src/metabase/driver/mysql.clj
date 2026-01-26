@@ -157,10 +157,10 @@
   (and (= driver :mysql)
        (mysql? db)
        (not (try
-               (partial-revokes-enabled? driver db)
-               (catch Exception e
-                 (log/warn e "Failed to check table writable")
-                 false)))))
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
 
 (defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
   [driver _feat db]
