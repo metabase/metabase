@@ -554,18 +554,16 @@
       :type/DateTimeWithTZ     [:timestamp-with-time-zone]
       :type/Time               [:time])))
 
-(deftest ^:parallel describe-fields-pre-process-xf-deduplicates-fields-test
-  (testing "describe-fields-pre-process-xf filters out duplicate fields by (table-schema, table-name, name)"
+(deftest ^:parallel describe-fields-pre-process-xf-removes-all-duplicates-test
+  (testing "describe-fields-pre-process-xf removes ALL fields that have duplicate (table-schema, table-name, name)"
     (let [xf     (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
           fields [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
                   {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
-                  {:table-schema "public" :table-name "users" :name "id" :database-type "integer"}   ; duplicate
-                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}  ; same name, different table
-                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}    ; same name+table, different schema
-                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}]]  ; duplicate (different type)
-      (is (= [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
-              {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
-              {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}    ; duplicate of id - remove
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}  ; same name, different table - keep
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}    ; same name and table, different schema - keep
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}]]  ; duplicate of name - remove
+      (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
               {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
              (into [] xf fields))))))
 

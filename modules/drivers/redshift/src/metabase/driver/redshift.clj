@@ -20,7 +20,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql
@@ -59,26 +60,30 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Redshift-specific implementation that:
-;; 1. Skips the postgres implementation (which handles custom enums that redshift doesn't support)
-;; 2. Deduplicates fields by (table-schema, table-name, name) to handle views with duplicate column names
+(defn- remove-duplicate-fields
+  "Redshift views can have duplicate column names, but when these columns appear in a query
+   they produce an ambiguous column error. To avoid this remove all duplicate columns"
+  [fields]
+  (let [field-key      (fn [f] (perf/select-keys f [:table-schema :table-name :name]))
+        key-counts     (frequencies (map field-key fields))
+        duplicate-keys (into #{} (comp (filter #(> (val %) 1)) (map key)) key-counts)]
+    (doseq [{:keys [table-schema table-name name]} duplicate-keys]
+      (log/warnf "Duplicate column '%s' in %s.%s - skipping all occurrences"
+                 name table-schema table-name))
+    (remove #(contains? duplicate-keys (field-key %)) fields)))
+
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [_driver _db & _args]
   (fn [rf]
-    (let [seen (volatile! #{})]
+    (let [fields (volatile! [])]
       (fn
         ([] (rf))
-        ([result] (rf result))
+        ([result]
+         (let [filtered (remove-duplicate-fields @fields)]
+           (rf (reduce rf result filtered))))
         ([result field]
-         (let [k [(:table-schema field) (:table-name field) (:name field)]]
-           (if (contains? @seen k)
-             (do
-               (log/warnf "Duplicate column '%s' in %s.%s - skipping (views with duplicate column names not fully supported)"
-                          (:name field) (:table-schema field) (:table-name field))
-               result)
-             (do
-               (vswap! seen conj k)
-               (rf result field)))))))))
+         (vswap! fields conj field)
+         result)))))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
