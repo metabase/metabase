@@ -53,7 +53,9 @@ You can also go to **Admin settings > Embedding > Modular embedding** and click 
 
 {% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
 
-How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](./authentication.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md). But we recommend setting up modular embedding with SSO.
+With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](/docs/embedding/introduction.md#comparison-of-embedding-types)).
+
+This page covers the [SSO setup for your Metabase](./authentication.md). If you don't need to set up SSO, check out the [guest embed docs](./guest-embedding.md).
 
 ### 3. Customize your embed
 
