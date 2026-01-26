@@ -308,27 +308,9 @@
   [:or ::construct-query-table-request ::construct-query-metric-request])
 
 (mr/def ::construct-query-response
-  "Response containing a URL-safe base64-encoded MBQL query for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
    [:query :string]])
-
-(defn- encode-base64-url-safe
-  "Encode a string to URL-safe base64 (RFC 4648).
-   Replaces + with - and / with _ to match frontend encoding."
-  [^String s]
-  (-> s
-      u/encode-base64
-      (str/replace "+" "-")
-      (str/replace "/" "_")))
-
-(defn- decode-base64-url-safe
-  "Decode a URL-safe base64 string (RFC 4648).
-   Converts - back to + and _ back to / before decoding."
-  [^String s]
-  (-> s
-      (str/replace "-" "+")
-      (str/replace "_" "/")
-      u/decode-base64))
 
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
@@ -337,7 +319,7 @@
         data (check-tool-result (metabot-filters/query-datasource args))]
     {:query (-> (:query data)
                 json/encode
-                encode-base64-url-safe)}))
+                u/encode-base64)}))
 
 (defn- construct-metric-query
   "Build a query from a metric using filters and group_by."
@@ -346,7 +328,7 @@
         data (check-tool-result (metabot-filters/query-metric args))]
     {:query (-> (:query data)
                 json/encode
-                encode-base64-url-safe)}))
+                u/encode-base64)}))
 
 (api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a table or metric.
@@ -385,7 +367,7 @@
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [query (-> encoded-query
-                  decode-base64-url-safe
+                  u/decode-base64
                   json/decode+kw)]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query

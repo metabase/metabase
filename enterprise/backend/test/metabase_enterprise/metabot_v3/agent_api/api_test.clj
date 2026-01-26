@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.agent-api.api-test
   (:require
    [buddy.sign.jwt :as jwt]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -290,18 +289,10 @@
                     (agent-client :rasta :post 200 "agent/v1/search"
                                   {:term_queries ["AgentSearchTestTable"]})))))))))
 
-(defn- decode-base64-url-safe
-  "Decode a URL-safe base64 string back to the original string."
-  [s]
-  (-> s
-      (str/replace "-" "+")
-      (str/replace "_" "/")
-      u/decode-base64))
-
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map."
   [response]
-  (-> response :query decode-base64-url-safe json/decode+kw))
+  (-> response :query u/decode-base64 json/decode+kw))
 
 (deftest construct-query-test
   (with-agent-api-setup!
