@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
@@ -119,7 +120,7 @@ export const InteractiveDashboardContent = (
           pushNavigation({
             type: "adhoc-question",
             questionPath: url,
-            name: nextCard.name || "Question",
+            name: nextCard.name || t`Question`,
           });
         }
       }
