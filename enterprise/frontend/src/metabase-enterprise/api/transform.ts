@@ -11,6 +11,7 @@ import type {
   RunTransformResponse,
   Transform,
   TransformId,
+  TransformInspectResponse,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -24,6 +25,25 @@ import {
   provideTransformTags,
   tag,
 } from "./tags";
+
+function kebabToSnakeCase(str: string): string {
+  return str.replace(/-/g, "_");
+}
+
+function transformKeys(obj: unknown): unknown {
+  if (Array.isArray(obj)) {
+    return obj.map(transformKeys);
+  }
+  if (obj !== null && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [
+        kebabToSnakeCase(key),
+        transformKeys(value),
+      ]),
+    );
+  }
+  return obj;
+}
 
 export const transformApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -222,6 +242,17 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body: { query: queryString },
       }),
     }),
+    getTransformInspect: builder.query<TransformInspectResponse, TransformId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/transform/${id}/inspect`,
+      }),
+      // FIXME(egorgrushin): THIS IS TEMPORAL
+      transformResponse: (response: unknown) =>
+        transformKeys(response) as TransformInspectResponse,
+      providesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id)]),
+    }),
   }),
 });
 
@@ -231,6 +262,7 @@ export const {
   useListTransformDependenciesQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
+  useGetTransformInspectQuery,
   useRunTransformMutation,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,

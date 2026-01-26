@@ -277,3 +277,88 @@ export type QueryComplexity = {
   is_simple: boolean;
   reason: string;
 };
+
+export type TransformInspectFieldStats = {
+  distinct_count?: number;
+  nil_percent?: number;
+  min?: number;
+  max?: number;
+  avg?: number;
+};
+
+export type TransformInspectField = {
+  id?: number;
+  name: string;
+  display_name?: string;
+  base_type?: string;
+  semantic_type?: string;
+  stats?: TransformInspectFieldStats;
+};
+
+export type TransformInspectSummaryTable = {
+  table_name: string;
+  row_count?: number;
+  column_count: number;
+};
+
+export type TransformInspectSummary = {
+  inputs: TransformInspectSummaryTable[];
+  output: TransformInspectSummaryTable;
+};
+
+export type TransformInspectJoin = {
+  strategy: string;
+  alias?: string;
+  source_table?: unknown;
+  filled_rows?: number;
+  percent_with_entry?: number;
+  outer_join_crosses?: number;
+};
+
+export type TransformInspectSource = {
+  table_id?: number;
+  table_name: string;
+  schema?: string;
+  db_id?: number;
+  row_count?: number;
+  column_count: number;
+  fields: TransformInspectField[];
+};
+
+export type TransformInspectTarget = {
+  table_id: number;
+  table_name: string;
+  schema?: string;
+  row_count?: number;
+  column_count: number;
+  fields: TransformInspectField[];
+};
+
+export type TransformInspectComparisonCard = {
+  id: string;
+  source: "input" | "output";
+  table_name: string;
+  field_name: string;
+  title: string;
+  display: string;
+  dataset_query: object;
+};
+
+export type TransformInspectColumnComparison = {
+  id: string;
+  output_column: string;
+  cards: TransformInspectComparisonCard[];
+};
+
+export type TransformInspectStatus = "not-run" | "ready";
+
+export type TransformInspectResponse = {
+  name: string;
+  description: string;
+  status: TransformInspectStatus;
+  summary?: TransformInspectSummary;
+  joins?: TransformInspectJoin[];
+  sources: TransformInspectSource[];
+  target?: TransformInspectTarget;
+  column_comparisons?: TransformInspectColumnComparison[];
+};
