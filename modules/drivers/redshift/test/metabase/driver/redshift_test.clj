@@ -573,16 +573,16 @@
 
 (deftest ^:parallel describe-fields-pre-process-xf-removes-all-duplicates-test
   (testing "describe-fields-pre-process-xf removes ALL fields that have duplicate (table-schema, table-name, name)"
-    (let [xf     (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
-          fields [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+    (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+            {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
+           (into []
+                 (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
+                 [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}
                   {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
-                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}    ; duplicate of id - remove
-                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}  ; same name, different table - keep
-                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}    ; same name and table, different schema - keep
-                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}]]  ; duplicate of name - remove
-      (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
-              {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
-             (into [] xf fields))))))
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}])))))
 
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
