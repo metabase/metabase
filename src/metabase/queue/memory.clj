@@ -63,8 +63,7 @@
      (fn [batches]
        (doseq [batch batches]
          (q.listener/handle! {:id (str (random-uuid)) :queue queue-name :payload batch}))) {})
-    (log/infof "Registered memory handler for queue %s" (name queue-name))
-    queue-name))
+    (log/infof "Registered memory handler for queue %s" (name queue-name))))
 
 (defmethod q.backend/close-queue! :queue.backend/memory [_ queue-name]
   (u.queue/stop-listening! (name queue-name))

@@ -7,7 +7,7 @@ import {
 } from "metabase/api";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { useSelector } from "metabase/lib/redux";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";

@@ -30,7 +30,7 @@
     queue-type))
 
 (defmulti listen!
-  "Creates a queue with the given name. This is a no-op if the queue already exists. Returns queue name if created, nil if not created"
+  "Notify the backend that the given queue should exist. This is a no-op if the queue already exists."
   {:arglists '([queue-type queue-name])}
   (fn [queue-type _queue-name]
     queue-type))

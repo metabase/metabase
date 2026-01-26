@@ -10,9 +10,9 @@ import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
-import Revision from "./Revision";
+import { Revision } from "./Revision";
 
-export default class RevisionHistory extends Component {
+export class RevisionHistory extends Component {
   static propTypes = {
     segment: PropTypes.object,
     revisions: PropTypes.array,

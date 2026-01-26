@@ -7,7 +7,7 @@ import Button from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import EditBar from "metabase/common/components/EditBar";
 
-import PermissionsConfirm from "../PermissionsConfirm";
+import { PermissionsConfirm } from "../PermissionsConfirm";
 
 const propTypes = {
   diff: PropTypes.object,

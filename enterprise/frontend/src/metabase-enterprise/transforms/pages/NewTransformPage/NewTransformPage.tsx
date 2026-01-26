@@ -165,13 +165,14 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
             />
           ) : (
             <TransformEditor
+              isEditMode
               source={source}
               proposedSource={
                 proposedSource?.type === "query" ? proposedSource : undefined

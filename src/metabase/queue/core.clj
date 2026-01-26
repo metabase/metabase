@@ -16,7 +16,8 @@
 (comment
   (q.memory/keep-me)
   (q.appdb/keep-me)
-  (q.listener/keep-me))
+  (q.listener/keep-me)
+  (q.impl/keep-me))
 
 (p/import-vars
  [q.listener

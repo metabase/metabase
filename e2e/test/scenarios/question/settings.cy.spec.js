@@ -197,7 +197,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -249,7 +249,7 @@ describe("scenarios > question > settings", () => {
       });
 
       H.openVizSettingsSidebar(); // open settings sidebar
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
@@ -257,7 +257,7 @@ describe("scenarios > question > settings", () => {
       H.popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
@@ -267,7 +267,7 @@ describe("scenarios > question > settings", () => {
       H.popover().within(() => {
         cy.icon("gear").click(); // open created_at column settings
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });
 
@@ -292,7 +292,7 @@ describe("scenarios > question > settings", () => {
 
       H.visitQuestionAdhoc(questionDetails);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       H.openVizSettingsSidebar();
@@ -311,19 +311,19 @@ describe("scenarios > question > settings", () => {
         });
 
       cy.findByDisplayValue("Normal").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
       cy.findByDisplayValue("US Dollar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("In every table cell").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 2.07");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
 
@@ -559,9 +559,9 @@ describe("scenarios > question > settings", () => {
       H.openNavigationSidebar();
       H.browseDatabases().click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after
