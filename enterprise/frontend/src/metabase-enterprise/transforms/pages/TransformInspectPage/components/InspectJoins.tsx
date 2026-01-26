@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -55,7 +56,7 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         width: 120,
         cell: ({ row }) => (
           <Text size="sm" ta="right">
-            {row.original.filled_rows?.toLocaleString() ?? "-"}
+            {getFilledRowsCell(row.original)}
           </Text>
         ),
       },
@@ -65,7 +66,7 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         width: 120,
         cell: ({ row }) => (
           <Text size="sm" ta="right">
-            {formatPercent(row.original.stats?.match_rate)}
+            {getEntryPercentageCell(row.original)}
           </Text>
         ),
       },
@@ -97,4 +98,35 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
       </Card>
     </Stack>
   );
+}
+
+function getEntryPercentageCell(row: JoinRow): string | null {
+  const { strategy, stats } = row;
+
+  return match(strategy)
+    .with(P.union("left-join", "right-join"), () =>
+      formatPercent(stats?.match_rate),
+    )
+    .with(
+      "inner-join",
+      () =>
+        `${formatPercent(stats?.left_match_rate)} / ${formatPercent(stats?.right_match_rate)}`,
+    )
+    .with("full-join", () => "-")
+    .otherwise(() => null);
+}
+
+function getFilledRowsCell(row: JoinRow): string | null {
+  const { stats, strategy } = row;
+  return match(strategy)
+    .with(
+      P.union("left-join", "right-join"),
+      () => stats?.matched_count?.toLocaleString() ?? "-",
+    )
+    .with(
+      P.union("inner-join", "full-join"),
+      () =>
+        `${stats?.left_row_count?.toLocaleString()} / ${stats?.right_row_count?.toLocaleString()}`,
+    )
+    .otherwise(() => null);
 }
