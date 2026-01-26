@@ -403,7 +403,7 @@
      :table-name table-name
      :field-name field-name
      :title (str field-name " (" (if (= source-type :input) "Input: " "Output: ") table-name ")")
-     :display :bar
+     :display :row
      :dataset_query query}))
 
 (defn make-column-comparison-group
