@@ -7,7 +7,7 @@ import type {
 
 const BASE_URL = `/data-studio`;
 const GRAPH_URL = `${BASE_URL}/dependencies`;
-const TASKS_URL = `${BASE_URL}/tasks`;
+const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;
@@ -27,8 +27,8 @@ export function dependencyGraph({
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dependencyTasks() {
-  return TASKS_URL;
+export function dependencyDiagnostics() {
+  return DIAGNOSTICS_URL;
 }
 
 export type DependencyListParams = {
@@ -79,9 +79,9 @@ function dependencyListQueryString({
 }
 
 export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/broken${dependencyListQueryString(params)}`;
+  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
 }
 
 export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/unreferenced${dependencyListQueryString(params)}`;
+  return `${dependencyDiagnostics()}/unreferenced${dependencyListQueryString(params)}`;
 }
