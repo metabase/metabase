@@ -181,6 +181,7 @@ module.exports = {
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
         "no-oss-reinitialize-import": "error",
+        "no-analytics-import-outside-analytics-files": "error",
         "depend/ban-dependencies": [
           "error",
           {
