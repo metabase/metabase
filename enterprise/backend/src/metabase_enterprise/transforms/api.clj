@@ -57,6 +57,20 @@
    [:email :string]
    [:first_name [:maybe :string]]
    [:last_name [:maybe :string]]
+   [:common_name [:maybe :string]]
+   [:last_login [:maybe :any]]
+   [:is_qbnewb :boolean]
+   [:is_superuser :boolean]
+   [:is_data_analyst {:optional true} :boolean]
+   [:tenant_id [:maybe :any]]
+   [:date_joined :any]])
+
+(def ^:private OwnerResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:email :string]
+   [:first_name [:maybe :string]]
+   [:last_name [:maybe :string]]
    [:common_name [:maybe :string]]])
 
 (def ^:private TransformLastRunResponse
@@ -64,13 +78,14 @@
    [:id pos-int?]
    [:transform_id pos-int?]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
+   [:end_time [:maybe :any]]
    [:message [:maybe :string]]
-   [:created_at :any]
-   [:updated_at :any]])
+   [:user_id [:maybe pos-int?]]
+   [:transform_name [:maybe :string]]
+   [:transform_entity_id [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -85,29 +100,36 @@
    [:updated_at :any]
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
-   [:run_trigger [:maybe :keyword]]
+   [:run_trigger {:optional true} [:maybe :keyword]]
    [:dependency_analysis_version :int]
    [:creator CreatorResponse]
-   [:last_run [:maybe TransformLastRunResponse]]
+   [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids [:sequential pos-int?]]
-   [:transform_tag_ids [:sequential pos-int?]]
-   [:table [:maybe :map]]])
+   [:transform_tag_ids {:optional true} [:sequential pos-int?]]
+   [:table {:optional true} [:maybe :map]]
+   [:owner_user_id {:optional true} [:maybe pos-int?]]
+   [:owner_email {:optional true} [:maybe :string]]
+   [:owner {:optional true} [:maybe OwnerResponse]]])
 
 (def ^:private TransformRunResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
-   [:transform_id pos-int?]
+   [:transform_id [:maybe pos-int?]]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
    [:message [:maybe :string]]
-   [:created_at {:optional true} :any]
-   [:updated_at {:optional true} :any]
-   [:transform [:map
-                [:id pos-int?]
-                [:name :string]]]])
+   [:user_id [:maybe pos-int?]]
+   [:transform_name [:maybe :string]]
+   [:transform_entity_id [:maybe :string]]
+   ;; Transform can have id/name when exists, or just tag_ids when deleted/orphaned
+   [:transform [:map {:closed true}
+                [:id {:optional true} pos-int?]
+                [:name {:optional true} :string]
+                [:tag_ids [:sequential pos-int?]]
+                [:transform_tag_ids {:optional true} [:sequential pos-int?]]]]])
 
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
