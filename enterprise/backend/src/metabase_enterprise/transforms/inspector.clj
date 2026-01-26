@@ -86,31 +86,155 @@
       (log/warn e "Failed to extract sources from Python transform")
       nil)))
 
-;;; -------------------------------------------------- Join Extraction ---------------------------------------------------
+;;; -------------------------------------------------- Join Extraction & Statistics ---------------------------------------------------
+
+(defn- extract-field-id
+  "Extract field ID from a pMBQL field reference clause like [:field {options} id]."
+  [field-clause]
+  (when (and (vector? field-clause)
+             (= :field (first field-clause))
+             (>= (count field-clause) 3))
+    ;; pMBQL format: [:field {options-map} field-id]
+    (let [maybe-id (nth field-clause 2 nil)]
+      (when (int? maybe-id)
+        maybe-id))))
+
+(defn- field-has-join-alias?
+  "Check if a pMBQL field clause has a :join-alias (meaning it's from a joined table)."
+  [field-clause]
+  (when (and (vector? field-clause)
+             (= :field (first field-clause))
+             (>= (count field-clause) 2))
+    (let [opts (second field-clause)]
+      (and (map? opts) (contains? opts :join-alias)))))
+
+(defn- extract-join-key-fields
+  "Extract join key field IDs from join conditions.
+   Returns {:lhs-field-id <id> :rhs-field-id <id>} for the first binary condition.
+   Returns nil if LHS is from another join (chained join - not supported for stats)."
+  [conditions]
+  (when-let [condition (first conditions)]
+    ;; pMBQL conditions are [:= {options} lhs rhs]
+    (when (and (vector? condition)
+               (>= (count condition) 4))
+      (let [[_op _opts lhs rhs] condition
+            lhs-id (extract-field-id lhs)
+            rhs-id (extract-field-id rhs)]
+        ;; Skip if LHS is from another join (chained join scenario)
+        (when (and lhs-id rhs-id (not (field-has-join-alias? lhs)))
+          {:lhs-field-id lhs-id
+           :rhs-field-id rhs-id})))))
+
+(defn- compute-join-stats
+  "Compute statistics for a join by running analysis queries.
+   For left/right/inner joins: computes match rate (% of rows that found a match).
+   For full/outer joins: computes total crosses produced.
+   Returns stats map with keys depending on join strategy."
+  [mp main-table-id join-table-id join-key-fields strategy]
+  (try
+    (let [{:keys [lhs-field-id rhs-field-id]} join-key-fields
+          main-table (lib.metadata/table mp main-table-id)
+          join-table (lib.metadata/table mp join-table-id)
+          lhs-field (lib.metadata/field mp lhs-field-id)
+          rhs-field (lib.metadata/field mp rhs-field-id)
+
+          ;; Get baseline counts
+          left-count-query (-> (lib/query mp main-table)
+                               (lib/aggregate (lib/count)))
+          left-count (-> (qp/process-query left-count-query) :data :rows first first)
+
+          right-count-query (-> (lib/query mp join-table)
+                                (lib/aggregate (lib/count)))
+          right-count (-> (qp/process-query right-count-query) :data :rows first first)
+
+          ;; Build join query to count matches and output rows
+          base-query (lib/query mp main-table)
+          join-clause (-> (lib/join-clause join-table
+                                           [(lib/= (lib/ref lhs-field)
+                                                   (lib/ref rhs-field))])
+                          (lib/with-join-alias "joined")
+                          (lib/with-join-strategy strategy))
+          query-with-join (lib/join base-query join-clause)
+          ;; Count total output rows and matched rows
+          rhs-field-with-alias (-> (lib/ref rhs-field)
+                                   (lib/with-join-alias "joined"))
+          query (-> query-with-join
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/count rhs-field-with-alias)))
+          result (qp/process-query query)
+          [output-row-count matched-count] (-> result :data :rows first)]
+
+      (case strategy
+        ;; For outer/full joins: report crosses produced (expansion)
+        :full-join
+        {:left-row-count left-count
+         :right-row-count right-count
+         :output-row-count output-row-count
+         :expansion-factor (when (and left-count (pos? left-count))
+                             (double (/ output-row-count left-count)))}
+
+        ;; For left join: % of left rows that matched
+        :left-join
+        {:left-row-count left-count
+         :matched-count matched-count
+         :match-rate (when (and left-count (pos? left-count))
+                       (double (/ matched-count left-count)))}
+
+        ;; For right join: % of right rows that matched
+        :right-join
+        {:right-row-count right-count
+         :matched-count matched-count
+         :match-rate (when (and right-count (pos? right-count))
+                       (double (/ matched-count right-count)))}
+
+        ;; For inner join: report both sides
+        :inner-join
+        {:left-row-count left-count
+         :right-row-count right-count
+         :output-row-count output-row-count
+         :left-match-rate (when (and left-count (pos? left-count))
+                            (double (/ output-row-count left-count)))
+         :right-match-rate (when (and right-count (pos? right-count))
+                             (double (/ output-row-count right-count)))}
+
+        ;; Default fallback
+        {:output-row-count output-row-count
+         :matched-count matched-count}))
+    (catch Exception e
+      (log/warn e "Failed to compute join stats")
+      nil)))
 
 (defn- extract-join-info
-  "Extract join information from a single join clause."
-  [join]
+  "Extract join information from a single join clause including statistics."
+  [mp main-table-id join]
   (let [strategy (or (:strategy join) :left-join)
         conditions (:conditions join)
-        ;; Try to extract the source table from the join's stages
         join-source-table (get-in join [:stages 0 :source-table])
-        alias (:alias join)]
-    {:strategy    strategy
-     :alias       alias
-     :source-table join-source-table
-     :conditions  conditions}))
+        alias (:alias join)
+        join-key-fields (extract-join-key-fields conditions)
+        ;; Compute stats if we have the necessary info
+        stats (when (and main-table-id
+                         (int? join-source-table)
+                         join-key-fields)
+                (compute-join-stats mp main-table-id join-source-table join-key-fields strategy))]
+    (cond-> {:strategy     strategy
+             :alias        alias
+             :source-table join-source-table}
+      stats (assoc :stats stats))))
 
 (defn extract-joins
-  "Walk an MBQL query and extract all join information.
-   Returns a seq of join info maps with :strategy, :alias, :source-table, :conditions."
+  "Walk an MBQL query and extract all join information with statistics.
+   Returns a seq of join info maps with :strategy, :alias, :source-table, :stats."
   [query]
-  (let [joins (atom [])]
+  (let [joins (atom [])
+        mp (lib.metadata/->metadata-provider query)
+        ;; Get the main source table from the first stage
+        main-table-id (get-in query [:stages 0 :source-table])]
     (lib.walk/walk
      query
      (fn [_query path-type _path stage-or-join]
        (when (= path-type :lib.walk/join)
-         (swap! joins conj (extract-join-info stage-or-join)))
+         (swap! joins conj (extract-join-info mp main-table-id stage-or-join)))
        nil))
     @joins))
 
@@ -381,7 +505,8 @@
                :description (tru "Analysis of transform inputs, outputs, and joins")
                :joins (when (seq joins)
                         (mapv (fn [join]
-                                {:strategy (:strategy join)
-                                 :alias (:alias join)
-                                 :source-table (:source-table join)})
+                                (cond-> {:strategy (:strategy join)
+                                         :alias (:alias join)
+                                         :source-table (:source-table join)}
+                                  (:stats join) (assoc :stats (:stats join))))
                               joins)))))))

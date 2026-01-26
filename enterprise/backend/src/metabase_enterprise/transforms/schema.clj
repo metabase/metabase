@@ -110,12 +110,29 @@
    [:inputs [:sequential ::inspector-table-summary]]
    [:output ::inspector-table-summary]])
 
+(mr/def ::inspector-join-stats
+  "Statistics for a join operation. Fields vary by join strategy:
+   - left-join: left-row-count, matched-count, match-rate
+   - right-join: right-row-count, matched-count, match-rate
+   - inner-join: left-row-count, right-row-count, output-row-count, left-match-rate, right-match-rate
+   - full-join: left-row-count, right-row-count, output-row-count, expansion-factor"
+  [:map
+   [:left-row-count {:optional true} [:maybe :int]]
+   [:right-row-count {:optional true} [:maybe :int]]
+   [:output-row-count {:optional true} [:maybe :int]]
+   [:matched-count {:optional true} [:maybe :int]]
+   [:match-rate {:optional true} [:maybe :double]]
+   [:left-match-rate {:optional true} [:maybe :double]]
+   [:right-match-rate {:optional true} [:maybe :double]]
+   [:expansion-factor {:optional true} [:maybe :double]]])
+
 (mr/def ::inspector-join
   "Join information from MBQL transform."
   [:map
    [:strategy :keyword]
    [:alias {:optional true} [:maybe :string]]
-   [:source-table {:optional true} [:maybe :any]]])
+   [:source-table {:optional true} [:maybe :any]]
+   [:stats {:optional true} [:maybe ::inspector-join-stats]]])
 
 (mr/def ::inspector-field-stats
   "Statistics for a field from fingerprints."
