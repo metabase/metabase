@@ -14,6 +14,7 @@ export type EmbeddedAnalyticsJsEventSchema = {
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
     is_save_enabled: BOOLEAN_COUNT;
+    with_alerts: BOOLEAN_COUNT;
   };
   exploration?: {
     is_save_enabled: BOOLEAN_COUNT;
@@ -78,6 +79,7 @@ type EmbeddedAnalyticsJsSetupEvent = ValidateEvent<{
     with_downloads: BOOLEAN_COUNT;
     with_title: BOOLEAN_COUNT;
     is_save_enabled: BOOLEAN_COUNT;
+    with_alerts: BOOLEAN_COUNT;
   };
   exploration?: {
     is_save_enabled: BOOLEAN_COUNT;
