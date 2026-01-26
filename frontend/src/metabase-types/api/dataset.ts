@@ -27,6 +27,8 @@ export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
   bin_width?: number;
   num_bins?: number;
+  max_value?: number;
+  min_value?: number;
 };
 
 export type AggregationType =

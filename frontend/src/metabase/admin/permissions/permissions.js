@@ -671,7 +671,7 @@ const hasRevisionChanged = handleActions(
   },
 );
 
-export default combineReducers({
+export const permissions = combineReducers({
   saveError,
   dataPermissions,
   originalDataPermissions,

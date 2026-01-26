@@ -6,6 +6,7 @@
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -208,7 +209,7 @@
 
 (deftest ^:parallel comment-question-mark-test
   (mt/test-driver :clickhouse
-    (testing "a query with a question mark in the comment and has a variable should work correctly"
+    (testing "a query with a question mark in the comment and has a variable should work correctly (#56690)"
       (let [query "SELECT *
                    -- ?
                    FROM test_data.categories
@@ -228,7 +229,7 @@
 
 (deftest ^:parallel select-question-mark-test
   (mt/test-driver :clickhouse
-    (testing "a query that selects a question mark and has a variable should work correctly"
+    (testing "a query that selects a question mark and has a variable should work correctly (#56690)"
       (let [query "SELECT *, '?'
                    FROM test_data.categories
                    WHERE {{category_name}};"]
@@ -249,18 +250,18 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
-;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
 #_(deftest ^:parallel ternary-with-variable-test
     (mt/test-driver :clickhouse
-      (testing "a query with a ternary and a variable should work correctly"
+      (testing "a query with a ternary and a variable should work correctly (#56690)"
         (is (= [[1 "African" 1]]
                (mt/rows
                 (qp/process-query
                  {:database (mt/id)
                   :type :native
                   :native {:query "SELECT *, true ? 1 : 0 AS foo
-                                   FROM test_data.categories
-                                   WHERE name = {{category_name}};"
+                                 FROM test_data.categories
+                                 WHERE name = {{category_name}};"
                            :template-tags {"category_name" {:type         :text
                                                             :name         "category_name"
                                                             :display-name "Category Name"}}}
@@ -268,17 +269,17 @@
                                 :target [:variable [:template-tag "category_name"]]
                                 :value  "African"}]})))))))
 
-;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
+;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
 #_(deftest ^:parallel line-comment-block-comment-test
     (mt/test-driver :clickhouse
-      (testing "a query with a line comment followed by a block comment should work correctly"
+      (testing "a query with a line comment followed by a block comment should work correctly (#57149, #62741)"
         (is (= [[1]]
                (mt/rows
                 (qp/process-query
                  (mt/native-query
                   {:query "-- foo
-                            /* comment */
-                            select 1;"}))))))))
+                         /* comment */
+                         select 1;"}))))))))
 
 (deftest ^:parallel subquery-with-cte-test
   (mt/test-driver :clickhouse
@@ -338,6 +339,30 @@
                                                                                                 "Failed to get server info"
                                                                                                 "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))
 
+;; Dataset for testing reserved SQL keyword as table name (#68423)
+;; The table name "transaction" is a SQL keyword that causes parsing issues with JDBC driver 0.9.5
+(mt/defdataset reserved-keyword-table-name
+  [["transaction"
+    [{:field-name "event_id", :base-type :type/Integer}
+     {:field-name "event_name", :base-type :type/Text}
+     {:field-name "amount", :base-type :type/Float}]
+    [[1 "purchase" 99.99]
+     [2 "refund" -25.00]
+     [3 "purchase" 149.50]]]])
+
+(deftest ^:parallel reserved-keyword-table-name-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "native query against a table named 'transaction' (SQL keyword) should work (#68423)"
+      (mt/dataset reserved-keyword-table-name
+        (let [db-name (-> (mt/db) :details :db)
+              results (qp/process-query
+                       (mt/native-query
+                        {:query (format "SELECT * FROM %s.transaction" db-name)}))]
+          (is (= [[1 1 "purchase" 99.99]
+                  [2 2 "refund" -25.0]
+                  [3 3 "purchase" 149.5]]
+                 (mt/rows results))))))))
+
 (deftest ^:parallel uploads-supported-test
   (mt/test-driver :clickhouse
     (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
@@ -372,3 +397,41 @@
                 :parameters [{:type "string/="
                               :target [:variable [:template-tag "val"]]
                               :value ["abc"]}]})))))))
+
+(deftest ^:parallel native-query-cte-filtering-test
+  (mt/test-driver :clickhouse
+    (testing "can filter on a saved native query with a CTE (#63635)"
+      (let [native-query (mt/native-query
+                          {:query "with base as (select 1 id, 'abc' val) select * from base"})
+            card-data    (mt/card-with-source-metadata-for-query native-query)]
+        (mt/with-temp [:model/Card {card-id :id} card-data]
+          (let [mp       (mt/metadata-provider)
+                card-mp  (lib.metadata/card mp card-id)
+                val-col  (some #(when (= "val" (:name %)) %)
+                               (lib.card/card-returned-columns mp card-mp))]
+            (is (= [[1 "abc"]]
+                   (-> (lib/query mp card-mp)
+                       (lib/filter (lib/= val-col "abc"))
+                       (qp/process-query)
+                       (mt/rows))))))))))
+
+;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
+;;                           at the moment to avoid potential log flooding. We should revisit this during further
+;;                           parsing work.
+#_(deftest ^:parallel parse-final-identifier-test
+    (mt/test-driver
+      :clickhouse
+      (testing "`final` is not allowed as identifier on Clickhouse, parsing fails with an exception"
+        (mt/with-temp [:model/Database db {:engine "clickhouse"
+                                           :name "final"
+                                           :initial_sync_status "complete"}]
+          (mt/with-db
+            db
+            (let [mp (mt/metadata-provider)
+                  broken-query (lib/native-query mp "select final from final")]
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-query-deps :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/native-result-metadata :clickhouse broken-query)))
+              (is (thrown-with-msg? Exception #"SQL parsing failed."
+                                    (driver/validate-native-query-fields :clickhouse broken-query)))))))))

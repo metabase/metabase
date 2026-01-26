@@ -7,10 +7,12 @@ import type { NativeQuerySnippet } from "metabase-types/api";
 
 type SnippetDescriptionSectionProps = {
   snippet: NativeQuerySnippet;
+  isDisabled?: boolean;
 };
 
 export function SnippetDescriptionSection({
   snippet,
+  isDisabled,
 }: SnippetDescriptionSectionProps) {
   const [updateSnippet] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
@@ -40,6 +42,8 @@ export function SnippetDescriptionSection({
       placeholder={t`No description`}
       isMarkdown
       onChange={handleChange}
+      isDisabled={isDisabled}
+      isOptional
     />
   );
 }

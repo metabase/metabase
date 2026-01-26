@@ -472,7 +472,7 @@
   (case metadata-type
     :metadata/metric :source_card_id))
 
-(defn- active-only-honeysql-filter [metadata-type]
+(defn- active-only-honeysql-filter [metadata-type {:keys [include-sensitive?]}]
   (case metadata-type
     :metadata/table
     [:and
@@ -482,11 +482,13 @@
       [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
 
     :metadata/column
-    [:and
-     [:= :field/active true]
-     [:or
-      [:= :field/visibility_type nil]
-      [:not-in :field/visibility_type [:inline ["sensitive" "retired"]]]]]
+    (let [excluded-visibility-types (cond-> ["retired"]
+                                      (not include-sensitive?) (conj "sensitive"))]
+      [:and
+       [:= :field/active true]
+       [:or
+        [:= :field/visibility_type nil]
+        [:not-in :field/visibility_type [:inline excluded-visibility-types]]]])
 
     :metadata/card
     [:= :card/archived false]
@@ -507,8 +509,8 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                         :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [database-id                                                                                                            :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
@@ -518,7 +520,7 @@
                           name-set               (conj [:in (name-key metadata-type) name-set])
                           table-id               (conj [:= (table-id-key metadata-type) table-id])
                           card-id                (conj [:= (card-id-key metadata-type) card-id])
-                          active-only?           (conj (active-only-honeysql-filter metadata-type))
+                          active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
                           metric?                (conj [:= :type [:inline "metric"]])
                           (and metric? table-id) (conj [:= :source_card_id nil]))]
     (reduce
@@ -571,7 +573,7 @@
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`
   over the lifespan of this binding.
 
-  This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
+  This is useful for an API request, or group for API requests like a dashboard load, to reduce appdb traffic."
   nil)
 
 (defn metadata-provider-cache

@@ -13,6 +13,12 @@ export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
+export function isConcreteTableId(
+  id: TableId | undefined,
+): id is ConcreteTableId {
+  return typeof id === "number";
+}
+
 export type TableVisibilityType =
   | null
   | "details-only"
@@ -104,6 +110,7 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+  "can-query"?: boolean;
 
   term?: string;
   "data-layer"?: TableDataLayer;

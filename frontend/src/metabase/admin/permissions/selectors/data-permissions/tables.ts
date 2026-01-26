@@ -16,7 +16,11 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
-import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
+import type {
+  PermissionSectionConfig,
+  SchemaEntityId,
+  SpecialGroupType,
+} from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -183,13 +187,14 @@ const buildNativePermission = (
 export const buildTablesPermissions = (
   entityId: SchemaEntityId,
   groupId: number,
-  isAdmin: boolean,
-  isExternal: boolean,
+  groupType: SpecialGroupType,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -219,8 +224,7 @@ export const buildTablesPermissions = (
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
       entityId,
       groupId,
-      isAdmin,
-      isExternal,
+      groupType,
       permissions,
       accessPermission.value,
       defaultGroup,

@@ -20,7 +20,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
+import { DataSelectorSectionHeader } from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorTablePickerProps = {
@@ -49,7 +49,7 @@ type Item = {
   database: Database;
 };
 
-const DataSelectorTablePicker = ({
+export const DataSelectorTablePicker = ({
   schemas,
   tables,
   selectedDatabase,
@@ -205,6 +205,3 @@ const Header = ({
     )}
   </Flex>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorTablePicker;
