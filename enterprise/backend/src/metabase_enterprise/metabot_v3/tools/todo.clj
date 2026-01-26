@@ -62,17 +62,6 @@
      :data-parts [(streaming/todo-list-part validated-todos)]
      :instructions "The todo list has been updated and is automatically displayed to the user. NEVER repeat or summarize the todo list contents in your response."}))
 
-(defn todo-write-tool
-  "Tool handler for todo_write tool."
-  [args]
-  (try
-    (todo-write args)
-    (catch Exception e
-      (log/error e "Error writing todo list")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
-
 (defn todo-read
   "Read the current todo list from memory.
 
@@ -88,12 +77,3 @@
     {:structured-output {:todos todos
                          :todo_count (count todos)}
      :instructions "You should call todo_write after reading this todo_list to make any updates."}))
-
-(defn todo-read-tool
-  "Tool handler for todo_read tool."
-  [args]
-  (try
-    (todo-read args)
-    (catch Exception e
-      (log/error e "Error reading todo list")
-      {:output (str "Failed to read todo list: " (or (ex-message e) "Unknown error"))})))
