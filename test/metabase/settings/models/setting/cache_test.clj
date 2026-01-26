@@ -16,7 +16,7 @@
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
 
 (defn clear-cache! []
-  (reset! (#'setting.cache/cache*) nil))
+  (reset! (#'setting.cache/global-cache*) nil))
 
 (defn- settings-last-updated-value-in-cache []
   (get (setting.cache/cache) setting.cache/settings-last-updated-key))
@@ -42,7 +42,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/global-last-update-check) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -129,17 +129,19 @@
     (reset-last-update-check!)
     (setting-test/test-setting-1! "Starfish")
     ;; 1. User writes
-    (with-redefs [setting.cache/cache* external-cache]
+    (with-redefs [setting.cache/global-cache* external-cache]
       (setting-test/toucan-name! "Batman Toucan"))
     (setting-test/test-setting-1! "Batman")
     (is (= "Batman Toucan"
            (setting-test/toucan-name)))))
 
 (deftest sync-test-3
-  (mt/discard-setting-changes [site-locale]
-    (clear-cache!)
-    (system/site-locale! "en")
-    (simulate-another-instance-updating-setting! :site-locale "fr")
-    (reset-last-update-check!)
-    (is (= "fr"
-           (system/site-locale)))))
+  ;; This test simulates cross-instance cache synchronization, which requires
+  ;; global (non-thread-safe) cache behavior to test properly.
+  (mt/discard-setting-changes! [:site-locale]
+                               (clear-cache!)
+                               (system/site-locale! "en")
+                               (simulate-another-instance-updating-setting! :site-locale "fr")
+                               (reset-last-update-check!)
+                               (is (= "fr"
+                                      (system/site-locale)))))
