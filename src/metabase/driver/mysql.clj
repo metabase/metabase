@@ -953,7 +953,7 @@
   (:value
    (first
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
-      ["show global variables like ?" var-name]))))
+                ["show global variables like ?" var-name]))))
 
 (defmethod driver/insert-into! :mysql
   [driver db-id ^String table-name column-names values]
