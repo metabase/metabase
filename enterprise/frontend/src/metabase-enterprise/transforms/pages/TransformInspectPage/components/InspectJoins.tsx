@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   Card,
+  Code,
   Stack,
   Text,
   Title,
@@ -45,7 +46,7 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         id: "join",
         header: t`Join`,
         cell: ({ row }) => (
-          <Text size="sm">{formatJoinDisplay(row.original)}</Text>
+          <Code bg="transparent">{formatJoinDisplay(row.original)}</Code>
         ),
       },
       {
