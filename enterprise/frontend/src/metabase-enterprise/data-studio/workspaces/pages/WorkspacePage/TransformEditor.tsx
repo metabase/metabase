@@ -9,6 +9,7 @@ import type { DatasetQuery, DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
   disabled: boolean;
+  hideRunButton?: boolean;
   source: DraftTransformSource;
   onChange: (source: DraftTransformSource) => void;
   proposedSource?: DraftTransformSource;
@@ -20,6 +21,7 @@ type TransformEditorProps = {
 
 export function TransformEditor({
   disabled,
+  hideRunButton,
   source,
   onChange,
   proposedSource,
@@ -35,9 +37,10 @@ export function TransformEditor({
       canChangeDatabase: false,
       readOnly: disabled,
       hidePreview: true,
+      hideRunButton,
       resizable: false,
     }),
-    [disabled],
+    [disabled, hideRunButton],
   );
 
   const handleSourceChange = (source: DraftTransformSource) => {

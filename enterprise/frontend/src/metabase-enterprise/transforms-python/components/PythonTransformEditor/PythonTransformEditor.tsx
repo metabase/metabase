@@ -134,6 +134,7 @@ export function PythonTransformEditor({
             isRunning={isRunning}
             isDirty={isDirty}
             isEditMode={isEditMode}
+            hideRunButton={uiOptions?.hideRunButton}
             onRun={handleRun}
             onCancel={cancel}
             source={source.body}

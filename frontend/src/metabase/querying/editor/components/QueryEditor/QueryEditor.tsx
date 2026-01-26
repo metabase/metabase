@@ -129,6 +129,7 @@ export function QueryEditor({
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
             editorHeight={uiOptions?.editorHeight}
+            hideRunButton={uiOptions?.hideRunButton}
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}

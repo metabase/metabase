@@ -46,6 +46,7 @@ export type PythonTransformEditorUiOptions = {
   canChangeDatabase?: boolean;
   readOnly?: boolean;
   hidePreview?: boolean;
+  hideRunButton?: boolean;
 };
 
 export type PythonTransformEditorProps = {

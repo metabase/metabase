@@ -73,6 +73,7 @@ type QueryEditorBodyProps = {
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
   editorHeight?: number;
+  hideRunButton?: boolean;
   topBarInnerContent?: ReactNode;
   availableHeight?: number;
 };
@@ -108,6 +109,7 @@ export function QueryEditorBody({
   onAcceptProposed,
   onRejectProposed,
   editorHeight: editorHeightOverride,
+  hideRunButton,
   topBarInnerContent,
   availableHeight,
 }: QueryEditorBodyProps) {
@@ -148,7 +150,7 @@ export function QueryEditorBody({
         query={query}
         placeholder="SELECT * FROM TABLE_NAME"
         hasTopBar
-        hasRunButton={!readOnly}
+        hasRunButton={!readOnly && !hideRunButton}
         isInitiallyOpen
         isNativeEditorOpen
         readOnly={readOnly}

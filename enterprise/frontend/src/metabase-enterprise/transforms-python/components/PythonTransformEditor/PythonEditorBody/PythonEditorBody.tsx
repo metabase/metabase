@@ -16,6 +16,7 @@ type PythonEditorBodyProps = {
   proposedSource?: string;
   isRunnable: boolean;
   isEditMode?: boolean;
+  hideRunButton?: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
   onCancel?: () => void;
@@ -38,6 +39,7 @@ export function PythonEditorBody({
   onChange,
   isRunnable,
   isEditMode,
+  hideRunButton,
   onRun,
   onCancel,
   isRunning,
@@ -99,14 +101,16 @@ export function PythonEditorBody({
                 </Tooltip>
               </>
             )}
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
-            />
+            {!hideRunButton && (
+              <RunButtonWithTooltip
+                disabled={!isRunnable}
+                isRunning={isRunning}
+                isDirty={isDirty}
+                onRun={onRun}
+                onCancel={onCancel}
+                getTooltip={() => t`Run Python script`}
+              />
+            )}
           </Stack>
         )}
       </Flex>

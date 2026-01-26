@@ -331,6 +331,7 @@ export function TransformTab({
         >
           <TransformEditor
             disabled={!isEditable}
+            hideRunButton={!isSaved || hasChanges}
             source={localSource}
             proposedSource={proposedSource}
             onAcceptProposed={handleMetabotAcceptProposed}
