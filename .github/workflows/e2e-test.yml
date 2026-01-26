@@ -105,10 +105,10 @@ jobs:
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
       - name: Compile CLJS
-        run: yarn build-release:cljs
+        run: yarn build:cljs
 
       - name: Build frontend
-        run: yarn build-release:js
+        run: yarn build:js
 
       - name: Build translations
         run: ./bin/build.sh :steps [:translations]
