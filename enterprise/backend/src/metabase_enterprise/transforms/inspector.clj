@@ -391,7 +391,7 @@
         query (-> (lib/query mp table-metadata)
                   (lib/aggregate (lib/count))
                   (lib/breakout (lib/ref field-metadata))
-                  (lib/limit 50))]
+                  #_(lib/limit 50))]
     query))
 
 (defn- make-distribution-card
