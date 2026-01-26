@@ -21,24 +21,3 @@
                     :type :native
                     :native {:query sql}}
                    (:query result)))))))))
-
-(deftest create-sql-query-tool-test
-  (mt/test-drivers #{:h2}
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (testing "tool handler returns structured output"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (let [result (create-sql-query/create-sql-query-tool
-                        {:database-id db-id
-                         :sql "SELECT 1"
-                         :name "Tool Test"})]
-            (is (contains? result :structured-output))
-            (is (contains? (:structured-output result) :query-id))
-            (is (contains? result :data-parts)))))
-
-      (testing "tool handler returns error output on failure"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (let [result (create-sql-query/create-sql-query-tool
-                        {:database-id 999999 ; non-existent database
-                         :sql "SELECT 1"})]
-            (is (contains? result :output))
-            (is (string? (:output result)))))))))

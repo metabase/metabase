@@ -1,8 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.replace-sql-query
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
-   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
-   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -56,19 +54,3 @@
        :query-content sql
        :query         updated-query
        :database      (:database query)})))
-
-(defn replace-sql-query-tool
-  "Tool handler for replace_sql_query tool.
-  Returns structured output with updated query details and a navigate_to data part."
-  [args]
-  (try
-    (let [result (replace-sql-query args)
-          results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
-       :instructions instructions/query-created-instructions
-       :data-parts [(streaming/navigate-to-part results-url)]})
-    (catch Exception e
-      (log/error e "Error replacing SQL query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))

@@ -158,17 +158,6 @@ def transform():
      :data-parts [(streaming/transform-suggestion-part suggested-transform)]
      :instructions "The transform suggestion has been created and displayed to the user. Do not repeat the SQL content."}))
 
-(defn write-transform-sql-tool
-  "Tool handler for write_transform_sql tool."
-  [args]
-  (try
-    (write-transform-sql args)
-    (catch Exception e
-      (log/error e "Error writing SQL transform")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
-
 ;;; Write Transform Python Tool
 
 (defn write-transform-python
@@ -249,14 +238,3 @@ def transform():
                          :message "Transform Python code updated successfully."}
      :data-parts [(streaming/transform-suggestion-part suggested-transform)]
      :instructions "The transform suggestion has been created and displayed to the user. Do not repeat the Python content."}))
-
-(defn write-transform-python-tool
-  "Tool handler for write_transform_python tool."
-  [args]
-  (try
-    (write-transform-python args)
-    (catch Exception e
-      (log/error e "Error writing Python transform")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}))))

@@ -171,16 +171,3 @@
            #"Unknown entity type"
            (navigate/navigate {:destination {:entity_type "unknown" :entity_id 1}
                                :memory-atom memory-atom}))))))
-
-(deftest navigate-tool-test
-  (testing "navigate-tool catches exceptions and returns error output"
-    (let [result (navigate/navigate-tool {:destination {}
-                                          :memory-atom (atom {:state {}})})]
-      (is (contains? result :output))
-      (is (string? (:output result)))))
-
-  (testing "navigate-tool returns reactions on success"
-    (let [result (navigate/navigate-tool {:destination {:page "home"}
-                                          :memory-atom (atom {:state {}})})]
-      (is (contains? result :structured-output))
-      (is (contains? result :reactions)))))

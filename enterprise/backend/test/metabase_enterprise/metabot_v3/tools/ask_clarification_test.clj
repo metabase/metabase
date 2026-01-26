@@ -29,21 +29,6 @@
       (is (string? (:instructions result)))
       (is (clojure.string/includes? (:instructions result) "wait")))))
 
-(deftest ask-for-sql-clarification-tool-test
-  (testing "tool handler returns correct structure"
-    (let [result (ask-clarification/ask-for-sql-clarification-tool
-                  {:question "How should I filter the data?"
-                   :options ["By date" "By category" "Both"]})]
-      (is (contains? result :structured-output))
-      (is (true? (:final-response? result)))))
-
-  (testing "tool handler handles errors gracefully"
-    ;; The tool should not throw - errors are caught
-    (let [result (ask-clarification/ask-for-sql-clarification-tool {})]
-      ;; Either returns output with error or structured output
-      (is (or (contains? result :output)
-              (contains? result :structured-output))))))
-
 (deftest final-response-behavior-test
   (testing "final-response? signals agent should stop"
     ;; This is a contract test - the agent loop checks for :final-response? true

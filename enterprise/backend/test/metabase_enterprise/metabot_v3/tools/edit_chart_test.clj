@@ -72,39 +72,3 @@
             {:chart-id "chart-bad"
              :new-chart-type :line
              :charts-state charts-state}))))))
-
-(deftest edit-chart-tool-test
-  (testing "tool handler returns structured output on success"
-    (let [charts-state {"chart-tool-1" {:chart-id "chart-tool-1"
-                                        :query-id "q-1"
-                                        :chart-type :bar
-                                        :query-content "SELECT 1"}}
-          result (edit-chart/edit-chart-tool
-                  {:chart-id "chart-tool-1"
-                   :new-chart-type :pie
-                   :charts-state charts-state})]
-      (is (contains? result :structured-output))
-      (is (contains? (:structured-output result) :chart-id))
-      (is (contains? (:structured-output result) :chart-link))
-      (is (= :pie (:chart-type (:structured-output result))))))
-
-  (testing "tool handler returns error output when chart not found"
-    (let [result (edit-chart/edit-chart-tool
-                  {:chart-id "nonexistent"
-                   :new-chart-type :bar
-                   :charts-state {}})]
-      (is (contains? result :output))
-      (is (string? (:output result)))
-      (is (str/includes? (:output result) "issues accessing the chart data"))))
-
-  (testing "tool handler returns error for invalid chart type"
-    (let [charts-state {"chart-test" {:chart-id "chart-test"
-                                      :query-id "q-test"
-                                      :chart-type :bar
-                                      :query-content "SELECT 1"}}
-          result (edit-chart/edit-chart-tool
-                  {:chart-id "chart-test"
-                   :new-chart-type :bad-type
-                   :charts-state charts-state})]
-      (is (contains? result :output))
-      (is (str/includes? (:output result) "Invalid chart type")))))

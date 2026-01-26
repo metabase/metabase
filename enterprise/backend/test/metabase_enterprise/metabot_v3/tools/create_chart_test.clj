@@ -54,36 +54,3 @@
           {:query-id "nonexistent"
            :chart-type :bar
            :queries-state {}})))))
-
-(deftest create-chart-tool-test
-  (testing "tool handler returns structured output on success"
-    (let [queries-state {"q-tool-1" {:query-id "q-tool-1"
-                                     :query-content "SELECT 1"
-                                     :database 1}}
-          result (create-chart/create-chart-tool
-                  {:query-id "q-tool-1"
-                   :chart-type :line
-                   :queries-state queries-state})]
-      (is (contains? result :structured-output))
-      (is (contains? (:structured-output result) :chart-id))
-      (is (contains? (:structured-output result) :chart-link))))
-
-  (testing "tool handler returns error output on failure"
-    (let [result (create-chart/create-chart-tool
-                  {:query-id "nonexistent"
-                   :chart-type :bar
-                   :queries-state {}})]
-      (is (contains? result :output))
-      (is (string? (:output result)))
-      (is (str/includes? (:output result) "Query not found"))))
-
-  (testing "tool handler returns error for invalid chart type"
-    (let [queries-state {"q-test" {:query-id "q-test"
-                                   :query-content "SELECT 1"
-                                   :database 1}}
-          result (create-chart/create-chart-tool
-                  {:query-id "q-test"
-                   :chart-type :bad-type
-                   :queries-state queries-state})]
-      (is (contains? result :output))
-      (is (str/includes? (:output result) "Invalid chart type")))))
