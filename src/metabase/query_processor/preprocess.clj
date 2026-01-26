@@ -90,6 +90,7 @@
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
    #'resolve-joins/resolve-joins
+   ;; rerun add-implicit-clauseds to add implicit fields clauses to implicit joins #67002
    #'qp.add-implicit-clauses/add-implicit-clauses
    #'fix-bad-field-id-refs/fix-bad-field-id-refs
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs
