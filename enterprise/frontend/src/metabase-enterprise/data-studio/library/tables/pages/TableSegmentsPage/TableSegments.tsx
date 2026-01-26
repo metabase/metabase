@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
+import {
+  EntityList,
+  EntityListItem,
+} from "metabase/data-studio/common/components/EntityList";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
 import type { Table } from "metabase-types/api";
-
-import {
-  EntityList,
-  EntityListItem,
-} from "../../../common/components/EntityList";
 
 type TableSegmentsProps = {
   table: Table;

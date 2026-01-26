@@ -43,7 +43,7 @@ export interface RemoteSyncDirtyState {
   /** Check if any dirty entity (including collections) is in the given set of IDs */
   hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
   /** Refetch the dirty state data */
-  refetch: () => unknown; // TODO [OSS]: fix this type
+  refetch: () => Promise<any>; // TODO [OSS]: fix this type
 }
 
 const getDefaultPluginRemoteSync = () => ({

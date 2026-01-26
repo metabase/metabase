@@ -20,7 +20,7 @@ import { EditSnippetPage } from "../EditSnippetPage";
 type SetupOps = {
   snippet?: Partial<NativeQuerySnippet>;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 };
 

@@ -1,13 +1,12 @@
 import Link from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import * as Urls from "metabase/lib/urls";
-import type { Table } from "metabase-types/api";
-
 import {
   PaneHeader,
   type PaneHeaderProps,
-} from "../../../common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import * as Urls from "metabase/lib/urls";
+import type { Table } from "metabase-types/api";
 
 import { TableMoreMenu } from "./TableMoreMenu";
 import { TableNameInput } from "./TableNameInput";

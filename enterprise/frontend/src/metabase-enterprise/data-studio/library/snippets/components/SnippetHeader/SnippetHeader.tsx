@@ -7,19 +7,19 @@ import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import type { NativeQuerySnippet } from "metabase-types/api";
-
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderProps,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "../../../common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { NativeQuerySnippet } from "metabase-types/api";
+
 import { SnippetMoreMenu } from "../SnippetMoreMenu";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;

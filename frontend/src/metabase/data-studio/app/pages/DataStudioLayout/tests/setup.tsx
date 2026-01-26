@@ -123,7 +123,7 @@ interface SetupOpts {
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 

@@ -13,17 +13,16 @@ import Link from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";
 import type { RegularCollectionId } from "metabase-types/api";
-
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "../../../common/components/PaneHeader";
 
 import S from "./NewSnippetPage.module.css";
 

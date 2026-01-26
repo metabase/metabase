@@ -15,12 +15,12 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Card, Center, Flex, Stack } from "metabase/ui";
 
-import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";
 

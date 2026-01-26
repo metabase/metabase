@@ -1,11 +1,11 @@
 import { IndexRoute, Route } from "react-router";
 
-import { getDataStudioMetricRoutes } from "metabase/data-studio/metrics/routes";
 import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
-import { getDataStudioSnippetRoutes } from "metabase/data-studio/snippets/routes";
-import { getDataStudioTableRoutes } from "metabase/data-studio/tables/routes";
 
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
+import { getDataStudioMetricRoutes } from "./metrics/routes";
+import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { getDataStudioTableRoutes } from "./tables/routes";
 
 export const getDataStudioLibraryRoutes = () => {
   return (

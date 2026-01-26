@@ -9,6 +9,11 @@ import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -18,11 +23,6 @@ import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card as CardType } from "metabase-types/api";
 
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "../../../common/components/PaneHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { getValidationResult } from "../../utils";

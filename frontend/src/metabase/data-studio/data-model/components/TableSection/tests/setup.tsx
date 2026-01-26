@@ -32,7 +32,7 @@ export type SetupOpts = {
   isAdmin?: boolean;
   isDataAnalyst?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 };
 

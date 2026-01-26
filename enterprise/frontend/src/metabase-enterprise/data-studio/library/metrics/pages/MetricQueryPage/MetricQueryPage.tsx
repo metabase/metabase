@@ -7,6 +7,7 @@ import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/lib/redux";
@@ -20,7 +21,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card as CardType } from "metabase-types/api";
 
-import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { MetricHeader } from "../../components/MetricHeader";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import { getValidationResult } from "../../utils";
