@@ -79,16 +79,16 @@
         (let [token    (sign-jwt {:name "Test User"})
               response (client/client :get 401 "agent/v1/ping"
                                       {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-          (is (= {:error "missing_email_claim"
-                  :message "JWT token must contain 'sub' or 'email' claim"}
+          (is (= {:error "invalid_token"
+                  :message "Invalid or expired JWT token"}
                  response))))
 
       (testing "Token with non-existent user"
         (let [token    (sign-jwt {:sub "nobody@example.com"})
               response (client/client :get 401 "agent/v1/ping"
                                       {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-          (is (= {:error "invalid_credentials"
-                  :message "Invalid credentials"}
+          (is (= {:error "invalid_token"
+                  :message "Invalid or expired JWT token"}
                  response)))))))
 
 (deftest agent-api-requires-jwt-shared-secret-test

@@ -18,7 +18,7 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
-(api.macros/defendpoint :get "/v1/ping"
+(api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
   []
   {:message "pong"})
@@ -33,6 +33,12 @@
   "Decode and verify a JWT token. Returns the claims map if valid, throws on error."
   [token]
   (jwt/unsign token (sso-settings/jwt-shared-secret) {:max-age max-token-age-seconds}))
+
+(defn- extract-bearer-token
+  "Extract the token from a Bearer authorization header.
+  Assumes the header starts with 'Bearer ' (case-insensitive)."
+  [auth-header]
+  (str/trim (subs auth-header 7)))
 
 (defn- error-response
   "Create a structured error response for authentication failures."
@@ -64,17 +70,17 @@
 
         ;; Valid bearer token format - attempt authentication
         :else
-        (let [token (str/trim (subs auth-header 7))]
+        (let [token (extract-bearer-token auth-header)]
           (try
             (let [claims (decode-jwt token)
                   email  (or (:sub claims) (:email claims))]
               (if-not email
-                (respond (error-response "missing_email_claim" "JWT token must contain 'sub' or 'email' claim"))
+                (respond (error-response "invalid_token" "Invalid or expired JWT token"))
                 (let [user (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true)]
                   (if user
                     (request/with-current-user (:id user)
                       (handler request respond raise))
-                    (respond (error-response "invalid_credentials" "Invalid credentials"))))))
+                    (respond (error-response "invalid_token" "Invalid or expired JWT token"))))))
             (catch Exception e
               (respond (error-response "invalid_token"
                                        (or (ex-message e) "Invalid or expired JWT token"))))))))))
