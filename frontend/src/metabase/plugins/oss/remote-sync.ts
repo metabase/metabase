@@ -67,7 +67,7 @@ const getDefaultPluginRemoteSync = () => ({
   useHasLibraryDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
-  useRemoteSyncDirtyState: {} as RemoteSyncDirtyState, // TODO [OSS]: implement this
+  useRemoteSyncDirtyState: () => ({}) as RemoteSyncDirtyState, // TODO [OSS]: implement this
 });
 
 export const PLUGIN_REMOTE_SYNC: {

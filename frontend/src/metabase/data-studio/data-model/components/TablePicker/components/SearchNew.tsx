@@ -28,6 +28,7 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
+  isLibraryEnabled: boolean;
   onChange?: (path: TreePath) => void;
 }
 
@@ -96,6 +97,7 @@ export function SearchNew({
   query,
   params,
   filters,
+  isLibraryEnabled,
   onChange,
 }: SearchNewProps) {
   const { resetSelection } = useSelection();
@@ -183,6 +185,7 @@ export function SearchNew({
       tree={resultTree}
       path={routeParams}
       isExpanded={isExpanded}
+      isLibraryEnabled={isLibraryEnabled}
       onToggle={toggle}
       onChange={onChange}
     />

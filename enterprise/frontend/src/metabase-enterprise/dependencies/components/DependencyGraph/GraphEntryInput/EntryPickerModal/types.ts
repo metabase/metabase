@@ -1,6 +1,6 @@
 import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
 import type { TablePickerItem } from "metabase/common/components/Pickers/TablePicker";
-import type { TransformPickerItem } from "metabase/plugins";
+import type { TransformPickerItem } from "metabase/transforms/components/TransformPicker";
 
 export type EntryPickerItem =
   | TablePickerItem

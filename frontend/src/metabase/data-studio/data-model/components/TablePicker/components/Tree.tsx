@@ -23,11 +23,17 @@ import { TablePickerTreeTable } from "./TablePickerTreeTable";
 
 interface Props {
   path: TreePath;
+  isLibraryEnabled: boolean;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
+export function Tree({
+  path,
+  isLibraryEnabled,
+  onChange,
+  setOnUpdateCallback,
+}: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -189,6 +195,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       tree={tree}
       path={path}
       isExpanded={isExpanded}
+      isLibraryEnabled={isLibraryEnabled}
       onToggle={toggle}
       onChange={onChange}
       reload={reload}

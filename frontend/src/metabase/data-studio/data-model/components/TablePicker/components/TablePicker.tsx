@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Badge,
   Box,
@@ -57,6 +58,8 @@ export function TablePicker({
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
+
+  const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
@@ -144,6 +147,7 @@ export function TablePicker({
           {debouncedQuery === "" && filtersCount === 0 ? (
             <Tree
               path={path}
+              isLibraryEnabled={isLibraryEnabled}
               onChange={onChange}
               setOnUpdateCallback={setOnUpdateCallback}
             />
@@ -151,6 +155,7 @@ export function TablePicker({
             <SearchNew
               query={debouncedQuery}
               params={params}
+              isLibraryEnabled={isLibraryEnabled}
               filters={filters}
               onChange={onChange}
             />

@@ -56,6 +56,7 @@ const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 interface Props {
   tree: RootNode;
   path: TreePath;
+  isLibraryEnabled: boolean;
   isExpanded: (key: string) => boolean;
   onToggle: (key: string, value?: boolean) => void;
   onChange?: (path: TreePath, options?: ChangeOptions) => void;
@@ -65,6 +66,7 @@ interface Props {
 export function TablePickerTreeTable({
   tree,
   path,
+  isLibraryEnabled,
   isExpanded,
   onToggle,
   onChange,
@@ -205,8 +207,8 @@ export function TablePickerTreeTable({
     [handleCheckboxToggle],
   );
 
-  const columns: TreeTableColumnDef<TablePickerTreeNode>[] = useMemo(
-    () => [
+  const columns: TreeTableColumnDef<TablePickerTreeNode>[] = useMemo(() => {
+    const columnDefs: TreeTableColumnDef<TablePickerTreeNode>[] = [
       {
         id: "name",
         header: t`Name`,
@@ -251,7 +253,10 @@ export function TablePickerTreeTable({
           ) : null;
         },
       },
-      {
+    ];
+
+    if (isLibraryEnabled) {
+      columnDefs.push({
         id: "published",
         header: t`Published`,
         width: "auto",
@@ -269,10 +274,11 @@ export function TablePickerTreeTable({
             </Box>
           ) : null;
         },
-      },
-    ],
-    [ownerNameById, formatNumber],
-  );
+      });
+    }
+
+    return columnDefs;
+  }, [isLibraryEnabled, ownerNameById, formatNumber]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),

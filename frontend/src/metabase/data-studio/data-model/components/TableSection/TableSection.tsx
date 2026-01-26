@@ -21,7 +21,11 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import {
   Box,
   Button,
@@ -68,6 +72,8 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
+  const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -214,7 +220,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {!remoteSyncReadOnly && (
+        {isLibraryEnabled && !remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"
@@ -233,21 +239,24 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
-        <Tooltip label={t`Dependency graph`}>
-          <Button
-            component={ForwardRefLink}
-            to={dependencyGraph({
-              entry: { id: Number(table.id), type: "table" },
-            })}
-            p="sm"
-            leftSection={<Icon name="network" />}
-            style={{
-              flexGrow: 0,
-              width: 40,
-            }}
-            aria-label={t`Dependency graph`}
-          />
-        </Tooltip>
+        {isDependencyGraphEnabled && (
+          <Tooltip label={t`Dependency graph`}>
+            <Button
+              component={ForwardRefLink}
+              to={dependencyGraph({
+                entry: { id: Number(table.id), type: "table" },
+              })}
+              p="sm"
+              leftSection={<Icon name="network" />}
+              style={{
+                flexGrow: 0,
+                width: 40,
+              }}
+              aria-label={t`Dependency graph`}
+            />
+          </Tooltip>
+        )}
+
         <Box style={{ flexGrow: 0, width: 40 }}>
           <TableLink table={table} />
         </Box>

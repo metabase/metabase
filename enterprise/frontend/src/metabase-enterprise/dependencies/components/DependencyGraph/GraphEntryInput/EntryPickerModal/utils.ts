@@ -4,7 +4,7 @@ import type {
   TablePickerItem,
   TablePickerValue,
 } from "metabase/common/components/Pickers/TablePicker";
-import type { TransformPickerItem } from "metabase/plugins";
+import type { TransformPickerItem } from "metabase/transforms/components/TransformPicker";
 import type {
   CardType,
   DependencyEntry,

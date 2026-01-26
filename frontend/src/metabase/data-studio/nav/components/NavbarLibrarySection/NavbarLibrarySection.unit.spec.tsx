@@ -3,38 +3,10 @@ import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-
-// Mock isLibraryCollection to return true for collections with type "library"
-jest.mock("metabase/collections/utils", () => ({
-  ...jest.requireActual("metabase/collections/utils"),
-  isLibraryCollection: (collection: { type: string | null }) =>
-    collection?.type === "library",
-}));
-
-// Mock useGitSyncVisible
-const mockUseGitSyncVisible = jest.fn(() => ({
-  isVisible: true,
-  currentBranch: "main",
-}));
-jest.mock("metabase-enterprise/remote_sync/hooks/use-git-sync-visible", () => ({
-  useGitSyncVisible: () => mockUseGitSyncVisible(),
-}));
-
-// Mock useRemoteSyncDirtyState
-const mockIsCollectionDirty = jest.fn(
-  (_id: number | string | undefined) => false,
-);
-jest.mock(
-  "metabase-enterprise/remote_sync/hooks/use-remote-sync-dirty-state",
-  () => ({
-    useRemoteSyncDirtyState: () => ({
-      isCollectionDirty: mockIsCollectionDirty,
-    }),
-  }),
-);
 
 import { NavbarLibrarySection } from "./NavbarLibrarySection";
 
@@ -73,13 +45,19 @@ const setup = ({
   dirtyCollectionIds?: number[];
   isGitSyncVisible?: boolean;
 } = {}) => {
-  mockUseGitSyncVisible.mockReturnValue({
+  jest.spyOn(PLUGIN_REMOTE_SYNC, "useGitSyncVisible").mockReturnValue({
     isVisible: isGitSyncVisible,
     currentBranch: "main",
   });
-  mockIsCollectionDirty.mockImplementation(
-    (id: number | string | undefined) =>
+
+  jest.spyOn(PLUGIN_REMOTE_SYNC, "useRemoteSyncDirtyState").mockReturnValue({
+    isCollectionDirty: (id: number | string | undefined) =>
       typeof id === "number" && dirtyCollectionIds.includes(id),
+  });
+
+  // eslint-disable-next-line react/display-name
+  PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge = () => (
+    <div data-testid="remote-sync-status">BADGE</div>
   );
 
   return renderWithProviders(
