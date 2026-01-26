@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable metabase/no-color-literals */
 import type { MetabaseThemeV2 } from "../../types";
 import { LIGHT_THEME_ACCENT_COLORS } from "../accent-colors";
 import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";

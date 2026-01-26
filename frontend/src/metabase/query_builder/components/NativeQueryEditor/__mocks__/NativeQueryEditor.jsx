@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
-import DataSourceSelectors from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
+import { DataSourceSelectors } from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 
 export const NativeQueryEditor = ({

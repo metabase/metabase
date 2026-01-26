@@ -1,4 +1,4 @@
-import { IconRoot } from "./CountdownIcon.styled";
+import S from "./CountdownIcon.module.css";
 
 type CountdownIconProps = {
   percent?: number;
@@ -13,10 +13,10 @@ export const CountdownIcon = ({
   height = 20,
   className,
 }: CountdownIconProps) => (
-  <IconRoot
+  <svg
     width={width}
     height={height}
-    className={className}
+    className={`${S.IconRoot} ${className || ""}`}
     viewBox="0 0 32 32"
     style={{
       transform: "rotate(-" + (percent * 360 + 90) + "deg)",
@@ -33,5 +33,5 @@ export const CountdownIcon = ({
       strokeWidth="32"
       strokeDasharray={percent * 100 + " 100"}
     />
-  </IconRoot>
+  </svg>
 );

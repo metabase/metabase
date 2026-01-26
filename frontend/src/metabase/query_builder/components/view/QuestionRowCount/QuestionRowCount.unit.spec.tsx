@@ -34,7 +34,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
-import QuestionRowCount from "./QuestionRowCount";
+import { QuestionRowCount } from "./QuestionRowCount";
 
 type SetupOpts = {
   question: Card | UnsavedCard;

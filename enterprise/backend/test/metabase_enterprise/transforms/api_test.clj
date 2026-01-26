@@ -1185,6 +1185,42 @@
                                                    (format "collection/%d/items" collection-id)))]
             (is (empty? items))))))))
 
+(deftest transforms-appear-in-here-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Transforms in a collection appear in its :here field"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
+                                                          :namespace :transforms}
+                       :model/Collection {child-id :id} {:name "Child"
+                                                         :location (format "/%d/" parent-id)
+                                                         :namespace :transforms}
+                       :model/Transform _ {:name "Test Transform"
+                                           :collection_id child-id}]
+          ;; Check child collection shows transform in :here
+          (let [child-coll (first (:data (mt/user-http-request :crowberto :get 200
+                                                               (format "collection/%d/items" parent-id))))]
+            (is (= ["transform"] (:here child-coll)))))))))
+
+(deftest transforms-appear-in-below-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Transforms in descendant collections appear in :below field"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent"
+                                                          :namespace :transforms}
+                       :model/Collection {child-id :id} {:name "Child"
+                                                         :location (format "/%d/" parent-id)
+                                                         :namespace :transforms}
+                       :model/Collection {grandchild-id :id} {:name "Grandchild"
+                                                              :location (format "/%d/%d/" parent-id child-id)
+                                                              :namespace :transforms}
+                       :model/Transform _ {:name "Nested Transform"
+                                           :collection_id grandchild-id}]
+          ;; Check child collection shows transform in :below
+          (let [child-coll (first (:data (mt/user-http-request :crowberto :get 200
+                                                               (format "collection/%d/items" parent-id))))]
+            (is (= ["collection"] (:here child-coll)))
+            (is (= ["transform"] (:below child-coll)))))))))
+
 (deftest native-incremental-column-type-validated-on-create-test
   (testing "POST /api/ee/transform column type validation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table ::extract-columns-from-query)

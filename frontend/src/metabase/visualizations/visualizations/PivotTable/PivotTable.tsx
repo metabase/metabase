@@ -603,7 +603,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
   },
 );
 
-const PivotTable = ExplicitSize<
+export const PivotTable = ExplicitSize<
   VisualizationProps & {
     className?: string;
   }
@@ -626,5 +626,3 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   columnSettings,
   isLiveResizable: () => false,
 });
-
-export { PivotTable };

@@ -18,7 +18,7 @@ export const DocsLink = ({
   utm,
   children,
 }: DocsLinkProps) => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- we are in admin so we must always show the link.
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- we are in admin so we must always show the link.
   const { url } = useDocsUrl(docsPath, {
     anchor,
     utm: {

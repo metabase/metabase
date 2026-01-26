@@ -15,9 +15,9 @@ describe("scenarios > question > view", () => {
       cy.visit("/admin/permissions/collections/root");
       cy.icon("close").first().click();
       cy.findAllByRole("option").contains("View").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
@@ -77,7 +77,7 @@ describe("scenarios > question > view", () => {
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.dashboardParametersPopover().within(() => {
@@ -90,7 +90,7 @@ describe("scenarios > question > view", () => {
         cy.findByText("Add filter").click();
       });
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.findAllByText("Widget");
@@ -102,12 +102,12 @@ describe("scenarios > question > view", () => {
       cy.signIn("nodata");
       H.visitDashboard("@dashboardId");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
@@ -126,7 +126,7 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
