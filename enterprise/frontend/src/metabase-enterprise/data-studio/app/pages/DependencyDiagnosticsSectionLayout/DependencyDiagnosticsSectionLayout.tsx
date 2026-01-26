@@ -5,11 +5,13 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-type TasksSectionLayoutProps = {
+type DependencyDiagnosticsSectionLayoutProps = {
   children?: ReactNode;
 };
 
-export function TasksSectionLayout({ children }: TasksSectionLayoutProps) {
+export function DependencyDiagnosticsSectionLayout({
+  children,
+}: DependencyDiagnosticsSectionLayoutProps) {
   usePageTitle(t`Dependency diagnostics`);
   return <SectionLayout>{children}</SectionLayout>;
 }

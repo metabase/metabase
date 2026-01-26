@@ -70,7 +70,7 @@ export function DependencyList({
     limit: PAGE_SIZE,
   });
 
-  const { ref, width } = useElementSize();
+  const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
 
@@ -83,13 +83,19 @@ export function DependencyList({
       : undefined;
 
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query });
+    onParamsChange({ ...params, query, page: undefined });
   };
 
-  const handleFilterOptionsChange = (
-    filterOptions: DependencyFilterOptions,
-  ) => {
-    onParamsChange({ ...params, ...filterOptions });
+  const handleFilterOptionsChange = ({
+    groupTypes,
+    includePersonalCollections,
+  }: DependencyFilterOptions) => {
+    onParamsChange({
+      ...params,
+      groupTypes,
+      includePersonalCollections,
+      page: undefined,
+    });
   };
 
   const handleSortOptionsChange = (
@@ -99,6 +105,7 @@ export function DependencyList({
       ...params,
       sortColumn: sortOptions?.column,
       sortDirection: sortOptions?.direction,
+      page: undefined,
     });
   };
 
@@ -115,7 +122,7 @@ export function DependencyList({
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
-      ref={ref}
+      ref={containerRef}
       h="100%"
       wrap="nowrap"
     >
@@ -155,7 +162,7 @@ export function DependencyList({
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
-          containerWidth={width}
+          containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
           onClose={() => setSelectedEntry(undefined)}

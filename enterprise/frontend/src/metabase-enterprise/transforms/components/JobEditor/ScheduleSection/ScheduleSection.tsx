@@ -99,6 +99,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       scheduleOptions={SCHEDULE_OPTIONS}
       verb={verb}
       timezone={systemTimezone}
+      layout="horizontal"
       isCustomSchedule={job.ui_display_type === "cron/raw"}
       renderScheduleDescription={renderScheduleDescription}
       data-testid="schedule-picker"

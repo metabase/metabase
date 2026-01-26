@@ -6,7 +6,17 @@ import { FormSelect } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Anchor, Box, Divider, Group, Stack, Switch, Text } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Divider,
+  Group,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   SOURCE_STRATEGY_OPTIONS,
@@ -39,6 +49,7 @@ export const IncrementalTransformSettings = ({
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms
@@ -54,22 +65,37 @@ export const IncrementalTransformSettings = ({
     .with({ isPythonTransform: true }, () => "python" as const)
     .otherwise(() => "native" as const);
 
-  const renderIncrementalSwitch = () => (
-    <Switch
-      disabled={isMultiTablePythonTransform}
-      checked={incremental}
-      size="sm"
-      label={
-        isMultiTablePythonTransform
-          ? t`Incremental transforms are only supported for single data source transforms.`
-          : t`Only process new and changed data`
-      }
-      wrapperProps={{
-        "data-testid": "incremental-switch",
-      }}
-      onChange={(e) => onIncrementalChange(e.target.checked)}
-    />
-  );
+  const renderIncrementalSwitch = () => {
+    const switchContent = (
+      <Switch
+        disabled={isMultiTablePythonTransform || isRemoteSyncReadOnly}
+        checked={incremental}
+        size="sm"
+        label={
+          isMultiTablePythonTransform
+            ? t`Incremental transforms are only supported for single data source transforms.`
+            : t`Only process new and changed data`
+        }
+        wrapperProps={{
+          "data-testid": "incremental-switch",
+        }}
+        onChange={(e) => onIncrementalChange(e.target.checked)}
+      />
+    );
+
+    if (isRemoteSyncReadOnly) {
+      return (
+        <Tooltip
+          label={t`You can't edit this setting since Remote Sync is currently in read-only mode.`}
+          withArrow={false}
+        >
+          <span>{switchContent}</span>
+        </Tooltip>
+      );
+    }
+
+    return switchContent;
+  };
 
   const label = t`Incremental transformation`;
   const renderDescription = () => {

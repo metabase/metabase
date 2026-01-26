@@ -16,7 +16,7 @@ export * from "./e2e-dashboard-visualizer-helpers";
 export * from "./e2e-database-metadata-helpers";
 export * from "./e2e-datamodel-helpers";
 export * from "./e2e-data-studio-helpers";
-export * from "./e2e-dependency-graph-helpers";
+export * from "./e2e-dependency-helpers";
 export * from "./e2e-detail-view-helpers";
 export * from "./e2e-dimension-list-helpers";
 export * from "./e2e-document-helpers";

@@ -15,6 +15,7 @@ import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
+import CS from "metabase/css/core/index.css";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -280,7 +281,11 @@ export const DatabasePane = ({
   );
 
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+    <LoadingAndErrorWrapper
+      loading={isLoading}
+      error={error}
+      className={CS.fullHeight}
+    >
       <SidebarContent
         title={databaseData?.name ?? "Untitled Database"}
         icon={"database"}

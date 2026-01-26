@@ -29,9 +29,14 @@ type TagModalType = "update" | "delete";
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
+  readOnly?: boolean;
 };
 
-export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
+export function TagMultiSelect({
+  tagIds,
+  onChange,
+  readOnly,
+}: TagMultiSelectProps) {
   const { data: tags = [], isLoading } = useListTransformTagsQuery();
   const [createTag, { isLoading: isCreating }] =
     useCreateTransformTagMutation();
@@ -95,7 +100,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
       <MultiSelect
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue)}
-        placeholder={t`Add tags`}
+        placeholder={readOnly ? t`Tags are read-only` : t`Add tags`}
         searchValue={searchValue}
         searchable
         rightSection={
@@ -125,6 +130,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
         aria-label={t`Tags`}
         onChange={handleChange}
         onSearchChange={setSearchValue}
+        disabled={readOnly}
       />
       {modalType === "update" && selectedTagId != null && (
         <UpdateTagModal

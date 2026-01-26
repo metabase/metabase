@@ -9,6 +9,7 @@ import {
   EmptyStateActions,
   EmptyStateHeader,
   EmptyStateIllustration,
+  type EmptyStateIllustrationProps,
 } from "./EmptyState.styled";
 
 // Don't break existing empty states
@@ -48,6 +49,7 @@ type EmptyStateProps = {
   className?: string;
   icon?: IconName;
   image?: string;
+  spacing?: EmptyStateIllustrationProps["spacing"];
 };
 
 const EmptyState = ({
@@ -60,12 +62,16 @@ const EmptyState = ({
   className,
   icon,
   image,
+  spacing = "md",
   ...rest
 }: EmptyStateProps) => (
   <div className={className}>
     <EmptyStateHeader>
       {illustrationElement && (
-        <EmptyStateIllustration className="empty-state-illustration">
+        <EmptyStateIllustration
+          className="empty-state-illustration"
+          spacing={spacing}
+        >
           {illustrationElement}
         </EmptyStateIllustration>
       )}

@@ -2,6 +2,7 @@ import { setLocalization } from "metabase/lib/i18n";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import type { DateFormattingSettings } from "metabase-types/api";
 
 import {
   formatDate,
@@ -148,6 +149,7 @@ type DateFilterDisplayNameCase = {
   value: DateFilterValue;
   displayName: string;
   withPrefix?: boolean;
+  formattingSettings?: DateFormattingSettings;
 };
 
 describe("getDateFilterDisplayName", () => {
@@ -317,12 +319,50 @@ describe("getDateFilterDisplayName", () => {
       },
       displayName: "Not empty",
     },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+      },
+      displayName: "Tuesday March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+        date_abbreviate: true,
+      },
+      displayName: "Tue Mar 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: true,
+      },
+      formattingSettings: {
+        date_style: "dddd MMMM D, YYYY",
+        date_abbreviate: true,
+      },
+      displayName: "Tue Mar 5, 2024 12:00 AM",
+    },
   ])(
     "should format a relative date filter",
-    ({ value, displayName, withPrefix }) => {
-      expect(getDateFilterDisplayName(value, { withPrefix })).toEqual(
-        displayName,
-      );
+    ({ value, displayName, withPrefix, formattingSettings }) => {
+      expect(
+        getDateFilterDisplayName(value, { withPrefix, formattingSettings }),
+      ).toEqual(displayName);
     },
   );
 });

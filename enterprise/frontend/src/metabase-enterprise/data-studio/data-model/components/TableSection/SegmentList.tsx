@@ -9,6 +9,7 @@ import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selecto
 import type { Table } from "metabase-types/api";
 
 import { SegmentItem } from "./SegmentItem";
+import S from "./TableSection.module.css";
 
 type SegmentListProps = {
   table: Table;
@@ -49,6 +50,8 @@ export function SegmentList({ table }: SegmentListProps) {
 
       {segments.length === 0 ? (
         <EmptyState
+          className={S.EmptyState}
+          spacing="sm"
           illustrationElement={
             <Icon name="segment2" size={32} c="text-secondary" />
           }

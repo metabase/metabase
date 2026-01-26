@@ -14,18 +14,21 @@ type SetupOpts = {
   tags?: TransformTag[];
   tagIds?: TransformTagId[];
   newTag?: TransformTag;
+  readOnly?: boolean;
 };
 
-function setup({ tags = [], tagIds = [], newTag }: SetupOpts) {
+function setup({ tags = [], tagIds = [], newTag, readOnly }: SetupOpts) {
   setupListTransformTagsEndpoint(tags);
   if (newTag != null) {
     setupCreateTransformTagEndpoint(newTag);
   }
 
   const onChange = jest.fn();
-  renderWithProviders(<TagMultiSelect tagIds={tagIds} onChange={onChange} />);
+  renderWithProviders(
+    <TagMultiSelect tagIds={tagIds} onChange={onChange} readOnly={readOnly} />,
+  );
 
-  const input = screen.getByPlaceholderText("Add tags");
+  const input = screen.getByLabelText("Tags");
   return { input, onChange };
 }
 
@@ -72,5 +75,11 @@ describe("TagMultiSelect", () => {
     expect(
       await screen.findByText("A tag with that name already exists"),
     ).toBeInTheDocument();
+  });
+
+  it("should disable input when readOnly flag is set to true", () => {
+    const { input } = setup({ readOnly: true });
+    expect(input).toBeDisabled();
+    expect(input).toHaveAttribute("placeholder", "Tags are read-only");
   });
 });

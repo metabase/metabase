@@ -65,7 +65,7 @@ export function CreateTransformCollectionModal({
 
   return (
     <Modal
-      title={t`New collection`}
+      title={t`Transform folder`}
       opened
       onClose={onClose}
       padding="xl"
