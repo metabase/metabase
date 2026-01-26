@@ -131,9 +131,11 @@
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
 (defn mysql-connection?
-  "Returns true if the database is MySQL."
-  [driver conn]
-  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MySQL")))
+  "Returns true if the database is MySQL. Accepts either a JDBC Connection or a db map."
+  [driver db-or-conn]
+  (if (instance? java.sql.Connection db-or-conn)
+    (= "MySQL" (.getDatabaseProductName (.getMetaData ^java.sql.Connection db-or-conn)))
+    (->> db-or-conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MySQL"))))
 
 (defn- partial-revokes-enabled?
   [driver db]
