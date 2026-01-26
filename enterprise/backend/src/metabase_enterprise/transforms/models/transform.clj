@@ -17,7 +17,8 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,7 +113,7 @@
                  (get id->transform transform-id)
                  ;; Orphaned run - use denormalized transform_name
                  (when-let [name (:transform_name run)]
-                   {:name name :deleted true})))))))
+                   (t2.instance/instance :model/Transform {:name name :deleted true}))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :last_run]
   "Add last_run to a transform"
