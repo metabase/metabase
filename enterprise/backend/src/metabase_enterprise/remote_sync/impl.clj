@@ -409,39 +409,3 @@
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))
-
-(defn sync-transform-tracking!
-  "Called when remote-sync-transforms setting changes.
-   When enabled: mark all existing transforms, transform tags, and transforms-namespace collections
-   as 'create' for initial sync.
-   When disabled: remove all transform-related tracking entries."
-  [enabled?]
-  (let [timestamp (t/offset-date-time)]
-    (if enabled?
-      (do
-        ;; Mark all transforms-namespace collections for initial sync
-        (doseq [coll (t2/select [:model/Collection :id :name] :namespace (name collection/transforms-ns))]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type        "Collection"
-                       :model_id          (:id coll)
-                       :model_name        (:name coll)
-                       :status            "create"
-                       :status_changed_at timestamp}))
-        ;; Mark all existing transforms and transform tags for initial sync
-        (doseq [[model name-key] [[:model/Transform :name]
-                                  [:model/TransformTag :name]]]
-          (doseq [entity (t2/select [model :id name-key])]
-            (t2/insert! :model/RemoteSyncObject
-                        {:model_type        (name (last (str/split (name model) #"/")))
-                         :model_id          (:id entity)
-                         :model_name        (get entity name-key)
-                         :status            "create"
-                         :status_changed_at timestamp}))))
-      ;; Remove all transform-related tracking (including transforms-namespace collections)
-      (let [transform-coll-ids (t2/select-pks-set :model/Collection :namespace (name collection/transforms-ns))]
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type [:in ["Transform" "TransformTag"]])
-        (when (seq transform-coll-ids)
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id [:in transform-coll-ids]))))))
