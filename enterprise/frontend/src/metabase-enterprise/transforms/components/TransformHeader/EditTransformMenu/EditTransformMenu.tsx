@@ -25,7 +25,6 @@ import {
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
@@ -129,20 +128,14 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   return (
     <Menu position="bottom-end" width={280}>
       <Menu.Target>
-        <Tooltip
-          label={getCheckoutDisabledMessage(checkoutData?.checkout_disabled)}
-          disabled={!checkoutData?.checkout_disabled}
+        <Button
+          role="button"
+          rightSection={<Icon name="chevrondown" />}
+          loading={isBusy}
+          size="xs"
         >
-          <Button
-            role="button"
-            rightSection={<Icon name="chevrondown" />}
-            loading={isBusy}
-            disabled={!!checkoutData?.checkout_disabled}
-            size="xs"
-          >
-            {t`Edit`}
-          </Button>
-        </Tooltip>
+          {t`Edit`}
+        </Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -153,24 +146,31 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           {t`Edit definition`}
         </Menu.Item>
 
-        {hasPremiumFeature("workspaces") && (
+        {
           <>
             <Menu.Divider />
             <Menu.Label>{t`Add to workspace`}</Menu.Label>
-            <Menu.Item
-              disabled={isBusy}
-              leftSection={<Icon name="add" />}
-              onClick={() => {
-                handleCreateWorkspace({ databaseId: sourceDatabaseId });
-              }}
+            <Tooltip
+              label={getCheckoutDisabledMessage(
+                checkoutData?.checkout_disabled,
+              )}
+              disabled={!checkoutData?.checkout_disabled}
             >
-              <Stack gap={0} align="flex-start">
-                <Text fw={600}>{t`New workspace`}</Text>
-                <Text size="sm" c="text-tertiary">
-                  {t`Create a new workspace`}
-                </Text>
-              </Stack>
-            </Menu.Item>
+              <Menu.Item
+                disabled={isBusy || !!checkoutData?.checkout_disabled}
+                leftSection={<Icon name="add" />}
+                onClick={() => {
+                  handleCreateWorkspace({ databaseId: sourceDatabaseId });
+                }}
+              >
+                <Stack gap={0} align="flex-start">
+                  <Text fw={600}>{t`New workspace`}</Text>
+                  <Text size="sm" c="text-tertiary">
+                    {t`Create a new workspace`}
+                  </Text>
+                </Stack>
+              </Menu.Item>
+            </Tooltip>
             <Menu.Divider />
 
             {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
@@ -187,27 +187,34 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
               <ScrollArea.Autosize mah={320} type="scroll">
                 <Stack gap={0}>
                   {matchingWorkspaces.map((workspace) => (
-                    <Menu.Item
+                    <Tooltip
                       key={workspace.id}
-                      leftSection={
-                        <Icon
-                          name="sparkles"
-                          c={workspace.isChecked ? "brand" : "text-primary"}
-                        />
-                      }
-                      onClick={() => handleWorkspaceSelect(workspace)}
-                      disabled={isBusy}
+                      label={getCheckoutDisabledMessage(
+                        checkoutData?.checkout_disabled,
+                      )}
+                      disabled={!checkoutData?.checkout_disabled}
                     >
-                      <Stack gap={2} align="flex-start">
-                        <Text fw={600}>{workspace.name}</Text>
-                      </Stack>
-                    </Menu.Item>
+                      <Menu.Item
+                        leftSection={
+                          <Icon
+                            name="sparkles"
+                            c={workspace.isChecked ? "brand" : "text-primary"}
+                          />
+                        }
+                        onClick={() => handleWorkspaceSelect(workspace)}
+                        disabled={isBusy || !!checkoutData?.checkout_disabled}
+                      >
+                        <Stack gap={2} align="flex-start">
+                          <Text fw={600}>{workspace.name}</Text>
+                        </Stack>
+                      </Menu.Item>
+                    </Tooltip>
                   ))}
                 </Stack>
               </ScrollArea.Autosize>
             )}
           </>
-        )}
+        }
       </Menu.Dropdown>
     </Menu>
   );

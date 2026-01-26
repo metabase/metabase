@@ -1601,12 +1601,15 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.log("Verify Edit transform button is disabled");
-      cy.findByRole("button", { name: /Edit/ }).should("be.disabled");
-      cy.findByRole("button", { name: /Edit/ }).realHover();
+      cy.findByRole("button", { name: /Edit/ }).click();
+      H.popover().contains("New workspace").should("be.disabled");
+      H.popover().contains("New workspace").realHover();
       H.tooltip().should(
         "contain.text",
         "This transform cannot be edited in a workspace because it references other questions.",
       );
+      cy.log("Close tooltip");
+      cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
       Transforms.editDefinition();
