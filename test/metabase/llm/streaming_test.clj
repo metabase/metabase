@@ -6,6 +6,8 @@
   (:import
    (java.io ByteArrayInputStream)))
 
+(set! *warn-on-reflection* true)
+
 (deftest format-sse-line-test
   (testing "formats text delta correctly"
     (is (= "0:\"Hello\"\n"

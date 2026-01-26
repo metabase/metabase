@@ -360,6 +360,7 @@
         {:system-prompt system-prompt
          :table-ids     table-ids}))))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/generate-sql-streaming"
   "Generate SQL from a natural language prompt with streaming response.
 
