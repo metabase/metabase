@@ -612,7 +612,6 @@ export const PivotTableView = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export const PivotTable = Object.assign(
   connect(mapStateToProps)(PivotTableView),
   {
