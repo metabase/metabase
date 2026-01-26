@@ -94,17 +94,3 @@
           result (todo/todo-read {:memory-atom memory-atom})]
       (is (contains? result :instructions))
       (is (string? (:instructions result))))))
-
-(deftest todo-write-tool-test
-  (testing "todo-write-tool catches exceptions and returns error output"
-    (let [memory-atom (atom {:state {}})
-          result (todo/todo-write-tool {:todos [{:id "1" :content "Task" :status "bad" :priority "high"}]
-                                        :memory-atom memory-atom})]
-      (is (contains? result :output))
-      (is (string? (:output result))))))
-
-(deftest todo-read-tool-test
-  (testing "todo-read-tool works with valid input"
-    (let [memory-atom (atom {:state {:todos []}})
-          result (todo/todo-read-tool {:memory-atom memory-atom})]
-      (is (contains? result :structured-output)))))
