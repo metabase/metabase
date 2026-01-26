@@ -96,4 +96,7 @@ jobs:
             Co-Authored-By: GitHub Actions <actions@github.com>
           labels: |
             .CI & Tests
+            no-backport
           add-paths: e2e/support/timings.json
+          team-reviewers: |
+            devexp
