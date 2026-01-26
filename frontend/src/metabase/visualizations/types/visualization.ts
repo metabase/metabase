@@ -130,7 +130,7 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isDocument: boolean;
-  // Is this the visuslization *inside* the visualizer
+  // Is this the visualization *inside* the visualizer
   isVisualizer: boolean;
   // Is this visualization made by the visualizer
   isVisualizerCard: boolean;

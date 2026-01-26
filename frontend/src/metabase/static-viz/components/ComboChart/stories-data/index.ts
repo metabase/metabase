@@ -79,6 +79,7 @@ import imageCutOff37275 from "./image-cut-off-37275.json";
 import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
 import lineChartBrokenDimensionsMetricsSettings from "./line-chart-broken-dimensions-metrics-settings.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
+import lineCustomYAxisRangeOffScreen from "./line-custom-y-axis-range-off-screen.json";
 import lineFullyNullDimension37902 from "./line-fully-null-dimension-37902.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
 import lineLinearXScale from "./line-linear-x-scale.json";
@@ -138,6 +139,7 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   lineCustomYAxisRangeEqualsExtents,
+  lineCustomYAxisRangeOffScreen,
   customYAxisRangeWithColumnScaling,
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,

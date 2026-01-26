@@ -219,18 +219,19 @@ function _CartesianChart(props: VisualizationProps) {
           eventHandlers={eventHandlers}
           onResize={handleResize}
           onInit={handleInit}
-        />
+        >
+          <DataPointsVisiblePopover
+            isDashboard={isDashboard}
+            isVisualizer={isVisualizer}
+            chartModel={chartModel}
+            settings={settings}
+            canWrite={card.can_write}
+            autoChange={handleAutoChange}
+            openSettings={handleOpenSettings}
+          />
+        </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
       {seriesColorsCss}
-      <DataPointsVisiblePopover
-        isDashboard={isDashboard}
-        isVisualizer={isVisualizer}
-        chartModel={chartModel}
-        settings={settings}
-        canWrite={card.can_write}
-        autoChange={handleAutoChange}
-        openSettings={handleOpenSettings}
-      />
     </CartesianChartRoot>
   );
 }

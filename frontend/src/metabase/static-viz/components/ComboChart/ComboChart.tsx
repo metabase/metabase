@@ -1,5 +1,6 @@
 import { Group } from "@visx/group";
 import { init } from "echarts/core";
+import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
@@ -8,6 +9,7 @@ import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
@@ -76,28 +78,53 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
+    chartModel,
+    settings,
+  );
+
+  const totalHeight = height + legendHeight;
 
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={width}
-      height={height + legendHeight}
-    >
-      <Legend items={legendLayoutItems} />
-      <Group top={legendHeight}>
-        <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
-      </Group>
-      {hasDevWatermark && (
-        <Watermark
-          x="0"
-          y="0"
-          height={height}
-          width={width}
-          preserveAspectRatio="xMinYMin slice"
-          fill={renderingContext.getColor("text-secondary")}
-          opacity={0.2}
-        />
-      )}
-    </svg>
+    <>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={width}
+        height={totalHeight}
+      >
+        <Legend items={legendLayoutItems} />
+        <Group top={legendHeight}>
+          <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+        </Group>
+        {hasDevWatermark && (
+          <Watermark
+            x="0"
+            y="0"
+            height={height}
+            width={width}
+            preserveAspectRatio="xMinYMin slice"
+            fill={renderingContext.getColor("text-secondary")}
+            opacity={0.2}
+          />
+        )}
+        {allPointsOutOfRange && (
+          <g>
+            <rect
+              x={width / 2 - 105}
+              y={totalHeight / 2 - 20}
+              fill={renderingContext.getColor("background-primary")}
+              stroke={renderingContext.getColor("border")}
+              strokeWidth="1"
+              width="210"
+              height="40"
+              rx="8"
+            />
+            <text x="50%" y={totalHeight / 2 + 4} textAnchor="middle">
+              {t`Every data point is out of range`}
+            </text>
+          </g>
+        )}
+      </svg>
+    </>
   );
 };

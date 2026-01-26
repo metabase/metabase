@@ -1,6 +1,7 @@
 import { jt, t } from "ttag";
 
 import {
+  Anchor,
   Button,
   Card,
   Center,
@@ -17,14 +18,13 @@ import type {
 import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import S from "./DataPointsVisiblePopover.module.css";
+
 export interface DataPointsVisiblePopoverProps {
   isDashboard: boolean;
   isVisualizer: boolean;
   chartModel: CartesianChartModel | ScatterPlotModel | WaterfallChartModel;
-  settings: Pick<
-    VisualizationSettings,
-    "graph.y_axis.min" | "graph.x_axis.min"
-  >;
+  settings: VisualizationSettings;
   autoChange: () => void;
   openSettings: () => void;
   canWrite?: boolean;
@@ -50,27 +50,40 @@ export const DataPointsVisiblePopover = ({
       pos="absolute"
       right={0}
       left={0}
-      top={isDashboard ? 32 : undefined}
-      bottom={isDashboard ? 32 : undefined}
+      top={0}
+      bottom={isDashboard ? 0 : undefined}
       role="dialog"
       aria-label={t`data points are off screen`}
     >
       {isDashboard ? (
-        <HoverCard disabled={!canWrite}>
+        <HoverCard disabled={canWrite === false}>
           <HoverCard.Target>
-            <Card withBorder py="sm" maw="9rem">
+            {/* Adjust position of the card so that it is centered in the dashcard. we need to account for height of card title */}
+            <Card withBorder py="sm" maw="9rem" pos="relative" top={-10}>
               <Text ta="center">{t`Every data point is out of range`}</Text>
             </Card>
           </HoverCard.Target>
           <HoverCard.Dropdown p="sm" w="18rem">
-            <Text>{jt`This is because of your y-axis settings. You can change this chart to ${(<Text key="auto-y-axis" onClick={autoChange} c="brand" component="button">{t`use an auto y-axis`}</Text>)}, or ${(<Text key="open-settings" onClick={openSettings} c="brand" component="button">{t`open the axis settings.`}</Text>)}`}</Text>
+            <Text>{jt`This is because of your y-axis settings. You can change this chart to ${(
+              <Anchor
+                key="auto-y-axis"
+                onClick={autoChange}
+                component="button"
+              >{t`use an auto y-axis`}</Anchor>
+            )}, or ${(
+              <Anchor
+                key="open-settings"
+                onClick={openSettings}
+                component="button"
+              >{t`open the axis settings.`}</Anchor>
+            )}`}</Text>
           </HoverCard.Dropdown>
         </HoverCard>
       ) : (
         <Card withBorder py="sm">
           <Stack gap="xs">
             <Text>{t`Every data point is off-screen because of your y-axis settings`}</Text>
-            <Group justify="center" gap="lg">
+            <Group justify="center" gap="lg" className={S.ButtonsGroup}>
               <Button
                 variant="subtle"
                 size="compact-sm"

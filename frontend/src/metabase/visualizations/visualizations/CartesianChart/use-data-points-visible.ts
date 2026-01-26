@@ -1,8 +1,8 @@
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 export const useAreAllDataPointsOutOfRange = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
 ) => {
   if (settings["graph.y_axis.auto_range"]) {
@@ -18,12 +18,10 @@ export const useAreAllDataPointsOutOfRange = (
   const dataKeys = chartModel.seriesModels.map(
     (seriesModel) => seriesModel.dataKey,
   );
+
   return chartModel.dataset.every((data) =>
     dataKeys.every((key) => {
       const value = data[key] as number;
-      // console.log(
-      //   `${key} has a value of ${value} is less than ${yMin} or greater than ${yMax}`,
-      // );
       return value === null || value < yMin || yMax < value;
     }),
   );

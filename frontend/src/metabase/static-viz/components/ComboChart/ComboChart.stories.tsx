@@ -131,6 +131,14 @@ export const LineCustomYAxisRangeEqualsExtents = {
   },
 };
 
+export const LineCustomYAxisRangeOffScreen = {
+  render: Template,
+  args: {
+    rawSeries: data.lineCustomYAxisRangeOffScreen as any,
+    renderingContext,
+  },
+};
+
 export const CustomYAxisRangeWithColumnScaling = {
   render: Template,
   args: {
