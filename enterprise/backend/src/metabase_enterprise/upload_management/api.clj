@@ -26,12 +26,12 @@
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
-  (as-> (t2/select :model/Table, :active true, :is_upload true) tables
+  (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
         ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)
     (filter mi/can-read? tables)
-    (sort-by :name tables)
+    (sort-by :name tables) ;; Re-sort because we concat'ed data
     (vec tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
