@@ -216,7 +216,7 @@ For production use, you'll need to set up SSO authentication. See [Modular embed
 
 This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to:
 
 - [Allow your domain in CORS](#allow-your-domain-in-cors)
 - [Configure session cookies for cross-domain](#configure-session-cookies-for-cross-domain)
