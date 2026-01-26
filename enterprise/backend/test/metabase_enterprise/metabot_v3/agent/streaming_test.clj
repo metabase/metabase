@@ -137,3 +137,140 @@
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
     (is (= "transform_suggestion" streaming/transform-suggestion-type))))
+
+;;; Transducer Tests
+
+(deftest expand-reactions-xf-test
+  (testing "expands reactions from tool-output parts"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :result {:output "done"
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
+          result (into [] streaming/expand-reactions-xf parts)]
+      (is (= 2 (count result)))
+      (is (= :tool-output (:type (first result))))
+      (is (= :data (:type (second result))))
+      (is (= "navigate_to" (:data-type (second result))))))
+
+  (testing "passes through non-tool-output parts unchanged"
+    (let [parts [{:type :text :text "hello"}
+                 {:type :usage :tokens 100}]
+          result (into [] streaming/expand-reactions-xf parts)]
+      (is (= parts result))))
+
+  (testing "handles tool-output without reactions"
+    (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
+          result (into [] streaming/expand-reactions-xf parts)]
+      (is (= 1 (count result)))
+      (is (= :tool-output (:type (first result))))))
+
+  (testing "handles multiple reactions from single tool"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :result {:reactions [{:type :metabot.reaction/redirect :url "/a"}
+                                       {:type :metabot.reaction/redirect :url "/b"}]}}]
+          result (into [] streaming/expand-reactions-xf parts)]
+      (is (= 3 (count result)))
+      (is (= "/a" (:data (second result))))
+      (is (= "/b" (:data (nth result 2)))))))
+
+(deftest expand-data-parts-xf-test
+  (testing "expands data-parts from tool-output results"
+    (let [todo-part {:type :data :data-type "todo_list" :data [{:id "1"}]}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :result {:output "done"
+                           :data-parts [todo-part]}}]
+          result (into [] streaming/expand-data-parts-xf parts)]
+      (is (= 2 (count result)))
+      (is (= :tool-output (:type (first result))))
+      (is (= todo-part (second result)))))
+
+  (testing "passes through non-tool-output parts unchanged"
+    (let [parts [{:type :text :text "hello"}]
+          result (into [] streaming/expand-data-parts-xf parts)]
+      (is (= parts result))))
+
+  (testing "handles tool-output without data-parts"
+    (let [parts [{:type :tool-output :id "t1" :result {:output "done"}}]
+          result (into [] streaming/expand-data-parts-xf parts)]
+      (is (= 1 (count result)))))
+
+  (testing "handles multiple data-parts from single tool"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :result {:data-parts [{:type :data :data-type "a"}
+                                        {:type :data :data-type "b"}]}}]
+          result (into [] streaming/expand-data-parts-xf parts)]
+      (is (= 3 (count result)))
+      (is (= "a" (:data-type (second result))))
+      (is (= "b" (:data-type (nth result 2)))))))
+
+(deftest resolve-links-xf-test
+  (testing "resolves metabase:// links in text parts"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          parts [{:type :text :text "[Results](metabase://query/q1)"}]
+          result (into [] (streaming/resolve-links-xf {"q1" query} {}) parts)]
+      (is (= 1 (count result)))
+      (is (re-find #"\[Results\]\(/question#" (:text (first result))))))
+
+  (testing "passes through non-text parts unchanged"
+    (let [parts [{:type :tool-input :id "t1" :function "search"}]
+          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+      (is (= parts result))))
+
+  (testing "accumulates queries from tool-output structured-output"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :result {:structured-output {:query-id "q1" :query query}}}
+                 {:type :text :text "[Results](metabase://query/q1)"}]
+          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+      (is (= 2 (count result)))
+      (is (re-find #"\[Results\]\(/question#" (:text (second result))))))
+
+  (testing "flushes incomplete links at end"
+    (let [parts [{:type :text :text "Check [incomplete"}]
+          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+      ;; Should have original part (with empty/partial text) + flushed part
+      (is (<= 1 (count result)))
+      (let [all-text (->> result (filter #(= :text (:type %))) (map :text) (apply str))]
+        (is (= "Check [incomplete" all-text)))))
+
+  (testing "resolves model/metric/dashboard links without state"
+    (let [parts [{:type :text :text "[Model](metabase://model/123)"}]
+          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+      (is (= "[Model](/model/123)" (:text (first result)))))))
+
+(deftest post-process-xf-test
+  (testing "composes all post-processing transducers"
+    (let [query {:database 1 :type :query :query {:source-table 1}}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :result {:structured-output {:query-id "q1" :query query}
+                           :reactions [{:type :metabot.reaction/redirect :url "/nav"}]
+                           :data-parts [{:type :data :data-type "todo_list" :data []}]}}
+                 {:type :text :text "[Link](metabase://query/q1)"}]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
+      ;; Should have: tool-output, navigate_to data part, todo_list data part, resolved text
+      (is (= 4 (count result)))
+      (is (= :tool-output (:type (nth result 0))))
+      (is (= "navigate_to" (:data-type (nth result 1))))
+      (is (= "todo_list" (:data-type (nth result 2))))
+      (is (re-find #"\[Link\]\(/question#" (:text (nth result 3))))))
+
+  (testing "works with empty parts"
+    (let [result (into [] (streaming/post-process-xf {} {}) [])]
+      (is (= [] result))))
+
+  (testing "preserves order: tool-output, reactions, data-parts, text"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :result {:reactions [{:type :metabot.reaction/redirect :url "/r"}]
+                           :data-parts [{:type :data :data-type "dp"}]}}
+                 {:type :text :text "text"}]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
+      (is (= :tool-output (:type (nth result 0))))
+      (is (= "navigate_to" (:data-type (nth result 1))))
+      (is (= "dp" (:data-type (nth result 2))))
+      (is (= "text" (:text (nth result 3)))))))
