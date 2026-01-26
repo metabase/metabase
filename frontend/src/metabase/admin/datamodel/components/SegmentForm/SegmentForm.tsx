@@ -41,7 +41,7 @@ export interface SegmentFormProps {
   onSubmit: (values: Partial<Segment>) => void;
 }
 
-const SegmentForm = ({
+export const SegmentForm = ({
   segment,
   onIsDirtyChange,
   onSubmit,
@@ -222,6 +222,3 @@ function getSegmentEditorProps(
     },
   };
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SegmentForm;

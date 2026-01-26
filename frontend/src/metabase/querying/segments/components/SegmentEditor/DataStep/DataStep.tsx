@@ -62,7 +62,7 @@ export function DataStep({
 
   return (
     <ClauseStep label={t`Data`}>
-      <Box style={{ cursor: "not-allowed" }}>
+      <Box>
         {tableId && (
           <Flex maw={300} wrap="nowrap">
             <Text c="text-secondary" size="sm" w="100%">
