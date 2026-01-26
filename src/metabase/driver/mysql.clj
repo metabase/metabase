@@ -130,6 +130,11 @@
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
+(defn mysql-connection?
+  "Returns true if the database is MySQL."
+  [driver conn]
+  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MySQL")))
+
 (defn- partial-revokes-enabled?
   [driver db]
   (sql-jdbc.execute/do-with-connection-with-options
@@ -148,10 +153,20 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
+(defn- mysql-flavor?
+  "Returns true if we can confirm the database is MySQL (not MariaDB).
+   Handles both database entities (with :dbms_version) and connection-only maps."
+  [driver db]
+  (if-let [flavor (-> db :dbms_version :flavor)]
+    (= flavor "MySQL")
+    ;; No :dbms_version - check via connection if available
+    (when-let [conn (:connection db)]
+      (mysql-connection? driver conn))))
+
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql? db)
+       (mysql-flavor? driver db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
