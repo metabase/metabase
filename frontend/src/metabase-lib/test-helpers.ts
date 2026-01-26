@@ -91,24 +91,6 @@ export const columnFinder =
     return column;
   };
 
-export const findBinningStrategy = (
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
-  bucketName: string,
-) => {
-  if (bucketName === "Don't bin") {
-    return null;
-  }
-  const buckets = Lib.availableBinningStrategies(query, 0, column);
-  const bucket = buckets.find(
-    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
-  );
-  if (!bucket) {
-    throw new Error(`Could not find binning strategy ${bucketName}`);
-  }
-  return bucket;
-};
-
 export const findTemporalBucket = (
   query: Lib.Query,
   column: Lib.ColumnMetadata,
@@ -155,124 +137,11 @@ export const findSegment = (query: Lib.Query, segmentName: string) => {
   return segment;
 };
 
-function withTemporalBucketAndBinningStrategy(
-  query: Lib.Query,
-  column: Lib.ColumnMetadata,
-  temporalBucketName = "Don't bin",
-  binningStrategyName = "Don't bin",
-) {
-  return Lib.withTemporalBucket(
-    Lib.withBinning(
-      column,
-      findBinningStrategy(query, column, binningStrategyName),
-    ),
-    findTemporalBucket(query, column, temporalBucketName),
-  );
-}
-
-type AggregationClauseOpts =
-  | {
-      operatorName: string;
-      tableName?: never;
-      columnName?: never;
-    }
-  | {
-      operatorName: string;
-      tableName: string;
-      columnName: string;
-    };
-
-interface BreakoutClauseOpts {
-  columnName: string;
-  tableName?: string;
-  temporalBucketName?: string;
-  binningStrategyName?: string;
-}
-
 export interface ExpressionClauseOpts {
   name: string;
   operator: Lib.ExpressionOperator;
   args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
   options?: Lib.ExpressionOptions | null;
-}
-
-interface OrderByClauseOpts {
-  columnName: string;
-  tableName: string;
-  direction: Lib.OrderByDirection;
-}
-
-interface QueryWithClausesOpts {
-  query?: Lib.Query;
-  expressions?: ExpressionClauseOpts[];
-  aggregations?: AggregationClauseOpts[];
-  breakouts?: BreakoutClauseOpts[];
-  orderBys?: OrderByClauseOpts[];
-}
-
-/**
- * @deprecated: Use createTestQuery or createTestJsQuery instead.
- */
-export function createQueryWithClauses({
-  query = createQuery(),
-  expressions = [],
-  aggregations = [],
-  breakouts = [],
-  orderBys = [],
-}: QueryWithClausesOpts) {
-  const queryWithExpressions = expressions.reduce((query, expression) => {
-    return Lib.expression(
-      query,
-      -1,
-      expression.name,
-      Lib.expressionClause(
-        expression.operator,
-        expression.args,
-        expression.options,
-      ),
-    );
-  }, query);
-
-  const queryWithAggregations = aggregations.reduce((query, aggregation) => {
-    return Lib.aggregate(
-      query,
-      -1,
-      Lib.aggregationClause(
-        findAggregationOperator(query, aggregation.operatorName),
-        aggregation.columnName && aggregation.tableName
-          ? columnFinder(query, Lib.visibleColumns(query, -1))(
-              aggregation.tableName,
-              aggregation.columnName,
-            )
-          : undefined,
-      ),
-    );
-  }, queryWithExpressions);
-
-  const queryWithBreakouts = breakouts.reduce((query, breakout) => {
-    const breakoutColumn = columnFinder(
-      query,
-      Lib.breakoutableColumns(query, -1),
-    )(breakout.tableName, breakout.columnName);
-    return Lib.breakout(
-      query,
-      -1,
-      withTemporalBucketAndBinningStrategy(
-        query,
-        breakoutColumn,
-        breakout.temporalBucketName,
-        breakout.binningStrategyName,
-      ),
-    );
-  }, queryWithAggregations);
-
-  return orderBys.reduce((query, orderBy) => {
-    const orderByColumn = columnFinder(query, Lib.orderableColumns(query, -1))(
-      orderBy.tableName,
-      orderBy.columnName,
-    );
-    return Lib.orderBy(query, -1, orderByColumn, orderBy.direction);
-  }, queryWithBreakouts);
 }
 
 export const queryDrillThru = (
