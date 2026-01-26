@@ -4,18 +4,18 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.self :as self]
+   [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- chan->seq
-  "Convert channel to seq by reading all values until closed."
-  [ch]
-  (loop [acc []]
-    (if-let [val (a/<!! ch)]
-      (recur (conj acc val))
-      acc)))
+(defn- accumulating-rf
+  "A reducing function that accumulates parts into a vector.
+  Used for testing run-agent-loop."
+  ([] [])
+  ([acc] acc)
+  ([acc part] (conj acc part)))
 
 (defn- parts->claude-raw
   "Convert simple test parts to Claude raw SSE format.
@@ -119,21 +119,20 @@
     (with-redefs [self/claude-raw (fn [_]
                                     (mock-llm-response
                                      [{:type :text :text "Hello"}]))]
-      (let [messages [{:role :user :content "Hi"}]
-            state {}
+      (let [messages   [{:role :user :content "Hi"}]
+            state      {}
             profile-id :embedding_next
-            context {}
-            response-chan (agent/run-agent-loop
-                           {:messages messages
-                            :state state
-                            :profile-id profile-id
-                            :context context})
-            result (chan->seq response-chan)]
-        ;; Should get parts + state + finish
+            context    {}
+            result     (agent/run-agent-loop
+                        {:messages   messages
+                         :state      state
+                         :profile-id profile-id
+                         :context    context}
+                        accumulating-rf)]
+        ;; Should get parts + state data
+        ;; Note: :finish is not emitted as a part; it's handled by aisdk-line-xf completion
         (is (pos? (count result)))
-        ;; Should have finish message
-        (is (some #(= :finish (:type %)) result))
-        ;; Should have state data
+        ;; Should have state data (final part)
         (is (some #(= :data (:type %)) result)))))
 
   (testing "runs agent loop with tool execution"
@@ -143,41 +142,43 @@
                                       (let [n (swap! call-count inc)]
                                         (if (= 1 n)
                                           (mock-llm-response
-                                           [{:type :tool-input
-                                             :id "t1"
-                                             :function "search"
+                                           [{:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
                                              :arguments {:query "test"}}])
                                           (mock-llm-response
                                            [{:type :text :text "Found results"}]))))]
-        (let [messages [{:role :user :content "Search for test"}]
-              state {}
+        (let [messages   [{:role :user :content "Search for test"}]
+              state      {}
               profile-id :embedding_next
-              context {}
-              response-chan (agent/run-agent-loop
-                             {:messages messages
-                              :state state
-                              :profile-id profile-id
-                              :context context})
-              result (chan->seq response-chan)]
+              context    {}
+              result     (agent/run-agent-loop
+                          {:messages   messages
+                           :state      state
+                           :profile-id profile-id
+                           :context    context}
+                          accumulating-rf)]
           ;; Should complete successfully
           (is (pos? (count result)))
-          (is (some #(= :finish (:type %)) result))
+          ;; Should have state data (final part)
+          (is (some #(= :data (:type %)) result))
           ;; Should have tool-related parts
           (is (some #(= :tool-input (:type %)) result))))))
 
   (testing "handles errors gracefully"
     (with-redefs [self/claude-raw (fn [_]
                                     (throw (ex-info "Mock error" {})))]
-      (let [messages [{:role :user :content "Hi"}]
-            state {}
+      (let [messages   [{:role :user :content "Hi"}]
+            state      {}
             profile-id :embedding_next
-            context {}
-            response-chan (agent/run-agent-loop
-                           {:messages messages
-                            :state state
-                            :profile-id profile-id
-                            :context context})
-            result (chan->seq response-chan)]
+            context    {}
+            result     (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
+                         (agent/run-agent-loop
+                          {:messages   messages
+                           :state      state
+                           :profile-id profile-id
+                           :context    context}
+                          accumulating-rf))]
         ;; Should get error message
         (is (some #(= :error (:type %)) result))))))
 
@@ -219,41 +220,33 @@
           seeded (#'agent/seed-state-from-context state context)]
       (is (empty? (get seeded :queries))))))
 
-(deftest stream-parts-to-output-test
-  (testing "streams parts to output channel"
-    (let [out-chan (a/chan 10)
-          parts [{:type :text :text "hello"}
+(deftest stream-parts-test
+  (testing "streams parts through reducing function"
+    (let [parts [{:type :text :text "hello"}
                  {:type :usage :tokens 100}]
-          memory {:state {:queries {} :charts {}}}]
-      ;; Wait for the go block to complete
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (is (= parts (chan->seq out-chan)))))
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)]
+      (is (= parts result))))
 
   (testing "resolves metabase:// links in text parts"
-    (let [out-chan (a/chan 10)
-          query-id "test-query-123"
+    (let [query-id "test-query-123"
           query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :text :text "Check out [Results](metabase://query/test-query-123)"}]
-          memory {:state {:queries {query-id query} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            text (-> result first :text)]
-        ;; Link should be resolved to /question#...
-        (is (re-find #"\[Results\]\(/question#" text))))))
+          memory {:state {:queries {query-id query} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          text (-> result first :text)]
+      ;; Link should be resolved to /question#...
+      (is (re-find #"\[Results\]\(/question#" text)))))
 
 (deftest finalize-stream-test
-  (testing "finalizes stream with state and finish"
-    (let [out-chan (a/chan 10)
-          memory {:state {:queries {} :charts {}}}]
-      ;; Wait for the go block to complete
-      (a/<!! (#'agent/finalize-stream! out-chan memory "stop"))
-      (let [result (chan->seq out-chan)]
-        (is (= 2 (count result)))
-        (is (= :data (:type (first result))))
-        (is (= :finish (:type (second result))))
-        (is (= "stop" (:finish-reason (second result))))))))
+  (testing "finalizes stream with state data part"
+    ;; Note: finalize-stream! now only emits the state data part and calls completion.
+    ;; The :finish line is emitted by aisdk-line-xf's completion arity, not as a part.
+    (let [memory {:state {:queries {} :charts {}}}
+          result (#'agent/finalize-stream! accumulating-rf [] memory "stop")]
+      (is (= 1 (count result)))
+      (is (= :data (:type (first result))))
+      (is (= "state" (:data-type (first result)))))))
 
 (deftest integration-run-agent-loop-test
   (testing "runs full agent loop without external calls"
@@ -262,19 +255,17 @@
                                      [{:type :text :text "Test response"}
                                       {:type :usage :tokens {:prompt 10 :completion 5}}]))]
       (let [messages [{:role :user :content "Hello"}]
-            response-chan (agent/run-agent-loop
-                           {:messages messages
-                            :state {}
-                            :profile-id :embedding_next
-                            :context {}})
-            result (chan->seq response-chan)]
+            result (agent/run-agent-loop
+                    {:messages   messages
+                     :state      {}
+                     :profile-id :embedding_next
+                     :context    {}}
+                    accumulating-rf)]
         ;; Verify basic structure
         (is (pos? (count result)))
         ;; Should have text part
         (is (some #(= :text (:type %)) result))
-        ;; Should have finish
-        (is (some #(= :finish (:type %)) result))
-        ;; Should have state
+        ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
         (is (some #(and (= :data (:type %))
                         (map? (:data %)))
                   result))))))
@@ -349,169 +340,216 @@
 
 (deftest stream-parts-link-resolution-test
   (testing "resolves query links in streamed text"
-    (let [out-chan (a/chan 10)
-          query-id "stream-test-query"
+    (let [query-id "stream-test-query"
           query {:database 1 :type :query :query {:source-table 1}}
           text-with-link (str "Check [Results](metabase://query/" query-id ")")
           parts [{:type :text :text text-with-link}]
-          memory {:state {:queries {query-id query} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            output-text (-> result first :text)]
-        ;; metabase:// should be replaced with /question#
-        (is (not (re-find #"metabase://" output-text)))
-        (is (re-find #"/question#" output-text)))))
+          memory {:state {:queries {query-id query} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          output-text (-> result first :text)]
+      ;; metabase:// should be replaced with /question#
+      (is (not (re-find #"metabase://" output-text)))
+      (is (re-find #"/question#" output-text))))
 
   (testing "resolves links split across text parts"
-    (let [out-chan (a/chan 10)
-          query-id "split-query"
+    (let [query-id "split-query"
           query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :text :text "Check [Results](metabase://query/"}
                  {:type :text :text (str query-id ") now")}]
-          memory {:state {:queries {query-id query} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            output-text (->> result
-                             (filter #(= :text (:type %)))
-                             (map :text)
-                             (apply str))]
-        (is (not (re-find #"metabase://" output-text)))
-        (is (re-find #"\[Results\]\(/question#" output-text))))))
+          memory {:state {:queries {query-id query} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          output-text (->> result
+                           (filter #(= :text (:type %)))
+                           (map :text)
+                           (apply str))]
+      (is (not (re-find #"metabase://" output-text)))
+      (is (re-find #"\[Results\]\(/question#" output-text))))
 
-(testing "resolves chart links using chart state"
-  (let [out-chan (a/chan 10)
-        query-id "q-for-chart"
-        chart-id "c-test-chart"
-        query {:database 1 :type :query :query {:source-table 1}}
-        text-with-link (str "See [My Chart](metabase://chart/" chart-id ")")
-        parts [{:type :text :text text-with-link}]
-        memory {:state {:queries {query-id query}
-                        :charts {chart-id {:query-id query-id :chart-type :bar}}}}]
-    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-    (a/close! out-chan)
-    (let [result (chan->seq out-chan)
+  (testing "resolves chart links using chart state"
+    (let [query-id "q-for-chart"
+          chart-id "c-test-chart"
+          query {:database 1 :type :query :query {:source-table 1}}
+          text-with-link (str "See [My Chart](metabase://chart/" chart-id ")")
+          parts [{:type :text :text text-with-link}]
+          memory {:state {:queries {query-id query}
+                          :charts {chart-id {:query-id query-id :chart-type :bar}}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
           output-text (-> result first :text)]
-        ;; Chart link should be resolved to /question#
+      ;; Chart link should be resolved to /question#
       (is (not (re-find #"metabase://chart" output-text)))
-      (is (re-find #"/question#" output-text)))))
+      (is (re-find #"/question#" output-text))))
 
-(testing "resolves model/metric/dashboard links without state"
-  (let [out-chan (a/chan 10)
-        text-with-links "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
-        parts [{:type :text :text text-with-links}]
-        memory {:state {:queries {} :charts {}}}]
-    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-    (a/close! out-chan)
-    (let [result (chan->seq out-chan)
+  (testing "resolves model/metric/dashboard links without state"
+    (let [text-with-links "[Model](metabase://model/123) and [Metric](metabase://metric/456)"
+          parts [{:type :text :text text-with-links}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
           output-text (-> result first :text)]
       (is (re-find #"\[Model\]\(/model/123\)" output-text))
-      (is (re-find #"\[Metric\]\(/metric/456\)" output-text)))))
+      (is (re-find #"\[Metric\]\(/metric/456\)" output-text))))
 
-(testing "falls back to link text when unresolvable"
-  (let [out-chan (a/chan 10)
-          ;; Reference a query that doesn't exist in state
-        text-with-link "See [Missing](metabase://query/nonexistent)"
-        parts [{:type :text :text text-with-link}]
-        memory {:state {:queries {} :charts {}}}]
-    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-    (a/close! out-chan)
-    (let [result (chan->seq out-chan)
+  (testing "falls back to link text when unresolvable"
+    (let [;; Reference a query that doesn't exist in state
+          text-with-link "See [Missing](metabase://query/nonexistent)"
+          parts [{:type :text :text text-with-link}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
           output-text (-> result first :text)]
-        ;; Link should fall back to just the link text when resolution fails
-      (is (= "See Missing" output-text)))))
+      ;; Link should fall back to just the link text when resolution fails
+      (is (= "See Missing" output-text))))
 
-(testing "handles text parts with nil text gracefully"
-  (let [out-chan (a/chan 10)
-        parts [{:type :text :text nil}]
-        memory {:state {:queries {} :charts {}}}]
-    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-    (a/close! out-chan)
-    (let [result (chan->seq out-chan)]
+  (testing "handles text parts with nil text gracefully"
+    (let [parts [{:type :text :text nil}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)]
       (is (= 1 (count result)))
-      (is (nil? (-> result first :text))))))
+      ;; nil text becomes empty string after processing through markdown buffer
+      (is (= "" (-> result first :text)))))
 
-(testing "streams non-text parts unchanged"
-  (let [out-chan (a/chan 10)
-        tool-part {:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}
-        parts [tool-part]
-        memory {:state {:queries {} :charts {}}}]
-    (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-    (a/close! out-chan)
-    (let [result (chan->seq out-chan)]
+  (testing "streams non-text parts unchanged"
+    (let [tool-part {:type :tool-input :id "t1" :function "search" :arguments {:query "test"}}
+          parts [tool-part]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)]
       (is (= [tool-part] result)))))
 
 ;;; Reaction extraction and streaming tests
-
-(deftest extract-reactions-from-parts-test
-  (testing "extracts reactions from tool-output parts"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :function "show_results_to_user"
-                  :result {:output "Results shown"
-                           :reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
-          reactions (#'agent/extract-reactions-from-parts parts)]
-      (is (= 1 (count reactions)))
-      (is (= :metabot.reaction/redirect (:type (first reactions))))
-      (is (= "/question#abc" (:url (first reactions))))))
-
-  (testing "extracts reactions from multiple tool outputs"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :function "query_model"
-                  :result {:structured-output {:query-id "q1"}
-                           :reactions [{:type :metabot.reaction/redirect :url "/question#q1"}]}}
-                 {:type :tool-output
-                  :id "t2"
-                  :function "create_chart"
-                  :result {:structured-output {:chart-id "c1"}
-                           :reactions [{:type :metabot.reaction/redirect :url "/question#c1"}]}}]
-          reactions (#'agent/extract-reactions-from-parts parts)]
-      (is (= 2 (count reactions)))))
-
-  (testing "ignores non-tool-output parts"
-    (let [parts [{:type :text :text "hello"}
-                 {:type :tool-input :id "t1" :function "search"}]
-          reactions (#'agent/extract-reactions-from-parts parts)]
-      (is (empty? reactions))))
-
-  (testing "handles parts without reactions"
-    (let [parts [{:type :tool-output
-                  :id "t1"
-                  :function "search"
-                  :result {:output "No results"}}]
-          reactions (#'agent/extract-reactions-from-parts parts)]
-      (is (empty? reactions)))))
+;; Note: extract-reactions-from-parts was refactored into streaming/expand-reactions-xf transducer
+;; The streaming behavior is tested via stream-parts! which uses post-process-xf
 
 (deftest stream-reactions-as-data-parts-test
   (testing "streams redirect reactions as navigate_to data parts"
-    (let [out-chan (a/chan 10)
-          parts [{:type :tool-output
+    (let [parts [{:type :tool-output
                   :id "t1"
                   :function "show_results_to_user"
                   :result {:output "Results shown"
                            :reactions [{:type :metabot.reaction/redirect :url "/question#abc123"}]}}]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            data-parts (filter #(= :data (:type %)) result)]
-        ;; Should have the tool-output part AND a data part for navigation
-        (is (some #(= :tool-output (:type %)) result))
-        (is (= 1 (count data-parts)))
-        (is (= "navigate_to" (:data-type (first data-parts))))
-        (is (= "/question#abc123" (:data (first data-parts)))))))
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      ;; Should have the tool-output part AND a data part for navigation
+      (is (some #(= :tool-output (:type %)) result))
+      (is (= 1 (count data-parts)))
+      (is (= "navigate_to" (:data-type (first data-parts))))
+      (is (= "/question#abc123" (:data (first data-parts))))))
 
   (testing "does not emit data parts when no reactions"
-    (let [out-chan (a/chan 10)
-          parts [{:type :tool-output
+    (let [parts [{:type :tool-output
                   :id "t1"
                   :function "search"
                   :result {:output "results"}}]
-          memory {:state {:queries {} :charts {}}}]
-      (a/<!! (#'agent/stream-parts-to-output! out-chan parts memory))
-      (a/close! out-chan)
-      (let [result (chan->seq out-chan)
-            data-parts (filter #(= :data (:type %)) result)]
-        (is (empty? data-parts))))))
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      (is (empty? data-parts)))))
+
+;;; Tool data-parts extraction and streaming tests
+
+(deftest stream-tool-data-parts-test
+  (testing "streams data-parts from tool results"
+    (let [todo-items [{:id "todo-1" :content "Fix bug" :status "pending"}
+                      {:id "todo-2" :content "Write tests" :status "done"}]
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "manage_todos"
+                  :result {:output "Updated todos"
+                           :data-parts [{:type :data
+                                         :data-type "todo_list"
+                                         :version 1
+                                         :data todo-items}]}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      ;; Should have the tool-output part AND a data part for todos
+      (is (some #(= :tool-output (:type %)) result))
+      (is (= 1 (count data-parts)))
+      (is (= "todo_list" (:data-type (first data-parts))))
+      (is (= todo-items (:data (first data-parts))))))
+
+  (testing "streams transform_suggestion data-parts"
+    (let [suggestion {:name "Monthly Revenue"
+                      :description "Aggregate revenue by month"
+                      :transform {:aggregation [[:sum [:field 1 nil]]]}}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "suggest_transform"
+                  :result {:output "Here's a suggested transform"
+                           :data-parts [{:type :data
+                                         :data-type "transform_suggestion"
+                                         :version 1
+                                         :data suggestion}]}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      (is (= 1 (count data-parts)))
+      (is (= "transform_suggestion" (:data-type (first data-parts))))
+      (is (= suggestion (:data (first data-parts))))))
+
+  (testing "streams multiple data-parts from single tool result"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "complex_tool"
+                  :result {:output "Done"
+                           :data-parts [{:type :data
+                                         :data-type "todo_list"
+                                         :version 1
+                                         :data [{:id "1" :content "Task 1"}]}
+                                        {:type :data
+                                         :data-type "code_edit"
+                                         :version 1
+                                         :data {:file "test.sql" :changes []}}]}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      (is (= 2 (count data-parts)))
+      (is (= #{"todo_list" "code_edit"} (set (map :data-type data-parts))))))
+
+  (testing "streams data-parts from multiple tool outputs"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "tool_a"
+                  :result {:output "A done"
+                           :data-parts [{:type :data
+                                         :data-type "todo_list"
+                                         :version 1
+                                         :data [{:id "a1"}]}]}}
+                 {:type :tool-output
+                  :id "t2"
+                  :function "tool_b"
+                  :result {:output "B done"
+                           :data-parts [{:type :data
+                                         :data-type "todo_list"
+                                         :version 1
+                                         :data [{:id "b1"}]}]}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      (is (= 2 (count data-parts)))))
+
+  (testing "streams both reactions and data-parts from same tool"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "show_and_track"
+                  :result {:output "Showing results"
+                           :reactions [{:type :metabot.reaction/redirect :url "/question#xyz"}]
+                           :data-parts [{:type :data
+                                         :data-type "todo_list"
+                                         :version 1
+                                         :data [{:id "task-1"}]}]}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      ;; Should have both navigate_to and todo_list data parts
+      (is (= 2 (count data-parts)))
+      (is (some #(= "navigate_to" (:data-type %)) data-parts))
+      (is (some #(= "todo_list" (:data-type %)) data-parts))))
+
+  (testing "does not emit data-parts when tool result has none"
+    (let [parts [{:type :tool-output
+                  :id "t1"
+                  :function "simple_tool"
+                  :result {:output "Just text, no data parts"}}]
+          memory {:state {:queries {} :charts {}}}
+          result (#'agent/stream-parts! accumulating-rf [] parts memory)
+          data-parts (filter #(= :data (:type %)) result)]
+      (is (empty? data-parts)))))
