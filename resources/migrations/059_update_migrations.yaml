@@ -780,14 +780,6 @@ databaseChangeLog:
             path: instance_analytics_views/tasks/v2/h2-tasks.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v59.2026-01-21T12:00:00
-      author: rileythompson
-      comment: Update ClickHouse table schemas to match driver describe-database output
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.UpdateClickHouseTableSchemas"
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
