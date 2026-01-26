@@ -60,6 +60,10 @@
   (let [{:keys [id label]} (-> tt serdes/path last)]
     ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))
 
+(defmethod serdes/extract-query "TransformTag" [_model _opts]
+  ;; Exclude built-in tags (hourly/daily/weekly/monthly) from serialization.
+  (t2/reducible-select :model/TransformTag {:where [:= :built_in_type nil]}))
+
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-create {:object tag})

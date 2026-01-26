@@ -299,6 +299,43 @@
             (is (= 0 (search-result-count "dashboard" "urquan")))
             (is (= 1 (search-result-count "dataset" "frobinate")))))))))
 
+(deftest import-resolves-built-in-tags-locally-test
+  (testing "Built-in TransformTags are not exported but resolved from local DB on import"
+    (mt/with-premium-features #{:serialization :transforms}
+      ;; Create export with TransformJob that references built-in tag
+      (mt/with-temp [:model/Collection coll  {:namespace :transforms}
+                     :model/Transform  _ {:collection_id (:id coll)}
+                     :model/TransformJob job {:schedule     "0 0 * * *"}]
+        ;; Get built-in hourly tag (created by migration v57)
+        (let [hourly-tag (t2/select-one :model/TransformTag :built_in_type "hourly")]
+          ;; Tag the job with built-in tag
+          (t2/insert! :model/TransformJobTransformTag {:job_id (:id job)
+                                                       :position 0
+                                                       :tag_id (:id hourly-tag)})
+
+          ;; Export the collection (includes Transform and TransformJob, but not built-in tags)
+          (let [ba (do-export (:id coll))]
+            ;; Import into fresh database
+            (mt/with-empty-h2-app-db!
+              ;; Built-in tags will exist from migrations in fresh DB
+              (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                              {:file ba})]
+
+                (testing "Built-in tag was NOT in export"
+                  (is (not (str/includes? (slurp (io/input-stream res)) "TransformTag"))))
+
+                (testing "TransformJob was imported successfully"
+                  (is (t2/exists? :model/TransformJob :entity_id (:entity_id job))))
+
+                (testing "TransformJob still has built-in tag (resolved from local DB)"
+                  (let [imported-job (t2/select-one :model/TransformJob :entity_id (:entity_id job))
+                        job-tags     (t2/select :model/TransformJobTransformTag :job_id (:id imported-job))
+                        tag-ids      (set (map :tag_id job-tags))
+                        local-hourly (t2/select-one :model/TransformTag :built_in_type "hourly")]
+                    (is (= 1 (count job-tags)) "Job should have exactly one tag")
+                    (is (contains? tag-ids (:id local-hourly)) "Job should have local built-in hourly tag")))))))))))
+
 (deftest import-collection-reference-error-test
   (testing "Import fails with 500 when collection reference is invalid"
     (with-serialization-test-data! [coll _dash card]

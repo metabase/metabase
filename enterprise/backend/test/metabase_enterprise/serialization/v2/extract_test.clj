@@ -1553,7 +1553,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
@@ -2238,7 +2238,7 @@
                            {:name "hourly" :built_in_type "hourly"}
 
                            :model/TransformTag
-                           {daily-tag-eid :entity_id}
+                           {}
                            {:name "daily" :built_in_type "daily"}
 
                            ;; Create custom tag
@@ -2269,8 +2269,8 @@
               (is (not (contains? ser :id)))
               (is (empty? (serdes/dependencies ser)))))
 
-          (testing "all transform tags are extracted"
-            (is (= #{hourly-tag-eid daily-tag-eid custom-tag-eid}
+          (testing "only custom transform tags are extracted (built-in tags excluded)"
+            (is (= #{custom-tag-eid}
                    (ids-by-model "TransformTag" (extract/extract {}))))))))))
 
 (deftest transform-extraction-test
