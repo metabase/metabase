@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.settings] ; for setting definitions
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
@@ -335,18 +336,20 @@
 
 (deftest get-metric-field-values-test
   (with-agent-api-setup!
+    (ensure-fresh-field-values! (mt/id :orders :quantity))
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
                                        :dataset_query (mt/mbql-query orders
                                                         {:aggregation [[:count]]})}]
-      (testing "Returns field statistics for a metric's queryable dimension"
-        ;; Get the metric details to find a valid field_id
+      (testing "Returns field statistics for a field that has statistics"
         (let [metric-details (client/client :get 200 (str "agent/v1/metric/" (:id metric))
                                             {:request-options {:headers (auth-headers)}})
-              field-id       (-> metric-details :queryable_dimensions first :field_id)]
-          (when field-id
-            (is (=? {:statistics map?}
+              quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
+          (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
+          (when-let [field-id (:field_id quantity-field)]
+            (is (=? {:statistics map?
+                     :values     sequential?}
                     (client/client :get 200 (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)
                                    {:request-options {:headers (auth-headers)}}))))))
 
