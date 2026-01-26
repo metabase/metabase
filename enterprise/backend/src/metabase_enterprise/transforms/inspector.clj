@@ -504,9 +504,4 @@
                :name (str "Transform Inspector: " (:name transform))
                :description (tru "Analysis of transform inputs, outputs, and joins")
                :joins (when (seq joins)
-                        (mapv (fn [join]
-                                (cond-> {:strategy (:strategy join)
-                                         :alias (:alias join)
-                                         :source-table (:source-table join)}
-                                  (:stats join) (assoc :stats (:stats join))))
-                              joins)))))))
+                        (mapv #(select-keys % [:strategy :alias :source-table :stats]) joins)))))))
