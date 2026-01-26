@@ -20,6 +20,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
@@ -38,6 +39,7 @@ import { useListTransformsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
@@ -91,6 +93,7 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -307,7 +310,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <CreateTransformMenu />
+          {!isRemoteSyncReadOnly && <CreateTransformMenu />}
         </Flex>
 
         <Card withBorder p={0}>

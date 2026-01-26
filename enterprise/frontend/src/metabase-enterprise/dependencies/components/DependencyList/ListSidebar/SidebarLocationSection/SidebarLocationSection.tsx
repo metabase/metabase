@@ -22,7 +22,10 @@ export function SidebarLocationSection({ node }: SidebarLocationSectionProps) {
 
   return (
     <div role="region" aria-label={t`Location`}>
-      <Breadcrumbs lh="1rem">
+      <Breadcrumbs
+        lh="1rem"
+        separator={<FixedSizeIcon name="chevronright" size={12} />}
+      >
         {locationInfo.links.map((link, linkIndex) => (
           <Anchor
             key={linkIndex}

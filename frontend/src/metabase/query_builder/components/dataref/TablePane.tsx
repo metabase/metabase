@@ -8,8 +8,8 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
+import { ConnectedTableList } from "metabase/query_builder/components/dataref/ConnectedTableList";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { ConcreteTableId } from "metabase-types/api";
 
@@ -23,7 +23,7 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
-import TableInfoLoader from "./TableInfoLoader";
+import { TableInfoLoader } from "./TableInfoLoader";
 
 type TableItem = {
   id: ConcreteTableId;

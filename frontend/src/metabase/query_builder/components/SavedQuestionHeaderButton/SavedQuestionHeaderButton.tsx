@@ -13,7 +13,7 @@ interface SavedQuestionHeaderButtonProps {
   onSave: (name: string) => void;
 }
 
-function SavedQuestionHeaderButton({
+export function SavedQuestionHeaderButton({
   question,
   onSave,
 }: SavedQuestionHeaderButtonProps) {
@@ -47,5 +47,3 @@ function SavedQuestionHeaderButton({
     </Flex>
   );
 }
-
-export { SavedQuestionHeaderButton };

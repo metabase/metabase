@@ -6,6 +6,7 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -62,6 +63,10 @@ export function TransformEditor({
     [databases, isEditMode],
   );
 
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditDefinitionButton =
+    !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
+
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
       ...source,
@@ -84,9 +89,7 @@ export function TransformEditor({
       onRejectProposed={onRejectProposed}
       onBlur={onBlur}
       topBarInnerContent={
-        !readOnly &&
-        !isEditMode &&
-        !!transformId && (
+        showEditDefinitionButton && (
           <EditDefinitionButton
             bg="transparent"
             fz="sm"

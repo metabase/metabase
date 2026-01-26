@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Stack } from "metabase/ui";
@@ -13,6 +14,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { trackTransformTriggerManualRun } from "../../../analytics";
@@ -29,6 +31,8 @@ type RunSectionProps = {
 };
 
 export function RunSection({ transform, readOnly }: RunSectionProps) {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
   return (
     <TitleSection
       label={t`Run this transform`}
@@ -47,7 +51,10 @@ export function RunSection({ transform, readOnly }: RunSectionProps) {
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
-        <TagSection transform={transform} readOnly={readOnly} />
+        <TagSection
+          transform={transform}
+          readOnly={readOnly || isRemoteSyncReadOnly}
+        />
       </Group>
     </TitleSection>
   );
@@ -196,9 +203,9 @@ function TagSection({ transform, readOnly }: TagSectionProps) {
   return (
     <Box flex={1}>
       <TagMultiSelect
-        tagIds={transform.tag_ids ?? []}
         onChange={handleTagListChange}
-        disabled={readOnly}
+        readOnly={readOnly}
+        tagIds={transform.tag_ids ?? []}
       />
     </Box>
   );

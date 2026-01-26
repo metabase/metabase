@@ -15,13 +15,13 @@ import { MoveTransformModal } from "./MoveTransformModal";
 import type { TransformMoreMenuModalType } from "./types";
 
 type TransformMoreMenuProps = {
-  transform: Transform;
   readOnly?: boolean;
+  transform: Transform;
 };
 
 export function TransformMoreMenu({
-  transform,
   readOnly,
+  transform,
 }: TransformMoreMenuProps) {
   const [modalType, setModalType] = useState<TransformMoreMenuModalType>();
   const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(false);

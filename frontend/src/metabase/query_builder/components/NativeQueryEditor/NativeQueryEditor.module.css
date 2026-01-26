@@ -1,10 +1,14 @@
 .queryEditor {
-  width: 100%;
   background-color: var(--mb-color-background-secondary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .editorWrapper {
+  overflow: auto;
   width: 100%;
+  height: 100%;
 }
 
 .resizableArea {
@@ -14,8 +18,16 @@
   flex-direction: column;
 }
 
+.resizableBoxContent {
+  overflow: hidden;
+}
+
 .actionButtons {
   /* min-height of the top bar, it's needed for vertical alignment when there
   are several template tags */
   height: 3rem;
+}
+
+.readOnlyEditor {
+  overflow: auto;
 }

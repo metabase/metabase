@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -33,8 +32,10 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
+  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql PreparedStatement)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
@@ -433,11 +434,15 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
+;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
   (try
-    (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
+    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
+    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
+    ;;         adding at least default :non-resserved-words.
+    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
       (cond
         (not (instance? PlainSelect parsed))
         {:is_simple false

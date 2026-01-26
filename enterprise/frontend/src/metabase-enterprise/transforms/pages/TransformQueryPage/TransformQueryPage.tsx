@@ -8,7 +8,7 @@ import { skipToken } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -22,6 +22,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Database, Transform } from "metabase-types/api";
 
@@ -99,6 +100,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -145,6 +147,13 @@ function TransformQueryPageBody({
       setSourceAndRejectProposed(transform.source);
     }
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
+
+  useEffect(() => {
+    if (isEditMode && isRemoteSyncReadOnly) {
+      // If remote sync is set up to read-only mode, user can't edit transforms
+      dispatch(push(Urls.transform(transform.id)));
+    }
+  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
 
   const handleSave = async () => {
     if (!isCompleteSource(source)) {
@@ -210,8 +219,8 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isEditMode={isEditMode}
               readOnly={readOnly}
+              isEditMode={isEditMode}
               transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
