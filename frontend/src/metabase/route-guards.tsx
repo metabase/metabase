@@ -27,7 +27,7 @@ const getRedirectUrl = () => {
 };
 
 const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
-  // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,
@@ -141,7 +141,7 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
   ({ children }) => children,
 );
 
-// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/utils.ts
+// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/selectors.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
     UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),

@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { clickableTokens } from "metabase/common/components/CodeMirror";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { PythonEditor } from "../../PythonEditor";
 
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
+import { createPythonImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
@@ -46,6 +52,33 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const editorHeight = useInitialEditorHeight(isEditMode);
+  const dispatch = useDispatch();
+
+  const navigateToCommonLibrary = useCallback(
+    (e: MouseEvent) => {
+      const openInNewTab = e.metaKey || e.ctrlKey || e.button === 1;
+      const href = Urls.transformPythonLibrary({
+        path: SHARED_LIB_IMPORT_PATH,
+      });
+      if (openInNewTab) {
+        window.open(href, "_blank", "noopener,noreferrer");
+      } else {
+        dispatch(push(href));
+      }
+    },
+    [dispatch],
+  );
+
+  const clickableTokensExtension = useMemo(
+    () =>
+      clickableTokens([
+        {
+          tokenLocator: createPythonImportTokenLocator("common"),
+          onClick: (e) => navigateToCommonLibrary(e),
+        },
+      ]),
+    [navigateToCommonLibrary],
+  );
 
   return (
     <ResizableBox
@@ -64,6 +97,7 @@ export function PythonEditorBody({
           onChange={onChange}
           withPandasCompletions
           readOnly={!isEditMode}
+          extensions={[clickableTokensExtension]}
           data-testid="python-editor"
         />
 

@@ -60,7 +60,7 @@ type Props = {
 
 const TOOLTIP_DELAY = 700;
 
-function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
+export function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isHovering = useHoverDirty(rootRef);
   const resultMetadata = dataset.getResultMetadata();
@@ -98,6 +98,3 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatasetMetadataStrengthIndicator;

@@ -33,9 +33,9 @@ import LeafletChoropleth from "./LeafletChoropleth";
 import LegacyChoropleth from "./LegacyChoropleth";
 
 // TODO COLOR
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 const HEAT_MAP_ZERO_COLOR = "#CCC";
 
 export function getColorplethColorScale(

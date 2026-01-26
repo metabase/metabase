@@ -12,7 +12,11 @@ export type RemoteSyncEntityModel =
   | "snippet"
   | "table"
   | "field"
-  | "segment";
+  | "segment"
+  | "measure"
+  | "transform"
+  | "transformtag"
+  | "transformjob";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -79,6 +83,7 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
+  | "remote-sync-transforms"
 > & {
   collections?: CollectionSyncPreferences;
 };

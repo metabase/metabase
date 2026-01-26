@@ -1,5 +1,6 @@
 import { memo } from "react";
 
+import CS from "metabase/css/core/text.module.css";
 import { Box, Group, Stack } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
@@ -10,13 +11,13 @@ import {
   getNodeLink,
   getNodeLocationInfo,
   getNodeViewCount,
+  getNodeViewCountLabel,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
-import { getNodeViewCountLabel } from "./utils";
 
 type PanelBodyProps = {
   nodes: DependencyNode[];
@@ -60,7 +61,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
           url={getGraphUrl(node)}
         />
         {viewCount != null ? (
-          <Box c="text-secondary" fz="sm" lh="1rem">
+          <Box className={CS.textNoWrap} c="text-secondary" fz="sm" lh="1rem">
             {getNodeViewCountLabel(viewCount)}
           </Box>
         ) : link != null ? (

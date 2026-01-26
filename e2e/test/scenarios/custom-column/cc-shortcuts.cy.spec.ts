@@ -14,11 +14,11 @@ function selectCombineColumns() {
 
 function selectColumn(index: number, table: string, name?: string) {
   H.expressionEditorWidget().within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("column-input").eq(index).click();
   });
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -157,7 +157,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
 
     H.expressionEditorWidget().button("Done").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("notebook-cell-item").last().click();
     selectExtractColumn();
 
@@ -302,7 +302,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       "123.45678901234567 123.45678901234567 email@example.com",
     );
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByLabelText("Remove column").last().click();
 
     cy.findByTestId("combine-example").should(

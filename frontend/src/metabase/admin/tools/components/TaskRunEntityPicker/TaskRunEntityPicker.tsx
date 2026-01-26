@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useListTaskRunEntitiesQuery } from "metabase/api";
 import { Loader, Select, type SelectProps, Tooltip } from "metabase/ui";
-import type { TaskRunType } from "metabase-types/api";
+import type { TaskRunDateFilterOption, TaskRunType } from "metabase-types/api";
 
 import type { EntityValue } from "./types";
 import {
@@ -17,18 +17,26 @@ type TaskRunEntityPickerProps = Omit<
   "data" | "value" | "onChange"
 > & {
   runType: TaskRunType | null;
+  startedAt: TaskRunDateFilterOption | null;
   value: EntityValue | null;
   onChange: (value: EntityValue | null) => void;
 };
 
 export const TaskRunEntityPicker = ({
   runType,
+  startedAt,
   value,
   onChange,
   ...props
 }: TaskRunEntityPickerProps) => {
+  const hasAllRequiredParams = runType && startedAt;
   const { data: entities, isLoading } = useListTaskRunEntitiesQuery(
-    runType ? { "run-type": runType } : skipToken,
+    hasAllRequiredParams
+      ? {
+          "run-type": runType,
+          "started-at": startedAt,
+        }
+      : skipToken,
   );
 
   const data = useMemo(
@@ -47,7 +55,8 @@ export const TaskRunEntityPicker = ({
     onChange(parsed);
   };
 
-  const isDisabled = isLoading || !runType || (!isLoading && data.length === 0);
+  const isDisabled =
+    isLoading || !hasAllRequiredParams || (!isLoading && data.length === 0);
 
   const select = (
     <Select
@@ -75,6 +84,10 @@ export const TaskRunEntityPicker = ({
 
   if (!runType) {
     return <Tooltip label={t`Select a run type first`}>{select}</Tooltip>;
+  }
+
+  if (!startedAt) {
+    return <Tooltip label={t`Select a start time first`}>{select}</Tooltip>;
   }
 
   if (!isLoading && data.length === 0) {

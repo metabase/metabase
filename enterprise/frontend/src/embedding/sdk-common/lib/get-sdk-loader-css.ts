@@ -7,7 +7,7 @@ export type SdkLoaderData = {
 export const getSdkLoaderCss = ({
   className,
   size = "1.5rem",
-  // eslint-disable-next-line no-color-literals
+  // eslint-disable-next-line metabase/no-color-literals
   color = "#509EE3",
 }: SdkLoaderData) => `
   @keyframes ${className}-animation {

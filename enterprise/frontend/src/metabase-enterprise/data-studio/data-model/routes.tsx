@@ -51,8 +51,10 @@ export function getDataStudioMetadataRoutes() {
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
-        component={DataModelNewMeasurePage}
-      />
+        component={IsAdmin}
+      >
+        <IndexRoute component={DataModelNewMeasurePage} />
+      </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
         component={DataModelMeasureDetailPage}
