@@ -124,12 +124,15 @@
   "Returns true if the database is MySQL (not MariaDB).
    Returns true for unsynced databases (unknown flavor)."
   [db]
-  (= "MySQL" (-> db :dbms_version :flavor)))
+  (= "MySQL"
+     (if-let [conn (:connection db)]
+       (->> ^java.sql.Connection conn .getMetaData .getDatabaseProductName)
+       (-> db :dbms_version :flavor))))
 
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
-  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+  (->>  conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
 (defn- partial-revokes-enabled?
   [driver db]
@@ -153,11 +156,11 @@
   [driver _feat db]
   (and (= driver :mysql)
        (mysql? db)
-       (not (try
-              (partial-revokes-enabled? driver db)
-              (catch Exception e
-                (log/warn e "Failed to check table writable")
-                false)))))
+       #p (not (try
+                 (partial-revokes-enabled? driver db)
+                 (catch Exception e
+                   (log/warn e "Failed to check table writable")
+                   false)))))
 
 (defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
   [driver _feat db]
@@ -953,7 +956,7 @@
   (:value
    (first
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
-                ["show global variables like ?" var-name]))))
+      ["show global variables like ?" var-name]))))
 
 (defmethod driver/insert-into! :mysql
   [driver db-id ^String table-name column-names values]
