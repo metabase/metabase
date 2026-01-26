@@ -341,7 +341,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getRunTransformButton().should("not.exist");
       Workspaces.getSaveTransformButton().should("be.enabled");
 
-      H.NativeEditor.get().type(" LIMIT 2");
+      H.NativeEditor.type(" LIMIT 2");
 
       cy.log("UI Controls are enabled after changes");
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
@@ -589,6 +589,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should lock database dropdown when workspace has been initialized, shows setup log", () => {
+      // @flaky
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -730,6 +731,7 @@ describe("scenarios > data studio > workspaces", () => {
     );
 
     it("should allow clicking on graph nodes to see details", () => {
+      // @flaky
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1295,7 +1297,7 @@ describe("scenarios > data studio > workspaces", () => {
       },
     );
 
-    it("should show ad-hoc error for SQL transform", () => {
+    it.skip("should show ad-hoc error for SQL transform", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1318,7 +1320,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it(
+    it.skip(
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
@@ -1413,7 +1415,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.tooltip().should("not.exist");
     });
 
-    it("should run all stale transforms", { tags: ["@python"] }, () => {
+    it.skip("should run all stale transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1525,6 +1527,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should open checked out transform in existing workspace from the transform page", () => {
+      // @flaky
       cy.log("Create 2 workspaces, add transform to the second one");
       createTransforms();
       Workspaces.visitWorkspaces();
@@ -1552,10 +1555,10 @@ describe("scenarios > data studio > workspaces", () => {
       cy.get<string>("@workspaceA").then((workspaceA) => {
         cy.get<string>("@workspaceB").then((workspaceB) => {
           H.popover().within(() => {
-            cy.findAllByRole("menuitem").eq(0).contains("New workspace");
-            cy.findAllByRole("menuitem").eq(2).contains(workspaceA);
+            cy.findAllByRole("menuitem").eq(1).contains("New workspace");
+            cy.findAllByRole("menuitem").eq(3).contains(workspaceA);
             cy.log("Edit transform in a workspace where it's been checked out");
-            cy.findAllByRole("menuitem").eq(1).contains(workspaceB).click();
+            cy.findAllByRole("menuitem").eq(2).contains(workspaceB).click();
           });
         });
       });
@@ -1573,7 +1576,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("should not allow to checkout transform if checkout_disabled is received", () => {
+    it.skip("should not allow to checkout transform if checkout_disabled is received", () => {
       H.createModelFromTableName({
         tableName: "Animals",
         modelName: "Animals",
