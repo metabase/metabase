@@ -2,7 +2,6 @@
 /* eslint-disable no-undef */
 
 const path = require("path");
-require("./frontend/lint/eslint-rules");
 
 // `postcss-modules` lints css modules class names, but it currently crashes
 // eslint on vscode. If you use webstorm or want to run the lint for the cli, you
