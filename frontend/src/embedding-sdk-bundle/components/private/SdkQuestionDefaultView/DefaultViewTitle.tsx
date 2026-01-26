@@ -1,12 +1,11 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Anchor, Stack, Text } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 
 import { getQuestionTitle } from "../QuestionTitle";
+import { SdkInternalNavigationBackButton } from "../SdkInternalNavigationProvider";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
-
-import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
 interface DefaultViewTitleTextProps
   extends Pick<SdkQuestionDefaultViewProps, "withResetButton" | "title"> {
@@ -15,32 +14,15 @@ interface DefaultViewTitleTextProps
   originalName?: string | null;
 }
 
-const DefaultViewTitleText = ({
-  title: Title,
-  withResetButton = false,
-  isQuestionChanged = false,
-  onReset,
-  originalName,
-}: DefaultViewTitleTextProps) => (
-  <Stack gap="xs">
-    {originalName && withResetButton && isQuestionChanged && (
-      <Text fw={600} size="sm">
-        {c("{0} refers to the name of the original question").jt`Return to ${(
-          <Anchor
-            key="anchor"
-            size="sm"
-            ml="xs"
-            color="brand"
-            onClick={onReset}
-          >
-            {originalName}
-          </Anchor>
-        )}`}
-      </Text>
-    )}
-    {typeof Title === "function" ? <Title></Title> : Title}
-  </Stack>
-);
+const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
+  // const { canGoBack } = useSdkInternalNavigationOptional();
+  return (
+    <Stack gap="xs">
+      <SdkInternalNavigationBackButton />
+      {typeof Title === "function" ? <Title></Title> : Title}
+    </Stack>
+  );
+};
 
 export const DefaultViewTitle = ({
   title,

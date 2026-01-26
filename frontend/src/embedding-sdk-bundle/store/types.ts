@@ -15,7 +15,6 @@ import type {
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard.ts";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { State } from "metabase-types/store";
 
@@ -23,13 +22,6 @@ export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
-};
-
-export type SdkInternalNavigationEntry = {
-  type: "dashboard" | "question";
-  id: number;
-  name: string;
-  parameters?: ParameterValues;
 };
 
 export type SdkStore = Omit<Store<SdkStoreState, Action>, "dispatch"> & {
@@ -50,7 +42,6 @@ export type SdkState = {
   usageProblem: null | SdkUsageProblem;
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
-  internalNavigationStack: SdkInternalNavigationEntry[];
 };
 
 export interface SdkStoreState extends State {

@@ -32,6 +32,7 @@ export const SdkAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
   onVisualizationChange,
+  navigateToNewCard,
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
@@ -52,6 +53,7 @@ export const SdkAdHocQuestion = ({
     | "withDownloads"
     | "initialSqlParameters"
     | "onVisualizationChange"
+    | "navigateToNewCard"
   >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -82,6 +84,7 @@ export const SdkAdHocQuestion = ({
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
+      navigateToNewCard={navigateToNewCard}
       height={height}
       width={width}
       className={className}

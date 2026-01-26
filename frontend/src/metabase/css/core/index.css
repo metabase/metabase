@@ -24,3 +24,11 @@
 @import "./transitions.module.css";
 @import "./width.module.css";
 @import "./z-index.module.css";
+
+/*  TODO: REMOVE BEFORE MERGING */
+:root {
+  --debug-red-color: #f00c;
+  --debug-blue-color: #00fc;
+  --debug-border-red: 2px dotted var(--debug-red-color);
+  --debug-border-blue: 2px solid var(--debug-blue-color);
+}

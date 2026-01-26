@@ -1,25 +1,11 @@
-import { useCallback } from "react";
-
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import {
-  canNavigateBack,
-  getPreviousInternalNavEntry,
-} from "embedding-sdk-bundle/store/selectors";
-
-import { popSdkInternalNavigation } from "../../store/reducer";
+import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
 
 export const useSdkInternalNavigationBack = () => {
-  const dispatch = useSdkDispatch();
-  const previousEntry = useSdkSelector(getPreviousInternalNavEntry);
-  const canGoBack = useSdkSelector(canNavigateBack);
-
-  const goBack = useCallback(() => {
-    dispatch(popSdkInternalNavigation());
-  }, [dispatch]);
+  const { previousEntry, canGoBack, pop } = useSdkInternalNavigation();
 
   return {
     previousName: previousEntry?.name ?? null,
     canGoBack,
-    goBack,
+    goBack: pop,
   };
 };

@@ -51,6 +51,10 @@ export function getComputedSettings(
     );
   }
 
+  // console.log("getComputedSettings ", {
+  //   isEmbeddingSdk: isEmbeddingSdk(),
+  //   enableEntityNavigation: extra.enableEntityNavigation,
+  // });
   if (isEmbeddingSdk()) {
     // TODO: refactor this
     const enableEntityNavigation = extra.enableEntityNavigation;
