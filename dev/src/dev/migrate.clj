@@ -27,20 +27,6 @@
     :DATABASECHANGELOG
     :databasechangelog))
 
-(defn latest-migrations
-  "Prints a report of the latest migrations ran. Useful for knowing what to roll back."
-  ([] (latest-migrations 5))
-  ([num]
-   (let [rows (t2/query {:select   [:id :comments :dateexecuted :deployment_id]
-                         :from     [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
-                         :order-by [[:dateexecuted :desc] [:orderexecuted :desc]]
-                         :limit    num})]
-     (println "Latest migrations (newest to oldest):")
-     (println "--------------------------------------------------")
-     (doseq [row rows]
-       (println (format "At %s in %s : %s | %s" (:dateexecuted row) (:deployment_id row) (:id row) (:comments row))))
-     (println "--------------------------------------------------"))))
-
 (defn- latest-migration
   []
   ((juxt :id :comments)

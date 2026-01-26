@@ -23,7 +23,7 @@
   (let [queue-name (keyword "queue" (str (gensym "publish-test-")))]
     (q.backend/publish! :queue.backend/appdb queue-name "test message")
     (testing "Messages are persisted in the queue"
-      (let [row (t2/select-one :model/QueueMessage :queue_name (name queue-name))]
+      (let [row (t2/select-one :queue_message :queue_name (name queue-name))]
         (is (= "test message" (:payload row)))
         (is (= (name queue-name) (:queue_name row)))
         (is (= "pending" (:status row)))
@@ -41,13 +41,13 @@
         (testing "Returns nil if no rows are found"
           (is (nil? (#'q.appdb/fetch!))))
 
-        (t2/insert! :model/QueueMessage
+        (t2/insert! :queue_message
                     {:queue_name (name invalid-queue)
                      :payload    "invalid"})
-        (t2/insert! :model/QueueMessage
+        (t2/insert! :queue_message
                     {:queue_name (name queue1)
                      :payload    "data1"})
-        (t2/insert! :model/QueueMessage
+        (t2/insert! :queue_message
                     {:queue_name (name queue2)
                      :payload    "data2"})
 
@@ -60,7 +60,7 @@
             (is (= queue1 queue))
             (is (= "data1" payload))
             (testing "Fetched row gets marked as processing"
-              (let [updated-row (t2/select-one :model/QueueMessage :id id)]
+              (let [updated-row (t2/select-one :queue_message :id id)]
                 (is (= "processing" (:status updated-row)))
                 (is (not= (:created_at updated-row) (:status_heartbeat updated-row)))
                 (is (= 0 (:failures updated-row)))
@@ -76,12 +76,12 @@
 (deftest message-successful-test
   (let [queue-name (keyword "queue" (str (gensym "successful-test-")))]
     (testing "Message successful deletes the message"
-      (let [message-id (t2/insert-returning-pk! :model/QueueMessage
+      (let [message-id (t2/insert-returning-pk! :queue_message
                                                 {:queue_name (name queue-name)
                                                  :payload "test-message"
                                                  :status "processing"})]
         (q.backend/message-successful! :queue.backend/appdb queue-name message-id)
-        (is (nil? (t2/select-one :model/QueueMessage :id message-id)))))
+        (is (nil? (t2/select-one :queue_message :id message-id)))))
 
     (testing "Message successful on non-existent message does not fail"
       (is (nil? (q.backend/message-successful! :queue.backend/appdb queue-name 99999))))))
@@ -89,28 +89,28 @@
 (deftest message-failed-test
   (let [queue-name (keyword "queue" (str (gensym "failed-test-")))]
     (testing "Message failed resets to pending and increments failures"
-      (let [message-id (t2/insert-returning-pk! :model/QueueMessage
+      (let [message-id (t2/insert-returning-pk! :queue_message
                                                 {:queue_name (name queue-name)
                                                  :payload "test-message"
                                                  :status "processing"
                                                  :failures 0
                                                  :owner @#'q.appdb/owner-id})]
         (q.backend/message-failed! :queue.backend/appdb queue-name message-id)
-        (let [updated-message (t2/select-one :model/QueueMessage :id message-id)]
+        (let [updated-message (t2/select-one :queue_message :id message-id)]
           (is (= "pending" (:status updated-message)))
           (is (= 1 (:failures updated-message)))
           (is (nil? (:owner updated-message)))
           (is (not (nil? (:status_heartbeat updated-message)))))))
 
     (testing "Message failed increments failures multiple times"
-      (let [message-id (t2/insert-returning-pk! :model/QueueMessage
+      (let [message-id (t2/insert-returning-pk! :queue_message
                                                 {:queue_name (name queue-name)
                                                  :payload "test-message"
                                                  :status "processing"
                                                  :failures 2
                                                  :owner @#'q.appdb/owner-id})]
         (q.backend/message-failed! :queue.backend/appdb queue-name message-id)
-        (let [updated-message (t2/select-one :model/QueueMessage :id message-id)]
+        (let [updated-message (t2/select-one :queue_message :id message-id)]
           (is (= "pending" (:status updated-message)))
           (is (= 3 (:failures updated-message)))
           (is (nil? (:owner updated-message))))))
@@ -119,14 +119,14 @@
       (is (nil? (q.backend/message-failed! :queue.backend/appdb queue-name 99999))))
 
     (testing "Message failed when being processed by another node is a no-op"
-      (let [message-id (t2/insert-returning-pk! :model/QueueMessage
+      (let [message-id (t2/insert-returning-pk! :queue_message
                                                 {:queue_name (name queue-name)
                                                  :payload "test-message"
                                                  :status "processing"
                                                  :owner "another-node"
                                                  :failures 0})]
         (q.backend/message-failed! :queue.backend/appdb queue-name message-id)
-        (let [updated-message (t2/select-one :model/QueueMessage :id message-id)]
+        (let [updated-message (t2/select-one :queue_message :id message-id)]
           (is (= "processing" (:status updated-message)))
           (is (= 0 (:failures updated-message)))
           (is (= "another-node" (:owner updated-message))))))))

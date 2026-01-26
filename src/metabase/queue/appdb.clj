@@ -25,20 +25,20 @@
   (when (seq @listening-queues)
     (t2/with-transaction [conn]
       (when-let [row (t2/query-one
-                       conn
-                       {:select   [:*]
-                        :from     [(t2/table-name :model/QueueMessage)]
-                        :where    [:and
-                                   [:in :queue_name (map name @listening-queues)]
-                                   [:= :status "pending"]]
-                        :order-by [[:id :asc]]
-                        :limit    1
-                        :for      [:update :skip-locked]})]
-        (t2/update! :model/QueueMessage
-          (:id row)
-          {:status_heartbeat (mi/now)
-           :status           "processing"
-           :owner            owner-id})
+                      conn
+                      {:select   [:*]
+                       :from     [:queue_message]
+                       :where    [:and
+                                  [:in :queue_name (map name @listening-queues)]
+                                  [:= :status "pending"]]
+                       :order-by [[:id :asc]]
+                       :limit    1
+                       :for      [:update :skip-locked]})]
+        (t2/update! :queue_message
+                    (:id row)
+                    {:status_heartbeat (mi/now)
+                     :status           "processing"
+                     :owner            owner-id})
         {:id      (:id row)
          :queue   (keyword "queue" (:queue_name row))
          :payload (:payload row)}))))
@@ -49,19 +49,19 @@
   (when-not @background-process
     (log/info "Starting background process for appdb queue")
     (reset! background-process
-      (future
-        (try
-          (loop []
-            (when (seq @listening-queues)
-              (when-let [result (fetch!)]
-                (log/info "Processing payload" {:queue (:queue result)})
-                (q.listener/handle! result))
-              (Thread/sleep 2000)
-              (recur)))
-          (catch InterruptedException _
-            (log/info "Background process interrupted")))
-        (log/info "Stopping background process for appdb queue")
-        (reset! background-process nil)))))
+            (future
+              (try
+                (loop []
+                  (when (seq @listening-queues)
+                    (when-let [result (fetch!)]
+                      (log/info "Processing payload" {:queue (:queue result)})
+                      (q.listener/handle! result))
+                    (Thread/sleep 2000)
+                    (recur)))
+                (catch InterruptedException _
+                  (log/info "Background process interrupted")))
+              (log/info "Stopping background process for appdb queue")
+              (reset! background-process nil)))))
 
 (defmethod q.backend/listen! :queue.backend/appdb [_ queue-name]
   (when-not (contains? @listening-queues queue-name)
@@ -71,7 +71,7 @@
 
 (defmethod q.backend/clear-queue! :queue.backend/appdb
   [_ queue-name]
-  (t2/delete! :model/QueueMessage :queue_name (name queue-name)))
+  (t2/delete! :queue_message :queue_name (name queue-name)))
 
 (defmethod q.backend/close-queue! :queue.backend/appdb [_ queue-name]
   (swap! listening-queues disj queue-name)
@@ -80,30 +80,30 @@
 (defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
   (or
-    (t2/select-one-fn :num [:model/QueueMessage [[:count :*] :num]] :queue_name (name queue))
-    0))
+   (t2/select-one-fn :num [:queue_message [[:count :*] :num]] :queue_name (name queue))
+   0))
 
 (defmethod q.backend/publish! :queue.backend/appdb
   [_ queue payload]
   (t2/with-transaction [_conn]
-    (t2/insert! :model/QueueMessage
-      {:queue_name (name queue)
-       :payload    payload})))
+    (t2/insert! :queue_message
+                {:queue_name (name queue)
+                 :payload    payload})))
 
 (defmethod q.backend/message-successful! :queue.backend/appdb
   [_ _queue-name message-id]
-  (let [deleted (t2/delete! :model/QueueMessage message-id)]
+  (let [deleted (t2/delete! :queue_message message-id)]
     (when (= 0 deleted)
       (log/warnf "Message %d was already deleted from the queue. Likely error in concurrency handling" message-id))))
 
 (defmethod q.backend/message-failed! :queue.backend/appdb
   [_ _queue-name message-id]
-  (let [updated (t2/update! :model/QueueMessage
-                  {:id    message-id
-                   :owner owner-id}
-                  {:status           "pending"
-                   :failures         [:+ :failures 1]
-                   :status_heartbeat (mi/now)
-                   :owner            nil})]
+  (let [updated (t2/update! :queue_message
+                            {:id    message-id
+                             :owner owner-id}
+                            {:status           "pending"
+                             :failures         [:+ :failures 1]
+                             :status_heartbeat (mi/now)
+                             :owner            nil})]
     (when (= 0 updated)
       (log/warnf "Message %d was not found in the queue. Likely error in concurrency handling" message-id))))
