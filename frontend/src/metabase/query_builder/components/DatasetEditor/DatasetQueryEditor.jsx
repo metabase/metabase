@@ -29,7 +29,7 @@ const propTypes = {
   onSetDatabaseId: PropTypes.func,
 };
 
-function DatasetQueryEditor({
+function DatasetQueryEditorInner({
   question,
   isActive,
   height,
@@ -97,6 +97,6 @@ function DatasetQueryEditor({
   );
 }
 
-DatasetQueryEditor.propTypes = propTypes;
+DatasetQueryEditorInner.propTypes = propTypes;
 
-export default memo(DatasetQueryEditor);
+export const DatasetQueryEditor = memo(DatasetQueryEditorInner);

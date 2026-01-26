@@ -20,7 +20,7 @@ interface RunButtonProps {
   onCancel?: () => void;
 }
 
-const RunButton = forwardRef(function RunButton(
+export const RunButton = forwardRef(function RunButton(
   {
     isRunning,
     isDirty,
@@ -80,6 +80,3 @@ const getButtonIcon = (isRunning: boolean, isDirty: boolean) => {
 
   return "refresh";
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RunButton;
