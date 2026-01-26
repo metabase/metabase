@@ -777,11 +777,7 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.api
-           metabase.llm.context
-           metabase.llm.openai
-           metabase.llm.settings
-           metabase.llm.streaming}
+   :api  #{metabase.llm.api}
    :uses #{api
            lib
            lib-be
@@ -2135,8 +2131,6 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-           enterprise/documents
-           enterprise/llm
            enterprise/transforms
            enterprise/transforms-python}}
 
