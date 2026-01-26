@@ -9,27 +9,15 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.request.core :as request]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.session.core :as session]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-;;; ---------------------------------------------------- Settings ----------------------------------------------------
-
-(defsetting agent-api-jwt-max-age
-  (deferred-tru "Maximum age in seconds for JWT tokens used with the Agent API. Controls how long stateless JWTs are valid for API authorization.")
-  :type       :integer
-  :default    3600
-  :visibility :settings-manager
-  :feature    :metabot-v3
-  :export?    true
-  :audit      :getter
-  :doc        "The number of seconds that JWT tokens are valid for Agent API authorization. Default is 3600 (1 hour).")
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
@@ -70,6 +58,31 @@
    :body    {:error   error-type
              :message message}})
 
+;;; -------------------------------------------- Session Token Authentication --------------------------------------------
+
+(defn- session-token->user
+  "Look up a user from a session token. Returns the user map if the session is valid,
+   or nil if the session doesn't exist or is expired."
+  [session-key]
+  (let [session (t2/select-one [:model/Session :user_id]
+                               {:select    [:s.user_id]
+                                :from      [[:core_session :s]]
+                                :left-join [[:core_user :u] [:= :s.user_id :u.id]]
+                                :where     [:and
+                                            [:= :u.is_active true]
+                                            [:= :s.key_hashed (session/hash-session-key session-key)]]})]
+    (when session
+      (t2/select-one :model/User :id (:user_id session) :is_active true))))
+
+(defn- authenticate-with-session
+  "Authenticate a request using a session token. Returns {:user <user>} on success,
+   or {:error <type> :message <msg>} on failure."
+  [token]
+  (if-let [user (session-token->user token)]
+    {:user user}
+    {:error   "invalid_session"
+     :message "Invalid or expired session token."}))
+
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
 (defn- decode-and-verify-jwt
@@ -79,7 +92,7 @@
   (try
     (jwt/unsign token
                 (sso-settings/jwt-shared-secret)
-                {:max-age (agent-api-jwt-max-age)})
+                {:max-age (metabot-settings/agent-api-jwt-max-age)})
     (catch clojure.lang.ExceptionInfo e
       (log/debugf "JWT validation failed: %s" (ex-message e))
       nil)
@@ -107,8 +120,9 @@
     (if-let [claims (decode-and-verify-jwt token)]
       (if-let [user (jwt-claims->user claims)]
         {:user user}
-        {:error   "user_not_found"
-         :message "No active user found for the email in this JWT."})
+        ;; Don't reveal whether the user exists or not - use same error as invalid JWT
+        {:error   "invalid_jwt"
+         :message "Invalid or expired JWT token."})
       {:error   "invalid_jwt"
        :message "Invalid or expired JWT token."})))
 
@@ -118,8 +132,8 @@
   "Middleware that authenticates requests using Bearer tokens.
 
    Supports two token types:
-   - **Session tokens** (UUID format): Passed through to Metabase's session middleware
-     via the X-Metabase-Session header. Session validation happens downstream.
+   - **Session tokens** (UUID format): Validated against the session table, user is bound
+     for the request. Also sets X-Metabase-Session header for downstream middleware.
    - **JWTs** (non-UUID): Validated directly using the jwt-shared-secret and
      agent-api-jwt-max-age settings. User is bound for the request without creating a session."
   [handler]
@@ -137,9 +151,14 @@
         (respond (error-response "invalid_authorization_format"
                                  "Authorization header must use Bearer scheme: Authorization: Bearer <token>"))
 
-        ;; UUID format = session token, delegate to session middleware
+        ;; UUID format = session token
         (re-matches uuid-pattern bearer-token)
-        (handler (assoc-in request [:headers "x-metabase-session"] bearer-token) respond raise)
+        (let [result (authenticate-with-session bearer-token)]
+          (if-let [user (:user result)]
+            (request/with-current-user (:id user)
+              ;; Also pass session token for downstream middleware that might need it
+              (handler (assoc-in request [:headers "x-metabase-session"] bearer-token) respond raise))
+            (respond (error-response (:error result) (:message result)))))
 
         ;; Non-UUID = JWT, authenticate directly
         :else
