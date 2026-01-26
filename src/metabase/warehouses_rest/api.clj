@@ -1089,10 +1089,12 @@
                           (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db (merge existing-database updates)]
         ;; pass in this predicate to break circular dependency
-        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+        (let [driver-supports?  (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))
+              existing-settings (:settings existing-database)]
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
-          (doseq [setting-kw (keys pending-settings)]
+          (doseq [[setting-kw new-value] settings
+                  :when (not= new-value (get existing-settings setting-kw))]
             (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
         (t2/update! :model/Database id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
