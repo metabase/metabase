@@ -93,7 +93,7 @@ const RowChartRenderer = ExplicitSize<RowChartRendererProps>({
   refreshMode: "throttle",
 })(RowChartRendererInner);
 
-export const RowChartVisualization = ({
+const RowChartVisualization = ({
   card,
   className,
   settings,
@@ -432,3 +432,5 @@ RowChartVisualization.checkRenderable = (
 RowChartVisualization.hasEmptyState = true;
 
 RowChartVisualization.getUiName = () => t`Row`;
+
+export { RowChartVisualization as RowChart };
