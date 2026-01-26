@@ -67,16 +67,15 @@ export function setLocalization(translationsObject) {
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
-    preverseLatinNumbersInDayjsLocale(language);
+    preserveLatinNumbersInDayjsLocale(language);
   }
 }
 
-// a copy of moment function
 /**
  * Ensures that we consistently use latin numbers in Arabic locales.
  * See https://github.com/metabase/metabase/issues/34271
  */
-function preverseLatinNumbersInDayjsLocale(locale) {
+function preserveLatinNumbersInDayjsLocale(locale) {
   dayjs.updateLocale(locale, {
     // Preserve latin numbers, but still replace commas.
     // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
