@@ -291,7 +291,7 @@
                     :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
      [:maybe [:sequential ::tools.api/order-by]]]
     [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request metabot-v3.u/safe->kebab-case-en}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-metric-request
   "Request schema for constructing a query from a metric.
@@ -301,7 +301,7 @@
     [:metric_id ms/PositiveInt]
     [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]]
-   [:map {:encode/tool-api-request metabot-v3.u/safe->kebab-case-en}]])
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-request
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."

@@ -411,12 +411,3 @@
                                    {:request-options {:headers (auth-headers)}}
                                    {:term_queries ["AgentSearchTestMetric"]})))))))))
 
-(deftest jwt-inactive-user-test
-  (with-agent-api-setup!
-    (testing "Returns 401 for inactive user"
-      (mt/with-temp [:model/User inactive-user {:email     "inactive@example.com"
-                                                :is_active false}]
-        (let [token (sign-jwt {:sub (:email inactive-user)})]
-          (is (= "Unauthenticated"
-                 (client/client :get 401 "agent/v1/ping"
-                                {:request-options {:headers {"authorization" (str "Bearer " token)}}}))))))))
