@@ -112,7 +112,15 @@ export const TableListItem = ({
           {displayName}
         </Text>
       </Tooltip>
-      {hasChanges && <StatusDot />}
+
+      {hasChanges && (
+        <Tooltip label={t`Unsaved changes`}>
+          <Box>
+            <StatusDot />
+          </Box>
+        </Tooltip>
+      )}
+
       {type === "output" && transform && (
         <Tooltip label={t`Open transform`} position="top">
           <ActionIcon
