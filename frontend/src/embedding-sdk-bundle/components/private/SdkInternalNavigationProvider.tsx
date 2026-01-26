@@ -221,6 +221,7 @@ export const SdkInternalNavigationProvider = ({
           questionId={currentEntry.id}
           onNavigateBack={pop}
           navigateToNewCard={navigateToNewCard}
+          initialSqlParameters={currentEntry.parameters}
         />
       </div>
     ))
