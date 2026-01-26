@@ -391,13 +391,17 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // Initially no tables should be visible in search mode
-      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      });
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
       await userEvent.type(searchInput(), "foo");
       await waitLoading();
 
-      expect(item(FOO_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(FOO_TABLE)).toBeInTheDocument();
+      });
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
     });
 
@@ -408,7 +412,9 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "nonexistent");
       await waitLoading();
 
-      expect(screen.getByText("No tables found")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("No tables found")).toBeInTheDocument();
+      });
     });
 
     it("should clear search and return to tree view", async () => {
@@ -419,13 +425,17 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "foo");
       await waitLoading();
 
-      expect(item(FOO_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(FOO_TABLE)).toBeInTheDocument();
+      });
 
       await userEvent.clear(searchInput());
       await waitLoading();
 
       // Should return to tree view with databases
-      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+      });
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
     });
 
@@ -439,7 +449,9 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // Should find "Bar" table
-      expect(item(BAR_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(BAR_TABLE)).toBeInTheDocument();
+      });
       expect(item(FOO_TABLE)).not.toBeInTheDocument();
     });
 
@@ -452,7 +464,9 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "oo");
       await waitLoading();
 
-      expect(item(FOO_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(FOO_TABLE)).toBeInTheDocument();
+      });
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
       // Clear and search for "ar" should match "Bar"
@@ -462,7 +476,9 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "ar");
       await waitLoading();
 
-      expect(item(BAR_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(BAR_TABLE)).toBeInTheDocument();
+      });
       expect(item(FOO_TABLE)).not.toBeInTheDocument();
     });
 
@@ -476,7 +492,9 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // Should match both QUU and QUX
-      expect(item(QUU)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(QUU)).toBeInTheDocument();
+      });
       expect(item(QUX)).toBeInTheDocument();
       expect(item(FOO_TABLE)).not.toBeInTheDocument();
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
@@ -493,7 +511,9 @@ describe("TablePicker", () => {
 
       // Should find FOO (from DATABASE_WITH_MULTIPLE_SCHEMAS)
       // and CORGE, GLORP (from DATABASE_WITH_UNNAMED_SCHEMA)
-      expect(item(FOO_TABLE)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(item(FOO_TABLE)).toBeInTheDocument();
+      });
       expect(item(CORGE)).toBeInTheDocument();
       expect(item(GLORP)).toBeInTheDocument();
 

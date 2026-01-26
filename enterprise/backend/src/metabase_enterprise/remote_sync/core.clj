@@ -32,6 +32,39 @@
   (or (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
+(defenterprise table-editable?
+  "Determines if a table's metadata should be editable.
+
+  Takes a table to check for editability.
+
+  Returns true if the table is editable, false otherwise. Returns false if:
+  - remote-sync-type is :read-only AND
+  - table is published AND
+  - table is in a remote-synced collection
+
+  Always returns true on OSS.
+
+  If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
+  :feature :none
+  [table]
+  (or (= (settings/remote-sync-type) :read-write)
+      (not (:is_published table))
+      ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
+      (not (collections/remote-synced-collection? (or (:collection table)
+                                                      (:collection_id table))))))
+
+(defenterprise transforms-editable?
+  "Determines if transforms should be editable.
+
+  Returns true if transforms are editable, false otherwise. Transforms are globally
+  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+
+  Always returns true on OSS."
+  :feature :none
+  []
+  (or (not (settings/remote-sync-enabled))
+      (= (settings/remote-sync-type) :read-write)))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."

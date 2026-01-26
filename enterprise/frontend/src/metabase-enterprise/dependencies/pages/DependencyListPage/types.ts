@@ -1,7 +1,8 @@
 export type DependencyListQueryParams = {
+  page?: unknown;
+  group_types?: unknown;
   query?: unknown;
-  groupTypes?: unknown;
-  selectedId?: unknown;
-  selectedType?: unknown;
-  includePersonalCollections?: unknown;
+  include_personal_collections?: unknown;
+  sort_column?: unknown;
+  sort_direction?: unknown;
 };

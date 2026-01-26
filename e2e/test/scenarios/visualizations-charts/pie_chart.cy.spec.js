@@ -219,7 +219,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
 
-    H.moveDnDKitElement(H.getDraggableElements().contains("Woooget"), {
+    H.getDraggableElements().contains("Woooget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 100,
     });
 
@@ -241,7 +242,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("Gadget-settings-button").click();
     cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
-    H.moveDnDKitElement(H.getDraggableElements().contains("Katget"), {
+    H.getDraggableElements().contains("Katget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
     });
 
@@ -294,7 +296,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     H.openVizSettingsSidebar();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -306,7 +308,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -724,7 +726,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

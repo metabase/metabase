@@ -29,3 +29,5 @@ If the differences are intentional or caused by a flake, update the reference sn
 ## Adding new tests
 
 Adding new test is as simple as adding new stories. As of today, we use visual tests only for charts, however, you can use it for any other stories. Make sure the `storiesFilter` value in `loki.config.js` includes the stories you want to have as visual tests.
+
+Before merging, run the [Loki Visual Stress Test](https://github.com/metabase/metabase/actions/workflows/loki-stress-test-flake-fix.yml) workflow to verify your new test isn't flaky. Enter your story filter pattern and run it 50 times.

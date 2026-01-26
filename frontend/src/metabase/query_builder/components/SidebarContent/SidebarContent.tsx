@@ -11,8 +11,8 @@ import {
   type IconName,
 } from "metabase/ui";
 
-import SidebarHeader from "../SidebarHeader";
-import ViewButton from "../view/ViewButton";
+import { SidebarHeader } from "../SidebarHeader";
+import { ViewButton } from "../view/ViewButton";
 
 import SidebarContentS from "./SidebarContent.module.css";
 
@@ -55,7 +55,7 @@ const SidebarContentRoot = ({ className, children, ...props }: FlexProps) => {
   );
 };
 
-function SidebarContent({
+function SidebarContentInner({
   className,
   title,
   icon,
@@ -102,8 +102,7 @@ const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
   return <Box px="lg" {...props} />;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SidebarContent, {
+export const SidebarContent = Object.assign(SidebarContentInner, {
   Root: SidebarContentRoot,
   Header: SidebarHeader,
   Content: SidebarContentMain,

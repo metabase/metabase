@@ -11,7 +11,7 @@ import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import type { NumberedStepProps } from "../types";
 
-import { StepDescription } from "./UserStep.styled";
+import S from "./UserStep.module.css";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("user_info");
@@ -38,10 +38,10 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   return (
     <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
-        <StepDescription>
+        <div className={S.StepDescription}>
           {t`We know you’ve already created one of these.`}{" "}
           {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
-        </StepDescription>
+        </div>
       )}
       <UserForm user={user} isHosted={isHosted} onSubmit={handleSubmit} />
     </ActiveStep>

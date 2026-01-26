@@ -34,7 +34,7 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("select count(*) from orders");
 
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
   });
 
@@ -88,7 +88,7 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("select * from not_a_table");
 
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -101,7 +101,7 @@ describe("scenarios > question > native", () => {
     // highlight back to the front
     Cypress._.range(19).forEach(() => cy.realPress(["Shift", "ArrowLeft"]));
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
   });
 
@@ -112,7 +112,7 @@ describe("scenarios > question > native", () => {
 
       cy.get("input[placeholder*='Stars']").type("3");
       runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Showing 168 rows");
     });
 
@@ -126,7 +126,7 @@ describe("scenarios > question > native", () => {
       cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
       runQuery();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -152,7 +152,7 @@ describe("scenarios > question > native", () => {
 
       runQuery();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -449,10 +449,10 @@ describe("scenarios > question > native", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from people where false");
     runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     cy.findByTestId("save-question-modal").within(() => {
@@ -488,7 +488,7 @@ describe("scenarios > question > native", () => {
       });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
     FILTERS.forEach((operator) => {
@@ -562,7 +562,7 @@ describe("scenarios > question > native", () => {
       { autorun: false },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
 

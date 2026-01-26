@@ -8,9 +8,9 @@ import { t } from "ttag";
 import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 
-import RevisionDiff from "./RevisionDiff";
+import { RevisionDiff } from "./RevisionDiff";
 
-export default class Revision extends Component {
+export class Revision extends Component {
   static propTypes = {
     objectName: PropTypes.string.isRequired,
     revision: PropTypes.object.isRequired,

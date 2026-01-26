@@ -11,7 +11,10 @@ import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
-import { tenantSpecificCollections } from "metabase/lib/urls";
+import {
+  tenantSpecificCollections,
+  tenantUsersPersonalCollections,
+} from "metabase/lib/urls";
 import {
   PaddedSidebarLink,
   SidebarHeading,
@@ -142,6 +145,14 @@ export const MainNavSharedCollections = ({
           {isAdmin && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant collections`}
+            </PaddedSidebarLink>
+          )}
+          {isAdmin && (
+            <PaddedSidebarLink
+              icon="group"
+              url={tenantUsersPersonalCollections()}
+            >
+              {t`Tenant users' personal collections`}
             </PaddedSidebarLink>
           )}
         </SidebarSection>

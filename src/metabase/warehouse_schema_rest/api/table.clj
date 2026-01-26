@@ -33,7 +33,6 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses-rest.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -67,9 +66,14 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Get all `Tables`."
+  "Get all `Tables`.
+
+  Optional filters:
+  - `can-query=true` - filter to only tables the user can execute queries against
+  - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+           can-query can-write]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -78,7 +82,9 @@
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
-       [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
+       [:unused-only {:optional true} [:maybe ms/BooleanValue]]
+       [:can-query {:optional true} [:maybe ms/BooleanValue]]
+       [:can-write {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -113,6 +119,8 @@
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
+                     (if can-query (filter mi/can-query?) identity)
+                     (if can-write (filter mi/can-write?) identity)
                      (map schema.table/present-table))
             tables))))
 
@@ -150,7 +158,7 @@
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
-    (api/read-check table)
+    (api/query-check table)
     (qp.store/with-metadata-provider db-id
       (let [mp       (qp.store/metadata-provider)
             query    (-> (lib/query mp (lib.metadata/table mp table-id))
@@ -224,6 +232,9 @@
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
+      (doseq [table updated-tables]
+        (events/publish-event! :event/table-update {:object  table
+                                                    :user-id api/*current-user-id*}))
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -500,8 +511,10 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table    (t2/select-one :model/Table :id id)
-        database (warehouses/get-database (:db_id table))]
+  (let [table    (api/check-404 (t2/select-one :model/Table :id id))
+        database (api/check-404 (t2/select-one :model/Database
+                                               :id (:db_id table)
+                                               :router_database_id nil))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

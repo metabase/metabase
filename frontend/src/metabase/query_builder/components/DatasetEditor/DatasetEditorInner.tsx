@@ -31,12 +31,12 @@ import {
   setUIControls,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
@@ -80,8 +80,8 @@ import {
   DatasetEditorSettingsSidebar,
   type ModelSettings,
 } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar";
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
 type MetadataDiff = Record<string, Partial<Field>>;
@@ -371,9 +371,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
-    return calcInitialEditorHeight({
+    return getInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height ?? "full",
+      availableHeight: height ?? "full",
     });
   }, [question, height]);
 

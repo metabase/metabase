@@ -88,7 +88,7 @@ is_sample: false
 
   Returns:
     A string containing the YAML representation of the card."
-  [entity-id name collection-id]
+  [entity-id name collection-id & [type]]
   (format "name: %s
 description: null
 entity_id: %s
@@ -121,10 +121,10 @@ archived_directly: false
 dashboard_id: null
 metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
-type: question
+type: %s
 document_id: null
 "
-          name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+          name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") (or type "question")))
 
 (defn generate-dashboard-yaml
   "Generates YAML content for a dashboard.
@@ -318,3 +318,302 @@ width: fixed
 (def clean-remote-sync-state
   "Fixture to make sure sync state is clean"
   (t/compose-fixtures clean-object clean-task-table))
+
+(defn generate-table-yaml
+  "Generates YAML content for a table.
+
+  Args:
+    table-name: The name of the table (used as entity_id).
+    db-name: The name of the database containing this table.
+
+  Returns:
+    A string containing the YAML representation of the table."
+  [table-name db-name & {:keys [schema is-published description]
+                         :or {is-published true
+                              description nil}}]
+  (format "name: %s
+description: %s
+entity_type: entity/GenericTable
+active: true
+display_name: %s
+visibility_type: null
+schema: %s
+points_of_interest: null
+caveats: null
+show_in_getting_started: false
+field_order: database
+initial_sync_status: complete
+is_upload: false
+database_require_filter: false
+is_defective_duplicate: false
+is_writable: false
+data_authority: unconfigured
+data_source: null
+owner_email: null
+owner_user_id: null
+is_published: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+archived_at: null
+deactivated_at: null
+data_layer: null
+db_id: %s
+collection_id: null
+serdes/meta:
+- id: %s
+  model: Database
+%s- id: %s
+  model: Table
+"
+          table-name
+          (or description "null")
+          (str/replace (u/upper-case-en table-name) #"_" " ")
+          (or schema "null")
+          is-published
+          db-name
+          db-name
+          (if schema (format "- id: %s\n  model: Schema\n" schema) "")
+          table-name))
+
+(defn generate-field-yaml
+  "Generates YAML content for a field.
+
+  Args:
+    field-name: The name of the field (used as entity_id).
+    table-name: The name of the table containing this field.
+    db-name: The name of the database containing this field.
+
+  Returns:
+    A string containing the YAML representation of the field."
+  [field-name table-name db-name & {:keys [schema base-type description database-type]
+                                    :or {base-type "type/Text"
+                                         database-type "VARCHAR"
+                                         description nil}}]
+  (format "name: %s
+display_name: %s
+description: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+active: true
+visibility_type: normal
+table_id:
+- %s
+- %s
+- %s
+database_type: %s
+base_type: %s
+effective_type: null
+semantic_type: null
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 1
+custom_position: 0
+database_position: 0
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: %s
+  model: Database
+%s- id: %s
+  model: Table
+- id: %s
+  model: Field
+database_default: null
+database_indexed: null
+database_is_generated: null
+database_is_nullable: null
+database_is_pk: null
+database_partitioned: null
+"
+          field-name
+          (str/replace (u/upper-case-en field-name) #"_" " ")
+          (or description "null")
+          db-name
+          (or schema "null")
+          table-name
+          database-type
+          base-type
+          db-name
+          (if schema (format "- id: %s\n  model: Schema\n" schema) "")
+          table-name
+          field-name))
+
+(defn generate-segment-yaml
+  "Generates YAML content for a segment.
+
+  Args:
+    segment-name: The name of the segment (used as entity_id).
+    table-name: The name of the table containing this segment.
+    db-name: The name of the database containing this segment.
+    filter-field-name: The name of the field to use in the filter clause.
+
+  Returns:
+    A string containing the YAML representation of the segment."
+  [segment-name table-name db-name & {:keys [schema description entity-id filter-field-name]
+                                      :or {description "Test segment"
+                                           filter-field-name "Some Field"}}]
+  (let [eid (or entity-id segment-name)]
+    (format "archived: false
+caveats: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+definition:
+  database: %s
+  query:
+    filter:
+    - <
+    - - field
+      - - %s
+        - %s
+        - %s
+        - %s
+      - null
+    - 18
+    source-table:
+    - %s
+    - %s
+    - %s
+  type: query
+description: %s
+entity_id: %s
+name: %s
+points_of_interest: null
+show_in_getting_started: false
+table_id:
+- %s
+- %s
+- %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: Segment
+"
+            db-name
+            db-name
+            (or schema "null")
+            table-name
+            filter-field-name
+            db-name
+            (or schema "null")
+            table-name
+            description
+            eid
+            segment-name
+            db-name
+            (or schema "null")
+            table-name
+            eid
+            (str/replace (u/lower-case-en segment-name) #"\s+" "_"))))
+
+(defn generate-action-yaml
+  "Generates YAML content for an action.
+
+  Args:
+    entity-id: The unique identifier for the action.
+    name: The name of the action.
+    model-id: The entity ID of the model (Card) this action belongs to.
+
+  Returns:
+    A string containing the YAML representation of the action."
+  [entity-id name model-id & {:keys [type kind]
+                              :or {type "implicit"
+                                   kind "row/create"}}]
+  (format "name: %s
+description: null
+entity_id: %s
+created_at: '2024-08-28T09:46:24.692002Z'
+creator_id: rasta@metabase.com
+archived: false
+model_id: %s
+type: %s
+parameters: []
+parameter_mappings: []
+visualization_settings:
+  column_settings: null
+public_uuid: null
+made_public_by_id: null
+%s
+serdes/meta:
+- id: %s
+  label: %s
+  model: Action
+"
+          name
+          entity-id
+          model-id
+          type
+          (if (= type "implicit")
+            (format "implicit:\n- kind: %s\n" kind)
+            "")
+          entity-id
+          (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-measure-yaml
+  "Generates YAML content for a measure.
+
+  Args:
+    measure-name: The name of the measure.
+    table-name: The name of the table containing this measure.
+    db-name: The name of the database containing this measure.
+    agg-field-name: The name of the field to use in the aggregation clause.
+
+  Returns:
+    A string containing the YAML representation of the measure."
+  [measure-name table-name db-name & {:keys [schema description entity-id agg-field-name]
+                                      :or {description "Test measure"
+                                           agg-field-name "Some Field"}}]
+  (let [eid (or entity-id measure-name)]
+    (format "archived: false
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+definition:
+  database: %s
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - %s
+          - %s
+          - %s
+          - %s
+        - null
+    source-table:
+    - %s
+    - %s
+    - %s
+  type: query
+description: %s
+entity_id: %s
+name: %s
+table_id:
+- %s
+- %s
+- %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: Measure
+"
+            db-name
+            db-name
+            (or schema "null")
+            table-name
+            agg-field-name
+            db-name
+            (or schema "null")
+            table-name
+            description
+            eid
+            measure-name
+            db-name
+            (or schema "null")
+            table-name
+            eid
+            (str/replace (u/lower-case-en measure-name) #"\s+" "_"))))

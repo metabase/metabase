@@ -22,6 +22,12 @@
   border-style: dashed;
 }
 
+.XSmall {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+}
+
 .Small {
   width: 1.125rem;
   height: 1.125rem;

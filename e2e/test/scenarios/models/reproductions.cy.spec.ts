@@ -54,7 +54,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
     return H.tableHeaderColumn(name);
   }
@@ -555,7 +555,7 @@ describe("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -1999,7 +1999,9 @@ describe("issue 38747", () => {
 
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
+      waitForAnimations: false,
+    });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 export const RootSnippetsCollectionMenu = ({
@@ -11,8 +12,9 @@ export const RootSnippetsCollectionMenu = ({
   setPermissionsCollectionId: (id: CollectionId) => void;
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  if (!isAdmin) {
+  if (!isAdmin || remoteSyncReadOnly) {
     return null;
   }
 

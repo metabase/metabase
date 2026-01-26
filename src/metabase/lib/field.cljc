@@ -390,10 +390,10 @@
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
       ;; TODO: Include the time and date binning strategies too
-      (for [strat strategies]
-        (cond-> strat
+      (for [strategy strategies]
+        (cond-> strategy
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
-          (lib.binning/strategy= strat existing) (assoc :selected true))))
+          (lib.binning/strategy= strategy existing) (assoc :selected true))))
     []))
 
 (defmethod lib.ref/ref-method :field
@@ -705,7 +705,7 @@
                                                         {:query  query
                                                          :stage  stage-number
                                                          :source source}))
-          ;; Default case: do nothing and return the query unchaged.
+          ;; Default case: do nothing and return the query unchanged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
             (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))

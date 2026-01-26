@@ -20,7 +20,7 @@ interface RunButtonProps {
   onCancel?: () => void;
 }
 
-const RunButton = forwardRef(function RunButton(
+export const RunButton = forwardRef(function RunButton(
   {
     isRunning,
     isDirty,
@@ -50,6 +50,7 @@ const RunButton = forwardRef(function RunButton(
       }}
       icon={icon}
       primary={isDirty}
+      white={!isDirty}
       data-testid="run-button"
       aria-label={ariaLabel}
       onClick={isRunning ? onCancel : onRun}
@@ -79,6 +80,3 @@ const getButtonIcon = (isRunning: boolean, isDirty: boolean) => {
 
   return "refresh";
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RunButton;

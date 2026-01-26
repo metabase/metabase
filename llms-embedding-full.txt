@@ -14,37 +14,87 @@
 
 # Customizing the appearance of modular embeds
 
-
-
 You can style your embedded [Metabase components](./components.md) with a **theme**.
 
 ![Embed share button](./images/embed-share-button.png)
 
-Change the colors, and the code snippet will include a `theme` object in the object passed to the `defineMetabaseConfig` function.
+Guest embeds on OSS/Starter plans come with two theme presets - light and dark. On Metabase Pro/Enterprise plans, you can customize individual colors, fonts, etc.
 
-## Theme options
+## Basic theming
 
-Here's an example that includes the various styling options available via the [modular embedding React SDK](./sdk/introduction.md):
+You can choose light or dark theme for your embeds. On Pro/Enterprise plans, you can also configure granular appearance settings like background, fonts etc, see [Advanced theming](#advanced-theming).
+
+To add a light or dark theme, pass a `theme` parameter with `preset` to the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example, to specify a dark theme:
+
+```js
+defineMetabaseConfig({
+  theme: {
+    preset: "dark",
+  },
+  instanceUrl: "http://localhost:3000",
+});
+```
+
+## Advanced theming
+
+
+
+On Pro/Enterprise plan, you can configure granular appearance options, like background colors, font sizes etc. See the [list of all theming options]().
+
+### Add an advanced theme to your embed
+
+![Behavior and appearance](./images/behavior-and-appearance.png)
+
+Some appearance options like brand, text, and background color are configurable in in the [embed wizard](./modular-embedding.md#create-a-new-embed).
+
+For other appearance settings, use the `theme` parameter with `preset` in the `defineMetabaseConfig()` function in your [embedding code snippet](./modular-embedding.md#add-the-embedding-script-to-your-app). For example:
+
+```js
+defineMetabaseConfig({
+  theme: {
+    colors: {
+      background: "#FFFFFF",
+      "text-primary": "hsla(204, 66%, 8%, 0.84)",
+      brand: "hsla(208, 72%, 60%, 1.00)",
+      "background-hover": "rgb(236, 236, 236)",
+      "background-disabled": "rgb(231, 231, 231)",
+      "background-secondary": "rgb(233, 233, 233)",
+      "background-light": "rgb(233, 233, 233)",
+      "text-secondary": "rgba(9, 30, 44, 0.84)",
+      "text-tertiary": "rgba(11, 37, 54, 0.84)",
+      "brand-hover": "rgb(185, 216, 244)",
+      "brand-hover-light": "rgb(238, 245, 252)",
+    },
+  },
+  instanceUrl: "http://localhost:3000",
+});
+```
+
+### Theme options
+
+
+
+For advanced theme configuration options, you can configure the `theme` object in the object passed to the `defineMetabaseConfig` function, see [Add an advanced theme to your embed](#add-an-advanced-theme-to-your-embed). Here's the list of all options available for customization:
 
 ```json
 {
   // Specify a font to use from the set of fonts supported by Metabase.
   // You can set the font to "Custom" to use the custom font
   // configured in your Metabase instance.
-  fontFamily: "Lato",
+  "fontFamily": "Lato",
 
   // Override the base font size for every component.
   // This does not usually need to be set, as the components
   // inherit the font size from the parent container, such as the body.
-  fontSize: "16px",
+  "fontSize": "16px",
 
   // Override the base line height for every component.
-  lineHeight: 1.5,
+  "lineHeight": 1.5,
 
   // Match your application's color scheme
-  colors: {
+  "colors": {
     // The primary color of your application
-    brand: "#9B5966",
+    "brand": "#9B5966",
 
     // Lighter variation of the brand color. Used for hover and accented elements.
     "brand-hover": "#DDECFA",
@@ -62,7 +112,7 @@ Here's an example that includes the various styling options available via the [m
     "text-tertiary": "#949AAB",
 
     // Default background color
-    background: "#FFFFFF",
+    "background": "#FFFFFF",
 
     // Light background color for some control backgrounds.
     // Defaults are derived from `background` (slightly darker in light mode, much lighter in dark mode).
@@ -78,249 +128,156 @@ Here's an example that includes the various styling options available via the [m
     "background-disabled": "#F3F5F7",
 
     // Color used for borders
-    border: "#EEECEC",
+    "border": "#EEECEC",
 
     // Color used for filters context
-    filter: "#7172AD",
+    "filter": "#7172AD",
 
     // Color used for aggregations and breakouts context
-    summarize: "#88BF4D",
+    "summarize": "#88BF4D",
 
     // Color used to indicate successful actions and positive values/trends
-    positive: "#BADC58",
+    "positive": "#BADC58",
 
     // Color used to indicate dangerous actions and negative values/trends
-    negative: "#FF7979",
+    "negative": "#FF7979",
 
     /** Color used to outline elements in focus */
-    focus: "#CAE1F7",
+    "focus": "#CAE1F7",
 
     /** Color used for popover shadows */
-    shadow: "rgba(0,0,0,0.08)",
+    "shadow": "rgba(0,0,0,0.08)",
 
     // Overrides the chart colors. Supports up to 8 colors
     // Limitation: this does not affect charts with custom series color
-    charts: [
+    "charts": [
       // can either be a hex code
       "#9B59B6",
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
-      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
-    ],
+      { "base": "#E74C3C", "tint": "#EE6B56", "shade": "#CB4436" }
+    ]
   },
 
-  components: {
+  "components": {
     // Dashboard
-    dashboard: {
+    "dashboard": {
       // Background color for all dashboards
-      backgroundColor: "#2F3640",
+      "backgroundColor": "#2F3640",
 
       // Border color of the dashboard grid, shown only when editing dashboards.
       // Defaults to `colors.border`
-      gridBorderColor: "#EEECEC",
+      "gridBorderColor": "#EEECEC",
 
-      card: {
+      "card": {
         // Background color for all dashboard cards
-        backgroundColor: "#2D2D30",
+        "backgroundColor": "#2D2D30",
 
         // Apply a border color instead of shadow for dashboard cards.
         // Unset by default.
-        border: "1px solid #EEECEC",
-      },
+        "border": "1px solid #EEECEC"
+      }
     },
 
     // Question
-    question: {
+    "question": {
       // Background color for all questions
-      backgroundColor: "#2E353B",
+      "backgroundColor": "#2E353B",
 
       // Toolbar of the default interactive question layout
-      toolbar: {
-        backgroundColor: "#F3F5F7",
-      },
+      "toolbar": {
+        "backgroundColor": "#F3F5F7"
+      }
     },
 
     // Tooltips
-    tooltip: {
+    "tooltip": {
       // Tooltip text color.
-      textColor: "#FFFFFF",
+      "textColor": "#FFFFFF",
 
       // Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes.
-      secondaryTextColor: "#949AAB",
+      "secondaryTextColor": "#949AAB",
 
       // Tooltip background color.
-      backgroundColor: "#2E353B",
+      "backgroundColor": "#2E353B",
 
       // Tooltip background color for focused rows.
-      focusedBackgroundColor: "#0A0E10",
+      "focusedBackgroundColor": "#0A0E10"
     },
 
     // Data table
-    table: {
-      cell: {
+    "table": {
+      "cell": {
         // Text color of cells, defaults to `text-primary`
-        textColor: "#4C5773",
+        "textColor": "#4C5773",
 
         // Default background color of cells, defaults to `background`
-        backgroundColor: "#FFFFFF",
+        "backgroundColor": "#FFFFFF",
 
         // Font size of cell values, defaults to ~12.5px
-        fontSize: "12.5px",
+        "fontSize": "12.5px"
       },
 
-      idColumn: {
+      "idColumn": {
         // Text color of ID column, defaults to `brand`
-        textColor: "#9B5966",
+        "textColor": "#9B5966",
 
         // Background color of ID column, defaults to a lighter shade of `brand`
-        backgroundColor: "#F5E9EB",
-      },
+        "backgroundColor": "#F5E9EB"
+      }
     },
 
     // Number chart
-    number: {
+    "number": {
       // Value displayed on number charts.
       // This also applies to the primary value in trend charts.
-      value: {
-        fontSize: "24px",
-        lineHeight: "21px",
-      },
+      "value": {
+        "fontSize": "24px",
+        "lineHeight": "21px"
+      }
     },
 
     // Cartesian chart
-    cartesian: {
+    "cartesian": {
       // Padding around the cartesian charts.
       // Uses CSS's `padding` property format.
-      padding: "4px 8px",
+      "padding": "4px 8px"
     },
 
     // Pivot table
-    pivotTable: {
-      cell: {
+    "pivotTable": {
+      "cell": {
         // Font size of cell values, defaults to ~12px
-        fontSize: "12px",
+        "fontSize": "12px"
       },
 
       // Pivot row toggle to expand or collapse row
-      rowToggle: {
-        textColor: "#FFFFFF",
-        backgroundColor: "#95A5A6",
-      },
+      "rowToggle": {
+        "textColor": "#FFFFFF",
+        "backgroundColor": "#95A5A6"
+      }
     },
 
-    collectionBrowser: {
-      breadcrumbs: {
-        expandButton: {
-          textColor: "#8118F4",
-          backgroundColor: "#767D7C",
-          hoverTextColor: "#CE8C8C",
-          hoverBackgroundColor: "#69264B",
-        },
-      },
+    "collectionBrowser": {
+      "breadcrumbs": {
+        "expandButton": {
+          "textColor": "#8118F4",
+          "backgroundColor": "#767D7C",
+          "hoverTextColor": "#CE8C8C",
+          "hoverBackgroundColor": "#69264B"
+        }
+      }
     },
 
     // Popover are used in components such as click actions in interactive questions.
-    popover: {
+    "popover": {
       // z-index of the popover. Useful for embedding components in a modal. defaults to 4.
-      zIndex: 4,
-    },
-  },
+      "zIndex": 4
+    }
+  }
 }
 ```
-
-
-## Customizing the appearance of an SSO embed
-
-![Behavior and appearance with sso](./images/embed-with-sso.png)
-
-Add a `theme` object to your config object:
-
-
-```html
-<script defer src="http://localhost:3000/app/embed.js"></script>
-<script>
-function defineMetabaseConfig(config) {
-  window.metabaseConfig = config;
-}
-</script>
-
-<script>
-  defineMetabaseConfig({
-    "theme": {
-      "colors": {
-        "background": "#FFFFFF",
-        "text-primary": "hsla(204, 66%, 8%, 0.84)",
-        "brand": "hsla(208, 72%, 60%, 1.00)",
-        "background-hover": "rgb(236, 236, 236)",
-        "background-disabled": "rgb(231, 231, 231)",
-        "background-secondary": "rgb(233, 233, 233)",
-        "background-light": "rgb(233, 233, 233)",
-        "text-secondary": "rgba(9, 30, 44, 0.84)",
-        "text-tertiary": "rgba(11, 37, 54, 0.84)",
-        "brand-hover": "rgb(185, 216, 244)",
-        "brand-hover-light": "rgb(238, 245, 252)"
-      }
-    },
-    "instanceUrl": "http://localhost:3000"
-  });
-</script>
-
-<metabase-dashboard dashboard-id="10"
-  with-title="true"
-  with-downloads="false"
-  with-subscriptions="false"
-  hidden-parameters='["category"]'
-  drills="true">
-</metabase-dashboard>
-```
-
-## Customizing the appearance of a guest embed
-
-![Behavior and appearance](./images/behavior-and-appearance.png)
-
-Add a `theme` object to your config object:
-
-```html
-<script defer src="http://localhost:3000/app/embed.js"></script>
-<script>
-function defineMetabaseConfig(config) {
-  window.metabaseConfig = config;
-}
-</script>
-
-<script>
-  defineMetabaseConfig({
-    "theme": {
-      "colors": {
-        "background": "#FFFFFF",
-        "text-primary": "hsla(204, 66%, 8%, 0.84)",
-        "brand": "hsla(208, 72%, 60%, 1.00)",
-        "background-hover": "rgb(236, 236, 236)",
-        "background-disabled": "rgb(231, 231, 231)",
-        "background-secondary": "rgb(233, 233, 233)",
-        "background-light": "rgb(233, 233, 233)",
-        "text-secondary": "rgba(9, 30, 44, 0.84)",
-        "text-tertiary": "rgba(11, 37, 54, 0.84)",
-        "brand-hover": "rgb(185, 216, 244)",
-        "brand-hover-light": "rgb(238, 245, 252)"
-      }
-    },
-    "isGuest": true,
-    "instanceUrl": "http://localhost:3000"
-  });
-</script>
-
-<metabase-dashboard
-  token=<TODO: Fetch the JWT token from your backend and programmatically pass it to this 'metabase-dashboard' component>
-  with-title="true"
-  with-downloads="false">
-</metabase-dashboard>
-```
-
-## Example app with theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a question or dashboard, and play around with changing colors.
 
 ## Limitations
 
@@ -631,13 +588,19 @@ To render a dashboard:
 ### Optional parameters
 
 - `with-title` (default is true) - show the dashboard title in the embed
-- `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
+
+
+
+- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show the button to download the dashboard as PDF and download question results
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
 - `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards exclude links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-- `locale` - see [translations](./translations.md) (only available for guest embeds).
+
+For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+
+Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -677,14 +640,23 @@ To render a question (chart):
 
 ### Optional parameters
 
-- `drills` (default is true) - lets you drill through the question
 - `with-title` (default is true) - show the title
-- `with-downloads` (default is false) - show downloads
+
+
+
+- `drills` (default is true) - lets you drill through the question
+- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show downloads
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
 
+Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
+
 ## Browser
+
+
+
+Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
 To render a collection browser so people can navigate a collection and open dashboards or questions:
 
@@ -692,7 +664,8 @@ To render a collection browser so people can navigate a collection and open dash
 <metabase-browser
   initial-collection="14"
   read-only="false"
-  collection-entity-types="['collection', 'dashboard']">
+  collection-entity-types="['collection', 'dashboard']"
+>
 </metabase-browser>
 ```
 
@@ -712,6 +685,10 @@ To render a collection browser so people can navigate a collection and open dash
 
 ## AI chat
 
+
+
+AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
+
 To render the AI chat interface:
 
 ```html
@@ -730,6 +707,8 @@ None.
   - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
 
 ## Customizing loader and error components
+
+
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
@@ -755,6 +734,8 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 
 
 ## Prerequisites
+
+
 
 - You have an app that you can embed Metabase in.
 - You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://store.metabase.com/checkout/embedding). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
@@ -1253,6 +1234,8 @@ To build a sample full app embed using SSO with JWT, see our reference apps:
 
 # Full app embedding UI components
 
+
+
 To change the interface of your full app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 
 > For more granular control of embedded components, consider using [Modular embedding](./modular-embedding.md) instead of full app embedding - it's an improved, more customizable option for embedding Metabase elements.
@@ -1454,12 +1437,16 @@ Guest embeds are a way to embed basic Metabase components in your app without re
 
 Even though you're not using SSO, guest embeds are still secure: Metabase will only load the embed if the request has a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load (like the ID of the embedded item), and any values for parameters.
 
-To restrict data in guest embeds for specific people or groups, use [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
+To restrict data in guest embeds for specific people or groups, use [locked parameters](#locked-parameters).
 
 ## Turning on guest embedding in Metabase
 
-1. Go to **Settings > Admin settings > Embedding > Guest embeds**.
-2. Toggle **Enable guest embedding**.
+The path to embedding settings depends on your Metabase version:
+
+- **OSS**: **Admin settings > Embedding**
+- **Starter/Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
+
+Toggle **Enable guest embeds**.
 
 ## Creating a guest embed
 
@@ -1480,7 +1467,7 @@ To create a guest embed:
 
 ## Notes on the code the wizard generates
 
-You can edit the code (see [components](./components.md) and [appearance](./appearance.md). But here's an overview of the code the wizard generates, and where to put it.
+You can edit the code (see [components](./components.md) and [appearance](./appearance.md)). But here's an overview of the code the wizard generates, and where to put it.
 
 ### Client-side code
 
@@ -1534,34 +1521,162 @@ const token = jwt.sign(payload, METABASE_SECRET_KEY);
 Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key).
 
 ### Component attributes
+
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute            | Description                                                          |
-| -------------------- | -------------------------------------------------------------------- |
-| `token`              | Required. The signed JWT token from your server.                     |
-| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.               |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.          |
-| `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'` |
+| Attribute            | Description                                                           |
+| -------------------- | --------------------------------------------------------------------- |
+| `token`              | Required. The signed JWT token from your server.                      |
+| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
+| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.           |
+| `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
 
-Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options that embeds that use SSO. See more on [components and their attributes](./components.md).
+Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 
-## Editing parameters on an embedded question or dashboard
+### Customizing appearance of guest embeds
 
-If you change the [parameters](./static-embedding-parameters.md) of your embedded item:
+Appearance settings available for guest embeds depend on your Metabase plan. If you're running Metabase OSS/Starter, you can select light or dark theme. If you're running Metabase Pro/Enterprise, you'll have access to granular customization options, see [Appearance](./appearance.md).
 
-1. After making your changes, copy the code Metabase generates.
-2. Click **Publish** again.
-3. Update the code on your server so that it matches the code generated by Metabase.
+## Configuring parameters
+
+Parameters are disabled by default, which also makes them hidden from end-users. You can configure each parameter to be:
+
+- **Disabled**: Hidden from end-users. Can't be set. This is the default.
+- **[Editable](#editable-parameters)**: End-users can see and modify the parameter values.
+- **[Locked](#locked-parameters)**: Hidden from end-users, set by your server (not the end-users) via the JWT.
+
+To configure parameters:
+
+1. Go to your embedded question or dashboard.
+2. Click the **sharing icon** and select **Embed**.
+3. Under **Parameters**, select the visibility option for each parameter, and optionally default value(s).
+4. Click **Publish**.
+
+### Editable parameters
+
+When you set Editable parameters, you can set default values for the filters, but users can change these when viewing the question or dashboard.
+
+**Server code**
+
+On the server, you pass an empty `params` object:
+
+```javascript
+// you will need to install via 'npm install jsonwebtoken' or in your package.json
+
+const jwt = require("jsonwebtoken");
+
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+const payload = {
+  resource: { dashboard: 10 },
+  params: {},
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+};
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
+```
+
+**Client code**
+
+You set default parameters on the client side with the `initial-parameters` key.
+
+```html
+<script defer src="YOUR_METABASE_URL/app/embed.js"></script>
+<script>
+  function defineMetabaseConfig(config) {
+    window.metabaseConfig = config;
+  }
+</script>
+
+<script>
+  defineMetabaseConfig({
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+  });
+</script>
+
+<!--
+THIS IS THE EXAMPLE!
+NEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!
+
+Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
+-->
+<metabase-dashboard
+  token="YOUR SIGNED TOKEN"
+  with-title="true"
+  with-downloads="false"
+  initial-parameters='{"category":["Doohickey","Gizmo"]}'
+>
+</metabase-dashboard>
+```
+
+### Locked parameters
+
+Locked parameters let you filter data without exposing the filter to the end-user. This is useful for restricting data based on who's viewing the embed (for example, showing each customer only their own data).
+
+To use locked parameters, you need to:
+
+1. Set the parameter to **Locked** in the embed settings.
+2. Include the parameter value in your JWT token on the server.
+3. Publish the item.
+
+Here's an example of the server and client code that Metabase will generate if you lock a "category" parameter:
+
+**Server code (Node.js)**
+
+You set the locked parameter on the server, passing it in the token.
+
+```javascript
+// Install via 'npm install jsonwebtoken'
+const jwt = require("jsonwebtoken");
+
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+const payload = {
+  resource: { dashboard: 10 },
+  params: {
+    category: ["Gadget"], // Set the locked parameter value to Gadget
+  },
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+};
+
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
+```
+
+**Client code (HTML)**
+
+The parameter is set by the JWT:
+
+```html
+<script defer src="YOUR_METABASE_URL/app/embed.js"></script>
+<script>
+  window.metabaseConfig = {
+    isGuest: true, // Must be set to guest
+    instanceUrl: "YOUR_METABASE_URL",
+  };
+</script>
+
+<!--
+IMPORTANT: Never hardcode JWT tokens directly in your HTML!
+Fetch the token from your backend and pass it to the component programmatically.
+-->
+<metabase-dashboard
+  token="YOUR_JWT_TOKEN"
+  with-title="true"
+  with-downloads="false"
+></metabase-dashboard>
+```
+
+The end user won't see the "category" filter, but the dashboard will only show data for the "Gadget" category (or whatever you passed to the "category" array in the `params` object in the server payload you used to sign the JWT).
 
 ## Disabling embedding for a question or dashboard
-
-You can find a list of all guest embeds of questions and dashboards from **Admin settings** > **Embedding** > **Guest embeds**.
 
 1. Visit the embeddable question or dashboard.
 2. Click the **sharing icon** (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Guest embedding**
 5. Click **Unpublish**.
+
+Admins can find a list of embedded items in **Admin settings > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -1573,7 +1688,7 @@ The banner appears on guest embeds created with Metabase's open-source version. 
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
-1. Go to **Admin** > **Embedding** > **Guest embeds**.
+1. Go to **Admin settings > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
 2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
@@ -1586,7 +1701,19 @@ You can propagate filter values into the external URL, unless the filter is lock
 
 ## Translating guest embeds
 
-See [Translating embedded questions and dashboards](./translations.md).
+To translate an embed, set the `locale` in `window.metabaseConfig`:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    locale: "es",
+  };
+</script>
+```
+
+The `locale` setting works for all modular embeds (guest and SSO). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a translation dictionary. Translation dictionaries only work with guest embeds. See [Translating embedded questions and dashboards](./translations.md).
 
 ## How guest embedding works
 
@@ -1605,6 +1732,12 @@ The signed JWT is generated using your [Metabase secret key](#regenerating-the-e
 
 If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
+## Using guest embeds with the SDK
+
+If you're using the [Modular Embedding SDK](./sdk/introduction.md), and you also want to embed a question or dashboard using guest authentication, you'll still need to visit the item in your Metabase and publish the item. You can ignore the code the wizard generates, but in order for Metabase to know it's okay to serve the item, you need to publish it.
+
+One limitation, however, is that you can only have one type of authentication per page of your app. For example, on a single page in your app, you can't have both one question using guest authentication and another question using SSO.
+
 ## Guest embed limitations
 
 Because guest embeds don't require you to create a Metabase account for each person via SSO, Metabase can't know who is viewing the embed, and therefore can't give them access to all their data and all the cool stuff Metabase can do.
@@ -1612,20 +1745,16 @@ Because guest embeds don't require you to create a Metabase account for each per
 Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
+- [Database routing](../permissions/database-routing.md)
 - [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
-- [AI chat](./sdk/ai-chat.md).
+- [AI chat](./sdk/ai-chat.md)
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 
-## Example app with guest embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.
-
 ## Further reading
 
-- [Parameters for guest embeds](./static-embedding-parameters.md).
 - [Reference apps repo](https://github.com/metabase/embedding-reference-apps).
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
@@ -1726,8 +1855,6 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 
 
-
-
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
 
 Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
@@ -1743,6 +1870,10 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Create a new embed
 
+You can generate a code snippet for embedding a component by going through the embed wizard.
+
+### 1. Open the embed wizard
+
 In your Metabase:
 
 1. Visit the item you want to embed.
@@ -1757,25 +1888,21 @@ You can also go to **Admin settings > Embedding > Modular embedding** and click 
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
-## Pick how to authenticate the embed
+### 2. Pick how to authenticate the embed
+
+
 
 How you authenticate the embed determines how cool the embed can get. This page covers the SSO setup, which lets you do everything. This setup requires you to have [set up SSO for your Metabase](./authentication.md). You can check out a [comparison between SSO and guest](./introduction.md#comparison-of-embedding-types), or jump straight to the [guest embed docs](./guest-embedding.md). But we recommend setting up modular embedding with SSO.
 
-## Customize your embed
+### 3. Customize your embed
 
-The exact customization options you see will depend on what type of entity you're embedding. You'll see a live preview of the embed with your customizations.
+The exact customization options you see will depend on what type of entity you're embedding and which [Metabase plan](https://www.metabase.com/pricing) you're on. You'll see a live preview of the embed with your customizations.
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
-You'll also be able to pick colors for:
+If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll be also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
 
-- Brand
-- Text
-- Background
-
-But you can customize a lot more later. To configure other colors (like secondary colors, query builder colors, and more), as well as font, you can specify a `theme` in your embed code snippet.
-
-All the customization options you select in this interactive flow will be reflected in code snippet, which you can edit as you see fit.
+All the customization options you select in this wizard will be reflected in code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
 For example, this code defines the font, color, and size for text, background colors, and colors for filters and summaries:
 
@@ -1804,7 +1931,7 @@ Once you're done customizing your embed, click **Next**.
 
 ## Add the embedding script to your app
 
-Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
+If you [create an embed through the built-in embed wizard](#create-a-new-embed), Metabase will generate a code snippet that you can copy and paste into your app. See the example below. You can later modify this code snippet to specify additional appearance options or change the behavior of some components.
 
 You'll add this code snippet to your app and refresh the page.
 
@@ -1822,13 +1949,13 @@ Here's an example snippet:
 
 <script defer src="https://your-metabase-url/app/embed.js"></script>
 
+<!-- Embedding configuration -->
 <script>
   function defineMetabaseConfig(config) {
     window.metabaseConfig = config;
   }
 </script>
 
-<!-- Embedding configuration -->
 <script>
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase-url",
@@ -1852,7 +1979,9 @@ If you're embedding multiple components in a single page, you only need to inclu
 
 ## Each end user should have their own Metabase account
 
-With SSO embeds, each end-user must have their own Metabase account.
+
+
+With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 
 The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the modular embedding, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they’re not supposed to see.
 
@@ -1862,9 +1991,9 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 ## Customizing embeds
 
-The exact customization options you see will depend on what type of entity you're embedding.
+The exact customization options you see will depend on what type of entity you're embedding and which plan you're on.
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -1916,6 +2045,8 @@ API keys should only be used for testing with trusted people. Anyone with access
 
 ## Embedding Metabase in a different domain
 
+
+
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
 You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
@@ -1934,11 +2065,9 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 
 ## Setting up SSO
 
+
+
 For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
-
-## Example app with SSO embed and theming
-
-Check out our [sample app](https://github.com/metabase/modular-embedding-sample-app). Bring your Metabase, embed a dashboard, and play around with changing colors.
 
 ---
 
@@ -2563,16 +2692,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
-## Changelog
-
-View the SDK's changelog:
-
-- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-
 ## Modular embedding SDK on npm
 
 Check out the Metabase Modular embedding SDK on npm: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).
@@ -2890,7 +3009,17 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
+### Embed the visual query builder
+
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+
+```tsx
+
+```
+
+### Embed the SQL editor
+
+You can also embed the SQL editor to enable people to build questions with SQL by passing `questionId="new-native"` to the `InteractiveQuestion` component:
 
 ```tsx
 
@@ -3615,6 +3744,8 @@ The flow might look something like this:
 
 ## Modular and full app embedding auth with JWT or SAML
 
+
+
 Modular embedding (including using the [SDK](./sdk/introduction.md)), and [full-app embedding](./full-app-embedding.md) integrate with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
@@ -4209,7 +4340,7 @@ See [Translating embedded questions and dashboards](./translations.md).
 
 
 
-A Tenant is a named set of attributes you can assign to a user to isolate them from other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
+Tenants give you a way to group users and keep them isolated from users in other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
 
 The big advantage of grouping users into tenants is that you can use the same content and group permissions for all tenants, so you don't have to create all new stuff for each tenant, and each tenant only ever sees their own data.
 
@@ -4237,13 +4368,13 @@ While working with tenants in Metabase, you'll encounter different user and grou
 
 ### User types
 
-- **Tenant users** are the end users. In a B2B SaaS context, these are the your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
+- **Tenant users** are the end users. In a B2B SaaS context, these are your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 
 - **Internal users** are "normal" Metabase users who don't belong to any tenant. Think Metabase admins, or devs building the dashboards that will be shared with tenants.
 
 ### Group types
 
-Tenant users and and internal users can be organized into Metabase [groups](../people-and-groups/managing.md#groups).
+Tenant users and internal users can be organized into Metabase [groups](../people-and-groups/managing.md#groups).
 
 ![Tenant groups types](./images/tenant-groups.png)
 
@@ -4259,17 +4390,17 @@ Tenant users and and internal users can be organized into Metabase [groups](../p
 
 - **All internal users** is a special group for all people who _aren't_ members of a tenant.
 
-  These are the people working directly in Metabase. This group is equivalent to "All users" group when multi-tenancy is not enabled.
+  These are the people working directly in Metabase. This group is equivalent to the "All users" group when multi-tenancy is not enabled.
 
 - **Internal groups** are additional groups for internal users.
 
-  For example, you might have a special group for your internal group "Analytics developers" who only have access to create dashboards that will be later shared with tenants, but don't have full admin access to your whole Metabase.
+  For example, you might have a special internal group "Analytics developers" who only have access to create dashboards that will be later shared with tenants, but don't have full admin access to your whole Metabase.
 
 Tenant users are completely isolated from internal users: tenant users can't be added to internal user groups, and internal users can't be added to tenant groups.
 
 ### Collection types
 
-Collections are like folders that can contain charts, dashboard, and models. They also serve as an organizational unit for permission management: if a certain group of people should have access to a certain set of assets, you should put those assets into a collection.
+Collections are like folders that can contain charts, dashboards, and models. They also serve as an organizational unit for permission management: if a certain group of people should have access to a certain set of assets, you should put those assets into a collection.
 
 ![Tenant collections](./images/tenant-collections.png)
 
@@ -4283,7 +4414,7 @@ Collections are like folders that can contain charts, dashboard, and models. The
 
   Shared collections can be optionally [synced to GitHub](#sync-shared-collections-to-github).
 
-- **Tenant collections** are collection specific to each tenant. They are created automatically for each tenant.
+- **Tenant collections** are collections specific to each tenant. They are created automatically for each tenant.
 
   If you have special customers with bespoke analytics that only this customer gets, you can put those bespoke dashboards and charts into the tenant's collection. Tenant collections can also serve as a place for the tenant users to create and save new questions that can be shared with their fellow tenant users (but not with users from other tenants).
 
@@ -4296,13 +4427,13 @@ See [Collection permissions](#collection-permissions-for-tenants) for configurin
 ## End user experience
 
 End users who are members of tenants will not know that they are members of tenants.
-In the experiences that expose users to to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into metabase), tenant users see all the tenant and shared collections they have access to as just collections.
+In the experiences that expose users to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into Metabase), tenant users see all the tenant and shared collections they have access to as just collections.
 
-### Enable multi-tenant strategy
+## Enable multi-tenant strategy
 
-_Admin setting > People_
+_Admin settings > People_
 
-You can create and manage you tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
+You can create and manage your tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
 
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
@@ -4310,7 +4441,7 @@ You can create and manage you tenants exclusively through Metabase UI, or, if th
 2. Click on the **gear** icon above the list of people.
 3. Choose **Multi-tenant strategy**.
 
-Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collection, and you get some additional admin settings in the People and Permissions tabs.
+Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get some additional admin settings in the People and Permissions tabs.
 
 If you have an existing permissions and collection setup that you'd like to translate to use tenants, see [Changing tenant strategy](#changing-tenant-strategy).
 
@@ -4318,7 +4449,7 @@ Once you enable multi-tenant strategy, keep in mind that switching _from_ multi-
 
 ## Create new tenants in Metabase
 
-_Admin setting > People > Tenant_
+_Admin settings > People > Tenant_
 
 ![New tenant user](./images/new-tenant.png)
 
@@ -4326,17 +4457,17 @@ To create new tenants in Metabase:
 
 1. [Enable multi-tenant strategy](#enable-multi-tenant-strategy), if you haven't yet.
 2. Go to **Admin settings > People** .
-3. Select **Tenants** on the left sidebar and click **New tenant**
+3. Select **Tenants** on the left sidebar and click **New tenant**.
 4. Fill out the information for the tenant:
    - **Tenant name**: Display name for the tenant that will be displayed to _internal_ users. Not exposed to external users. This name can be changed later.
-   - **Tenant slug**: unique identifier of the tenant. It can be used to [match JWT claims](#use-tenant-claim-to-sign-in-users) and for setting up [data permissions](#use-tenant-attributes-for-data-permissions). See [Tenant slug](#special-tenant-slug-attribute) for more information.
+   - **Tenant slug**: Unique identifier of the tenant. It can be used to [match JWT claims](#use-tenant-claim-to-sign-in-users) and for setting up [data permissions](#use-tenant-attributes-for-data-permissions). See [Tenant slug](#special-tenant-slug-attribute) for more information.
    - **Tenant attributes**: you can define tenant attributes that will be inherited by every tenant user, see [Tenant attributes](#tenant-attributes).
 
 You can avoid manually setting up tenants in Metabase by [provisioning tenants with JWT](#provisioning-and-assigning-tenants-with-jwt).
 
 ## Create tenant groups
 
-_Admin setting > People > Tenant groups_
+_Admin settings > People > Tenant groups_
 
 Tenant groups are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to use those groups. Groups can be used to configure permissions so that, among the tenant's users, some get Basic permissions while others get Premium. See [Tenant concepts](#concepts) for more information.
 
@@ -4351,19 +4482,19 @@ To add people to tenant groups, see [Add people to groups](../people-and-groups/
 
 ## Create tenant users in Metabase
 
-_Admin setting > People > Tenant users_
+_Admin settings > People > Tenant users_
 
-Tenant users are the end users in tenants. In a B2B SaaS context, these are the your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
+Tenant users are the end users in tenants. In a B2B SaaS context, these are your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 To add tenant users in Metabase:
 
-1. [Create a tenant](#create-tenant-users-in-metabase).
+1. [Create a tenant](#create-new-tenants-in-metabase).
 2. Go to **Admin settings > People** .
-3. Select **Tenants users** on the left sidebar and click **New tenant user**.
+3. Select **Tenant users** on the left sidebar and click **New tenant user**.
 4. Fill out the user information, including the tenant and tenant groups.
 
    If your tenant has [tenant attributes](#tenant-attributes), they'll be inherited by the user, but you can override the value in "Attributes".
 
-You can also [provision tenant users with JWT](#tenant-attributes).
+You can also [provision tenant users with JWT](#provisioning-and-assigning-tenants-with-jwt).
 
 ## Create shared collections for tenants
 
@@ -4374,21 +4505,21 @@ Shared collections contain dashboards and charts that are shared between all ten
 To create a shared collection:
 
 1. [Enable multi-tenant strategy](#enable-multi-tenant-strategy), if you haven't yet.
-2. Open Metabase navigation sidebar by clicking on the **three lines** in top left (that's regular Metabase, not Admin settings).
-3. You should see "External collections" in the sidebar. If you don't make sure you have enabled multi-tenant strategy.
+2. Open Metabase navigation sidebar by clicking on the **three lines** in the top left (that's regular Metabase, not Admin settings).
+3. You should see "External collections" in the sidebar. If you don't, make sure you have enabled multi-tenant strategy.
 4. Click on the **+** next to "External collections" to create a shared collection.
 
 You can have multiple shared collections and nested shared collections. You can also [sync shared collections to GitHub](#sync-shared-collections-to-github).
 
 ## Sync shared collections to GitHub
 
-_Admin setting > Remote Sync_
+_Admin settings > Remote Sync_
 
 You can set up [Remote sync](../installation-and-operation/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../installation-and-operation/remote-sync.md) for more details.
 
 ## Tenant attributes
 
-_Admin setting > People > Tenants_
+_Admin settings > People > Tenants_
 
 You can create tenant-level [user attributes](#tenant-attributes) which all users of the tenant inherit. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
 
@@ -4396,18 +4527,18 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 To add a tenant attribute:
 
-1. Go to **Admin setting > People**
+1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 Currently, you can't assign custom tenant attributes with SSO. The only way to assign attributes is through the Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if you're using user attribute to set permissions, then you can use the [special slug attribute](#special-tenant-slug-attribute) which Metabase creates automatically.
 
 ### Special tenant slug attribute
 
-Each tenant user will get system-defined attribute `@tenant.slug` that corresponds to the slug of the tenant. For example, if you created a tenant "Meowdern Solutions" with the slug `meowdern_solutions`, then every user from this tenant will get a special attribute `@tenant.slug : "meowdern_solutions"`.
+Each tenant user will get a system-defined attribute `@tenant.slug` that corresponds to the slug of the tenant. For example, if you created a tenant "Meowdern Solutions" with the slug `meowdern_solutions`, then every user from this tenant will get a special attribute `@tenant.slug : "meowdern_solutions"`.
 
 ![Slug attribute](./images/slug-attribute.png)
 
@@ -4417,7 +4548,7 @@ The special `@tenant.slug` attribute can be used just like a normal attribute to
 
 For example, if you want to use row-level security, and tenants are identified in your tables by their IDs (instead of names), then your tenant slug should be an ID as well.
 
-For example, if your data looks like this
+For example, if your data looks like this:
 
 ```
 | Customer ID | Order number | Order date | Order total |
@@ -4451,7 +4582,7 @@ If the user has already been assigned to a tenant (for example, through Metabase
 
 ### Customize tenant claim
 
-By default, Metabase looks for a `@tenant` key in your JWT. To set up a different key
+By default, Metabase looks for a `@tenant` key in your JWT. To set up a different key:
 
 1. Go to **Admin** > **Settings** > **Authentication** > **JWT** > **User attribute configuration**
 2. Change the **Tenant assignment attribute** key to your preferred identifier.
@@ -4468,7 +4599,7 @@ When user provisioning with JWT is enabled:
 
 ### Troubleshooting JWT authentication with tenants
 
-Some auth common error messages and what they mean:
+Some common auth error messages and what they mean:
 
 - **Cannot add tenant claim to internal user**: JWT includes a tenant, but the user is an internal user. Only tenant users can have a tenant.
 - **Tenant claim required for external user**: JWT lacks a tenant claim, but the user is an external user.
@@ -4477,7 +4608,7 @@ Some auth common error messages and what they mean:
 
 ## Data permissions for tenants
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 
@@ -4485,7 +4616,7 @@ Data permissions control what data people can see on charts and dashboards, and 
 
 For an overview of how data permissions work in Metabase, see [Data permissions](../permissions/data.md). Here are the highlights (but please do read the full [Data permissions](../permissions/data.md) documentation):
 
-- **"View data"** controls which data each user group can see in the on on charts.
+- **"View data"** controls which data each user group can see on dashboards and charts.
 
   For example, if your tenant data is commingled in one database, then you can use [**Row and column security**](../permissions/row-and-column-security.md) or [**Impersonation**](../permissions/impersonation.md) "View data" permissions to provide tenant users with access to only certain rows and columns.
 
@@ -4493,9 +4624,9 @@ For an overview of how data permissions work in Metabase, see [Data permissions]
 
 - **Create queries** controls whether tenant users can create queries on the data they see. If you want to give your tenant users the ability to drill through (e.g., through `drills` parameter in [modular embedding](../embedding/modular-embedding.md)), you need to give them "Create queries" permissions, because a drill through is a new query.
 
-- **Download results** controls, unsurprisingly, whether people can download results of queries. You need to set download permissions if you want to give your users the option to download their data as a spreadsheet (for example, through `with-downloads` parameter in [modular embedding](../embedding/modular-embedding.md))
+- **Download results** controls, unsurprisingly, whether people can download results of queries. You need to set download permissions if you want to give your users the option to download their data as a spreadsheet (for example, through `with-downloads` parameter in [modular embedding](../embedding/modular-embedding.md)).
 
-Data permissions in Metabase are can be specified on database or table level and are granted to groups. You'll need to use the special **All tenant users**, and your tenant groups (if any) to assign data permissions. Keep in mind that Metabase permissions are additive, so if someone is a member of two different groups, they will be granted the _most_ permissive access. In particular, if "All tenant users" has "Can view" access to an entire table, but another tenant group has restricted access (e.g. "Row and column security"), then the users of the tenant group will still see all the data in the table because they get it via the "All tenant users" group. If you're using tenant groups, we recommend revoking access for "All tenant users" and configuring access on group-by-group basis.
+Data permissions in Metabase can be specified on database or table level and are granted to groups. You'll need to use the special **All tenant users**, and your tenant groups (if any) to assign data permissions. Keep in mind that Metabase permissions are additive, so if someone is a member of two different groups, they will be granted the _most_ permissive access. In particular, if "All tenant users" has "Can view" access to an entire table, but another tenant group has restricted access (e.g. "Row and column security"), then the users of the tenant group will still see all the data in the table because they get it via the "All tenant users" group. If you're using tenant groups, we recommend revoking access for "All tenant users" and configuring access on group-by-group basis.
 
 Please review [Data permissions documentation](../permissions/data.md) for more details on permissions setup.
 
@@ -4509,7 +4640,7 @@ Collection permissions control which entities (dashboards, questions, models etc
 
 To configure what _data_ can people see in those entities, and what they can do with that data, see [Data permissions](#data-permissions-for-tenants) instead.
 
-In Metabase, there are different levels of collection permissions: **No** access, **View**-only access, and **Curate** access (allows for creating and saving new entities like dashboards). For more general information about collection permissions in Metabase, see [Collection permissions](#collection-permissions-for-tenants).
+In Metabase, there are different levels of collection permissions: **No** access, **View**-only access, and **Curate** access (allows for creating and saving new entities like dashboards). For more general information about collection permissions in Metabase, see [Collection permissions](../permissions/collections.md).
 
 Permissions are granted to groups. Which permissions are available to each group depend on the type of the group (external/tenant or internal) and the type of the collection.
 
@@ -4518,7 +4649,7 @@ Permissions are granted to groups. Which permissions are available to each group
 - For **internal collections**, tenant users will have **No** access.
 - For **shared collections**, tenant users can only have **View** or **No** access. This means that at _most_, tenant users can see existing entities but not create new ones.
 
-  Different tenant groups can have different levels access to different shared collections. For example, you can have a "Basic analytics" shared collection viewable by all users, and "Advanced analytics" collection only viewable by tenant group "Premium users".
+  Different tenant groups can have different levels of access to different shared collections. For example, you can have a "Basic analytics" shared collection viewable by all users, and "Advanced analytics" collection only viewable by tenant group "Premium users".
 
   See [Configuring shared collection permissions](#configuring-shared-collections-permissions).
 
@@ -4531,18 +4662,18 @@ Permissions are granted to groups. Which permissions are available to each group
 ### Internal user collection permissions
 
 - Metabase Admins will have **Curate** access to all shared collections and all tenant collections.
-- Other internal groups can be granted **View** or **Curate** access to **shared collections**, see [Configuring shared collection permissions](#configuring-shared-collections-permissions),
+- Other internal groups can be granted **View** or **Curate** access to **shared collections**, see [Configuring shared collection permissions](#configuring-shared-collections-permissions).
 - Non-admin internal users will have **No** access to tenant-specific collections. Currently, this can't be configured.
 
-For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md)
+For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md).
 
 ### Configuring shared collections permissions
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 To configure access to shared collections for tenant and internal groups, go to **Admin settings > Permissions > Shared collections**.
 
-You can configure access for each shared collections and their subcollections for both internal and external users. See general docs on [collection permissions](#collection-permissions-for-tenants).
+You can configure access for each shared collection and their subcollections for both internal and external users. See general docs on [collection permissions](../permissions/collections.md).
 
 Special **Root shared collection** controls who has access to _all_ shared collections. For example, if you want to make sure your internal users don't have access to any tenant shared collections, you can revoke permissions from the Root shared collection.
 
@@ -4550,13 +4681,13 @@ When configuring permissions, remember that in Metabase, all permissions are add
 
 ## Subscription permissions for tenants
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 By default, all tenant users will be created with **No** [subscription permissions](../permissions/application.md#subscriptions-and-alerts). If you want your users to be able to create subscriptions (either in full-app embedding, modular embedding, or by logging in directly to Metabase), you'll need to change the Subscription and alerts permissions to "Yes".
 
 ## Deactivate a tenant
 
-_Admin setting > People > Tenants_
+_Admin settings > People > Tenants_
 
 **Deactivating a tenant will also deactivate all users who belong to this tenant**.
 
@@ -4565,7 +4696,7 @@ To deactivate a tenant:
 1. Go to **Admin settings > People**.
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
-4. Choose **Deactivate tenant**
+4. Choose **Deactivate tenant**.
 
 All tenant users will be deactivated and won't be able to sign in anymore. Tenant users will not be permanently deleted (Metabase does not delete users, only deactivates), so even though the tenant users will be deactivated, you won't be able to create new users with the same email.
 
@@ -4589,7 +4720,7 @@ However, if you want to assign some existing users to tenants, you'll need to:
 
 ### From multi-tenant to single-tenant
 
-If you disable multi-tenant strategy, _all your tenant users will be deactivated_ and _all collections will be deleted_ (although you'll get both users and collections back if you reactivate multi-tenant strategy later). So if you want to wish to keep the active users but just disable tenancy features, you'll need some extra prep.
+If you disable multi-tenant strategy, _all your tenant users will be deactivated_ and _all collections will be deleted_ (although you'll get both users and collections back if you reactivate multi-tenant strategy later). So if you want to keep the active users but just disable tenancy features, you'll need some extra prep.
 
 1. Replicate the tenant setup you have with regular groups and collections (instead of tenant groups and shared collections). Review documentation for Data permissions, Collection permissions, and User groups. Make sure to thoroughly test your setup with test users. A [development instance](../installation-and-operation/development-instance.md) might come in handy.
 2. If you're using any tenant groups, remove the tenant group memberships of all tenant users.
@@ -4602,7 +4733,7 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 
    **If you don't do this step, all your users will be deactivated.**
 
-4. Finally, disable the feature once everything is verified to work
+4. Finally, disable the feature once everything is verified to work.
 
 ## Limitations
 
@@ -4612,9 +4743,9 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 
 - **Tenant users can't change tenants.** Once an external user is assigned to a tenant, they cannot switch to another tenant.
 
-- **If you disable multi-tenant strategy, deactivated tenant users will not show up in 'Deactivated users**, but Metabase will still keep track of them and won't allow creating new users with the same email. If you want to
+- **If you disable multi-tenant strategy, deactivated tenant users will not show up in "Deactivated users"**, but Metabase will still keep track of them and won't allow creating new users with the same email.
 
-- **There are no tenant-specific groups**. Tenant groups are are shared between all tenants. If you need a special group for just some of your tenants, create a tenant group but don't add any members from the tenants that the group isn't applicable to.
+- **There are no tenant-specific groups**. Tenant groups are shared between all tenants. If you need a special group for just some of your tenants, create a tenant group but don't add any members from the tenants that the group isn't applicable to.
 
 ## Further reading
 
@@ -4628,9 +4759,43 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 
 
 
-For now, translations are only available for [guest embeds](./guest-embedding.md). Translations aren't available for SSO-based modular embedding or full app embedding.
+You can set a locale on all modular embeds (guest and SSO) to translate Metabase's UI. Translation dictionaries, however, are only available for [guest embeds](./guest-embedding.md).
 
-You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
+## Set a locale to translate UI, and upload a dictionary to translate content
+
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+
+For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    // Translates UI elements to the locale's language.
+    // For guest embeds, if you've uploaded a translation dictionary,
+    // Metabase will also translate content strings
+    // to this locale from that dictionary.
+    locale: "es"
+  };
+</script>
+
+<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+For guest embeds (and only guest embeds), if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
+
+### SDK translations
+
+For the SDK, set the `locale` prop on the `MetabaseProvider` component:
+
+```tsx
+<MetabaseProvider
+  authConfig={authConfig}
+  locale="es"
+>
+</MetabaseProvider>
+```
 
 ## Add a translation dictionary
 
@@ -4650,21 +4815,6 @@ To add a translation dictionary:
 Uploading a new dictionary will replace the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
-
-## Translate content in guest embeds
-
-To translate content in a guest embed using the uploaded dictionary, add the [`locale` parameter](./components.md).
-```
- <metabase-dashboard
-    dashboard-id="1"
-    with-title="false"
-    with-subscriptions="true"
-    drills="true"
-    locale="es"
- </metabase-dashboard>
-```
-
-Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
 
 ## Example translation dictionary
 
