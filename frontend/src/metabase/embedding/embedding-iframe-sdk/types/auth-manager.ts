@@ -8,6 +8,7 @@ export interface EmbedAuthManagerContext {
     instanceUrl: string;
     preferredAuthMethod?: MetabaseAuthMethod;
     fetchRequestToken?: MetabaseFetchRequestTokenFn;
+    jwtProviderUri?: string;
   };
   sendMessage<Message extends SdkIframeEmbedMessage>(
     type: Message["type"],
