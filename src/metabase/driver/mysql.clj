@@ -1228,21 +1228,20 @@
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
   ;; We create a separate database for workspace isolation.
   (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user {:user     (driver.u/workspace-isolation-user-name workspace)
-                   :password (driver.u/random-workspace-password)}]
+        user      (driver.u/workspace-isolation-user-name workspace)
+        password  (driver.u/random-workspace-password)
+        read-user {:user user, :password password}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Use mysql_native_password to avoid RSA key exchange issues with caching_sha2_password in MySQL 8+
       (let [user-sql (if (mysql-user-exists? t-conn (:user read-user))
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'"
-                               (:user read-user) (:password read-user))
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'"
-                               (:user read-user) (:password read-user)))]
+                       (format "ALTER USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'" user password)
+                       (format "CREATE USER `%s`@'%%' IDENTIFIED WITH mysql_native_password BY '%s'" user password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
                        (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
                        user-sql
                        ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name (:user read-user))]]
+                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
