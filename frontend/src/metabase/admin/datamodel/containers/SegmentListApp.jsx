@@ -71,7 +71,7 @@ class SegmentListAppInner extends Component {
   }
 }
 
-const SegmentListApp = _.compose(
+export const SegmentListApp = _.compose(
   Segments.loadList(),
   FilteredToUrlTable("segments"),
   connect(
@@ -84,5 +84,3 @@ const SegmentListApp = _.compose(
     },
   ),
 )(SegmentListAppInner);
-
-export default SegmentListApp;

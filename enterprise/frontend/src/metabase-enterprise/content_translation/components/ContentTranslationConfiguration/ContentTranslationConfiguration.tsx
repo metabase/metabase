@@ -53,7 +53,7 @@ const maxContentDictionarySizeInBytes =
   maxContentDictionarySizeInMiB * 1024 * 1024;
 
 export const ContentTranslationConfiguration = () => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is used in admin settings
   const availableLocalesDocsUrl = useDocsUrl(
     "configuring-metabase/localization",
     { anchor: "supported-languages" },
@@ -115,7 +115,7 @@ export const ContentTranslationConfiguration = () => {
     [isDownloadInProgress],
   );
 
-  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
   const uploadDescription = t`Upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values). The dictionary must be a CSV with these columns: **Locale Code**, **String**, **Translation**.`;
 
   return (

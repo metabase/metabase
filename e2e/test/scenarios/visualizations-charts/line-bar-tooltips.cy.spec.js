@@ -1142,13 +1142,13 @@ function setupDashboard(
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
   H.echartsTriggerBlur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.cartesianChartCircleWithColor(seriesColor).eq(index).trigger("mousemove");
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
   H.echartsTriggerBlur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 

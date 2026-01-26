@@ -195,12 +195,12 @@ export function filterWidget({ isEditing = false, name = null } = {}) {
 }
 
 export function clearFilterWidget(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("close").click();
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("revert").click();
 }
 
@@ -439,7 +439,7 @@ export function tableInteractiveFooter() {
 }
 
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)
     .eq(elementIndex)
     .trigger("mousedown", {
@@ -483,7 +483,7 @@ export function assertTableRowsCount(value) {
 }
 
 export function lastTableRow() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return tableInteractiveScrollContainer()
     .scrollTo("bottomLeft")
     .findAllByRole("row")
@@ -547,7 +547,7 @@ export function assertTableData({ columns, firstRows = [] }) {
     .should("have.length", columns.length);
 
   columns.forEach((column, index) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
       .eq(index)
@@ -556,7 +556,7 @@ export function assertTableData({ columns, firstRows = [] }) {
 
   firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
         .eq(columns.length * rowIndex + cellIndex)
@@ -596,12 +596,12 @@ export function fieldValuesTextbox() {
 }
 
 export function fieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("token-field").eq(index);
 }
 
 export function removeFieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByTestId("token-field")
     .findAllByLabelText("Remove")
@@ -610,7 +610,7 @@ export function removeFieldValuesValue(index) {
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)

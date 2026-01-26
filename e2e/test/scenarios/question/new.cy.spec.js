@@ -83,7 +83,7 @@ describe("scenarios > question > new", () => {
       H.notebookButton().should("not.exist");
 
       H.visualize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
       H.openNotebook();
@@ -108,7 +108,7 @@ describe("scenarios > question > new", () => {
       });
       cy.findByTestId("data-step-cell").contains("Products");
       H.visualize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rustic Paper Wallet");
     });
 
@@ -238,9 +238,9 @@ describe("scenarios > question > new", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID is 1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
   });
 

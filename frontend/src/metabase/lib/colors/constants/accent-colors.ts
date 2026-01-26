@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals -- we define chart colors here to avoid duplication */
+/* eslint-disable metabase/no-color-literals -- we define chart colors here to avoid duplication */
 
 import type { ChartColorV2 } from "../types";
 

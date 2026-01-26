@@ -77,13 +77,13 @@ export const updateSettings = createThunkAction(
 );
 
 // REDUCERS
-const settings = handleActions(
+const settingsReducer = handleActions(
   {
     [REFRESH_SETTINGS_LIST]: { next: (state, { payload }) => payload },
   },
   [],
 );
 
-export default combineReducers({
-  settings,
+export const settings = combineReducers({
+  settingsReducer,
 });
