@@ -2,7 +2,6 @@
   "`/api/ee/metabot-v3/` routes"
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.document]
@@ -57,53 +56,43 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 
+(defn- streaming-writer-rf
+  "Creates a reducing function that:
+  1. Writes AI SDK lines to an OutputStream as they're produced
+  2. Accumulates lines for later storage
+
+  The reducing function signature:
+  - () -> initializes accumulator
+  - (acc) -> completion, returns accumulated lines
+  - (acc line) -> writes line to stream, accumulates it"
+  [^java.io.OutputStream os]
+  (fn
+    ([] [])
+    ([lines] lines)
+    ([lines ^String line]
+     (.write os (.getBytes (str line "\n") "UTF-8"))
+     (.flush os)
+     (conj lines line))))
+
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
   Converts internal parts to AI SDK v4 line protocol format and streams them in real-time."
   [{:keys [profile-id message context history conversation-id state]}]
   (let [enriched-context (metabot-v3.context/create-context context)
-        messages (concat history [message])
-        response-chan (agent/run-agent-loop
-                       {:messages messages
-                        :state state
-                        :profile-id (keyword profile-id)
-                        :context enriched-context})]
+        messages (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"}
                            [^java.io.OutputStream os _canceled-chan]
-      ;; Use a custom reducing function that writes lines as they're produced
-      ;; and accumulates them for storage
-      (let [usage-acc (volatile! {})
-            lines-acc (volatile! [])
-            write-line! (fn [line]
-                          (vswap! lines-acc conj line)
-                          (let [line-with-newline (str line "\n")]
-                            (.write os (.getBytes ^String line-with-newline "UTF-8"))
-                            (.flush os)))]
-        ;; Process each part as it arrives
-        (loop []
-          (if-let [part (a/<!! response-chan)]
-            (do
-              (case (:type part)
-                :text        (write-line! (self.core/format-text-line part))
-                :data        (write-line! (self.core/format-data-line part))
-                :error       (write-line! (self.core/format-error-line part))
-                :tool-input  (write-line! (self.core/format-tool-call-line part))
-                :tool-output (write-line! (self.core/format-tool-result-line part))
-                :start       (write-line! (self.core/format-start-line part))
-                :finish      nil ;; Will emit finish at the end
-                :usage       (let [{:keys [usage id]} part
-                                   model (or id "claude-haiku-4-5")]
-                               (vswap! usage-acc assoc model
-                                       {:prompt (:promptTokens usage 0)
-                                        :completion (:completionTokens usage 0)}))
-                ;; Unknown types -> treat as data
-                (write-line! (self.core/format-data-line part)))
-              (recur))
-            ;; Channel closed - emit finish message and store
-            (do
-              (write-line! (self.core/format-finish-line @usage-acc))
-              (store-message! conversation-id profile-id
-                              (metabot-v3.u/aisdk->messages :assistant @lines-acc)))))))))
+      ;; Compose aisdk-line-xf with streaming writer to get a reducing function
+      ;; that formats parts as AI SDK lines and writes them to the output stream
+      (let [rf    (self.core/aisdk-line-xf (streaming-writer-rf os))
+            lines (agent/run-agent-loop
+                   {:messages   messages
+                    :state      state
+                    :profile-id (keyword profile-id)
+                    :context    enriched-context}
+                   rf)]
+        (store-message! conversation-id profile-id
+                        (metabot-v3.u/aisdk->messages :assistant lines))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."

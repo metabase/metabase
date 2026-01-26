@@ -2,7 +2,6 @@
   "Main agent loop implementation using existing streaming infrastructure from self/*"
   (:require
    [clojure.core.async :as a]
-   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as markdown-link-buffer]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
    [metabase-enterprise.metabot-v3.agent.profiles :as profiles]
@@ -12,6 +11,11 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(defn collect!
+  "Blocking collect of channel into vector."
+  ([ch] (a/<!! (a/into [] ch)))
+  ([xf ch] (a/<!! (a/transduce xf conj [] ch))))
 
 (defn- has-tool-calls?
   "Check if any parts contain tool calls."
@@ -44,53 +48,32 @@
      (has-tool-calls? parts)
      (not (has-final-response? parts)))))
 
-(defn- run-llm-with-tools
-  "Run LLM with messages and tools, return channel with collected parts.
-  Uses existing self/claude-raw + transducers for streaming and tool execution.
-  Returns a channel that will contain either:
-  - The collected parts vector on success
-  - An exception object on failure (caller should check with instance?)"
+(defn- llm-parts-xf
+  "Transducer that transforms raw Claude SSE chunks into processed parts.
+  Composes: claude->aisdk-xf -> tool-executor-rff -> aisdk-xf"
+  [tools]
+  (comp self/claude->aisdk-xf
+        (self/tool-executor-rff tools)
+        self/aisdk-xf))
+
+(defn- call-llm
+  "Call Claude API and return raw SSE channel.
+  Returns a core.async channel of raw Claude SSE events."
   [messages tools profile]
-  (let [model (get profile :model "claude-haiku-4-5")
+  (let [model      (get profile :model "claude-haiku-4-5")
         ;; Claude API takes system message separately, not in the messages array
-        ;; Extract the system message content and filter it from input messages
         system-msg (first (filter #(= (:role %) "system") messages))
         input-msgs (vec (remove #(= (:role %) "system") messages))]
     (log/info "Calling Claude API"
-              {:model model
+              {:model              model
                :system-msg-present (boolean system-msg)
-               :input-msg-count (count input-msgs)
-               :tool-count (count tools)})
+               :input-msg-count    (count input-msgs)
+               :tool-count         (count tools)})
     ;; TODO: Add temperature support to claude-raw
-    ;; temperature (get profile :temperature 0.3)
-    ;; Call claude-raw to get SSE stream, then process in a thread
-    ;; NOTE: We use a/thread instead of pipeline because tool-executor-rff
-    ;; uses blocking operations (a/<!!) in its completion arity, which
-    ;; cannot run in go-block contexts (pipeline uses go-blocks internally)
-    (a/thread
-      (try
-        (let [raw-stream (self/claude-raw (cond-> {:model model
-                                                   :input input-msgs
-                                                   ;; Pass tools as [name, var] pairs so Claude sees the registry key names
-                                                   :tools (vec tools)}
-                                            system-msg (assoc :system (:content system-msg))))
-              ;; Collect all chunks from the raw stream
-              raw-chunks (loop [acc []]
-                           (if-let [chunk (a/<!! raw-stream)]
-                             (recur (conj acc chunk))
-                             acc))]
-          ;; Apply transducers synchronously in this thread context
-          ;; where blocking operations are safe
-          (log/debug "Raw chunks from Claude API"
-                     {:count (count raw-chunks)
-                      :types (mapv :type raw-chunks)})
-          (into [] (comp self/claude->aisdk-xf
-                         (self/tool-executor-rff tools)
-                         self/aisdk-xf)
-                raw-chunks))
-        (catch Exception e
-          ;; Return exception as value so caller can handle it
-          e)))))
+    (self/claude-raw (cond-> {:model model
+                              :input input-msgs
+                              :tools (vec tools)}
+                       system-msg (assoc :system (:content system-msg))))))
 
 (defn- build-messages-for-llm
   "Build complete message array for LLM from memory, context, profile, and tools.
@@ -120,15 +103,15 @@
   Tool results with :structured-output containing :query-id and :query are stored.
   Returns updated memory."
   [memory parts]
-  (reduce
-   (fn [mem part]
-     (if-let [structured (get-structured-output (:result part))]
-       (if (and (:query-id structured) (:query structured))
-         (do
-           (log/debug "Storing query in memory" {:query-id (:query-id structured)})
-           (memory/remember-query mem (:query-id structured) (:query structured)))
-         mem)
-       mem))
+  (transduce
+   (comp
+    (map #(get-structured-output (:result %)))
+    (filter #(and (:query-id %) (:query %))))
+   (fn
+     ([mem] mem)
+     ([mem {:keys [query-id query]}]
+      (log/debug "Storing query in memory" {:query-id query-id})
+      (memory/remember-query mem query-id query)))
    memory
    parts))
 
@@ -138,42 +121,18 @@
   Charts are identified by having both :chart-id and :query-id (from create-chart-tool).
   Returns updated memory."
   [memory parts]
-  (reduce
-   (fn [mem part]
-     (if-let [structured (get-structured-output (:result part))]
-       ;; Chart results have :chart-id and :query-id (from create-chart-tool)
-       ;; Some tools may include :query as well; still store the chart.
-       (if (and (:chart-id structured) (:query-id structured))
-         (do
-           (log/debug "Storing chart in memory" {:chart-id (:chart-id structured)
-                                                 :query-id (:query-id structured)})
-           (memory/store-chart mem (:chart-id structured) structured))
-         mem)
-       mem))
+  (transduce
+   (comp
+    (map #(get-structured-output (:result %)))
+    (filter #(and (:chart-id %) (:query-id %))))
+   (fn
+     ([mem] mem)
+     ([mem {:keys [chart-id query-id] :as structured}]
+      (log/debug "Storing chart in memory" {:chart-id chart-id
+                                            :query-id query-id})
+      (memory/store-chart mem chart-id structured)))
    memory
    parts))
-
-(defn- extract-reactions-from-parts
-  "Extract reactions from tool output parts.
-  Tool results may contain :reactions key with actions like :metabot.reaction/redirect.
-  Returns a vector of reaction maps."
-  [parts]
-  (into []
-        (comp
-         (filter #(= (:type %) :tool-output))
-         (mapcat #(get-in % [:result :reactions])))
-        parts))
-
-(defn- extract-data-parts-from-results
-  "Extract data parts from tool results.
-  Tools may return :data-parts in their result (e.g., todo_list, transform_suggestion).
-  Returns a vector of data part maps."
-  [parts]
-  (into []
-        (comp
-         (filter #(= (:type %) :tool-output))
-         (mapcat #(get-in % [:result :data-parts])))
-        parts))
 
 (defn- normalize-context-type
   "Normalize context :type to lowercase string."
@@ -207,88 +166,58 @@
 (defn- seed-state-from-context
   "Seed initial state with queries derived from user_is_viewing context."
   [state context]
-  (if-let [viewing (:user_is_viewing context)]
-    (reduce (fn [state* item]
-              (if-let [[query-id query] (extract-query-from-viewing-item item)]
-                (assoc-in state* [:queries query-id] query)
-                state*))
-            (update state :queries #(or % {}))
-            viewing)
-    state))
+  (reduce (fn [state* item]
+            (let [[query-id query] (extract-query-from-viewing-item item)]
+              (cond-> state*
+                query-id (assoc-in [:queries query-id] query))))
+          state
+          (:user_is_viewing context)))
 
-(defn- stream-parts-to-output!
-  "Stream parts to output channel with link resolution, reaction handling, and data parts.
-  - Resolves metabase:// links in text parts using memory state.
-  - Extracts reactions from tool outputs and converts them to data parts.
-  - Extracts tool-generated data parts (e.g., todo_list, transform_suggestion).
-  Must be called from within a go block.
-  Returns a channel that completes when all parts are written."
-  [out-chan parts memory]
-  (a/go
-    (let [state (memory/get-state memory)
-          queries-state (get state :queries {})
-          charts-state (get state :charts {})]
-      (log/debug "Processing links with state"
-                 {:query-count (count queries-state)
-                  :chart-count (count charts-state)})
-      ;; Process links using streaming buffer to support links split across parts
-      (let [buffer (markdown-link-buffer/create-buffer queries-state charts-state)
-            processed-parts (reduce (fn [acc part]
-                                      (if (and (= (:type part) :text)
-                                               (contains? part :text))
-                                        (let [text (:text part)]
-                                          (if (nil? text)
-                                            (conj acc part)
-                                            (let [processed-text (markdown-link-buffer/process buffer text)]
-                                              (if (or (seq processed-text) (empty? text))
-                                                (conj acc (assoc part :text processed-text))
-                                                acc))))
-                                        (conj acc part)))
-                                    []
-                                    parts)
-            flushed-text (markdown-link-buffer/flush-buffer buffer)
-            processed-parts (if (seq flushed-text)
-                              (conj processed-parts {:type :text :text flushed-text})
-                              processed-parts)
-            ;; Extract reactions and convert to data parts
-            reactions (extract-reactions-from-parts parts)
-            reaction-data-parts (streaming/reactions->data-parts reactions)
-            ;; Extract tool-generated data parts (e.g., todo_list, transform_suggestion)
-            tool-data-parts (extract-data-parts-from-results parts)]
-        (log/debug "Extracted reactions and data parts"
-                   {:reaction-count (count reactions)
-                    :reaction-data-part-count (count reaction-data-parts)
-                    :tool-data-part-count (count tool-data-parts)})
-        ;; Stream processed parts first
-        (doseq [part processed-parts]
-          (a/>! out-chan part))
-        ;; Then stream reaction data parts (like navigate_to)
-        (doseq [data-part reaction-data-parts]
-          (a/>! out-chan data-part))
-        ;; Then stream tool-generated data parts (like todo_list)
-        (doseq [data-part tool-data-parts]
-          (a/>! out-chan data-part))))))
+(defn- stream-parts!
+  "Stream parts through reducing function with link resolution, reaction handling, and data parts.
+  Uses streaming/post-process-xf transducer to:
+  - Expand reactions from tool outputs into data parts
+  - Expand data-parts from tool outputs
+  - Resolve metabase:// links in text parts using memory state
+
+  Note: Uses reduce (not transduce) to avoid calling the completion arity of rf.
+  The completion arity should only be called once at the very end via finalize-stream!.
+
+  Returns the accumulated result."
+  [rf result parts memory]
+  (let [state         (memory/get-state memory)
+        queries-state (get state :queries {})
+        charts-state  (get state :charts {})]
+    (log/debug "Processing parts with post-process-xf"
+               {:query-count (count queries-state)
+                :chart-count (count charts-state)
+                :part-count  (count parts)})
+    ;; Apply post-process-xf to parts, then reduce through rf
+    ;; We use sequence + reduce instead of transduce to avoid calling rf's completion arity
+    (reduce rf result (sequence (streaming/post-process-xf queries-state charts-state) parts))))
 
 (defn- finalize-stream!
-  "Finalize the output stream with final state and close channel.
-  Must be called from within a go block. Returns a channel that completes when done.
+  "Finalize the output stream with final state.
 
   Parameters:
-  - out-chan: Output channel to write to
+  - rf: Reducing function for output
+  - result: Current accumulated result
   - memory: Current memory state
-  - finish-reason: Why the agent stopped (\"stop\", \"error\", \"max_iterations\")"
-  [out-chan memory finish-reason]
-  (a/go
-    (let [state (memory/get-state memory)]
-      ;; Stream final state using proper data part format
-      (a/>! out-chan {:type :data
-                      :data-type "state"
-                      :version 1
-                      :data state})
-      ;; Stream finish message with reason
-      (a/>! out-chan {:type :finish
-                      :finish-reason finish-reason})
-      (a/close! out-chan))))
+  - finish-reason: Why the agent stopped (\"stop\", \"error\", \"max_iterations\")
+
+  Returns the final accumulated result after completion arity is called.
+
+  Note: We don't emit a :finish part here because aisdk-line-xf handles emitting
+  the finish line (with accumulated usage) in its completion arity."
+  [rf result memory _finish-reason]
+  (let [state (memory/get-state memory)]
+    ;; Stream final state using proper data part format
+    (-> result
+        (rf {:type      :data
+             :data-type "state"
+             :version   1
+             :data      state})
+        rf))) ;; call completion arity - this triggers aisdk-line-xf to emit finish
 
 (defn run-agent-loop
   "Main agent loop using existing streaming infrastructure.
@@ -298,81 +227,78 @@
   - state: Initial conversation state map
   - profile-id: Profile keyword (:metabot-embedding, :metabot-internal, etc.)
   - context: Context map with capabilities, user info, etc.
+  - rf: Reducing function that receives AI SDK v5 formatted parts.
+        Called with (rf) for init, (rf result part) for each part,
+        and (rf result) for completion.
 
-  Returns: core.async channel that will stream AI SDK v5 formatted parts."
-  [{:keys [messages state profile-id context]}]
-  (let [profile (profiles/get-profile profile-id)
-        _ (when-not profile
-            (throw (ex-info "Unknown profile" {:profile-id profile-id})))
-        capabilities (get context :capabilities #{})
-        base-tools (profiles/get-tools-for-profile profile-id capabilities)
-        out-chan (a/chan 100)
-        seeded-state (seed-state-from-context (or state {}) context)
+  Runs synchronously in the calling thread. Returns the final reduced result."
+  [{:keys [messages state profile-id context]} rf]
+  (let [profile        (profiles/get-profile profile-id)
+        _              (when-not profile
+                         (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        capabilities   (get context :capabilities #{})
+        base-tools     (profiles/get-tools-for-profile profile-id capabilities)
+        seeded-state   (seed-state-from-context (or state {}) context)
         ;; Initialize memory and load any existing state (queries, charts, transforms, todos)
         initial-memory (-> (memory/initialize messages seeded-state context)
                            (memory/load-queries-from-state seeded-state)
                            (memory/load-charts-from-state seeded-state)
                            (memory/load-transforms-from-state seeded-state)
                            (memory/load-todos-from-state seeded-state))
-        memory-atom (atom initial-memory)
+        memory-atom    (atom initial-memory)
         ;; Wrap state-dependent tools with access to memory
-        tools (agent-tools/wrap-tools-with-state base-tools memory-atom)]
+        tools          (agent-tools/wrap-tools-with-state base-tools memory-atom)]
 
     (log/info "Starting agent loop"
-              {:profile-id profile-id
+              {:profile-id     profile-id
                :max-iterations (:max-iterations profile)
-               :tool-count (count tools)
-               :message-count (count messages)})
+               :tool-count     (count tools)
+               :message-count  (count messages)})
 
-    ;; Run agent loop in go block
-    (a/go
-      (try
-        (loop [iteration 0]
-          (log/debug "Agent iteration" {:iteration iteration})
+    (try
+      (loop [iteration 0
+             result    (rf)]
+        (log/debug "Agent iteration" {:iteration iteration})
 
-          ;; Build message history from memory with system message
-          (let [llm-messages (build-messages-for-llm @memory-atom context profile tools)
-                ;; Call LLM with tools (returns channel)
-                parts-chan (run-llm-with-tools llm-messages tools profile)
-                ;; Wait for result (non-blocking in go block)
-                ;; Result may be parts vector or an exception
-                result (a/<! parts-chan)]
+        ;; Build message history from memory with system message
+        (let [llm-messages (build-messages-for-llm @memory-atom context profile tools)
+              ;; Call LLM and collect all parts (blocks until complete)
+              raw-stream   (call-llm llm-messages tools profile)
+              parts        (collect! (llm-parts-xf tools) raw-stream)]
 
-            ;; Check if result is an exception
-            (if (instance? Throwable result)
-              (throw result)
-              (when result
-                ;; Update memory with this step and extract queries/charts from tool results
-                (log/debug "Parts from LLM iteration"
-                           {:part-count (count result)
-                            :part-types (mapv :type result)})
-                (swap! memory-atom (fn [mem]
-                                     (-> mem
-                                         (memory/add-step result)
-                                         (extract-queries-from-parts result)
-                                         (extract-charts-from-parts result))))
+          (if-not parts
+            ;; No result - finalize
+            (finalize-stream! rf result @memory-atom "stop")
+            ;; Process parts
+            (do
+              ;; Update memory with this step and extract queries/charts from tool results
+              (log/debug "Parts from LLM iteration"
+                         {:part-count (count parts)
+                          :part-types (mapv :type parts)})
+              (swap! memory-atom (fn [mem]
+                                   (-> mem
+                                       (memory/add-step parts)
+                                       (extract-queries-from-parts parts)
+                                       (extract-charts-from-parts parts))))
 
-                ;; Stream parts to output (wait for completion)
-                ;; Pass memory so links can be resolved
-                (a/<! (stream-parts-to-output! out-chan result @memory-atom))
-
+              ;; Stream parts through rf
+              (let [result' (stream-parts! rf result parts @memory-atom)]
                 ;; Decide whether to continue
-                (if (should-continue? iteration profile result)
-                  (recur (inc iteration))
+                (if (should-continue? iteration profile parts)
+                  (recur (inc iteration) result')
                   (let [finish-reason (cond
                                         (>= (inc iteration) (:max-iterations profile)) "max_iterations"
-                                        (has-final-response? result) "final_response"
-                                        :else "stop")]
+                                        (has-final-response? parts)                    "final_response"
+                                        :else                                          "stop")]
                     (log/info "Agent loop complete"
-                              {:iterations (inc iteration)
+                              {:iterations    (inc iteration)
                                :finish-reason finish-reason})
-                    (a/<! (finalize-stream! out-chan @memory-atom finish-reason))))))))
-        (catch Exception e
-          (log/error e "Error in agent loop")
-          (a/>! out-chan {:type :error
-                          :error {:message (.getMessage e)
-                                  :type (str (type e))}})
-          (a/close! out-chan))))
-
-    ;; Return output channel immediately
-    out-chan))
+                    (finalize-stream! rf result' @memory-atom finish-reason))))))))
+      (catch Exception e
+        (log/error e "Error in agent loop")
+        (-> (rf)
+            (rf {:type  :error
+                 :error {:message (.getMessage e)
+                         :type    (str (type e))
+                         :data    (ex-data e)}})
+            rf)))))
