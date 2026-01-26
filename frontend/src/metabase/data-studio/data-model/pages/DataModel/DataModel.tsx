@@ -42,7 +42,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "../../components";
-import { TableAttributesEditBulk } from "../../components/TableSection/TableAttributesEditBulk";
+import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";

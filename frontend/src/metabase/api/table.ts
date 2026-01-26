@@ -170,7 +170,7 @@ export const tableApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/selection",
+        url: "/api/data-studio/table/selection",
         body,
       }),
       providesTags: (response) =>
@@ -179,7 +179,7 @@ export const tableApi = Api.injectEndpoints({
     editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/edit",
+        url: "/api/data-studio/table/edit",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -188,7 +188,7 @@ export const tableApi = Api.injectEndpoints({
     rescanTablesFieldValues: builder.mutation<void, RescanTablesValuesRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/data-studio/table/rescan-values`,
+        url: `/api/data-studio/table/rescan-values`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -197,7 +197,7 @@ export const tableApi = Api.injectEndpoints({
     syncTablesSchemas: builder.mutation<void, SyncTablesSchemasRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/data-studio/table/sync-schema`,
+        url: `/api/data-studio/table/sync-schema`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -215,7 +215,7 @@ export const tableApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/data-studio/table/discard-values`,
+        url: `/api/data-studio/table/discard-values`,
         body,
       }),
       invalidatesTags: (_, error) =>

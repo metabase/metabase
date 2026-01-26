@@ -20,6 +20,7 @@
    [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
@@ -72,6 +73,7 @@
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
+         metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
@@ -150,6 +152,7 @@
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
+   "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)

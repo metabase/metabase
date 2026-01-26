@@ -731,7 +731,7 @@ describe("DataModel", () => {
       );
 
       const calls = fetchMock.callHistory.calls(
-        "path:/api/ee/data-studio/table/rescan-values",
+        "path:/api/data-studio/table/rescan-values",
         {
           method: "POST",
         },
@@ -763,7 +763,7 @@ describe("DataModel", () => {
         }),
       );
       const calls = fetchMock.callHistory.calls(
-        "path:/api/ee/data-studio/table/discard-values",
+        "path:/api/data-studio/table/discard-values",
         {
           method: "POST",
         },

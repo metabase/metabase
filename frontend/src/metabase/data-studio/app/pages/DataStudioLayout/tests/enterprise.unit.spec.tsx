@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import { setup } from "./DataStudioLayout.setup.spec";
+import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe("DataStudioLayout", () => {
 
   describe("Set up git sync button", () => {
     it("should show Set up git sync button when git settings is visible", async () => {
-      setup({ remoteSyncEnabled: false });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -27,20 +27,8 @@ describe("DataStudioLayout", () => {
       expect(screen.getByLabelText("Set up git sync")).toBeInTheDocument();
     });
 
-    it("should hide Set up git sync button when git settings is not visible", async () => {
-      setup({ remoteSyncEnabled: true });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByLabelText("Set up git sync"),
-      ).not.toBeInTheDocument();
-    });
-
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ remoteSyncEnabled: false });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -57,7 +45,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ remoteSyncEnabled: false });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -84,7 +72,11 @@ describe("DataStudioLayout", () => {
     });
 
     it("should show Set up git sync text when sidebar is expanded", async () => {
-      setup({ remoteSyncEnabled: false, isNavbarOpened: true });
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncEnabled: false,
+        isNavbarOpened: true,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -96,7 +88,7 @@ describe("DataStudioLayout", () => {
 
   describe("sidebar rendering", () => {
     it("should render the sidebar with navigation tabs", async () => {
-      setup({ remoteSyncBranch: "main" });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: "main" });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -107,7 +99,11 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({ remoteSyncBranch: "main", isNavbarOpened: true });
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -117,7 +113,11 @@ describe("DataStudioLayout", () => {
     });
 
     it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({ remoteSyncBranch: "main", isNavbarOpened: false });
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: false,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render content area", async () => {
-      setup({ remoteSyncBranch: null });
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: null });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -140,6 +140,7 @@ describe("DataStudioLayout", () => {
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
+        ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: true,
@@ -161,6 +162,7 @@ describe("DataStudioLayout", () => {
 
     it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
       setup({
+        ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: false,
@@ -179,6 +181,7 @@ describe("DataStudioLayout", () => {
 
     it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
       setup({
+        ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
         hasTransformDirtyChanges: true,

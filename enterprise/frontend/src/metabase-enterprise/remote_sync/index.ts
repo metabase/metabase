@@ -30,6 +30,7 @@ import { remoteSyncReducer } from "./sync-task-slice";
  */
 export function initializePlugin() {
   if (hasPremiumFeature("remote_sync")) {
+    PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.RemoteSyncSettings = RemoteSyncAdminSettings;
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =

@@ -1,6 +1,6 @@
 import { Stack, Title } from "metabase/ui";
 
-import S from "./TableSection.module.css";
+import S from "../TableSection.module.css";
 
 export function TableSectionGroup({
   title,

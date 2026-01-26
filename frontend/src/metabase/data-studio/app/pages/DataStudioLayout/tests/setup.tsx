@@ -1,3 +1,4 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupPropertiesEndpoints,
@@ -7,11 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-// import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
-// import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
-// import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
-// import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
-import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import type {
+  Collection,
+  RemoteSyncEntity,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
   createMockDirtyTransformEntity,
@@ -23,17 +24,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { DataStudioLayout } from "./DataStudioLayout";
-
-// ============================================================================
-// Settings Helpers
-// ============================================================================
-
-const DEFAULT_TOKEN_FEATURES = createMockTokenFeatures({
-  remote_sync: true,
-  advanced_permissions: true,
-  transforms: true,
-});
+import { DataStudioLayout } from "../DataStudioLayout";
 
 interface RemoteSyncSettings {
   enabled: boolean;
@@ -53,10 +44,6 @@ const createRemoteSyncSettings = ({
   "remote-sync-type": type,
   "remote-sync-transforms": transforms,
 });
-
-// ============================================================================
-// Endpoint Setup Functions
-// ============================================================================
 
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
@@ -103,11 +90,13 @@ const setupNavbarEndpoints = (isOpened = true) => {
 interface StoreStateOptions {
   isAdmin?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const createStoreState = ({
   isAdmin = true,
   remoteSyncSettings = {},
+  tokenFeatures,
 }: StoreStateOptions = {}) => {
   const settings = createRemoteSyncSettings(remoteSyncSettings);
 
@@ -121,44 +110,10 @@ const createStoreState = ({
     }),
     settings: mockSettings({
       ...settings,
-      "token-features": DEFAULT_TOKEN_FEATURES,
+      "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
 };
-
-// ============================================================================
-// Plugin Initialization
-// ============================================================================
-
-// TODO [OSS]: implement this
-// const initializePlugins = () => {
-//   initializeRemoteSyncPlugin();
-//   initializeFeatureLevelPermissionsPlugin();
-//   initializeTransformsPlugin();
-//   initializeDependenciesPlugin();
-// };
-
-// ============================================================================
-// Render Helper
-// ============================================================================
-
-const renderDataStudioLayout = (storeOptions: StoreStateOptions = {}) => {
-  renderWithProviders(
-    <DataStudioLayout>
-      <div data-testid="content">{"Content"}</div>
-    </DataStudioLayout>,
-    {
-      storeInitialState: createStoreState(storeOptions),
-      withRouter: false,
-    },
-  );
-
-  // initializePlugins();
-};
-
-// ============================================================================
-// Setup function
-// ============================================================================
 
 interface SetupOpts {
   remoteSyncEnabled?: boolean;
@@ -168,6 +123,8 @@ interface SetupOpts {
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 export const setup = ({
@@ -178,6 +135,8 @@ export const setup = ({
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
   isNavbarOpened = true,
+  enterprisePlugins,
+  tokenFeatures,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -209,8 +168,39 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
 
-  renderDataStudioLayout({
+  const state = createStoreState({
     isAdmin,
     remoteSyncSettings,
+    tokenFeatures,
   });
+
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+  }
+
+  renderWithProviders(
+    <DataStudioLayout>
+      <div data-testid="content">{"Content"}</div>
+    </DataStudioLayout>,
+    {
+      storeInitialState: state,
+      withRouter: false,
+    },
+  );
+};
+
+export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
+  enterprisePlugins: [
+    "library",
+    "remote_sync",
+    "transforms",
+    "dependencies",
+    "feature_level_permissions",
+  ],
+  tokenFeatures: {
+    data_studio: true,
+    remote_sync: true,
+    advanced_permissions: true,
+    transforms: true,
+  },
 };

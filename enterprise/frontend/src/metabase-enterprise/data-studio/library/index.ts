@@ -14,6 +14,7 @@ import {
 
 export function initializePlugin() {
   if (hasPremiumFeature("data_studio")) {
+    // TODO [OSS]: this should be "library" token
     PLUGIN_LIBRARY.isEnabled = true;
     PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
     PLUGIN_LIBRARY.useGetLibraryCollection = useGetLibraryCollection;

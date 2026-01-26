@@ -38,13 +38,13 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { MeasureList } from "./MeasureList";
-import { SegmentList } from "./SegmentList";
-import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
-import { TableCollection } from "./TableCollection";
-import { TableMetadata } from "./TableMetadata";
 import S from "./TableSection.module.css";
-import { TableSectionGroup } from "./TableSectionGroup";
+import { MeasureList } from "./components/MeasureList";
+import { SegmentList } from "./components/SegmentList";
+import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
+import { TableCollection } from "./components/TableCollection";
+import { TableMetadata } from "./components/TableMetadata";
+import { TableSectionGroup } from "./components/TableSectionGroup";
 
 interface Props {
   table: Table;

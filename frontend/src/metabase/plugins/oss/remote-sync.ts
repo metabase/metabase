@@ -47,6 +47,7 @@ export interface RemoteSyncDirtyState {
 }
 
 const getDefaultPluginRemoteSync = () => ({
+  isEnabled: false,
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
@@ -71,6 +72,7 @@ const getDefaultPluginRemoteSync = () => ({
 });
 
 export const PLUGIN_REMOTE_SYNC: {
+  isEnabled: boolean;
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;

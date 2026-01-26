@@ -22,8 +22,8 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
-import { SyncOptionsModal } from "../SyncOptionsModal";
+import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
+import { SyncOptionsModal } from "../../SyncOptionsModal";
 
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";

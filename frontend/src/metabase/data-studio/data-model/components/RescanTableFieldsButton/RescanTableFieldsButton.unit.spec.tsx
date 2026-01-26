@@ -46,7 +46,7 @@ describe("RescanTableFieldsButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/data-studio/table/rescan-values`,
+      `path:/api/data-studio/table/rescan-values`,
       {
         method: "POST",
       },
@@ -73,7 +73,7 @@ describe("RescanTableFieldsButton", () => {
 
     await userEvent.click(button);
     let calls = fetchMock.callHistory.calls(
-      `path:/api/ee/data-studio/table/rescan-values`,
+      `path:/api/data-studio/table/rescan-values`,
       {
         method: "POST",
       },
@@ -93,7 +93,7 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
     calls = fetchMock.callHistory.calls(
-      `path:/api/ee/data-studio/table/rescan-values`,
+      `path:/api/data-studio/table/rescan-values`,
       {
         method: "POST",
       },
@@ -128,7 +128,7 @@ describe("RescanTableFieldsButton", () => {
 
     await userEvent.click(button);
     const calls = fetchMock.callHistory.calls(
-      `path:/api/ee/data-studio/table/rescan-values`,
+      `path:/api/data-studio/table/rescan-values`,
       {
         method: "POST",
       },

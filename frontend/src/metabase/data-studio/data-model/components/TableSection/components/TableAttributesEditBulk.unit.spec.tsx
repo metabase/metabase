@@ -84,7 +84,7 @@ function setup({
   });
   setupTableEndpoints(createMockTable());
 
-  fetchMock.post("path:/api/ee/data-studio/table/edit", {
+  fetchMock.post("path:/api/data-studio/table/edit", {
     status: 200,
     body: {
       data: {
