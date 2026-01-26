@@ -2,8 +2,6 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
-   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -97,19 +95,3 @@
          :query-content new-sql
          :query         updated-query
          :database      (:database query)}))))
-
-(defn edit-sql-query-tool
-  "Tool handler for edit_sql_query tool.
-  Returns structured output with updated query details and a navigate_to data part."
-  [args]
-  (try
-    (let [result (edit-sql-query args)
-          results-url (streaming/query->question-url (:query result))]
-      {:structured-output (assoc result :result-type :query)
-       :instructions instructions/query-created-instructions
-       :data-parts [(streaming/navigate-to-part results-url)]})
-    (catch Exception e
-      (log/error e "Error editing SQL query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
