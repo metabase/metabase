@@ -28,12 +28,3 @@
                        :options (or options [])}
    :final-response? true
    :instructions "The clarification question has been presented to the user. Stop and wait for their response before continuing."})
-
-(defn ask-for-sql-clarification-tool
-  "Tool handler for ask_for_sql_clarification tool."
-  [args]
-  (try
-    (ask-for-sql-clarification args)
-    (catch Exception e
-      (log/error e "Error asking for clarification")
-      {:output (str "Failed to ask clarification: " (or (ex-message e) "Unknown error"))})))
