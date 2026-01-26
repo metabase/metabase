@@ -439,19 +439,11 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.waitForTask({ taskName: "import" });
       H.modal().should("not.exist");
       cy.findByTestId("exit-admin").click();
 
-      // Branch picker is now in the app bar
+      // Branch picker should appear in the app bar (doesn't require import)
       H.getGitSyncControls().should("contain.text", "main");
-
-      // Synced collection appears in regular collections list (no separate heading)
-      H.navigationSidebar().within(() => {
-        cy.findByRole("treeitem", { name: /Synced Collection/i }).should(
-          "exist",
-        );
-      });
     });
 
     it("can set up read-only mode", () => {

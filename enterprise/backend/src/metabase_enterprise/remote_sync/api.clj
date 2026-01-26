@@ -164,8 +164,7 @@
   (events/publish-event! :event/remote-sync-settings-update
                          {:details {:remote-sync-type remote-sync-type}
                           :user-id api/*current-user-id*})
-  (if-let [task-id (when (= :read-only (settings/remote-sync-type))
-                     (impl/finish-remote-config!))]
+  (if-let [task-id (impl/finish-remote-config!)]
     {:success true
      :task_id task-id}
     {:success true}))
