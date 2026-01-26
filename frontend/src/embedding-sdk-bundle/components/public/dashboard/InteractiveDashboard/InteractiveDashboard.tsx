@@ -1,17 +1,25 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
+import {
+  SdkInternalNavigationProvider,
+  useSdkInternalNavigation,
+} from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
+import { useSdkSelector, useSdkStore } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
+import { createEmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import type { QuestionDashboardCard } from "metabase-types/api";
 
 import {
   SdkDashboard,
@@ -28,8 +36,28 @@ import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
-const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
+// Inner component that uses the navigation context
+export const InteractiveDashboardContent = (
+  props: InteractiveDashboardProps,
+) => {
   const globalPlugins = useSdkSelector(getPlugins);
+  const { push: pushNavigation, initWithDashboard } =
+    useSdkInternalNavigation();
+  const store = useSdkStore();
+  const dashboard = useSdkSelector(getDashboardComplete);
+
+  // Initialize the navigation stack with the dashboard when it loads
+  useEffect(() => {
+    if (dashboard?.id != null && dashboard?.name) {
+      initWithDashboard({
+        id:
+          typeof dashboard.id === "number"
+            ? dashboard.id
+            : parseInt(String(dashboard.id), 10),
+        name: dashboard.name,
+      });
+    }
+  }, [dashboard?.id, dashboard?.name, initWithDashboard]);
 
   const plugins: MetabasePluginsConfig = useMemo(() => {
     return { ...globalPlugins, ...props.plugins };
@@ -39,16 +67,71 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     ({ question }) =>
       getEmbeddingMode({
         question,
-        queryMode: EmbeddingSdkMode,
+        queryMode: createEmbeddingSdkMode({ pushNavigation }),
         plugins: plugins as InternalMetabasePluginsConfig,
       }),
-    [plugins],
+    [plugins, pushNavigation],
+  );
+
+  // Custom navigateToNewCardFromDashboard that uses the internal navigation stack
+  // instead of URL-based navigation. This is used for drills and "go to card" actions.
+  const navigateToNewCardFromDashboard = useCallback(
+    ({
+      nextCard,
+      previousCard,
+      dashcard,
+      objectId,
+    }: NavigateToNewCardFromDashboardOpts) => {
+      const state = store.getState();
+      const metadata = getMetadata(state);
+      const { dashboards, parameterValues } = state.dashboard;
+      const dashboardId = props.dashboardId;
+
+      if (dashboardId === null) {
+        console.error(
+          "dashboardId is null inside navigateToNewCardFromDashboard",
+        );
+        return;
+      }
+
+      // Find the dashboard by ID (numeric or entity ID)
+      const dashboard = Object.values(dashboards).find(
+        (d) =>
+          d.id === dashboardId ||
+          d.entity_id === dashboardId ||
+          String(d.id) === String(dashboardId),
+      );
+
+      if (dashboard) {
+        const url = getNewCardUrl({
+          metadata,
+          dashboard,
+          parameterValues,
+          nextCard,
+          previousCard,
+          dashcard: dashcard as QuestionDashboardCard,
+          objectId,
+        });
+
+        if (url) {
+          // Push to navigation stack instead of setting adhocQuestionUrl
+
+          pushNavigation({
+            type: "adhoc-question",
+            questionPath: url,
+            name: nextCard.name || "Question",
+          });
+        }
+      }
+    },
+    [store, props.dashboardId, pushNavigation],
   );
 
   const dashboardProps: SdkDashboardInnerProps = useMemo(
     () => ({
       ...props,
       getClickActionMode,
+      navigateToNewCardFromDashboard,
       dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
@@ -61,12 +144,17 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
         ),
     }),
-    [props, getClickActionMode],
+    [props, getClickActionMode, navigateToNewCardFromDashboard],
   );
 
+  return <SdkDashboard {...dashboardProps} />;
+};
+
+// Outer component that provides the navigation context
+const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   return (
-    <SdkInternalNavigationProvider dashboardProps={dashboardProps}>
-      <SdkDashboard {...dashboardProps} />
+    <SdkInternalNavigationProvider dashboardProps={props}>
+      <InteractiveDashboardContent {...props} />
     </SdkInternalNavigationProvider>
   );
 };

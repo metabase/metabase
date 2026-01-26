@@ -55,15 +55,3 @@ export const getHasTokenFeature = (state: SdkStoreState) => {
 
   return getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);
 };
-
-export const getInternalNavigationStack = (state: SdkStoreState) =>
-  state.sdk.internalNavigationStack;
-
-export const getCurrentInternalNavEntry = (state: SdkStoreState) =>
-  state.sdk.internalNavigationStack.at(-1);
-
-export const getPreviousInternalNavEntry = (state: SdkStoreState) =>
-  state.sdk.internalNavigationStack.at(-2);
-
-export const canNavigateBack = (state: SdkStoreState) =>
-  state.sdk.internalNavigationStack.length > 1;

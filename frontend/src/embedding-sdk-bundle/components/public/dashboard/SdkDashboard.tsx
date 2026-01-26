@@ -161,6 +161,7 @@ const SdkDashboardInner = ({
   withDownloads = false,
   withSubscriptions = false,
   hiddenParameters = [],
+  enableEntityNavigation = false,
   drillThroughQuestionHeight,
   plugins,
   onLoad,
@@ -382,6 +383,7 @@ const SdkDashboardInner = ({
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         autoScrollToDashcardId={autoScrollToDashcardId}
+        enableEntityNavigation={enableEntityNavigation}
       >
         {match({ finalRenderMode, isGuestEmbed })
           .with({ finalRenderMode: "question" }, () => (

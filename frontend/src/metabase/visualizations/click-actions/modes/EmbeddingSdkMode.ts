@@ -1,5 +1,3 @@
-import { getSdkStore } from "embedding-sdk-bundle/store";
-import { pushSdkInternalNavigation } from "embedding-sdk-bundle/store/reducer";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import {
   getClickBehavior,
@@ -18,7 +16,7 @@ import { ExtractColumnAction } from "../actions/ExtractColumnAction";
 import { HideColumnAction } from "../actions/HideColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 
-type ClickBehaviorTarget = {
+export type ClickBehaviorTarget = {
   type: "dashboard" | "question";
   id: number;
   name: string;
@@ -57,52 +55,63 @@ const getClickBehaviorTarget = (
     : null;
 };
 
-export const SDKDashboardClickAction: LegacyDrill = ({
-  question,
-  clicked = {},
-}) => {
-  const target = getClickBehaviorTarget(clicked);
+type CreateEmbeddingSdkModeOptions = {
+  pushNavigation?: (target: ClickBehaviorTarget) => void;
+};
 
-  if (target) {
-    return [
-      {
-        name: "click_behavior",
-        defaultAlways: true,
-        onClick: () => {
-          getSdkStore().dispatch(pushSdkInternalNavigation(target));
+export const createEmbeddingSdkMode = (
+  options: CreateEmbeddingSdkModeOptions = {},
+): QueryClickActionsMode => {
+  const { pushNavigation } = options;
+
+  const SDKDashboardClickAction: LegacyDrill = ({ question, clicked = {} }) => {
+    const target = getClickBehaviorTarget(clicked);
+
+    if (target && pushNavigation) {
+      return [
+        {
+          name: "click_behavior",
+          defaultAlways: true,
+          onClick: () => {
+            pushNavigation(target);
+          },
         },
-      },
-    ];
-  }
+      ];
+    }
 
-  return DashboardClickAction({ question, clicked });
+    // Fall back to default behavior if no navigation handler
+    return DashboardClickAction({ question, clicked });
+  };
+
+  return {
+    name: "embedding-sdk",
+    hasDrills: true,
+    availableOnlyDrills: [
+      "drill-thru/column-extract",
+      "drill-thru/column-filter",
+      "drill-thru/distribution",
+      "drill-thru/fk-details",
+      "drill-thru/fk-filter",
+      "drill-thru/pivot",
+      "drill-thru/pk",
+      "drill-thru/quick-filter",
+      "drill-thru/sort",
+      "drill-thru/summarize-column-by-time",
+      "drill-thru/summarize-column",
+      "drill-thru/underlying-records",
+      "drill-thru/zoom-in.binning",
+      "drill-thru/zoom-in.geographic",
+      "drill-thru/zoom-in.timeseries",
+    ],
+    clickActions: [
+      HideColumnAction,
+      SDKDashboardClickAction,
+      ExtractColumnAction,
+      CombineColumnsAction,
+    ],
+    fallback: NativeQueryClickFallback,
+  };
 };
 
-export const EmbeddingSdkMode: QueryClickActionsMode = {
-  name: "embedding-sdk",
-  hasDrills: true,
-  availableOnlyDrills: [
-    "drill-thru/column-extract",
-    "drill-thru/column-filter",
-    "drill-thru/distribution",
-    "drill-thru/fk-details",
-    "drill-thru/fk-filter",
-    "drill-thru/pivot",
-    "drill-thru/pk",
-    "drill-thru/quick-filter",
-    "drill-thru/sort",
-    "drill-thru/summarize-column-by-time",
-    "drill-thru/summarize-column",
-    "drill-thru/underlying-records",
-    "drill-thru/zoom-in.binning",
-    "drill-thru/zoom-in.geographic",
-    "drill-thru/zoom-in.timeseries",
-  ],
-  clickActions: [
-    HideColumnAction,
-    SDKDashboardClickAction,
-    ExtractColumnAction,
-    CombineColumnsAction,
-  ],
-  fallback: NativeQueryClickFallback,
-};
+// Keep backwards compat export (without navigation)
+export const EmbeddingSdkMode = createEmbeddingSdkMode();

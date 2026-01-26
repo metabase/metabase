@@ -38,7 +38,6 @@ export const createMockSdkState = ({
     errorComponent: null,
     error: null,
     fetchRefreshTokenFn: null,
-    internalNavigationStack: [],
     ...opts,
   };
 };
