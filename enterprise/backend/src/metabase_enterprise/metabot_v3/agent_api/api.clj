@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
