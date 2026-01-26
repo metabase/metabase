@@ -43,7 +43,7 @@ export const ColorSettingsWidget = () => {
   return (
     <ColorSettings
       initialColors={colorSettings}
-      originalColors={themeColors}
+      themeColors={themeColors}
       onChange={onChangeDebounced}
     />
   );

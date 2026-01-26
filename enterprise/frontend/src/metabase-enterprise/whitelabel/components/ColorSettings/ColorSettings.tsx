@@ -11,20 +11,20 @@ import ChartColorSettings from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;
-  originalColors: ColorSettingsType;
+  themeColors: ColorSettingsType;
   onChange?: (colors: ColorSettingsType) => void;
 }
 
 export const ColorSettings = ({
   initialColors,
-  originalColors,
+  themeColors,
   onChange,
 }: ColorSettingsProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors ?? {});
 
   const colorPalette = useMemo(() => {
-    return { ...originalColors, ...colors };
-  }, [colors, originalColors]);
+    return { ...themeColors, ...colors };
+  }, [colors, themeColors]);
 
   const handleChange = useCallback(
     (colors: ColorSettingsType) => {
