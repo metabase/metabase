@@ -15,7 +15,7 @@ Modular embedding lets you embed and customize Metabase [components](./component
 
 If you're using React, check out the [Modular embedding SDK](./sdk/introduction.md).
 
-> **Using Metabase OSS or Starter?** For basic modular embedding without SSO, see [Guest Embeds](./guest-embedding.md).
+> **Want guest embeds?** For modular embedding without authentication (available on all plans), see [Guest Embeds](./guest-embedding.md).
 
 ## Enable modular embedding
 
@@ -24,7 +24,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 
-**For SSO embeds** (Pro/Enterprise only), some more steps:
+**For authenticated embeds** (Pro/Enterprise only), some more steps:
 
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
 4. If embedding on a different domain, see [Embedding Metabase in a different domain](#embedding-metabase-in-a-different-domain).
@@ -204,13 +204,30 @@ To use an API key to test your embeds:
 
 API keys should only be used for testing with trusted people. Anyone with access to the front-end can grab the API key and use it to make requests against the Metabase API. For this reason, we only allow using API keys on localhost.
 
+## Setting up SSO
+
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+
+For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
+
 ## Embedding Metabase in a different domain
 
 {% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
 
-> **Note**: This section applies only to **authenticated (SSO) embeds**. Guest embeds work cross-domain without additional configuration.
+This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you'll need to
+
+- [Allow your domain in CORS](#allow-your-domain-in-cors)
+- [Configure session cookies for cross-domain](#configure-session-cookies-for-cross-domain)
+
+### Allow your domain in CORS
+
+Go to **Admin settings** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
+
+### Configure session cookies for cross-domain
+
+You'll also need to tell Metabase to set the session cookie's SameSite value to "none".
 
 You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
 
@@ -225,9 +242,3 @@ You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../conf
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
 
 Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-
-## Setting up SSO
-
-{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
-
-For production use, you'll need to set up SSO authentication. See [Modular embedding - authentication](./authentication.md) for details on setting up JWT or SAML authentication.
