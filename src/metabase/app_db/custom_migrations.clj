@@ -1823,20 +1823,3 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
-
-(define-migration UpdateClickHouseTableSchemas
-  (let [update-tables-for-db!
-        (fn [{:keys [id details]}]
-          (let [decrypted-details (encrypted-json-out details)
-                schema-value (or (get decrypted-details :dbname)
-                                 (get decrypted-details :db)
-                                 "default")]
-            (t2/query {:update :metabase_table
-                       :set    {:schema schema-value}
-                       :where  [:and
-                                [:= :db_id id]
-                                [:= :schema nil]]})))]
-    (run! update-tables-for-db!
-          (t2/reducible-query {:select [:id :details]
-                               :from   [:metabase_database]
-                               :where  [:= :engine "clickhouse"]}))))
