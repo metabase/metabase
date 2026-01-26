@@ -4,9 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
-import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import type {
@@ -61,11 +59,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }
 
   if (!isEditMode && !isPythonTransform && !isNative) {
-    return hasPremiumFeature("workspaces") ? (
-      <EditTransformMenu transform={transform} />
-    ) : (
-      <EditDefinitionButton transformId={transform.id} />
-    );
+    return <EditDefinitionButton transformId={transform.id} />;
   }
 
   return (
