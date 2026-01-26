@@ -114,11 +114,16 @@
 
 (deftest ip-address-override-test
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
-    (with-fake-snowplow-collector
-      (mt/with-test-user :rasta
-        (analytics/track-event! :snowplow/dashboard {:dashboard-id 1})
-        (is (partial= {:uid (str (mt/user->id :rasta)) :ip "127.0.0.1"}
-                      (:subject (first @*snowplow-collector*))))))))
+    ;; with-fake-snowplow-collector uses with-redefs, so must use global values
+    (mt/test-helpers-set-global-values!
+      (with-fake-snowplow-collector
+        (mt/with-test-user :rasta
+          (analytics/track-event! :snowplow/dashboard {:dashboard-id 1})
+          ;; Use `last` because the instance-creation setting's lazy getter can fire a
+          ;; new_instance_created event via track-event-impl! during the context() call
+          ;; inside our track-event! call above, if instance-creation hasn't been persisted yet.
+          (is (partial= {:uid (str (mt/user->id :rasta)) :ip "127.0.0.1"}
+                        (:subject (last @*snowplow-collector*)))))))))
 
 (deftest track-event-test
   (with-fake-snowplow-collector

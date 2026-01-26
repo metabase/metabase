@@ -139,14 +139,30 @@
   []
   (pos? *transaction-depth*))
 
-(defn- do-transaction [^java.sql.Connection connection f]
+(defn- do-transaction
+  "Execute `f` within a transaction on `connection`.
+
+  At the top level (depth 1), manages autocommit and commit/rollback directly, supporting
+  `:rollback-only` to rollback instead of commit on success.
+
+  At nested levels, uses savepoints for isolation so that errors in nested transactions can be
+  caught without aborting the outer transaction. When `:rollback-only` is true for a nested
+  transaction, the savepoint is rolled back on success to undo the nested changes."
+  [^java.sql.Connection connection {:keys [rollback-only]} f]
   (letfn [(thunk []
             (let [savepoint (.setSavepoint connection)]
               (try
                 (let [result (f connection)]
-                  (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
-                    (.commit connection))
+                  (cond
+                    ;; top-level transaction: commit or rollback
+                    (= *transaction-depth* 1)
+                    (if rollback-only
+                      (.rollback connection)
+                      (.commit connection))
+
+                    ;; nested rollback-only: rollback to savepoint
+                    rollback-only
+                    (.rollback connection savepoint))
                   result)
                 (catch Throwable txn-e
                   (try
@@ -156,7 +172,6 @@
                               (str "Error rolling back after previous error: " (ex-message txn-e))
                               {:rollback-error rollback-e}
                               txn-e))))
-
                   (throw txn-e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
@@ -203,7 +218,7 @@
 
     :else
     (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f))))
+      (do-transaction connection options f))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively

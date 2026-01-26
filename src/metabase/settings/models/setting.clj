@@ -70,6 +70,15 @@
     "user-recent-views"
     "most-recently-viewed-dashboard"})
 
+(def ^:dynamic *env-var-overrides*
+  "Thread-local overrides for env var values. A map of env-var-keyword (as used in `environ.core/env`,
+  e.g. `:mb-api-key`) to string value. A value of `\"\"` (empty string) means 'explicitly unset' --
+  [[env-var-value]] will treat it the same as an empty env var (i.e., return nil via `not-empty`).
+
+  Used by test helpers like `do-with-temporary-setting-value` to override env-var-backed settings in a
+  thread-safe manner without modifying global `env/env`."
+  nil)
+
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
   Primarily used in test to disable retired setting check."
@@ -477,12 +486,18 @@
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (and (allows-site-wide-values? setting)
                (allows-setting-via-env? setting))
-      (if-let [v (env/env (setting-env-map-name setting))]
-        ;; primary env var is set — return it only if non-empty
-        (not-empty v)
-        ;; primary env var is absent — try deprecated name
-        (when-let [deprecated-name (:deprecated-name setting)]
-          (not-empty (env/env (setting-env-map-name deprecated-name))))))))
+      (let [env-kw (setting-env-map-name setting)]
+        (if-some [entry (when *env-var-overrides*
+                          (find *env-var-overrides* env-kw))]
+          ;; thread-local override found — use its val ("" means explicitly unset, not-empty returns nil)
+          (not-empty (val entry))
+          ;; no override — fall through to env/env
+          (if-let [v (env/env env-kw)]
+            ;; primary env var is set — return it only if non-empty
+            (not-empty v)
+            ;; primary env var is absent — try deprecated name
+            (when-let [deprecated-name (:deprecated-name setting)]
+              (not-empty (env/env (setting-env-map-name deprecated-name))))))))))
 
 (defn log-deprecated-env-var-usage!
   "Log warnings for any settings currently using a deprecated env var name.
@@ -614,7 +629,7 @@
 
   1. From [[*user-local-values*]] if this Setting is allowed to have User-local values
   2. From [[*database-local-values*]] if this Setting is allowed to have Database-local values
-  3. From the corresponding env var (excluding empty string values)
+  3. From the corresponding env var (excluding empty string values), checking [[*env-var-overrides*]] first
   4. From the application database (i.e., set via the admin panel) (excluding empty string values)
   5. The default value, if one was specified
 

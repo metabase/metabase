@@ -49,9 +49,11 @@
 
 (deftest token-refresh-sets-premium-features-cookie-test
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
-    (mt/with-random-premium-token! [_token]
-      (let [cs (cookies/cookie-store)]
-        (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
-                              {:request-options {:cookie-store cs}})
-        (let [pf-cookie (get (cookies/get-cookies cs) "metabase.PREMIUM_FEATURES_LAST_UPDATED")]
-          (is (some? pf-cookie) "No premium-features-last-updated cookie set"))))))
+    ;; This test uses real HTTP client, so settings must be set globally
+    (mt/test-helpers-set-global-values!
+      (mt/with-random-premium-token! [_token]
+        (let [cs (cookies/cookie-store)]
+          (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
+                                {:request-options {:cookie-store cs}})
+          (let [pf-cookie (get (cookies/get-cookies cs) "metabase.PREMIUM_FEATURES_LAST_UPDATED")]
+            (is (some? pf-cookie) "No premium-features-last-updated cookie set")))))))

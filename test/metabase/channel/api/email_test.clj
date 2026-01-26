@@ -134,24 +134,26 @@
 
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
-    (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST     nil
-                                  MB_EMAIL_SMTP_PORT  nil
-                                  MB_EMAIL_SMTP_SECURITY nil
-                                  MB_EMAIL_SMTP_USERNAME nil
-                                  MB_EMAIL_SMTP_PASSWORD nil]
-      (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
-        (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-          (is (= (-> default-email-settings
-                     (assoc :with-corrections {})
-                     (update :email-smtp-security name))
-                 (mt/user-http-request :crowberto :put 200 "email" default-email-settings)))
-          (let [new-email-settings (email-settings)]
-            (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
-            (is (= default-email-settings
-                   new-email-settings))
-            (is (= {:email-smtp-host     nil
-                    :email-smtp-port     nil
-                    :email-smtp-security :none
-                    :email-smtp-username nil
-                    :email-smtp-password nil}
-                   (email-settings)))))))))
+    ;; This test modifies settings via HTTP API and reads them back, so settings must be set globally
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST     nil
+                                    MB_EMAIL_SMTP_PORT  nil
+                                    MB_EMAIL_SMTP_SECURITY nil
+                                    MB_EMAIL_SMTP_USERNAME nil
+                                    MB_EMAIL_SMTP_PASSWORD nil]
+        (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
+          (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+            (is (= (-> default-email-settings
+                       (assoc :with-corrections {})
+                       (update :email-smtp-security name))
+                   (mt/user-http-request :crowberto :put 200 "email" default-email-settings)))
+            (let [new-email-settings (email-settings)]
+              (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
+              (is (= default-email-settings
+                     new-email-settings))
+              (is (= {:email-smtp-host     nil
+                      :email-smtp-port     nil
+                      :email-smtp-security :none
+                      :email-smtp-username nil
+                      :email-smtp-password nil}
+                     (email-settings))))))))))

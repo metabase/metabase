@@ -25,7 +25,7 @@
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and tu.thread-local/*thread-local* (not *in-with-temp*))
     (binding [*in-with-temp* true]
-      (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+      (t2.connection/with-transaction [_ t2.connection/*current-connectable*]
         (next-method model attributes f)))
     (next-method model attributes f)))
 

@@ -32,29 +32,31 @@
     (.addCookie cs cookie)))
 
 (deftest setting-settings-include-timestamp
-  (mt/discard-setting-changes [site-name]
-    (let [^CookieStore cs (cookies/cookie-store)]
-      (testing "it sets the cookie when updating settings"
-        (mt/user-real-request  :crowberto :put 204 "setting/site-name"
-                               {:request-options {:cookie-store cs}}
-                               {:value "foo"})
-        (let [setting-cookie (get (cookies/get-cookies cs) cookie-name)]
-          (is (some? setting-cookie) "No cookie set")
-          (is (= (setting/cache-last-updated-at)
-                 (-> setting-cookie :value codec/form-decode))
-              "Cookie value is not most recent cache updated at timestamp")))
+  ;; Uses real HTTP client + with-redefs, so must use global values
+  (mt/test-helpers-set-global-values!
+    (mt/discard-setting-changes [site-name]
+      (let [^CookieStore cs (cookies/cookie-store)]
+        (testing "it sets the cookie when updating settings"
+          (mt/user-real-request  :crowberto :put 204 "setting/site-name"
+                                 {:request-options {:cookie-store cs}}
+                                 {:value "foo"})
+          (let [setting-cookie (get (cookies/get-cookies cs) cookie-name)]
+            (is (some? setting-cookie) "No cookie set")
+            (is (= (setting/cache-last-updated-at)
+                   (-> setting-cookie :value codec/form-decode))
+                "Cookie value is not most recent cache updated at timestamp")))
 
-      (testing "And when that timestamp is outdated it restores the setting cache"
-        (let [calls (atom 0)]
+        (testing "And when that timestamp is outdated it restores the setting cache"
+          (let [calls (atom 0)]
           ;; value in 2042 to simulate client has more recent settings
-          (update-cookie cs cookie-name "2042-12-02+19%3A57%3A49.775909%2B00")
-          (with-redefs [setting/restore-cache! (fn [] (swap! calls inc))]
-            (mt/user-real-request :crowberto :get 200 "user/current"
-                                  {:request-options {:cookie-store cs}})
-            (is (= 1 @calls) "Cache was not restored based on cookie value")
-            (testing "And that header resets the settings last updated at so we don't keep updating the cache"
-              (let [setting-cookie (get (cookies/get-cookies cs) cookie-name)]
-                (is (some? setting-cookie) "No cookie set")
-                (is (= (setting/cache-last-updated-at)
-                       (-> setting-cookie :value codec/form-decode))
-                    "The most recent updated at was not set in the header")))))))))
+            (update-cookie cs cookie-name "2042-12-02+19%3A57%3A49.775909%2B00")
+            (with-redefs [setting/restore-cache! (fn [] (swap! calls inc))]
+              (mt/user-real-request :crowberto :get 200 "user/current"
+                                    {:request-options {:cookie-store cs}})
+              (is (= 1 @calls) "Cache was not restored based on cookie value")
+              (testing "And that header resets the settings last updated at so we don't keep updating the cache"
+                (let [setting-cookie (get (cookies/get-cookies cs) cookie-name)]
+                  (is (some? setting-cookie) "No cookie set")
+                  (is (= (setting/cache-last-updated-at)
+                         (-> setting-cookie :value codec/form-decode))
+                      "The most recent updated at was not set in the header"))))))))))

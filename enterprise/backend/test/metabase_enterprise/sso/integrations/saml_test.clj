@@ -822,21 +822,23 @@
           (is (= "https://app.example.com" origin)))))))
 
 (deftest saml-embedding-sdk-integration-includes-token-tests
-  (mt/with-temporary-setting-values [sdk-encryption-validation-key "1FlZMdousOLX9d3SSL+KuWq2+l1gfKoFM7O4ZHqKjTgabo7QdqP8US2bNPN+PqisP1QOKvesxkxOigIrvvd5OQ=="]
-    (testing "should include token in the redirect URL when embedding SDK header is present with origin"
-      (with-other-sso-types-disabled!
-        (with-saml-default-setup!
-          (let [result (client/client-real-response
-                        :get 200 "/auth/sso"
-                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                     "origin" "https://app.example.com"}}})
-                token (-> (get-in result [:body :url])
-                          uri->params-map
-                          :RelayState
-                          u/decode-base64
-                          uri->params-map
-                          :token)]
-            (is (not (nil? token)))))))))
+  ;; This test uses real HTTP client, so settings must be set globally
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [sdk-encryption-validation-key "1FlZMdousOLX9d3SSL+KuWq2+l1gfKoFM7O4ZHqKjTgabo7QdqP8US2bNPN+PqisP1QOKvesxkxOigIrvvd5OQ=="]
+      (testing "should include token in the redirect URL when embedding SDK header is present with origin"
+        (with-other-sso-types-disabled!
+          (with-saml-default-setup!
+            (let [result (client/client-real-response
+                          :get 200 "/auth/sso"
+                          {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                                                       "origin" "https://app.example.com"}}})
+                  token (-> (get-in result [:body :url])
+                            uri->params-map
+                            :RelayState
+                            u/decode-base64
+                            uri->params-map
+                            :token)]
+              (is (not (nil? token))))))))))
 
 (deftest saml-embedding-sdk-integration-no-embedding-tests
   (testing "should redirect to IdP when no embedding SDK header is present"

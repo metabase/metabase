@@ -8,9 +8,14 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; Tests in this namespace directly mutate settings (e.g. read-only-mode!) and make HTTP calls
+;; that need to see the mutated values. This requires global (non-thread-local) setting changes,
+;; which means tests in this namespace cannot be run with ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/discard-setting-changes [read-only-mode]
-                        (thunk))))
+                      (mt/test-helpers-set-global-values!
+                        (mt/discard-setting-changes [read-only-mode]
+                          (thunk)))))
 
 (set! *warn-on-reflection* true)
 

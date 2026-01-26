@@ -163,25 +163,27 @@
 
 (deftest call-llm-snowplow-test
   (testing "fires token_usage snowplow event for call-llm"
-    (let [rasta-id (mt/user->id :rasta)]
-      (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/test-model"]
-        (with-redefs [openrouter/openrouter
-                      (constantly (test-util/mock-llm-response
-                                   [{:type :start :id "msg-1"}
-                                    {:type :tool-input :id "call-1" :function "json"
-                                     :arguments {:questions ["q1"]}}
-                                    {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                     :model "test-model" :id "msg-1"}]))]
-          (mt/with-current-user rasta-id
-            (snowplow-test/with-fake-snowplow-collector
-              (#'native-generator/call-llm "test prompt")
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"           "openrouter/test-model"
-                                  "total_tokens"        120
-                                  "prompt_tokens"       100
-                                  "completion_tokens"   20
-                                  "estimated_costs_usd" 0.0
-                                  "duration_ms"         nat-int?
-                                  "source"              "example_question_generation_batch"
-                                  "tag"                 "example-question-generation"}}]
-                      (snowplow-test/pop-event-data-and-user-id!))))))))))
+    ;; with-fake-snowplow-collector uses with-redefs, so must use global values
+    (mt/test-helpers-set-global-values!
+      (let [rasta-id (mt/user->id :rasta)]
+        (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/test-model"]
+          (with-redefs [openrouter/openrouter
+                        (constantly (test-util/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :tool-input :id "call-1" :function "json"
+                                       :arguments {:questions ["q1"]}}
+                                      {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                       :model "test-model" :id "msg-1"}]))]
+            (mt/with-current-user rasta-id
+              (snowplow-test/with-fake-snowplow-collector
+                (#'native-generator/call-llm "test prompt")
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"model_id"           "openrouter/test-model"
+                                    "total_tokens"        120
+                                    "prompt_tokens"       100
+                                    "completion_tokens"   20
+                                    "estimated_costs_usd" 0.0
+                                    "duration_ms"         nat-int?
+                                    "source"              "example_question_generation_batch"
+                                    "tag"                 "example-question-generation"}}]
+                        (snowplow-test/pop-event-data-and-user-id!)))))))))))

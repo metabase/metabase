@@ -134,6 +134,42 @@
             (when-not (is-transaction-exception? e)
               (throw e))))))))
 
+(deftest rollback-only-top-level-test
+  (let [email (mt/random-email)]
+    (t2/with-transaction [_ nil {:rollback-only true}]
+      (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+      (is (t2/exists? :model/User :email email)
+          "user should exist inside the transaction"))
+    (is (not (t2/exists? :model/User :email email))
+        "user should NOT exist after rollback-only transaction completes")))
+
+(deftest rollback-only-nested-test
+  (let [email-outer              (mt/random-email)
+        email-inner              (mt/random-email)
+        transaction-exception    (Exception. "(abort)")
+        is-transaction-exception (fn is-tx? [e]
+                                   (or (identical? e transaction-exception)
+                                       (some-> (ex-cause e) is-tx?)))]
+    (try
+      (t2/with-transaction []
+        (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email-outer))
+        (t2/with-transaction [_ nil {:rollback-only true}]
+          (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email-inner))
+          (is (t2/exists? :model/User :email email-inner)
+              "inner user should exist inside rollback-only transaction"))
+        (is (not (t2/exists? :model/User :email email-inner))
+            "inner user should NOT exist after rollback-only transaction")
+        (is (t2/exists? :model/User :email email-outer)
+            "outer user should still exist")
+        (throw transaction-exception))
+      (catch Exception e
+        (when-not (is-transaction-exception e)
+          (throw e))))
+    (is (not (t2/exists? :model/User :email email-outer))
+        "outer user should not exist after outer transaction aborted")
+    (is (not (t2/exists? :model/User :email email-inner))
+        "inner user should not exist after outer transaction aborted")))
+
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
     (with-open [conn (.getConnection mdb.connection/*application-db*)]

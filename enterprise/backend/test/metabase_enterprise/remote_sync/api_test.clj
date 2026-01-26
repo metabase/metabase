@@ -40,11 +40,17 @@
             (mt/id)
             (f))))
 
+;; Tests in this namespace need global (non-thread-local) setting changes because run-async!
+;; spawns virtual threads via bound-fn* which would inherit *current-connectable* from a
+;; thread-local rollback transaction, causing JDBC connection sharing issues between threads.
+;; This means tests in this namespace cannot be run with ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each
   test-helpers/clean-remote-sync-state
   (fn [f]
-    (mt/with-premium-features #{:remote-sync}
-      (f))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:remote-sync}
+        (f)))))
 
 (defn- wait-for-task-completion [task-id]
   (when task-id

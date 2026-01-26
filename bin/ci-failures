@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Usage: bin/ci-failures <run-id-or-url> [job-name-filter]
+#
+# Extract unique failing test names from a GitHub Actions CI run.
+#
+# Examples:
+#   bin/ci-failures 23808103321
+#   bin/ci-failures 23808103321 "Postgres"
+#   bin/ci-failures https://github.com/metabase/metabase/actions/runs/23808103321/job/69387249218
+
+set -uo pipefail
+
+REPO="metabase/metabase"
+
+input="${1:?Usage: bin/ci-failures <run-id-or-url> [job-name-filter]}"
+filter="${2:-}"
+
+# Extract run ID and optional job ID from URL
+if [[ "$input" =~ /job/([0-9]+) ]]; then
+  job_id="${BASH_REMATCH[1]}"
+  run_id=$(echo "$input" | grep -oE 'runs/[0-9]+' | cut -d/ -f2)
+elif [[ "$input" =~ runs/([0-9]+) ]]; then
+  run_id="${BASH_REMATCH[1]}"
+  job_id=""
+elif [[ "$input" =~ ^[0-9]+$ ]]; then
+  run_id="$input"
+  job_id=""
+else
+  echo "Error: could not parse run/job ID from: $input" >&2
+  exit 1
+fi
+
+get_failures() {
+  local jid="$1"
+  local jname="$2"
+  local failures
+  failures=$(LC_ALL=C gh api "repos/$REPO/actions/jobs/$jid/logs" 2>&1 \
+    | LC_ALL=C sed 's/\x1b\[[0-9;]*m//g' \
+    | grep -aoE '(FAIL|ERROR) in [a-zA-Z0-9._!?/-]+' \
+    | sed 's/^FAIL in //' \
+    | sed 's/^ERROR in //' \
+    | sort -u || true)
+  if [ -n "$failures" ]; then
+    echo "=== $jname ==="
+    echo "$failures"
+    echo
+  fi
+}
+
+if [ -n "$job_id" ]; then
+  get_failures "$job_id" "Job $job_id"
+else
+  gh run view "$run_id" --repo "$REPO" --json jobs 2>&1 \
+    | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for j in data['jobs']:
+    if j['conclusion'] == 'failure':
+        print(str(j['databaseId']) + '\t' + j['name'])
+" | while IFS=$'\t' read -r jid jname; do
+    if [ -z "$filter" ] || echo "$jname" | grep -qi "$filter"; then
+      get_failures "$jid" "$jname"
+    fi
+  done
+fi
