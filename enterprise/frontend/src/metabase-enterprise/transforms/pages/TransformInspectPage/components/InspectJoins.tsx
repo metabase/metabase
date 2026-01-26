@@ -65,7 +65,7 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         width: 120,
         cell: ({ row }) => (
           <Text size="sm" ta="right">
-            {formatPercent(row.original.percent_with_entry)}
+            {formatPercent(row.original.stats?.match_rate)}
           </Text>
         ),
       },

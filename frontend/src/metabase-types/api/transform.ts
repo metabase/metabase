@@ -307,12 +307,17 @@ export type TransformInspectSummary = {
 };
 
 export type TransformInspectJoin = {
-  strategy: string;
+  strategy: "left-join" | "right-join" | "inner-join" | "full-join";
   alias?: string;
-  source_table?: unknown;
-  filled_rows?: number;
-  percent_with_entry?: number;
-  outer_join_crosses?: number;
+  stats: {
+    source_table?: unknown;
+    left_row_count?: number;
+    right_row_count?: number;
+    matched_count?: number;
+    match_rate?: number;
+    output_row_count?: number;
+    expansion_factor?: number;
+  };
 };
 
 export type TransformInspectSource = {
