@@ -711,7 +711,7 @@ export function getPopoverItem(name: string, index = 0) {
    * Without scrollIntoView() the popover may scroll automatically to a different
    * place when clicking the item (unclear why).
    */
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByText(name).eq(index).scrollIntoView();
 }
 
@@ -836,7 +836,7 @@ export function verifyDashcardCellValues({
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
       .findByRole("row")
       .findAllByRole("gridcell")
@@ -852,7 +852,7 @@ export function verifyDashcardCellValues({
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
   }
 }

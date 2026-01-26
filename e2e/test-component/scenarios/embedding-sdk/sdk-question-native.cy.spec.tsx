@@ -69,7 +69,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         );
 
         // The first row should have the same ID column value as the initial SQL parameters
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         rows
           .findAllByTestId("cell-data")
           .eq(idColumnIndex)

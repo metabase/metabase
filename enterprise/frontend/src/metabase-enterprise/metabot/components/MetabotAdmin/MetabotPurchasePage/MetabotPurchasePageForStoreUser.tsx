@@ -157,9 +157,9 @@ export const MetabotPurchasePageForStoreUser = () => {
 
                   <Text>
                     {hadMetabot
-                      ? /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                      ? /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
                         t`An additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`
-                      : /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                      : /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
                         t`After 14 days of free trial an additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}
                   </Text>
 

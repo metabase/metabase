@@ -30,7 +30,7 @@ export const DestinationDatabaseConnectionModal = ({
 }) => {
   const dispatch = useDispatch();
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));

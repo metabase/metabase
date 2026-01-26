@@ -93,9 +93,9 @@ describe("issue 15993", () => {
     // Drill-through
     cy.findAllByRole("gridcell").contains("0").realClick();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
     const getVisualizationSettings = (targetId) => ({
@@ -473,7 +473,7 @@ describe("issue 17160", () => {
 
     cy.url().should("include", "/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -503,7 +503,7 @@ describe("issue 17160", () => {
       cy.url().should("include", "/public/dashboard");
       cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TARGET_DASHBOARD_NAME);
 
       assertMultipleValuesFilterState();
@@ -541,7 +541,7 @@ describe("issue 18454", () => {
     cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CARD_DESCRIPTION);
   });
 });
@@ -1386,7 +1386,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

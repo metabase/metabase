@@ -558,7 +558,7 @@ describe("scenarios > visualizations > legend", () => {
 });
 
 function hideSeries(legendItemIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Hide series")
@@ -566,7 +566,7 @@ function hideSeries(legendItemIndex) {
 }
 
 function showSeries(legendItemIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")
