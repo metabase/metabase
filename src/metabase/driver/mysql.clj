@@ -120,22 +120,16 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
-(defn mysql?
-  "Returns true if the database is MySQL. Assumes the database has been synced so `:dbms_version` is present."
-  [database]
-  (-> database :dbms_version :flavor (= "MySQL")))
+(defn- mysql?
+  "Returns true if the database is MySQL (not MariaDB).
+   Returns true for unsynced databases (unknown flavor)."
+  [db]
+  (= "MySQL" (-> db :dbms_version :flavor)))
 
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
-
-(defn mysql-connection?
-  "Returns true if the database is MySQL. Accepts either a JDBC Connection or a db map."
-  [driver db-or-conn]
-  (if (instance? java.sql.Connection db-or-conn)
-    (= "MySQL" (.getDatabaseProductName (.getMetaData ^java.sql.Connection db-or-conn)))
-    (->> db-or-conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MySQL"))))
 
 (defn- partial-revokes-enabled?
   [driver db]
@@ -155,20 +149,10 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
-(defn- mysql-flavor?
-  "Returns true if we can confirm the database is MySQL (not MariaDB).
-   Handles both database entities (with :dbms_version) and connection-only maps."
-  [driver db]
-  (if-let [flavor (-> db :dbms_version :flavor)]
-    (= flavor "MySQL")
-    ;; No :dbms_version - check via connection if available
-    (when-let [conn (:connection db)]
-      (mysql-connection? driver conn))))
-
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql-flavor? driver db)
+       (mysql? db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
@@ -969,7 +953,7 @@
   (:value
    (first
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
-                ["show global variables like ?" var-name]))))
+      ["show global variables like ?" var-name]))))
 
 (defmethod driver/insert-into! :mysql
   [driver db-id ^String table-name column-names values]
