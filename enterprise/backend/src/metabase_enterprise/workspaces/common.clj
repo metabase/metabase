@@ -65,7 +65,7 @@
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
     ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
-    #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
+    (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
     ws))
 
 (defn- unique-constraint-violation?
