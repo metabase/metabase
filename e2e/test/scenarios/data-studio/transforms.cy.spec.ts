@@ -418,7 +418,7 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
       cy.url().should("include", "/edit");
 
       getQueryEditor().findByLabelText("View SQL").click();
@@ -647,7 +647,7 @@ LIMIT
         visitTransform: true,
       });
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
 
       getQueryEditor().within(() => {
         cy.findByTestId("run-button").eq(0).click();
@@ -1503,7 +1503,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("visit edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1535,7 +1535,7 @@ LIMIT
       });
 
       cy.log("visit edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1627,7 +1627,7 @@ LIMIT
         H.visitTransform(transformId);
 
         cy.log("remove score column (breaking change)");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.editDefinition();
         H.getNotebookStep("data").findByLabelText("Pick columns").click();
         H.popover().findByLabelText("Score").click();
         H.DataStudio.Transforms.saveChangesButton().click();
@@ -1674,7 +1674,7 @@ LIMIT
       );
 
       cy.log("enter edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
 
       cy.log("update the query");
       H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
@@ -1753,7 +1753,7 @@ LIMIT
         );
 
         cy.log("click Edit definition to enter edit mode");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.editDefinition();
         cy.url().should("include", "/edit");
 
         cy.log("sidebar should be visible in edit mode");
@@ -1789,7 +1789,7 @@ LIMIT
         );
 
         cy.log("enter edit mode");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.editDefinition();
         cy.url().should("include", "/edit");
 
         cy.log("make a change to trigger dirty state");
@@ -1817,7 +1817,7 @@ LIMIT
         });
 
         cy.log("visit edit mode and change to a complex query with LIMIT");
-        H.DataStudio.Transforms.editDefinition().click();
+        H.DataStudio.Transforms.editDefinition();
         cy.url().should("include", "/edit");
 
         H.NativeEditor.type(" LIMIT 10");
@@ -2106,7 +2106,7 @@ LIMIT
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
 
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
       cy.url().should("include", "/edit");
 
       getQueryEditor().within(() => {
@@ -3469,7 +3469,7 @@ describe(
       );
 
       cy.log("enter edit mode");
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.editDefinition();
 
       cy.log("running the script should work");
       runPythonScriptAndWaitForSuccess();

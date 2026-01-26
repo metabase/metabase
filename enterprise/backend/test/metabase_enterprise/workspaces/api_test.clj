@@ -1381,6 +1381,44 @@
                     :not_run   []}
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws-1) "/run"))))))))))
 
+(deftest dry-run-workspace-transform-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
+    (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
+                             ws2 {:name "Workspace 2"}]
+      (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
+                                          :source {:type  "query"
+                                                   :query (mt/native-query
+                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world'"})}
+                                          :target {:type     "table"
+                                                   :database (mt/id)
+                                                   :schema   "public"
+                                                   :name     "ws_dryrun"}}]
+        (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "/transform") x1))
+              ws1    (ws.tu/ws-done! (:id ws1))]
+          (testing "Not found in different workspace"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :post 404
+                                         (ws-url (:id ws2) "/transform/" ref-id "/dry-run")))))
+          (testing "Not found by different user"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403
+                                         (ws-url (:id ws1) "/transform/" ref-id "/dry-run")))))
+          (testing "returns succeeded status with data"
+            (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))]
+              (is (=? {:status "succeeded"
+                       :data   {:rows [[1 "hello"] [2 "world"]]
+                                :cols [{:name #"(?i)id"} {:name #"(?i)name"}]}}
+                      result))))
+          (testing "does NOT update last_run_at"
+            (is (nil? (:last_run_at (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id))))))
+          (testing "returns failed status with message"
+            (t2/update! :model/WorkspaceTransform {:workspace_id (:id ws1) :ref_id ref-id}
+                        {:source {:type  "query"
+                                  :query (mt/native-query {:query "SELECT 1 LIMIT"})}})
+            (is (=? {:status  "failed"
+                     :message string?}
+                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "transform" ref-id "dry-run"))))))))))
+
 (defn- random-target [db-id]
   {:type     "table"
    :database db-id

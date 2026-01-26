@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
+import { t } from "ttag";
 
 import {
   Box,
@@ -42,7 +43,13 @@ export const TransformListItem = ({
       <Text c={isActive ? "brand" : "text-primary"} truncate>
         {name}
       </Text>
-      {isEdited && <StatusDot data-testid="status-dot" />}
+      {isEdited && (
+        <Tooltip label={t`Unsaved changes`}>
+          <Box>
+            <StatusDot data-testid="status-dot" />
+          </Box>
+        </Tooltip>
+      )}
     </Box>
   );
 

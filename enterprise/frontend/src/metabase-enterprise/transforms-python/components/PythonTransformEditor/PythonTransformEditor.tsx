@@ -24,7 +24,7 @@ export function PythonTransformEditor({
   proposedSource,
   uiOptions,
   isEditMode,
-  transformId,
+  transform,
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
@@ -114,15 +114,15 @@ export function PythonTransformEditor({
       <PythonTransformTopBar
         databaseId={source["source-database"]}
         isEditMode={isEditMode}
-        transformId={transformId}
+        transform={transform}
         onDatabaseChange={handleDatabaseChange}
+        canChangeDatabase={uiOptions?.canChangeDatabase}
       />
       <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
         {isEditMode && (
           <PythonDataPicker
             disabled={uiOptions?.readOnly}
             database={source["source-database"]}
-            canChangeDatabase={uiOptions?.canChangeDatabase}
             tables={source["source-tables"]}
             onChange={handleDataChange}
           />

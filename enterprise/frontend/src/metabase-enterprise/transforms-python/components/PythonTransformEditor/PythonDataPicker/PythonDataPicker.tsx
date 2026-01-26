@@ -24,7 +24,6 @@ import {
 type PythonDataPickerProps = {
   database?: DatabaseId;
   disabled?: boolean;
-  canChangeDatabase?: boolean;
   tables: PythonTransformTableAliases;
   readOnly?: boolean;
   onChange: (
@@ -40,7 +39,6 @@ export function PythonDataPicker({
   tables,
   readOnly,
   onChange,
-  canChangeDatabase = true,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),

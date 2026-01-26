@@ -25,8 +25,10 @@ export const DataStudio = {
         if (directLink.length) {
           cy.findByRole("link", { name: "Edit definition" }).click();
         } else {
-          cy.findByRole("button", { name: "Edit" }).click();
-          popover().findByRole("menuitem", { name: "Edit definition" }).click();
+          cy.findByRole("button", { name: /Edit/ }).click();
+          popover()
+            .findByRole("menuitem", { name: /Edit definition/ })
+            .click();
         }
       });
     },

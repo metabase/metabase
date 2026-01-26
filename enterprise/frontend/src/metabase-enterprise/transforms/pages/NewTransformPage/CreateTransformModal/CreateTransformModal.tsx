@@ -1,6 +1,7 @@
 import { useFormikContext } from "formik";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
@@ -48,16 +49,14 @@ type CreateTransformModalProps = {
   onCreate?: (transform: Transform) => void;
   onClose: () => void;
   schemasFilter?: SchemasFilter;
-  showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (
     values: NewTransformValues,
   ) => Promise<Transform | WorkspaceTransform>;
   targetDescription?: string;
   validateOnMount?: boolean;
+  showIncrementalSettings?: boolean;
 };
-
-function identity(v: any) { return v };
 
 export function CreateTransformModal({
   source,
@@ -65,11 +64,11 @@ export function CreateTransformModal({
   onCreate,
   onClose,
   schemasFilter,
-  showIncrementalSettings = true,
   validationSchemaExtension,
   handleSubmit,
   targetDescription,
   validateOnMount,
+  showIncrementalSettings,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -89,7 +88,7 @@ export function CreateTransformModal({
   );
 
   const schemas = useMemo(() => {
-    return (fetchedSchemas ?? []).filter(schemasFilter || identity);
+    return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
   }, [schemasFilter, fetchedSchemas]);
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
@@ -135,6 +134,8 @@ export function CreateTransformModal({
           supportsSchemas={supportsSchemas}
           schemas={schemas}
           onClose={onClose}
+          targetDescription={targetDescription}
+          showIncrementalSettings={showIncrementalSettings}
         />
       </FormProvider>
     </Modal>
@@ -146,8 +147,8 @@ type CreateTransformFormFieldsProps = {
   supportsSchemas: boolean | undefined;
   schemas: string[];
   onClose: () => void;
-  showIncrementalSettings?: boolean;
   targetDescription?: string;
+  showIncrementalSettings?: boolean;
 };
 
 function CreateTransformForm({
@@ -155,8 +156,8 @@ function CreateTransformForm({
   supportsSchemas,
   schemas,
   onClose,
-  showIncrementalSettings,
   targetDescription,
+  showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
   const { checkComplexity } = useQueryComplexityChecks();

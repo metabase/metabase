@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import type { MetabaseColorKey } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -375,12 +376,12 @@ function WorkspaceItem({
 type WorkspaceListStatus = {
   label: string;
   icon: IconName;
-  color: string;
+  color: MetabaseColorKey;
 };
 
 function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
   if (workspace.status === "archived") {
-    return { label: t`Archived`, icon: "archive", color: "text-light" };
+    return { label: t`Archived`, icon: "archive", color: "text-tertiary" };
   }
 
   if (workspace.status === "pending") {

@@ -134,6 +134,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
           disabled={!checkoutData?.checkout_disabled}
         >
           <Button
+            role="button"
             rightSection={<Icon name="chevrondown" />}
             loading={isBusy}
             disabled={!!checkoutData?.checkout_disabled}
@@ -165,7 +166,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
             >
               <Stack gap={0} align="flex-start">
                 <Text fw={600}>{t`New workspace`}</Text>
-                <Text size="sm" c="text-light">
+                <Text size="sm" c="text-tertiary">
                   {t`Create a new workspace`}
                 </Text>
               </Stack>
@@ -178,7 +179,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
               </Flex>
             ) : matchingWorkspaces.length === 0 ? (
               <Box px="md" py="sm">
-                <Text size="sm" c="text-light">
+                <Text size="sm" c="text-tertiary">
                   {emptyMessage}
                 </Text>
               </Box>
@@ -191,7 +192,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
                       leftSection={
                         <Icon
                           name="sparkles"
-                          c={workspace.isChecked ? "brand" : "text-dark"}
+                          c={workspace.isChecked ? "brand" : "text-primary"}
                         />
                       }
                       onClick={() => handleWorkspaceSelect(workspace)}

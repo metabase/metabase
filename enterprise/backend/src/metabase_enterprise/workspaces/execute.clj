@@ -8,9 +8,12 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
+   [clojure.string :as str]
    [macaw.core :as macaw]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -101,29 +104,50 @@
   "Maximum number of rows to return in dry-run/preview mode."
   2000)
 
-(defn- run-sql-preview
+(defn- dry-run-python
+  "Run Python transform and return first 2000 rows without persisting.
+   Returns a map with :status and :data (on success) or :message (on failure)."
+  [{:keys [source]} remapping]
+  (let [table-mapping          (:tables remapping no-mapping)
+        remapped-source        (remap-python-source table-mapping source)
+        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))
+        {:as   result
+         :keys [cols rows]}    (python-runner/execute-and-read-output!
+                                {:code          (:body remapped-source)
+                                 :source-tables resolved-source-tables
+                                 :row-limit     preview-row-limit})
+        flatrows               (apply juxt (map (fn [c] (let [cname (:name c)] #(get % cname))) cols))]
+    (if (= :succeeded (:status result))
+      {:status :succeeded
+       ;; return logs for debugging
+       :logs   (str/join "\n" (:logs result))
+       :data   {:cols cols
+                :rows (mapv flatrows rows)}}
+      {:status  :failed
+       :message (:message result)})))
+
+(defn- dry-run-sql
   "Run SQL transform query and return first 2000 rows without persisting.
    Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
   [{:keys [source]} remapping]
-  (let [s-type          (transforms/transform-source-type source)
-        table-mapping   (:tables remapping no-mapping)
-        field-mapping   (:fields remapping no-mapping)
-        remapped-source (remap-source table-mapping field-mapping s-type source)
-        query           (:query remapped-source)]
-    (try
-      (let [result (qp/process-query
-                    (assoc query :constraints {:max-results           preview-row-limit
-                                               :max-results-bare-rows preview-row-limit}))
-            data (:data result)]
-        (if (= :completed (:status result))
-          {:status     :succeeded
-           :data       (select-keys data [:rows :cols :results_metadata])}
-          {:status     :failed
-           :message    (or (:error result) "Query execution failed")}))
-      (catch Exception e
-        {:status     :failed
-         :message    (ex-message e)
-         :ex-data    (ex-data e)}))))
+  (try
+    (let [s-type          (transforms/transform-source-type source)
+          table-mapping   (:tables remapping no-mapping)
+          field-mapping   (:fields remapping no-mapping)
+          remapped-source (remap-source table-mapping field-mapping s-type source)
+          query           (:query remapped-source)
+          result          (qp/process-query
+                           (assoc query :constraints {:max-results           preview-row-limit
+                                                      :max-results-bare-rows preview-row-limit}))
+          data            (:data result)]
+      (if (= :completed (:status result))
+        {:status :succeeded
+         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status  :failed
+         :message (or (:error result) "Query execution failed")}))
+    (catch Exception e
+      {:status  :failed
+       :message (ex-message e)})))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
@@ -131,9 +155,8 @@
   [{:keys [source] :as transform} remapping]
   (let [s-type (transforms/transform-source-type source)]
     (case s-type
-      (:native :mbql) (run-sql-preview transform remapping)
-      :python         (throw (ex-info "Dry-run is not yet supported for Python transforms"
-                                      {:transform-type :python})))))
+      (:native :mbql) (dry-run-sql transform remapping)
+      :python         (dry-run-python transform remapping))))
 
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.

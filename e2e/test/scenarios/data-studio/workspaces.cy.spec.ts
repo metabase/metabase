@@ -800,6 +800,8 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Save the transform to add it to workspace");
       Workspaces.getSaveTransformButton().click();
+      cy.log("Save button should be disabled after saving");
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       cy.log("Transform should be removed from available list after saving");
       Workspaces.getMainlandTransforms()
@@ -822,9 +824,29 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.log("Save it again");
+      cy.log(
+        "Add delay to API response to verify button is disabled immediately on click",
+      );
+      cy.intercept(
+        { method: "PUT", url: "/api/ee/workspace/*/transform/*" },
+        (req) => {
+          req.on("response", (res) => {
+            res.setDelay(500);
+          });
+        },
+      ).as("updateTransformSlow");
+
       Workspaces.getWorkspaceContent().within(() => {
         Workspaces.getSaveTransformButton().click();
+        cy.log("Save button should show loading state immediately after click");
+        Workspaces.getSaveTransformButton().should("have.attr", "data-loading");
       });
+      cy.log("Wait for save to complete");
+      cy.wait("@updateTransformSlow");
+      cy.log(
+        "Save button should be disabled after save completes (no changes)",
+      );
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       cy.log("Check that yellow dot doesn't exist anymore after saving");
       Workspaces.getWorkspaceTransforms().within(() => {
@@ -898,6 +920,7 @@ describe("scenarios > data studio > workspaces", () => {
         "Check that table name gets automatically populated based on transform name",
       );
       H.modal().within(() => {
+        cy.findByText("Incremental transformation").should("not.exist");
         cy.findByLabelText(/Table name/).should("have.value", "new_transform");
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
@@ -999,6 +1022,7 @@ describe("scenarios > data studio > workspaces", () => {
         "Check that table name gets automatically populated based on transform name",
       );
       H.modal().within(() => {
+        cy.findByText("Incremental transformation").should("not.exist");
         cy.findByLabelText(/Table name/).should("have.value", "new_transform");
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
@@ -1582,7 +1606,7 @@ describe("scenarios > data studio > workspaces", () => {
       );
 
       cy.log("Edit transform to remove model reference");
-      Transforms.editDefinition().click();
+      Transforms.editDefinition();
       H.NativeEditor.type(
         '{selectall}SELECT * FROM "Schema A"."Animals" as t;',
       );
