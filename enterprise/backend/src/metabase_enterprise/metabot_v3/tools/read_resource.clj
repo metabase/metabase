@@ -241,14 +241,3 @@
 
     {:resources resources
      :formatted formatted}))
-
-(defn read-resource-tool
-  "Tool handler for read_resource tool.
-  Returns structured output with resource content."
-  [args]
-  (try
-    (let [result (read-resource args)]
-      {:structured-output {:content (:formatted result)}})
-    (catch Exception e
-      (log/error e "Error in read_resource tool")
-      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))
