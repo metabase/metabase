@@ -169,13 +169,13 @@ export const SdkInternalNavigationProvider = ({
         updateCurrentEntry(() => ({
           type: "adhoc-question",
           questionPath: url,
-          name: nextCard.name || "Question",
+          name: nextCard.name || t`Question`,
         }));
       } else {
         push({
           type: "adhoc-question",
           questionPath: url,
-          name: nextCard.name || "Question",
+          name: nextCard.name || t`Question`,
         });
       }
     },

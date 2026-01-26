@@ -222,7 +222,7 @@ export const SdkQuestionProvider = ({
       navigation.push({
         type: "question",
         id: questionId,
-        name: question.displayName() || "Question",
+        name: question.displayName() || t`Question`,
       });
     }
     // Only run when question is first loaded
