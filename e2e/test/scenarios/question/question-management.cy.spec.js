@@ -44,7 +44,7 @@ describe(
                   .blur();
                 assertRequestNot403("updateQuestion");
                 assertNoPermissionsError();
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders1");
               });
 
@@ -58,7 +58,7 @@ describe(
                 assertRequestNot403("updateQuestion");
                 assertNoPermissionsError();
 
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("foo");
               });
 
@@ -405,7 +405,7 @@ describe(
                   cy.findByTestId("archive-button").should("not.exist");
                 });
 
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Revert").should("not.exist");
               });
 

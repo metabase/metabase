@@ -485,7 +485,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 

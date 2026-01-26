@@ -9,7 +9,7 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
   const { values } = useFormikContext<DatabaseData>();
   const { engine } = values;
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("databases/connections/postgresql", {
     anchor: "authenticate-client-certificate",
   });

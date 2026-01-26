@@ -13,7 +13,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
 
   cy.intercept("POST", "/api/card").as("createCard");
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("cell-data").last().click();
   popover().findByText(`See these ${entityName}`).click();
   cy.findByRole("button", { name: "Save" }).click();
