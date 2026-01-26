@@ -53,117 +53,36 @@ describe("getWritableCollection", () => {
 });
 
 describe("getAccessibleCollection", () => {
-  describe("when instance remote-sync is disabled", () => {
-    const isInstanceRemoteSyncEnabled = false;
-
-    it("returns collection when can_write is true", () => {
-      const childCollection = createMockCollection({
-        id: 2,
-        type: "library-data",
-        can_write: true,
-        is_remote_synced: false,
-      });
-      const rootCollection = createMockCollection({
-        id: 1,
-        children: [childCollection],
-      });
-
-      const result = getAccessibleCollection(
-        rootCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      );
-
-      expect(result).toEqual(childCollection);
+  it("returns collection when it exists with can_write true", () => {
+    const childCollection = createMockCollection({
+      id: 2,
+      type: "library-data",
+      can_write: true,
+    });
+    const rootCollection = createMockCollection({
+      id: 1,
+      children: [childCollection],
     });
 
-    it("returns undefined when can_write is false even if collection is remote synced", () => {
-      const childCollection = createMockCollection({
-        id: 2,
-        type: "library-data",
-        can_write: false,
-        is_remote_synced: true,
-      });
-      const rootCollection = createMockCollection({
-        id: 1,
-        children: [childCollection],
-      });
+    const result = getAccessibleCollection(rootCollection, "library-data");
 
-      const result = getAccessibleCollection(
-        rootCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      );
-
-      expect(result).toBeUndefined();
-    });
+    expect(result).toEqual(childCollection);
   });
 
-  describe("when instance remote-sync is enabled", () => {
-    const isInstanceRemoteSyncEnabled = true;
-
-    it("returns collection when can_write is true (regardless of is_remote_synced)", () => {
-      const childCollection = createMockCollection({
-        id: 2,
-        type: "library-data",
-        can_write: true,
-        is_remote_synced: false,
-      });
-      const rootCollection = createMockCollection({
-        id: 1,
-        children: [childCollection],
-      });
-
-      const result = getAccessibleCollection(
-        rootCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      );
-
-      expect(result).toEqual(childCollection);
+  it("returns collection when it exists with can_write false", () => {
+    const childCollection = createMockCollection({
+      id: 2,
+      type: "library-data",
+      can_write: false,
+    });
+    const rootCollection = createMockCollection({
+      id: 1,
+      children: [childCollection],
     });
 
-    it("returns collection when can_write is false but collection is remote synced", () => {
-      const childCollection = createMockCollection({
-        id: 2,
-        type: "library-data",
-        can_write: false,
-        is_remote_synced: true,
-      });
-      const rootCollection = createMockCollection({
-        id: 1,
-        children: [childCollection],
-      });
+    const result = getAccessibleCollection(rootCollection, "library-data");
 
-      const result = getAccessibleCollection(
-        rootCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      );
-
-      expect(result).toEqual(childCollection);
-    });
-
-    it("returns undefined when can_write is false and collection is not remote synced", () => {
-      const childCollection = createMockCollection({
-        id: 2,
-        type: "library-data",
-        can_write: false,
-        is_remote_synced: false,
-      });
-      const rootCollection = createMockCollection({
-        id: 1,
-        children: [childCollection],
-      });
-
-      const result = getAccessibleCollection(
-        rootCollection,
-        "library-data",
-        isInstanceRemoteSyncEnabled,
-      );
-
-      expect(result).toBeUndefined();
-    });
+    expect(result).toEqual(childCollection);
   });
 
   it("returns undefined when collection type does not exist", () => {
@@ -177,11 +96,7 @@ describe("getAccessibleCollection", () => {
       children: [childCollection],
     });
 
-    const result = getAccessibleCollection(
-      rootCollection,
-      "library-data",
-      true,
-    );
+    const result = getAccessibleCollection(rootCollection, "library-data");
 
     expect(result).toBeUndefined();
   });
@@ -192,11 +107,7 @@ describe("getAccessibleCollection", () => {
       children: undefined,
     });
 
-    const result = getAccessibleCollection(
-      rootCollection,
-      "library-data",
-      true,
-    );
+    const result = getAccessibleCollection(rootCollection, "library-data");
 
     expect(result).toBeUndefined();
   });

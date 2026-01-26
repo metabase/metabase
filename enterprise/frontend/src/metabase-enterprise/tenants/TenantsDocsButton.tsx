@@ -5,7 +5,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 export const TenantsDocsButton = () => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- we can always show links in admin panels, showMetabaseLinks doesn't apply
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- we can always show links in admin panels, showMetabaseLinks doesn't apply
   const { url } = useDocsUrl("embedding/tenants");
 
   if (!url) {

@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-unconditional-metabase-links-render -- cli snippets
+// eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- cli snippets
 export const THEME_SWITCHER_SNIPPET = `
 import { useContext } from 'react'
 

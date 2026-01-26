@@ -13,7 +13,7 @@ interface LimitInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   medium?: boolean;
 }
 
-const LimitInput = ({
+export const LimitInput = ({
   className,
   small,
   medium,
@@ -30,6 +30,3 @@ const LimitInput = ({
     {...props}
   />
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LimitInput;

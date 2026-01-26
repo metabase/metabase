@@ -505,6 +505,7 @@
  [lib.validate
   duplicate-column-error
   find-bad-refs
+  find-bad-refs-with-source
   missing-column-error
   missing-table-alias-error
   syntax-error

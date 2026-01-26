@@ -17,6 +17,7 @@ import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
@@ -27,7 +28,7 @@ import * as Lib from "metabase-lib";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import ViewSidebar from "../../ViewSidebar";
+import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
 import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
@@ -290,6 +291,9 @@ const mapDispatchToProps = (dispatch) => ({
   onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
+  },
+  runQuery: () => {
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   },
 });
 

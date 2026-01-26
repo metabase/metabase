@@ -58,7 +58,7 @@ describe("scenarios > question > download", () => {
         });
 
         H.visualize();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
 
         H.downloadAndAssert({ fileType });
@@ -336,7 +336,7 @@ describe("scenarios > question > download", () => {
 
       H.popover().within(() => H.fieldValuesCombobox().type("1"));
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
 
       cy.wait("@dashboard");
@@ -487,6 +487,10 @@ describe("scenarios > dashboard > download pdf", () => {
     });
 
     H.openSharingMenu("Export as PDF");
+    cy.findByTestId("status-root-container")
+      .should("contain", "Downloading")
+      .and("contain", `Dashboard for saving pdf dashboard - ${date}`);
+
     cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
     cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
   });
@@ -511,6 +515,10 @@ describe("[snowplow] scenarios > dashboard", () => {
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
       H.openSharingMenu("Export as PDF");
+
+      cy.findByTestId("status-root-container")
+        .should("contain", "Downloading")
+        .and("contain", "Dashboard for test dashboard");
 
       H.expectUnstructuredSnowplowEvent({
         event: "dashboard_pdf_exported",

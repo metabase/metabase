@@ -18,11 +18,13 @@ describe("ValuesSourceModal", () => {
       createMockField({
         id: 1,
         base_type: "type/Text",
+        effective_type: "type/Text",
         semantic_type: "type/Category",
       }),
       createMockField({
         id: 2,
         base_type: "type/Text",
+        effective_type: "type/Text",
         semantic_type: "type/Category",
       }),
     ],
@@ -173,14 +175,18 @@ describe("ValuesSourceModal", () => {
             result_metadata: [
               createMockField({
                 id: 1,
+                name: "id",
                 display_name: "ID",
                 base_type: "type/BigInteger",
+                effective_type: "type/BigInteger",
                 semantic_type: "type/PK",
               }),
               createMockField({
                 id: 2,
+                name: "category",
                 display_name: "Category",
                 base_type: "type/Text",
+                effective_type: "type/Text",
                 semantic_type: "type/Category",
               }),
             ],
@@ -199,7 +205,7 @@ describe("ValuesSourceModal", () => {
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
-        value_field: ["field", 2, null],
+        value_field: ["field", "category", { "base-type": "type/Text" }],
       });
     });
 

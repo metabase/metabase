@@ -49,7 +49,7 @@ function useDependentTableMetadata({
   return hasFetchedMetadata;
 }
 
-export function TableInfoLoader({
+export function TableInfoLoaderInner({
   table,
   fetchForeignKeys,
   fetchMetadata,
@@ -63,5 +63,7 @@ export function TableInfoLoader({
   return hasFetchedMetadata ? <> {children} </> : null;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(TableInfoLoader);
+export const TableInfoLoader = connect(
+  null,
+  mapDispatchToProps,
+)(TableInfoLoaderInner);

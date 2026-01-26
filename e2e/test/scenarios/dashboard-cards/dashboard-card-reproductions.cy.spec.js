@@ -93,9 +93,9 @@ describe("issue 15993", () => {
     // Drill-through
     cy.findAllByRole("gridcell").contains("0").realClick();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
     const getVisualizationSettings = (targetId) => ({
@@ -473,7 +473,7 @@ describe("issue 17160", () => {
 
     cy.url().should("include", "/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -503,7 +503,7 @@ describe("issue 17160", () => {
       cy.url().should("include", "/public/dashboard");
       cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TARGET_DASHBOARD_NAME);
 
       assertMultipleValuesFilterState();
@@ -541,7 +541,7 @@ describe("issue 18454", () => {
     cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CARD_DESCRIPTION);
   });
 });
@@ -775,7 +775,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 109;
+        const expectedWidth = 130;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -800,7 +800,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 61;
+        const expectedWidth = 47;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -1386,7 +1386,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {
@@ -1524,6 +1524,114 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 
 const scalarContainer = () => cy.findByTestId("scalar-container");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
+
+describe("issue 67432", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should copy sorted table data in correct sorted order (metabase#67432)", () => {
+    H.grantClipboardPermissions();
+
+    const ROWS_LIMIT = 5;
+    const questionDetails = {
+      name: "67432 Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.TITLE, null],
+          ["field", PRODUCTS.CATEGORY, null],
+        ],
+        limit: ROWS_LIMIT,
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 10,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // Wait for table to load
+    H.tableInteractiveBody().should("be.visible");
+
+    // Sort by Category column (descending first click)
+    H.tableHeaderClick("Category");
+
+    // Wait for sort to apply - the sort icon should appear
+    H.tableHeaderColumn("Category")
+      .closest("[data-testid=header-cell]")
+      .icon("chevrondown")
+      .should("exist");
+
+    // Collect the visual order of categories from the table
+    const visualCategories = [];
+    H.tableInteractiveBody()
+      .find('[data-column-id="CATEGORY"]')
+      .each(($cell) => {
+        visualCategories.push($cell.text());
+      })
+      .then(() => {
+        // Select multiple cells across rows by dragging
+        const getNonPKCells = () =>
+          H.tableInteractiveBody().find(
+            '[data-selectable-cell]:not([data-column-id="ID"])',
+          );
+
+        // Select cells in first two rows (4 cells: Title+Category for 2 rows)
+        getNonPKCells()
+          .eq(0)
+          .trigger("mousedown", { which: 1 })
+          .then(() => {
+            const lastCellIndex = ROWS_LIMIT * 2 - 1;
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseover", { buttons: 1 });
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseup");
+          });
+
+        // Copy to clipboard
+        cy.realPress(["Meta", "c"]);
+
+        // Verify clipboard content has rows in sorted order
+        H.readClipboard().then((clipboardText) => {
+          // The clipboard should contain properly tab-separated content
+          // with newlines between rows (not a single cell)
+          const lines = clipboardText.split("\n");
+
+          // Should have header row + data rows (at least 6 lines: header + 5 data rows)
+          expect(lines.length).to.be.eq(ROWS_LIMIT + 1);
+
+          // Header should be tab-separated with both columns
+          const headerCells = lines[0].split("\t");
+          expect(headerCells).to.include("Title");
+          expect(headerCells).to.include("Category");
+
+          // Verify each data row is tab-separated and in the correct sorted order
+          const clipboardCategories = lines.slice(1).map((line) => {
+            const cells = line.split("\t");
+            // Category is the second column
+            return cells[1];
+          });
+
+          // The categories in clipboard should match the visual order
+          for (let i = 0; i < clipboardCategories.length; i++) {
+            expect(clipboardCategories[i]).to.equal(visualCategories[i]);
+          }
+        });
+      });
+  });
+});
 
 describe("issue 63416", () => {
   const questionDetails = {

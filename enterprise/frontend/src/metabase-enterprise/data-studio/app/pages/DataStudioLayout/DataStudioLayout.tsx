@@ -5,7 +5,6 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { isCypressActive } from "metabase/env";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -90,6 +89,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
+  const hasTransformDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const currentTab = getCurrentTab(pathname);
@@ -129,15 +130,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessDataModel && (
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-        )}
+        <DataStudioTab
+          label={t`Glossary`}
+          icon="glossary"
+          to={Urls.dataStudioGlossary()}
+          isSelected={currentTab === "glossary"}
+          showLabel={isNavbarOpened}
+        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
@@ -147,13 +146,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {/* TODO (Alex P 01/15/2026): remove isCypressActive once we are ready to release this feature */}
-        {PLUGIN_DEPENDENCIES.isEnabled && isCypressActive && (
+        {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency diagnostics`}
-            icon="list"
-            to={Urls.dependencyTasks()}
-            isSelected={currentTab === "tasks"}
+            icon="search_check"
+            to={Urls.dependencyDiagnostics()}
+            isSelected={currentTab === "dependency-diagnostics"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -164,6 +162,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             to={Urls.transformList()}
             isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
+            rightSection={
+              hasTransformDirtyChanges &&
+              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              ) : null
+            }
           />
         )}
       </Stack>

@@ -9,9 +9,9 @@ import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-  getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
@@ -27,23 +27,25 @@ export const CreateMenu = ({
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
   const closeModal = () => setModal(undefined);
 
-  const isAdmin = useSelector(getUserIsAdmin);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  if (remoteSyncReadOnly) {
+    return null;
+  }
 
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
   const menuItems = [
-    isAdmin && (
-      <Menu.Item
-        key="publish-table"
-        leftSection={<FixedSizeIcon name="publish" />}
-        onClick={() => setModal("publish-table")}
-      >
-        {t`Publish a table`}
-      </Menu.Item>
-    ),
+    <Menu.Item
+      key="publish-table"
+      leftSection={<FixedSizeIcon name="publish" />}
+      onClick={() => setModal("publish-table")}
+    >
+      {t`Published table`}
+    </Menu.Item>,
     canCreateMetric && (
       <Menu.Item
         key="metric"
@@ -64,7 +66,7 @@ export const CreateMenu = ({
         leftSection={<FixedSizeIcon name="snippet" />}
         aria-label={t`Create new snippet`}
       >
-        {t`New snippet`}
+        {t`Snippet`}
       </Menu.Item>
     ),
     hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled && (
@@ -73,7 +75,7 @@ export const CreateMenu = ({
         leftSection={<FixedSizeIcon name="folder" />}
         onClick={() => setModal("snippet-folder")}
       >
-        {t`New snippet folder`}
+        {t`Snippet folder`}
       </Menu.Item>
     ),
   ].filter(Boolean);

@@ -11,7 +11,7 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Actions } from "metabase/entities/actions/actions";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
