@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -146,8 +147,9 @@
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e
-      {:status  :failed
-       :message (ex-message e)})))
+     (log/error e "Failed to run sql preview")
+     {:status  :failed
+      :message (ex-message e)})))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.

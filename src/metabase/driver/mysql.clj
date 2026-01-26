@@ -1246,7 +1246,7 @@
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
-     :database_details read-user}))
+     :database_details (assoc read-user :dbname db-name)}))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
