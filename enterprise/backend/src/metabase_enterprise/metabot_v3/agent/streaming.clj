@@ -1,8 +1,10 @@
 (ns metabase-enterprise.metabot-v3.agent.streaming
   "Streaming helpers for the agent loop.
-  Provides utilities for creating AI-SDK data parts, including navigation."
+  Provides utilities for creating AI-SDK data parts, including navigation,
+  and transducers for stream processing."
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as markdown-link-buffer]
    [metabase.lib.core :as lib]
    [metabase.util.json :as json]))
 
@@ -110,3 +112,41 @@
                   :metabot.reaction/redirect (navigate-to-part url)
                   nil)))
         reactions))
+
+;;; Stream Processing Transducers
+
+(def expand-reactions-xf
+  "Stateless transducer that expands :reactions from tool-output parts into data parts.
+  Passes through all parts unchanged, then appends any reaction data parts after tool-output parts."
+  (mapcat (fn [part]
+            (if (= (:type part) :tool-output)
+              (cons part (reactions->data-parts (get-in part [:result :reactions])))
+              [part]))))
+
+(def expand-data-parts-xf
+  "Stateless transducer that expands :data-parts from tool-output results.
+  Passes through all parts unchanged, then appends any data parts after tool-output parts."
+  (mapcat (fn [part]
+            (if (= (:type part) :tool-output)
+              (cons part (get-in part [:result :data-parts]))
+              [part]))))
+
+(defn post-process-xf
+  "Composed transducer for post-processing agent output.
+
+  Applies in order:
+  1. expand-data-parts-xf - Extract data-parts from tool outputs
+  2. expand-reactions-xf - Extract reactions from tool outputs as data parts
+  3. resolve-links-xf - Resolve metabase:// links in text parts
+
+  Note: expand-data-parts-xf comes first so its output appears before reactions,
+  matching the original stream-parts-to-output! behavior.
+
+  Parameters:
+  - initial-queries: Initial map of query-id to query data
+  - initial-charts: Initial map of chart-id to chart data"
+  [initial-queries initial-charts]
+  (comp
+   expand-data-parts-xf
+   expand-reactions-xf
+   (markdown-link-buffer/resolve-xf initial-queries initial-charts)))
