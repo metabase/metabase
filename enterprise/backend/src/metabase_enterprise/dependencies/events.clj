@@ -385,3 +385,23 @@
       (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
         (when (seq changes)
           (check-all-dependents! {:table changes} true))))))
+
+;; ### Admin UI Table/Field Metadata Updates
+;; When a table or field's metadata is updated via the admin UI, re-analyze all dependents of that table.
+(derive ::check-table-metadata-update :metabase/event)
+(derive :event/table-update ::check-table-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-table-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (check-all-dependents! {:table #{(:id object)}} true))))
+
+(derive ::check-field-metadata-update :metabase/event)
+(derive :event/field-update ::check-field-metadata-update)
+
+(methodical/defmethod events/publish-event! ::check-field-metadata-update
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (check-all-dependents! {:table #{(:table_id object)}} true))))
