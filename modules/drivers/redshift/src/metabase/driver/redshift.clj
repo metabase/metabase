@@ -59,10 +59,26 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+;; Redshift-specific implementation that:
+;; 1. Skips the postgres implementation (which handles custom enums that redshift doesn't support)
+;; 2. Deduplicates fields by (table-schema, table-name, name) to handle views with duplicate column names
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
-  [driver database & args]
-  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+  [_driver _db & _args]
+  (fn [rf]
+    (let [seen (volatile! #{})]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result field]
+         (let [k [(:table-schema field) (:table-name field) (:name field)]]
+           (if (contains? @seen k)
+             (do
+               (log/warnf "Duplicate column '%s' in %s.%s - skipping (views with duplicate column names not fully supported)"
+                          (:name field) (:table-schema field) (:table-name field))
+               result)
+             (do
+               (vswap! seen conj k)
+               (rf result field)))))))))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
@@ -157,12 +173,9 @@
                         [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
                ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
                :from [[:svv_columns :c]]
-               ;; Use select-distinct to avoid duplicate rows when Redshift's information_schema
-               ;; contains duplicate/stale constraint entries (common with Spectrum/external tables).
-               ;; See GitHub issue #67275
-               :left-join [[{:select-distinct [:tc.table_schema
-                                               :tc.table_name
-                                               :kc.column_name]
+               :left-join [[{:select [:tc.table_schema
+                                      :tc.table_name
+                                      :kc.column_name]
                              :from [[:information_schema.table_constraints :tc]]
                              :join [[:information_schema.key_column_usage :kc]
                                     [:and

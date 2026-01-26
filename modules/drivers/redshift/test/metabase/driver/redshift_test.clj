@@ -50,15 +50,6 @@
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
 
-(deftest ^:parallel describe-fields-sql-uses-select-distinct-for-pks-test
-  (testing "describe-fields-sql should use SELECT DISTINCT in PK subquery to avoid duplicates (#67275)"
-    ;; Redshift's information_schema can return duplicate constraint entries, especially with
-    ;; Spectrum/external tables. The PK lookup subquery must use SELECT DISTINCT to prevent
-    ;; duplicate field rows that cause unique constraint violations during sync.
-    (let [[sql] (sql-jdbc.describe-table/describe-fields-sql :redshift)]
-      (is (str/includes? sql "SELECT DISTINCT")
-          "PK subquery should use SELECT DISTINCT to deduplicate constraint metadata"))))
-
 (defn- query->native! [query]
   (let [native-query (atom nil)
         check-sql-fn (fn [_ _ sql & _]
@@ -562,6 +553,21 @@
       :type/DateTime           [:timestamp]
       :type/DateTimeWithTZ     [:timestamp-with-time-zone]
       :type/Time               [:time])))
+
+(deftest ^:parallel describe-fields-pre-process-xf-deduplicates-fields-test
+  (testing "describe-fields-pre-process-xf filters out duplicate fields by (table-schema, table-name, name)"
+    (let [xf     (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
+          fields [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "integer"}   ; duplicate
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}  ; same name, different table
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}    ; same name+table, different schema
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}]]  ; duplicate (different type)
+      (is (= [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+              {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
+              {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+              {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
+             (into [] xf fields))))))
 
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
