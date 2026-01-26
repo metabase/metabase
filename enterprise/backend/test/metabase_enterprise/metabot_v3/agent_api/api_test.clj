@@ -51,6 +51,17 @@
   ([email]
    {"authorization" (str "Bearer " (sign-jwt {:email email}))}))
 
+(defn- agent-client
+  "Helper for making authenticated agent API requests, similar to mt/user-http-request.
+   Takes a test user keyword (e.g. :rasta, :crowberto), method, expected status, endpoint,
+   and optional body for POST/PUT requests."
+  [user method expected-status endpoint & [body]]
+  (let [email   (:username (mt/user->credentials user))
+        headers (auth-headers email)]
+    (apply client/client method expected-status endpoint
+           {:request-options {:headers headers}}
+           (when body [body]))))
+
 (deftest agent-api-jwt-auth-test
   (with-agent-api-setup!
     (testing "Valid JWT with email claim succeeds"
@@ -152,6 +163,28 @@
                        (client/client :get 401 "agent/v1/ping"
                                       {:request-options {:headers {"x-metabase-session" session-key}}})))))))))))
 
+(deftest agent-api-user-binding-test
+  (with-agent-api-setup!
+    (testing "User is correctly bound from JWT - permissions are enforced"
+      ;; Create a metric in a collection, then revoke non-admin access
+      (mt/with-temp [:model/Collection collection {:name "Private Collection"}
+                     :model/Card       metric     {:name          "Private Metric"
+                                                   :type          :metric
+                                                   :collection_id (:id collection)
+                                                   :database_id   (mt/id)
+                                                   :dataset_query (mt/mbql-query orders
+                                                                    {:aggregation [[:count]]})}]
+        (mt/with-non-admin-groups-no-collection-perms collection
+          (testing "Admin user can access the metric"
+            (is (=? {:type "metric"
+                     :id   (:id metric)
+                     :name "Private Metric"}
+                    (agent-client :crowberto :get 200 (str "agent/v1/metric/" (:id metric))))))
+
+          (testing "Non-admin user cannot access the metric"
+            (is (= "You don't have permissions to do that."
+                   (agent-client :rasta :get 403 (str "agent/v1/metric/" (:id metric)))))))))))
+
 (deftest get-table-details-test
   (with-agent-api-setup!
     (testing "Returns table details for valid table ID"
@@ -163,23 +196,19 @@
                  :database_id    (mt/id)
                  :fields         sequential?
                  :related_tables sequential?}
-                (client/client :get 200 (str "agent/v1/table/" table-id)
-                               {:request-options {:headers (auth-headers)}})))))
+                (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (client/client :get 404 "agent/v1/table/999999"
-                            {:request-options {:headers (auth-headers)}}))))
+             (agent-client :rasta :get 404 "agent/v1/table/999999"))))
 
     (testing "Respects query parameters"
       (let [table-id (mt/id :orders)]
         (is (=? {:type   "table"
                  :id     table-id
                  :fields empty?}
-                (client/client :get 200 (str "agent/v1/table/" table-id)
-                               {:request-options {:headers (auth-headers)}}
-                               :with-fields false
-                               :with-related-tables false)))))))
+                (agent-client :rasta :get 200
+                              (str "agent/v1/table/" table-id "?with-fields=false&with-related-tables=false"))))))))
 
 (deftest get-metric-details-test
   (with-agent-api-setup!
@@ -189,25 +218,22 @@
                                        :dataset_query (mt/mbql-query orders
                                                         {:aggregation [[:count]]})}]
       (testing "Returns metric details for valid metric ID"
-        (is (=? {:type                  "metric"
-                 :id                    (:id metric)
-                 :name                  "Test Metric"
-                 :queryable_dimensions  sequential?}
-                (client/client :get 200 (str "agent/v1/metric/" (:id metric))
-                               {:request-options {:headers (auth-headers)}}))))
+        (is (=? {:type                 "metric"
+                 :id                   (:id metric)
+                 :name                 "Test Metric"
+                 :queryable_dimensions sequential?}
+                (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric))))))
 
       (testing "Respects query parameters"
         (is (=? {:type "metric"
                  :id   (:id metric)}
-                (client/client :get 200 (str "agent/v1/metric/" (:id metric))
-                               {:request-options {:headers (auth-headers)}}
-                               :with-queryable-dimensions false
-                               :with-field-values false))))
+                (agent-client :rasta :get 200
+                              (str "agent/v1/metric/" (:id metric)
+                                   "?with-queryable-dimensions=false&with-field-values=false")))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (client/client :get 404 "agent/v1/metric/999999"
-                              {:request-options {:headers (auth-headers)}})))))))
+               (agent-client :rasta :get 404 "agent/v1/metric/999999")))))))
 
 (defn- ensure-fresh-field-values!
   "Ensure field values exist for a field by deleting any existing ones and recreating them."
@@ -230,31 +256,28 @@
 
 (deftest get-table-field-values-test
   (with-agent-api-setup!
-    (let [admin-headers (auth-headers "crowberto@metabase.com")]
-      ;; Ensure field values exist for the field we'll test
-      (ensure-fresh-field-values! (mt/id :people :state))
+    ;; Ensure field values exist for the field we'll test
+    (ensure-fresh-field-values! (mt/id :people :state))
 
-      (testing "Returns field statistics and values for a table field"
-        (let [table-id (mt/id :people)
-              field-id (visible-field-id table-id "State")]
-          (is (some? field-id) "Should find the State field")
-          (is (=? {:statistics {:distinct_count 49}
-                   :values     sequential?}
-                  (client/client :get 200 (format "agent/v1/table/%d/field/%s/values" table-id field-id)
-                                 {:request-options {:headers admin-headers}})))))
+    (testing "Returns field statistics and values for a table field"
+      (let [table-id (mt/id :people)
+            field-id (visible-field-id table-id "State")]
+        (is (some? field-id) "Should find the State field")
+        (is (=? {:statistics {:distinct_count 49}
+                 :values     sequential?}
+                (agent-client :crowberto :get 200
+                              (format "agent/v1/table/%d/field/%s/values" table-id field-id))))))
 
-      (testing "Respects limit parameter"
-        (let [table-id (mt/id :people)
-              field-id (visible-field-id table-id "State")
-              result   (client/client :get 200 (format "agent/v1/table/%d/field/%s/values" table-id field-id)
-                                      {:request-options {:headers admin-headers}}
-                                      :limit 5)]
-          (is (= 5 (count (:values result))) "Should respect limit parameter")))
+    (testing "Respects limit parameter"
+      (let [table-id (mt/id :people)
+            field-id (visible-field-id table-id "State")
+            result   (agent-client :crowberto :get 200
+                                   (format "agent/v1/table/%d/field/%s/values?limit=5" table-id field-id))]
+        (is (= 5 (count (:values result))) "Should respect limit parameter")))
 
-      (testing "Returns 404 for non-existent table"
-        (is (= "Not found."
-               (client/client :get 404 "agent/v1/table/999999/field/t999999-0/values"
-                              {:request-options {:headers admin-headers}})))))))
+    (testing "Returns 404 for non-existent table"
+      (is (= "Not found."
+             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))))
 
 (deftest search-test
   (with-agent-api-setup!
@@ -262,11 +285,10 @@
       (search.tu/with-new-search-if-available-otherwise-legacy
         (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
           (testing "Returns search results for term queries"
-            (is (=? {:data       [{:type "table" :name "AgentSearchTestTable"}]
+            (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
                      :total_count 1}
-                    (client/client :post 200 "agent/v1/search"
-                                   {:request-options {:headers (auth-headers)}}
-                                   {:term_queries ["AgentSearchTestTable"]})))))))))
+                    (agent-client :rasta :post 200 "agent/v1/search"
+                                  {:term_queries ["AgentSearchTestTable"]})))))))))
 
 (defn- decode-base64-url-safe
   "Decode a URL-safe base64 string back to the original string."
@@ -285,9 +307,8 @@
   (with-agent-api-setup!
     (testing "Constructs a simple query from a table"
       (let [table-id (mt/id :orders)
-            response (client/client :post 200 "agent/v1/construct-query"
-                                    {:request-options {:headers (auth-headers)}}
-                                    {:table_id table-id})]
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id table-id})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
           (is (= "mbql/query" (:lib/type decoded)))
@@ -296,31 +317,27 @@
 
     (testing "Constructs a query with a limit"
       (let [table-id (mt/id :orders)
-            response (client/client :post 200 "agent/v1/construct-query"
-                                    {:request-options {:headers (auth-headers)}}
-                                    {:table_id table-id
-                                     :limit    10})
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id table-id
+                                    :limit    10})
             decoded  (decode-query response)]
         (is (= 10 (get-in decoded [:stages 0 :limit])))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "No table found with table_id 999999"
-             (client/client :post 404 "agent/v1/construct-query"
-                            {:request-options {:headers (auth-headers)}}
-                            {:table_id 999999}))))))
+             (agent-client :rasta :post 404 "agent/v1/construct-query"
+                           {:table_id 999999}))))))
 
 (deftest execute-query-test
   (with-agent-api-setup!
     (testing "Executes a query and returns results with column metadata"
       (let [table-id       (mt/id :orders)
-            construct-resp (client/client :post 200 "agent/v1/construct-query"
-                                          {:request-options {:headers (auth-headers)}}
-                                          {:table_id table-id
-                                           :limit    5})
+            construct-resp (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                         {:table_id table-id
+                                          :limit    5})
             ;; Streaming response returns 202 (accepted) since it starts streaming before completion
-            execute-resp   (client/client :post 202 "agent/v1/execute"
-                                          {:request-options {:headers (auth-headers)}}
-                                          {:query (:query construct-resp)})
+            execute-resp   (agent-client :rasta :post 202 "agent/v1/execute"
+                                         {:query (:query construct-resp)})
             cols           (get-in execute-resp [:data :cols])
             rows           (get-in execute-resp [:data :rows])]
         (testing "response structure"
@@ -343,20 +360,18 @@
                                        :dataset_query (mt/mbql-query orders
                                                         {:aggregation [[:count]]})}]
       (testing "Returns field statistics for a field that has statistics"
-        (let [metric-details (client/client :get 200 (str "agent/v1/metric/" (:id metric))
-                                            {:request-options {:headers (auth-headers)}})
+        (let [metric-details (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
               quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
           (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
           (when-let [field-id (:field_id quantity-field)]
             (is (=? {:statistics map?
                      :values     sequential?}
-                    (client/client :get 200 (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)
-                                   {:request-options {:headers (auth-headers)}}))))))
+                    (agent-client :rasta :get 200
+                                  (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (client/client :get 404 "agent/v1/metric/999999/field/c999999-0/values"
-                              {:request-options {:headers (auth-headers)}})))))))
+               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values")))))))
 
 (deftest construct-metric-query-test
   (with-agent-api-setup!
@@ -366,9 +381,8 @@
                                        :dataset_query (mt/mbql-query orders
                                                         {:aggregation [[:count]]})}]
       (testing "Constructs a query from a metric"
-        (let [response (client/client :post 200 "agent/v1/construct-query"
-                                      {:request-options {:headers (auth-headers)}}
-                                      {:metric_id (:id metric)})]
+        (let [response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                     {:metric_id (:id metric)})]
           (is (string? (:query response)) "Response should contain a query string")
           (let [decoded (decode-query response)]
             (is (= "mbql/query" (:lib/type decoded)))
@@ -376,24 +390,21 @@
 
       (testing "Returns 404 for non-existent metric"
         (is (= "No metric found with metric_id 999999"
-               (client/client :post 404 "agent/v1/construct-query"
-                              {:request-options {:headers (auth-headers)}}
-                              {:metric_id 999999})))))))
+               (agent-client :rasta :post 404 "agent/v1/construct-query"
+                             {:metric_id 999999})))))))
 
 (deftest construct-query-with-filters-test
   (with-agent-api-setup!
     (testing "Constructs a query with filters"
       (let [table-id (mt/id :orders)
             ;; Get table details to find a valid field_id
-            table    (client/client :get 200 (str "agent/v1/table/" table-id)
-                                    {:request-options {:headers (auth-headers)}})
+            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
             field-id (-> table :fields first :field_id)
-            response (client/client :post 200 "agent/v1/construct-query"
-                                    {:request-options {:headers (auth-headers)}}
-                                    {:table_id table-id
-                                     :filters  [{:field_id  field-id
-                                                 :operation "is-not-null"}]
-                                     :limit    10})]
+            response (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                   {:table_id table-id
+                                    :filters  [{:field_id  field-id
+                                                :operation "is-not-null"}]
+                                    :limit    10})]
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
           (is (some? (get-in decoded [:stages 0 :filters])) "Query should have filters"))))))
@@ -410,7 +421,6 @@
           (testing "Returns metrics in search results"
             (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                      :total_count 1}
-                    (client/client :post 200 "agent/v1/search"
-                                   {:request-options {:headers (auth-headers)}}
-                                   {:term_queries ["AgentSearchTestMetric"]})))))))))
+                    (agent-client :rasta :post 200 "agent/v1/search"
+                                  {:term_queries ["AgentSearchTestMetric"]})))))))))
 
