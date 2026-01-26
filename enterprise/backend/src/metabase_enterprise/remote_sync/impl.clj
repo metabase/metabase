@@ -23,11 +23,6 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
-(defn- all-top-level-remote-synced-collections
-  "Returns a vector of primary keys for all top-level remote-synced collections."
-  []
-  (t2/select-pks-vec :model/Collection :is_remote_synced true))
-
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
   inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
@@ -49,9 +44,12 @@
   entity-id based model, deletes entities whose entity_id is not in the imported set.
 
   Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
-  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id."
+  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
+
+  Uses specs-for-deletion to process models in dependency order (models with FK references to
+  Collection are deleted before Collection itself)."
   [synced-collection-ids imported-entities-by-model]
-  (doseq [[model-key model-spec] (spec/specs-by-identity-type :entity-id)
+  (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
                 entity-ids (get imported-entities-by-model serdes-model [])
                 entity-id-clause (if (seq entity-ids)
@@ -179,7 +177,7 @@
                                              :field_name (-> path last :id)}))))]
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
-                (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
+                (remove-unsynced! (spec/all-syncable-collection-ids) imported-entities-by-model)
                 (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
                 (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))

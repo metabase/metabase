@@ -33,6 +33,9 @@
    - :model-key      - Toucan2 model keyword (e.g., :model/Card)
    - :identity       - Identity strategy: :entity-id, :path, or :hybrid
    - :path-keys      - For path-based: vector of path components [:database :schema :table :field]
+   - :delete-after   - Optional vector of model keys that must be deleted AFTER this model.
+                       Used to handle FK constraints during import cleanup. For example, if Card
+                       has :delete-after [:model/Collection], Card will be deleted before Collection.
    - :events         - Event configuration map:
                        :prefix - Event keyword prefix (e.g., :event/card)
                        :types  - Vector of event types to handle [:create :update :delete]
@@ -61,6 +64,7 @@
    {:model-type     "Card"
     :model-key      :model/Card
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/card
                      :types  [:create :update :delete]}
     :eligibility    {:type       :collection
@@ -79,6 +83,7 @@
    {:model-type     "Dashboard"
     :model-key      :model/Dashboard
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/dashboard
                      :types  [:create :update :delete]}
     :eligibility    {:type       :collection
@@ -96,6 +101,7 @@
    {:model-type     "Document"
     :model-key      :model/Document
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/document
                      :types  [:create :update :delete]}
     :eligibility    {:type       :collection
@@ -113,6 +119,7 @@
    {:model-type     "NativeQuerySnippet"
     :model-key      :model/NativeQuerySnippet
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/snippet
                      :types  [:create :update :delete]}
     :eligibility    {:type :library-synced}  ; sync all snippets when Library is remote-synced
@@ -129,6 +136,7 @@
    {:model-type     "Timeline"
     :model-key      :model/Timeline
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/timeline
                      :types  [:create :update :delete]}
     :eligibility    {:type       :collection
@@ -257,6 +265,7 @@
    {:model-type     "Transform"
     :model-key      :model/Transform
     :identity       :entity-id
+    :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/transform
                      :types  [:create :update :delete]}
     :eligibility    {:type    :setting
@@ -324,6 +333,46 @@
         (filter (fn [[_ spec]] (= (:identity spec) identity-type)))
         (enabled-specs)))
 
+(defn specs-for-deletion
+  "Returns specs with :entity-id identity type, topologically sorted for safe deletion.
+   Uses :delete-after declarations to ensure models are deleted before their dependencies.
+   If model A has :delete-after [:model/B], then A will be deleted before B."
+  []
+  (let [entity-id-specs (specs-by-identity-type :entity-id)
+        ;; Build dependency graph: model -> set of models that must be deleted after it
+        ;; (i.e., the models listed in this model's :delete-after)
+        delete-after-map (reduce-kv
+                          (fn [m model-key spec]
+                            (assoc m model-key (set (get spec :delete-after))))
+                          {}
+                          entity-id-specs)
+        ;; Invert to get: model -> set of models that must be deleted before it
+        ;; If A has :delete-after [B], then B must wait for A to be deleted first
+        must-wait-for (reduce-kv
+                       (fn [m model-key deps]
+                         (reduce (fn [m' dep]
+                                   (update m' dep (fnil conj #{}) model-key))
+                                 m
+                                 deps))
+                       {}
+                       delete-after-map)
+        ;; Simple topological sort - repeatedly take models with no remaining dependencies
+        sorted (loop [remaining (set (keys entity-id-specs))
+                      result []]
+                 (if (empty? remaining)
+                   result
+                   (let [;; Find models whose dependencies are all already processed
+                         ready (filter (fn [k]
+                                         (every? #(not (remaining %))
+                                                 (get must-wait-for k)))
+                                       remaining)]
+                     (if (empty? ready)
+                       ;; Cycle detected or no progress - just append remaining
+                       (into result remaining)
+                       (recur (apply disj remaining ready)
+                              (into result ready))))))]
+    (mapv (fn [k] [k (entity-id-specs k)]) sorted)))
+
 (defn excluded-model-types
   "Returns a set of model type strings that should be excluded from dirty detection
    based on current settings. Models with a setting-based or library-synced :enabled?
@@ -368,6 +417,23 @@
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
            (snippets-namespace-collection? collection))))
+
+(defn all-syncable-collection-ids
+  "Returns a vector of all collection IDs that are eligible for remote sync.
+   This includes:
+   - Collections with is_remote_synced=true
+   - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
+   - Snippets-namespace collections (when Library is remote-synced)
+
+   Used by import cleanup to determine which collections to scope deletions to."
+  []
+  (into []
+        cat
+        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
+         (when (rs-settings/remote-sync-transforms)
+           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
+         (when (rs-settings/library-is-remote-synced?)
+           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
 
 (defmulti check-eligibility
   "Determines if a model instance should be tracked for remote sync.

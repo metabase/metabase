@@ -358,6 +358,42 @@ serdes/meta:
               (is (= "Test Snippet" (:name snippet)))
               (is (= "SELECT 42" (:content snippet))))))))))
 
+(deftest all-syncable-collection-ids-includes-all-namespace-types-test
+  (testing "Snippet collections are included when Library is synced"
+    (with-library-synced
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-temp [:model/Collection {snippet-coll-id :id} {:name "Snippets Collection"
+                                                                :namespace :snippets
+                                                                :location "/"}]
+          (is (contains? (set (spec/all-syncable-collection-ids)) snippet-coll-id))))))
+  (testing "Snippet collections are NOT included when Library is not synced"
+    (with-library-not-synced
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-temp [:model/Collection {snippet-coll-id :id} {:name "Snippets Collection"
+                                                                :namespace :snippets
+                                                                :location "/"}]
+          (is (not (contains? (set (spec/all-syncable-collection-ids)) snippet-coll-id)))))))
+  (testing "Transforms collections are included when setting is enabled"
+    (mt/with-temporary-setting-values [remote-sync-transforms true
+                                       remote-sync-enabled true]
+      (mt/with-temp [:model/Collection {transforms-coll-id :id} {:name "Transforms Collection"
+                                                                 :namespace :transforms
+                                                                 :location "/"}]
+        (is (contains? (set (spec/all-syncable-collection-ids)) transforms-coll-id)))))
+  (testing "Transforms collections are NOT included when setting is disabled"
+    (mt/with-temporary-setting-values [remote-sync-transforms false
+                                       remote-sync-enabled true]
+      (mt/with-temp [:model/Collection {transforms-coll-id :id} {:name "Transforms Collection"
+                                                                 :namespace :transforms
+                                                                 :location "/"}]
+        (is (not (contains? (set (spec/all-syncable-collection-ids)) transforms-coll-id))))))
+  (testing "Regular remote-synced collections are always included"
+    (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temp [:model/Collection {synced-coll-id :id} {:name "Synced Collection"
+                                                             :is_remote_synced true
+                                                             :location "/"}]
+        (is (contains? (set (spec/all-syncable-collection-ids)) synced-coll-id))))))
+
 (deftest export-deletes-archived-snippet-files-test
   (testing "export! deletes files from source for snippets with 'delete' status (archived snippets)"
     (with-library-synced
@@ -390,8 +426,6 @@ serdes/meta:
                                                           :model_collection_id coll-id
                                                           :status "delete"
                                                           :status_changed_at (t/offset-date-time)}]
-              ;; Set up initial files with the snippet that should be deleted
-              ;; Use build-all-removal-paths to get the exact path serdes will generate
               (let [removal-paths (spec/build-all-removal-paths)
                     snippet-removal-path (first (filter #(str/includes? % snippet-eid) removal-paths))
                     _ (is (some? snippet-removal-path) "Should have a removal path for the archived snippet")
