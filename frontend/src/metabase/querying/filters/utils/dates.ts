@@ -327,14 +327,31 @@ export function getDateFilterDisplayName(
 export function formatDate(
   date: Date,
   hasTime: boolean,
-  formattingSettings: DateFormattingSettings = {
-    date_style: "LL", // fall back to local date format
-    time_style: DEFAULT_TIME_STYLE,
-  },
+  formattingSettings: DateFormattingSettings = {},
 ) {
-  const { date_style, time_style } = formattingSettings;
-  const format = hasTime ? `${date_style} ${time_style}` : date_style;
+  const format = formattingSettingsToFormatString(formattingSettings, hasTime);
   return dayjs(date).format(format);
+}
+
+function formattingSettingsToFormatString(
+  {
+    date_style = "LL",
+    time_style = DEFAULT_TIME_STYLE,
+    date_abbreviate = false,
+  }: DateFormattingSettings = {},
+  hasTime: boolean = false,
+) {
+  let format = hasTime ? `${date_style} ${time_style}` : date_style;
+
+  if (date_abbreviate) {
+    format = abbreviateFormat(format);
+  }
+
+  return format;
+}
+
+function abbreviateFormat(format: string) {
+  return format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
 }
 
 function formatMonth(month: number, year: number) {
