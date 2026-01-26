@@ -10,6 +10,7 @@ import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -165,10 +166,12 @@ export const Columns = {
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent();
+
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
+            <EntityItem.Name name={tc(item.name)} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}
@@ -179,7 +182,7 @@ export const Columns = {
                 size={16}
                 tooltip={
                   <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {item.description}
+                    {tc(item.description)}
                   </Markdown>
                 }
               />
@@ -214,9 +217,11 @@ export const Columns = {
       testIdPrefix?: string;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent();
+
       return (
         <ItemCell data-testid={`${testIdPrefix}-description`}>
-          <Ellipsified>{item.description ?? ""}</Ellipsified>
+          <Ellipsified>{tc(item.description) ?? ""}</Ellipsified>
         </ItemCell>
       );
     },

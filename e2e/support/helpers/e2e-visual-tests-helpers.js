@@ -195,7 +195,7 @@ export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByText(name)
     .eq(index ?? 0)
     .parent("tr")

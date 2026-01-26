@@ -1,5 +1,5 @@
 {
   "rules": {
-    "no-color-literals": "off"
+    "metabase/no-color-literals": "off"
   }
 }

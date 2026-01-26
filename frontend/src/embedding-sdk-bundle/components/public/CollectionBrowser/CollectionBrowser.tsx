@@ -155,7 +155,11 @@ export const CollectionBrowserInner = ({
 
     if (item.model === "collection") {
       if (isGlobalBreadcrumbEnabled) {
-        reportLocation({ type: "collection", id: item.id, name: item.name });
+        reportLocation({
+          type: "collection",
+          id: item.id,
+          name: item.name,
+        });
         return;
       }
 

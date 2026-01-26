@@ -512,7 +512,7 @@ function setSearchFilter(label) {
     H.fieldValuesCombobox().type(label);
   });
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().last().findByText(label).click();
   H.popover().within(() => {
     H.fieldValuesValue(0).should("be.visible").should("contain", label);
