@@ -70,7 +70,6 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
       </PageContainer>
     );
   }
-
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} />

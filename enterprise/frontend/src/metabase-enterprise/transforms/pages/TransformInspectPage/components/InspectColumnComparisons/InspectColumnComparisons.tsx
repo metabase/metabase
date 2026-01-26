@@ -1,39 +1,12 @@
 import { t } from "ttag";
 
-import { Box, Card, Code, SimpleGrid, Stack, Text, Title } from "metabase/ui";
-import type {
-  TransformInspectColumnComparison,
-  TransformInspectComparisonCard,
-} from "metabase-types/api";
+import { SimpleGrid, Stack, Title } from "metabase/ui";
+import type { TransformInspectColumnComparison } from "metabase-types/api";
+
+import { ComparisonCard } from "./ComparisonCard";
 
 type InspectColumnComparisonsProps = {
   comparisons: TransformInspectColumnComparison[];
-};
-
-const ComparisonCard = ({
-  card,
-}: {
-  card: TransformInspectComparisonCard | undefined;
-}) => {
-  if (!card) {
-    return <Box />;
-  }
-
-  return (
-    <Card p="md" shadow="none" withBorder>
-      <Stack gap="sm">
-        <Text fw={600} size="sm">
-          {card.title}
-        </Text>
-        <Code
-          block
-          style={{ fontSize: "11px", maxHeight: "200px", overflow: "auto" }}
-        >
-          {JSON.stringify(card, null, 2)}
-        </Code>
-      </Stack>
-    </Card>
-  );
 };
 
 export const InspectColumnComparisons = ({
@@ -42,8 +15,8 @@ export const InspectColumnComparisons = ({
   <Stack gap="md">
     <Title order={3}>{t`Column distributions`}</Title>
     <SimpleGrid cols={2} spacing="lg">
-      <Text fw={600}>{t`Fields in input table(s)`}</Text>
-      <Text fw={600}>{t`Fields in output table(s)`}</Text>
+      <Title order={4}>{t`Fields in input table(s)`}</Title>
+      <Title order={4}>{`Fields in output table(s)`}</Title>
     </SimpleGrid>
     <Stack gap="md">
       {comparisons.map((comparison) => {

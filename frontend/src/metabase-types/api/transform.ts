@@ -5,6 +5,7 @@ import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { CardDisplayType } from "./visualization";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -345,8 +346,8 @@ export type TransformInspectComparisonCard = {
   table_name: string;
   field_name: string;
   title: string;
-  display: string;
-  dataset_query: object;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
 };
 
 export type TransformInspectColumnComparison = {
