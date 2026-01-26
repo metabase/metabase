@@ -384,4 +384,18 @@ describe("metabase/parameters/utils/formatting", () => {
       },
     );
   });
+
+  describe("formatParameterValue with unset settings", () => {
+    it("should render a sensical value even if the date style is unset", () => {
+      const parameter = createMockUiParameter({ type: "date/month-year" });
+      const value = "2023-10-02~2023-10-24";
+      const expected = "October 2, 2023 - October 24, 2023";
+
+      expect(formatParameterValue(value, parameter)).toEqual(expected);
+      expect(formatParameterValue(value, parameter, undefined)).toEqual(
+        expected,
+      );
+      expect(formatParameterValue(value, parameter, {})).toEqual(expected);
+    });
+  });
 });
