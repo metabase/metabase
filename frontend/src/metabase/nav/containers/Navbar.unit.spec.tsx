@@ -1,6 +1,7 @@
-import type { Store } from "@reduxjs/toolkit";
+import type { Store, UnknownAction } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
+import { push, replace } from "react-router-redux";
 
 import {
   setupCollectionItemsEndpoint,
@@ -258,11 +259,7 @@ function dispatchLocationChange({
   initialRoute = false,
   pathname,
 }: DispatchLocationChangeParams) {
-  store.dispatch({
-    type: "@@router/LOCATION_CHANGE",
-    payload: {
-      pathname,
-      action: initialRoute ? "POP" : "PUSH",
-    },
-  });
+  store.dispatch(
+    (initialRoute ? push(pathname) : replace(pathname)) as UnknownAction,
+  );
 }
