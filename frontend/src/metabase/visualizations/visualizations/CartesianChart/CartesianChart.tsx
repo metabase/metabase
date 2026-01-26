@@ -227,6 +227,7 @@ function _CartesianChart(props: VisualizationProps) {
         isVisualizer={isVisualizer}
         chartModel={chartModel}
         settings={settings}
+        canWrite={card.can_write}
         autoChange={handleAutoChange}
         openSettings={handleOpenSettings}
       />

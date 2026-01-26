@@ -17,13 +17,17 @@ import type {
 import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 import type { VisualizationSettings } from "metabase-types/api";
 
-interface Props {
+export interface DataPointsVisiblePopoverProps {
   isDashboard: boolean;
   isVisualizer: boolean;
   chartModel: CartesianChartModel | ScatterPlotModel | WaterfallChartModel;
-  settings: VisualizationSettings;
+  settings: Pick<
+    VisualizationSettings,
+    "graph.y_axis.min" | "graph.x_axis.min"
+  >;
   autoChange: () => void;
   openSettings: () => void;
+  canWrite?: boolean;
 }
 
 export const DataPointsVisiblePopover = ({
@@ -33,7 +37,8 @@ export const DataPointsVisiblePopover = ({
   settings,
   autoChange,
   openSettings,
-}: Props) => {
+  canWrite,
+}: DataPointsVisiblePopoverProps) => {
   const allPointsHidden = useAreAllDataPointsOutOfRange(chartModel, settings);
 
   if (!allPointsHidden || isVisualizer) {
@@ -47,9 +52,11 @@ export const DataPointsVisiblePopover = ({
       left={0}
       top={isDashboard ? 32 : undefined}
       bottom={isDashboard ? 32 : undefined}
+      role="dialog"
+      aria-label={t`data points are off screen`}
     >
       {isDashboard ? (
-        <HoverCard>
+        <HoverCard disabled={!canWrite}>
           <HoverCard.Target>
             <Card withBorder py="sm" maw="9rem">
               <Text ta="center">{t`Every data point is out of range`}</Text>

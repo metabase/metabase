@@ -680,3 +680,145 @@ describe("issue 10493", () => {
     H.chartPathWithFillColor("#509EE3").should("exist");
   });
 });
+
+describe("issue 68156", () => {
+  const getChartPoints = () =>
+    H.echartsContainer().get("path[fill='hsla(0, 0%, 100%, 1.00)']");
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        name: "Count of orders by month",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.y_axis.min": 700,
+          "graph.y_axis.max": 1000,
+          "graph.y_axis.auto_range": false,
+        },
+      },
+      { wrapId: true },
+    );
+  });
+
+  describe("notebook editor", () => {
+    ["admin" as const, "readonly" as const].forEach((user) =>
+      it("should show you a popover when all data points are outside the y-axis range in the notebook editor", () => {
+        cy.signIn(user);
+        cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+
+        getChartPoints().should("have.length", 0);
+
+        // Open Settings to correct panel
+        cy.findByRole("dialog", { name: /data points are off screen/i })
+          .findByRole("button", { name: /axis settings/i })
+          .click();
+
+        H.vizSettingsSidebar().should("be.visible");
+        // This should actually close the sidebar
+        H.openVizSettingsSidebar();
+
+        // Automatically fix the issue
+        cy.findByRole("dialog", { name: /data points are off screen/i })
+          .findByRole("button", { name: /auto y-axis/i })
+          .click();
+
+        H.echartsContainer()
+          .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
+          .should("have.length.greaterThan", 0);
+
+        H.openVizSettingsSidebar();
+
+        H.vizSettingsSidebar().findByText("Axes").click();
+        cy.findByRole("switch", { name: /auto y-axis range/i }).should(
+          "have.attr",
+          "data-checked",
+          "true",
+        );
+      }),
+    );
+  });
+
+  describe("dashcard", () => {
+    beforeEach(() => {
+      cy.get<number>("@questionId").then((cardId) => {
+        H.createDashboard(
+          {
+            name: "Test Dashboard",
+          },
+          {
+            wrapId: true,
+          },
+        );
+
+        cy.get<number>("@dashboardId").then((dashboardId) =>
+          H.addQuestionToDashboard({ dashboardId, cardId }),
+        );
+      });
+    });
+
+    it("should show you a popover when all data points are outside the y-axis range in the dashboard", () => {
+      cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+
+      cy.findByTestId("dashcard").within(() => {
+        getChartPoints().should("have.length", 0);
+
+        cy.findByRole("dialog", { name: /data points are off screen/i })
+          .should("contain.text", "Every data point is out of range")
+          .realHover();
+      });
+
+      cy.button(/use an auto y-axis/i).should("exist");
+      cy.button(/open the axis settings/).click();
+
+      H.modal().findByRole("radio", { name: /axes/i }).click({ force: true });
+      H.modal()
+        .findByRole("switch", { name: /auto y-axis range/i })
+        .should("not.have.attr", "data-checked");
+      H.closeDashcardVisualizerModal();
+      H.dashboardCancelButton().click();
+
+      cy.findByTestId("edit-bar").should("not.exist");
+
+      cy.findByTestId("dashcard")
+        .findByRole("dialog", { name: /data points are off screen/i })
+        .should("contain.text", "Every data point is out of range")
+        .realHover();
+
+      cy.button(/use an auto y-axis/i).click();
+
+      cy.findByTestId("dashcard").within(() => {
+        getChartPoints().should("have.length.greaterThan", 0);
+      });
+
+      cy.reload();
+      cy.findByTestId("dashcard").within(() => {
+        getChartPoints().should("have.length.greaterThan", 0);
+      });
+    });
+
+    it("should not show you the hover state when you don't have edit permissions on the dashboard", () => {
+      cy.signIn("readonly");
+      cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+
+      cy.findByTestId("dashcard").within(() => {
+        getChartPoints().should("have.length", 0);
+
+        cy.findByRole("dialog", { name: /data points are off screen/i })
+          .should("contain.text", "Every data point is out of range")
+          .realHover();
+      });
+
+      H.modal().should("not.exist");
+    });
+  });
+});
