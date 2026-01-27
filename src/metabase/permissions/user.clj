@@ -12,6 +12,12 @@
   [_user-or-id]
   [])
 
+(defenterprise has-any-transforms-permission?
+  "OSS version of has-any-transforms-permission? Returns false since transforms are an EE feature."
+  metabase-enterprise.transforms.util
+  [_user-id]
+  false)
+
 (defenterprise has-db-transforms-permission?
   "OSS version of has-db-transforms-permission? Returns false since transforms are an EE feature."
   metabase-enterprise.transforms.util

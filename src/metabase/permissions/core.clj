@@ -109,6 +109,7 @@
  [metabase.permissions.user
   user-permissions-set
   user->tenant-collection-and-descendant-ids
+  has-any-transforms-permission?
   has-db-transforms-permission?]
  [metabase.permissions.util
   PathSchema
