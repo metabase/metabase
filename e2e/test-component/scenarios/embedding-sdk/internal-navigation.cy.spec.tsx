@@ -301,9 +301,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       // cy.findByText("Back to Dashboard B").should("be.visible");
 
       // Step 4: Perform a drill on the question (click on Product ID to drill)
-      H.tableInteractiveBody()
-        .findByRole("gridcell", { name: "14" })
-        .click();
+      H.tableInteractiveBody().findByRole("gridcell", { name: "14" }).click();
 
       // Click on "View this Product's Orders" to drill down
       H.popover().findByText("View this Product's Orders").click();
