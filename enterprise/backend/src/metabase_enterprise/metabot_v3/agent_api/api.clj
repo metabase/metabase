@@ -309,7 +309,7 @@
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
-   [:query :string]])
+   [:query ms/NonBlankString]])
 
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
@@ -332,7 +332,7 @@
 (api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a table or metric.
 
-  Returns a base64-encoded MBQL5 query that can be used with the query API.
+  Returns a base64-encoded MBQL query that can be used with the query API.
 
   For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."

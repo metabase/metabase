@@ -10,6 +10,7 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -60,6 +61,13 @@
     (apply client/client method expected-status endpoint
            {:request-options {:headers headers}}
            (when body [body]))))
+
+(defn- orders-count-query
+  "Create a simple count query on the orders table using lib functions."
+  []
+  (-> (lib/query (mt/metadata-provider)
+                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+      (lib/aggregate (lib/count))))
 
 (deftest agent-api-jwt-auth-test
   (with-agent-api-setup!
@@ -171,8 +179,7 @@
                                                    :type          :metric
                                                    :collection_id (:id collection)
                                                    :database_id   (mt/id)
-                                                   :dataset_query (mt/mbql-query orders
-                                                                    {:aggregation [[:count]]})}]
+                                                   :dataset_query (orders-count-query)}]
         (mt/with-non-admin-groups-no-collection-perms collection
           (testing "Admin user can access the metric"
             (is (=? {:type "metric"
@@ -214,8 +221,7 @@
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
-                                       :dataset_query (mt/mbql-query orders
-                                                        {:aggregation [[:count]]})}]
+                                       :dataset_query (orders-count-query)}]
       (testing "Returns metric details for valid metric ID"
         (is (=? {:type                 "metric"
                  :id                   (:id metric)
@@ -290,9 +296,9 @@
                                   {:term_queries ["AgentSearchTestTable"]})))))))))
 
 (defn- decode-query
-  "Decode a base64-encoded query response to a Clojure map."
+  "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
   [response]
-  (-> response :query u/decode-base64 json/decode+kw))
+  (-> response :query u/decode-base64 json/decode+kw lib.normalize/normalize))
 
 (deftest construct-query-test
   (with-agent-api-setup!
@@ -302,9 +308,9 @@
                                    {:table_id table-id})]
         (is (string? (:query response)) "Response should contain a query string")
         (let [decoded (decode-query response)]
-          (is (= "mbql/query" (:lib/type decoded)))
-          (is (= (mt/id) (:database decoded)))
-          (is (= (mt/id :orders) (get-in decoded [:stages 0 :source-table]))))))
+          (is (= :mbql/query (lib/normalized-query-type decoded)))
+          (is (= (mt/id) (lib/database-id decoded)))
+          (is (= (mt/id :orders) (lib/source-table-id decoded))))))
 
     (testing "Constructs a query with a limit"
       (let [table-id (mt/id :orders)
@@ -312,7 +318,7 @@
                                    {:table_id table-id
                                     :limit    10})
             decoded  (decode-query response)]
-        (is (= 10 (get-in decoded [:stages 0 :limit])))))
+        (is (= 10 (lib/current-limit decoded)))))
 
     (testing "Returns 404 for non-existent table"
       (is (= "No table found with table_id 999999"
@@ -348,8 +354,7 @@
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
-                                       :dataset_query (mt/mbql-query orders
-                                                        {:aggregation [[:count]]})}]
+                                       :dataset_query (orders-count-query)}]
       (testing "Returns field statistics for a field that has statistics"
         (let [metric-details (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
               quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
@@ -369,15 +374,14 @@
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :database_id   (mt/id)
-                                       :dataset_query (mt/mbql-query orders
-                                                        {:aggregation [[:count]]})}]
+                                       :dataset_query (orders-count-query)}]
       (testing "Constructs a query from a metric"
         (let [response (agent-client :rasta :post 200 "agent/v1/construct-query"
                                      {:metric_id (:id metric)})]
           (is (string? (:query response)) "Response should contain a query string")
           (let [decoded (decode-query response)]
-            (is (= "mbql/query" (:lib/type decoded)))
-            (is (= (mt/id) (:database decoded))))))
+            (is (= :mbql/query (lib/normalized-query-type decoded)))
+            (is (= (mt/id) (lib/database-id decoded))))))
 
       (testing "Returns 404 for non-existent metric"
         (is (= "No metric found with metric_id 999999"
@@ -398,7 +402,7 @@
                                     :limit    10})]
         (is (string? (:query response)))
         (let [decoded (decode-query response)]
-          (is (some? (get-in decoded [:stages 0 :filters])) "Query should have filters"))))))
+          (is (seq (lib/filters decoded)) "Query should have filters"))))))
 
 (deftest search-finds-metrics-test
   (with-agent-api-setup!
@@ -407,8 +411,7 @@
         (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
                                             :type          :metric
                                             :database_id   (mt/id)
-                                            :dataset_query (mt/mbql-query orders
-                                                             {:aggregation [[:count]]})}]
+                                            :dataset_query (orders-count-query)}]
           (testing "Returns metrics in search results"
             (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                      :total_count 1}
