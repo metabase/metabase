@@ -57,21 +57,21 @@
    [:email :string]
    [:first_name [:maybe :string]]
    [:last_name [:maybe :string]]
-   [:common_name [:maybe :string]]
-   [:last_login [:maybe :any]]
-   [:is_qbnewb :boolean]
-   [:is_superuser :boolean]
+   [:common_name {:optional true} [:maybe :string]]
+   [:last_login {:optional true} [:maybe :any]]
+   [:is_qbnewb {:optional true} :boolean]
+   [:is_superuser {:optional true} :boolean]
    [:is_data_analyst {:optional true} :boolean]
-   [:tenant_id [:maybe :any]]
-   [:date_joined :any]])
+   [:tenant_id {:optional true} [:maybe :any]]
+   [:date_joined {:optional true} :any]])
 
 (def ^:private OwnerResponse
   [:map {:closed true}
-   [:id pos-int?]
+   [:id {:optional true} pos-int?]
    [:email :string]
-   [:first_name [:maybe :string]]
-   [:last_name [:maybe :string]]
-   [:common_name [:maybe :string]]])
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
 
 (def ^:private TransformLastRunResponse
   [:map {:closed true}
