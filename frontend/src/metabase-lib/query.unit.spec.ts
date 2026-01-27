@@ -1,9 +1,11 @@
 import * as Lib from "metabase-lib";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   DEFAULT_QUERY,
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
   createQuery,
 } from "./test-helpers";
 
@@ -43,5 +45,21 @@ describe("stageIndexes", () => {
   it("should return stage indexes for a multi-stage query", () => {
     const query = Lib.appendStage(Lib.appendStage(createQuery()));
     expect(Lib.stageIndexes(query)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("queryFromSpec", () => {
+  it("should create a query with a table source", () => {
+    const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: ORDERS_ID,
+          },
+        },
+      ],
+    });
+    expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
   });
 });

@@ -2,20 +2,22 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::table-source-spec
   [:map
    [:type [:= :table]]
-   [:id lib.schema.id/table]])
+   [:id ::lib.schema.id/table]])
 
 (mr/def ::card-source-spec
   [:map
    [:type [:= :card]]
-   [:id lib.schema.id/card]])
+   [:id ::lib.schema.id/card]])
 
 (mr/def ::source-spec
   [:multi {:dispatch :type}
@@ -34,8 +36,8 @@
 
 (mr/def ::stage-spec
   [:map
-   [:source {:optional true} [:maybe ::source-spec]]
-   [:order-by {:optional} [:maybe [:sequential ::order-by-spec]]]])
+   [:source    {:optional true} [:maybe ::source-spec]]
+   [:order-bys {:optional true} [:maybe [:sequential ::order-by-spec]]]])
 
 (mr/def ::query-spec
   [:map
@@ -51,7 +53,7 @@
 (mu/defn- matches-column? :- :boolean
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   columns        :- [:sequential ::lib.schema.metadata/column]
+   column         :- ::lib.schema.metadata/column
    {:keys [name]} :- ::column-spec]
   (cond-> true
     (some? name) (and (= name (:name column)))))
@@ -71,7 +73,7 @@
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    orderable-columns                    :- [:sequential ::lib.schema.metadata/column]
-   {:keys [direction], :as column-spec} :- ::order-by-spec]
+   {:keys [direction], :as order-by-spec} :- ::order-by-spec]
   (let [column (find-column query stage-number orderable-columns order-by-spec)]
     (lib.order-by/order-by query column direction)))
 
@@ -87,9 +89,9 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query              :- ::lib.schema/query
    stage-number       :- :int
-   {:keys [order-by]} :- ::stage-spec]
+   {:keys [order-bys]} :- ::stage-spec]
   (cond-> query
-    order-by (append-order-bys query stage-number order-by)))
+    order-bys (append-order-bys stage-number order-bys)))
 
 (mu/defn query-from-spec :- ::lib.schema/query
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

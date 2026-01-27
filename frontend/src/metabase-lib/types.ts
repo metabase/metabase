@@ -693,3 +693,32 @@ export type FieldItem = {
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ValidationError = { message: string };
+
+export type TableSourceSpec = {
+  type: "table";
+  id: TableId;
+};
+
+export type CardSourceSpec = {
+  type: "card";
+  id: CardId;
+};
+
+export type SourceSpec = TableSourceSpec | CardSourceSpec;
+
+export type ColumnSpec = {
+  name?: string;
+};
+
+export type OrderBySpec = ColumnSpec & {
+  direction?: OrderByDirection;
+};
+
+export type StageSpec = {
+  source?: SourceSpec;
+  orderBys?: OrderBySpec[];
+};
+
+export type QuerySpec = {
+  stages: StageSpec[];
+};

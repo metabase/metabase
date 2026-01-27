@@ -20,6 +20,7 @@ import type {
   MetadataProvider,
   MetricMetadata,
   Query,
+  QuerySpec,
   SegmentMetadata,
   TableMetadata,
 } from "./types";
@@ -155,4 +156,11 @@ export function fromJsQueryAndMetadata(
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
+}
+
+export function queryFromSpec(
+  metadataProvider: MetadataProvider,
+  querySpec: QuerySpec,
+): Query {
+  return ML.query_from_spec(metadataProvider, querySpec);
 }
