@@ -38,7 +38,8 @@
    #"/snippets/(.*)\.yaml"                     :snippet
    #"/databases/.*/schemas/(.*)"               :schema
    #"/databases/(.*)\.yaml"                    :database
-   #"/transforms/(.*)\.yaml"                   :transform])
+   #"/transforms/(.*)\.yaml"                   :transform
+   #"/python-libraries/(.*)\.yaml"             :python-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -121,13 +122,13 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings :transform}
+                  (is (= #{:log :dir :settings :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -143,18 +144,18 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform}
+                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database}
+                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"

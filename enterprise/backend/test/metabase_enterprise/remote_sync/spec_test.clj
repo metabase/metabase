@@ -12,7 +12,7 @@
 (deftest all-specs-have-required-keys-test
   (testing "Every spec has all required keys"
     (let [required-keys #{:model-type :model-key :identity :events :eligibility
-                          :archived-key :tracking :removal :export-path :enabled?}]
+                          :archived-key :tracking :removal :enabled?}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (let [missing-keys (set/difference required-keys (set (keys spec)))]
@@ -78,15 +78,6 @@
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
 
-(deftest all-specs-have-valid-export-path-test
-  (testing "Every spec has valid export-path configuration"
-    (let [valid-path-types #{:collection-entity :table-path :field-path
-                             :segment-path :measure-path :transform-path :transform-tag-path :snippet-path}]
-      (doseq [[model-key spec] spec/remote-sync-specs]
-        (testing (str "Spec for " model-key)
-          (is (contains? valid-path-types (get-in spec [:export-path :type]))
-              (str "Invalid export-path type: " (get-in spec [:export-path :type]))))))))
-
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
 (deftest spec-for-model-type-test
@@ -116,7 +107,7 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 12 (count types))))))
+      (is (= 13 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
