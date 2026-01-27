@@ -102,12 +102,15 @@ describe(
                     H.openQuestionActions();
                     cy.findByTestId("move-button").click();
                     H.entityPickerModal().within(() => {
-                      cy.findByRole("button", {
-                        name: /Orders in a dashboard/,
-                      }).should("exist");
-                      cy.findByRole("button", { name: /Bobby Table/ }).should(
-                        "not.exist",
-                      );
+                      cy.findByText("Recent items").click();
+                      H.entityPickerModalLevel(1).within(() => {
+                        cy.findByRole("link", {
+                          name: /Orders in a dashboard/,
+                        }).should("exist");
+                        cy.findByRole("link", { name: /Bobby Table/ }).should(
+                          "not.exist",
+                        );
+                      });
                     });
                   }
                 });
@@ -118,9 +121,6 @@ describe(
                   H.openQuestionActions();
                   cy.findByTestId("move-button").click();
                   H.entityPickerModal().within(() => {
-                    if (user === "admin") {
-                      cy.findByRole("tab", { name: /Browse/ }).click();
-                    }
                     cy.findByText(/Personal Collection/).click();
                     cy.findByText("New collection").click();
                   });
@@ -249,14 +249,12 @@ describe(
                       "be.visible",
                     );
 
-                    cy.findByRole("button", {
+                    cy.findByRole("link", {
                       name: /Personal Dashboard/,
                     }).should("exist");
-                    cy.findByRole("button", {
+                    cy.findByRole("link", {
                       name: /Orders in a dashboard/,
                     }).should("not.exist");
-
-                    H.entityPickerModalTab("Dashboards").click();
 
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
@@ -275,20 +273,20 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-
-                    cy.findByRole("button", {
+                    cy.findByText("Recent items").click();
+                    cy.findByRole("link", {
                       name: /Personal Dashboard/,
                     }).should("exist");
-                    cy.findByRole("button", {
+                    cy.findByRole("link", {
                       name: /Orders in a dashboard/,
                     }).should("exist");
 
-                    H.entityPickerModalTab("Dashboards").click();
-
-                    cy.findByText(/'s personal collection/i).should(
-                      "be.visible",
-                    );
-                    cy.findByText(/our analytics/i).should("be.visible");
+                    H.entityPickerModalLevel(0).within(() => {
+                      cy.findByText(/'s personal collection/i).should(
+                        "be.visible",
+                      );
+                      cy.findByText(/our analytics/i).should("be.visible");
+                    });
                   });
                 });
 
@@ -331,9 +329,6 @@ describe(
                     cy.findByTestId("add-to-dashboard-button").click();
 
                     cy.wait("@mostRecentlyViewedDashboard");
-                    H.entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
 
                     findActivePickerItem("Orders in a dashboard");
 
@@ -355,7 +350,11 @@ describe(
 
                     cy.wait("@mostRecentlyViewedDashboard");
 
-                    findInactivePickerItem("Orders in a dashboard");
+                    H.entityPickerModalItem(1, "Orders in a dashboard").should(
+                      "have.attr",
+                      "data-disabled",
+                      "true",
+                    );
                   });
                 });
               });

@@ -391,13 +391,15 @@ describe("scenarios > collection defaults", () => {
     H.openCollectionMenu();
     H.popover().findByText("Move").click();
     H.entityPickerModal().within(() => {
+      // wait for collections to load before clicking on recents to prevent flakiness
+      cy.findByText("Third collection").should("exist");
       cy.findByText("Recent items").click();
       // the space is important, since search results are of the form "[collection name] [parent collection name]"
       cy.findByRole("link", { name: /First collection / }).should("exist");
       cy.findByRole("link", { name: /Second collection / }).should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("coll");
-      cy.findByRole("link", { name: /Robert Tableton / }).should("exist");
+      cy.findByRole("link", { name: /Robert Tableton's / }).should("exist");
       cy.findByRole("link", { name: /Second collection / }).should("not.exist");
     });
   });
@@ -886,10 +888,12 @@ describe("scenarios > collection defaults", () => {
           );
           H.createCollection({ name: "Outer collection 2" });
 
-          // modify the inner collection so that it shows up in recents
+          // mark the inner collection as recently selected
           cy.get("@innerCollectionId").then((innerCollectionId) => {
-            cy.request("PUT", `/api/collection/${innerCollectionId}`, {
-              name: "Inner collection 1 - modified",
+            cy.request("POST", "/api/activity/recents", {
+              context: "selection",
+              model: "collection",
+              model_id: innerCollectionId,
             });
           });
           cy.visit("/collection/root");
@@ -903,11 +907,7 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            cy.findByText(/inner collection/).should(
-              "have.attr",
-              "data-disabled",
-              "true",
-            );
+            cy.findByText(/inner collection/).should("not.exist");
             cy.button("Cancel").click();
           });
 
@@ -921,11 +921,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("toast-card").button("Move").click();
 
           H.entityPickerModal().within(() => {
-            cy.findByText(/inner collection/).should(
-              "have.attr",
-              "data-disabled",
-              "true",
-            );
+            cy.findByText(/inner collection/).should("not.exist");
           });
         });
       });
