@@ -684,7 +684,6 @@ describe("scenarios > collection defaults", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.button("Move").click();
         cy.log("Entity picker should show an error message");

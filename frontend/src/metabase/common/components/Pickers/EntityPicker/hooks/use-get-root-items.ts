@@ -75,7 +75,6 @@ export const useRootItems = () => {
     personalCollection
       ? {
           id: personalCollection.id,
-          models: ["collection", "dashboard"],
           limit: 0, // we only want total number of items
         }
       : skipToken,
@@ -292,7 +291,6 @@ async function getRootItems({
   if (
     options?.hasPersonalCollections &&
     namespaces.includes(null) &&
-    currentUser &&
     !!personalCollection
   ) {
     collectionItems.push({
