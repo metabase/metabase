@@ -44,7 +44,8 @@
     ;; cumulative count doesn't necessarily have a field-id arg
     [:cum-count opts]       [:count opts]
     [:cum-count opts field] [:count opts field]
-    [:cum-sum   opts field] [:sum   opts field]))
+    [:cum-sum   opts field] [:sum   opts field]
+    _                       nil))
 
 (defn- update-aggregations [aggregations]
   (lib.walk/walk-clauses* aggregations update-clause))
