@@ -1347,7 +1347,7 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
-      :models                      (if-not (contains? #{nil "snippeets" "transforms"} namespace)
+      :models                      (if-not (contains? #{nil "snippets" "transforms"} namespace)
                                      #{:collection}
                                      model-kwds)
       :pinned-state                (keyword pinned_state)
