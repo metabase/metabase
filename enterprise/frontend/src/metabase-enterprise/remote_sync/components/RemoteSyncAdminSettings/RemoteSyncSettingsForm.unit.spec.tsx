@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import {
   createMockLibraryCollection,
@@ -161,22 +162,29 @@ describe("RemoteSyncSettingsForm", () => {
   });
 
   describe("transforms sync toggle", () => {
-    it("should not display transforms toggle when remote sync is disabled and read-only mode", () => {
+    afterEach(() => {
+      PLUGIN_TRANSFORMS.isEnabled = false;
+    });
+
+    it("should not display transforms toggle when transforms feature is disabled", () => {
       setup({
-        remoteSyncEnabled: false,
-        remoteSyncType: "read-only",
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
       });
 
-      expect(screen.queryByText("Transforms")).not.toBeInTheDocument();
       expect(
-        screen.queryByLabelText("Sync transforms with git"),
+        screen.queryByLabelText("Sync Transforms"),
       ).not.toBeInTheDocument();
     });
 
-    it("should display transforms section in admin variant when read-write mode is selected during initial setup", async () => {
+    it("should display transforms row in collections list when transforms feature is enabled", async () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
       setup({
-        remoteSyncEnabled: false,
+        remoteSyncEnabled: true,
         remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
       });
 
       // Wait for the form to be fully rendered with read-write mode
@@ -184,13 +192,16 @@ describe("RemoteSyncSettingsForm", () => {
         expect(screen.getByLabelText("Read-write")).toBeChecked();
       });
 
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      expect(screen.getByLabelText("Sync Transforms")).toBeInTheDocument();
     });
 
-    it("should display transforms section in modal variant when read-write mode is selected during initial setup", async () => {
+    it("should not display transforms row in modal variant (collections section is hidden)", async () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
       setup({
-        remoteSyncEnabled: false,
+        remoteSyncEnabled: true,
         remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
         variant: "settings-modal",
       });
 
@@ -199,7 +210,10 @@ describe("RemoteSyncSettingsForm", () => {
         expect(screen.getByLabelText("Read-write")).toBeChecked();
       });
 
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      // In modal variant, collections section is hidden, so transforms row is also hidden
+      expect(
+        screen.queryByLabelText("Sync Transforms"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -230,8 +244,7 @@ describe("RemoteSyncSettingsForm", () => {
         expect(screen.getByLabelText("Read-write")).toBeChecked();
       });
 
-      // Transforms should be visible but collections should not
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      // Collections section (which includes transforms row) should not appear in modal variant
       expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
     });
 
@@ -248,8 +261,7 @@ describe("RemoteSyncSettingsForm", () => {
         expect(screen.getByLabelText("Read-write")).toBeChecked();
       });
 
-      // Transforms should be visible but collections should not
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
+      // Collections section (which includes transforms row) should not appear in modal variant
       expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
     });
   });

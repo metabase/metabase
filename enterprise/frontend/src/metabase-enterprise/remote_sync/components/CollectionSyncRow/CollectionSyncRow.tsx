@@ -22,6 +22,7 @@ export const CollectionSyncRow = ({
   const canWrite = collection.can_write ?? false;
   const icon = PLUGIN_COLLECTIONS.getIcon({
     model: "collection",
+    type: collection.type,
     is_remote_synced: isChecked,
   });
 
