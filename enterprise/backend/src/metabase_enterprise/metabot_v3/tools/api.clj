@@ -42,6 +42,9 @@
       nil)))
 
 ;;; ------------------------------------------------ Shared Schemas -------------------------------------------------
+;; NOTE: Some of these schemas are duplicated with small differences in the Agent API
+;; (metabase-enterprise.metabot-v3.agent-api.api). If you update schemas here, check if the
+;; corresponding Agent API schemas need updating too.
 
 (mr/def ::bucket
   (into [:enum {:error/message           "Valid bucket"
