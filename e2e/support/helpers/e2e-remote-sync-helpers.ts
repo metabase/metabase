@@ -54,6 +54,23 @@ export function configureGit(
   });
 }
 
+// Setup remote sync via the API and wait for/trigger the initial import
+export function configureGitAndPullChanges(
+  syncType: "read-write" | "read-only",
+  syncUrl = LOCAL_GIT_PATH + "/.git",
+) {
+  configureGit(syncType, syncUrl);
+
+  if (syncType === "read-only") {
+    // Read-only mode automatically triggers an import, just wait for it
+    pollForTask({ taskName: "import" });
+  } else {
+    // Read-write mode needs manual import trigger
+    cy.request("POST", "/api/ee/remote-sync/import", {});
+    pollForTask({ taskName: "import" });
+  }
+}
+
 // Prepare the local git repo and initializing with an empty commit
 export function setupGitSync() {
   cy.exec("rm -rf " + LOCAL_GIT_PATH);
@@ -221,4 +238,48 @@ export const waitForTask = (
       return waitForTask({ taskName }, retries + 1);
     }
   });
+};
+
+// Poll for task completion by actively querying the endpoint
+// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+export const pollForTask = (
+  { taskName }: { taskName: "import" | "export" },
+  retries = 0,
+) => {
+  if (retries > 30) {
+    throw Error(`Too many retries waiting for ${taskName}`);
+  }
+
+  return cy
+    .request("GET", "/api/ee/remote-sync/current-task")
+    .then((response) => {
+      const { body } = response;
+
+      // No task exists yet, keep waiting
+      if (!body) {
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Wrong task type, keep waiting
+      if (body.sync_task_type !== taskName) {
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Task hasn't completed successfully yet
+      if (body.status !== "successful") {
+        // Check if it errored
+        if (body.status === "errored") {
+          throw Error(
+            `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
+          );
+        }
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Success!
+      return cy.wrap(body);
+    });
 };
