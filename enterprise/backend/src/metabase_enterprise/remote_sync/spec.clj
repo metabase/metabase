@@ -290,7 +290,8 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :removal        {:statuses   #{"removed" "delete"}  ; no scope-key = global deletion
+                     :conditions {:built_in_type nil}}  ; protect built-in tags from removal
     :export-path    {:type :transform-tag-path}
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}})

@@ -985,18 +985,23 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms false]
-          (testing "can enable transforms sync"
-            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                   {:remote-sync-transforms true})]
-              (wait-for-task-completion task_id)
-              (is (=? {:success true} resp))
-              (is (true? (settings/remote-sync-transforms)))))
-          (testing "can disable transforms sync"
-            (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                   {:remote-sync-transforms false})]
-              (wait-for-task-completion task_id)
-              (is (=? {:success true} resp))
-              (is (false? (settings/remote-sync-transforms))))))))))
+          (let [built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil])]
+            (testing "can enable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms true})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (true? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))
+            (testing "can disable transforms sync"
+              (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                     {:remote-sync-transforms false})]
+                (wait-for-task-completion task_id)
+                (is (=? {:success true} resp))
+                (is (false? (settings/remote-sync-transforms)))
+                (is (= built-in-count (t2/count :model/TransformTag :built_in_type [:not= nil]))
+                    "Built-in transform tags should not be deleted by sync")))))))))
 
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
