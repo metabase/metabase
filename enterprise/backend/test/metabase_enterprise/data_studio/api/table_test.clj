@@ -106,7 +106,7 @@
     (is (= "Data Studio is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/edit"
                                            {:table_ids  [(mt/id :users)]
-                                            :data_layer "gold"}))))))
+                                            :data_layer "published"}))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (mt/with-premium-features #{:data-studio}
@@ -123,7 +123,7 @@
           (testing "data analyst can edit tables"
             (is (= {} (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/edit"
                                             {:table_ids [table-id]
-                                             :data_layer "gold"}))))
+                                             :data_layer "published"}))))
           (testing "data analyst can get selection info"
             (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/selection"
                                             {:table_ids [table-id]}))))
@@ -147,7 +147,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/edit"
                                        {:table_ids [table-id]
-                                        :data_layer "gold"}))))
+                                        :data_layer "published"}))))
         (testing "regular user cannot get selection info"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/selection"
