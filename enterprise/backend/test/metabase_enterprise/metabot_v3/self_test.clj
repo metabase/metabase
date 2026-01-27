@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.self-test
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -43,22 +42,27 @@
 
 ;;; utils tests
 
-(defn- chan-seq!
-  "Convert core.async channel to a lazy seq, blocking; just for tests"
-  [chan]
-  (lazy-seq
-   (when-some [chunk (a/<!! chan)]
-     (cons chunk (chan-seq! chan)))))
-
-(deftest sse-chan-test
-  (testing "sse-chan actually produces chan with lines"
+(deftest sse-reducible-test
+  (testing "sse-reducible produces items via standard reduce"
     (let [data    ["just a test" "to make you jealous"]
           istream (io/input-stream (.getBytes (make-sse data)))
-          chan    (self/sse-chan istream)]
-      (is (= data
-             (chan-seq! chan))))))
+          result  (into [] (self/sse-reducible istream))]
+      (is (= data result)))))
 
-(deftest sse-chan-stops-response-test
+(deftest sse-reducible-early-termination-test
+  (testing "sse-reducible stops on reduced"
+    (let [data    (mapv #(str "msg-" %) (range 100))
+          istream (io/input-stream (.getBytes (make-sse data)))
+          ;; Take only first 3 items using reduced
+          result  (reduce (fn [acc item]
+                            (if (< (count acc) 3)
+                              (conj acc item)
+                              (reduced acc)))
+                          []
+                          (self/sse-reducible istream))]
+      (is (= ["msg-0" "msg-1" "msg-2"] result)))))
+
+(deftest sse-reducible-stops-response-test
   (let [cnt     (atom 30)
         handler (fn [_req]
                   (let [out (java.io.PipedOutputStream.)
@@ -83,15 +87,20 @@
                                           :output-buffer-size 1})
         url     (str "http://localhost:" (.. server getURI getPort))]
     (try
-      (let [res  (http/request {:method :post :url url :as :stream})
-            chan (self/sse-chan (:body res))]
-        (is (= "msg-0" (a/<!! chan)))
-        (is (= "msg-1" (a/<!! chan)))
-        (a/close! chan)
-        ;; we're waiting for 10 in the handler, so 30 should be enough for propagation
+      (let [res       (http/request {:method :post :url url :as :stream})
+            reducible (self/sse-reducible (:body res))
+            ;; Take only 2 items, which should trigger early termination
+            result    (reduce (fn [acc item]
+                                (if (< (count acc) 2)
+                                  (conj acc item)
+                                  (reduced acc)))
+                              []
+                              reducible)]
+        (is (= ["msg-0" "msg-1"] result))
+        ;; Give time for cancellation to propagate
         (Thread/sleep 30)
-        ;; it's been 25-26 when I tested this, if it every becomes flaky maybe decrease the number?
-        (is (> @cnt 20) "SHOULD have stopped writing when channel closed"))
+        ;; Should have stopped writing when reduction stopped
+        (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
       (finally
         (.stop server)))))
 
@@ -188,13 +197,17 @@
      :converted (* amount rate)}))
 
 (mu/defn mock-llm
-  "Return aisdk-formatted results in a core.async channel"
+  "Return aisdk-formatted results as a reducible (IReduceInit)"
   [{:keys [id input]} :- [:map {:closed true}
                           [:id :string]
                           [:input :string]]]
-  (a/to-chan!! (parts->aisdk
-                [{:type :start :id "mock-1"}
-                 {:type :text :id id :text input}])))
+  ;; Return a reducible that yields the parts
+  (let [parts (parts->aisdk
+               [{:type :start :id "mock-1"}
+                {:type :text :id id :text input}])]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init parts)))))
 
 (def TOOLS
   "All the defined tools"
@@ -204,21 +217,21 @@
     #'convert-currency
     #'mock-llm]))
 
-(deftest ^:parallel async-tool-executor-rff-test
-  (testing "tool-executor-rff passes through all chunks unchanged"
+(deftest ^:parallel tool-executor-xf-test
+  (testing "tool-executor-xf passes through all chunks unchanged"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-123"}
                    {:type :text :id "text-1" :text "Hello world"}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= chunks result)
           "Non-tool chunks should pass through unchanged")))
 
-  (testing "tool-executor-rff executes tool calls and appends results"
+  (testing "tool-executor-xf executes tool calls and appends results"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-123"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :usage :usage {:total_tokens 100}}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= (count chunks) (dec (count result)))
           "Should have original chunks plus one tool result")
       (is (= chunks (take (count chunks) result))
@@ -230,12 +243,12 @@
                  :result     string?}
                 tool-result)))))
 
-  (testing "tool-executor-rff handles multiple concurrent tool calls"
+  (testing "tool-executor-xf handles multiple concurrent tool calls"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-456"}
                    {:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}
                    {:type :tool-input :id "call-2" :function "convert-currency" :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= (+ (count chunks) 2) (count result))
           "Should have original chunks plus two tool results")
       (let [tool-results (take-last 2 result)]
@@ -244,14 +257,14 @@
         (is (= #{"call-1" "call-2"}
                (set (map :toolCallId tool-results)))))))
 
-  (testing "tool-executor-rff handles tools returning channels"
+  (testing "tool-executor-xf handles tools returning reducibles"
     (let [llm-id "wut-1"
           input  "Little bits and pieces"
           chunks (parts->aisdk
                   [{:type :start :id "msg-666"}
                    {:type :tool-input :id "call-1" :function "mock-llm" :arguments {:input input
                                                                                     :id    llm-id}}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= 1 (count (filter #(= :start (:type %)) result)))
           "Just the first start is left in the stream")
       (is (< 3 (count (filter #(= llm-id (:id %)) result)))
@@ -261,11 +274,11 @@
               :text input}
              (last (into [] self/aisdk-xf result))))))
 
-  (testing "tool-executor-rff handles tool execution errors gracefully"
+  (testing "tool-executor-xf handles tool execution errors gracefully"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
       (let [tool-result (last result)]
         (is (=? {:type       :tool-output-available
@@ -275,11 +288,11 @@
                               :type    string?}}
                 tool-result)))))
 
-  (testing "tool-executor-rff ignores unknown tool names"
+  (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (parts->aisdk
                   [{:type :start :id "msg-789"}
                    {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
-          result (into [] (self/tool-executor-rff TOOLS) chunks)]
+          result (into [] (self/tool-executor-xf TOOLS) chunks)]
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 

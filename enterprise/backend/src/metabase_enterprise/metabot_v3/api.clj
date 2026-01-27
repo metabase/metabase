@@ -82,15 +82,15 @@
         messages (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"}
                            [^java.io.OutputStream os _canceled-chan]
-      ;; Compose aisdk-line-xf with streaming writer to get a reducing function
-      ;; that formats parts as AI SDK lines and writes them to the output stream
-      (let [rf    (self.core/aisdk-line-xf (streaming-writer-rf os))
-            lines (agent/run-agent-loop
-                   {:messages   messages
-                    :state      state
-                    :profile-id (keyword profile-id)
-                    :context    enriched-context}
-                   rf)]
+      ;; Transduce agent output through aisdk-line-xf to format as AI SDK lines
+      ;; and write to the output stream
+      (let [lines (transduce self.core/aisdk-line-xf
+                             (streaming-writer-rf os)
+                             (agent/run-agent-loop
+                              {:messages   messages
+                               :state      state
+                               :profile-id (keyword profile-id)
+                               :context    enriched-context}))]
         (store-message! conversation-id profile-id
                         (metabot-v3.u/aisdk->messages :assistant lines))))))
 
