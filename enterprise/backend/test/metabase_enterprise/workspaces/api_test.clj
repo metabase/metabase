@@ -1769,21 +1769,21 @@
                                                        :engine :h2
                                                        :is_audit false
                                                        :is_sample false
-                                                       :workspaces_enabled true
-                                                       :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}
+                                                       :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}
+                                                       :settings                     {:database-enable-workspaces true}}
                      :model/Database {db-disabled :id} {:name "DB Disabled"
                                                         :engine :h2
                                                         :is_audit false
                                                         :is_sample false
-                                                        :workspaces_enabled false
-                                                        :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}]
+                                                        :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}
+                                                        :settings                     {}}]
         (let [response      (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               enabled-entry (m/find-first #(= (:id %) db-enabled) (:databases response))
               disabled-entry (m/find-first #(= (:id %) db-disabled) (:databases response))]
           (is (true? (:enabled enabled-entry)))
-          (is (= "ok" (get-in enabled-entry [:permissions_status :status])))
+          (is (= "ok" (get-in enabled-entry [:workspace_permissions_status :status])))
           (is (false? (:enabled disabled-entry)))
-          (is (= "ok" (get-in disabled-entry [:permissions_status :status]))))))
+          (is (= "ok" (get-in disabled-entry [:workspace_permissions_status :status]))))))
 
     (testing "databases with failed permission check include permissions_status"
       (mt/with-temp [:model/Database {db-failed :id} {:name "DB Failed"
@@ -1794,8 +1794,8 @@
         (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
           (is (false? (:enabled fail-entry)))
-          (is (= "failed" (get-in fail-entry [:permissions_status :status])))
-          (is (= "permission denied" (get-in fail-entry [:permissions_status :error]))))))
+          (is (= "failed" (get-in fail-entry [:workspace_permissions_status :status])))
+          (is (= "permission denied" (get-in fail-entry [:workspace_permissions_status :error]))))))
 
     (testing "databases without permission check have unknown permissions_status"
       (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
@@ -1805,7 +1805,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
           (is (false? (:enabled entry)))
-          (is (= {:status "unknown"} (:permissions_status entry))))))))
+          (is (= {:status "unknown"} (:workspace_permissions_status entry))))))))
 
 (deftest checkout-endpoint-test
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
