@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.metadata :as queries.metadata]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
@@ -46,3 +48,22 @@
               (is (= target-field-id (:fk_target_field_id model-fk-field))))
             (testing "Question strips FK semantic_type for computed columns (no numeric id)"
               (is (nil? (:semantic_type question-fk-field))))))))))
+
+(deftest include-implicit-join-tables-test
+  (testing "Should return tables for implicit joins"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-test-user :crowberto
+        (mt/with-temp [:model/Card orders-card   {:name          "Orders Card"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card products-card {:name          "Products Card"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+          (is (=? {:cards  [{:name "Orders Card"}
+                            {:name "Products Card"}]
+                   :tables [{:name "ORDERS"}
+                            {:name "PEOPLE"}
+                            {:name "PRODUCTS"}]}
+                  (queries.metadata/batch-fetch-query-metadata
+                   [(-> (lib/query mp (lib.metadata/card mp (:id orders-card)))
+                        (lib/join (lib.metadata/card mp (:id products-card))))]))))))))

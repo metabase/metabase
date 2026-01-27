@@ -105,18 +105,24 @@
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
    opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
-  (let [source-table-ids       (into #{}
-                                     (mapcat lib/all-source-table-ids)
-                                     queries)
-        source-card-ids        (into #{}
+  (let [source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
         cards                  (schema.table/batch-fetch-card-query-metadatas source-card-ids)
-        fk-target-field-ids    (into #{} (comp (mapcat :fields)
-                                               (keep :fk_target_field_id))
+        card-table-ids         (into #{}
+                                     (comp (map :dataset_query)
+                                           (mapcat lib/all-source-table-ids))
+                                     cards)
+        source-table-ids       (into card-table-ids
+                                     (mapcat lib/all-source-table-ids)
+                                     queries)
+        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
+        fk-target-field-ids    (into #{}
+                                     (comp (mapcat :fields)
+                                           (keep :fk_target_field_id))
                                      source-tables)
-        fk-target-table-ids    (into #{} (remove source-table-ids)
+        fk-target-table-ids    (into #{}
+                                     (remove source-table-ids)
                                      (field-ids->table-ids fk-target-field-ids))
         fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
         tables                 (concat source-tables fk-target-tables)
