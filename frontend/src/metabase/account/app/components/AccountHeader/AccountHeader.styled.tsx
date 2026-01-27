@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import {
   breakpointMinMedium,
   breakpointMinSmall,

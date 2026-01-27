@@ -164,11 +164,10 @@
   (events/publish-event! :event/remote-sync-settings-update
                          {:details {:remote-sync-type remote-sync-type}
                           :user-id api/*current-user-id*})
-  (let [task-id (impl/finish-remote-config!)]
-    (if task-id
-      {:success true
-       :task_id task-id}
-      {:success true})))
+  (if-let [task-id (impl/finish-remote-config!)]
+    {:success true
+     :task_id task-id}
+    {:success true}))
 
 (api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
   "Get list of branches from the configured source.

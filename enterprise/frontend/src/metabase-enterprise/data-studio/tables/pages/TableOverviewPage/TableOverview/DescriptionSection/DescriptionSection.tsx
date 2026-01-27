@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box } from "metabase/ui";
 import type { Table } from "metabase-types/api";

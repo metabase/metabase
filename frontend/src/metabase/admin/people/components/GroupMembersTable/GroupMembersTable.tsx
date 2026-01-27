@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";

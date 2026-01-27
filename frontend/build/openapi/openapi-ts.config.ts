@@ -12,7 +12,7 @@ export default defineConfig({
     filters: {
       schemas: {
         // MetabaseLegacyMbqlSchema has circular references that break TS type checking
-        // eslint-disable-next-line no-literal-metabase-strings -- this is not user facing text
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is not user facing text
         exclude: ["/^MetabaseLegacyMbqlSchema/"],
       },
     },

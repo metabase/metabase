@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ActionIcon, Box, Card, FixedSizeIcon, Flex } from "metabase/ui";
 
 import S from "../PlainLink/PlainLink.module.css";

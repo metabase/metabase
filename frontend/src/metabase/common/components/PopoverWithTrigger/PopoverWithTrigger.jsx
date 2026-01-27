@@ -1,7 +1,4 @@
-import Popover from "metabase/common/components/Popover";
-import Triggerable from "metabase/common/components/Triggerable";
+import { Popover } from "metabase/common/components/Popover";
+import { Triggerable } from "metabase/common/components/Triggerable";
 
-/**
- * @deprecated prefer Popover from "metabase/ui" + useState instead
- */
-export default Triggerable(Popover);
+export const PopoverWithTrigger = Triggerable(Popover);

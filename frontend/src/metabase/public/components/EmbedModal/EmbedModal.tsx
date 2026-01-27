@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import { StaticEmbedSetupPane } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
@@ -66,7 +66,7 @@ export function WhatsNewNotification() {
           </IconButtonWrapper>
         </Flex>
 
-        {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This only shows for admins */}
         <Text fw="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { isElementOfType } from "react-dom/test-utils";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatEmail } from "./email";

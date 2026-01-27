@@ -2,7 +2,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/MoveModal";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections";

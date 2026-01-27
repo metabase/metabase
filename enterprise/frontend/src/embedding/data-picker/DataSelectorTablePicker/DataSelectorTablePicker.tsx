@@ -6,7 +6,7 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   HoverParent,
   TableInfoIcon,
@@ -157,7 +157,7 @@ const DataSelectorTablePicker = ({
 };
 
 const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
   const { url: docsUrl } = useDocsUrl(
     "questions/native-editor/referencing-saved-questions-in-queries",
   );
