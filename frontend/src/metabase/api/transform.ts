@@ -30,7 +30,7 @@ export const transformApi = Api.injectEndpoints({
     listTransforms: builder.query<Transform[], ListTransformsRequest>({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform",
+        url: "/api/transform",
         params,
       }),
       providesTags: (transforms = []) => provideTransformListTags(transforms),
@@ -41,7 +41,7 @@ export const transformApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform/run",
+        url: "/api/transform/run",
         params,
       }),
       providesTags: (response) =>
@@ -50,26 +50,15 @@ export const transformApi = Api.injectEndpoints({
     getTransform: builder.query<Transform, TransformId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/transform/${id}`,
+        url: `/api/transform/${id}`,
       }),
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
     }),
-    listTransformDependencies: builder.query<Transform[], TransformId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/transform/${id}/dependencies`,
-      }),
-      providesTags: (transforms, error, id) =>
-        invalidateTags(error, [
-          idTag("transform", id),
-          ...(transforms?.flatMap(provideTransformTags) ?? []),
-        ]),
-    }),
     runTransform: builder.mutation<RunTransformResponse, TransformId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/transform/${id}/run`,
+        url: `/api/transform/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
@@ -106,7 +95,7 @@ export const transformApi = Api.injectEndpoints({
     cancelCurrentTransformRun: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/transform/${id}/cancel`,
+        url: `/api/transform/${id}/cancel`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
@@ -145,7 +134,7 @@ export const transformApi = Api.injectEndpoints({
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/transform",
+        url: "/api/transform",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -154,7 +143,7 @@ export const transformApi = Api.injectEndpoints({
     updateTransform: builder.mutation<Transform, UpdateTransformRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/transform/${id}`,
+        url: `/api/transform/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id, collection_id }) => {
@@ -187,7 +176,7 @@ export const transformApi = Api.injectEndpoints({
     deleteTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/transform/${id}`,
+        url: `/api/transform/${id}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform")]),
@@ -195,7 +184,7 @@ export const transformApi = Api.injectEndpoints({
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/transform/${id}/table`,
+        url: `/api/transform/${id}/table`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
@@ -206,7 +195,7 @@ export const transformApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/transform/extract-columns",
+        url: "/api/transform/extract-columns",
         body,
       }),
     }),
@@ -216,7 +205,7 @@ export const transformApi = Api.injectEndpoints({
     >({
       query: (queryString) => ({
         method: "POST",
-        url: "/api/ee/transform/is-simple-query",
+        url: "/api/transform/is-simple-query",
         body: { query: queryString },
       }),
     }),
@@ -226,7 +215,6 @@ export const transformApi = Api.injectEndpoints({
 export const {
   useListTransformsQuery,
   useListTransformRunsQuery,
-  useListTransformDependenciesQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useRunTransformMutation,

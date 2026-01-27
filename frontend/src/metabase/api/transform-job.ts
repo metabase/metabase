@@ -23,7 +23,7 @@ export const transformJobApi = Api.injectEndpoints({
     listTransformJobs: builder.query<TransformJob[], ListTransformJobsRequest>({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform-job",
+        url: "/api/transform-job",
         params,
       }),
       providesTags: (jobs = []) => provideTransformJobListTags(jobs),
@@ -31,14 +31,14 @@ export const transformJobApi = Api.injectEndpoints({
     getTransformJob: builder.query<TransformJob, TransformJobId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/transform-job/${id}`,
+        url: `/api/transform-job/${id}`,
       }),
       providesTags: (job) => (job ? provideTransformJobTags(job) : []),
     }),
     listTransformJobTransforms: builder.query<Transform[], TransformJobId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/transform-job/${id}/transforms`,
+        url: `/api/transform-job/${id}/transforms`,
       }),
       providesTags: (transforms = [], _error, id) => [
         idTag("transform-job", id),
@@ -48,7 +48,7 @@ export const transformJobApi = Api.injectEndpoints({
     runTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/transform-job/${id}/run`,
+        url: `/api/transform-job/${id}/run`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
@@ -86,7 +86,7 @@ export const transformJobApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/transform-job",
+        url: "/api/transform-job",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -98,7 +98,7 @@ export const transformJobApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/transform-job/${id}`,
+        url: `/api/transform-job/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id, tag_ids = [] }) =>
@@ -130,7 +130,7 @@ export const transformJobApi = Api.injectEndpoints({
     deleteTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/transform-job/${id}`,
+        url: `/api/transform-job/${id}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform-job")]),

@@ -18,7 +18,7 @@ export const transformTagApi = Api.injectEndpoints({
     listTransformTags: builder.query<TransformTag[], void>({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/transform-tag",
+        url: "/api/transform-tag",
         params,
       }),
       providesTags: (tags = []) => provideTransformTagListTags(tags),
@@ -29,7 +29,7 @@ export const transformTagApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/transform-tag",
+        url: "/api/transform-tag",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -41,7 +41,7 @@ export const transformTagApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/transform-tag/${id}`,
+        url: `/api/transform-tag/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -53,7 +53,7 @@ export const transformTagApi = Api.injectEndpoints({
     deleteTransformTag: builder.mutation<void, TransformTagId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/transform-tag/${id}`,
+        url: `/api/transform-tag/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [

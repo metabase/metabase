@@ -841,15 +841,31 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.transforms.job-run
+           metabase.models.transforms.transform
+           metabase.models.transforms.transform-job
+           metabase.models.transforms.transform-job-transform-tag
+           metabase.models.transforms.transform-run
+           metabase.models.transforms.transform-run-cancelation
+           metabase.models.transforms.transform-tag
+           metabase.models.transforms.transform-transform-tag
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
            app-db
            classloader
+           collections
+           events
            legacy-mbql
            lib
+           lib-be
+           query-processor
+           remote-sync
+           search
            settings
-           util}}
+           transforms
+           util}
+   :friends #{transforms}}
 
   native-query-snippets
   {:team "Querying"
@@ -1738,6 +1754,57 @@
            util
            warehouse-schema}}
 
+  data-studio
+  {:team "Gadget"
+   :api  #{metabase.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           models
+           permissions
+           request
+           sync
+           util
+           warehouse-schema}}
+
+  transforms
+  {:team "Querying"
+   :api  #{metabase.transforms.api.transform
+           metabase.transforms.api.transform-job
+           metabase.transforms.api.transform-tag
+           metabase.transforms.core
+           metabase.transforms.init
+           metabase.transforms.instrumentation
+           metabase.transforms.interface
+           metabase.transforms.schema
+           metabase.transforms.util}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           collections
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           query-processor
+           remote-sync
+           request
+           revisions
+           search
+           settings
+           sync
+           task
+           task-history
+           util}
+   :friends #{models}}
+
   enterprise/action-v2
   {:team "Gadget"
    :api  #{metabase-enterprise.action-v2.api
@@ -1997,7 +2064,7 @@
            settings
            task
            util
-           enterprise/transforms}}
+           transforms}}
 
   enterprise/email
   {:team "UX West"
@@ -2115,7 +2182,7 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-           enterprise/transforms
+           transforms
            enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2312,36 +2379,8 @@
 
   enterprise/transforms
   {:team "Querying"
-   :api  #{metabase-enterprise.transforms.api
-           metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init
-           metabase-enterprise.transforms.instrumentation
-           metabase-enterprise.transforms.interface
-           metabase-enterprise.transforms.schema
-           metabase-enterprise.transforms.util}
-   :uses #{analytics
-           api
-           app-db
-           channel
-           collections
-           driver
-           events
-           lib
-           lib-be
-           models
-           permissions
-           premium-features
-           queries
-           query-processor
-           remote-sync
-           request
-           revisions
-           search
-           settings
-           sync
-           task
-           task-history
-           util}}
+   :api  #{}
+   :uses #{transforms}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2358,7 +2397,7 @@
            query-processor
            settings
            util
-           enterprise/transforms}}
+           transforms}}
 
   enterprise/upload-management
   {:team "UX West"

@@ -10,7 +10,7 @@ import type { Transform } from "metabase-types/api";
 export const Transforms = createEntity({
   name: "transforms",
   nameOne: "transform",
-  path: "/api/ee/transform",
+  path: "/api/transform",
   schema: TransformSchema,
 
   objectSelectors: {

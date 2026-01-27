@@ -2,12 +2,12 @@
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.transforms.core :as transforms]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
