@@ -248,23 +248,8 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/inspect`,
       }),
       // FIXME(egorgrushin): THIS IS TEMPORAL
-      transformResponse: (response: unknown) => {
-        const transformed = transformKeys(response) as TransformInspectResponse;
-        if (transformed.column_comparisons) {
-          transformed.column_comparisons.forEach((comparison) => {
-            comparison.cards = comparison.cards.map((card) => {
-              if (card.display === "bar") {
-                return {
-                  ...card,
-                  display: "row",
-                };
-              }
-              return card;
-            });
-          });
-        }
-        return transformed;
-      },
+      transformResponse: (response: unknown) =>
+        transformKeys(response) as TransformInspectResponse,
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
