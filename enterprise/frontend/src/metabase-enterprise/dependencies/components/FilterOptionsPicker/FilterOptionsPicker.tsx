@@ -37,7 +37,7 @@ export function FilterOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <Indicator offset={compact ? 6 : 4} disabled={hasDefaultFilterOptions}>
+        <Indicator offset={compact ? 6 : 12} disabled={hasDefaultFilterOptions}>
           {compact ? (
             <ActionIcon aria-label={t`Filter`} onClick={toggle}>
               <FixedSizeIcon c="text-primary" name="filter" />
