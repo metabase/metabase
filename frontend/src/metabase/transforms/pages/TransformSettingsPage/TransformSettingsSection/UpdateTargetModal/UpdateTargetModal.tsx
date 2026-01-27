@@ -19,6 +19,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase/transforms/utils";
 import {
   Box,
   Button,
@@ -28,8 +30,6 @@ import {
   Radio,
   Stack,
 } from "metabase/ui";
-import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
-import { sourceDatabaseId } from "metabase/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {

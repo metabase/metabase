@@ -4,8 +4,15 @@ import { t } from "ttag";
 
 import { FormSelect } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { TitleSection } from "metabase/transforms/components/TitleSection";
+import {
+  SOURCE_STRATEGY_OPTIONS,
+  TARGET_STRATEGY_OPTIONS,
+} from "metabase/transforms/constants";
+import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -16,13 +23,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import { TitleSection } from "metabase/transforms/components/TitleSection";
-import {
-  SOURCE_STRATEGY_OPTIONS,
-  TARGET_STRATEGY_OPTIONS,
-} from "metabase/transforms/constants";
-import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import type * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 
@@ -51,7 +51,9 @@ export const IncrementalTransformSettings = ({
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms

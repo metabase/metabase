@@ -6,10 +6,15 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
+import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import {
   Anchor,
   Card,
@@ -24,14 +29,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { LibraryEmptyState } from "metabase-enterprise/data-studio/common/components/LibraryEmptyState";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
-import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
-
-import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";

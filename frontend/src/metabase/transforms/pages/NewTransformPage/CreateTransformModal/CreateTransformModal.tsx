@@ -17,12 +17,12 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import {
   QueryComplexityWarning,
   useQueryComplexityChecks,
 } from "metabase/transforms/components/QueryComplexityWarning";
+import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   QueryComplexity,
   Transform,

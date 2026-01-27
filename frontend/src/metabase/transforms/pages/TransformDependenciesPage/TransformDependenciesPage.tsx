@@ -5,8 +5,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Card, Center } from "metabase/ui";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { Card, Center } from "metabase/ui";
 
 import { TransformHeader } from "../../components/TransformHeader";
 

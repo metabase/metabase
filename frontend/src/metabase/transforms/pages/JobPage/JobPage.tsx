@@ -10,11 +10,11 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Center } from "metabase/ui";
 import {
   canEditTransform,
   useTransformPermissions,
 } from "metabase/transforms/hooks/use-transform-permissions";
+import { Center } from "metabase/ui";
 import type {
   ScheduleDisplayType,
   TransformJob,

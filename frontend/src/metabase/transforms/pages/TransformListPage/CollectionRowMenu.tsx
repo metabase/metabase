@@ -5,8 +5,8 @@ import { useUpdateCollectionMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { ActionIcon, Box, Icon, Menu } from "metabase/ui";
 import { EditTransformCollectionModal } from "metabase/transforms/components/EditTransformCollectionModal";
+import { ActionIcon, Box, Icon, Menu } from "metabase/ui";
 
 type CollectionRowMenuProps = {
   collectionId: number;

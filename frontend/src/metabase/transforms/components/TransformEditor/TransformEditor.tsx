@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   QueryEditor,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -63,7 +63,9 @@ export function TransformEditor({
     [databases, isEditMode],
   );
 
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const showEditDefinitionButton =
     !!transformId && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
 

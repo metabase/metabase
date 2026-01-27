@@ -2,8 +2,8 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { uncapitalize } from "metabase/lib/formatting/strings";
-import { Stack, Text } from "metabase/ui";
 import { CHECKPOINT_TEMPLATE_TAG } from "metabase/transforms/constants";
+import { Stack, Text } from "metabase/ui";
 import type { QueryComplexity } from "metabase-types/api";
 
 import S from "./QueryComplexityWarning.module.css";

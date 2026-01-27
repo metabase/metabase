@@ -30,6 +30,7 @@ import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import {
   Card,
   EntityNameCell,
@@ -91,6 +92,8 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
+  const { transformsDatabases = [], isLoadingDatabases } =
+    useTransformPermissions();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -120,7 +123,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     isLoading: isLoadingTransforms,
   } = useListTransformsQuery({});
 
-  const isLoading = isLoadingCollections || isLoadingTransforms;
+  const isLoading =
+    isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
 
   const treeData = useMemo(() => {
@@ -134,10 +138,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         url: Urls.transformPythonLibrary({
           path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
         }),
+        source_readable: transformsDatabases.length > 0,
       });
     }
     return data;
-  }, [collections, transforms]);
+  }, [collections, transforms, transformsDatabases]);
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),
@@ -152,7 +157,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
       alwaysShowTooltip: true,
       tooltipProps: {
         openDelay: 300,
-        label: t`Sorry, you don't have permission to view this transform.`,
+        label: t`Sorry, you don’t have permission to see that.`,
       },
     };
     return [
@@ -312,7 +317,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {!isRemoteSyncReadOnly && <CreateTransformMenu />}
+          {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
+            <CreateTransformMenu />
+          )}
         </Flex>
 
         <Card withBorder p={0}>
