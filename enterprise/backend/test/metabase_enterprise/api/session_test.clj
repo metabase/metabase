@@ -83,7 +83,6 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
-            :offer_metabase_ai              true
             :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true

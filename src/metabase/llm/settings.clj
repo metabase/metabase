@@ -15,6 +15,7 @@
 (defsetting llm-anthropic-model
   (deferred-tru "Anthropic model for AI-assisted SQL generation.")
   :encryption :no
+  :default "claude-sonnet-4-5-20250929"
   :visibility :settings-manager
   :export? false
   :doc false)

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -13,6 +12,7 @@ import S from "./MetabotInlineSQLPrompt.module.css";
 import { type SelectedTable, TablePillsInput } from "./TablePillsInput";
 
 interface MetabotInlineSQLPromptProps {
+  isTableBarEnabled: boolean;
   databaseId: DatabaseId | null;
   onClose: () => void;
   isLoading: boolean;
@@ -32,6 +32,7 @@ interface MetabotInlineSQLPromptProps {
 }
 
 export const MetabotInlineSQLPrompt = ({
+  isTableBarEnabled,
   databaseId,
   onClose,
   isLoading,
@@ -45,8 +46,6 @@ export const MetabotInlineSQLPrompt = ({
   selectedTables,
   onSelectedTablesChange,
 }: MetabotInlineSQLPromptProps) => {
-  const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
-
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
 
   const isSubmitDisabled = !value.trim() || isLoading;

@@ -13,15 +13,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private anthropic-list-models-url
+  "https://api.anthropic.com/v1/models")
+
 (def ^:private anthropic-messages-url
   "https://api.anthropic.com/v1/messages")
 
 (def ^:private anthropic-api-version
   "2023-06-01")
-
-(def default-model
-  "Default Anthropic model for SQL generation."
-  "claude-sonnet-4-5-20250929")
 
 (def ^:private generate-sql-tool
   "Tool definition for structured SQL output.
@@ -78,6 +77,29 @@
                       exception)))
     (throw exception)))
 
+(defn get-api-key-or-throw
+  "Gets Anthropic API key from settings or throws and unconfigured error."
+  []
+  (let [api-key (llm-settings/llm-anthropic-api-key)]
+    (when-not api-key
+      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
+                      {:type :llm-not-configured})))
+    api-key))
+
+(defn list-models
+  "Send a list models request to Anthropic
+   Returns a map with :models"
+  []
+  (try
+    (let [response (http/get anthropic-list-models-url
+                             {:headers            {"x-api-key"         (get-api-key-or-throw)
+                                                   "anthropic-version" anthropic-api-version}})
+          body (json/decode+kw (:body response))
+          models (reverse (sort-by :created_at (:data body)))]
+      {:models (map #(select-keys % [:id :display_name]) models)})
+    (catch Exception e
+      (handle-api-error e))))
+
 (defn chat-completion
   "Send a chat completion request to Anthropic.
    Returns a map with :sql and optionally :explanation from the tool response.
@@ -87,25 +109,21 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (let [api-key (llm-settings/llm-anthropic-api-key)]
-    (when-not api-key
-      (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
-                      {:type :llm-not-configured})))
-    (let [model   (or model (llm-settings/llm-anthropic-model) default-model)
-          request {:model    model
-                   :system   system
-                   :messages messages}]
-      (try
-        (let [response (http/post anthropic-messages-url
-                                  {:headers            (build-request-headers api-key)
-                                   :body               (json/encode (build-request-body request))
-                                   :as                 :json
-                                   :content-type       :json
-                                   :socket-timeout     (llm-settings/llm-request-timeout-ms)
-                                   :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
-          (extract-tool-input (:body response)))
-        (catch Exception e
-          (handle-api-error e))))))
+  (let [model   (or model (llm-settings/llm-anthropic-model))
+        request {:model    model
+                 :system   system
+                 :messages messages}]
+    (try
+      (let [response (http/post anthropic-messages-url
+                                {:headers            (build-request-headers get-api-key-or-throw)
+                                 :body               (json/encode (build-request-body request))
+                                 :as                 :json
+                                 :content-type       :json
+                                 :socket-timeout     (llm-settings/llm-request-timeout-ms)
+                                 :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
+        (extract-tool-input (:body response)))
+      (catch Exception e
+        (handle-api-error e)))))
 
 ;;; ------------------------------------------ Streaming API ------------------------------------------
 
@@ -159,7 +177,7 @@
     (when-not api-key
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
-    (let [model        (or model (llm-settings/llm-anthropic-model) default-model)
+    (let [model        (or model (llm-settings/llm-anthropic-model))
           request      {:model model :system system :messages messages}
           request-body (build-streaming-request-body request)]
       (try

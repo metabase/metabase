@@ -1,6 +1,5 @@
 (ns metabase.llm.anthropic-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
    [metabase.test :as mt]))
@@ -110,10 +109,3 @@
            clojure.lang.ExceptionInfo
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
-
-;;; ------------------------------------------- default-model Tests -------------------------------------------
-
-(deftest default-model-test
-  (testing "default model is defined and reasonable"
-    (is (string? anthropic/default-model))
-    (is (str/includes? anthropic/default-model "claude"))))

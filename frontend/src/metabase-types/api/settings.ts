@@ -334,7 +334,6 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
-  "offer_metabase_ai",
   "offer_metabase_ai_tiered",
   "ai_sql_fixer",
   "ai_sql_generation",
@@ -739,6 +738,8 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
   /**
    * @deprecated
    */
