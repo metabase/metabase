@@ -107,7 +107,7 @@ Allowed iframe hosts.
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help Metabase improve.
+Enable the collection of anonymous usage data in order to help us improve.
 
 ### `MB_API_KEY`
 
@@ -1385,6 +1385,14 @@ Time-to-live in seconds for the remote changes check cache. Default is 60 second
 
 The maximum amount of time a remote sync task will be given to complete.
 
+### `MB_REMOTE_SYNC_TRANSFORMS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-transforms`
+
+Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+
 ### `MB_REPORT_TIMEZONE`
 
 - Type: string
@@ -1830,6 +1838,66 @@ Bot user OAuth token for connecting the Metabase Slack app. This should be used 
 - [Configuration file name](./config-file.md): `slack-bug-report-channel`
 
 The name of the channel where bug reports should be posted.
+
+### `MB_SLACK_CONNECT_ATTRIBUTE_TEAM_ID`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `https://slack.com/team_id`
+- [Configuration file name](./config-file.md): `slack-connect-attribute-team-id`
+
+Slack OIDC claim for the team/workspace ID.
+
+### `MB_SLACK_CONNECT_AUTHENTICATION_MODE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `sso`
+- [Configuration file name](./config-file.md): `slack-connect-authentication-mode`
+
+Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" (default) or "link-only".
+
+### `MB_SLACK_CONNECT_CLIENT_ID`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `slack-connect-client-id`
+
+Client ID for your Slack app. Get this from https://api.slack.com/apps.
+
+### `MB_SLACK_CONNECT_CLIENT_SECRET`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `slack-connect-client-secret`
+
+Client Secret for your Slack app.
+
+### `MB_SLACK_CONNECT_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `slack-connect-enabled`
+
+Is Slack Connect authentication configured and enabled?
+
+### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `slack-connect-user-provisioning-enabled`
+
+When a user logs in via Slack Connect, create a Metabase account for them automatically if they don't have one.
 
 ### `MB_SLACK_FILES_CHANNEL [DEPRECATED]`
 

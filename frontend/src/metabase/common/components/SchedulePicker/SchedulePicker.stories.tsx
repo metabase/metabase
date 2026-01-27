@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import SchedulePicker from "./SchedulePickerView";
+import { SchedulePicker } from "./SchedulePicker";
 
 export default {
   title: "Deprecated/Components/SchedulePicker",

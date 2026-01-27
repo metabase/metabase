@@ -3,7 +3,7 @@ import { useId } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";

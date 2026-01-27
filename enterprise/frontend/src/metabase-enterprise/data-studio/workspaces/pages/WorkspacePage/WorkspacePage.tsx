@@ -20,11 +20,11 @@ import { t } from "ttag";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { ResizeHandle } from "metabase/querying/editor/components/QueryEditor/ResizeHandle";
 import {
   ActionIcon,
   Box,

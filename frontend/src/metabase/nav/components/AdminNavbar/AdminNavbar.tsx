@@ -4,7 +4,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -73,7 +73,7 @@ export const AdminNavbar = ({
       <AdminLogoLink to="/admin">
         <AdminLogoContainer>
           <LogoIcon className={cx(CS.textBrand, CS.my2)} dark />
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>

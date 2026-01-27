@@ -22,14 +22,9 @@ describe("scenarios > data studio > library", () => {
     H.DataModel.visitDataStudio();
     H.DataStudio.nav().findByLabelText("Library").click();
 
-    cy.log("Closing the modal should send you back");
-    H.modal().button("Cancel").click();
-    H.DataModel.get().should("exist");
-
-    cy.log("Create library via modal");
-    H.DataStudio.nav().findByLabelText("Library").click();
-    H.modal().within(() => {
-      cy.findByText("Create your Library").should("be.visible");
+    cy.log("Create library via inline empty state");
+    H.DataStudio.Library.libraryPage().within(() => {
+      cy.findByText("A source of truth for analytics").should("be.visible");
       cy.findByText("Create my Library").click();
     });
 
@@ -111,7 +106,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Publish a table from the 'New' menu");
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
 
       cy.log("Select a table and click 'Publish'");
       H.entityPickerModalItem(3, "Orders").click();
@@ -127,7 +122,7 @@ describe("scenarios > data studio > library", () => {
         "Verify tables in the entity picker are disabled if already published",
       );
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
       H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
       H.entityPickerModalItem(3, "People").should(
         "not.have.attr",
@@ -198,7 +193,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
       H.entityPickerModalItem(3, "Orders").click();
       H.entityPickerModal().button("Publish").click();
 

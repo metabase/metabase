@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 

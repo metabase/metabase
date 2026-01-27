@@ -1,4 +1,5 @@
 export * from "./api";
+export * from "./mbql";
 export * from "./e2e-action-helpers";
 export * from "./e2e-ad-hoc-question-helpers";
 export * from "./e2e-api-key-helpers";
@@ -16,7 +17,7 @@ export * from "./e2e-dashboard-visualizer-helpers";
 export * from "./e2e-data-studio-helpers";
 export * from "./e2e-database-metadata-helpers";
 export * from "./e2e-datamodel-helpers";
-export * from "./e2e-dependency-graph-helpers";
+export * from "./e2e-dependency-helpers";
 export * from "./e2e-detail-view-helpers";
 export * from "./e2e-dimension-list-helpers";
 export * from "./e2e-document-helpers";

@@ -4,15 +4,15 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
-import Revision from "./Revision";
+import { Revision } from "./Revision";
 
-export default class RevisionHistory extends Component {
+export class RevisionHistory extends Component {
   static propTypes = {
     segment: PropTypes.object,
     revisions: PropTypes.array,

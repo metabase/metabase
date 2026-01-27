@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";

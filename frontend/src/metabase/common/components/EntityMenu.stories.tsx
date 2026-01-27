@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import EntityMenu from "./EntityMenu";
+import { EntityMenu } from "./EntityMenu";
 
 export default {
   title: "Deprecated/Components/Entity Menu",

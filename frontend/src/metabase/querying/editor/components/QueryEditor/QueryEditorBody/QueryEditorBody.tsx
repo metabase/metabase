@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
 import {
   NativeQueryEditor,
@@ -19,8 +21,6 @@ import type {
   NativeQuerySnippet,
   RecentCollectionItem,
 } from "metabase-types/api";
-
-import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./QueryEditorBody.module.css";
 
@@ -143,7 +143,9 @@ export function QueryEditorBody({
 
     return (
       <NativeQueryEditor
-        className={S.nativeQueryEditor}
+        className={cx(S.nativeQueryEditor, {
+          [S.readOnly]: readOnly,
+        })}
         availableHeight={availableHeight}
         question={question}
         proposedQuestion={proposedQuestion}
