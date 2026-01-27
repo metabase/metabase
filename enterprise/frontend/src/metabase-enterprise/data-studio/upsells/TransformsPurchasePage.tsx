@@ -81,7 +81,7 @@ export function TransformsPurchasePage() {
             <Text c="text-primary">{t`Add transforms`}</Text>
           </Flex>
 
-          {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
           <Title order={2}>{t`Tidy up your data right from Metabase`}</Title>
 
           <Radio.Group

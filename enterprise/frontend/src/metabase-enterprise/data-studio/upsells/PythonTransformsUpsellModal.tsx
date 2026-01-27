@@ -77,9 +77,9 @@ export function PythonTransformsUpsellModal({
       return (
         <Text fw="bold">
           {anyStoreUserEmailAddress
-            ? // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+            ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
               t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
-            : // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+            : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
               t`Please ask a Metabase Store Admin to enable this for you.`}
         </Text>
       );

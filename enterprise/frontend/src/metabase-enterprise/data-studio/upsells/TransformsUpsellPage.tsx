@@ -17,9 +17,9 @@ export function TransformsUpsellPage() {
     <DataStudioUpsellPage
       campaign="data-studio-transforms"
       location="data-studio-transforms-page"
-      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
       title={t`Tidy up your data right from Metabase`}
-      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
       description={t`Transform your data directly in Metabase with powerful data manipulation tools. Reshape tables, clean data, and aggregate without writing SQL.`}
     />
   );
