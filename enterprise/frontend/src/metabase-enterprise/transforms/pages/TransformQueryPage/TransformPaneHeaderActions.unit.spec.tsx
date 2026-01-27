@@ -169,6 +169,7 @@ describe("TransformPaneHeaderActions", () => {
 
   describe("read-only mode (not edit mode)", () => {
     it("should not render Save and Cancel", () => {
+      mockHasPremiumFeature.mockReturnValue(false);
       setup({ isEditMode: false, isNative: true });
 
       expect(
@@ -179,7 +180,8 @@ describe("TransformPaneHeaderActions", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render nothing for native transforms", () => {
+    it("should render nothing for native transforms when workspaces not available", () => {
+      mockHasPremiumFeature.mockReturnValue(false);
       setup({ isEditMode: false, isNative: true });
 
       expect(
@@ -214,13 +216,13 @@ describe("TransformPaneHeaderActions", () => {
         ).toBeInTheDocument();
       });
 
-      it("should render EditTransformMenu when workspaces feature is available", async () => {
+      it("should render EditTransformMenu for native transforms when workspaces feature is available", async () => {
         mockHasPremiumFeature.mockReturnValue(true);
         setupWorkspacesEndpoint([]);
 
         // Explicitly set checkout_disabled to null to ensure button is enabled
         setupWorkspaceCheckoutEndpoint({ checkout_disabled: null });
-        setup({ isEditMode: false, isNative: false });
+        setup({ isEditMode: false, isNative: true });
 
         const editButton = await screen.findByRole("button", {
           name: /edit/i,
@@ -241,6 +243,7 @@ describe("TransformPaneHeaderActions", () => {
 
   describe("Python transforms", () => {
     it("should not render EditDefinitionButton for Python transforms (moved to EditTransformMenu in header)", () => {
+      mockHasPremiumFeature.mockReturnValue(false);
       setup({ isEditMode: false, isPython: true });
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),

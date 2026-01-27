@@ -291,7 +291,7 @@ export function TransformQueryPageEditor({
   databases,
   setSourceAndRejectProposed,
   setUiState,
-  isEditMode,
+  isEditMode = false,
   acceptProposed,
   rejectProposed,
   onRunQueryStart,
@@ -305,7 +305,7 @@ export function TransformQueryPageEditor({
       proposedSource={
         proposedSource?.type === "python" ? proposedSource : undefined
       }
-      isEditMode={isEditMode || false}
+      isEditMode={isEditMode}
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}

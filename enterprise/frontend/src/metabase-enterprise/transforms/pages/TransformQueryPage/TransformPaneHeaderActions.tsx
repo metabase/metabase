@@ -5,7 +5,9 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
+import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import type {
@@ -56,10 +58,23 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isEditMode && isNative) {
+  // Native transforms - show EditTransformMenu if workspaces available
+  if (!isEditMode && isNative && !isRemoteSyncReadOnly) {
+    if (hasPremiumFeature("workspaces")) {
+      return <EditTransformMenu transform={transform} />;
+    }
     return null;
   }
 
+  // Python transforms - show EditTransformMenu if workspaces available
+  if (!isEditMode && isPythonTransform && !isRemoteSyncReadOnly) {
+    if (hasPremiumFeature("workspaces")) {
+      return <EditTransformMenu transform={transform} />;
+    }
+    return null;
+  }
+
+  // MBQL transforms - always show EditDefinitionButton
   if (!isEditMode && !isPythonTransform && !isNative && !isRemoteSyncReadOnly) {
     return <EditDefinitionButton transformId={transform.id} />;
   }
