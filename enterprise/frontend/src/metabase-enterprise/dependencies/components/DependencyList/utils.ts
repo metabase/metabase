@@ -1,10 +1,10 @@
 import type * as Urls from "metabase/lib/urls";
-
-import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
-} from "../../types";
+} from "metabase-types/api";
+
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 
 import { BROKEN_GROUP_TYPES, UNREFERENCED_GROUP_TYPES } from "./constants";
 import type { DependencyListMode } from "./types";

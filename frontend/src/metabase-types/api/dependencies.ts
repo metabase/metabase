@@ -311,3 +311,13 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
 };
+
+export type DependencyFilterOptions = {
+  groupTypes: DependencyGroupType[];
+  includePersonalCollections: boolean;
+};
+
+export type DependencySortOptions = {
+  column: DependencySortColumn;
+  direction: DependencySortDirection;
+};

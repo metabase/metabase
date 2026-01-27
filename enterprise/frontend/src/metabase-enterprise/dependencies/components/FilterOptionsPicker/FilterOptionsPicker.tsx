@@ -10,9 +10,10 @@ import {
   Popover,
   Stack,
 } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
-
-import type { DependencyFilterOptions } from "../../types";
+import type {
+  DependencyFilterOptions,
+  DependencyGroupType,
+} from "metabase-types/api";
 
 import { LocationFilterPicker } from "./LocationFilterPicker";
 import { TypeFilterPicker } from "./TypeFilterPicker";

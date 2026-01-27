@@ -12,9 +12,8 @@ import {
 import {
   DEPENDENCY_SORT_DIRECTIONS,
   type DependencySortColumn,
+  type DependencySortOptions,
 } from "metabase-types/api";
-
-import type { DependencySortOptions } from "../../types";
 
 import { getSortColumnItems, getSortDirectionItems } from "./utils";
 

@@ -9,13 +9,13 @@ import {
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
-
-import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import type {
+  DependencyEntry,
   DependencyFilterOptions,
   DependencySortOptions,
-} from "../../types";
+} from "metabase-types/api";
+
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";

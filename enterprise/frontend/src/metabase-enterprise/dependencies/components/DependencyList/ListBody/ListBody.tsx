@@ -7,9 +7,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyNode, DependencySortOptions } from "metabase-types/api";
 
-import type { DependencySortOptions } from "../../../types";
 import { getNodeId } from "../../../utils";
 import { ListEmptyState } from "../ListEmptyState";
 import type { DependencyListMode } from "../types";

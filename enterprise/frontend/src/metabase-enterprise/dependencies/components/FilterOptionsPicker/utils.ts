@@ -1,7 +1,9 @@
-import type { DependencyGroupType } from "metabase-types/api";
+import type {
+  DependencyFilterOptions,
+  DependencyGroupType,
+} from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
-import type { DependencyFilterOptions } from "../../types";
 
 export function getDefaultFilterOptions(
   availableGroupTypes: DependencyGroupType[],

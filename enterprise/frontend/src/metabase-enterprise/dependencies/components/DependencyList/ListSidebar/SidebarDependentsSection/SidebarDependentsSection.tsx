@@ -18,13 +18,13 @@ import {
   Title,
 } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
-import type { DependencyNode } from "metabase-types/api";
-
-import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
 import type {
   DependencyFilterOptions,
+  DependencyNode,
   DependencySortOptions,
-} from "../../../../types";
+} from "metabase-types/api";
+
+import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../../constants";
 import {
   areFilterOptionsEqual,
   getDependentErrorNodesCount,

@@ -8,15 +8,13 @@ import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
+  DependencyFilterOptions,
   DependencyGroupType,
   DependencyNode,
+  DependencySortOptions,
 } from "metabase-types/api";
 
 import { DEPENDENTS_SEARCH_THRESHOLD } from "../../../constants";
-import type {
-  DependencyFilterOptions,
-  DependencySortOptions,
-} from "../../../types";
 import { getDependentsCount, getSearchQuery } from "../../../utils";
 
 import S from "./GraphDependencyPanel.module.css";
