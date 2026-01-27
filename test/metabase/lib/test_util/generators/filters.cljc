@@ -12,6 +12,9 @@
 (defn- gen-int []
   (- (tu.rng/rand-int 2000000) 1000000))
 
+(defn- gen-boolean []
+  (boolean (pos? (tu.rng/rand-int 2))))
+
 (def ^:private valid-ascii
   (mapv char (range 0x20 0x7f)))
 
@@ -79,6 +82,7 @@
     (lib.types.isa/time? column)                       (gen-time)
     (lib.types.isa/date-without-time? column)          (gen-date)
     (lib.types.isa/date-or-datetime? column)           (gen-datetime)
+    (isa? effective-type :type/Boolean)                (gen-boolean)
     :else (throw (ex-info " !!! Not sure what values to generate for column" {:effective-type effective-type
                                                                               :column         column}))))
 
