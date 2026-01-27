@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { pick } from "underscore";
 
 import { skipToken, useSearchQuery } from "metabase/api";
+import { trackSearchClick } from "metabase/search/analytics";
 import { Stack } from "metabase/ui";
 import {
   SEARCH_MODELS,
@@ -129,13 +130,29 @@ export const SearchResultsItemList = () => {
     [results, isHiddenItem, isDisabledItem, isSelectableItem, searchParams],
   );
 
+  const onClick = useCallback(
+    (item: OmniPickerItem, index: number) => {
+      trackSearchClick({
+        itemType: "item",
+        position: index,
+        context: "entity-picker",
+        searchEngine: "unknown",
+        entityModel: item.model,
+        entityId: typeof item.id === "number" ? item.id : null,
+        searchTerm: searchQuery,
+      });
+    },
+    [searchQuery],
+  );
+
   return (
-    <Stack h="100%" w="40rem">
+    <Stack h="100%" w="40rem" gap={0}>
       <SearchScopeSelector />
       <SearchResults
         searchResults={filteredResults}
         isLoading={isFetching}
         error={error}
+        onClick={onClick}
       />
     </Stack>
   );

@@ -22,10 +22,12 @@ export const SearchResults = ({
   searchResults,
   isLoading,
   error,
+  onClick,
 }: {
   searchResults: OmniPickerItem[];
   isLoading?: boolean;
   error?: unknown;
+  onClick?: (item: OmniPickerItem, index: number) => void;
 }) => {
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
@@ -57,7 +59,7 @@ export const SearchResults = ({
       )}
       estimatedItemSize={66}
     >
-      {searchResults?.map((item) => {
+      {searchResults?.map((item, index) => {
         const isSelected = isSelectedItem(item, selectedItem);
         const isSelectable = isSelectableItem(item);
 
@@ -97,15 +99,11 @@ export const SearchResults = ({
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick
-                // trackSearchClick({
-                //   itemType: "item",
-                //   position: index,
-                //   context: "entity-picker",
-                //   searchEngine: searchEngine || "unknown",
-                //   entityModel: item.model,
-                //   entityId: typeof item.id === "number" ? item.id : null,
-                //   searchTerm,
-                // });
+
+                if (onClick) {
+                  onClick(item, index);
+                }
+
                 if (isSelectable) {
                   setPath((prevPath) => [...prevPath.slice(0, 1), item]);
 
