@@ -1163,6 +1163,12 @@
                                          :join-alias         "PRODUCTS__via__PRODUCT_ID"
                                          ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
                                          ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
+                                 any?]]
+                               [:asc {}
+                                [:field
+                                 {::add/source-alias "PRODUCT_ID",
+                                  ::add/desired-alias "PRODUCT_ID",
+                                  ::add/source-table (meta/id :orders)}
                                  any?]]]
                  :aggregation [[:sum {::add/source-table  ::add/none
                                       ::add/source-alias  "sum"
