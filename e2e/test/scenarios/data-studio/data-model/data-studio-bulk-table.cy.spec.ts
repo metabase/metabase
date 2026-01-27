@@ -181,7 +181,7 @@ describe("bulk table operations", () => {
     });
 
     H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectDropdown().contains("Published").click();
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_bulk_attribute_updated",
       event_detail: "layer",
@@ -305,7 +305,7 @@ describe("bulk table operations", () => {
     H.selectDropdown().contains("Bobby Tables").click();
 
     H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectDropdown().contains("Published").click();
 
     H.selectHasValue("Entity type", "").click();
     H.selectDropdown().contains("Person").click();
@@ -349,7 +349,7 @@ describe("bulk table operations", () => {
     H.selectDropdown().contains("Bobby Tables").click();
 
     H.selectHasValue("Visibility type", "").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectDropdown().contains("Published").click();
 
     H.selectHasValue("Entity type", "").click();
     H.selectDropdown().contains("Person").click();
