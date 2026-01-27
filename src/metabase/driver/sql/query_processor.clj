@@ -878,6 +878,15 @@
   [_driver [_ _nfc-path]]
   nil)
 
+(defn- base-type->db-type
+  "Derive a database type string from a base-type keyword using `driver/type->database-type`.
+  Returns nil if the driver doesn't implement `type->database-type` for the given type."
+  [driver base-type]
+  (try
+    (some-> (driver/type->database-type driver base-type) first name u/lower-case-en)
+    (catch Throwable _
+      nil)))
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name options :as field-clause]]
   (try
@@ -901,7 +910,11 @@
           identifier           (->honeysql driver identifier)
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
-                                   (:database-type field-metadata))
+                                   (:database-type field-metadata)
+                                   ;; Fallback: derive from base-type when field-metadata is nil.
+                                   ;; This handles nested queries where fields are referenced by string name
+                                   ;; instead of integer ID (#68065).
+                                   (base-type->db-type driver (:base-type options)))
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr

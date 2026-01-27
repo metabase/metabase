@@ -27,6 +27,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -1443,3 +1444,38 @@
                     {:name "products",   :schema "PUBLIC", :description nil}
                     {:name "reviews",    :schema "PUBLIC", :description nil}}}
                  (driver/describe-database :snowflake db))))))))
+
+;; Dataset definition for issue #68065
+(mt/defdataset time-column-test
+  [["event_times" [{:field-name "description"
+                    :base-type :type/Text}
+                   {:field-name "event_time"
+                    :base-type :type/Time}]
+    [["Meeting" "10:30:00"]
+     ["Deadline" "15:00:00"]
+     ["Lunch" "12:00:00"]]]])
+
+(deftest time-column-in-nested-query-test
+  (testing "TIME column with temporal bucketing in nested query should not cast to timestampntz (#68065)"
+    (mt/test-driver :snowflake
+      (mt/dataset time-column-test
+        (let [mp (mt/metadata-provider)
+              table (lib.metadata/table mp (mt/id :event_times))
+              event-time (lib.metadata/field mp (mt/id :event_times :event_time))
+              ;; Create a query with an expression that we actually USE to force nesting.
+              ;; The bug occurs when there's a nested query (subselect) and the outer query
+              ;; references a TIME column from the inner query by name (not by ID).
+              query (-> (lib/query mp table)
+                        (lib/expression "test_expr" (lib/+ 1 1))
+                        (lib/breakout (lib/with-temporal-bucket event-time :hour))
+                        ;; Breaking out on the expression forces the query to nest
+                        (as-> q (lib/breakout q (lib/expression-ref q "test_expr")))
+                        (lib/aggregate (lib/count)))]
+          ;; Get the native SQL without executing
+          (let [native-sql (-> (qp.compile/compile query) :query)]
+            (testing "Generated SQL should not contain CAST to timestampntz for TIME column"
+              (is (not (str/includes? (str/lower-case native-sql) "as timestampntz"))
+                  (str "SQL should not cast TIME column to timestampntz, but got: " native-sql)))
+            (testing "Generated SQL should use DATE_TRUNC on the TIME column"
+              (is (str/includes? (str/upper-case native-sql) "DATE_TRUNC")
+                  (str "SQL should use DATE_TRUNC, but got: " native-sql)))))))))
