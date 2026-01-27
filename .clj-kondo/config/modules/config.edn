@@ -777,7 +777,8 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.api}
+   :api  #{metabase.llm.api
+           metabase.llm.init}
    :uses #{api
            lib
            lib-be
