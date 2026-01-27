@@ -18,6 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { createEmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { QuestionDashboardCard } from "metabase-types/api";
 
 import {
@@ -102,24 +103,37 @@ export const InteractiveDashboardContent = (
       );
 
       if (dashboard) {
-        const url = getNewCardUrl({
-          metadata,
-          dashboard,
-          parameterValues,
-          nextCard,
-          previousCard,
-          dashcard: dashcard as QuestionDashboardCard,
-          objectId,
-        });
+        // Check if this is a "go to card" action (clicking card title) vs a drill action
+        // When clicking on a card title, nextCard and previousCard are equivalent
+        const isGoToCardAction =
+          cardIsEquivalent(nextCard, previousCard) && nextCard.id != null;
 
-        if (url) {
-          // Push to navigation stack instead of setting adhocQuestionUrl
-
+        if (isGoToCardAction) {
+          // Navigate to the saved question directly
           pushNavigation({
-            type: "adhoc-question",
-            questionPath: url,
+            type: "question",
+            id: nextCard.id,
             name: nextCard.name || t`Question`,
           });
+        } else {
+          // This is a drill action - generate URL for adhoc question
+          const url = getNewCardUrl({
+            metadata,
+            dashboard,
+            parameterValues,
+            nextCard,
+            previousCard,
+            dashcard: dashcard as QuestionDashboardCard,
+            objectId,
+          });
+
+          if (url) {
+            pushNavigation({
+              type: "adhoc-question",
+              questionPath: url,
+              name: nextCard.name || t`Question`,
+            });
+          }
         }
       }
     },

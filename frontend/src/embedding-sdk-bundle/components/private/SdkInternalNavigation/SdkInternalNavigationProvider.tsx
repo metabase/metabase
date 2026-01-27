@@ -148,6 +148,8 @@ export const SdkInternalNavigationProvider = ({
     ))
     .with({ currentEntry: { type: "question" } }, ({ currentEntry }) => (
       <div style={{ height: "100%" }}>
+        {/* No need, SdkQuestion renders the button */}
+        {/* <SdkInternalNavigationBackButton /> */}
         <SdkQuestion
           questionId={currentEntry.id}
           onNavigateBack={pop}
@@ -161,6 +163,8 @@ export const SdkInternalNavigationProvider = ({
     ))
     .with({ currentEntry: { type: "adhoc-question" } }, ({ currentEntry }) => (
       <div style={{ height: "100%" }}>
+        {/* No need, SdkAdHocQuestion renders the button */}
+        {/* <SdkInternalNavigationBackButton /> */}
         <SdkAdHocQuestion
           questionPath={currentEntry.questionPath}
           onNavigateBack={pop}

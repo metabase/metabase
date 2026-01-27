@@ -44,16 +44,27 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       cy.wrap(question.id).as("nativeQuestionId");
     });
 
-    // 2. Create Dashboard B with a filter and a card
+    // 2. Create a regular question that supports drilling (for testing drill navigation)
+    H.createQuestion({
+      name: "Drillable Question",
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 10,
+      },
+    }).then(({ body: drillableQuestion }) => {
+      cy.wrap(drillableQuestion.id).as("drillableQuestionId");
+    });
+
+    // 3. Create Dashboard B with a filter and a card
     // Dashboard B will have a click behavior linking to a question
-    cy.get<number>("@nativeQuestionId").then((nativeQuestionId) => {
+    cy.get<number>("@drillableQuestionId").then((drillableQuestionId) => {
       H.createDashboard({
         name: "Dashboard B",
         parameters: [DASHBOARD_B_FILTER],
       }).then(({ body: dashboardB }) => {
         cy.wrap(dashboardB.id).as("dashboardBId");
 
-        // Add a question card to Dashboard B with click behavior to native question
+        // Add a question card to Dashboard B with click behavior to drillable question
         H.createQuestion({
           name: "Orders for Dashboard B",
           query: {
@@ -83,21 +94,8 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                       type: "link",
                       linkType: "question",
                       linkTextTemplate: "Go to Question",
-                      targetId: nativeQuestionId,
-                      parameterMapping: {
-                        id: {
-                          source: {
-                            type: "column",
-                            id: "ID",
-                            name: "ID",
-                          },
-                          target: {
-                            type: "variable",
-                            id: "id",
-                          },
-                          id: "id",
-                        },
-                      },
+                      targetId: drillableQuestionId,
+                      parameterMapping: {},
                     },
                   },
                 },
@@ -108,7 +106,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
-    // 3. Create Dashboard A with click behaviors
+    // 4. Create Dashboard A with click behaviors
     cy.get<number>("@dashboardBId").then((dashboardBId) => {
       cy.get<number>("@nativeQuestionId").then((nativeQuestionId) => {
         H.createDashboard({
@@ -267,7 +265,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
-  it("should support nested navigations dashboard -> dashboard -> question -> drills", () => {
+  it.only("should support nested navigations dashboard -> dashboard -> question -> drill -> back through all", () => {
     cy.get<number>("@dashboardAId").then((dashboardAId) => {
       mountSdkContent(
         <InteractiveDashboard
@@ -284,11 +282,8 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       // Step 1: Verify we start on Dashboard A
       cy.findByText("Dashboard A").should("be.visible");
 
-      // Step 2: Navigate from Dashboard A to Dashboard B
+      // Step 2: Navigate from Dashboard A to Dashboard B via click behavior
       H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
-
-      // cy.wait("@getDashboard");
-      // cy.wait("@dashcardQuery");
 
       // Verify we're now on Dashboard B
       cy.findByText("Dashboard B").should("be.visible");
@@ -296,27 +291,44 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       // Verify back button shows Dashboard A
       cy.findByText("Back to Dashboard A").should("be.visible");
 
-      // Step 3: Navigate from Dashboard B to native question
+      // Step 3: Navigate from Dashboard B to question via click behavior
       H.getDashboardCard().findAllByText("Go to Question").first().click();
 
       // Verify we're now viewing the question
       cy.findByTestId("visualization-root").should("be.visible");
 
-      // Verify back button shows Dashboard B (the previous location)
+      // Verify back button shows Dashboard B
       // cy.findByText("Back to Dashboard B").should("be.visible");
 
-      // Step 4: Click back button to go back to Dashboard B
-      cy.findByText("Back to Dashboard B").click();
+      // Step 4: Perform a drill on the question (click on Product ID to drill)
+      H.tableInteractiveBody()
+        .findByRole("gridcell", { name: "14" })
+        .click();
 
-      // cy.wait("@getDashboard");
+      // Click on "View this Product's Orders" to drill down
+      H.popover().findByText("View this Product's Orders").click();
+
+      // Verify we're now on an adhoc question (drill result)
+      cy.findByTestId("visualization-root").should("be.visible");
+
+      // After drilling, back button should show "Drillable Question"
+      cy.findByText("Back to Drillable Question").should("be.visible");
+
+      // Step 5: Go back to the question
+      cy.findByText("Back to Drillable Question").click();
+
+      // Verify we're back on the question
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByText("Back to Dashboard B").should("be.visible");
+
+      // Step 6: Go back to Dashboard B
+      cy.findByText("Back to Dashboard B").click();
 
       // Verify we're back on Dashboard B
       cy.findByText("Dashboard B").should("be.visible");
+      cy.findByText("Back to Dashboard A").should("be.visible");
 
-      // Verify back button now shows Dashboard A
-      // cy.findByText("Back to Dashboard A").should("be.visible");
-
-      // Step 5: Click back button to go back to Dashboard A
+      // Step 7: Go back to Dashboard A
       cy.findByText("Back to Dashboard A").click();
 
       cy.wait("@getDashboard");
