@@ -21,17 +21,13 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-<<<<<<< HEAD
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   Database,
   DatasetQuery,
   DraftTransformSource,
   Transform,
 } from "metabase-types/api";
-=======
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Database, Transform } from "metabase-types/api";
->>>>>>> master
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {

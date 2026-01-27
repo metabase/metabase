@@ -27,41 +27,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DataStudioLayout } from "./DataStudioLayout";
 
-<<<<<<< HEAD
-jest.mock("metabase-enterprise/settings", () => ({
-  hasPremiumFeature: jest.fn(),
-}));
-
-export const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
-  typeof hasPremiumFeature
->;
-
-interface SetupEndpointsOpts {
-  isNavbarOpened?: boolean;
-  remoteSyncEnabled?: boolean;
-  remoteSyncBranch?: string | null;
-  remoteSyncType?: "read-only" | "read-write";
-  hasDirtyChanges?: boolean;
-  hasWorkspacesFeature?: boolean;
-}
-
-const setupEndpoints = ({
-  isNavbarOpened = true,
-  remoteSyncEnabled = false,
-  remoteSyncBranch = null,
-  remoteSyncType = "read-write",
-  hasDirtyChanges = false,
-  hasWorkspacesFeature = false,
-}: SetupEndpointsOpts = {}) => {
-  // Mock session properties for settings (used by useAdminSetting and useSetting)
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "remote-sync-enabled": remoteSyncEnabled,
-      "remote-sync-branch": remoteSyncBranch,
-      "remote-sync-type": remoteSyncType,
-    }),
-  );
-=======
 // ============================================================================
 // Settings Helpers
 // ============================================================================
@@ -90,7 +55,14 @@ const createRemoteSyncSettings = ({
   "remote-sync-type": type,
   "remote-sync-transforms": transforms,
 });
->>>>>>> master
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
+
+export const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
 
 // ============================================================================
 // Endpoint Setup Functions
@@ -106,9 +78,11 @@ const setupRemoteSyncSettingsEndpoints = (
 const setupDirtyEndpoints = ({
   dirty = [],
   collections = [],
+  hasWorkspacesFeature = false,
 }: {
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
+  hasWorkspacesFeature?: boolean;
 } = {}) => {
   const changedCollections: Record<number, boolean> = {};
   for (const entity of dirty) {
@@ -124,24 +98,7 @@ const setupDirtyEndpoints = ({
   });
 
   setupCollectionsEndpoints({ collections });
-};
 
-const setupNavbarEndpoints = (isOpened = true) => {
-  setupUserKeyValueEndpoints({
-    namespace: "data_studio",
-    key: "isNavbarOpened",
-    value: isOpened,
-  });
-<<<<<<< HEAD
-
-  // Mock user key value PUT endpoint
-  fetchMock.put(
-    "express:/api/user-key-value/namespace/data_studio/key/isNavbarOpened",
-    { status: 200 },
-  );
-
-  // Setup workspaces feature mock and endpoint
-  // Return true for all features except workspaces (controlled by hasWorkspacesFeature)
   mockHasPremiumFeature.mockImplementation((feature) => {
     if (feature === "workspaces") {
       return hasWorkspacesFeature;
@@ -153,8 +110,14 @@ const setupNavbarEndpoints = (isOpened = true) => {
   if (hasWorkspacesFeature) {
     setupWorkspacesEndpoint([]);
   }
-=======
->>>>>>> master
+};
+
+const setupNavbarEndpoints = (isOpened = true) => {
+  setupUserKeyValueEndpoints({
+    namespace: "data_studio",
+    key: "isNavbarOpened",
+    value: isOpened,
+  });
 };
 
 // ============================================================================
@@ -187,74 +150,9 @@ const createStoreState = ({
   });
 };
 
-<<<<<<< HEAD
-interface SetupOpts {
-  isGitSyncVisible?: boolean;
-  isGitSettingsVisible?: boolean;
-  isAdmin?: boolean;
-  hasDirtyChanges?: boolean;
-  isNavbarOpened?: boolean;
-  hasWorkspacesFeature?: boolean;
-}
-
-export const setup = ({
-  isGitSyncVisible = false,
-  isGitSettingsVisible = false,
-  isAdmin = true,
-  hasDirtyChanges = false,
-  isNavbarOpened = true,
-  hasWorkspacesFeature = false,
-}: SetupOpts = {}) => {
-  // Derive API state from the visibility flags
-  // useGitSyncVisible returns isVisible when: isAdmin && remoteSyncEnabled && currentBranch && syncType === "read-write"
-  // useGitSettingsVisible returns true when: isAdmin && !remoteSyncEnabled
-  let remoteSyncEnabled: boolean;
-  let remoteSyncBranch: string | null;
-  const remoteSyncType = "read-write" as const;
-
-  if (isGitSyncVisible) {
-    // Git sync visible requires: enabled + branch + admin + read-write
-    remoteSyncEnabled = true;
-    remoteSyncBranch = "main";
-  } else if (isGitSettingsVisible) {
-    // Git settings visible requires: admin + NOT enabled
-    remoteSyncEnabled = false;
-    remoteSyncBranch = null;
-  } else {
-    // Neither visible - could be enabled with no branch, or not admin
-    remoteSyncEnabled = true;
-    remoteSyncBranch = null;
-  }
-
-  setupEndpoints({
-    isNavbarOpened,
-    remoteSyncEnabled,
-    remoteSyncBranch,
-    remoteSyncType,
-    hasDirtyChanges,
-    hasWorkspacesFeature,
-  });
-
-  renderWithProviders(
-    <DataStudioLayout>
-      <div data-testid="content">{"Content"}</div>
-    </DataStudioLayout>,
-    {
-      storeInitialState: createStoreState({
-        isAdmin,
-        remoteSyncEnabled,
-        remoteSyncBranch,
-        remoteSyncType,
-        canAccessDataModel: isAdmin,
-      }),
-      withRouter: false,
-    },
-  );
-=======
 // ============================================================================
 // Plugin Initialization
 // ============================================================================
->>>>>>> master
 
 const initializePlugins = () => {
   initializeRemoteSyncPlugin();
@@ -293,6 +191,7 @@ interface SetupOpts {
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
+  hasWorkspacesFeature?: boolean;
 }
 
 export const setup = ({
@@ -303,6 +202,7 @@ export const setup = ({
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
   isNavbarOpened = true,
+  hasWorkspacesFeature = false,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -331,7 +231,7 @@ export const setup = ({
 
   setupSettingsEndpoints([]);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings);
-  setupDirtyEndpoints({ dirty, collections });
+  setupDirtyEndpoints({ dirty, collections, hasWorkspacesFeature });
   setupNavbarEndpoints(isNavbarOpened);
 
   renderDataStudioLayout({

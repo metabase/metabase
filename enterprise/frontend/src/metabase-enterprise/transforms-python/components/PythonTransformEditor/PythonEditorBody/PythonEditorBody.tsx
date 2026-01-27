@@ -100,12 +100,8 @@ export function PythonEditorBody({
           proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
-<<<<<<< HEAD
           readOnly={!isEditMode || disabled}
-=======
-          readOnly={!isEditMode}
           extensions={[clickableTokensExtension]}
->>>>>>> master
           data-testid="python-editor"
         />
 

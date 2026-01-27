@@ -7,13 +7,9 @@ type TabName =
   | "jobs"
   | "runs"
   | "dependencies"
-<<<<<<< HEAD
-  | "glossary"
-  | "workspace";
-=======
+  | "workspace"
   | "dependency-diagnostics"
   | "glossary";
->>>>>>> master
 
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {

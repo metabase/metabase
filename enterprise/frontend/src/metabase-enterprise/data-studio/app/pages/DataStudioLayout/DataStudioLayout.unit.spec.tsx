@@ -137,15 +137,6 @@ describe("DataStudioLayout", () => {
     });
   });
 
-<<<<<<< HEAD
-  describe("workspaces feature", () => {
-    afterEach(() => {
-      mockHasPremiumFeature.mockReset();
-    });
-
-    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
-      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
-=======
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
@@ -154,22 +145,11 @@ describe("DataStudioLayout", () => {
         hasTransformDirtyChanges: true,
         remoteSyncTransforms: true,
       });
->>>>>>> master
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-<<<<<<< HEAD
-      expect(
-        screen.queryByTestId("workspaces-section"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
-    });
-
-    it("should render WorkspacesSection when workspaces feature is available", async () => {
-      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
-=======
       // Should show the dirty indicator badge
       const transformsTab = screen.getByLabelText("Transforms");
       await waitFor(() => {
@@ -204,21 +184,45 @@ describe("DataStudioLayout", () => {
         hasTransformDirtyChanges: true,
         remoteSyncTransforms: false,
       });
->>>>>>> master
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-<<<<<<< HEAD
-      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
-      expect(screen.getByText("Workspaces")).toBeInTheDocument();
-=======
       const transformsTab = screen.getByLabelText("Transforms");
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
->>>>>>> master
+    });
+  });
+
+  describe("workspaces feature", () => {
+    afterEach(() => {
+      mockHasPremiumFeature.mockReset();
+    });
+
+    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
+      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId("workspaces-section"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+    });
+
+    it("should render WorkspacesSection when workspaces feature is available", async () => {
+      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
+      expect(screen.getByText("Workspaces")).toBeInTheDocument();
     });
   });
 });

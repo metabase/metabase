@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
+import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { Group, Icon, Loader, Stack, Text, Tooltip } from "metabase/ui";
 import type { WorkspaceLogStatus } from "metabase-types/api";
 

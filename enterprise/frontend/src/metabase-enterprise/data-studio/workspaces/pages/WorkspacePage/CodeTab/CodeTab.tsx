@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack, Text } from "metabase/ui";
 import {

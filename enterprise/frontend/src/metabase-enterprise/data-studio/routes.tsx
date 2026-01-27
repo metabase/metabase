@@ -66,11 +66,6 @@ export function getDataStudioRoutes(
           </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="tasks" component={TasksSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-          </Route>
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
