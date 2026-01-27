@@ -1,11 +1,8 @@
 import { useMemo, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  deactivateSuggestedTransform,
-  getMetabotSuggestedTransform,
-} from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -69,7 +66,7 @@ export function useSourceState({
   const metadata = useSelector(getMetadata);
 
   const suggestedTransform = useSelector((state) =>
-    getMetabotSuggestedTransform(state, transformId),
+    PLUGIN_METABOT.getMetabotSuggestedTransform(state, transformId),
   );
 
   const [source, setSource] = useState(() => {
@@ -100,7 +97,9 @@ export function useSourceState({
 
   const setSourceAndRejectProposed = (source: DraftTransformSource) => {
     if (suggestedTransform != null) {
-      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+      dispatch(
+        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
+      );
     }
     setSource(source);
   };
@@ -108,13 +107,17 @@ export function useSourceState({
   const acceptProposed = () => {
     if (suggestedTransform != null) {
       setSource(normalizeSource(suggestedTransform.source, metadata));
-      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+      dispatch(
+        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
+      );
     }
   };
 
   const rejectProposed = () => {
     if (suggestedTransform != null) {
-      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+      dispatch(
+        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
+      );
     }
   };
 

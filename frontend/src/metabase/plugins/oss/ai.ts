@@ -1,3 +1,4 @@
+import type { ActionCreatorWithOptionalPayload } from "@reduxjs/toolkit";
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
 import type { Extension } from "@uiw/react-codemirror";
@@ -13,9 +14,12 @@ import type {
   DatasetQuery,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
+  MetabotSuggestedTransform,
   SearchModel,
+  SuggestedTransform,
   Timeline,
   TimelineEvent,
+  TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
@@ -95,6 +99,13 @@ type PluginMetabotType = {
     BaseQueryFn
   >;
   MetabotThinkingStyles: { [key: string]: string };
+  getMetabotSuggestedTransform: (
+    state: State,
+    transformId?: TransformId,
+  ) => MetabotSuggestedTransform | undefined;
+  deactivateSuggestedTransform: ActionCreatorWithOptionalPayload<
+    SuggestedTransform["id"] | undefined
+  >;
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -154,6 +165,14 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
+  getMetabotSuggestedTransform: () => undefined,
+  deactivateSuggestedTransform: (() => ({
+    type: "",
+    payload: undefined,
+    match: () => false,
+  })) as unknown as ActionCreatorWithOptionalPayload<
+    SuggestedTransform["id"] | undefined
+  >,
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
