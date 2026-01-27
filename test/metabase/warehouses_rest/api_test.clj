@@ -2545,8 +2545,8 @@
 
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
-               (:message (mt/user-http-request :rasta :post 403
-                                               (format "database/%d/permission/workspace/check" (mt/id))))))))))
+               (mt/user-http-request :rasta :post 403
+                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
 
 (deftest workspace-permission-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
