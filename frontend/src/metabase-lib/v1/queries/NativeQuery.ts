@@ -22,6 +22,7 @@ import type {
 
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
+import Metadata from "../metadata/Metadata";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
@@ -355,17 +356,24 @@ export default class NativeQuery {
     oldSnippet: NativeQuerySnippet,
     newSnippet: NativeQuerySnippet,
   ) {
+    // We need to update the metadata first to make sure the new snippet
+    // is correctly extracted from the query
+    let newQuery = new NativeQuery(this.question(), this.datasetQuery());
+
+    const metadata = new Metadata(this.metadata());
+    delete metadata.snippets[oldSnippet.id];
+    metadata.snippets[newSnippet.id] = newSnippet;
+    newQuery.question()._metadata = metadata;
+
     // if the snippet name has changed, we need to update it in the query
-    const newQuery =
+    newQuery =
       newSnippet.name !== oldSnippet.name
-        ? this.updateSnippetNames([newSnippet])
-        : this;
+        ? newQuery.updateSnippetNames([newSnippet])
+        : newQuery;
 
     // if the query has changed, it was already parsed; otherwise do the parsing
     // to expand snippet tags into the query tags
-    return newQuery === this
-      ? newQuery.setQueryText(newQuery.queryText())
-      : newQuery;
+    return newQuery.setQueryText(newQuery.queryText());
   }
 
   updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {
