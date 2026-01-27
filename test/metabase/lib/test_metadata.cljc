@@ -503,11 +503,11 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}
                          :type   {:type/Text
-                                        {:percent-json   0.0
-                                         :percent-url    0.0
-                                         :percent-email  0.0
-                                         :percent-state  0.0
-                                         :average-length 13.266666666666667}}}
+                                  {:percent-json   0.0
+                                   :percent-url    0.0
+                                   :percent-email  0.0
+                                   :percent-state  0.0
+                                   :average-length 13.266666666666667}}}
    :base-type           :type/Text
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -572,11 +572,11 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}
                          :type   {:type/Text
-                                        {:percent-json   0.0
-                                         :percent-url    0.0
-                                         :percent-email  0.0
-                                         :percent-state  0.0
-                                         :average-length 36.0}}}
+                                  {:percent-json   0.0
+                                   :percent-url    0.0
+                                   :percent-email  0.0
+                                   :percent-state  0.0
+                                   :average-length 36.0}}}
    :base-type           :type/Text
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -664,11 +664,11 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 100, :nil% 0.0}
                          :type   {:type/Text
-                                        {:percent-json   0.0
-                                         :percent-url    0.0
-                                         :percent-email  0.0
-                                         :percent-state  0.0
-                                         :average-length 15.63}}}
+                                  {:percent-json   0.0
+                                   :percent-url    0.0
+                                   :percent-email  0.0
+                                   :percent-state  0.0
+                                   :average-length 15.63}}}
    :base-type           :type/Text
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -732,12 +732,12 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 94, :nil% 0.0}
                          :type   {:type/Number
-                                        {:min 10.0646
-                                         :q1  34.06098873016278
-                                         :q3  37.77185
-                                         :max 40.7794
-                                         :sd  3.4346725397190827
-                                         :avg 35.505891999999996}}}
+                                  {:min 10.0646
+                                   :q1  34.06098873016278
+                                   :q3  37.77185
+                                   :max 40.7794
+                                   :sd  3.4346725397190827
+                                   :avg 35.505891999999996}}}
    :base-type           :type/Float
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -771,12 +771,12 @@
    :fingerprint         {:global {:distinct-count 84, :nil% 0.0}
                          :type
                          {:type/Number
-                                {:min -165.374
-                                 :q1  -122.40857106781186
-                                 :q3  -118.2635
-                                 :max -73.9533
-                                 :sd  14.162810671348238
-                                 :avg -115.99848699999998}}}
+                          {:min -165.374
+                           :q1  -122.40857106781186
+                           :q3  -118.2635
+                           :max -73.9533
+                           :sd  14.162810671348238
+                           :avg -115.99848699999998}}}
    :base-type           :type/Float
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -809,12 +809,12 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 4, :nil% 0.0}
                          :type   {:type/Number
-                                        {:min 1.0
-                                         :q1  1.4591129021415095
-                                         :q3  2.493086095768049
-                                         :max 4.0
-                                         :sd  0.7713951678941896
-                                         :avg 2.03}}}
+                                  {:min 1.0
+                                   :q1  1.4591129021415095
+                                   :q3  2.493086095768049
+                                   :max 4.0
+                                   :sd  0.7713951678941896
+                                   :avg 2.03}}}
    :base-type           :type/Integer
    :points-of-interest  nil
    :lib/type            :metadata/column})
