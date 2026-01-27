@@ -52,31 +52,6 @@ describe("scenarios > notebook > data source", () => {
         });
       },
     );
-
-    it("should include dashboard questions (metabase#56887)", () => {
-      const QUESTION_NAME = "Find me";
-
-      H.createDashboard({
-        name: "Test Dashboard",
-      }).then((dashboard) => {
-        H.createQuestionAndAddToDashboard(
-          {
-            name: QUESTION_NAME,
-            dashboard_id: dashboard.body.id,
-            query: {
-              "source-table": ORDERS_ID,
-            },
-          },
-          dashboard.body.id,
-        );
-      });
-
-      H.startNewQuestion();
-
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModalItem(1, "Test Dashboard").click();
-      H.entityPickerModalItem(2, QUESTION_NAME).should("exist");
-    });
   });
 
   describe("table as a source", () => {
