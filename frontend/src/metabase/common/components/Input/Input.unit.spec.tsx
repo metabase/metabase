@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import Input, { type InputProps } from "./Input";
+import { Input, type InputProps } from "./Input";
 
 const setup = (props: InputProps = {}) => {
   render(<Input {...props} />);

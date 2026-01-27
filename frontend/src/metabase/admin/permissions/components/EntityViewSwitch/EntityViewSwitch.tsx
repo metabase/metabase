@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Radio from "metabase/common/components/Radio";
+import { Radio } from "metabase/common/components/Radio";
 
 import S from "./EntityViewSwitch.module.css";
 

@@ -8,8 +8,8 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
-import Link from "metabase/common/components/Link";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { Link } from "metabase/common/components/Link";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";

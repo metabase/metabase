@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import { getEngines } from "metabase/databases/selectors";

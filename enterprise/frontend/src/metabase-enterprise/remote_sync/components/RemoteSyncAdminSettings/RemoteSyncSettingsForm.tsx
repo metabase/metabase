@@ -7,7 +7,7 @@ import {
   useGetSettingsQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {

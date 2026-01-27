@@ -16,7 +16,7 @@ import {
   DataReferenceInline,
   DataReferenceTriggerButton,
 } from "metabase/actions/containers/ActionCreator/InlineDataReference";
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { isNotNull } from "metabase/lib/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 

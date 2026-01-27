@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import UserAvatar from "./UserAvatar";
+import { UserAvatar } from "./UserAvatar";
 
 describe("UserAvatar", () => {
   describe("Users", () => {

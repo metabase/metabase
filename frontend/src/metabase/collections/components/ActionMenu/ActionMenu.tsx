@@ -22,7 +22,7 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";

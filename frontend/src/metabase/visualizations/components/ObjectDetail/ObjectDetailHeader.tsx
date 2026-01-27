@@ -1,5 +1,5 @@
-import Button from "metabase/common/components/Button";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { Button } from "metabase/common/components/Button";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui/components";
 

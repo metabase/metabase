@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 
 export interface EntityMenuIconButtonProps extends ButtonProps {
   className?: string;

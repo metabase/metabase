@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import Alert from "./Alert";
+import { Alert } from "./Alert";
 
 const ALERT_TEXT = "alert text";
 

@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import Radio from "metabase/common/components/Radio";
+import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { formatNumber } from "metabase/lib/formatting";
 import { LimitInput } from "metabase/query_builder/components/LimitInput";

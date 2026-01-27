@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/common/components/ModalContent";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import type {
   Collection,
