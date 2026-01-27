@@ -84,8 +84,10 @@
   []
   (some->> (io/resource "python-sources/.sqlglot-version")
            slurp
+           ;; handle # comments in the version file
            str/split-lines
-           (remove (str/starts-with? % "#"))
+           (remove #(str/starts-with? % "#"))
+           (str/join "\n")
            str/trim))
 
 (defn- package-installer-available?
