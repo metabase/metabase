@@ -330,11 +330,12 @@
                                                  :output-table "PRODUCTS_COPY"}))))))
 
 (deftest ^:parallel clickhouse-db-supports-schemas-test
-  (doseq [[schemas-supported? details] [[false? {}]
-                                        [false? {:enable-multiple-db nil}]
-                                        [false? {:enable-multiple-db false}]
-                                        [true? {:enable-multiple-db true}]]]
-    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
+  (doseq [details [{}
+                   {:enable-multiple-db nil}
+                   {:enable-multiple-db false}
+                   {:enable-multiple-db true}]]
+    ;; clickhouse will always use schemas after reversions in 65984 and 68517
+    (is (true? (driver/database-supports? :clickhouse :schemas {:details details})))))
 
 (deftest ^:parallel humanize-connection-error-message-test
   (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
