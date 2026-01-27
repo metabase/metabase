@@ -368,6 +368,8 @@ import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
 import publish_component from "./publish.svg?component";
 import publish_source from "./publish.svg?source";
+import published_component from "./published.svg?component";
+import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -1261,6 +1263,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: publish_component,
       source: publish_source,
     },
+    published: {
+      component: published_component,
+      source: published_source,
+    },
     pulse: {
       component: pulse_component,
       source: pulse_source,
@@ -1839,6 +1845,7 @@ export type IconName =
   | "popular"
   | "progress"
   | "publish"
+  | "published"
   | "pulse"
   | "receipt"
   | "recents"
