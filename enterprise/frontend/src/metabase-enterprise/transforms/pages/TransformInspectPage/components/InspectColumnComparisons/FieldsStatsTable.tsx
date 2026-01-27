@@ -21,7 +21,7 @@ type FieldStatsTableProps = {
   field: TransformInspectField | undefined;
 };
 
-export const FieldStatsTable = ({ field }: FieldStatsTableProps) => {
+export const FieldsStatsTable = ({ field }: FieldStatsTableProps) => {
   const data = useMemo(() => {
     if (!field?.stats) {
       return [];
