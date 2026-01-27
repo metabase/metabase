@@ -417,9 +417,8 @@ describe("scenarios > admin > datamodel > segments", () => {
         "readonly",
       );
       cy.findByRole("button", { name: /Save changes/ }).should("not.exist");
-    });
 
-    it("can still edit segment from segment detail page if table is not published", () => {
+      cy.log("can still edit a segment if table is not published");
       cy.visit("/admin/datamodel/segment/2");
 
       cy.findByRole("alert", {
