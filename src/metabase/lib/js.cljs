@@ -2751,8 +2751,8 @@
       lib.native/validate-template-tags
       clj->js))
 
-(defn ^:export query-from-spec
-  "Create a query from a query spec."
+(defn ^:export test-query
+  "Creates a query from a test query spec."
   [metadata-providerable query-spec]
   (letfn [(->source-spec [source-spec]
             (-> source-spec
@@ -2780,4 +2780,4 @@
             (-> query-spec
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :stages #(mapv ->stage-spec %))))]
-    (lib.query.util/query-from-spec metadata-providerable (-> query-spec js->clj ->query-spec))))
+    (lib.query.util/test-query metadata-providerable (-> query-spec js->clj ->query-spec))))

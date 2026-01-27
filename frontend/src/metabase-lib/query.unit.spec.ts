@@ -48,10 +48,10 @@ describe("stageIndexes", () => {
   });
 });
 
-describe("createQueryFromSpec", () => {
+describe("createTestQuery", () => {
   describe("source", () => {
     it("should create a query with a table source", () => {
-      const query = Lib.createQueryFromSpec(SAMPLE_PROVIDER, {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -67,7 +67,7 @@ describe("createQueryFromSpec", () => {
 
   describe("breakouts", () => {
     it("should create a query with breakouts", () => {
-      const query = Lib.createQueryFromSpec(SAMPLE_PROVIDER, {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -87,7 +87,7 @@ describe("createQueryFromSpec", () => {
     });
 
     it("should create a query with temporal breakouts", () => {
-      const query = Lib.createQueryFromSpec(SAMPLE_PROVIDER, {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {
@@ -109,7 +109,7 @@ describe("createQueryFromSpec", () => {
 
   describe("order bys", () => {
     it("should create a query with order bys", () => {
-      const query = Lib.createQueryFromSpec(SAMPLE_PROVIDER, {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
           {
             source: {

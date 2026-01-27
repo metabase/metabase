@@ -241,13 +241,13 @@
   []
   (refresh-cache-configs!))
 
-(api.macros/defendpoint :post "/query-from-spec" :- ::lib.schema/query
-  "Create a query from a query spec."
+(api.macros/defendpoint :post "/query" :- ::lib.schema/query
+  "Creates a query from a test query spec."
   [_route-params
    _query-params
    {:keys [database], :as query-spec} :- [:merge
                                           [:map
                                            [:database ::lib.schema.id/database]]
-                                          [:ref ::lib.schema.query/query-spec]]]
+                                          [:ref ::lib.schema.query/test-query-spec]]]
   (let [metadata-provider (lib-be/application-database-metadata-provider database)]
-    (lib/query-from-spec metadata-provider query-spec)))
+    (lib/test-query metadata-provider query-spec)))

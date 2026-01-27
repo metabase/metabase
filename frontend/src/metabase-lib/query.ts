@@ -158,9 +158,9 @@ export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
 }
 
-export function createQueryFromSpec(
+export function createTestQuery(
   metadataProvider: MetadataProvider,
   querySpec: QuerySpec,
 ): Query {
-  return ML.query_from_spec(metadataProvider, querySpec);
+  return ML.test_query(metadataProvider, querySpec);
 }

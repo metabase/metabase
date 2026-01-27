@@ -443,7 +443,7 @@
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.query.util
-  query-from-spec]
+  test-query]
  [lib.ref
   field-ref-id
   field-ref-name

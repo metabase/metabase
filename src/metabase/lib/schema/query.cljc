@@ -7,46 +7,46 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::table-source-spec
+(mr/def ::test-table-source-spec
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :table]]
    [:id [:ref ::lib.schema.id/table]]])
 
-(mr/def ::card-source-spec
+(mr/def ::test-card-source-spec
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :card]]
    [:id [:ref ::lib.schema.id/card]]])
 
-(mr/def ::source-spec
+(mr/def ::test-source-spec
   [:multi {:dispatch (comp keyword :type)}
-   [:table ::table-source-spec]
-   [:card ::card-source-spec]])
+   [:table ::test-table-source-spec]
+   [:card ::test-card-source-spec]])
 
-(mr/def ::column-spec
+(mr/def ::test-column-spec
   [:map
    [:name {:optional true} [:maybe string?]]])
 
-(mr/def ::temporal-bucket-spec
+(mr/def ::test-temporal-bucket-spec
   [:map
    [:unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]])
 
-(mr/def ::breakout-spec
+(mr/def ::test-breakout-spec
   [:merge
-   ::column-spec
-   ::temporal-bucket-spec])
+   ::test-column-spec
+   ::test-temporal-bucket-spec])
 
-(mr/def ::order-by-spec
+(mr/def ::test-order-by-spec
   [:merge
-   ::column-spec
+   ::test-column-spec
    [:map
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
-(mr/def ::stage-spec
+(mr/def ::test-stage-spec
   [:map
-   [:source    {:optional true} [:maybe ::source-spec]]
-   [:breakouts {:optional true} [:maybe [:sequential ::breakout-spec]]]
-   [:order-bys {:optional true} [:maybe [:sequential ::order-by-spec]]]])
+   [:source    {:optional true} [:maybe ::test-source-spec]]
+   [:breakouts {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
+   [:order-bys {:optional true} [:maybe [:sequential ::test-order-by-spec]]]])
 
-(mr/def ::query-spec
+(mr/def ::test-query-spec
   [:map
-   [:stages [:sequential ::stage-spec]]])
+   [:stages [:sequential ::test-stage-spec]]])
