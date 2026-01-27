@@ -32,11 +32,7 @@ import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Footer } from "../Footer";
 import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
-import {
-  VisualizerUiProvider,
-  type VisualizerUiState,
-  useVisualizerUi,
-} from "../VisualizerUiContext";
+import { VisualizerUiProvider, useVisualizerUi } from "../VisualizerUiContext";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 import S from "./Visualizer.module.css";
@@ -198,12 +194,9 @@ const VisualizerInner = (props: VisualizerProps) => {
   );
 };
 
-export const Visualizer = ({
-  initialUiState,
-  ...props
-}: VisualizerProps & { initialUiState?: Partial<VisualizerUiState> }) => {
+export const Visualizer = ({ ...props }: VisualizerProps) => {
   return (
-    <VisualizerUiProvider initialUiState={initialUiState}>
+    <VisualizerUiProvider>
       <VisualizerInner {...props} />
     </VisualizerUiProvider>
   );

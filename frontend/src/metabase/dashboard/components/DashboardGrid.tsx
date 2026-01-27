@@ -30,7 +30,6 @@ import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, type FlexProps } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
@@ -97,7 +96,6 @@ interface DashboardGridInnerState {
   visualizerModalStatus?: {
     dashcardId: number;
     state: VisualizerVizDefinition;
-    uiState?: Partial<VisualizerUiState>;
   };
 }
 
@@ -470,13 +468,11 @@ class DashboardGridInner extends Component<
   onEditVisualization = (
     dashcard: BaseDashboardCard,
     initialState: VisualizerVizDefinition,
-    initialUiState?: Partial<VisualizerUiState>,
   ) => {
     this.setState({
       visualizerModalStatus: {
         dashcardId: dashcard.id,
         state: initialState,
-        uiState: initialUiState,
       },
     });
 
@@ -562,7 +558,6 @@ class DashboardGridInner extends Component<
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
         initialState={{ state: visualizerModalStatus.state }}
-        initialUiState={visualizerModalStatus.uiState}
         saveLabel={t`Save`}
         allowSaveWhenPristine={allowSaveWhenPristine}
       />

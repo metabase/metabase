@@ -3,9 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
-import { setEditingDashboard } from "metabase/dashboard/actions";
 import { isWebkit } from "metabase/lib/browser";
-import { setUIControls } from "metabase/query_builder/actions";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -60,10 +58,6 @@ function _CartesianChart(props: VisualizationProps) {
     onHoverChange,
     canToggleSeriesVisibility,
     titleMenuItems,
-    onUpdateVisualizationSettings,
-    dispatch,
-    onEditVisualization,
-    onUpdateVisualizerVizSettings,
   } = props;
 
   const settings = useMemo(() => {
@@ -155,31 +149,6 @@ function _CartesianChart(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
-  const handleAutoChange = async () => {
-    if (isDashboard && onUpdateVisualizerVizSettings) {
-      onUpdateVisualizerVizSettings({ "graph.y_axis.auto_range": true });
-    } else {
-      onUpdateVisualizationSettings({
-        ...settings,
-        "graph.y_axis.auto_range": true,
-      });
-    }
-  };
-
-  const handleOpenSettings = () => {
-    if (isDashboard && props.dashboard && onEditVisualization) {
-      dispatch(setEditingDashboard(props.dashboard));
-      onEditVisualization({ isVizSettingsSidebarOpen: true });
-    } else {
-      dispatch(
-        setUIControls({
-          isShowingChartSettingsSidebar: true,
-          initialChartSetting: { section: "Axes" },
-        }),
-      );
-    }
-  };
-
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
@@ -225,9 +194,6 @@ function _CartesianChart(props: VisualizationProps) {
             isVisualizer={isVisualizer}
             chartModel={chartModel}
             settings={settings}
-            canWrite={card.can_write}
-            autoChange={handleAutoChange}
-            openSettings={handleOpenSettings}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>

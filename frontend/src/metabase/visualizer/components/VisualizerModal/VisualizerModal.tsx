@@ -11,7 +11,6 @@ import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
 import type { CardId, VisualizerVizDefinition } from "metabase-types/api";
 
 import { Visualizer } from "../Visualizer";
-import type { VisualizerUiState } from "../VisualizerUiContext";
 
 import S from "./VisualizerModal.module.css";
 
@@ -21,7 +20,6 @@ interface VisualizerModalProps {
         state: VisualizerVizDefinition;
       }
     | { cardId: CardId };
-  initialUiState?: Partial<VisualizerUiState>;
 }
 
 export function VisualizerModal({

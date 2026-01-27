@@ -37,22 +37,12 @@ export interface VisualizerUiState {
 
 interface VisualizerUiProviderProps {
   children: ReactNode;
-  initialUiState?: Partial<VisualizerUiState>;
 }
 
-export function VisualizerUiProvider({
-  initialUiState = {},
-  children,
-}: VisualizerUiProviderProps) {
-  const [isDataSidebarOpen, setDataSidebarOpen] = useState(
-    initialUiState.isDataSidebarOpen ?? true,
-  );
-  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(
-    initialUiState.isVizSettingsSidebarOpen ?? false,
-  );
-  const [isSwapAffordanceVisible, setSwapAffordanceVisible] = useState(
-    initialUiState.isSwapAffordanceVisible ?? false,
-  );
+export function VisualizerUiProvider({ children }: VisualizerUiProviderProps) {
+  const [isDataSidebarOpen, setDataSidebarOpen] = useState(true);
+  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(false);
+  const [isSwapAffordanceVisible, setSwapAffordanceVisible] = useState(false);
 
   const dataSourceCount = useSelector(
     (state) => Object.keys(getDatasets(state)).length,
