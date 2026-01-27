@@ -7,7 +7,6 @@ import {
   useLazyListDatabaseSchemasQuery,
   useLazyListDatabasesQuery,
 } from "metabase/api";
-import { isResourceNotFoundError } from "metabase/lib/errors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
@@ -87,9 +86,6 @@ export function useTableLoader() {
       }
 
       const response = await fetchTables(newArgs, true);
-      if (isResourceNotFoundError(response.error)) {
-        return [];
-      }
 
       return (
         response?.data?.map((table) =>
