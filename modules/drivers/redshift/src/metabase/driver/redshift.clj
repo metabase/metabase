@@ -66,7 +66,7 @@
   [fields]
   (let [field-key      (fn [f] (perf/select-keys f [:table-schema :table-name :name]))
         key-counts     (frequencies (map field-key fields))
-        duplicate-keys (into #{} (comp (filter #(> (val %) 1)) (map key)) key-counts)]
+        duplicate-keys (into #{} (keep (fn [[k cnt]] (when (> cnt 1) k)) key-counts))]
     (doseq [{:keys [table-schema table-name name]} duplicate-keys]
       (log/warnf "Duplicate column '%s' in %s.%s - skipping all occurrences"
                  name table-schema table-name))
@@ -75,14 +75,14 @@
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [_driver _db & _args]
   (fn [rf]
-    (let [fields (volatile! [])]
+    (let [fields (volatile! (transient []))]
       (fn
         ([] (rf))
         ([result]
-         (let [filtered (remove-duplicate-fields @fields)]
+         (let [filtered (remove-duplicate-fields (persistent! @fields))]
            (rf (reduce rf result filtered))))
         ([result field]
-         (vswap! fields conj field)
+         (vswap! fields conj! field)
          result)))))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
