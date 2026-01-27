@@ -2,16 +2,35 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createProductsTitleField,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { columnFinder, createQuery } from "./test-helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_PROVIDER,
+  columnFinder,
+  createMetadataProvider,
+  createQuery,
+  createTestQuery,
+} from "./test-helpers";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
-    const query = createQuery();
+    const query = createTestQuery(SAMPLE_PROVIDER, {
+      databaseId: SAMPLE_DATABASE.id,
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: ORDERS_ID,
+          },
+        },
+      ],
+    });
+
     const findOrderableColumn = columnFinder(
       query,
       Lib.orderableColumns(query, 0),
@@ -79,6 +98,7 @@ describe("order by", () => {
         databases: [createSampleDatabase()],
         questions: [card],
       });
+      const provider = createMetadataProvider(metadata);
 
       const query = createQuery({
         databaseId: SAMPLE_DB_ID,
