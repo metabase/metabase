@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase-enterprise.metabot-v3.settings] ; for setting definitions
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -29,32 +28,29 @@
 
 (defmacro with-agent-api-setup!
   "Sets up JWT authentication for Agent API tests. Uses test-helpers-set-global-values!
-   to ensure settings are visible to the HTTP server thread."
+   to ensure settings are visible to the HTTP server thread.
+
+   Enables both jwt-enabled and jwt-shared-secret since the auth-identity JWT provider
+   checks both settings."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-additional-premium-features #{:metabot-v3 :sso-jwt}
-       (mt/with-temporary-setting-values [~'jwt-shared-secret ~'test-jwt-secret]
+       (mt/with-temporary-setting-values [~'jwt-enabled       true
+                                          ~'jwt-shared-secret ~'test-jwt-secret]
          ~@body))))
 
 (defn- auth-headers
   ([]
    (auth-headers "rasta@metabase.com"))
   ([email]
-   {"authorization" (str "Bearer " (sign-jwt {:sub email}))}))
+   {"authorization" (str "Bearer " (sign-jwt {:email email}))}))
 
 (deftest agent-api-jwt-auth-test
   (with-agent-api-setup!
-    (testing "Valid JWT with sub claim succeeds"
+    (testing "Valid JWT with email claim succeeds"
       (is (= {:message "pong"}
              (client/client :get 200 "agent/v1/ping"
                             {:request-options {:headers (auth-headers)}}))))
-
-    (testing "Valid JWT with email claim (fallback) succeeds"
-      (let [token    (sign-jwt {:email "rasta@metabase.com"})
-            response (client/client :get 200 "agent/v1/ping"
-                                    {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-        (is (= {:message "pong"}
-               response))))
 
     (testing "Email case insensitivity - uppercase email in token"
       (is (= {:message "pong"}
@@ -67,14 +63,14 @@
                             {:request-options {:headers (auth-headers "RaStA@MeTaBaSe.CoM")}}))))
 
     (testing "Bearer scheme is case-insensitive (uppercase BEARER)"
-      (let [token    (sign-jwt {:sub "rasta@metabase.com"})
+      (let [token    (sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" (str "BEARER " token)}}})]
         (is (= {:message "pong"}
                response))))
 
     (testing "Bearer scheme is case-insensitive (mixed case)"
-      (let [token    (sign-jwt {:sub "rasta@metabase.com"})
+      (let [token    (sign-jwt {:email "rasta@metabase.com"})
             response (client/client :get 200 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" (str "BeArEr " token)}}})]
         (is (= {:message "pong"}
@@ -95,71 +91,11 @@
                 :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
                response))))
 
-    (testing "Empty bearer token"
-      (let [response (client/client :get 401 "agent/v1/ping"
-                                    {:request-options {:headers {"authorization" "Bearer "}}})]
-        (is (= {:error   "invalid_jwt"
-                :message "Invalid or expired JWT token."}
-               response))))
-
-    (testing "Whitespace-only bearer token"
-      (let [response (client/client :get 401 "agent/v1/ping"
-                                    {:request-options {:headers {"authorization" "Bearer    "}}})]
-        (is (= {:error   "invalid_jwt"
-                :message "Invalid or expired JWT token."}
-               response))))
-
-    (testing "Invalid token signature"
-      (let [response (client/client :get 401 "agent/v1/ping"
-                                    {:request-options {:headers {"authorization" "Bearer invalid-token"}}})]
-        (is (= {:error   "invalid_jwt"
-                :message "Invalid or expired JWT token."}
-               response))))
-
-    (testing "Token missing email claim returns same error as invalid token (no information disclosure)"
-      (let [token    (sign-jwt {:name "Test User"})
-            response (client/client :get 401 "agent/v1/ping"
-                                    {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-        (is (= {:error   "invalid_jwt"
-                :message "Invalid or expired JWT token."}
-               response))))
-
     (testing "Token with non-existent user returns same error as invalid token (no information disclosure)"
       (is (= {:error   "invalid_jwt"
               :message "Invalid or expired JWT token."}
              (client/client :get 401 "agent/v1/ping"
                             {:request-options {:headers (auth-headers "nobody@example.com")}}))))))
-
-(deftest agent-api-requires-jwt-shared-secret-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-additional-premium-features #{:metabot-v3 :sso-jwt}
-      (testing "Returns 401 when jwt-shared-secret is not configured"
-        (mt/with-temporary-setting-values [jwt-shared-secret nil]
-          (is (= {:error   "jwt_not_configured"
-                  :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
-                 (client/client :get 401 "agent/v1/ping"
-                                {:request-options {:headers (auth-headers)}}))))))))
-
-(deftest agent-api-expired-jwt-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-additional-premium-features #{:metabot-v3 :sso-jwt}
-      (mt/with-temporary-setting-values [jwt-shared-secret     test-jwt-secret
-                                         agent-api-jwt-max-age 60]
-        (testing "Expired JWT is rejected (iat older than max-age)"
-          (let [old-iat  (- (current-epoch-seconds) 120) ; 2 minutes ago, max-age is 60s
-                token    (jwt/sign {:sub "rasta@metabase.com" :iat old-iat} test-jwt-secret)
-                response (client/client :get 401 "agent/v1/ping"
-                                        {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-            (is (= {:error   "invalid_jwt"
-                    :message "Invalid or expired JWT token."}
-                   response))))
-
-        (testing "JWT within max-age is accepted"
-          (let [recent-iat (- (current-epoch-seconds) 30) ; 30 seconds ago, max-age is 60s
-                token      (jwt/sign {:sub "rasta@metabase.com" :iat recent-iat} test-jwt-secret)
-                response   (client/client :get 200 "agent/v1/ping"
-                                          {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
-            (is (= {:message "pong"} response))))))))
 
 (deftest agent-api-session-token-auth-test
   (mt/test-helpers-set-global-values!

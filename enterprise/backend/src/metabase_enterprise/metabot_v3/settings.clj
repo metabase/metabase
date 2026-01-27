@@ -50,11 +50,3 @@
   :export?    false
   :doc        false)
 
-(defsetting agent-api-jwt-max-age
-  (deferred-tru "Maximum age in seconds for JWT tokens used with the Agent API.")
-  :type       :integer
-  :default    3600
-  :visibility :settings-manager
-  :feature    :metabot-v3
-  :export?    false
-  :audit      :getter)

@@ -2,15 +2,12 @@
   "Customer-facing Agent API for headless BI applications.
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
-   [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.settings :as metabot-settings]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
@@ -48,46 +45,30 @@
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
-(defn- decode-and-verify-jwt
-  "Decode and verify a JWT token using the configured shared secret and agent API max-age.
-   Returns the claims map if valid, or nil if invalid/expired."
-  [token]
-  (try
-    (jwt/unsign token
-                (sso-settings/jwt-shared-secret)
-                {:max-age (metabot-settings/agent-api-jwt-max-age)})
-    (catch clojure.lang.ExceptionInfo e
-      (log/debugf "JWT validation failed: %s" (ex-message e))
-      nil)
-    (catch Exception e
-      (log/debugf "Unexpected error validating JWT: %s" (ex-message e))
-      nil)))
-
-(defn- jwt-claims->user
-  "Look up an active user from JWT claims. Returns the user map or nil if not found.
-   Expects email in either the 'email' claim or 'sub' claim."
-  [claims]
-  (when-let [email (or (:email claims) (:sub claims))]
-    (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true)))
-
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns {:user <user>} on success,
-   or {:error <type> :message <msg>} on failure. Does NOT create a session."
-  [token]
-  (cond
-    (str/blank? (sso-settings/jwt-shared-secret))
-    {:error   "jwt_not_configured"
-     :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
+   or {:error <type> :message <msg>} on failure. Does NOT create a session.
 
-    :else
-    (if-let [claims (decode-and-verify-jwt token)]
-      (if-let [user (jwt-claims->user claims)]
+   Uses auth-identity/authenticate to validate the JWT, which reuses the same
+   implementation as the /auth/sso endpoint and handles all settings validation."
+  [token]
+  (let [result (auth-identity/authenticate :provider/jwt {:token token})]
+    (if (:success? result)
+      ;; JWT is valid - look up user from the email extracted by the JWT provider
+      ;; The provider uses jwt-attribute-email setting to extract the email from claims
+      (if-let [user (when-let [email (get-in result [:user-data :email])]
+                      (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
         {:user user}
         ;; Don't reveal whether the user exists or not - use same error as invalid JWT
         {:error   "invalid_jwt"
          :message "Invalid or expired JWT token."})
-      {:error   "invalid_jwt"
-       :message "Invalid or expired JWT token."})))
+      ;; Authentication failed - map error to agent API format
+      (case (:error result)
+        :jwt-not-enabled {:error   "jwt_not_configured"
+                          :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
+        ;; Default: use generic invalid JWT message (don't leak details)
+        {:error   "invalid_jwt"
+         :message "Invalid or expired JWT token."}))))
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
@@ -99,7 +80,7 @@
      session middleware (which runs before this). If `:metabase-user-id` is set on the
      request, the user is already authenticated.
    - **Stateless JWT**: Uses `Authorization: Bearer <jwt>` header. The JWT is validated
-     directly using jwt-shared-secret and agent-api-jwt-max-age settings."
+     using the same auth-identity system as the /auth/sso endpoint."
   [handler]
   (fn [{:keys [headers metabase-user-id] :as request} respond raise]
     (cond
