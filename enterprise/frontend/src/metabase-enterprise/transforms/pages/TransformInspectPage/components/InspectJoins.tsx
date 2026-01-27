@@ -26,6 +26,7 @@ type InspectJoinsProps = {
 
 type JoinRow = TransformInspectJoin & {
   id: string;
+  tableName: string | undefined;
 };
 
 function formatPercent(value: number | undefined): string {
@@ -41,8 +42,11 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
       joins.map((join, index) => ({
         ...join,
         id: `join-${index}`,
+        tableName: sources?.find(
+          (source) => source.table_id === join.source_table,
+        )?.table_name,
       })),
-    [joins],
+    [joins, sources],
   );
 
   const columns = useMemo<TreeTableColumnDef<JoinRow>[]>(
@@ -57,13 +61,7 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
               c="brand"
               size={24}
             />{" "}
-            <Code bg="transparent">
-              {
-                sources?.find(
-                  (source) => source.table_id === row.original.source_table,
-                )?.table_name
-              }
-            </Code>
+            <Code bg="transparent">{row.original.tableName}</Code>
           </>
         ),
       },
@@ -98,7 +96,7 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
         ),
       },
     ],
-    [sources],
+    [],
   );
 
   const instance = useTreeTableInstance({

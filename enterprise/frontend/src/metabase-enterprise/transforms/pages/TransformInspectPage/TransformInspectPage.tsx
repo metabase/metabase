@@ -78,7 +78,10 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
           <InspectSummary summary={inspectData.summary} />
         )}
         {inspectData.joins && inspectData.joins.length > 0 && (
-          <InspectJoins joins={inspectData.joins} />
+          <InspectJoins
+            joins={inspectData.joins}
+            sources={inspectData.sources ?? undefined}
+          />
         )}
         {inspectData.column_comparisons &&
           inspectData.column_comparisons.length > 0 && (
