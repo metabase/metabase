@@ -71,9 +71,4 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
 
     // focus: subtle tint, same direction as brand-light
     focus: 2,
-
-    // text-primary-inverse: handled specially based on brand lightness
-    "text-primary-inverse": {
-      default: 5,
-    },
   } as Record<MetabaseColorKey, BrandDerivationRule>;
