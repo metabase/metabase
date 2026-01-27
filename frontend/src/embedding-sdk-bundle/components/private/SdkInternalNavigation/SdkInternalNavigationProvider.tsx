@@ -13,6 +13,7 @@ import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/questio
 import * as Urls from "metabase/lib/urls";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
+import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
 import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
@@ -26,11 +27,17 @@ import {
 type Props = {
   children: ReactNode;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
+  /** Custom renderer for drill-through questions */
+  renderDrillThroughQuestion?: () => ReactNode;
+  /** Props to pass to drill-through question components */
+  drillThroughQuestionProps?: DrillThroughQuestionProps;
 };
 
 export const SdkInternalNavigationProvider = ({
   children,
   dashboardProps,
+  renderDrillThroughQuestion: RenderDrillThroughQuestion,
+  drillThroughQuestionProps,
 }: Props) => {
   const isNested = useContext(SdkInternalNavigationContext);
   if (isNested) {
@@ -146,7 +153,10 @@ export const SdkInternalNavigationProvider = ({
           onNavigateBack={pop}
           navigateToNewCard={navigateToNewCard}
           initialSqlParameters={currentEntry.parameters}
-        />
+          {...drillThroughQuestionProps}
+        >
+          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+        </SdkQuestion>
       </div>
     ))
     .with({ currentEntry: { type: "adhoc-question" } }, ({ currentEntry }) => (
@@ -156,7 +166,10 @@ export const SdkInternalNavigationProvider = ({
           onNavigateBack={pop}
           navigateToNewCard={navigateToNewCard}
           isSaveEnabled={false}
-        />
+          {...drillThroughQuestionProps}
+        >
+          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+        </SdkAdHocQuestion>
       </div>
     ))
     .otherwise(() => children);

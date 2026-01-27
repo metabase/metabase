@@ -152,7 +152,11 @@ export const InteractiveDashboardContent = (
 // Outer component that provides the navigation context
 const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   return (
-    <SdkInternalNavigationProvider dashboardProps={props}>
+    <SdkInternalNavigationProvider
+      dashboardProps={props}
+      renderDrillThroughQuestion={props.renderDrillThroughQuestion}
+      drillThroughQuestionProps={props.drillThroughQuestionProps}
+    >
       <InteractiveDashboardContent {...props} />
     </SdkInternalNavigationProvider>
   );
