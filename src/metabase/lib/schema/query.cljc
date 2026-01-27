@@ -45,7 +45,8 @@
   [:map
    [:source    {:optional true} [:maybe ::test-source-spec]]
    [:breakouts {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
-   [:order-bys {:optional true} [:maybe [:sequential ::test-order-by-spec]]]])
+   [:order-bys {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
+   [:limit {:optional true} [:maybe number?]]])
 
 (mr/def ::test-query-spec
   [:map

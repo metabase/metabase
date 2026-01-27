@@ -468,6 +468,7 @@ export type OrderBySpec = ColumnSpec & {
 export type StageSpec = {
   breakouts?: BreakoutSpec[];
   orderBys?: OrderBySpec[];
+  limit?: number;
 };
 
 export type StageSpecWithSource = StageSpec & {

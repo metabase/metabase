@@ -128,4 +128,23 @@ describe("createTestQuery", () => {
       });
     });
   });
+
+  describe("limit", () => {
+    it("should create a query with a limit", () => {
+      const LIMIT = 42;
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            limit: LIMIT,
+          },
+        ],
+      });
+
+      expect(Lib.currentLimit(query, 0)).toBe(LIMIT);
+    });
+  });
 });

@@ -1,6 +1,7 @@
 (ns metabase.lib.query.util
   (:require
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
@@ -100,10 +101,11 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [breakouts order-bys]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     breakouts (append-breakouts stage-number breakouts)
-    order-bys (append-order-bys stage-number order-bys)))
+    order-bys (append-order-bys stage-number order-bys)
+    limit (lib.limit/limit stage-number limit)))
 
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
