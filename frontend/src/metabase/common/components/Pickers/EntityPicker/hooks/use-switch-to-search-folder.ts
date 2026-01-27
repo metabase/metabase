@@ -20,7 +20,7 @@ export function useSwitchToSearchFolder() {
     if (searchQuery && searchQuery !== previousSearchQuery) {
       if (path[0]?.id !== "search-results") {
         setPreviousPath(path);
-        setSearchScope("");
+        setSearchScope(null);
       }
       setPath([
         {
