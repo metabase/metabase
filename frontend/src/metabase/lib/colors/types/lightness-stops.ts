@@ -86,3 +86,11 @@ export interface ConditionalDerivation {
 }
 
 export type DerivationRule = Derivation | ConditionalDerivation;
+
+/**
+ * Brand derivation rule that supports a shorthand for theme-opposite offsets.
+ *
+ * A number means: darkTheme uses the number as offset, lightTheme uses negative.
+ * Example: 2 means darkTheme: { offset: 2 }, lightTheme: { offset: -2 }
+ */
+export type BrandDerivationRule = number | DerivationRule;

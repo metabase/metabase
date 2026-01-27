@@ -1,7 +1,7 @@
 import type {
+  BrandDerivationRule,
   ConditionalDerivation,
   Derivation,
-  DerivationRule,
   GeneratedColorStops,
 } from "../types/lightness-stops";
 
@@ -40,21 +40,26 @@ export function resolveDerivation(
 }
 
 /**
- * Resolves a conditional derivation rule based on theme and brand lightness.
+ * Resolves a brand derivation rule based on theme and brand lightness.
+ *
+ * Numbers are treated as theme-opposite offsets:
+ * - darkTheme uses the number as offset
+ * - lightTheme uses the negative
  */
-export function resolveConditionalDerivation(
-  rule: DerivationRule,
+export function resolveBrandDerivation(
+  rule: BrandDerivationRule,
   stops: GeneratedColorStops,
   isDarkTheme: boolean,
   brandIsDark: boolean,
 ): string | undefined {
-  // Simple derivation
-  if (
-    typeof rule === "number" ||
-    "offset" in rule ||
-    "alpha" in rule ||
-    "alphaInverse" in rule
-  ) {
+  // Theme-opposite offset shorthand: number means dark = n, light = -n
+  if (typeof rule === "number") {
+    const offset = isDarkTheme ? rule : -rule;
+    return resolveDerivation({ offset }, stops);
+  }
+
+  // Offset/alpha derivations (non-conditional)
+  if ("offset" in rule || "alpha" in rule || "alphaInverse" in rule) {
     return resolveDerivation(rule as Derivation, stops);
   }
 

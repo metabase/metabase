@@ -7,7 +7,7 @@ import type { MetabaseColorKey } from "../types";
 
 import { detectLightnessStep, generateLightnessStops } from "./lightness-stops";
 import {
-  resolveConditionalDerivation,
+  resolveBrandDerivation,
   resolveDerivation,
 } from "./lightness-stops-resolver";
 
@@ -47,9 +47,10 @@ export function deriveColorsFromInputs(
     const bgStops = generateLightnessStops(colors["background-primary"]);
     const isLightBackground = bgStops.detectedStep <= 20;
 
-    for (const [key, rule] of Object.entries(BACKGROUND_DERIVATIONS)) {
-      const derivation = isLightBackground ? rule.light : rule.dark;
-      derived[key as MetabaseColorKey] = resolveDerivation(derivation, bgStops);
+    for (const [key, darkOffset] of Object.entries(BACKGROUND_DERIVATIONS)) {
+      // Light mode uses negative offset, dark mode uses positive
+      const offset = isLightBackground ? -darkOffset : darkOffset;
+      derived[key as MetabaseColorKey] = resolveDerivation({ offset }, bgStops);
     }
 
     // Remove border if dark background (will be derived from text-primary)
@@ -101,7 +102,7 @@ export function deriveColorsFromInputs(
         continue;
       }
 
-      const derivedColorValue = resolveConditionalDerivation(
+      const derivedColorValue = resolveBrandDerivation(
         rule,
         brandStops,
         isDarkTheme,

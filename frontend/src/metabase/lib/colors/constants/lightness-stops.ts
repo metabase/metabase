@@ -1,24 +1,21 @@
 import type { MetabaseColorKey } from "../types";
-import type { Derivation, DerivationRule } from "../types/lightness-stops";
+import type { BrandDerivationRule, Derivation } from "../types/lightness-stops";
 
 /**
- * Background color derivations from background-primary
+ * Background color derivations from background-primary.
+ *
+ * The number represents the dark mode offset. Light mode uses the negative.
+ * Example: 1 means light: -1, dark: 1
  */
-export const BACKGROUND_DERIVATIONS: Record<
-  MetabaseColorKey,
-  { light: Derivation; dark: Derivation }
-> = {
-  "background-secondary": { light: { offset: -1 }, dark: { offset: 1 } },
-  "background-tertiary": { light: { offset: -2 }, dark: { offset: 2 } },
-  "background-primary-inverse": { light: { offset: 8 }, dark: { offset: -8 } },
-  "background-secondary-inverse": {
-    light: { offset: 7 },
-    dark: { offset: -7 },
-  },
-  "background-tertiary-inverse": { light: { offset: 4 }, dark: { offset: -4 } },
-  border: { light: { offset: 2 }, dark: { offset: -2 } },
-  "tooltip-background": { light: { offset: 3 }, dark: { offset: -3 } },
-} as Record<MetabaseColorKey, { light: Derivation; dark: Derivation }>;
+export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
+  "background-secondary": 1,
+  "background-tertiary": 2,
+  "background-primary-inverse": -8,
+  "background-secondary-inverse": -7,
+  "background-tertiary-inverse": -4,
+  border: -2,
+  "tooltip-background": -3,
+} as Record<MetabaseColorKey, number>;
 
 /**
  * Text color derivations from text-primary
@@ -36,66 +33,47 @@ export const TEXT_DERIVATIONS: Record<
 } as Record<MetabaseColorKey, { darkText: Derivation; lightText: Derivation }>;
 
 /**
- * Brand color derivations
+ * Brand color derivations.
+ *
+ * A number means theme-opposite offset: darkTheme uses the number, lightTheme uses negative.
+ * Example: 2 means darkTheme: { offset: 2 }, lightTheme: { offset: -2 }
  */
-export const BRAND_DERIVATIONS: Record<MetabaseColorKey, DerivationRule> = {
-  // brand-light/lighter: opposite direction based on theme
-  "brand-light": {
-    darkTheme: { default: { offset: 2 } },
-    lightTheme: { default: { offset: -2 } },
-  },
-  "brand-lighter": {
-    darkTheme: { default: { offset: 3 } },
-    lightTheme: { default: { offset: -3 } },
-  },
+export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
+  {
+    // brand-light/lighter: lighter in dark theme, darker in light theme
+    "brand-light": 2,
+    "brand-lighter": 3,
 
-  // brand-dark/darker: opposite direction based on theme
-  "brand-dark": {
-    darkTheme: { default: { offset: -1 } },
-    lightTheme: { default: { offset: 1 } },
-  },
-  "brand-darker": {
-    darkTheme: { default: { offset: -2 } },
-    lightTheme: { default: { offset: 2 } },
-  },
+    // brand-dark/darker: darker in dark theme, lighter in light theme
+    "brand-dark": -1,
+    "brand-darker": -2,
 
-  // text-brand: needs good contrast on both backgrounds and brand surfaces
-  "text-brand": {
-    darkTheme: {
-      default: { offset: -1 },
+    // text-brand: needs good contrast on both backgrounds and brand surfaces
+    "text-brand": -1,
+
+    // text-hover: has brand-lightness-specific rules (non-symmetric)
+    "text-hover": {
+      darkTheme: {
+        darkBrand: { offset: -3 },
+        lightBrand: { offset: -1 },
+      },
+      lightTheme: {
+        darkBrand: { offset: -2 },
+        lightBrand: { offset: 5 },
+      },
     },
-    lightTheme: {
-      default: { offset: 1 },
+
+    // background-brand: asymmetric (dark: 3, light: 4)
+    "background-brand": {
+      darkTheme: { default: { offset: 3 } },
+      lightTheme: { default: { offset: 4 } },
     },
-  },
 
-  // text-hover: slightly different from text-brand
-  "text-hover": {
-    darkTheme: {
-      darkBrand: { offset: -3 },
-      lightBrand: { offset: -1 },
+    // focus: subtle tint, same direction as brand-light
+    focus: 2,
+
+    // text-primary-inverse: handled specially based on brand lightness
+    "text-primary-inverse": {
+      default: 5,
     },
-    lightTheme: {
-      darkBrand: { offset: -2 },
-      lightBrand: { offset: 5 }, // slightly darker than text-brand
-    },
-  },
-
-  // background-brand: needs contrast with text on top
-  "background-brand": {
-    darkTheme: { default: { offset: 3 } },
-    lightTheme: { default: { offset: 4 } }, // go darker to support white text
-  },
-
-  // focus: subtle tint, same direction as brand-light
-  focus: {
-    darkTheme: { default: { offset: 2 } },
-    lightTheme: { default: { offset: -2 } },
-  },
-
-  // text-primary-inverse: on brand-colored buttons
-  // Note: This is handled specially in deriveColorsFromInputs based on brand lightness
-  "text-primary-inverse": {
-    default: 5,
-  },
-} as Record<MetabaseColorKey, DerivationRule>;
+  } as Record<MetabaseColorKey, BrandDerivationRule>;
