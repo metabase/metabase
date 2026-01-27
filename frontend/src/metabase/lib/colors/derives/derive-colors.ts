@@ -9,11 +9,8 @@ import {
   detectLightnessStep,
   generateLightnessStops,
   generateTextStops,
+  getRelativeStep,
 } from "./lightness-stops";
-import {
-  resolveBrandDerivation,
-  resolveDerivation,
-} from "./lightness-stops-resolver";
 
 type DeriveInputColor = "background-primary" | "text-primary" | "brand";
 
@@ -56,7 +53,8 @@ export function deriveColorsFromInputs(
     )) {
       // Light mode uses offset directly, dark mode uses negative
       const offset = isLightBackground ? lightOffset : -lightOffset;
-      derived[key as MetabaseColorKey] = resolveDerivation({ offset }, bgStops);
+      const step = getRelativeStep(bgStops.detectedStep, offset);
+      derived[key as MetabaseColorKey] = bgStops.solid[step];
     }
 
     // Remove border if dark background (will be derived from text-primary)
@@ -94,26 +92,19 @@ export function deriveColorsFromInputs(
   // Derive brand-related colors from brand
   if (colors["brand"]) {
     const brandStops = generateLightnessStops(colors["brand"]);
-    const detectedStep = brandStops.detectedStep;
 
     const isDarkTheme = detectIsDarkTheme(
       colors["background-primary"],
       colors["text-primary"],
     );
 
-    const brandIsDark = detectedStep >= 50;
-
-    for (const [colorKey, rule] of Object.entries(BRAND_DERIVE_OFFSETS)) {
-      const derivedColorValue = resolveBrandDerivation(
-        rule,
-        brandStops,
-        isDarkTheme,
-        brandIsDark,
-      );
-
-      if (derivedColorValue) {
-        derived[colorKey as MetabaseColorKey] = derivedColorValue;
-      }
+    for (const [colorKey, lightOffset] of Object.entries(
+      BRAND_DERIVE_OFFSETS,
+    )) {
+      // Dark theme uses offset directly, light theme uses negative
+      const offset = isDarkTheme ? lightOffset : -lightOffset;
+      const step = getRelativeStep(brandStops.detectedStep, offset);
+      derived[colorKey as MetabaseColorKey] = brandStops.solid[step];
     }
   }
 

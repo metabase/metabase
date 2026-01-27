@@ -46,20 +46,6 @@ describe("lightness-stops", () => {
       }
     });
 
-    it("should generate alpha stops", () => {
-      const result = generateLightnessStops("#509ee3");
-
-      expect(result.alpha).toBeDefined();
-      expect(Object.keys(result.alpha).length).toBeGreaterThan(0);
-    });
-
-    it("should generate inverse alpha stops", () => {
-      const result = generateLightnessStops("#509ee3");
-
-      expect(result.alphaInverse).toBeDefined();
-      expect(Object.keys(result.alphaInverse).length).toBeGreaterThan(0);
-    });
-
     it("should detect the original color's step", () => {
       const result = generateLightnessStops("#509ee3");
 

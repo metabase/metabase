@@ -38,13 +38,6 @@ export const INDEX_TO_STOP: LightnessStop[] = [
  * @param detectedStep - The detected lightness step of the original color
  * @param offset - Number of steps to move (negative = lighter, positive = darker)
  * @returns The target lightness step, clamped to valid range
- *
- * @example
- * ```ts
- * getRelativeStep(50, -2)  // Returns 30 (2 steps lighter)
- * getRelativeStep(50, 1)   // Returns 60 (1 step darker)
- * getRelativeStep(10, -2)  // Returns 5 (clamped to lightest)
- * ```
  */
 export function getRelativeStep(
   detectedStep: LightnessStop,
@@ -88,62 +81,13 @@ export function detectLightnessStep(color: string): LightnessStop {
 }
 
 /**
- * Generate alpha color stops for a given color.
- *
- * @param color - The base color to generate alpha stops from
- * @param inverse - If true, generates inverse alpha (high alpha at light steps)
- * @returns A map of lightness stops to alpha-modified colors
- */
-function generateAlphaStops(
-  color: string,
-  inverse: boolean = false,
-): AlphaColorStops {
-  const c = Color(color);
-
-  const alphaValues = {
-    5: 0.02,
-    10: 0.05,
-    20: 0.17,
-    30: 0.29,
-    40: 0.44,
-    50: 0.51,
-    60: 0.62,
-    70: 0.74,
-    80: 0.84,
-    90: 0.93,
-    100: 1,
-    110: 1,
-  };
-
-  const stops: AlphaColorStops = {};
-
-  for (const [stop, alpha] of Object.entries(alphaValues)) {
-    const numStop = Number(stop) as LightnessStop;
-
-    const effectiveAlpha = inverse
-      ? alphaValues[
-          INDEX_TO_STOP[
-            INDEX_TO_STOP.length - 1 - INDEX_TO_STOP.indexOf(numStop)
-          ] as LightnessStop
-        ]
-      : alpha;
-
-    stops[numStop] = c.alpha(effectiveAlpha).hexa() as CssColor;
-  }
-
-  return stops;
-}
-
-/**
- * Generate all 11 lightness stops for a single color using Leonardo.
+ * Generate all 12 lightness stops for a single color using Leonardo.
  *
  * This uses contrast-based color generation to produce perceptually even
- * lightness steps. The original color is detected within the scale, and
- * alpha variations are generated based on that detected position.
+ * lightness steps.
  *
  * @param color - A CSS color string (hex, rgb, hsl, etc.)
- * @returns An object containing solid stops, alpha stops, inverse alpha stops,
- *          and the detected step of the original color
+ * @returns An object containing solid stops and the detected step
  */
 export function generateLightnessStops(color: string): GeneratedColorStops {
   const background = new BackgroundColor({
@@ -183,9 +127,6 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
 
   const { values: contrastColorValues } = colorResult;
 
-  const detectedStep = detectLightnessStep(color);
-
-  // Map the contrast color values to our stop structure
   const solid: ColorStops = {
     5: contrastColorValues[0].value,
     10: contrastColorValues[1].value,
@@ -201,29 +142,14 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
     110: contrastColorValues[11].value,
   };
 
-  // Find the index of the detected step to get the color at that position
-  const detectedIndex = INDEX_TO_STOP.indexOf(detectedStep);
-  const colorAtDetectedStep = contrastColorValues[detectedIndex].value;
-
-  // Get the contrasting base color from the opposite end of the spectrum
-  // If input is dark (step >= 50), use the lightest color (step 5)
-  // If input is light (step < 50), use the darkest color (step 110)
-  const contrastingBaseColor =
-    detectedStep >= 50
-      ? contrastColorValues[0].value // lightest (step 5)
-      : contrastColorValues[11].value; // darkest (step 110)
-
   return {
     solid,
-    alpha: generateAlphaStops(colorAtDetectedStep, false),
-    alphaInverse: generateAlphaStops(colorAtDetectedStep, true),
-    contrastingAlpha: generateAlphaStops(contrastingBaseColor, false),
-    detectedStep,
+    detectedStep: detectLightnessStep(color),
   };
 }
 
 /**
- * Alpha values for text colors, matching orionAlpha from base-colors.ts.
+ * Alpha values for text colors.
  * Used for dark text on light backgrounds.
  */
 const TEXT_ALPHA_VALUES: Record<LightnessStop, number> = {
@@ -242,10 +168,8 @@ const TEXT_ALPHA_VALUES: Record<LightnessStop, number> = {
 };
 
 /**
- * Alpha values for inverse text colors, matching orionAlphaInverse from base-colors.ts.
+ * Alpha values for inverse text colors.
  * Used for light text on dark backgrounds (e.g., tooltips).
- * These are generally higher (more opaque) than TEXT_ALPHA_VALUES
- * because white text needs more opacity to be visible.
  */
 const TEXT_ALPHA_INVERSE_VALUES: Record<LightnessStop, number> = {
   5: 0.01,
