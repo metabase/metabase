@@ -88,7 +88,7 @@ export const InspectSummary = ({ summary }: InspectSummaryProps) => {
       <Title order={3}>{t`Summary`}</Title>
       <SimpleGrid cols={2} spacing="lg">
         <Title order={4}>{t`Input table(s)`}</Title>
-        <Title order={4}>{t`Output table(s)`}</Title>
+        <Title order={4}>{t`Output table`}</Title>
       </SimpleGrid>
 
       <Box bg="background-tertiary" bdrs="md" p="lg">
