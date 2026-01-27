@@ -235,6 +235,10 @@
   [(prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
+   (prometheus/gauge :metabase-startup/jvm-to-complete-millis
+                     {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
+   (prometheus/gauge :metabase-startup/init-duration-millis
+                     {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
