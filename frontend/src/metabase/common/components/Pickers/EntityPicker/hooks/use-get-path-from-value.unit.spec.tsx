@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import type {
   Collection,
   CollectionItem,
@@ -122,6 +123,8 @@ const setup = ({
     setupEnterpriseOnlyPlugin("data-studio");
     setupEnterpriseOnlyPlugin("tenants");
     setupEnterpriseOnlyPlugin("transforms");
+  } else {
+    reinitialize();
   }
 
   return renderHookWithProviders(
@@ -174,10 +177,7 @@ describe("useGetPathFromValue", () => {
         ],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(1);
-      });
+      await waitForPathLength(result, 1);
       const [path] = result.current;
 
       expectPathToMatch(path, [{ id: "databases", name: "Databases" }]);
@@ -192,13 +192,10 @@ describe("useGetPathFromValue", () => {
         },
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(1);
-      });
+      await waitForPathLength(result, 1);
 
       const [path] = result.current;
-      expectPathToMatch(path, [{ id: "recents", name: "Recents" }]);
+      expectPathToMatch(path, [{ id: "recents", name: "Recent items" }]);
     });
 
     it("should return root collection when hasRootCollection is true", async () => {
@@ -211,10 +208,7 @@ describe("useGetPathFromValue", () => {
         },
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(1);
-      });
+      await waitForPathLength(result, 1);
 
       const [path] = result.current;
       expectPathToMatch(path, [{ id: "root", name: "Our analytics" }]);
@@ -250,10 +244,7 @@ describe("useGetPathFromValue", () => {
 
       const { result } = setup({ value });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(1);
-      });
+      await waitForPathLength(result, 1);
 
       const [path] = result.current;
       expectPathToMatch(path, [{ id: "root" }]);
@@ -285,10 +276,7 @@ describe("useGetPathFromValue", () => {
 
       const { result } = setup({ value });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(2);
-      });
+      await waitForPathLength(result, 2);
 
       const [path] = result.current;
       expectPathToMatch(path, [{ id: "root" }, { id: card.id, model: "card" }]);
@@ -303,10 +291,7 @@ describe("useGetPathFromValue", () => {
 
       const { result } = setup({ value, namespaces: ["snippets"] });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(1);
-      });
+      await waitForPathLength(result, 1);
 
       const [path] = result.current;
       expectPathToMatch(path, [{ id: "root", name: "SQL Snippets" }]);
@@ -373,10 +358,7 @@ describe("useGetPathFromValue", () => {
         collections: [parentCollection, childCollection],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -478,10 +460,7 @@ describe("useGetPathFromValue", () => {
         collections: [parentCollection, childCollection, grandchildCollection],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -494,6 +473,52 @@ describe("useGetPathFromValue", () => {
         { id: parentCollection.id, model: "collection" },
         // should skip child collection due to effective_location
         { id: grandchildCollection.id, model: "collection" },
+      ]);
+    });
+
+    it("should be able to start at the databases root", async () => {
+      const value: OmniPickerValue = {
+        model: "collection",
+        id: "databases",
+      };
+
+      const { result } = setup({
+        value,
+        options: { hasDatabases: true, hasRecents: true },
+      });
+
+      await waitForPathLength(result, 1);
+
+      const [path] = result.current;
+      expectPathToMatch(path, [
+        {
+          id: "databases",
+          name: "Databases",
+          model: "collection",
+        },
+      ]);
+    });
+
+    it("should be able to start at the recents root", async () => {
+      const value: OmniPickerValue = {
+        model: "collection",
+        id: "recents",
+      };
+
+      const { result } = setup({
+        value,
+        options: { hasDatabases: true, hasRecents: true },
+      });
+
+      await waitForPathLength(result, 1);
+
+      const [path] = result.current;
+      expectPathToMatch(path, [
+        {
+          id: "recents",
+          name: "Recent items",
+          model: "collection",
+        },
       ]);
     });
   });
@@ -540,10 +565,7 @@ describe("useGetPathFromValue", () => {
         databases: [testDb, testDbSingleSchema],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -564,10 +586,7 @@ describe("useGetPathFromValue", () => {
         databases: [testDb, testDbSingleSchema],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(2);
-      });
+      await waitForPathLength(result, 2);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -588,10 +607,7 @@ describe("useGetPathFromValue", () => {
         databases: [testDb, testDbSingleSchema],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(4);
-      });
+      await waitForPathLength(result, 4);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -613,10 +629,7 @@ describe("useGetPathFromValue", () => {
         databases: [testDb, testDbSingleSchema],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -928,50 +941,14 @@ describe("useGetPathFromValue", () => {
       setupLibraryEndpoints(true);
     });
 
-    it("should return library collection path with no provided value", async () => {
-      const libraryCollection = createMockCollection({
-        id: 6464,
-        name: "Library",
-        here: ["collection"],
-        below: ["collection"],
-      } as unknown as Collection);
-
-      const childCollection = createMockCollection({
-        id: 6565,
-        name: "Data",
-        location: "/6464/",
-        here: ["table", "dataset"],
-      } as unknown as Collection);
-
-      setupCollectionItemsEndpoint({
-        collection: libraryCollection,
-        collectionItems: [
-          createMockCollectionItem({
-            ...childCollection,
-            model: "collection",
-          } as CollectionItem),
-        ],
-      });
-
+    it("warmup enterprise plugins", () => {
+      // warm up enterprise plugins, without this, tests can time out in CI 😢
       setupLibraryEndpoints(true);
-
       const { result } = setup({
         enterprise: true,
-        options: { ...defaultOptions, hasLibrary: true },
-        collections: [libraryCollection, childCollection],
       });
-
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(2);
-      });
-
-      const [path] = result.current;
-      expectPathToMatch(path, [
-        { id: libraryCollection.id },
-        { id: childCollection.id },
-      ]);
-    });
+      expect(result).toBeDefined();
+    }, 10_000);
 
     it("should return transform path with a provided transform collection", async () => {
       const parentCollection = createMockCollection({
@@ -1032,15 +1009,52 @@ describe("useGetPathFromValue", () => {
         namespaces: ["transforms"],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
         { id: "root", namespace: "transforms", name: "Transforms" },
         { id: parentCollection.id },
+        { id: childCollection.id },
+      ]);
+    });
+
+    it("should return library collection path with no provided value", async () => {
+      const libraryCollection = createMockCollection({
+        id: 6464,
+        name: "Library",
+        here: ["collection"],
+        below: ["collection"],
+      } as unknown as Collection);
+
+      const childCollection = createMockCollection({
+        id: 6565,
+        name: "Data",
+        location: "/6464/",
+        here: ["table", "dataset"],
+      } as unknown as Collection);
+
+      setupCollectionItemsEndpoint({
+        collection: libraryCollection,
+        collectionItems: [
+          createMockCollectionItem({
+            ...childCollection,
+            model: "collection",
+          } as CollectionItem),
+        ],
+      });
+
+      const { result } = setup({
+        enterprise: true,
+        options: { ...defaultOptions, hasLibrary: true },
+        collections: [libraryCollection, childCollection],
+      });
+
+      await waitForPathLength(result, 2);
+
+      const [path] = result.current;
+      expectPathToMatch(path, [
+        { id: libraryCollection.id },
         { id: childCollection.id },
       ]);
     });
@@ -1104,10 +1118,7 @@ describe("useGetPathFromValue", () => {
         namespaces: ["transforms"],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [
@@ -1180,10 +1191,7 @@ describe("useGetPathFromValue", () => {
         namespaces: ["transforms"],
       });
 
-      await waitFor(() => {
-        const [path] = result.current;
-        expect(path).toHaveLength(3);
-      });
+      await waitForPathLength(result, 3);
 
       const [path] = result.current;
       expectPathToMatch(path, [

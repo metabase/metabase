@@ -160,6 +160,14 @@ async function getPathFromValue({
   personalCollection?: Collection;
   models: OmniPickerCollectionItem["model"][];
 }): Promise<OmniPickerItem[]> {
+  if (value.id === "databases") {
+    return [getFakeDbCollection()];
+  }
+
+  if (value.id === "recents") {
+    return [getFakeRecentsCollection()];
+  }
+
   if (!isInDbPath(value)) {
     return getCollectionPathFromValue({
       value,
@@ -199,7 +207,7 @@ const getFakeDbCollection = (): OmniPickerItem => ({
 });
 
 const getFakeRecentsCollection = (): OmniPickerItem => ({
-  name: t`Recents`,
+  name: t`Recent items`,
   id: "recents",
   model: "collection",
   here: allCollectionModels,
