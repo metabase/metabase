@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { useDryRunWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import {
   deactivateSuggestedTransform,
@@ -23,8 +24,10 @@ import type {
   DatasetQuery,
   DraftTransformSource,
   TaggedTransform,
+  TestPythonTransformResponse,
   WorkspaceId,
   WorkspaceTransform,
+  WorkspaceTransformDryRunResponse,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
@@ -118,19 +121,18 @@ export function TransformTab({
       // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
 
-      // Always use query preview when we have a query, regardless of whether the transform
-      // is saved or not. The query represents the current state of the editor (which may
-      // have unsaved changes), and we want to preview what the current query will produce.
-      // The dry run API uses the saved transform's source, not the current query.
+      // Use dry-run API to preview the saved transform's source.
+      // The preview button is only shown when transform is saved and has no unsaved changes,
+      // so we can safely use dry-run which executes the saved source.
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: null, // Always null for preview - use query instead
+          tableId: null,
           name: t`Preview (${transform.name})`,
           query,
-          transformId: undefined, // Always undefined - use query preview, not dry run
+          transformId: String(transformId),
         },
       };
       addOpenedTab(tableTab);
@@ -159,6 +161,35 @@ export function TransformTab({
     },
     [transformId, transform.name, addOpenedTab],
   );
+
+  // Dry-run handler for Python transforms
+  const [dryRunTransform] = useDryRunWorkspaceTransformMutation();
+
+  const handlePythonRun = useCallback(async () => {
+    if (!wsTransform) {
+      return;
+    }
+
+    try {
+      const result = await dryRunTransform({
+        workspaceId,
+        transformId: wsTransform.ref_id,
+      }).unwrap();
+
+      // Convert dry-run response to TestPythonTransformResponse format
+      const converted = convertDryRunToTestResponse(result);
+      handleRunTransform(converted);
+    } catch (error) {
+      // Handle error - show in preview results
+      const errorResult: TestPythonTransformResponse = {
+        error: {
+          message:
+            error instanceof Error ? error.message : "Transform preview failed",
+        },
+      };
+      handleRunTransform(errorResult);
+    }
+  }, [wsTransform, workspaceId, dryRunTransform, handleRunTransform]);
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource): DraftTransformSource => {
@@ -339,6 +370,7 @@ export function TransformTab({
             onChange={handleSourceChange}
             onRunQueryStart={handleRunQueryStart}
             onRunTransform={handleRunTransform}
+            onRun={handlePythonRun}
           />
         </Box>
       )}
@@ -385,4 +417,32 @@ function createEmptySourceForType(
   }
 
   return null;
+}
+
+/**
+ * Converts a dry-run response to the TestPythonTransformResponse format
+ * expected by PythonEditorResults component.
+ */
+function convertDryRunToTestResponse(
+  dryRun: WorkspaceTransformDryRunResponse,
+): TestPythonTransformResponse {
+  if (dryRun.status === "failed") {
+    return {
+      error: { message: dryRun.message ?? "Transform failed" },
+      logs: dryRun.logs ?? "",
+    };
+  }
+
+  const cols = (dryRun.data?.cols ?? []).map((col) => ({
+    name: col.name ?? "",
+  }));
+  // Convert rows from array format [[val1, val2], ...] to object format [{col1: val1, col2: val2}, ...]
+  const rows = (dryRun.data?.rows ?? []).map((row) =>
+    Object.fromEntries(cols.map((col, i) => [col.name, row[i]])),
+  );
+
+  return {
+    logs: dryRun.logs ?? "",
+    output: { cols, rows },
+  };
 }

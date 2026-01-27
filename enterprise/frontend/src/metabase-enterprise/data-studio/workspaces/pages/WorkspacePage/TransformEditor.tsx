@@ -17,6 +17,8 @@ type TransformEditorProps = {
   onRejectProposed?: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
+  /** Custom run handler for Python transforms (used for dry-run) */
+  onRun?: () => void;
 };
 
 export function TransformEditor({
@@ -29,6 +31,7 @@ export function TransformEditor({
   onRejectProposed,
   onRunQueryStart,
   onRunTransform,
+  onRun,
 }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
 
@@ -61,6 +64,7 @@ export function TransformEditor({
       rejectProposed={onRejectProposed ?? _.noop}
       onRunQueryStart={onRunQueryStart}
       onRunTransform={onRunTransform}
+      onRun={onRun}
     />
   );
 }

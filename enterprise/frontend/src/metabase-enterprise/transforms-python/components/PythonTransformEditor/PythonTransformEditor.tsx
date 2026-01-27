@@ -30,6 +30,7 @@ export function PythonTransformEditor({
   onAcceptProposed,
   onRejectProposed,
   onRunTransform,
+  onRun,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
@@ -75,7 +76,12 @@ export function PythonTransformEditor({
   };
 
   const handleRun = () => {
-    run();
+    // Use custom onRun handler if provided (workspace dry-run), otherwise use internal test-run
+    if (onRun) {
+      onRun();
+    } else {
+      run();
+    }
   };
 
   // Notify workspace when test-run completes in workspace context
