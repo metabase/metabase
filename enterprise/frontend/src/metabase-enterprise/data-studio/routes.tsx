@@ -23,6 +23,7 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
+import { DependenciesUpsellPage } from "./upsells";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -54,18 +55,25 @@ export function getDataStudioRoutes(
           {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
+        ) : (
+          <Route path="dependencies" component={DependenciesUpsellPage} />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
+        {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
             component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
+        ) : (
+          <Route
+            path="dependency-diagnostics"
+            component={DependenciesUpsellPage}
+          />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>
