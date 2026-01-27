@@ -377,23 +377,25 @@
         :else
         (let [output-manifest (read-output-manifest @shared-storage-ref)
               {:keys [fields]} output-manifest]
-          (if-not (seq fields)
-            {:status  :failed
-             :logs    events
-             :message (i18n/tru "No fields in output metadata")}
-            (with-open [in  (open-output @shared-storage-ref)
-                        rdr (io/reader in)]
-              (let [cols     (mapv (fn [c]
-                                     {:name      (:name c)
-                                      :base_type (some-> c :base_type keyword)})
-                                   fields)
-                    rows     (into []
-                                   (comp
-                                    (remove str/blank?)
-                                    (take row-limit)
-                                    (map json/decode))
-                                   (line-seq rdr))]
-                {:status :succeeded
-                 :cols   cols
-                 :rows   rows
-                 :logs   events}))))))))
+          ;; TODO (Chris 2026-01-27) Disabled this check to match behavior in master, but *real* execution does it.
+          ;;      It seems we added the check as part of DRY-ing up transforms code to reuse with workspaces.
+          (if-not true #_(seq fields)
+                  {:status  :failed
+                   :logs    events
+                   :message (i18n/tru "No fields in output metadata")}
+                  (with-open [in  (open-output @shared-storage-ref)
+                              rdr (io/reader in)]
+                    (let [cols     (mapv (fn [c]
+                                           {:name      (:name c)
+                                            :base_type (some-> c :base_type keyword)})
+                                         fields)
+                          rows     (into []
+                                         (comp
+                                          (remove str/blank?)
+                                          (take row-limit)
+                                          (map json/decode))
+                                         (line-seq rdr))]
+                      {:status :succeeded
+                       :cols   cols
+                       :rows   rows
+                       :logs   events}))))))))
