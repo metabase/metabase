@@ -28,24 +28,17 @@ export const sdkReducers = {
   }),
 } as unknown as Record<string, Reducer>;
 
-// Singleton store instance - reuse the same store across all calls
-let sdkStoreInstance: SdkStore | null = null;
-
-export const getSdkStore = () => {
-  if (!sdkStoreInstance) {
-    sdkStoreInstance = getStore(sdkReducers, null, {
-      embed: {
-        options: {
-          entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
-        },
+export const getSdkStore = () =>
+  getStore(sdkReducers, null, {
+    embed: {
+      options: {
+        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
       },
-      app: {
-        isDndAvailable: false,
-      },
-    }) as unknown as SdkStore;
-  }
-  return sdkStoreInstance;
-};
+    },
+    app: {
+      isDndAvailable: false,
+    },
+  }) as unknown as SdkStore;
 
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
