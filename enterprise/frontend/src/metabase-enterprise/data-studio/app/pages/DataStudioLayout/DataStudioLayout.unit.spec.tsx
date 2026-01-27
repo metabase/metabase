@@ -3,6 +3,23 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
+// Mock useHasTokenFeature to return true for required features
+jest.mock(
+  "metabase/common/hooks/use-has-token-feature/use-has-token-feature",
+  () => ({
+    useHasTokenFeature: (feature: string) => {
+      const enabledFeatures = [
+        "remote_sync",
+        "transforms",
+        "data_studio",
+        "dependencies",
+        "advanced_permissions",
+      ];
+      return enabledFeatures.includes(feature);
+    },
+  }),
+);
+
 import { setup } from "./DataStudioLayout.setup.spec";
 
 describe("DataStudioLayout", () => {
@@ -138,7 +155,7 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transform dirty indicator", () => {
-    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
+    it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
       setup({
         remoteSyncBranch: "main",
         isNavbarOpened: true,
@@ -150,16 +167,16 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      // Should show the dirty indicator badge
-      const transformsTab = screen.getByLabelText("Transforms");
+      // Should show the dirty indicator badge on the Exit tab
+      const exitTab = screen.getByLabelText("Exit");
       await waitFor(() => {
         expect(
-          within(transformsTab).getByTestId("remote-sync-status"),
+          within(exitTab).getByTestId("remote-sync-status"),
         ).toBeInTheDocument();
       });
     });
 
-    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
+    it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
       setup({
         remoteSyncBranch: "main",
         isNavbarOpened: true,
@@ -171,9 +188,9 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const exitTab = screen.getByLabelText("Exit");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
+        within(exitTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
     });
 
@@ -189,9 +206,9 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const exitTab = screen.getByLabelText("Exit");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
+        within(exitTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
     });
   });
