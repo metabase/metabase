@@ -2081,7 +2081,8 @@
 
   enterprise/metabot-v3
   {:team "Metabot"
-   :api  #{metabase-enterprise.metabot-v3.api
+   :api  #{metabase-enterprise.metabot-v3.agent-api.api
+           metabase-enterprise.metabot-v3.api
            metabase-enterprise.metabot-v3.client
            metabase-enterprise.metabot-v3.core
            metabase-enterprise.metabot-v3.init
@@ -2090,6 +2091,7 @@
            api
            app-db
            audit-app
+           auth-identity
            collections
            config
            documents
