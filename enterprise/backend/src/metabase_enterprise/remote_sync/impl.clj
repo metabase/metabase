@@ -58,16 +58,20 @@
                                    [:not-in entity-ids]
                                    :entity_id)
                 ;; :scope-key determines collection scoping - nil means global
-                scope-key (get-in model-spec [:removal :scope-key])]]
+                scope-key (get-in model-spec [:removal :scope-key])
+                ;; Extra conditions to protect certain rows from removal (e.g. built-in TransformTags)
+                extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
-        (t2/delete! model-key
-                    scope-key [:in synced-collection-ids]
-                    :entity_id entity-id-clause))
+        (apply t2/delete! model-key
+               scope-key [:in synced-collection-ids]
+               :entity_id entity-id-clause
+               extra-conditions))
       ;; Global: delete by entity_id only
-      (t2/delete! model-key
-                  :entity_id entity-id-clause))))
+      (apply t2/delete! model-key
+             :entity_id entity-id-clause
+             extra-conditions))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
