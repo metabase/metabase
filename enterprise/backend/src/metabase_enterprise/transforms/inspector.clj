@@ -120,10 +120,12 @@
 (defn- strip-stage-to-joins
   "Strip a stage down to just source-table and joins, removing all other clauses."
   [stage]
-  (-> stage
-      (select-keys [:lib/type :source-table :joins])
-      (update :joins #(when % (mapv strip-join-to-essentials %)))
-      (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]])))
+  (let [base (-> stage
+                 (select-keys [:lib/type :source-table])
+                 (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]]))]
+    (if-let [joins (seq (:joins stage))]
+      (assoc base :joins (mapv strip-join-to-essentials joins))
+      base)))
 
 (defn- make-count-query
   "Transform a pMBQL query into a COUNT(*) query with only FROM and JOINs.
@@ -147,11 +149,13 @@
   (-> query
       (update-in [:stages 0]
                  (fn [stage]
-                   (-> stage
-                       (select-keys [:lib/type :source-table :joins])
-                       (update :joins #(when % (mapv strip-join-to-essentials %)))
-                       (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}
-                                             (fresh-uuid-field-ref field-ref)]]))))))
+                   (let [base (-> stage
+                                  (select-keys [:lib/type :source-table])
+                                  (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}
+                                                        (fresh-uuid-field-ref field-ref)]]))]
+                     (if-let [joins (seq (:joins stage))]
+                       (assoc base :joins (mapv strip-join-to-essentials joins))
+                       base))))))
 
 (defn- run-pmbql-query
   "Execute a pMBQL query and return the first value from the first row."
@@ -194,7 +198,8 @@
                  prev-count base-count
                  results []]
             (if (> step (count all-joins))
-              {:base-row-count base-count
+              {:source-table-id source-table-id
+               :base-row-count base-count
                :joins results}
               (let [current-join (nth all-joins (dec step))
                     strategy (or (:strategy current-join) :left-join)
@@ -471,14 +476,17 @@
      :dataset_query query}))
 
 (defn make-column-comparison-group
-  "Generate a group of cards for comparing input/output distributions for matched columns."
-  [column-match db-id target-table-id target-table-name]
-  (let [{:keys [output-column output-field input-columns]} column-match]
+  "Generate a group of cards for comparing input/output distributions for matched columns.
+   source-table-id is the main FROM table - its cards are sorted first among inputs."
+  [column-match db-id target-table-id target-table-name source-table-id]
+  (let [{:keys [output-column output-field input-columns]} column-match
+        ;; Sort input-columns so source table comes first
+        sorted-inputs (sort-by #(if (= (:table-id %) source-table-id) 0 1) input-columns)]
     {:id (str output-column "-comparison")
      :output-column output-column
      :cards (concat
-             ;; Input cards (may be multiple)
-             (for [{:keys [table-id table-name field]} input-columns
+             ;; Input cards (may be multiple), sorted with source table first
+             (for [{:keys [table-id table-name field]} sorted-inputs
                    :when (:id field)]
                (make-distribution-card db-id table-id table-name (:id field) (:name field) :input))
              ;; Output card (one)
@@ -506,12 +514,16 @@
   "Generic inspection of input tables vs output table.
    Does not require a transform definition - works with any table IDs.
    Useful for inspecting transform subgraphs or arbitrary table comparisons.
-   Optional joins param enables smarter column matching using join aliases."
+   Optional joins param enables smarter column matching using join aliases.
+   Optional source-table-id specifies the main FROM table for sorting column cards."
   ([input-table-ids output-table-id]
-   (inspect-tables input-table-ids output-table-id nil))
+   (inspect-tables input-table-ids output-table-id nil nil))
+  ([input-table-ids output-table-id joins]
+   (inspect-tables input-table-ids output-table-id joins nil))
   ([input-table-ids :- [:sequential pos-int?]
     output-table-id :- pos-int?
-    joins :- [:maybe [:sequential :map]]]
+    joins :- [:maybe [:sequential :map]]
+    source-table-id :- [:maybe pos-int?]]
    (let [output-table (t2/select-one :model/Table :id output-table-id)
          db-id (:db_id output-table)
 
@@ -522,8 +534,11 @@
          ;; Column matching using join alias info when available
          column-matches (match-columns source-stats target-stats joins)
 
-         ;; Generate comparison cards
-         column-groups (mapv #(make-column-comparison-group % db-id output-table-id (:table-name target-stats))
+         ;; Use provided source-table-id, or fall back to first input
+         source-table-id (or source-table-id (first input-table-ids))
+
+         ;; Generate comparison cards, with source table inputs sorted first
+         column-groups (mapv #(make-column-comparison-group % db-id output-table-id (:table-name target-stats) source-table-id)
                              column-matches)
 
          ;; Summary
@@ -568,8 +583,10 @@
                              nil)))
             ;; Extract just the joins seq for column matching
             joins-seq (:joins join-stats)
+            ;; Get the actual source table ID from the query (the FROM table)
+            query-source-table-id (:source-table-id join-stats)
             ;; Pass joins to inspect-tables for alias-aware column matching
-            base-result (inspect-tables input-ids (:id target-table) joins-seq)]
+            base-result (inspect-tables input-ids (:id target-table) joins-seq query-source-table-id)]
 
         (cond-> (assoc base-result
                         :name (str "Transform Inspector: " (:name transform))
