@@ -24,19 +24,20 @@
 
 ;;; -------------------------------------------------- Source Extraction ---------------------------------------------------
 
+;; TODO: this is likely duplicated
+
 (defmulti extract-sources
   "Extract source table information for a transform.
    Returns a seq of maps with :table-id, :table-name, :schema, and :db-id."
   (fn [transform] (transforms.util/transform-source-type (:source transform))))
 
 (defmethod extract-sources :mbql
-  [{:keys [source] :as transform}]
+  [{:keys [source]}]
   (try
     (let [query (-> (:query source)
                     transforms.util/massage-sql-query
                     qp.preprocess/preprocess)
-          table-ids (lib/all-source-table-ids query)
-          db-id (transforms.util/transform-source-database transform)]
+          table-ids (lib/all-source-table-ids query)]
       (when (seq table-ids)
         (let [tables (t2/select :model/Table :id [:in table-ids])]
           (mapv (fn [table]
@@ -72,7 +73,7 @@
       nil)))
 
 (defmethod extract-sources :python
-  [{:keys [source] :as transform}]
+  [transform]
   (try
     (let [source-tables (get-in transform [:source :source-tables])
           normalized (transforms.util/normalize-source-tables source-tables)]
