@@ -14,6 +14,7 @@ import { PageContainer } from "metabase-enterprise/data-studio/common/components
 import { TransformHeader } from "../../components/TransformHeader";
 
 import {
+  FieldStatistics,
   InspectColumnComparisons,
   InspectJoins,
   InspectSummary,
@@ -90,6 +91,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
             />
           )}
       </Stack>
+      <FieldStatistics />
     </PageContainer>
   );
 };
