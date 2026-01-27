@@ -147,7 +147,7 @@ function generateAlphaStops(
 export function generateLightnessStops(color: string): GeneratedColorStops {
   const background = new BackgroundColor({
     name: "background",
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     colorKeys: ["#FFF"],
     ratios: RATIOS,
     smooth: false,
@@ -204,10 +204,19 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
   const detectedIndex = INDEX_TO_STOP.indexOf(detectedStep);
   const colorAtDetectedStep = contrastColorValues[detectedIndex].value;
 
+  // Get the contrasting base color from the opposite end of the spectrum
+  // If input is dark (step >= 50), use the lightest color (step 5)
+  // If input is light (step < 50), use the darkest color (step 110)
+  const contrastingBaseColor =
+    detectedStep >= 50
+      ? contrastColorValues[0].value // lightest (step 5)
+      : contrastColorValues[11].value; // darkest (step 110)
+
   return {
     solid,
     alpha: generateAlphaStops(colorAtDetectedStep, false),
     alphaInverse: generateAlphaStops(colorAtDetectedStep, true),
+    contrastingAlpha: generateAlphaStops(contrastingBaseColor, false),
     detectedStep,
   };
 }

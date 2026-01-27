@@ -45,6 +45,13 @@ export interface GeneratedColorStops {
   /** Inverse alpha stops (high alpha at light steps, low at dark) */
   alphaInverse: AlphaColorStops;
 
+  /**
+   * Alpha stops from a contrasting base color.
+   * If input is dark, uses white. If input is light, uses dark.
+   * Used for inverse text colors.
+   */
+  contrastingAlpha: AlphaColorStops;
+
   /** The detected lightness step of the original color (5-110) */
   detectedStep: LightnessStop;
 }

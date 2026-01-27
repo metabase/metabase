@@ -10,7 +10,7 @@ import type { BrandDerivationRule } from "../types/lightness-stops";
 export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
   // background-primary is defined by the user.
   "background-secondary": 1,
-  "background-tertiary": 2,
+  "background-tertiary": -2,
   "background-primary-inverse": -8,
   "background-secondary-inverse": -7,
   "background-tertiary-inverse": -4,
@@ -21,9 +21,9 @@ export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
 /**
  * Text color derivations from text-primary.
  *
- * The number represents the alpha step. The sign indicates direction:
- * - Positive N: light theme uses alpha[N], dark theme uses alphaInverse[N]
- * - Negative -N: light theme uses alphaInverse[N], dark theme uses alpha[N]
+ * The number represents the alpha step. The sign indicates source:
+ * - Positive N: uses alpha[N] from text-primary (for regular text)
+ * - Negative -N: uses contrastingAlpha[N] (for inverse text)
  */
 export const TEXT_DERIVATIONS: Record<MetabaseColorKey, number> = {
   // text-primary is defined by the user.

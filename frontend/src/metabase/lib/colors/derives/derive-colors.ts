@@ -70,15 +70,14 @@ export function deriveColorsFromInputs(
         continue;
       }
 
-      // Positive: light uses alpha, dark uses alphaInverse
-      // Negative: light uses alphaInverse, dark uses alpha
+      // Positive: uses alpha from text-primary (for regular text colors)
+      // Negative: uses contrastingAlpha (for inverse text colors)
       const step = Math.abs(alphaStep) as keyof typeof textStops.alpha;
+      const useContrastingAlpha = alphaStep < 0;
 
-      const useAlpha = isLightTheme ? alphaStep > 0 : alphaStep < 0;
-
-      const color = useAlpha
-        ? (textStops.alpha[step] ?? textStops.solid[step])
-        : (textStops.alphaInverse[step] ?? textStops.solid[step]);
+      const color = useContrastingAlpha
+        ? (textStops.contrastingAlpha[step] ?? textStops.solid[step])
+        : (textStops.alpha[step] ?? textStops.solid[step]);
 
       derived[key as MetabaseColorKey] = color;
     }
