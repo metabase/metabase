@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   Card,
   Code,
+  Flex,
   Icon,
   type IconName,
   Stack,
@@ -134,17 +135,23 @@ function getEntryPercentageCell(row: JoinRow): string | null {
     .otherwise(() => null);
 }
 
-function getFilledRowsCell(row: JoinRow): string | null {
+function getFilledRowsCell(row: JoinRow): string | null | React.ReactNode {
   const { stats, strategy } = row;
   return match(strategy)
     .with(
       P.union("left-join", "right-join"),
       () => stats?.matched_count?.toLocaleString() ?? "-",
     )
+    .with(P.union("inner-join"), () => (
+      <Flex flex="row" gap="xs" align="center">
+        {stats?.output_row_count} ({stats?.left_row_count?.toLocaleString()} /
+        {stats?.right_row_count?.toLocaleString()})
+      </Flex>
+    ))
     .with(
-      P.union("inner-join", "full-join"),
+      "full-join",
       () =>
-        `${stats?.left_row_count?.toLocaleString()} / ${stats?.right_row_count?.toLocaleString()}`,
+        `${stats?.output_row_count} (${stats?.left_row_count} / ${stats?.right_row_count?.toLocaleString()}) ⤴ ${stats?.expansion_factor}`,
     )
     .otherwise(() => null);
 }
