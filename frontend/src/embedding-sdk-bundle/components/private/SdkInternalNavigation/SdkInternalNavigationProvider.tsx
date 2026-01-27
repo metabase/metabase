@@ -155,6 +155,7 @@ export const SdkInternalNavigationProvider = ({
           questionPath={currentEntry.questionPath}
           onNavigateBack={pop}
           navigateToNewCard={navigateToNewCard}
+          isSaveEnabled={false}
         />
       </div>
     ))
