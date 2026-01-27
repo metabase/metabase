@@ -24,7 +24,7 @@
 
 (mr/def ::test-column-spec
   [:map
-   [:name {:optional true} [:maybe string?]]])
+   [:name  string?]])
 
 (mr/def ::test-temporal-bucket-spec
   [:map
