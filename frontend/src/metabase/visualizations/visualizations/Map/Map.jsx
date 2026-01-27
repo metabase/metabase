@@ -28,11 +28,12 @@ import {
   isState,
 } from "metabase-lib/v1/types/utils/isa";
 
-import ChoroplethMap, {
+import {
+  ChoroplethMap,
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
-import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
-import PinMap from "../../components/PinMap";
+import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
+import { PinMap } from "../../components/PinMap";
 
 import { CustomMapFooter } from "./CustomMapFooter";
 

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
+import { Box } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
-
-import { ButtonContainer } from "./ChartSettingsErrorButton.styled";
 
 interface ChartSettingsErrorButtonProps {
   message: ReactNode;
@@ -19,11 +18,11 @@ function ChartSettingsErrorButton({
   return (
     <div>
       <div>{message}</div>
-      <ButtonContainer>
+      <Box mt="md">
         <Button primary medium onClick={onClick}>
           {buttonLabel}
         </Button>
-      </ButtonContainer>
+      </Box>
     </div>
   );
 }

@@ -70,6 +70,31 @@ jobs:
               core.setFailed(error.message);
             }
 
+      - name: Find linked Linear issue
+        id: find_linear
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+        with:
+          script: |
+            const { findLinearIssue } = require('${{ github.workspace }}/.github/scripts/find-linear-issue.js');
+
+            const githubIssueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+
+            const result = await findLinearIssue({
+              githubIssueUrl,
+              linearApiKey: process.env.LINEAR_API_KEY
+            });
+
+            if (result.success) {
+              console.log(`Found Linear issue: ${result.issue}`);
+              core.setOutput('linear_issue', result.issue);
+            } else {
+              console.log(`Could not find Linear issue: ${result.message}`);
+            }
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
@@ -259,6 +284,7 @@ jobs:
             core.setOutput('reviewers', issueCreator);
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -278,6 +304,8 @@ jobs:
           title: "Fix: ${{ env.ISSUE_TITLE }}"
           body: |
             This PR automatically fixes the bug reported in #${{ env.ISSUE_NUMBER }}.
+
+            ${{ steps.find_linear.outputs.linear_issue && format('Closes {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             ## Bug Report
             **Original Issue:** #${{ env.ISSUE_NUMBER }}
@@ -299,7 +327,6 @@ jobs:
             - If issues are found, either fix them or close this PR
 
             ---
-            Closes #${{ env.ISSUE_NUMBER }}
 
             🤖 Generated with [Claude Code](https://claude.ai/code)
 
@@ -309,6 +336,7 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+          assignees: ${{ github.actor }}
 
       - name: Log existing branch update
         if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'

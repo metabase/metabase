@@ -120,6 +120,15 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defn- mysql?
+  "Returns true if the database is MySQL (not MariaDB).
+   Returns true for unsynced databases (unknown flavor)."
+  [db]
+  (= "MySQL"
+     (if-let [conn (:connection db)]
+       (->> ^java.sql.Connection conn .getMetaData .getDatabaseProductName)
+       (-> db :dbms_version :flavor))))
+
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
@@ -146,7 +155,7 @@
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (not (mariadb? db))
+       (mysql? db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e

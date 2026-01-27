@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   Sidesheet,
   SidesheetCard,

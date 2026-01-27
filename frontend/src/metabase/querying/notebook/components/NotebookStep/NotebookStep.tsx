@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ExpandingContent from "metabase/common/components/ExpandingContent";
+import { ExpandingContent } from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";

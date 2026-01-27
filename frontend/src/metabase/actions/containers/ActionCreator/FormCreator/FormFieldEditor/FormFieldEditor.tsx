@@ -7,8 +7,8 @@ import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFie
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-import CheckBox from "metabase/common/components/CheckBox";
-import Radio from "metabase/common/components/Radio";
+import { CheckBox } from "metabase/common/components/CheckBox";
+import { Radio } from "metabase/common/components/Radio";
 import { isNotNull } from "metabase/lib/types";
 import type {
   FieldSettings,

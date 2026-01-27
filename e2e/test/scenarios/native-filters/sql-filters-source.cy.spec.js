@@ -86,7 +86,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
@@ -513,9 +513,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesCombobox().type("Custom Label");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -538,9 +538,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesCombobox().type("Custom Label");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -563,9 +563,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesCombobox().type("Custom Label");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Custom Label").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -730,7 +730,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
       H.popover().button("Add filter").click();
 
@@ -758,7 +758,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
       H.popover().button("Add filter").click();
 
@@ -785,7 +785,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
       H.popover().button("Add filter").click();
 
@@ -814,7 +814,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       H.dashboardParametersPopover().within(() => {
         H.multiAutocompleteInput().type("Tw");
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
 
       H.multiAutocompleteValue(0)
@@ -843,7 +843,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       FieldFilter.openEntryForm();
 
       H.multiAutocompleteInput().type("Tw");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
       H.multiAutocompleteValue(0)
         .should("be.visible")
@@ -1079,7 +1079,7 @@ const updateQuestion = () => {
 };
 
 const checkFilterValueInList = (value) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -1088,7 +1088,7 @@ const checkFilterValueInList = (value) => {
 };
 
 const checkFilterValueNotInList = (value) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {

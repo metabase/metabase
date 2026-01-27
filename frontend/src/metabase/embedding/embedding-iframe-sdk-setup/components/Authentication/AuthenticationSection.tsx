@@ -62,7 +62,7 @@ export const AuthenticationSection = () => {
             <Radio
               value="sso"
               label={
-                // eslint-disable-next-line no-literal-metabase-strings -- Public Facing string
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
                 t`Metabase account (SSO)`
               }
               disabled={!isSimpleEmbedFeatureAvailable}

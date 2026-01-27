@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";

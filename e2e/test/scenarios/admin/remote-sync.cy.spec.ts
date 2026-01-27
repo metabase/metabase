@@ -26,7 +26,7 @@ describe("Remote Sync", () => {
 
   describe("read-write Mode", () => {
     it("can push and pull changes", () => {
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
       H.wrapSyncedCollection();
       const UPDATED_REMOTE_QUESTION_NAME = "Updated Question Name";
 
@@ -92,7 +92,7 @@ describe("Remote Sync", () => {
     });
 
     it("should not allow you to move content to the Synced Collection that references non Synced Collection items", () => {
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
       H.wrapSyncedCollection();
       cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
         "updateDashboard",
@@ -135,7 +135,7 @@ describe("Remote Sync", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
       H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
@@ -236,7 +236,7 @@ describe("Remote Sync", () => {
       };
 
       it("should allow you to create new branches and switch between them", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         H.wrapSyncedCollection();
 
         const NEW_BRANCH_1 = `new-branch-${Date.now()}`;
@@ -282,7 +282,7 @@ describe("Remote Sync", () => {
       });
 
       it("should show a popup when trying to switch branches with unsynced changes", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         const NEW_BRANCH = `new-branch-${Date.now()}`;
 
@@ -333,7 +333,7 @@ describe("Remote Sync", () => {
       beforeEach(() => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
@@ -439,19 +439,11 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.waitForTask({ taskName: "import" });
       H.modal().should("not.exist");
       cy.findByTestId("exit-admin").click();
 
-      // Branch picker is now in the app bar
+      // Branch picker should appear in the app bar (doesn't require import)
       H.getGitSyncControls().should("contain.text", "main");
-
-      // Synced collection appears in regular collections list (no separate heading)
-      H.navigationSidebar().within(() => {
-        cy.findByRole("treeitem", { name: /Synced Collection/i }).should(
-          "exist",
-        );
-      });
     });
 
     it("can set up read-only mode", () => {
@@ -540,7 +532,7 @@ describe("Remote Sync", () => {
     it("can deactivate remote sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-write");
+      H.configureGitAndPullChanges("read-write");
 
       cy.visit("/admin/settings/remote-sync");
 
@@ -642,7 +634,7 @@ describe("Remote Sync", () => {
     describe("admin settings", () => {
       it("should show shared tenant collections section when tenants are enabled and remote sync is configured", () => {
         // First set up remote sync
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create some tenant collections
         H.createSharedTenantCollection("Tenant A Shared");
@@ -670,7 +662,7 @@ describe("Remote Sync", () => {
         // Disable tenants
         cy.request("PUT", "/api/setting/use-tenants", { value: false });
 
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         // Shared collections sub-section should NOT be visible
@@ -689,7 +681,7 @@ describe("Remote Sync", () => {
       });
 
       it("should show empty state when no shared tenant collections exist", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -699,7 +691,7 @@ describe("Remote Sync", () => {
       });
 
       it("can toggle sync for a shared tenant collection", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Tenant Collection To Sync");
@@ -739,7 +731,7 @@ describe("Remote Sync", () => {
       it("should reset collection toggles when switching from read-write to read-nly", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Mode Switch Test Collection");
@@ -770,7 +762,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("can push changes from a synced tenant collection", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Syncable Tenant Collection").then(
@@ -818,7 +810,7 @@ describe("Remote Sync", () => {
       });
 
       it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGit("read-write");
+        H.configureGitAndPullChanges("read-write");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Badge Test Collection").then(

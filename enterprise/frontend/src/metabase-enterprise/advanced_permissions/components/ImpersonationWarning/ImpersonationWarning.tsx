@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { BoldCode } from "metabase/common/components/Code";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { isEmpty } from "metabase/lib/validate";
@@ -19,10 +19,10 @@ export const ImpersonationWarning = ({
   const databaseUser = database.details && database.details.user;
   const isRedshift = database.engine === "redshift";
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const emptyText = t`Make sure the main database credential has access to everything different user groups may need access to. It's what Metabase uses to sync table information.`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const redshiftWarning = jt`You’re connecting Metabase to the ${(
     <BoldCode key="2" size="13px">
       {database.name}
@@ -37,7 +37,7 @@ export const ImpersonationWarning = ({
     </BoldCode>
   )} must be a superuser in Redshift.`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const regularWarning = jt`${(
     <BoldCode key="1" size="13px">
       {databaseUser}
