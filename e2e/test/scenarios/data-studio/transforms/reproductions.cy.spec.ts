@@ -1,3 +1,4 @@
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue #68378", () => {
