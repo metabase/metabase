@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
@@ -10,7 +10,7 @@ import { PLUGIN_DATA_STUDIO, PLUGIN_MODERATION } from "metabase/plugins";
 // import { trackSearchClick } from "metabase/search/analytics";
 import { Box, Flex, Icon, NavLink, SegmentedControl, Text } from "metabase/ui";
 
-import type { OmniPickerItem, OmniPickerTableItem } from "../..";
+import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -226,7 +226,7 @@ export function SearchScopeSelector() {
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
         value={searchScope ? String(searchScope) : "all"}
-        onChange={setSearchScope}
+        onChange={(newValue) => setSearchScope(newValue as SearchScope)}
         data={options}
       />
     </Flex>
