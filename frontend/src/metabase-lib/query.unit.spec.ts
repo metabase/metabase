@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   DEFAULT_QUERY,
@@ -55,11 +55,26 @@ describe("queryFromSpec", () => {
         {
           source: {
             type: "table",
-            id: ORDERS_ID,
+            id: PRODUCTS_ID,
           },
         },
       ],
     });
-    expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
+    expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+  });
+
+  it("should create a query with order bys", () => {
+    const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: PRODUCTS_ID,
+          },
+          orderBys: [{ name: "CATEGORY" }],
+        },
+      ],
+    });
+    expect(Lib.orderBys(query, 0)).toHaveLength(1);
   });
 });
