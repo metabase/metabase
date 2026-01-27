@@ -8,7 +8,7 @@ import {
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,
@@ -116,12 +116,7 @@ function EmbeddingSettingsEE() {
 }
 
 function EmbeddingSettingsOSS() {
-  return (
-    <SharedCombinedEmbeddingSettings
-      showCorsSettings
-      showContentTranslationSettings
-    />
-  );
+  return <SharedCombinedEmbeddingSettings showContentTranslationSettings />;
 }
 
 export const EmbeddingSettings = () => {

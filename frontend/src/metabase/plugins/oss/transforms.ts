@@ -46,6 +46,7 @@ export type PythonTransformEditorUiOptions = {
   canChangeDatabase?: boolean;
   readOnly?: boolean;
   hidePreview?: boolean;
+  hideRunButton?: boolean;
 };
 
 export type PythonTransformEditorProps = {
@@ -85,7 +86,7 @@ export type PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  getDataStudioTasksRoutes: () => ReactNode;
+  getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -176,7 +177,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  getDataStudioTasksRoutes: () => null,
+  getDataStudioDependencyDiagnosticsRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

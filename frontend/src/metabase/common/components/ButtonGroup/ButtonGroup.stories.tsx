@@ -1,8 +1,8 @@
 import type { StoryFn } from "@storybook/react";
 
-import Button from "../Button";
+import { Button } from "../Button";
 
-import ButtonGroup from "./ButtonGroup";
+import { ButtonGroup } from "./ButtonGroup";
 
 export default {
   title: "Deprecated/Components/ButtonGroup",

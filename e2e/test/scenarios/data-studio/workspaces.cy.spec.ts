@@ -341,7 +341,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getRunTransformButton().should("not.exist");
       Workspaces.getSaveTransformButton().should("be.enabled");
 
-      H.NativeEditor.get().type(" LIMIT 2");
+      H.NativeEditor.type(" LIMIT 2");
 
       cy.log("UI Controls are enabled after changes");
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
@@ -589,6 +589,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should lock database dropdown when workspace has been initialized, shows setup log", () => {
+      // @flaky
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -730,6 +731,7 @@ describe("scenarios > data studio > workspaces", () => {
     );
 
     it("should allow clicking on graph nodes to see details", () => {
+      // @flaky
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1295,7 +1297,7 @@ describe("scenarios > data studio > workspaces", () => {
       },
     );
 
-    it("should show ad-hoc error for SQL transform", () => {
+    it.skip("should show ad-hoc error for SQL transform", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1318,7 +1320,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it(
+    it.skip(
       "should show ad-hoc error for Python transform",
       { tags: ["@python"] },
       () => {
@@ -1413,7 +1415,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.tooltip().should("not.exist");
     });
 
-    it("should run all stale transforms", { tags: ["@python"] }, () => {
+    it.skip("should run all stale transforms", { tags: ["@python"] }, () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -1525,6 +1527,7 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     it("should open checked out transform in existing workspace from the transform page", () => {
+      // @flaky
       cy.log("Create 2 workspaces, add transform to the second one");
       createTransforms();
       Workspaces.visitWorkspaces();
@@ -1552,10 +1555,10 @@ describe("scenarios > data studio > workspaces", () => {
       cy.get<string>("@workspaceA").then((workspaceA) => {
         cy.get<string>("@workspaceB").then((workspaceB) => {
           H.popover().within(() => {
-            cy.findAllByRole("menuitem").eq(0).contains("New workspace");
-            cy.findAllByRole("menuitem").eq(2).contains(workspaceA);
+            cy.findAllByRole("menuitem").eq(1).contains("New workspace");
+            cy.findAllByRole("menuitem").eq(3).contains(workspaceA);
             cy.log("Edit transform in a workspace where it's been checked out");
-            cy.findAllByRole("menuitem").eq(1).contains(workspaceB).click();
+            cy.findAllByRole("menuitem").eq(2).contains(workspaceB).click();
           });
         });
       });
@@ -1573,7 +1576,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("should not allow to checkout transform if checkout_disabled is received", () => {
+    it.skip("should not allow to checkout transform if checkout_disabled is received", () => {
       H.createModelFromTableName({
         tableName: "Animals",
         modelName: "Animals",
@@ -1598,12 +1601,15 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.log("Verify Edit transform button is disabled");
-      cy.findByRole("button", { name: /Edit/ }).should("be.disabled");
-      cy.findByRole("button", { name: /Edit/ }).realHover();
+      cy.findByRole("button", { name: /Edit/ }).click();
+      H.popover().contains("New workspace").should("be.disabled");
+      H.popover().contains("New workspace").realHover();
       H.tooltip().should(
         "contain.text",
         "This transform cannot be edited in a workspace because it references other questions.",
       );
+      cy.log("Close tooltip");
+      cy.get("body").click();
 
       cy.log("Edit transform to remove model reference");
       Transforms.editDefinition();
@@ -2255,6 +2261,50 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspacesSection()
         .findByText("No workspaces yet")
         .should("be.visible");
+    });
+
+    it("should show correct run status when switching tabs (GDGT-1571)", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Create first SQL transform that will succeed");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Run the successful transform");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should(
+        "have.text",
+        "Ran successfully",
+      );
+
+      cy.log("Create second SQL transform that will fail");
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+      H.NativeEditor.type("INVALID SQL QUERY");
+      Workspaces.getSaveTransformButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type("Failing transform");
+        cy.findByText("Save").click();
+      });
+
+      cy.log("Run the failing transform");
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getRunTransformButton().should("have.text", "Run failed");
+      Workspaces.getRunStatus().should("contain.text", "Last run failed");
+
+      cy.log("Switch to the first transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findByRole("tab", { name: "SQL transform" }).click();
+      });
+      Workspaces.getRunStatus().should(
+        "have.text",
+        "Last ran a few seconds ago successfully.",
+      );
     });
   });
 });

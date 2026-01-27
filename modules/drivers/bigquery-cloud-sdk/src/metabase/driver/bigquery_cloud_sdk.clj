@@ -1059,7 +1059,7 @@
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
-              macaw/parsed-query
+              (driver.u/parsed-query driver)
               macaw/query->components
               :tables))))
 

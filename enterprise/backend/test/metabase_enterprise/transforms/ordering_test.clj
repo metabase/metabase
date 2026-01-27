@@ -11,12 +11,13 @@
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
-(defn- default-schema* []
-  (and driver/*driver* (driver.sql/default-schema driver/*driver*)) "public")
+(defn- default-schema-or-public [& [fallback-driver]]
+  (let [driver (or driver/*driver* fallback-driver)]
+    (or (and driver (driver.sql/default-schema driver)) "public")))
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        schema (or schema (default-schema*))]
+        schema (or schema (default-schema-or-public))]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
@@ -24,44 +25,43 @@
               :name name
               :type :table}}))
 
-;; TODO (Chris 2026/01/22) Remove this boilerplate from existing tests (deferred to avoid git bloodbath)
-(use-fixtures :once (fn [thunk] (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table) (thunk))))
+(use-fixtures :once (fn [thunk]
+                      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+                        (thunk))))
 
 (deftest basic-ordering-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type "query",
-                                               :query {:source-table (mt/id :orders)}})]
-      (is (= {t1 #{}}
-             (ordering/transform-ordering (t2/select :model/Transform :id t1)))))))
+  (mt/with-temp [:model/Transform {t1 :id} (make-transform
+                                            {:database (mt/id),
+                                             :type     "query",
+                                             :query    {:source-table (mt/id :orders)}})]
+    (is (= {t1 #{}}
+           (ordering/transform-ordering (t2/select :model/Transform :id t1))))))
 
 (deftest dependency-ordering-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-temp [:model/Table {table :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                             :name "orders_2"}
-                   :model/Field _ {:table_id table
-                                   :name "foo"}
-                   :model/Transform {parent :id} (make-transform
-                                                  {:database (mt/id),
-                                                   :type "query",
-                                                   :query {:source-table (mt/id :orders)}}
-                                                  "orders_2")
-                   :model/Transform {child :id} (make-transform
-                                                 {:database (mt/id)
-                                                  :type "query"
-                                                  :query {:source-table table}}
-                                                 "orders_3")]
-      (is (= {parent #{}
-              child #{parent}}
-             (ordering/transform-ordering (t2/select :model/Transform :id [:in [parent child]])))))))
+  (mt/with-temp [:model/Table {table :id} {:schema (default-schema-or-public)
+                                           :name   "orders_2"}
+                 :model/Field _ {:table_id table
+                                 :name     "foo"}
+                 :model/Transform {parent :id} (make-transform
+                                                {:database (mt/id),
+                                                 :type     "query",
+                                                 :query    {:source-table (mt/id :orders)}}
+                                                "orders_2")
+                 :model/Transform {child :id} (make-transform
+                                               {:database (mt/id)
+                                                :type     "query"
+                                                :query    {:source-table table}}
+                                               "orders_3")]
+    (is (= {parent #{}
+            child  #{parent}}
+           (ordering/transform-ordering (t2/select :model/Transform :id [:in [parent child]]))))))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
     (#'transforms.i/table-dependencies transform)))
 
 (deftest not-run-transform-dependency-ordering-test
-  (mt/test-driver :postgres
+  (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
     (testing "dependencies are correctly identified when no transforms have been run yet"
       (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                                 {:database (mt/id),
@@ -128,31 +128,31 @@
             (t2/delete! :model/Table :name "checkins_transform")))))))
 
 (deftest bigquery-native-transform-dependency-ordering-test
-  (mt/test-driver :bigquery-cloud-sdk
+  (mt/test-driver :biquery-cloud-sdk
     (let [[dataset] (sql.tx/qualified-name-components :bigquery-cloud-sdk nil)]
       (testing "dependencies are correctly identified when some transform have been run and some haven't"
         (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                                   {:database (mt/id),
-                                                   :type :native,
-                                                   :native {:query (format "SELECT * FROM `%s.checkins` LIMIT 100" dataset)}}
+                                                   :type     :native,
+                                                   :native   {:query (format "SELECT * FROM `%s.checkins` LIMIT 100" dataset)}}
                                                   "checkins_transform" dataset)
                        :model/Table {table1 :id} {:schema dataset
-                                                  :name "checkins_transform"}
+                                                  :name   "checkins_transform"}
                        :model/Transform {t2 :id} (make-transform
                                                   {:database (mt/id),
-                                                   :type :native,
-                                                   :native {:query (format "SELECT * FROM `%s.venues` LIMIT 100" dataset)}}
+                                                   :type     :native,
+                                                   :native   {:query (format "SELECT * FROM `%s.venues` LIMIT 100" dataset)}}
                                                   "venues_transform" dataset)
                        :model/Transform {t3 :id} (make-transform
                                                   {:database (mt/id),
-                                                   :type :native,
-                                                   :native {:query (format "SELECT * FROM `%s.venues_transform` vt
+                                                   :type     :native,
+                                                   :native   {:query (format "SELECT * FROM `%s.venues_transform` vt
                                                                             LEFT JOIN `%s.checkins_transform` ct
                                                                             ON vt.id = ct.venue_id
                                                                             LIMIT 100" dataset dataset)}}
                                                   "venues_transform_2" dataset)]
           (is (= #{{:table table1} {:transform t2}}
-                 (transform-deps-for-db (t2/select-one :model/Transform  t3))))
+                 (transform-deps-for-db (t2/select-one :model/Transform t3))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -223,16 +223,15 @@
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest native-dependencies-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                              {:database (mt/id),
-                                               :type :native
-                                               :native (qp.compile/compile
+  (mt/with-temp [:model/Transform {t1 :id} (make-transform
+                                            {:database (mt/id),
+                                             :type     :native
+                                             :native   (qp.compile/compile
                                                         {:database (mt/id),
-                                                         :type "query",
-                                                         :query {:source-table (mt/id :orders)}})})]
-      (is (= #{{:table (mt/id :orders)}}
-             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
+                                                         :type     "query",
+                                                         :query    {:source-table (mt/id :orders)}})})]
+    (is (= #{{:table (mt/id :orders)}}
+           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest native-card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
@@ -294,78 +293,75 @@
                    (ordering/find-cycle test-graph)))))
 
 (deftest get-transform-cycle-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (testing "cycle is detected in transform referencing itself"
-      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_1"}
-                     :model/Field _ {:table_id table1
-                                     :name "foo"}
-                     :model/Transform {t1 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table1}}
-                                                "table_1")]
-        (is (= {:cycle-str "transform_table_1"
-                :cycle [t1]}
-               (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
-    (testing "cycle is caught in 2 transforms referencing each other"
-      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_1"}
-                     :model/Field _ {:table_id table1
-                                     :name "foo"}
-                     :model/Table {table2 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_2"}
-                     :model/Field _ {:table_id table2
-                                     :name "foo"}
-                     :model/Transform {t1 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table1}}
-                                                "table_2")
-                     :model/Transform {t2 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table2}}
-                                                "table_1")]
-        (is (= {:cycle-str "transform_table_2 -> transform_table_1",
-                :cycle [t1 t2]}
-               (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
-    (testing "cycle is detected in 3 transforms referencing each other"
-      (mt/with-temp [:model/Table {table1 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_1"}
-                     :model/Field _ {:table_id table1
-                                     :name "foo"}
-                     :model/Table {table2 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_2"}
-                     :model/Field _ {:table_id table2
-                                     :name "foo"}
-                     :model/Table {table3 :id} {:schema (driver.sql/default-schema driver/*driver*)
-                                                :name "table_3"}
-                     :model/Field _ {:table_id table3
-                                     :name "foo"}
-                     :model/Transform {t1 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table1}}
-                                                "table_2")
-                     :model/Transform {t2 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table2}}
-                                                "table_3")
-                     :model/Transform {t3 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type "query",
-                                                 :query {:source-table table3}}
-                                                "table_1")]
-        (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
-                :cycle [t1 t3 t2]}
-               (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))))
+  (testing "cycle is detected in transform referencing itself"
+    (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public)
+                                              :name   "table_1"}
+                   :model/Field _ {:table_id table1
+                                   :name     "foo"}
+                   :model/Transform {t1 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table1}}
+                                              "table_1")]
+      (is (= {:cycle-str "transform_table_1"
+              :cycle     [t1]}
+             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
+  (testing "cycle is caught in 2 transforms referencing each other"
+    (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public), :name "table_1"}
+                   :model/Field _ {:table_id table1
+                                   :name     "foo"}
+                   :model/Table {table2 :id} {:schema (default-schema-or-public), :name "table_2"}
+                   :model/Field _ {:table_id table2
+                                   :name     "foo"}
+                   :model/Transform {t1 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table1}}
+                                              "table_2")
+                   :model/Transform {t2 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table2}}
+                                              "table_1")]
+      (is (= {:cycle-str "transform_table_2 -> transform_table_1",
+              :cycle     [t1 t2]}
+             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))
+  (testing "cycle is detected in 3 transforms referencing each other"
+    (mt/with-temp [:model/Table {table1 :id} {:schema (default-schema-or-public)
+                                              :name   "table_1"}
+                   :model/Field _ {:table_id table1
+                                   :name     "foo"}
+                   :model/Table {table2 :id} {:schema (default-schema-or-public)
+                                              :name   "table_2"}
+                   :model/Field _ {:table_id table2
+                                   :name     "foo"}
+                   :model/Table {table3 :id} {:schema (default-schema-or-public)
+                                              :name   "table_3"}
+                   :model/Field _ {:table_id table3
+                                   :name     "foo"}
+                   :model/Transform {t1 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table1}}
+                                              "table_2")
+                   :model/Transform {t2 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table2}}
+                                              "table_3")
+                   :model/Transform {t3 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type     "query",
+                                               :query    {:source-table table3}}
+                                              "table_1")]
+      (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
+              :cycle     [t1 t3 t2]}
+             (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
 
 (defn- make-python-transform
   "Create a python transform definition with the given source-tables and target name."
   [source-tables target-name & [target-schema]]
-  (let [schema (or target-schema (driver.sql/default-schema (or driver/*driver* (:engine (mt/db)))))]
+  (let [schema (or target-schema (default-schema-or-public (:engine (mt/db))))]
     {:source {:type "python"
               :source-database (mt/id)
               :source-tables source-tables
@@ -378,7 +374,7 @@
 
 (deftest python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
-    (let [default-schema (default-schema*)]
+    (let [default-schema (default-schema-or-public)]
       (mt/with-temp [;; Transform A produces table "intermediate_output"
                      :model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
@@ -402,7 +398,7 @@
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
-    (let [default-schema (default-schema*)]
+    (let [default-schema (default-schema-or-public)]
       (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
                                                  {"input" (mt/id :orders)}
                                                  "output_a")

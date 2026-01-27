@@ -134,7 +134,8 @@
                     validation-config {:jwks-uri jwks-uri
                                        :issuer-uri (:issuer-uri config)
                                        :client-id (:client-id config)}
-                    nonce (:nonce request)
+                    ;; Use :oidc-nonce to avoid collision with CSP :nonce from security middleware
+                    nonce (:oidc-nonce request)
                     validation-result (oidc.tokens/validate-id-token (:id-token tokens)
                                                                      validation-config
                                                                      nonce)]
@@ -199,7 +200,8 @@
          :error (:error validation)
          :message (:message validation)}
         ;; Add nonce and redirect from validated state to request
-        (next-method provider (cond-> (assoc request :nonce (:nonce validation))
+        ;; Use :oidc-nonce to avoid collision with CSP :nonce from security middleware
+        (next-method provider (cond-> (assoc request :oidc-nonce (:nonce validation))
                                 ;; Use redirect from state cookie if not already set in request
                                 (and (:redirect validation)
                                      (not (:redirect-url request)))

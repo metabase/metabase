@@ -14,8 +14,8 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
-import { TasksSectionLayout } from "./app/pages/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
@@ -66,18 +66,16 @@ export function getDataStudioRoutes(
           </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="tasks" component={TasksSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-          </Route>
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="tasks" component={TasksSectionLayout}>
-            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
-          </Route>
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+          </Route>
+        )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route
+            path="dependency-diagnostics"
+            component={DependencyDiagnosticsSectionLayout}
+          >
+            {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
         )}
       </Route>

@@ -27,7 +27,7 @@ const getRedirectUrl = () => {
 };
 
 const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
-  // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,

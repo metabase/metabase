@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Popover from "metabase/common/components/Popover";
+import { Popover } from "metabase/common/components/Popover";
 import { Flex, Icon } from "metabase/ui";
 
 import RightClickPopoverS from "./RightClickPopover.module.css";

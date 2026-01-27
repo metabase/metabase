@@ -225,6 +225,32 @@
     :export-path    {:type :segment-path}
     :enabled?       true}
 
+   :model/Measure
+   {:model-type     "Measure"
+    :model-key      :model/Measure
+    :identity       :hybrid  ; entity_id but needs table context for path
+    :path-keys      [:database :schema :table]
+    :parent-model   :model/Table
+    :events         {:prefix :event/measure
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :parent-table}
+    :archived-key   :archived
+    ;; Note: hydrate-query uses :s alias because query-entities-for-sync :hybrid
+    ;; hardcodes :s.id and :s.entity_id references
+    :tracking       {:hydrate-query  {:select [:s.name :s.table_id
+                                               [:t.collection_id :collection_id]
+                                               [:t.name :table_name]]
+                                      :from   [[:measure :s]]
+                                      :join   [[:metabase_table :t] [:= :s.table_id :t.id]]
+                                      :where  [:= :s.id :?id]}
+                     :field-mappings {:model_name          :name
+                                      :model_collection_id :collection_id
+                                      :model_table_id      :table_id
+                                      :model_table_name    :table_name}}
+    :removal        {:statuses #{"removed" "delete"}}
+    :export-path    {:type :measure-path}
+    :enabled?       true}
+
    :model/Transform
    {:model-type     "Transform"
     :model-key      :model/Transform

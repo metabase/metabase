@@ -155,30 +155,6 @@
                [:table :string]
                [:table_id [:maybe ::ws.t/appdb-id]]]]])
 
-(defn- batch-lookup-table-ids
-  "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
-  [db-id schema-key table-key table-refs]
-  (when (seq table-refs)
-    (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
-                      [:model/Table :id :schema :name]
-                      :db_id db-id
-                      {:where (into [:or] (for [tr table-refs]
-                                            [:and
-                                             [:= :schema (get tr schema-key)]
-                                             [:= :name (get tr table-key)]]))})))
-
-(defn- table-ids-fallbacks
-  "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
-  [schema-key table-key id-key table-refs]
-  (when-let [table-refs (seq (remove id-key table-refs))]
-    ;; These are ordered by db, so this will partition fine.
-    (u/for-map [table-refs (partition-by :db_id table-refs)
-                :let [db_id (:db_id (first table-refs))]
-                ;; Guesstimating a number that prevents this query being too large.
-                table-refs (partition-all 20 table-refs)
-                map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
-      map-entry)))
-
 (api.macros/defendpoint :get "/:id/table"
   :- [:map {:closed true}
       [:inputs [:sequential ::input-table]]
@@ -211,8 +187,8 @@
         inputs           (remove (comp shadowed? (juxt :db_id :schema :table)) all-raw-inputs)
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
         fallback-map     (merge
-                          (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
-                          (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
+                          (ws.impl/table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
+                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
                (juxt :db_id (comp (juxt :schema :table) :global))
@@ -849,8 +825,9 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    ;; Ensure analysis is up-to-date, as we may need grants to external input tables.
-    (ws.impl/analyze-transform-if-stale! workspace transform)
+    ;; Ensure the graph is calculated so all analysis is up-to-date
+    ;; (We also need the transforms for all input tables to have been analyzed)
+    (ws.impl/get-or-calculate-graph! workspace)
     (ws.impl/run-transform! workspace transform)))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
@@ -864,6 +841,9 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
+    ;; Ensure the graph is calculated so all analysis is up-to-date
+    ;; (We also need the transforms for all input tables to have been analyzed)
+    (ws.impl/get-or-calculate-graph! workspace)
     (ws.impl/dry-run-transform workspace transform)))
 
 (def ^:private CheckoutTransformLegacy

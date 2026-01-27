@@ -15,6 +15,7 @@ import { isPythonTransformSource } from "../../utils";
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import S from "./PythonTransformEditor.module.css";
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
 import { useTestPythonTransform } from "./hooks";
 import { updateTransformSignature } from "./utils";
@@ -118,7 +119,7 @@ export function PythonTransformEditor({
         onDatabaseChange={handleDatabaseChange}
         canChangeDatabase={uiOptions?.canChangeDatabase}
       />
-      <Flex h="100%" w="100%" style={{ minHeight: 0 }}>
+      <Flex className={S.editorBodyWrapper}>
         {isEditMode && (
           <PythonDataPicker
             disabled={uiOptions?.readOnly}
@@ -134,6 +135,7 @@ export function PythonTransformEditor({
             isRunning={isRunning}
             isDirty={isDirty}
             isEditMode={isEditMode}
+            hideRunButton={uiOptions?.hideRunButton}
             onRun={handleRun}
             onCancel={cancel}
             source={source.body}

@@ -418,14 +418,26 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
+export function canHaveViewCount(type: DependencyType): boolean {
+  switch (type) {
+    case "card":
+    case "dashboard":
+    case "document":
+      return true;
+    case "table":
+    case "transform":
+    case "workspace-transform":
+    case "snippet":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return false;
+  }
+}
+
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
-      // view_count is not calculated property for models and metrics since
-      // they are typically not run directly
-      return node.data.type === "question"
-        ? (node.data.view_count ?? null)
-        : null;
     case "dashboard":
     case "document":
       return node.data.view_count ?? null;
@@ -598,6 +610,16 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   ];
 
   return groups.filter(({ count }) => count !== 0);
+}
+
+export function getDependentsCount(node: DependencyNode): number {
+  if (node.dependents_count == null) {
+    return 0;
+  }
+  return Object.values(node.dependents_count).reduce(
+    (total, count) => total + count,
+    0,
+  );
 }
 
 export function getDependencyGroupTitle(

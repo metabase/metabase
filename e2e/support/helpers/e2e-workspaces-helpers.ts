@@ -103,6 +103,10 @@ export const Workspaces = {
     });
   },
 
+  getRunStatus() {
+    return cy.findByTestId("run-status");
+  },
+
   getSaveTransformButton() {
     return this.getTransformTabHeader().findByRole("button", { name: /Save/ });
   },

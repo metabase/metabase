@@ -17,7 +17,9 @@
   native-query-transform?
   python-transform?
   query-transform?
-  transform-source-type]
+  transform-source-database
+  transform-source-type
+  transform-type]
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!]
  [metabase-enterprise.transforms.models.transform

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
 import {
   DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,

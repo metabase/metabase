@@ -291,7 +291,7 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
 }

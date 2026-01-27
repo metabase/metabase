@@ -26,7 +26,7 @@ const convertField = (field) => {
 
 const convertFieldsToSortableFields = (fields) => fields.map(convertField);
 
-const ChartSettingFieldsPicker = ({
+export const ChartSettingFieldsPicker = ({
   value: fields = [],
   options,
   onChange,
@@ -167,5 +167,3 @@ const ChartSettingFieldsPicker = ({
     </div>
   );
 };
-
-export default ChartSettingFieldsPicker;

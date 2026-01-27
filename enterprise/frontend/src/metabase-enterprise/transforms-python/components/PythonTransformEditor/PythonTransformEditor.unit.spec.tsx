@@ -6,6 +6,7 @@ import {
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 import {
@@ -59,12 +60,14 @@ type SetupOpts = {
   source?: PythonTransformSourceDraft;
   isEditMode?: boolean;
   transform?: Transform;
+  uiOptions?: PythonTransformEditorUiOptions;
 };
 
 function setup({
   source = mockPythonSource,
   isEditMode = true,
   transform,
+  uiOptions,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
@@ -77,6 +80,7 @@ function setup({
       source={source}
       isEditMode={isEditMode}
       transform={transform}
+      uiOptions={uiOptions}
       onChangeSource={jest.fn()}
       onAcceptProposed={jest.fn()}
       onRejectProposed={jest.fn()}
@@ -141,6 +145,23 @@ describe("PythonTransformEditor", () => {
     it("should not render EditDefinitionButton in edit mode", () => {
       setup({ isEditMode: true });
       expect(screen.queryByText(/edit definition/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("hideRunButton option", () => {
+    it("should render run button when hideRunButton is not set", () => {
+      setup({ isEditMode: true });
+      expect(screen.getByTestId("run-button")).toBeInTheDocument();
+    });
+
+    it("should render run button when hideRunButton is false", () => {
+      setup({ isEditMode: true, uiOptions: { hideRunButton: false } });
+      expect(screen.getByTestId("run-button")).toBeInTheDocument();
+    });
+
+    it("should not render run button when hideRunButton is true", () => {
+      setup({ isEditMode: true, uiOptions: { hideRunButton: true } });
+      expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
   });
 });

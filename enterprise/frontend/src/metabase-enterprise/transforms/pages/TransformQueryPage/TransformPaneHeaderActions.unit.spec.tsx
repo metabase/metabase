@@ -179,6 +179,31 @@ describe("TransformPaneHeaderActions", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should render nothing for native transforms", () => {
+      setup({ isEditMode: false, isNative: true });
+
+      expect(
+        screen.queryByRole("button", { name: /save/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /cancel/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /edit definition/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /edit/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render EditDefinitionButton for MBQL transforms", () => {
+      setup({ isEditMode: false, isNative: false });
+
+      expect(
+        screen.getByRole("link", { name: /edit definition/i }),
+      ).toBeInTheDocument();
+    });
+
     describe("workspaces feature availability", () => {
       it("should render EditDefinitionButton when workspaces feature is not available", () => {
         mockHasPremiumFeature.mockReturnValue(false);

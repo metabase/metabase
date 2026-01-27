@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -32,6 +32,15 @@ type UseWorkspaceTransformRunResult = {
   handleRun: () => Promise<void>;
 };
 
+type TransformRunState = {
+  isRunTriggered: boolean;
+  lastRunResult: {
+    status: "succeeded" | "failed";
+    end_time: string;
+    message: string | null;
+  } | null;
+};
+
 export function useWorkspaceTransformRun({
   workspaceId,
   transform,
@@ -40,12 +49,31 @@ export function useWorkspaceTransformRun({
   const { sendErrorToast } = useMetadataToasts();
   const [runTransform] = useRunWorkspaceTransformMutation();
 
-  const [isRunTriggered, setIsRunTriggered] = useState(false);
-  const [lastRunResult, setLastRunResult] = useState<{
-    status: "succeeded" | "failed";
-    end_time: string;
-    message: string | null;
-  } | null>(null);
+  // Store run state per transform ref_id to preserve state when switching tabs
+  const [runStateByTransform, setRunStateByTransform] = useState<
+    Map<string, TransformRunState>
+  >(new Map());
+
+  const transformRefId = transform?.ref_id ?? "";
+  const currentRunState = runStateByTransform.get(transformRefId);
+  const isRunTriggered = currentRunState?.isRunTriggered ?? false;
+  const lastRunResult = currentRunState?.lastRunResult ?? null;
+
+  const updateRunState = useCallback(
+    (transformId: string, patch: Partial<TransformRunState>) => {
+      setRunStateByTransform((prev) => {
+        const current = prev.get(transformId);
+        const newMap = new Map(prev);
+        newMap.set(transformId, {
+          isRunTriggered:
+            patch.isRunTriggered ?? current?.isRunTriggered ?? false,
+          lastRunResult: patch.lastRunResult ?? current?.lastRunResult ?? null,
+        });
+        return newMap;
+      });
+    },
+    [],
+  );
 
   // Fetch workspace transform to get updated last_run_at
   const { data: fetchedWorkspaceTransform, isFetching } =
@@ -113,34 +141,39 @@ export function useWorkspaceTransformRun({
     [isRunTriggered, lastRunResult],
   );
 
-  const handleRun = async () => {
-    if (!transform) {
+  const handleRun = useCallback(async () => {
+    if (!transformRefId) {
       return;
     }
 
     try {
-      setIsRunTriggered(true);
-      setLastRunResult(null);
+      updateRunState(transformRefId, {
+        isRunTriggered: true,
+        lastRunResult: null,
+      });
 
       const result = await runTransform({
         workspaceId,
-        transformId: transform.ref_id,
+        transformId: transformRefId,
       }).unwrap();
 
       // Transform completed - store the result
       const endTime = result.end_time ?? new Date().toISOString();
 
-      setLastRunResult({
-        status: result.status,
-        end_time: endTime,
-        message: result.message ?? null,
+      updateRunState(transformRefId, {
+        isRunTriggered: false,
+        lastRunResult: {
+          status: result.status,
+          end_time: endTime,
+          message: result.message ?? null,
+        },
       });
 
       // Invalidate caches to refetch updated data
       dispatch(
         workspaceApi.util.invalidateTags([
           { type: "workspace", id: workspaceId },
-          { type: "workspace-transform", id: transform.ref_id },
+          { type: "workspace-transform", id: transformRefId },
           { type: "workspace-tables", id: workspaceId },
         ]),
       );
@@ -149,11 +182,17 @@ export function useWorkspaceTransformRun({
         sendErrorToast(t`Transform run failed`);
       }
     } catch (error) {
+      updateRunState(transformRefId, { isRunTriggered: false });
       sendErrorToast(t`Failed to run transform`);
-    } finally {
-      setIsRunTriggered(false);
     }
-  };
+  }, [
+    updateRunState,
+    runTransform,
+    workspaceId,
+    dispatch,
+    transformRefId,
+    sendErrorToast,
+  ]);
 
   return {
     statusRun,

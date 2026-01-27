@@ -8,7 +8,7 @@ import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
-  useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -83,9 +83,7 @@ export function CreateTransformModal({
     data: fetchedSchemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
-  } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
-  );
+  } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
   const schemas = useMemo(() => {
     return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);

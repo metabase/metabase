@@ -7,6 +7,7 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
@@ -33,8 +34,8 @@ export type TransformEditorProps = {
   onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
-  readOnly?: boolean;
   transform?: Transform;
+  isEditMode: boolean;
   transformId?: TransformId;
 };
 
@@ -50,8 +51,8 @@ export function TransformEditor({
   onRejectProposed,
   onRunQueryStart,
   onBlur,
-  readOnly,
   transform,
+  isEditMode,
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -67,9 +68,12 @@ export function TransformEditor({
     [proposedSource, metadata],
   );
   const mergedUiOptions = useMemo(
-    () => ({ ...getEditorOptions(databases, readOnly), ...uiOptions }),
-    [databases, readOnly, uiOptions],
+    () => ({ ...getEditorOptions(databases, !isEditMode), ...uiOptions }),
+    [databases, isEditMode, uiOptions],
   );
+
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditButton = !!transformId && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -94,13 +98,18 @@ export function TransformEditor({
       onRunQueryStart={onRunQueryStart}
       onBlur={onBlur}
       topBarInnerContent={
-        readOnly &&
-        !!transformId &&
-        transform &&
-        (hasPremiumFeature("workspaces") ? (
+        showEditButton &&
+        (hasPremiumFeature("workspaces") && transform ? (
           <EditTransformMenu transform={transform} />
         ) : (
-          <EditDefinitionButton transformId={transformId} />
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
         ))
       }
     />
