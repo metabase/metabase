@@ -76,7 +76,11 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
       <TransformHeader transform={transform} />
       <Stack gap="xl">
         {inspectData.summary && (
-          <InspectSummary summary={inspectData.summary} />
+          <InspectSummary
+            summary={inspectData.summary}
+            joins={inspectData.joins}
+            sources={inspectData.sources}
+          />
         )}
         {inspectData.joins && inspectData.joins.length > 0 && (
           <InspectJoins

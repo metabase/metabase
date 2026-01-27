@@ -13,12 +13,16 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
+  TransformInspectJoin,
+  TransformInspectSource,
   TransformInspectSummary,
   TransformInspectSummaryTable,
 } from "metabase-types/api";
 
 type InspectSummaryProps = {
   summary: TransformInspectSummary;
+  joins?: TransformInspectJoin[];
+  sources?: TransformInspectSource[];
 };
 
 type SummaryTableRow = TransformInspectSummaryTable & { id: string };
@@ -30,10 +34,14 @@ const enrichWithId = (
   id: table.table_name,
 });
 
-export const InspectSummary = ({ summary }: InspectSummaryProps) => {
+export const InspectSummary = ({
+  summary,
+  joins,
+  sources,
+}: InspectSummaryProps) => {
   const inputData = useMemo(
-    () => summary.inputs.map(enrichWithId),
-    [summary.inputs],
+    () => orderInputTables(summary.inputs, joins, sources).map(enrichWithId),
+    [summary.inputs, joins, sources],
   );
   const outputData = useMemo(
     () => [enrichWithId(summary.output)],
@@ -109,3 +117,35 @@ export const InspectSummary = ({ summary }: InspectSummaryProps) => {
     </Stack>
   );
 };
+
+function orderInputTables(
+  inputs: TransformInspectSummaryTable[],
+  joins?: TransformInspectJoin[],
+  sources?: TransformInspectSource[],
+): TransformInspectSummaryTable[] {
+  if (!joins || !sources || joins.length === 0) {
+    return inputs;
+  }
+
+  const nameToId = new Map(
+    sources.map((source) => [source.table_name, source.table_id]),
+  );
+
+  const joinedTableIds = joins.map((join) => join.source_table);
+  const joinedTableIdSet = new Set(joinedTableIds);
+  const mainTable = inputs.find((input) => {
+    const tableId = nameToId.get(input.table_name);
+    return tableId && !joinedTableIdSet.has(tableId);
+  });
+
+  const joinedTables = joinedTableIds
+    .map((tableId) => {
+      const source = sources.find((s) => s.table_id === tableId);
+      return source
+        ? inputs.find((input) => input.table_name === source.table_name)
+        : undefined;
+    })
+    .filter((table): table is TransformInspectSummaryTable => table != null);
+
+  return mainTable ? [mainTable, ...joinedTables] : inputs;
+}
