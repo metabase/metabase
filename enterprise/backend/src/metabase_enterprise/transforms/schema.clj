@@ -111,15 +111,26 @@
    [:output ::inspector-table-summary]])
 
 (mr/def ::inspector-join-stats
-  "Statistics for a join operation. Fields vary by join strategy:
-   - left-join: left-row-count, matched-count, match-rate
-   - right-join: right-row-count, matched-count, match-rate
-   - inner-join: left-row-count, right-row-count, output-row-count, left-match-rate, right-match-rate
-   - full-join: left-row-count, right-row-count, output-row-count, expansion-factor"
+  "Statistics for a join operation, computed iteratively.
+   Shows the progression of row counts as joins are added one by one.
+
+   For iterative stats:
+   - left-row-count: row count before adding this join (the accumulated result so far)
+   - right-row-count: row count of the table being joined
+   - output-row-count: row count after adding this join
+
+   For outer joins:
+   - null-count: rows where RHS is null (unmatched)
+   - matched-count: rows where RHS is not null (matched)
+   - match-rate: matched-count / left-row-count
+
+   For inner/cross/full joins:
+   - expansion-factor: output-row-count / left-row-count"
   [:map
    [:left-row-count {:optional true} [:maybe :int]]
    [:right-row-count {:optional true} [:maybe :int]]
    [:output-row-count {:optional true} [:maybe :int]]
+   [:null-count {:optional true} [:maybe :int]]
    [:matched-count {:optional true} [:maybe :int]]
    [:match-rate {:optional true} [:maybe :double]]
    [:left-match-rate {:optional true} [:maybe :double]]
@@ -206,6 +217,7 @@
    [:description :string]
    [:status ::inspector-status]
    [:summary {:optional true} ::inspector-summary]
+   [:base-row-count {:optional true} [:maybe :int]]
    [:joins {:optional true} [:maybe [:sequential ::inspector-join]]]
    [:sources [:sequential ::inspector-source-detail]]
    [:target {:optional true} ::inspector-target-detail]

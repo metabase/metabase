@@ -11,7 +11,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
@@ -89,157 +88,200 @@
 
 ;;; -------------------------------------------------- Join Extraction & Statistics ---------------------------------------------------
 
-(defn- extract-field-id
-  "Extract field ID from a pMBQL field reference clause like [:field {options} id]."
-  [field-clause]
-  (when (and (vector? field-clause)
-             (= :field (first field-clause))
-             (>= (count field-clause) 3))
-    ;; pMBQL format: [:field {options-map} field-id]
-    (let [maybe-id (nth field-clause 2 nil)]
-      (when (int? maybe-id)
-        maybe-id))))
-
-(defn- field-has-join-alias?
-  "Check if a pMBQL field clause has a :join-alias (meaning it's from a joined table)."
-  [field-clause]
-  (when (and (vector? field-clause)
-             (= :field (first field-clause))
-             (>= (count field-clause) 2))
-    (let [opts (second field-clause)]
-      (and (map? opts) (contains? opts :join-alias)))))
-
-(defn- extract-join-key-fields
-  "Extract join key field IDs from join conditions.
-   Returns {:lhs-field-id <id> :rhs-field-id <id>} for the first binary condition.
-   Returns nil if LHS is from another join (chained join - not supported for stats)."
+(defn- get-rhs-field-from-condition
+  "Extract the RHS field reference from a join condition.
+   The RHS field is the one with :join-alias, representing the joined table's field."
   [conditions]
   (when-let [condition (first conditions)]
-    ;; pMBQL conditions are [:= {options} lhs rhs]
-    (when (and (vector? condition)
-               (>= (count condition) 4))
-      (let [[_op _opts lhs rhs] condition
-            lhs-id (extract-field-id lhs)
-            rhs-id (extract-field-id rhs)]
-        ;; Skip if LHS is from another join (chained join scenario)
-        (when (and lhs-id rhs-id (not (field-has-join-alias? lhs)))
-          {:lhs-field-id lhs-id
-           :rhs-field-id rhs-id})))))
+    (when (and (vector? condition) (>= (count condition) 4))
+      (let [[_op _opts _lhs rhs] condition]
+        (when (and (vector? rhs)
+                   (= :field (first rhs))
+                   (:join-alias (second rhs)))
+          rhs)))))
 
-;; TODO: should just be cards
-(defn- compute-join-stats
-  "Compute statistics for a join by running analysis queries.
-   For left/right/inner joins: computes match rate (% of rows that found a match).
-   For full/outer joins: computes total crosses produced.
-   Returns stats map with keys depending on join strategy."
-  [mp main-table-id join-table-id join-key-fields strategy]
-  (try
-    (let [{:keys [lhs-field-id rhs-field-id]} join-key-fields
-          main-table (lib.metadata/table mp main-table-id)
-          join-table (lib.metadata/table mp join-table-id)
-          lhs-field (lib.metadata/field mp lhs-field-id)
-          rhs-field (lib.metadata/field mp rhs-field-id)
+(defn- query-with-n-joins
+  "Return a copy of query with only the first n joins from the first stage.
+   When n=0, removes all joins."
+  [query n]
+  (if (zero? n)
+    (update-in query [:stages 0] dissoc :joins)
+    (update-in query [:stages 0 :joins] #(vec (take n %)))))
 
-          left-count #(-> (lib/query mp main-table)
-                          (lib/aggregate (lib/count))
-                          qp/process-query :data :rows first first)
+(defn- strip-join-to-essentials
+  "Strip a join clause down to just the essential parts for counting."
+  [join]
+  (-> join
+      (select-keys [:lib/type :strategy :alias :conditions :stages])
+      ;; Also strip down the join's inner stages
+      (update :stages (fn [stages]
+                        (mapv #(select-keys % [:lib/type :source-table]) stages)))))
 
-          right-count #(-> (lib/query mp join-table)
-                           (lib/aggregate (lib/count))
-                           qp/process-query :data :rows first first)
+(defn- strip-stage-to-joins
+  "Strip a stage down to just source-table and joins, removing all other clauses."
+  [stage]
+  (-> stage
+      (select-keys [:lib/type :source-table :joins])
+      (update :joins #(when % (mapv strip-join-to-essentials %)))
+      (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}]])))
 
-          join-stats #(let [join-clause (-> (lib/join-clause join-table
-                                                             [(lib/= (lib/ref lhs-field)
-                                                                     (lib/ref rhs-field))])
-                                            (lib/with-join-alias "joined")
-                                            (lib/with-join-strategy strategy))
-                            rhs-field-with-alias (-> (lib/ref rhs-field)
-                                                     (lib/with-join-alias "joined"))
-                            query (-> (lib/query mp main-table)
-                                      (lib/join join-clause)
-                                      (lib/aggregate (lib/count))
-                                      (lib/aggregate (lib/count rhs-field-with-alias)))
-                            [output-row-count matched-count] (-> (qp/process-query query) :data :rows first)]
-                        {:output-row-count output-row-count
-                         :matched-count matched-count})]
+(defn- make-count-query
+  "Transform a pMBQL query into a COUNT(*) query with only FROM and JOINs.
+   Removes filters, group-by, order-by, fields, etc."
+  [query]
+  (-> query
+      (update-in [:stages 0] strip-stage-to-joins)))
 
-      (case strategy
-        :full-join
-        (let [left-count (left-count)
-              {:keys [output-row-count]} (join-stats)]
-          {:left-row-count left-count
-           :right-row-count (right-count)
-           :output-row-count output-row-count
-           :expansion-factor (when (and left-count (pos? left-count))
-                               (double (/ output-row-count left-count)))})
+(defn- fresh-uuid-field-ref
+  "Copy a field reference with a fresh :lib/uuid to avoid duplicate UUID errors."
+  [field-ref]
+  (when field-ref
+    (if (and (vector? field-ref) (= :field (first field-ref)) (map? (second field-ref)))
+      (assoc-in field-ref [1 :lib/uuid] (str (random-uuid)))
+      field-ref)))
 
-        :left-join
-        (let [left-count (left-count)
-              {:keys [matched-count]} (join-stats)]
-          {:left-row-count left-count
-           :matched-count matched-count
-           :match-rate (when (and left-count (pos? left-count))
-                         (double (/ matched-count left-count)))})
+(defn- make-count-field-query
+  "Transform a pMBQL query into a COUNT(field) query with only FROM and JOINs.
+   Removes filters, group-by, order-by, fields, etc."
+  [query field-ref]
+  (-> query
+      (update-in [:stages 0]
+                 (fn [stage]
+                   (-> stage
+                       (select-keys [:lib/type :source-table :joins])
+                       (update :joins #(when % (mapv strip-join-to-essentials %)))
+                       (assoc :aggregation [[:count {:lib/uuid (str (random-uuid))}
+                                             (fresh-uuid-field-ref field-ref)]]))))))
 
-        :right-join
-        (let [right-count (right-count)
-              {:keys [matched-count]} (join-stats)]
-          {:right-row-count right-count
-           :matched-count matched-count
-           :match-rate (when (and right-count (pos? right-count))
-                         (double (/ matched-count right-count)))})
+(defn- run-pmbql-query
+  "Execute a pMBQL query and return the first value from the first row."
+  [query]
+  (-> query qp/process-query :data :rows first first))
 
-        :inner-join
-        (let [left-count (left-count)
-              right-count (right-count)
-              {:keys [output-row-count]} (join-stats)]
-          {:left-row-count left-count
-           :right-row-count right-count
-           :output-row-count output-row-count
-           :left-match-rate (when (and left-count (pos? left-count))
-                              (double (/ output-row-count left-count)))
-           :right-match-rate (when (and right-count (pos? right-count))
-                               (double (/ output-row-count right-count)))})
+(defn- compute-iterative-join-stats
+  "Compute join statistics iteratively by building up the query one join at a time.
 
-        ;; Default fallback
-        (join-stats)))
-    (catch Exception e
-      (log/warn e "Failed to compute join stats")
-      nil)))
+   For a query: FROM t1 JOIN t2 ON ... JOIN t3 ON ...
+   Executes counts for:
+   - t1 alone (base table)
+   - t1 JOIN t2
+   - t1 JOIN t2 JOIN t3
+   etc.
 
-(defn- extract-join-info
-  "Extract join information from a single join clause including statistics."
-  [mp main-table-id join]
-  (let [strategy (or (:strategy join) :left-join)
-        conditions (:conditions join)
-        join-source-table (get-in join [:stages 0 :source-table])
-        alias (:alias join)
-        join-key-fields (extract-join-key-fields conditions)
-        ;; Compute stats if we have the necessary info
-        stats (when (and main-table-id
-                         (int? join-source-table)
-                         join-key-fields)
-                (compute-join-stats mp main-table-id join-source-table join-key-fields strategy))]
-    (cond-> {:strategy     strategy
-             :alias        alias
-             :source-table join-source-table}
-      stats (assoc :stats stats))))
+   Returns {:base-row-count <count>
+            :joins [{:strategy :left-join
+                     :alias \"...\"
+                     :source-table <id>
+                     :stats {:prev-row-count <n>
+                             :row-count <n>
+                             :source-row-count <n>
+                             ;; for outer joins:
+                             :null-count <n>
+                             :matched-count <n>}}]}
+
+   For inner/cross joins: row count shows expansion/contraction
+   For left/right/full joins: null-count shows unmatched rows"
+  [mp query]
+  (let [source-table-id (get-in query [:stages 0 :source-table])
+        all-joins (get-in query [:stages 0 :joins] [])]
+    (when (and source-table-id (seq all-joins))
+      (try
+        ;; Get base table count first (query with no joins)
+        (let [base-query (query-with-n-joins query 0)
+              base-count (run-pmbql-query (make-count-query base-query))]
+          ;; Now iterate through joins, building up the query
+          (loop [step 1
+                 prev-count base-count
+                 results []]
+            (if (> step (count all-joins))
+              {:base-row-count base-count
+               :joins results}
+              (let [current-join (nth all-joins (dec step))
+                    strategy (or (:strategy current-join) :left-join)
+                    alias (:alias current-join)
+                    join-source-table (get-in current-join [:stages 0 :source-table])
+
+                    ;; Query with this many joins
+                    step-query (query-with-n-joins query step)
+                    row-count (run-pmbql-query (make-count-query step-query))
+
+                    ;; Get source table count (the table being joined)
+                    source-count (when (int? join-source-table)
+                                   (let [source-table (lib.metadata/table mp join-source-table)]
+                                     (-> (lib/query mp source-table)
+                                         (lib/aggregate (lib/count))
+                                         qp/process-query :data :rows first first)))
+
+                    ;; For outer joins, count nulls in RHS field to find unmatched rows
+                    null-stats (when (#{:left-join :right-join :full-join} strategy)
+                                 (when-let [rhs-field (get-rhs-field-from-condition (:conditions current-join))]
+                                   (let [non-null-count (run-pmbql-query (make-count-field-query step-query rhs-field))
+                                         null-count (- row-count non-null-count)]
+                                     {:null-count null-count
+                                      :matched-count non-null-count})))
+
+                    ;; Map iterative stats to existing field names for FE compatibility:
+                    ;; - left-row-count = prev-row-count (rows before this join)
+                    ;; - right-row-count = source-row-count (the table being joined)
+                    ;; - output-row-count = row-count (rows after this join)
+                    stats (cond-> {:left-row-count prev-count
+                                   :right-row-count source-count
+                                   :output-row-count row-count}
+                            ;; Merge null stats for outer joins
+                            null-stats
+                            (merge null-stats)
+
+                            ;; Add derived metrics based on join type
+                            (#{:inner-join :cross-join} strategy)
+                            (assoc :expansion-factor
+                                   (when (and prev-count (pos? prev-count))
+                                     (double (/ row-count prev-count))))
+
+                            (and (= :left-join strategy) (:matched-count null-stats))
+                            (assoc :match-rate
+                                   (when (and prev-count (pos? prev-count))
+                                     (double (/ (:matched-count null-stats) prev-count))))
+
+                            (and (= :right-join strategy) (:matched-count null-stats))
+                            (assoc :match-rate
+                                   (when (and source-count (pos? source-count))
+                                     (double (/ (:matched-count null-stats) source-count))))
+
+                            (= :full-join strategy)
+                            (assoc :expansion-factor
+                                   (when (and prev-count (pos? prev-count))
+                                     (double (/ row-count prev-count)))))
+
+                    result {:strategy strategy
+                            :alias alias
+                            :source-table join-source-table
+                            :stats stats}]
+                (recur (inc step) row-count (conj results result))))))
+        (catch Exception e
+          (log/warn e "Failed to compute iterative join stats")
+          nil)))))
 
 (defn extract-joins
-  "Walk an MBQL query and extract all join information with statistics.
-   Returns a seq of join info maps with :strategy, :alias, :source-table, :stats."
+  "Walk an MBQL query and extract all join information with iterative statistics.
+
+   For a query like: FROM t1 JOIN t2 ON ... JOIN t3 ON ...
+   Computes stats by progressively building up the query:
+   - Count of t1 alone
+   - Count of t1 JOIN t2
+   - Count of t1 JOIN t2 JOIN t3
+   etc.
+
+   Returns {:base-row-count <count>
+            :joins [{:strategy :left-join
+                     :alias \"...\"
+                     :source-table <id>
+                     :stats {...}}]}
+
+   For inner/cross joins: shows row count expansion/contraction
+   For left/right/full joins: shows null counts (unmatched rows)"
   [query]
-  (let [joins (atom [])
-        mp (lib.metadata/->metadata-provider query)
-        ;; Get the main source table from the first stage
-        main-table-id (get-in query [:stages 0 :source-table])]
-    (lib.walk/walk
-     query
-     (fn [_query path-type _path stage-or-join]
-       (when (= path-type :lib.walk/join)
-         (swap! joins conj (extract-join-info mp main-table-id stage-or-join)))
-       nil))
-    @joins))
+  (let [mp (lib.metadata/->metadata-provider query)]
+    (compute-iterative-join-stats mp query)))
 
 ;;; -------------------------------------------------- Table Statistics ---------------------------------------------------
 
@@ -514,20 +556,29 @@
       ;; Target exists - extract joins first for smarter column matching
       (let [input-ids (mapv :table-id sources)
             ;; Extract joins first (MBQL only) so we can use them for column matching
-            joins (when (= source-type :mbql)
-                    (try
-                      (let [query (-> transform :source :query
-                                      transforms.util/massage-sql-query
-                                      qp.preprocess/preprocess)]
-                        (extract-joins query))
-                      (catch Exception e
-                        (log/warn e "Failed to extract joins")
-                        nil)))
+            ;; Returns {:base-row-count <n> :joins [...]} or nil
+            join-stats (when (= source-type :mbql)
+                         (try
+                           (let [query (-> transform :source :query
+                                           transforms.util/massage-sql-query
+                                           qp.preprocess/preprocess)]
+                             (extract-joins query))
+                           (catch Exception e
+                             (log/warn e "Failed to extract joins")
+                             nil)))
+            ;; Extract just the joins seq for column matching
+            joins-seq (:joins join-stats)
             ;; Pass joins to inspect-tables for alias-aware column matching
-            base-result (inspect-tables input-ids (:id target-table) joins)]
+            base-result (inspect-tables input-ids (:id target-table) joins-seq)]
 
-        (assoc base-result
-               :name (str "Transform Inspector: " (:name transform))
-               :description (tru "Analysis of transform inputs, outputs, and joins")
-               :joins (when (seq joins)
-                        (mapv #(select-keys % [:strategy :alias :source-table :stats]) joins)))))))
+        (cond-> (assoc base-result
+                        :name (str "Transform Inspector: " (:name transform))
+                        :description (tru "Analysis of transform inputs, outputs, and joins"))
+          ;; Add base-row-count at top level (row count before any joins)
+          (:base-row-count join-stats)
+          (assoc :base-row-count (:base-row-count join-stats))
+
+          ;; Add joins with iterative stats
+          (seq joins-seq)
+          (assoc :joins (mapv #(select-keys % [:strategy :alias :source-table :stats])
+                              joins-seq)))))))
