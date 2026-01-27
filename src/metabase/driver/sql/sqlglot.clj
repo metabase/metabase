@@ -1,7 +1,10 @@
-(ns metabase.driver.sql.sqlglot
+(ns ^{:clj-kondo/ignore [:discouraged-namespace]}
+ metabase.driver.sql.sqlglot
   "Basic example of running Python code using GraalVM polyglot."
   (:require
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [empty?]]
+   [toucan2.core :as t2])
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
 
@@ -80,9 +83,44 @@
   `table` is a name."
   [driver sql catalog db]
   (let [;; for development comment out interpreter so py changes are propagated to our context
-        ctx (or @interpreter (python-context))
+        ctx (or #_@interpreter (python-context))
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.referenced_tables")
         dialect (when-not (= :h2 driver)
                   (name driver))]
     (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db])))))))
+
+;; TODO: This should probably live somewhere in util.
+(defn schema
+  "WIP"
+  [database-id]
+  (let [;; TODO: avoid db calls probably thru mp
+        db @(def dd (t2/select-one :model/Database database-id))
+        tables @(def tt (t2/select-fn-set identity :model/Table :db_id database-id))
+        table-ids (into #{} (map :id tables))
+        columns @(def cc (t2/select-fn-set identity :model/Field :table_id [:in table-ids]))
+        ;;
+        id->table (into {}
+                        (map (juxt :id identity))
+                        tables)]
+    (loop [columns columns
+           result {}]
+      (if (empty? columns)
+        result
+        (let [[this-col & rest-cols] columns
+              this-table (id->table (:table_id this-col))]
+          (recur rest-cols
+                         ;; a. first attempt without database name -- no catalog, only the schema table col
+                         ;; b. not providing correct type atm, not needed yet
+                 (assoc-in result [(:schema this-table) (:name this-table) (:name this-col)] "unknown")))))))
+
+(defn returned-columns-lineage
+  "WIP"
+  [driver sql catalog db schema]
+  (let [;; for development comment out interpreter so py changes are propagated to our context
+        ctx (or #_@interpreter (python-context))
+        _ (.eval ctx "python" "import sql_tools")
+        pyfn (.eval ctx "python" "sql_tools.returned_columns_lineage")
+        dialect (when-not (= :h2 driver)
+                  (name driver))]
+    (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db schema]))))))
