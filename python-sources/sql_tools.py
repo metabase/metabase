@@ -1,8 +1,9 @@
 import json
+
 import sqlglot
+import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
-
 from sqlglot import exp
 
 def parse_sql(sql: str, dialect: str = "postgres"):
@@ -110,3 +111,45 @@ def referenced_tables(dialect, sql, catalog, db):
         tables |= {table_parts(t) for t in scope.sources.values() if isinstance(t, exp.Table)}
 
     return json.dumps(tuple(tables))
+
+def returned_columns_lineage(dialect, sql, catalog, db, schema):
+    ast = sqlglot.parse_one(sql, read=dialect)
+    ast = qualify.qualify(ast,
+                        catalog=catalog,
+                        db=db,
+                        dialect=dialect,
+                        schema=schema,
+                        sql=sql,
+                        # Useful for checking
+                        #validate_qualify_columns=False
+                        )
+
+    assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
+
+    dependencies = {}
+    for select in ast.named_selects:
+
+        # TODO: Duplicated aliases are not verified. 
+        # We have to do it ourselves.
+        assert select not in dependencies, \
+            "Duplicate alias `{}`.".format(select)
+
+        leaves = set()
+        for node in lineage.lineage(select, ast.sql(dialect)).walk():
+            if (# Leaf nodes of `.walk` are `exp.Table`s. We are interested
+                # in the columns selected from those tables. The condition
+                # is intended to examine those columns.
+                len(node.downstream) == 1
+                and isinstance(node.downstream[0].expression, exp.Table)
+                and not node.downstream[0].downstream):
+                assert isinstance(node.expression.this, exp.Column), "Leaf node is not a `Column`."
+                # TODO: The column is missing cat, db because source table
+                # is aliased to its name. Maybe there's a cleaner way. Figure that
+                # out!
+                table = table_parts(node.downstream[0].expression)
+                namespaced_column = table + (node.expression.this.name, )
+                leaves.add(namespaced_column)
+
+        dependencies[select] = tuple(leaves)
+
+    return json.dumps(dependencies)
