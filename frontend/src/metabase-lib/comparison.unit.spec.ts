@@ -1,31 +1,22 @@
 import * as Lib from "metabase-lib";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_PROVIDER,
-  createTestQuery,
-} from "./test-helpers";
+import { createQueryWithClauses } from "./test-helpers";
 
 describe("findColumnIndexesFromLegacyRefs", () => {
   const stageIndex = -1;
 
   it("should match columns that differ only by temporal buckets", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
-      stages: [
+    const query = createQueryWithClauses({
+      breakouts: [
         {
-          source: { type: "table", id: ORDERS_ID },
-          breakouts: [
-            {
-              name: "CREATED_AT",
-              unit: "year",
-            },
-            {
-              name: "CREATED_AT",
-              unit: "month",
-            },
-          ],
+          tableName: "ORDERS",
+          columnName: "CREATED_AT",
+          temporalBucketName: "Year",
+        },
+        {
+          tableName: "ORDERS",
+          columnName: "CREATED_AT",
+          temporalBucketName: "Month",
         },
       ],
     });
@@ -40,21 +31,17 @@ describe("findColumnIndexesFromLegacyRefs", () => {
   });
 
   it("should match columns that differ only by binning", () => {
-    const query = createTestQuery(SAMPLE_PROVIDER, {
-      databaseId: SAMPLE_DATABASE.id,
-      stages: [
+    const query = createQueryWithClauses({
+      breakouts: [
         {
-          source: { type: "table", id: ORDERS_ID },
-          breakouts: [
-            {
-              name: "TOTAL",
-              binningCount: 10,
-            },
-            {
-              name: "TOTAL",
-              binningCount: 50,
-            },
-          ],
+          tableName: "ORDERS",
+          columnName: "TOTAL",
+          binningStrategyName: "10 bins",
+        },
+        {
+          tableName: "ORDERS",
+          columnName: "TOTAL",
+          binningStrategyName: "50 bins",
         },
       ],
     });
