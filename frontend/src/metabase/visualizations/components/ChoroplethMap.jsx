@@ -29,8 +29,8 @@ import {
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ChartWithLegend } from "./ChartWithLegend";
-import LeafletChoropleth from "./LeafletChoropleth";
-import LegacyChoropleth from "./LegacyChoropleth";
+import { LeafletChoropleth } from "./LeafletChoropleth";
+import { LegacyChoropleth } from "./LegacyChoropleth";
 
 // TODO COLOR
 // eslint-disable-next-line metabase/no-color-literals
@@ -439,4 +439,4 @@ class ChoroplethMapInner extends Component {
   }
 }
 
-export default connector(ChoroplethMapInner);
+export const ChoroplethMap = connector(ChoroplethMapInner);

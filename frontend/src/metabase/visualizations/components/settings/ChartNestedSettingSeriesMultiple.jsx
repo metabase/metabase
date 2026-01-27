@@ -14,7 +14,7 @@ import {
 } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeriesMultiple extends Component {
+export class ChartNestedSettingSeriesMultiple extends Component {
   render() {
     const {
       objects,

@@ -15,7 +15,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
 import { Button, Image, Stack, Text } from "metabase/ui";
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,
   CustomGeoJSONSetting,

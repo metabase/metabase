@@ -11,7 +11,7 @@ import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
 
-import LegendActions from "../LegendActions";
+import { LegendActions } from "../LegendActions";
 
 import {
   LegendCaptionRoot,
