@@ -4,8 +4,7 @@
    [metabase.driver.sql.sqlglot :as sqlglot])
   (:import
    (io.aleph.dirigiste Pool)
-   (java.util.concurrent CountDownLatch TimeUnit)
-   (org.graalvm.polyglot Context Value)))
+   (java.util.concurrent CountDownLatch)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,17 +56,17 @@
   "Run n threads concurrently, each executing f with a context from pool.
   Returns vector of results."
   [pool n f]
-  (let [latch (CountDownLatch. n)
-        results (atom [])]
-    (let [futures (doall
-                   (for [i (range n)]
-                     (future
-                       (.countDown latch)
-                       (.await latch)
-                       (let [result (with-pool pool (fn [ctx] (f i ctx)))]
-                         (swap! results conj result)))))]
-      (doseq [fut futures] @fut)
-      @results)))
+  (let [latch   (CountDownLatch. n)
+        results (atom [])
+        futures (doall
+                 (for [i (range n)]
+                   (future
+                     (.countDown latch)
+                     (.await latch)
+                     (let [result (with-pool pool (fn [ctx] (f i ctx)))]
+                       (swap! results conj result)))))]
+    (doseq [fut futures] @fut)
+    @results))
 
 ;;; ------------------------------------------------ Pool Size Tests -------------------------------------------------
 
@@ -154,8 +153,8 @@
 (deftest pool-stores-and-returns-objects-test
   (testing "Pool correctly stores and returns arbitrary objects"
     (let [[pool created-count] (test-pool)
-          result1 (with-pool pool (fn [ctx] (:context ctx)))
-          result2 (with-pool pool (fn [ctx] (:context ctx)))]
+          result1 (with-pool pool :context)
+          result2 (with-pool pool :context)]
 
       (is (map? result1))
       (is (= 1 (:context-id result1)))
@@ -164,3 +163,50 @@
       (is (map? result2))
       (is (= 1 (:context-id result2)))  ;; Same context ID
       (is (= 1 @created-count)))))
+
+;;; -------------------------------------------- SQL Parsing Tests -------------------------------------------------
+
+(deftest ^:parallel basic-select-test
+  (testing "Simple SELECT parses correctly"
+    (let [result (sqlglot/p "SELECT id, name FROM users")]
+      (is (= ["users"] (:tables_source result)))
+      (is (= ["id" "name"] (sort (:columns result)))))))
+
+(deftest ^:parallel cte-test
+  (testing "CTE (WITH clause) parsing"
+    (let [result (sqlglot/p "WITH active_users AS (SELECT * FROM users WHERE active)
+                             SELECT * FROM active_users")]
+      ;; tables_source excludes CTE references, returning only real tables
+      ;; tables_all includes CTE names as well
+      (is (= ["users"] (:tables_source result)))
+      (is (= ["active_users" "users"] (sort (:tables_all result)))))))
+
+(deftest ^:parallel join-test
+  (testing "JOIN parsing extracts all tables"
+    (let [result (sqlglot/p "SELECT u.name, o.total
+                             FROM users u
+                             JOIN orders o ON u.id = o.user_id")]
+      (is (= ["orders" "users"] (sort (:tables_source result)))))))
+
+(deftest ^:parallel dollar-quote-test
+  (testing "PostgreSQL dollar-quoted strings (fails in JSqlParser)"
+    (let [result (sqlglot/p "SELECT $tag$hello world$tag$")]
+      (is (map? result))
+      (is (contains? result :ast)))))
+
+(deftest ^:parallel ast-structure-test
+  (testing "AST structure is returned"
+    (let [result (sqlglot/p "SELECT 1")]
+      (is (= "Select" (get-in result [:ast :type]))))))
+
+(deftest ^:parallel subquery-test
+  (testing "Subquery table extraction"
+    (let [result (sqlglot/p "SELECT * FROM (SELECT id FROM users) AS sub")]
+      (is (= ["users"] (:tables_source result))))))
+
+(deftest ^:parallel aggregate-test
+  (testing "Aggregate functions in projections"
+    (let [result (sqlglot/p "SELECT COUNT(*), SUM(amount) FROM orders")]
+      (is (= ["orders"] (:tables_source result)))
+      ;; Projections are named_selects - unnamed aggregates may not appear
+      (is (vector? (:projections result))))))

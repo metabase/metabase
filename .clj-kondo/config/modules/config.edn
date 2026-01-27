@@ -561,6 +561,7 @@
            legacy-mbql
            lib
            lib-be
+           plugins
            premium-features
            query-processor
            settings

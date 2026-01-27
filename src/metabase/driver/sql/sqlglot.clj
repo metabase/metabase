@@ -1,19 +1,165 @@
 (ns metabase.driver.sql.sqlglot
-  "Basic example of running Python code using GraalVM polyglot."
+  "Interface to sqlglot Python library via GraalVM Polyglot.
+
+  sqlglot provides near-100% SQL parsing success rate across dialects,
+  replacing JSqlParser (via Macaw) for better dialect support.
+
+  Usage:
+    (require '[metabase.driver.sql.sqlglot :as sqlglot])
+    (sqlglot/p \"SELECT id FROM users\")
+    ;; => {:tables_source [\"users\"], :columns [\"id\"], ...}"
   (:require
-   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
+   [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.plugins.core :as plugins]
+   [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [potemkin :as p])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools)
-   (java.io Closeable)
+   (java.io Closeable File)
+   (java.nio.file Files Path)
    (java.util.concurrent TimeUnit)
-   (org.graalvm.polyglot Context HostAccess Source Value)))
-
-;; 1. Install sqlglot into resources
-;; pip install sqlglot --target resources/python-libs --no-compile
+   (org.graalvm.polyglot Context HostAccess Value)))
 
 (set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Python path resolution --------------------------------------------------
+
+(def ^:private python-sources-resource
+  "Resource path for Python sources (sql_tools.py and sqlglot)."
+  "python-sources")
+
+(defn- jar-resource?
+  "True if the given resource is inside a JAR (production), false if from filesystem (dev)."
+  [resource]
+  (boolean
+   (when-let [url (io/resource resource)]
+     (.contains (.getFile ^java.net.URL url) ".jar!/"))))
+
+(defn- copy-dir-recursive!
+  "Recursively copy all files from source Path to dest Path.
+  Works across filesystems (e.g., from JAR filesystem to default filesystem)."
+  [^Path source ^Path dest]
+  (doseq [^Path child (u.files/files-seq source)]
+    (let [relative-name (str (.getFileName child))
+          target        (.resolve dest relative-name)]
+      (if (Files/isDirectory child (into-array java.nio.file.LinkOption []))
+        (do
+          (u.files/create-dir-if-not-exists! target)
+          (copy-dir-recursive! child target))
+        (u.files/copy-file! child target)))))
+
+(defn- extract-python-sources!
+  "Extract python-sources from JAR to plugins directory. Returns the path as a string.
+  Uses the same plugins directory as driver modules for consistency."
+  ^String []
+  (let [^Path plugins-path (plugins/plugins-dir)
+        dest-path          (.resolve plugins-path "python-sources")]
+    (u.files/create-dir-if-not-exists! dest-path)
+    (log/info "Extracting Python sources to" (str dest-path))
+    (u.files/with-open-path-to-resource [source-path python-sources-resource]
+      (copy-dir-recursive! source-path dest-path))
+    (str dest-path)))
+
+;;; -------------------------------------------------- Dev lazy installation --------------------------------------------------
+
+(def ^:private dev-python-sources-dir
+  "Directory where sqlglot is installed in dev mode."
+  "resources/python-sources")
+
+(defn- delete-recursive!
+  "Recursively delete a directory and all its contents."
+  [^File f]
+  (when (.isDirectory f)
+    (doseq [child (.listFiles f)]
+      (delete-recursive! child)))
+  (.delete f))
+
+(defn- expected-sqlglot-version
+  "Read the expected sqlglot version from .sqlglot-version resource file."
+  []
+  (some->> (io/resource "python-sources/.sqlglot-version")
+           slurp
+           ;; handle # comments in the version file
+           str/split-lines
+           (remove #(str/starts-with? % "#"))
+           (str/join "\n")
+           str/trim))
+
+(defn- package-installer-available?
+  "Check if uv or pip is available for installing Python packages."
+  []
+  (or (zero? (:exit (shell/sh "which" "uv")))
+      (zero? (:exit (shell/sh "which" "pip")))))
+
+(defn- version-installed?
+  "Check if sqlglot is installed with the expected version by looking for the dist-info directory."
+  [target-dir expected-version]
+  (let [dist-info (io/file target-dir (str "sqlglot-" expected-version ".dist-info"))]
+    (.exists dist-info)))
+
+(defn- install-sqlglot!
+  "Install sqlglot via uv (preferred) or pip (fallback).
+  Deletes any existing sqlglot directories first to handle version upgrades."
+  [target-dir version]
+  ;; Delete old versions first (sqlglot/ and any sqlglot-*.dist-info/)
+  (doseq [^File f (.listFiles (io/file target-dir))]
+    (when (or (= "sqlglot" (.getName f))
+              (.startsWith (.getName f) "sqlglot-"))
+      (log/info "Removing old sqlglot:" (.getName f))
+      (delete-recursive! f)))
+  ;; Try uv first (fast), fall back to pip
+  (let [pkg        (str "sqlglot==" version)
+        uv-result  (shell/sh "uv" "pip" "install" pkg "--target" target-dir "--no-compile")]
+    (if (zero? (:exit uv-result))
+      (log/info "sqlglot" version "installed via uv")
+      (do
+        (log/info "uv not available, trying pip...")
+        (let [pip-result (shell/sh "pip" "install" pkg "--target" target-dir "--no-compile")]
+          (when-not (zero? (:exit pip-result))
+            (throw (ex-info (str "Failed to install sqlglot. Please install uv (recommended) or pip.\n"
+                                 "Manual install: uv pip install " pkg " --target " target-dir "\n"
+                                 "Install uv: https://docs.astral.sh/uv/getting-started/installation/")
+                            {:uv-error   (:err uv-result)
+                             :pip-error  (:err pip-result)
+                             :version    version
+                             :target-dir target-dir})))
+          (log/info "sqlglot" version "installed via pip"))))))
+
+(defn- ensure-sqlglot-installed!
+  "Ensure sqlglot is installed with correct version. Called lazily on first use in dev.
+  If version mismatch or missing, automatically installs the correct version."
+  []
+  (let [expected-ver (expected-sqlglot-version)]
+    (when-not expected-ver
+      (throw (ex-info "Missing .sqlglot-version file in resources/python-sources/"
+                      {:resource "python-sources/.sqlglot-version"})))
+    (when-not (version-installed? dev-python-sources-dir expected-ver)
+      (if (package-installer-available?)
+        (do
+          (log/info "Installing sqlglot" expected-ver "(first use in dev)...")
+          (install-sqlglot! dev-python-sources-dir expected-ver))
+        (log/warn "sqlglot not installed and no package installer (uv or pip) found."
+                  "SQL parsing features will fail until sqlglot is installed."
+                  "Install uv: https://docs.astral.sh/uv/getting-started/installation/")))))
+
+;;; -------------------------------------------------- Python path delay --------------------------------------------------
+
+(defonce ^:private
+  ^{:doc "Path to Python sources directory. In dev, this is resources/python-sources.
+          When running from a JAR, we extract to the plugins directory.
+          In dev, lazily installs sqlglot if not present or version mismatched."}
+  python-path
+  (delay
+    (if (jar-resource? python-sources-resource)
+      (extract-python-sources!)
+      (do
+        (ensure-sqlglot-installed!)
+        dev-python-sources-dir))))
 
 ;;; ------------------------------------------------ Protocol --------------------------------------------------------
 
@@ -43,11 +189,17 @@
     nil))
 
 (defn- create-graalvm-context
-  "Create a new GraalVM Python context configured for sqlglot."
+  "Create a new GraalVM Python context configured for sqlglot.
+
+  The context is configured with:
+  - PythonPath pointing to python-sources (contains sql_tools.py and sqlglot)
+  - Full host access (needed for JSON serialization)
+  - IO access enabled (for Python imports)"
   ^Context []
   (.. (Context/newBuilder (into-array String ["python"]))
       (option "engine.WarnInterpreterOnly" "false")
-      (option "python.PythonPath" "python-sources")
+      ;; python-sources contains both sql_tools.py shim and installed sqlglot
+      (option "python.PythonPath" @python-path)
       (allowHostAccess HostAccess/ALL)
       (allowIO true)
       (build)))
@@ -123,15 +275,7 @@
             (recur))
         (->PooledContext context pool tuple)))))
 
-(comment
-  ;; Public API usage:
-  (analyze-sql "SELECT id FROM users")
-  (p "SELECT id FROM users")
-
-  ;; Using with-open for manual pool management:
-  (with-open [ctx (acquire-context @python-context-pool)]
-    (eval-python ctx "import sqlglot")
-    (eval-python ctx "sqlglot.parse_one('SELECT 1')")))
+;;; -------------------------------------------------- Public API --------------------------------------------------
 
 (defn- analyze-sql-impl
   "Internal implementation that takes a context (either raw Context or PooledContext)."
@@ -155,12 +299,25 @@
     (analyze-sql-impl ctx sql)))
 
 (defn p
-  "Parse and analyze SQL, returning the result as a Clojure data structure."
+  "Parse SQL and return Clojure data structure.
+
+  Returns map with keys:
+  - :tables_source - tables referenced (excluding CTEs)
+  - :tables_all    - all tables including CTEs
+  - :columns       - column references
+  - :projections   - output columns/aliases
+  - :ast           - full AST as nested maps
+
+  Example:
+    (p \"SELECT id, name FROM users WHERE active = true\")
+    ;; => {:tables_source [\"users\"]
+    ;;     :columns [\"active\" \"id\" \"name\"]
+    ;;     :projections [\"id\" \"name\"]
+    ;;     ...}"
   [sql]
-  ;; todo: the shim doesn't 100% return json. need to fix that
+  ;; TODO: the shim doesn't 100% return json. need to fix that
   ;;   sqlglot=> (p "-- FIXTURE: interpolation/crosstab
   ;; SELECT * FROM crosstab($$
-
   ;;     SELECT
   ;;         history.page,
   ;;         date_trunc('month', history.h_timestamp)::DATE,
@@ -169,7 +326,6 @@
   ;;     WHERE h_timestamp between '2024-01-01' and '2024-12-01'
   ;;     GROUP BY page, date_trunc('month', history.h_timestamp)
   ;; $$,
-
   ;;         $$
   ;;             SELECT
   ;;                 date_trunc('month', generate_series('2024-01-01', '2024-02-01', '1 month'::INTERVAL))::DATE
@@ -181,4 +337,23 @@
   ;; )")
   ;; Execution error (PolyglotException) at <python>/default (encoder.py:161).
   ;; TypeError: Object of type Type is not JSON serializable
-  (json/parse-string (.asString ^Value (analyze-sql sql)) true))
+  (json/decode+kw (.asString ^Value (analyze-sql sql))))
+
+(comment
+  ;; Quick test
+  (p "SELECT id, name FROM users WHERE active = true")
+
+  ;; Test with CTE
+  (p "WITH active_users AS (SELECT * FROM users WHERE active)
+      SELECT * FROM active_users")
+
+  ;; PostgreSQL dollar-quote (this fails in JSqlParser)
+  (p "SELECT $tag$hello$tag$")
+
+  ;; Multiple tables with join
+  (p "SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id")
+
+  ;; Using with-open for manual pool management:
+  (with-open [ctx (acquire-context @python-context-pool)]
+    (eval-python ctx "import sqlglot")
+    (eval-python ctx "sqlglot.parse_one('SELECT 1'")))

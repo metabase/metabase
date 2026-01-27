@@ -1,0 +1,3 @@
+# This file keeps the dev and CI versions of sqlglot in sync
+# Check here for new versions: https://pypi.org/project/sqlglot/#history
+28.6.0
