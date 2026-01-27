@@ -16,11 +16,12 @@ import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "../../../../types";
-import { areFilterOptionsEqual } from "../../../../utils";
+import { areFilterOptionsEqual, areSortOptionsEqual } from "../../../../utils";
 import {
   canFilter,
   getAvailableSortColumns,
   getDefaultFilterOptions,
+  getDefaultSortOptions,
 } from "../utils";
 
 import S from "./PanelHeader.module.css";
@@ -56,6 +57,10 @@ export function PanelHeader({
     filterOptions,
     getDefaultFilterOptions(),
   );
+  const hasDefaultSortOptions = areSortOptionsEqual(
+    sortOptions,
+    getDefaultSortOptions(groupType),
+  );
 
   return (
     <Stack className={S.root} p="lg" gap="lg">
@@ -77,6 +82,7 @@ export function PanelHeader({
               <SortOptionsPicker
                 sortOptions={sortOptions}
                 availableSortColumns={getAvailableSortColumns(groupType)}
+                hasDefaultSortOptions={hasDefaultSortOptions}
                 onSortOptionsChange={onSortOptionsChange}
               />
               {hasFilterPicker && (

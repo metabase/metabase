@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   ActionIcon,
   FixedSizeIcon,
+  Indicator,
   Popover,
   Radio,
   SegmentedControl,
@@ -21,12 +22,14 @@ import { getSortColumnItems, getSortDirectionItems } from "./utils";
 type SortOptionsPickerProps = {
   sortOptions: DependencySortOptions;
   availableSortColumns: DependencySortColumn[];
+  hasDefaultSortOptions?: boolean;
   onSortOptionsChange: (sortOptions: DependencySortOptions) => void;
 };
 
 export function SortOptionsPicker({
   sortOptions,
   availableSortColumns,
+  hasDefaultSortOptions = false,
   onSortOptionsChange,
 }: SortOptionsPickerProps) {
   const [isOpened, { toggle, close }] = useDisclosure();
@@ -34,9 +37,11 @@ export function SortOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <ActionIcon aria-label={t`Sort`} onClick={toggle}>
-          <FixedSizeIcon c="text-primary" name="sort" />
-        </ActionIcon>
+        <Indicator disabled={hasDefaultSortOptions}>
+          <ActionIcon aria-label={t`Sort`} onClick={toggle}>
+            <FixedSizeIcon c="text-primary" name="sort" />
+          </ActionIcon>
+        </Indicator>
       </Popover.Target>
       <Popover.Dropdown>
         <SortOptionsPopover
