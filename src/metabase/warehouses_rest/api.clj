@@ -197,6 +197,7 @@
   {:deprecated "0.59.0"}
   [card-type :- ::queries.schema/card-type]
   (for [card (source-query-cards card-type)]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (schema.table/card->virtual-table card)))
 
 (mu/defn- saved-cards-virtual-db-metadata
@@ -208,13 +209,13 @@
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables card-type)))))
+      include-tables? (assoc :tables #_{:clj-kondo/ignore [:deprecated-var]} (cards-virtual-tables card-type)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database
   {:deprecated "0.59.0"}
   [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
+  (let [virtual-db-metadata (apply #_{:clj-kondo/ignore [:deprecated-var]} saved-cards-virtual-db-metadata :question options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
       (and (source-query-cards-exist? :question) virtual-db-metadata) (concat [virtual-db-metadata]))))
@@ -261,6 +262,9 @@
 
 (defn- dbs-list
   [& {:keys [include-tables?
+             ;; TODO (Cam 2026-01-27) the `include-saved-questions-*` options should be considered deprecated; they're
+             ;; left in place for now because I believe the embedding entity picker in the FE still uses them, but
+             ;; they should be removed as soon as that is no longer true
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
@@ -299,7 +303,8 @@
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      include-saved-questions-db?  #_{:clj-kondo/ignore [:deprecated-var]} (add-saved-questions-virtual-database
+                                                                            :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
@@ -568,7 +573,9 @@
 (api.macros/defendpoint :get ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
+  {:deprecated "0.57.0"}
   []
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (saved-cards-virtual-db-metadata :question :include-tables? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
@@ -1365,9 +1372,10 @@
 (api.macros/defendpoint :get ["/:virtual-db/schemas"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
+  {:deprecated "0.57.0"}
   []
   (when (lib-be/enable-nested-queries)
-    (->> (cards-virtual-tables :question)
+    (->> #_{:clj-kondo/ignore [:deprecated-var]} (cards-virtual-tables :question)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1379,9 +1387,10 @@
 (api.macros/defendpoint :get ["/:virtual-db/datasets"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
+  {:deprecated "0.57.0"}
   []
   (when (lib-be/enable-nested-queries)
-    (->> (cards-virtual-tables :model)
+    (->> #_{:clj-kondo/ignore [:deprecated-var]} (cards-virtual-tables :model)
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
@@ -1495,7 +1504,7 @@
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map schema.table/card->virtual-table))))
+         (map #_{:clj-kondo/ignore [:deprecated-var]} schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1525,7 +1534,7 @@
           :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map schema.table/card->virtual-table))))
+         (map #_{:clj-kondo/ignore [:deprecated-var]} schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
 

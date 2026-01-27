@@ -1,6 +1,5 @@
 (ns metabase.queries.schema
   (:require
-   [malli.error :as me]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
