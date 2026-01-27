@@ -249,5 +249,5 @@
                                           [:map
                                            [:database ::lib.schema.id/database]]
                                           [:ref ::lib.schema.query/test-query-spec]]]
-  (let [metadata-provider (lib-be/application-database-metadata-provider database)]
-    (lib/test-query metadata-provider query-spec)))
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-query query-spec)))
