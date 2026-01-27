@@ -83,5 +83,6 @@
         ctx (or @interpreter (python-context))
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.referenced_tables")
-        dialect (name driver)]
+        dialect (when-not (= :h2 driver)
+                  (name driver))]
     (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db])))))))
