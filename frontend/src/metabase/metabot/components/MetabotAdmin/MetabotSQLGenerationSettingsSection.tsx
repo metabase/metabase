@@ -8,7 +8,7 @@ import {
 import { useListModelsQuery } from "metabase/api/llm";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Select, Stack, TextInput } from "metabase/ui";
+import { PasswordInput, Select, Stack } from "metabase/ui";
 
 export function MetabotSQLGenerationSettingsSection() {
   const apiKey = useAdminSetting("llm-anthropic-api-key");
@@ -72,7 +72,7 @@ export function MetabotSQLGenerationSettingsSection() {
         description={t`Ask questions in plain language and get results — Metabot handles the SQL.`}
       >
         <Stack gap="md">
-          <TextInput
+          <PasswordInput
             label={t`Anthropic API Key`}
             description={t`Your API key. This key is encrypted and stored securely.`}
             placeholder={t`Enter your API key`}
