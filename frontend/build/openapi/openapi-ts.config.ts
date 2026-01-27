@@ -17,9 +17,6 @@ export default defineConfig({
       },
     },
   },
-  types: {
-    enums: "javascript", // This generates runtime enums!
-  },
   plugins: [
     {
       enums: true,
