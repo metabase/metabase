@@ -175,6 +175,12 @@ jobs:
         with:
           commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ${{ matrix.edition }}
+      - name: Verify license files are present in uberjar
+        run: |
+          echo "Checking for license files in uberjar..."
+          unzip -l ./metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
+          unzip -l ./metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
+          echo "Both license files found in uberjar"
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &

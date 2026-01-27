@@ -1,91 +1,110 @@
-const { generateDisclaimerText } = require("./generate-license-disclaimer");
+const {
+  generateDisclaimerText,
+  parseBunFolderName,
+  scanBunPackages,
+} = require("./generate-license-disclaimer");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+
+describe("parseBunFolderName", () => {
+  it("parses simple package names", () => {
+    expect(parseBunFolderName("lodash@4.17.21")).toEqual({
+      name: "lodash",
+      version: "4.17.21",
+    });
+  });
+
+  it("parses scoped package names", () => {
+    expect(parseBunFolderName("@babel+core@7.28.4")).toEqual({
+      name: "@babel/core",
+      version: "7.28.4",
+    });
+  });
+
+  it("parses deeply scoped package names", () => {
+    expect(parseBunFolderName("@emotion+react@11.11.0")).toEqual({
+      name: "@emotion/react",
+      version: "11.11.0",
+    });
+  });
+
+  it("returns null for invalid names", () => {
+    expect(parseBunFolderName("invalid")).toBeNull();
+    expect(parseBunFolderName("")).toBeNull();
+  });
+});
+
+describe("scanBunPackages", () => {
+  let tempDir;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "bun-test-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true });
+  });
+
+  it("scans packages from .bun directory", () => {
+    const pkgDir = path.join(tempDir, "lodash@4.17.21", "node_modules", "lodash");
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, "package.json"), "{}");
+
+    const packages = scanBunPackages(tempDir);
+
+    expect(packages).toHaveLength(1);
+    expect(packages[0].name).toBe("lodash");
+    expect(packages[0].version).toBe("4.17.21");
+  });
+
+  it("scans scoped packages", () => {
+    const pkgDir = path.join(tempDir, "@babel+core@7.28.4", "node_modules", "@babel/core");
+    fs.mkdirSync(pkgDir, { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, "package.json"), "{}");
+
+    const packages = scanBunPackages(tempDir);
+
+    expect(packages).toHaveLength(1);
+    expect(packages[0].name).toBe("@babel/core");
+    expect(packages[0].version).toBe("7.28.4");
+  });
+
+  it("skips folders that don't match expected structure", () => {
+    fs.mkdirSync(path.join(tempDir, "invalid-folder"));
+    fs.mkdirSync(path.join(tempDir, "also-invalid@1.0.0"));
+
+    const packages = scanBunPackages(tempDir);
+
+    expect(packages).toHaveLength(0);
+  });
+
+  it("throws if directory doesn't exist", () => {
+    expect(() => scanBunPackages("/nonexistent")).toThrow();
+  });
+});
 
 describe("generateDisclaimerText", () => {
-  // Helper to create bun licenses data structure
-  const makeLicensesData = packages => {
-    // bun groups by license type, but we just need entries
-    return {
-      MIT: packages,
-    };
-  };
-
-  // Simple mock that returns fixed values
-  const mockGetLicenseInfo = licenseText => () => ({
+  const mockGetPackageDetails = (licenseText, repoUrl) => () => ({
     licenseText,
-    repoUrl: "https://github.com/test/repo",
+    repoUrl,
+    homepage: "https://example.com",
   });
 
   it("generates header", () => {
-    const result = generateDisclaimerText({}, mockGetLicenseInfo("MIT"));
+    const result = generateDisclaimerText([], mockGetPackageDetails("MIT", null));
     expect(result).toMatch(
       /^THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES FOR THIRD PARTY SOFTWARE/,
     );
   });
 
-  it("flattens packages from bun structure", () => {
-    const licensesData = {
-      MIT: [
-        {
-          name: "pkg-a",
-          versions: ["1.0.0"],
-          paths: ["/path/to/pkg-a"],
-          homepage: "https://example.com",
-        },
-      ],
-      Apache: [
-        {
-          name: "pkg-b",
-          versions: ["2.0.0"],
-          paths: ["/path/to/pkg-b"],
-          homepage: "https://example.com",
-        },
-      ],
-    };
-
-    const result = generateDisclaimerText(
-      licensesData,
-      mockGetLicenseInfo("License"),
-    );
-
-    expect(result).toContain("pkg-a");
-    expect(result).toContain("pkg-b");
-  });
-
-  it("handles packages with multiple versions", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "multi-version",
-        versions: ["1.0.0", "2.0.0"],
-        paths: ["/path/v1", "/path/v2"],
-        homepage: "https://example.com",
-      },
-    ]);
-
-    const calls = [];
-    const result = generateDisclaimerText(licensesData, pkg => {
-      calls.push(pkg);
-      return { licenseText: "MIT", repoUrl: null };
-    });
-
-    // Should have called getLicenseInfo for each version
-    expect(calls.length).toBe(2);
-    expect(calls[0].version).toBe("1.0.0");
-    expect(calls[1].version).toBe("2.0.0");
-  });
-
   it("generates entry for a single package", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "test-package",
-        versions: ["1.0.0"],
-        paths: ["/path/to/test-package"],
-        homepage: "https://test.com",
-      },
-    ]);
+    const packages = [{ name: "test-package", version: "1.0.0", path: "/path" }];
 
-    const result = generateDisclaimerText(licensesData, () => ({
+    const result = generateDisclaimerText(packages, () => ({
       licenseText: "MIT License text here",
       repoUrl: "https://github.com/test/test-package",
+      homepage: null,
     }));
 
     expect(result).toContain("-----");
@@ -99,55 +118,34 @@ describe("generateDisclaimerText", () => {
   });
 
   it("groups packages with same repo and license", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "@scope/pkg-a",
-        versions: ["1.0.0"],
-        paths: ["/path/a"],
-        homepage: null,
-      },
-      {
-        name: "@scope/pkg-b",
-        versions: ["1.0.0"],
-        paths: ["/path/b"],
-        homepage: null,
-      },
-    ]);
+    const packages = [
+      { name: "@scope/pkg-a", version: "1.0.0", path: "/path/a" },
+      { name: "@scope/pkg-b", version: "1.0.0", path: "/path/b" },
+    ];
 
-    const result = generateDisclaimerText(licensesData, () => ({
+    const result = generateDisclaimerText(packages, () => ({
       licenseText: "MIT License",
       repoUrl: "https://github.com/scope/monorepo",
+      homepage: null,
     }));
 
-    // Should be grouped together
     expect(result).toContain("@scope/pkg-a, @scope/pkg-b");
-    // License text should appear only once
     const licenseMatches = result.match(/MIT License/g);
     expect(licenseMatches.length).toBe(1);
   });
 
   it("does not group packages with different licenses", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "pkg-a",
-        versions: ["1.0.0"],
-        paths: ["/path/a"],
-        homepage: null,
-      },
-      {
-        name: "pkg-b",
-        versions: ["1.0.0"],
-        paths: ["/path/b"],
-        homepage: null,
-      },
-    ]);
+    const packages = [
+      { name: "pkg-a", version: "1.0.0", path: "/path/a" },
+      { name: "pkg-b", version: "1.0.0", path: "/path/b" },
+    ];
 
-    const result = generateDisclaimerText(licensesData, pkg => ({
+    const result = generateDisclaimerText(packages, (pkg) => ({
       licenseText: pkg.name === "pkg-a" ? "MIT License" : "Apache License",
       repoUrl: "https://github.com/test/repo",
+      homepage: null,
     }));
 
-    // Should have separate entries
     expect(result).toContain(
       "The following software may be included in this product: pkg-a.",
     );
@@ -157,46 +155,30 @@ describe("generateDisclaimerText", () => {
   });
 
   it("normalizes git URLs for grouping", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "pkg-a",
-        versions: ["1.0.0"],
-        paths: ["/path/a"],
-        homepage: null,
-      },
-      {
-        name: "pkg-b",
-        versions: ["1.0.0"],
-        paths: ["/path/b"],
-        homepage: null,
-      },
-    ]);
+    const packages = [
+      { name: "pkg-a", version: "1.0.0", path: "/path/a" },
+      { name: "pkg-b", version: "1.0.0", path: "/path/b" },
+    ];
 
-    const result = generateDisclaimerText(licensesData, pkg => ({
+    const result = generateDisclaimerText(packages, (pkg) => ({
       licenseText: "MIT",
       repoUrl:
         pkg.name === "pkg-a"
           ? "git+https://github.com/test/repo.git"
           : "https://github.com/test/repo",
+      homepage: null,
     }));
 
-    // Should be grouped together despite different URL formats
     expect(result).toContain("pkg-a, pkg-b");
   });
 
   it("handles packages without repo URL", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "no-repo-package",
-        versions: ["1.0.0"],
-        paths: ["/path"],
-        homepage: null,
-      },
-    ]);
+    const packages = [{ name: "no-repo-package", version: "1.0.0", path: "/path" }];
 
-    const result = generateDisclaimerText(licensesData, () => ({
+    const result = generateDisclaimerText(packages, () => ({
       licenseText: "Some License",
       repoUrl: null,
+      homepage: null,
     }));
 
     expect(result).toContain(
@@ -206,33 +188,28 @@ describe("generateDisclaimerText", () => {
   });
 
   it("uses fallback when no license text found", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "no-license",
-        versions: ["1.0.0"],
-        paths: ["/path"],
-        homepage: "https://example.com",
-      },
-    ]);
+    const packages = [{ name: "no-license", version: "1.0.0", path: "/path" }];
 
-    const result = generateDisclaimerText(licensesData, () => ({
+    const result = generateDisclaimerText(packages, () => ({
       licenseText: null,
       repoUrl: null,
+      homepage: "https://example.com",
     }));
 
-    expect(result).toContain("License: See https://example.com");
+    expect(result).toContain("License: See https://example.com package");
   });
 
   it("sorts groups alphabetically", () => {
-    const licensesData = makeLicensesData([
-      { name: "zebra", versions: ["1.0.0"], paths: ["/z"], homepage: null },
-      { name: "alpha", versions: ["1.0.0"], paths: ["/a"], homepage: null },
-      { name: "middle", versions: ["1.0.0"], paths: ["/m"], homepage: null },
-    ]);
+    const packages = [
+      { name: "zebra", version: "1.0.0", path: "/z" },
+      { name: "alpha", version: "1.0.0", path: "/a" },
+      { name: "middle", version: "1.0.0", path: "/m" },
+    ];
 
-    const result = generateDisclaimerText(licensesData, pkg => ({
+    const result = generateDisclaimerText(packages, (pkg) => ({
       licenseText: `License for ${pkg.name}`,
       repoUrl: null,
+      homepage: null,
     }));
 
     const alphaIndex = result.indexOf("alpha");
@@ -244,24 +221,53 @@ describe("generateDisclaimerText", () => {
   });
 
   it("dedupes multiple versions of same package", () => {
-    const licensesData = makeLicensesData([
-      {
-        name: "lodash",
-        versions: ["4.0.0", "4.1.0"],
-        paths: ["/path/v1", "/path/v2"],
-        homepage: null,
-      },
-    ]);
+    const packages = [
+      { name: "lodash", version: "4.0.0", path: "/path/v1" },
+      { name: "lodash", version: "4.1.0", path: "/path/v2" },
+    ];
 
-    const result = generateDisclaimerText(licensesData, () => ({
+    const result = generateDisclaimerText(packages, () => ({
       licenseText: "MIT",
       repoUrl: "https://github.com/lodash/lodash",
+      homepage: null,
     }));
 
-    // Should only list lodash once in the package list
     const matches = result.match(
       /The following software may be included in this product: lodash\./g,
     );
     expect(matches.length).toBe(1);
+  });
+});
+
+describe("integration", () => {
+  it("runs successfully and generates valid output", () => {
+    const { execSync } = require("child_process");
+    const scriptPath = path.join(__dirname, "generate-license-disclaimer.js");
+    const outputFile = path.join(__dirname, "..", "resources", "license-frontend-third-party.txt");
+
+    const result = execSync(`node ${scriptPath}`, { encoding: "utf-8" });
+
+    expect(result).toMatch(/Found \d+ packages/);
+
+    const packageCount = parseInt(result.match(/Found (\d+) packages/)[1], 10);
+    expect(packageCount).toBeGreaterThan(1000);
+
+    const content = fs.readFileSync(outputFile, "utf-8");
+    expect(content).toMatch(/^THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES/);
+    expect(content).toContain("-----");
+    expect(content).toContain("This software contains the following license");
+  });
+
+  it("falls back to package.json license field when no LICENSE file exists", () => {
+    const { execSync } = require("child_process");
+    const scriptPath = path.join(__dirname, "generate-license-disclaimer.js");
+    const outputFile = path.join(__dirname, "..", "resources", "license-frontend-third-party.txt");
+
+    execSync(`node ${scriptPath}`, { encoding: "utf-8" });
+    const content = fs.readFileSync(outputFile, "utf-8");
+
+    // @bundled-es-modules/cookie has "license": "ISC" in package.json but no LICENSE file
+    // Should show "ISC" not "License: See ... package"
+    expect(content).not.toContain("License: See @bundled-es-modules/cookie package");
   });
 });
