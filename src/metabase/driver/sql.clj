@@ -188,10 +188,10 @@
   "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
   [driver query]
   (-> query
-       driver-api/raw-native-query
-       (driver.u/parsed-query driver)
-       (macaw/query->components {:strip-contexts? true})
-       :tables
+      driver-api/raw-native-query
+      (driver.u/parsed-query driver)
+      (macaw/query->components {:strip-contexts? true})
+      :tables
       (->> (map :component)
            (map #(normalize-table-spec driver %)))))
 

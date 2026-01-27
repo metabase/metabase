@@ -182,7 +182,6 @@ export function QueryEditorBody({
         onRejectProposed={onRejectProposed}
         topBarInnerContent={topBarInnerContent}
         extraButton={extraButton}
-        resizable={!readOnly}
       />
     );
   }

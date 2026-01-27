@@ -426,6 +426,7 @@ export function canHaveViewCount(type: DependencyType): boolean {
       return true;
     case "table":
     case "transform":
+    case "workspace-transform":
     case "snippet":
     case "sandbox":
     case "segment":

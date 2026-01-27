@@ -317,7 +317,7 @@ export function TransformQueryPageEditor({
       uiState={uiState}
       uiOptions={uiOptions}
       databases={databases}
-      readOnly={!isEditMode}
+      isEditMode={isEditMode}
       onChangeSource={setSourceAndRejectProposed}
       onChangeUiState={setUiState}
       onAcceptProposed={acceptProposed}
