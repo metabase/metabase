@@ -1347,7 +1347,9 @@
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
-      :models                      (if-not (or (nil? namespace) (= namespace "snippets")) #{:collection} model-kwds)
+      :models                      (if-not (contains? #{nil "snippeets" "transforms"} namespace)
+                                     #{:collection}
+                                     model-kwds)
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                     :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
