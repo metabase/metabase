@@ -1,12 +1,13 @@
 (ns metabase-enterprise.metabot-v3.self.core
   (:require
-   [clojure.core.async :as a]
-   [clojure.core.async.impl.protocols :as impl]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.io BufferedReader Closeable)
+   (java.util.concurrent Callable Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
 
@@ -15,38 +16,45 @@
   []
   (str "mb-" (random-uuid)))
 
-(defn chan?
-  "Checks if argument is a `core.async/chan`"
+(defn reducible?
+  "Checks if argument implements IReduceInit (reducible source)."
   [x]
-  (satisfies? impl/Channel x))
+  (instance? clojure.lang.IReduceInit x))
 
-;; we're using channels because of backpressure and ability to close them
-(defn sse-chan
-  "Turn an SSE InputStream into a channel of `data` strings.
-   Closes the channel on EOF."
-  [^java.io.Closeable input]
-  (let [out (a/chan 64)]
-    (.start
-     (doto (Thread/ofVirtual) (.name "sse-reader"))
-     (fn []
-       ;; NOTE: parsing is oriented towards OpenAI-like SSE stream, where there are only `data: ...` lines with json.
-       ;; Feel free to adjust once we have better understanding.
-       (with-open [r (io/reader input)]
-         (loop []
-           (when-let [line (.readLine ^java.io.BufferedReader r)]
-             (cond
-               (= line "data: [DONE]")          nil
-               ;; this `when` is doing the heavy lifting here: `>!!` will return `false` if the channel is closed:
-               ;; - which exits the loop
-               ;; - which exits `with-open`
-               ;; - which closes the `io/reader`
-               ;; - which closes the underlying `InputStream`
-               ;; and closes the http connection, which should stop the LLM
-               (str/starts-with? line "data: ") (when (a/>!! out (json/decode+kw (subs line 6)))
-                                                  (recur))
-               :else                            (recur)))))
-       (a/close! out)))
-    out))
+(defn sse-reducible
+  "Turn an SSE InputStream into a reducible source of parsed JSON events.
+
+  Returns an IReduceInit that:
+  - Parses SSE 'data: {...}' lines as JSON
+  - Stops on 'data: [DONE]' or EOF
+  - Supports early termination via `reduced`
+  - Closes the input stream on completion or early termination
+
+  Also implements Closeable for explicit cleanup if needed."
+  [^Closeable input]
+  (reify
+    clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (with-open [r (io/reader input)]
+        (loop [acc init]
+          (if (reduced? acc)
+            @acc
+            (if-let [line (.readLine ^BufferedReader r)]
+              (cond
+                (= line "data: [DONE]")
+                (reduced acc)
+
+                (str/starts-with? line "data: ")
+                ;; NOTE: we can do that since not one of providers spit json in multiple lines
+                (recur (rf acc (json/decode+kw (subs line 6))))
+
+                :else ;; FIXME: check if we get anything aside from empty lines here
+                (recur acc))
+              acc)))))
+
+    Closeable
+    (close [_]
+      (.close input))))
 
 ;;; AISDK5
 
@@ -75,7 +83,7 @@
   "Collect a stream of AI SDK v5 messages into a list of parts (joins by id)."
   [rf]
   ;; FIXME: logic relies on chunks pieces not being interleaved which won't hold for long if we will use
-  ;; `tool-executor-rff`
+  ;; `tool-executor-xf`
   (let [current-id (volatile! nil)
         acc        (volatile! [])]
     (fn
@@ -198,117 +206,93 @@
          ;; Pass through unknown types as data
          (rf result (format-data-line part)))))))
 
-;;; Fancy tool executor guy
+;;; Tool executor
 
-(defn tool-executor-rff
-  "Transducer that intercepts tool calls, executes them asynchronously, and appends results at the end.
+(defonce ^:private tool-executor
+  (Executors/newFixedThreadPool
+   20
+   (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
-  - Passes all chunks through unchanged
-  - When `:tool-input-start` appears with a tool name from TOOLS, starts tracking that tool call
-  - Collects arguments from `:tool-input-delta` chunks
-  - When `:tool-input-available` appears, fires off async tool execution
-  - At completion, appends all tool results to the stream
+(defn- submit-virtual
+  "Submit a thunk to run on a virtual thread, bounded by pool size."
+  [thunk]
+  (.submit ^ExecutorService tool-executor ^Callable thunk))
 
-  NOTE: AISDK5 has only `:tool-output-available` that's sync in nature, so for channels returned (presumably from
-  LLMS) we just directly append them to our stream."
+(defn- collect-tool-result
+  "Normalize tool result into a vector of output chunks.
+
+  Tools can return:
+  - Plain value (map): wrapped as single :tool-output-available
+  - IReduceInit (reducible): reduced into chunks, filtering :start/:finish"
+  [tool-call-id tool-name result]
+  (let [ids {:toolCallId tool-call-id :toolName tool-name}]
+    (if (reducible? result)
+      (into []
+            (comp (remove #(#{:start :finish} (:type %)))
+                  (map #(merge % ids)))
+            result)
+      [(assoc ids :type :tool-output-available :result result)])))
+
+(defn- run-tool
+  "Execute a tool and return output chunks. Handles errors gracefully."
+  [tool-call-id tool-name tool-fn chunks]
+  (try
+    (let [{:keys [arguments]} (into {} aisdk-xf chunks)]
+      (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+      (let [result (tool-fn arguments)]
+        (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+        (collect-tool-result tool-call-id tool-name result)))
+    (catch Exception e
+      (log/error e "Tool execution failed" {:tool-name tool-name})
+      [{:type       :tool-output-available
+        :toolCallId tool-call-id
+        :toolName   tool-name
+        :error      {:message (.getMessage e)
+                     :type    (str (type e))}}])))
+
+(defn tool-executor-xf
+  "Transducer that executes tool calls in parallel on virtual threads.
+
+  Behavior:
+  - Passes all chunks through unchanged as they arrive
+  - Tracks tool calls from :tool-input-start through :tool-input-available
+  - Spawns virtual thread for each tool when input is complete
+  - At completion, waits for all tools and appends results
+
+  Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    ;; id -> [chunks...] at first, id -> part + :chan later
-    (let [active-tools (volatile! {})]
+    (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
       (fn
         ([result]
-         (let [chans (keep :chan (vals @active-tools))]
-           (log/debug "tool-executor-rff completion"
-                      {:active-tool-count (count @active-tools)
-                       :chan-count (count chans)})
-           (if (empty? chans)
+         (let [tasks (keep :task (vals @active))]
+           (if (empty? tasks)
              (rf result)
-             ;; Use a/thread to drain channels to avoid blocking in dispatch thread
-             ;; a/<!! is safe inside a/thread block
-             (let [results-promise (promise)
-                   merged (a/merge chans)]
-               (a/thread
-                 (deliver results-promise
-                          (loop [acc []]
-                            (if-let [v (a/<!! merged)]
-                              (recur (conj acc v))
-                              acc))))
-               (let [tool-results @results-promise]
-                 (log/debug "tool-executor-rff drained tool results"
-                            {:count (count tool-results)
-                             :types (mapv :type tool-results)})
-                 (rf (reduce rf result tool-results)))))))
+             (rf (reduce rf result (mapcat deref tasks))))))
 
-        ([result chunk]
-         (log/debug "tool-executor-rff chunk" {:type (:type chunk)})
-         (case (:type chunk)
-           :tool-input-start            ; start collecting chunks if tool is known
-           (let [tool-name    (:toolName chunk)
-                 tool-call-id (:toolCallId chunk)]
-             (log/debug "tool-input-start received"
-                        {:tool-name tool-name
-                         :tool-call-id tool-call-id
-                         :tool-known? (contains? tools tool-name)})
-             (when (contains? tools tool-name)
-               (vswap! active-tools assoc tool-call-id [chunk]))
+        ([result {:keys [type toolCallId toolName] :as chunk}]
+         (case type
+           :tool-input-start
+           (do
+             (when (contains? tools toolName)
+               (vswap! active assoc toolCallId {:chunks [chunk]}))
              (rf result chunk))
 
-           :tool-input-delta            ; append a chunk if we're interested in this tool
-           (let [tool-call-id (:toolCallId chunk)]
-             (when (contains? @active-tools tool-call-id)
-               (vswap! active-tools update tool-call-id conj chunk))
+           :tool-input-delta
+           (do
+             (when-let [{:keys [chunks]} (get @active toolCallId)]
+               (vswap! active assoc-in [toolCallId :chunks] (conj chunks chunk)))
              (rf result chunk))
 
-           ;; grab a tool, execute and send everything to a channel that's going to be examined in
-           ;; reducing arity up there
            :tool-input-available
-           (let [tool-name    (:toolName chunk)
-                 tool-call-id (:toolCallId chunk)]
-             (log/debug "tool-input-available received"
-                        {:tool-name tool-name
-                         :tool-call-id tool-call-id
-                         :tracked? (contains? @active-tools tool-call-id)})
-             (when-let [chunks (seq (get @active-tools tool-call-id))]
-               (let [tool-entry (get tools tool-name)
-                     ;; Support both vars and wrapped tool maps with :fn key
-                     tool-fn (if (map? tool-entry) (:fn tool-entry) tool-entry)
-                     chan    (a/chan 10)]
-                 (log/debug "Executing tool" {:tool-name tool-name})
-                 (vswap! active-tools assoc tool-call-id {:chan chan})
-                 (future
-                   (try
-                     ;; time to combine those chunks in a sensible representation;
-                     ;; we're doing that in a `future` because we're saving some μs (haven't measured yet)
-                     (let [{:keys [arguments]
-                            :as   tool-call} (into {} aisdk-xf chunks)
-                           _                 (vswap! active-tools update tool-call-id merge tool-call)
-                           _                 (log/debug "Calling tool function"
-                                                        {:tool-name tool-name
-                                                         :arguments arguments})
-                           result            (tool-fn arguments)
-                           done-ch           (a/chan)]
-                       (log/debug "Tool function returned"
-                                  {:tool-name tool-name
-                                   :result-type (type result)
-                                   :result-keys (when (map? result) (keys result))})
-                       (if (chan? result)
-                         (do
-                           (a/pipeline 1 chan (remove #(#{:start :finish} (:type %))) result done-ch)
-                           (a/<!! done-ch)) ;; wait until pipeline stops
-                         (a/>!! chan {:type       :tool-output-available
-                                      :toolCallId tool-call-id
-                                      :toolName   tool-name
-                                      :result     result})))
-                     (catch Exception e
-                       (log/error e "Tool execution failed" {:tool-name tool-name})
-                       (a/>!! chan {:type       :tool-output-available
-                                    :toolCallId tool-call-id
-                                    :toolName   tool-name
-                                    :error      {:message (.getMessage e)
-                                                 :type    (str (type e))}}))
-                     (finally
-                       (a/close! chan))))))
+           (do
+             (when-let [{:keys [chunks]} (get @active toolCallId)]
+               (let [tool-entry (get tools toolName)
+                     tool-fn    (if (map? tool-entry) (:fn tool-entry) tool-entry)
+                     ;; collect the chunks for the tool and run with it
+                     task       (submit-virtual #(run-tool toolCallId toolName tool-fn chunks))]
+                 (vswap! active assoc toolCallId {:task task})))
              (rf result chunk))
 
-           ;; default
+           ;; Default: pass through
            (rf result chunk)))))))

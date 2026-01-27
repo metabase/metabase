@@ -1,13 +1,15 @@
 (ns metabase-enterprise.metabot-v3.self
-  "TODO:
-  - done: figure out request cancellation
-  - done: async tool calls appended to the same xf results
-  - done: usage tracking - they'll go through and we can do whatever we want later on
-  - done: test structured output
-  - done: add anthropic api support to see how hard is to be heterogeneous
+  "LLM client infrastructure using reducible streams.
+
+  Key design decisions:
+  - LLM APIs return IReduceInit (reducible) instead of core.async channels
+  - Standard Clojure transducers work directly: (into [] xf (claude-raw {...}))
+  - Tools can return plain values or IReduceInit (for streaming results)
+  - No core.async required anywhere
+
+  TODO:
   - figure out what's lacking compared to ai-service"
   (:require
-   [clojure.core.async :as a]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.claude :as claude]
    [metabase-enterprise.metabot-v3.self.core :as core]
@@ -20,11 +22,12 @@
 
 (p/import-vars [claude
                 claude-raw
-                claude->aisdk-xf])
+                claude->aisdk-xf
+                claude])
 
 (p/import-vars [core
-                chan?
-                sse-chan
+                reducible?
+                sse-reducible
                 aisdk-xf
                 aisdk-line-xf
                 format-text-line
@@ -34,7 +37,7 @@
                 format-tool-result-line
                 format-finish-line
                 format-start-line
-                tool-executor-rff])
+                tool-executor-xf])
 
 (p/import-vars [openai
                 openai-raw
@@ -50,9 +53,10 @@
   (def usr
     "What time is it right now in Europe/Kyiv, and convert 100 EUR to UAH.")
 
-  (def q (a/<!! (a/into [] (openai/openai-raw {:messages [{:role "system" :content sys}
-                                                          {:role "user" :content usr}]
-                                               :tools    (vals TOOLS)})))))
+  ;; Now just use standard `into` - no core.async!
+  (def q (into [] (openai/openai-raw {:messages [{:role "system" :content sys}
+                                                 {:role "user" :content usr}]
+                                      :tools    (vals TOOLS)}))))
 
 ;;; tools
 
@@ -100,20 +104,25 @@
   (map tool->openai (vals TOOLS)))
 
 (comment
-  (def q (a/<!! (a/into [] (analyze-data-trend {:metric "revenue"
-                                                :values [100.0 120.0 145.0 160.0]
-                                                :period "Q1 2025"}))))
-  (def w (into [] (tool-executor-rff TOOLS) q))
+  ;; All examples now use standard `into` - no core.async needed!
+
+  ;; Tool that calls back to LLM (returns reducible)
+  (def q (into [] (analyze-data-trend {:metric "revenue"
+                                       :values [100.0 120.0 145.0 160.0]
+                                       :period "Q1 2025"})))
+  (def w (into [] (tool-executor-xf TOOLS) q))
   (def e (into [] aisdk-xf w))
 
-  (def q (a/<!! (a/into [] (openai-raw
-                            {:system "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis."
-                             :input [{:role "user" :content "Can you analyze these trends? Revenue for Q1: [50000, 55000, 58000, 62000] and customer count: [100, 110, 105, 115]. What story do these numbers tell?"}]
-                             :tools    (vals metabase-enterprise.metabot-v3.self/TOOLS)}))))
+  ;; OpenAI with tools
+  (def q (into [] (openai-raw
+                   {:system "You are a data analysis assistant. When users provide time-series data and ask for insights, use the analyze-data-trend tool to generate interpretations. Always call the tool rather than making up your own analysis."
+                    :input [{:role "user" :content "Can you analyze these trends? Revenue for Q1: [50000, 55000, 58000, 62000] and customer count: [100, 110, 105, 115]. What story do these numbers tell?"}]
+                    :tools  (vals metabase-enterprise.metabot-v3.self/TOOLS)})))
 
-  (def q (a/<!! (a/into [] (claude-raw
-                            {:input [{:role "user" :content "Can you tell me currencies of three northmost American countries?"}]
-                             :schema [:map
-                                      [:currencies [:sequential [:map
-                                                                 [:country [:string {:description "Three-letter code"}]]
-                                                                 [:currency [:string {:description "Three-letter code"}]]]]]]})))))
+  ;; Claude with structured output
+  (def q (into [] (claude-raw
+                   {:input [{:role "user" :content "Can you tell me currencies of three northmost American countries?"}]
+                    :schema [:map
+                             [:currencies [:sequential [:map
+                                                        [:country [:string {:description "Three-letter code"}]]
+                                                        [:currency [:string {:description "Three-letter code"}]]]]]]}))))
