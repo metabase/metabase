@@ -81,6 +81,7 @@ export type DashboardEmbedOptions = StrictUnion<
   // parameters
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
+  enableEntityNavigation?: boolean;
 
   // incompatible options
   template?: never;
@@ -183,7 +184,6 @@ export type SdkIframeEmbedBaseSettings = {
   preferredAuthMethod?: MetabaseAuthMethod;
   jwtProviderUri?: string;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
-  enableEntityNavigation?: boolean;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
