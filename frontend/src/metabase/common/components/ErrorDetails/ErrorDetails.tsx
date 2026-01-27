@@ -7,8 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { ErrorBox } from "./ErrorBox";
 import type { ErrorDetailsProps } from "./types";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ErrorDetails({
+export function ErrorDetails({
   details,
   centered,
   className,

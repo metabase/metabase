@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -46,9 +47,7 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/write-policy.superuser)
-  (derive ::mi/create-policy.superuser))
+  (derive :hook/entity-id))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
@@ -61,6 +60,57 @@
       (u/the-id table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
+
+;; Measures can be written by superusers, but only if the parent table is editable
+;; (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-write? :model/Measure
+  ([instance]
+   (let [table (or (:table instance)
+                   (t2/select-one :model/Table :id (:table_id instance)))]
+     (and (mi/superuser?)
+          (remote-sync/table-editable? table))))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
+
+;; Measures can be created by superusers, but only if the parent table is editable
+;; (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-create? :model/Measure
+  [_model instance]
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (mi/superuser?)
+         (remote-sync/table-editable? table))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
+  "Batched hydration for :can_write on measures. First hydrates :table for all measures,
+   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
+   on each measure. This avoids N+1 queries when checking permissions for multiple measures."
+  [_model k measures]
+  (let [measures-with-tables (t2/hydrate (remove nil? measures) :table)
+        ;; Get all unique collection IDs from the hydrated tables
+        collection-ids (->> measures-with-tables
+                            (keep (comp :collection_id :table))
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each measure's table
+        measures-with-collection (for [measure measures-with-tables
+                                       :let [table (:table measure)
+                                             coll-id (:collection_id table)]]
+                                   (if (and table coll-id)
+                                     (assoc-in measure [:table :collection]
+                                               {:id coll-id
+                                                :is_remote_synced (get collection-synced-map coll-id false)})
+                                     measure))]
+    (mi/instances-with-hydrated-data
+     measures k
+     #(u/index-by :id mi/can-write? measures-with-collection)
+     :id
+     {:default false})))
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]

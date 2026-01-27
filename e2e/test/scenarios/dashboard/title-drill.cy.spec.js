@@ -152,7 +152,7 @@ describe("scenarios > dashboard > title drill", () => {
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
         checkScalarResult("200");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text contains").click();
         cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
@@ -161,7 +161,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("12");
 
         // Drill through on the question's title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
         checkFilterLabelAndValue("Filter", "bb");
@@ -178,7 +178,7 @@ describe("scenarios > dashboard > title drill", () => {
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
         checkScalarResult("200");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text contains").click();
         cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
@@ -187,7 +187,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("12");
 
         // Drill through on the question's title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
         checkFilterLabelAndValue("Filter", "bb");
@@ -337,7 +337,7 @@ describe("scenarios > dashboard > title drill", () => {
         H.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the unset id parameter works
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().last().click();
         H.dashboardParametersPopover().within(() => {
           H.fieldValuesCombobox().type("5");

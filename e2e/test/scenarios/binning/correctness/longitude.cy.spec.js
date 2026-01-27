@@ -25,7 +25,7 @@ describe("scenarios > binning > correctness > longitude", () => {
           .should("contain", "Longitude")
           .and("contain", selected);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
@@ -47,7 +47,7 @@ describe("scenarios > binning > correctness > longitude", () => {
       .should("contain", "Longitude")
       .and("contain", "Unbinned");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
     getTitle("Count by Longitude");

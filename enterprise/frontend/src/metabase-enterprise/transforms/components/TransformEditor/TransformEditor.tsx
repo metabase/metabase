@@ -7,9 +7,13 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+<<<<<<< HEAD
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
+=======
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+>>>>>>> master
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -33,8 +37,12 @@ export type TransformEditorProps = {
   onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
+<<<<<<< HEAD
   readOnly?: boolean;
   transform?: Transform;
+=======
+  isEditMode: boolean;
+>>>>>>> master
   transformId?: TransformId;
 };
 
@@ -50,8 +58,12 @@ export function TransformEditor({
   onRejectProposed,
   onRunQueryStart,
   onBlur,
+<<<<<<< HEAD
   readOnly,
   transform,
+=======
+  isEditMode,
+>>>>>>> master
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -66,10 +78,20 @@ export function TransformEditor({
         : undefined,
     [proposedSource, metadata],
   );
+<<<<<<< HEAD
   const mergedUiOptions = useMemo(
     () => ({ ...getEditorOptions(databases, readOnly), ...uiOptions }),
     [databases, readOnly, uiOptions],
+=======
+  const uiOptions = useMemo(
+    () => getEditorOptions(databases, !isEditMode),
+    [databases, isEditMode],
+>>>>>>> master
   );
+
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditDefinitionButton =
+    !!transformId && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -94,6 +116,7 @@ export function TransformEditor({
       onRunQueryStart={onRunQueryStart}
       onBlur={onBlur}
       topBarInnerContent={
+<<<<<<< HEAD
         readOnly &&
         !!transformId &&
         transform &&
@@ -102,6 +125,18 @@ export function TransformEditor({
         ) : (
           <EditDefinitionButton transformId={transformId} />
         ))
+=======
+        showEditDefinitionButton && (
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
+        )
+>>>>>>> master
       }
     />
   );

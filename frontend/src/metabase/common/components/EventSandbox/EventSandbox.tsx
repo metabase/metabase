@@ -83,7 +83,7 @@ const allOnKeyEvents = eventsSandboxedByDefault.filter((name) =>
 /** Prevent DOM events from bubbling through the React component tree.
  *
  * This is useful for modals and popovers as they are often targeted to interactive elements. */
-function EventSandbox({
+export function EventSandbox({
   children,
   disabled,
   sandboxedEvents = eventsSandboxedByDefault,
@@ -130,5 +130,3 @@ function EventSandbox({
     </div>
   );
 }
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EventSandbox;

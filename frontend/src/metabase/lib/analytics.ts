@@ -50,7 +50,7 @@ export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
     // eslint-disable-next-line no-console
     console.log(
       `%c[SNOWPLOW EVENT | event sent:${shouldSendEvent}]%c, ${type}`,
-      // eslint-disable-next-line no-color-literals
+      // eslint-disable-next-line metabase/no-color-literals
       "background: #222; color: #bada55",
       "color: ",
       other,

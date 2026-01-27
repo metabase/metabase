@@ -10,7 +10,7 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
 /**
  * @deprecated HOCs are deprecated
  */
-const chartSettingNestedSettings =
+export const chartSettingNestedSettings =
   ({ getObjectKey, getObjectSettings, getSettingsWidgetsForObject }) =>
   (ComposedComponent) =>
     class extends Component {
@@ -117,5 +117,3 @@ const chartSettingNestedSettings =
         );
       }
     };
-
-export default chartSettingNestedSettings;

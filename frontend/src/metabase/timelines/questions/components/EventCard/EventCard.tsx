@@ -2,8 +2,8 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
-import Checkbox from "metabase/common/components/CheckBox/CheckBox";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckBox";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";

@@ -1,16 +1,27 @@
 .queryEditor {
+<<<<<<< HEAD
   display: flex;
   flex-direction: column;
   /* Very crude solution to integrate editor to Workspace Transform Tab */
   flex: var(--native-query-editor-flex, none);
   width: 100%;
+=======
+>>>>>>> master
   background-color: var(--mb-color-background-secondary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .editorWrapper {
+  overflow: auto;
   width: 100%;
+<<<<<<< HEAD
   flex: 1 0 auto;
   /* min-height: 0; */
+=======
+  height: 100%;
+>>>>>>> master
 }
 
 .resizableArea {
@@ -21,8 +32,16 @@
   flex-direction: column;
 }
 
+.resizableBoxContent {
+  overflow: hidden;
+}
+
 .actionButtons {
   /* min-height of the top bar, it's needed for vertical alignment when there
   are several template tags */
   height: 3rem;
+}
+
+.readOnlyEditor {
+  overflow: auto;
 }

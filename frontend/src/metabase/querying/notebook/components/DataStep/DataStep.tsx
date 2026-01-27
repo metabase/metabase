@@ -1,7 +1,7 @@
 import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbedding } from "metabase/selectors/embed";
