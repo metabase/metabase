@@ -310,6 +310,7 @@ export type TransformInspectSummary = {
 export type TransformInspectJoin = {
   strategy: JoinStrategy;
   alias?: string;
+  source_table: ConcreteTableId;
   stats: {
     source_table?: unknown;
     left_row_count?: number;
