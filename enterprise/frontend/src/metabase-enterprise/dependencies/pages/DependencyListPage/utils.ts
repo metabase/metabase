@@ -21,13 +21,16 @@ export function parseParams(
   return {
     page: parseNumber(params.page),
     query: parseString(params.query),
-    groupTypes: parseList(params.group_types, (item) =>
+    group_types: parseList(params.group_types, (item) =>
       parseEnum(item, DEPENDENCY_GROUP_TYPES),
     ),
-    includePersonalCollections: parseBoolean(
+    include_personal_collections: parseBoolean(
       params.include_personal_collections,
     ),
-    sortColumn: parseEnum(params.sort_column, DEPENDENCY_SORT_COLUMNS),
-    sortDirection: parseEnum(params.sort_direction, DEPENDENCY_SORT_DIRECTIONS),
+    sort_column: parseEnum(params.sort_column, DEPENDENCY_SORT_COLUMNS),
+    sort_direction: parseEnum(
+      params.sort_direction,
+      DEPENDENCY_SORT_DIRECTIONS,
+    ),
   };
 }

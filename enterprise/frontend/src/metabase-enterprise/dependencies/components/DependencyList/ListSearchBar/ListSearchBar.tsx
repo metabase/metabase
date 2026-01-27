@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
-import type { DependencyFilterOptions } from "metabase-types/api";
 
+import type { DependencyFilterOptions } from "../../../types";
 import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";

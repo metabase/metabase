@@ -1,13 +1,15 @@
 import type {
-  DependencyFilterOptions,
   DependencyGroupType,
   DependencyNode,
   DependencySortColumn,
-  DependencySortOptions,
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../types";
 import {
   canHaveViewCount,
   getCardType,

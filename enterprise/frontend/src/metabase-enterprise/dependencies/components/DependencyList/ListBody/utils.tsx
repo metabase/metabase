@@ -6,9 +6,9 @@ import {
   DEPENDENCY_SORT_COLUMNS,
   type DependencyNode,
   type DependencySortColumn,
-  type DependencySortOptions,
 } from "metabase-types/api";
 
+import type { DependencySortOptions } from "../../../types";
 import {
   getDependentErrorNodesCount,
   getNodeLabel,

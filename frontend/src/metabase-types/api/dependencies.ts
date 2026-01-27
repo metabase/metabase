@@ -312,12 +312,7 @@ export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
 };
 
-export type DependencyFilterOptions = {
-  groupTypes: DependencyGroupType[];
-  includePersonalCollections: boolean;
-};
-
-export type DependencySortOptions = {
-  column: DependencySortColumn;
-  direction: DependencySortDirection;
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
 };

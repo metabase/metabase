@@ -2,11 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Stack } from "metabase/ui";
-import type {
-  DependencyFilterOptions,
-  DependencyGroupType,
-} from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
+import type { DependencyFilterOptions } from "../../../types";
 import { getDependencyGroupTypeInfo } from "../../../utils";
 
 type TypeFilterPickerProps = {

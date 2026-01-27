@@ -1,11 +1,13 @@
 import type {
-  DependencyFilterOptions,
   DependencyNode,
-  DependencySortOptions,
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
 import { getCardTypes, getDependencyTypes } from "../../../../utils";
 import { BROKEN_DEPENDENTS_GROUP_TYPES } from "../../constants";
 

@@ -8,15 +8,14 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
-import type {
-  DependencyFilterOptions,
-  DependencyGroupType,
-  DependencyNode,
-  DependencySortOptions,
-} from "metabase-types/api";
+import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 import { FilterOptionsPicker } from "../../../../components/FilterOptionsPicker";
 import { SortOptionsPicker } from "../../../../components/SortOptionsPicker";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../../../types";
 import { areFilterOptionsEqual } from "../../../../utils";
 import {
   canFilter,

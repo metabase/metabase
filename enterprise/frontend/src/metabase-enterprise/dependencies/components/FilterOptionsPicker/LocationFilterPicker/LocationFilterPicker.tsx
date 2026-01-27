@@ -2,7 +2,8 @@ import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Input, Stack } from "metabase/ui";
-import type { DependencyFilterOptions } from "metabase-types/api";
+
+import type { DependencyFilterOptions } from "../../../types";
 
 type LocationFilterPickerProps = {
   filterOptions: DependencyFilterOptions;
