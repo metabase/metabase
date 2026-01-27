@@ -34,6 +34,7 @@
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
    [metabase.lib.init]
+   [metabase.llm.init]
    [metabase.logger.init]
    [metabase.login-history.init]
    [metabase.model-persistence.init]
