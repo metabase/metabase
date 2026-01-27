@@ -66,11 +66,8 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
       },
     },
 
-    // background-brand: asymmetric (dark: 3, light: 4)
-    "background-brand": {
-      darkTheme: { default: { offset: 3 } },
-      lightTheme: { default: { offset: 4 } },
-    },
+    // background-brand: darker to support white text
+    "background-brand": 4,
 
     // focus: subtle tint, same direction as brand-light
     focus: 2,
