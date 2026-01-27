@@ -14,7 +14,7 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 };
 
 // custom fetcher that wraps our Api client
-export const apiQuery: BaseQueryFn = async (args, ctx) => {
+export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
   const url = typeof args === "string" ? args : args.url;
   const { bodyParamName, noEvent, formData, fetch } = args;
@@ -24,9 +24,6 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
   }
 
   try {
-    // DELETE requests with body need hasBody: true to send JSON body instead of query params
-    const deleteWithBody = method === "DELETE" && args?.body != null;
-
     const response = await api[method](url)(
       // this will transform arrays to objects with numeric keys
       // we shouldn't be using top level-arrays in the API
@@ -37,7 +34,7 @@ export const apiQuery: BaseQueryFn = async (args, ctx) => {
         noEvent,
         formData,
         fetch,
-        ...(deleteWithBody && { hasBody: true }),
+        ...extraOptions,
       },
     );
     return { data: response };

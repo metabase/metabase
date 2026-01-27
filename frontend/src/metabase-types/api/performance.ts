@@ -66,10 +66,6 @@ export interface CacheConfig {
   strategy: CacheStrategy;
 }
 
-export type CacheConfigAPIResponse = {
-  data: CacheConfig[];
-};
-
 export type CacheSortColumn = "name" | "collection" | "policy";
 export type SortDirection = "asc" | "desc";
 

@@ -28,16 +28,37 @@ export const cacheConfigApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["cache-config"],
     }),
-    deleteCacheConfig: builder.mutation<
+    deleteCacheConfigs: builder.mutation<
       void,
-      { model: CacheableModel; model_id: number }
+      { model: CacheableModel; model_id: number | number[] }
     >({
-      query: ({ model, model_id }) => ({
+      query: (body) => ({
         method: "DELETE",
         url: "/api/cache",
-        body: { model, model_id },
+        body,
       }),
+      extraOptions: {
+        hasBody: true,
+      },
       invalidatesTags: ["cache-config"],
+    }),
+    invalidateCacheConfigs: builder.mutation<
+      void,
+      {
+        include?: "overrides";
+        database?: number | number[];
+        dashboard?: number | number[];
+        question?: number | number[];
+      }
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/cache/invalidate",
+        params,
+      }),
+      extraOptions: {
+        hasBody: false,
+      },
     }),
   }),
 });
@@ -45,5 +66,6 @@ export const cacheConfigApi = Api.injectEndpoints({
 export const {
   useListCacheConfigsQuery,
   useUpdateCacheConfigMutation,
-  useDeleteCacheConfigMutation,
+  useDeleteCacheConfigsMutation,
+  useInvalidateCacheConfigsMutation,
 } = cacheConfigApi;

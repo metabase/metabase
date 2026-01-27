@@ -1,9 +1,8 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
 import {
-  useDeleteCacheConfigMutation,
+  useDeleteCacheConfigsMutation,
   useUpdateCacheConfigMutation,
 } from "metabase/api";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -23,12 +22,10 @@ import {
 
 export const useSaveStrategy = (
   targetId: number | null,
-  configs: CacheConfig[],
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel | null,
 ) => {
   const [updateCacheConfig] = useUpdateCacheConfigMutation();
-  const [deleteCacheConfig] = useDeleteCacheConfigMutation();
+  const [deleteCacheConfigs] = useDeleteCacheConfigsMutation();
 
   const saveStrategy = useCallback(
     async (values: CacheStrategy) => {
@@ -42,17 +39,12 @@ export const useSaveStrategy = (
         model: isRoot ? "root" : model,
         model_id: targetId,
       };
-
-      const otherConfigs = configs.filter(
-        (config) => config.model_id !== targetId,
-      );
       const shouldDeleteStrategy =
         values.type === "inherit" ||
         // To set "don't cache" as the root strategy, we delete the root strategy
         (isRoot && values.type === "nocache");
       if (shouldDeleteStrategy) {
-        await deleteCacheConfig(baseConfig);
-        setConfigs(otherConfigs);
+        await deleteCacheConfigs(baseConfig).unwrap();
       } else {
         // If you change strategies, Formik will keep the old values
         // for fields that are not in the new strategy,
@@ -70,23 +62,14 @@ export const useSaveStrategy = (
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
-        await updateCacheConfig(translatedConfig);
+        await updateCacheConfig(translatedConfig).unwrap();
 
         if (newConfig.strategy.type === "ttl") {
           newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
         }
-
-        setConfigs([...otherConfigs, newConfig]);
       }
     },
-    [
-      configs,
-      setConfigs,
-      targetId,
-      model,
-      updateCacheConfig,
-      deleteCacheConfig,
-    ],
+    [targetId, model, updateCacheConfig, deleteCacheConfigs],
   );
   return saveStrategy;
 };
