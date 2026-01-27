@@ -5,7 +5,11 @@ import {
 } from "../constants/lightness-stops";
 import type { MetabaseColorKey } from "../types";
 
-import { detectLightnessStep, generateLightnessStops } from "./lightness-stops";
+import {
+  detectLightnessStep,
+  generateLightnessStops,
+  generateTextStops,
+} from "./lightness-stops";
 import {
   resolveBrandDerivation,
   resolveDerivation,
@@ -61,8 +65,8 @@ export function deriveColorsFromInputs(
 
   // Derive text-related colors from text-primary
   if (colors["text-primary"]) {
-    const textStops = generateLightnessStops(colors["text-primary"]);
-    const isLightTheme = textStops.detectedStep >= 60; // dark text = light theme
+    const textStops = generateTextStops(colors["text-primary"]);
+    const isLightTheme = detectLightnessStep(colors["text-primary"]) >= 60; // dark text = light theme
 
     for (const [key, alphaStep] of Object.entries(TEXT_DERIVATIONS)) {
       // Skip border for light theme (already set from background)
@@ -76,10 +80,12 @@ export function deriveColorsFromInputs(
       const useContrastingAlpha = alphaStep < 0;
 
       const color = useContrastingAlpha
-        ? (textStops.contrastingAlpha[step] ?? textStops.solid[step])
-        : (textStops.alpha[step] ?? textStops.solid[step]);
+        ? textStops.contrastingAlpha[step]
+        : textStops.alpha[step];
 
-      derived[key as MetabaseColorKey] = color;
+      if (color) {
+        derived[key as MetabaseColorKey] = color;
+      }
     }
   }
 

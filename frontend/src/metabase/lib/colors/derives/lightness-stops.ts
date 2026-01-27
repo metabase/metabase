@@ -12,6 +12,7 @@ import type {
   AlphaColorStops,
   ColorStops,
   GeneratedColorStops,
+  GeneratedTextStops,
   LightnessStop,
 } from "../types/lightness-stops";
 
@@ -219,4 +220,79 @@ export function generateLightnessStops(color: string): GeneratedColorStops {
     contrastingAlpha: generateAlphaStops(contrastingBaseColor, false),
     detectedStep,
   };
+}
+
+/**
+ * Alpha values for text colors, matching orionAlpha from base-colors.ts.
+ * Used for dark text on light backgrounds.
+ */
+const TEXT_ALPHA_VALUES: Record<LightnessStop, number> = {
+  5: 0.02,
+  10: 0.05,
+  20: 0.17,
+  30: 0.29,
+  40: 0.44,
+  50: 0.51,
+  60: 0.62,
+  70: 0.74,
+  80: 0.84,
+  90: 0.93,
+  100: 1,
+  110: 1,
+};
+
+/**
+ * Alpha values for inverse text colors, matching orionAlphaInverse from base-colors.ts.
+ * Used for light text on dark backgrounds (e.g., tooltips).
+ * These are generally higher (more opaque) than TEXT_ALPHA_VALUES
+ * because white text needs more opacity to be visible.
+ */
+const TEXT_ALPHA_INVERSE_VALUES: Record<LightnessStop, number> = {
+  5: 0.01,
+  10: 0.1,
+  20: 0.21,
+  30: 0.33,
+  40: 0.46,
+  50: 0.53,
+  60: 0.69,
+  70: 0.85,
+  80: 0.95,
+  90: 0.98,
+  100: 1,
+  110: 1,
+};
+
+/**
+ * Generate text color stops without using Leonardo.
+ *
+ * This is a simpler approach for text colors:
+ * - alpha: the input color with varying alpha (for text-secondary, text-tertiary, etc.)
+ * - contrastingAlpha: white or black with varying alpha (for inverse text colors)
+ *
+ * @param textColor - The text-primary color
+ * @returns Alpha stops for text and contrasting (inverse) text
+ */
+export function generateTextStops(textColor: string): GeneratedTextStops {
+  const c = Color(textColor);
+  const isDark = c.isDark();
+
+  // Generate alpha stops for the text color itself
+  const alpha: AlphaColorStops = {};
+  for (const [stop, alphaValue] of Object.entries(TEXT_ALPHA_VALUES)) {
+    const numStop = Number(stop) as LightnessStop;
+    alpha[numStop] = c.alpha(alphaValue).hexa() as CssColor;
+  }
+
+  // Generate contrasting alpha stops (white for dark text, black for light text)
+  // eslint-disable-next-line metabase/no-color-literals
+  const contrastingBase = Color(isDark ? "#FFFFFF" : "#000000");
+  const contrastingAlpha: AlphaColorStops = {};
+  for (const [stop, alphaValue] of Object.entries(TEXT_ALPHA_INVERSE_VALUES)) {
+    const numStop = Number(stop) as LightnessStop;
+    contrastingAlpha[numStop] = contrastingBase
+      .alpha(alphaValue)
+      .hexa() as CssColor;
+  }
+
+  return { alpha, contrastingAlpha };
 }

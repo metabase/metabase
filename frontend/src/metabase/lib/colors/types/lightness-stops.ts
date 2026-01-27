@@ -57,6 +57,18 @@ export interface GeneratedColorStops {
 }
 
 /**
+ * Result of generating text color stops.
+ * Simpler than GeneratedColorStops - just alpha variations without Leonardo.
+ */
+export interface GeneratedTextStops {
+  /** Alpha stops: text-primary color with varying alpha */
+  alpha: AlphaColorStops;
+
+  /** Contrasting alpha stops: white/black with varying alpha for inverse text */
+  contrastingAlpha: AlphaColorStops;
+}
+
+/**
  * A step derivation can be:
  * - Assign a fixed step number (5, 10, 20, ... 110)
  * - Use a relative offset from the detected step (e.g. offset: -2)
