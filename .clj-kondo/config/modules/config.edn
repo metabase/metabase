@@ -2116,7 +2116,6 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-           enterprise/sso
            enterprise/transforms
            enterprise/transforms-python}}
 
