@@ -776,7 +776,7 @@
 (deftest ^:sequential card-update-works-with-no-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (testing "Card updates should publish new analyses when no existing ones exist"
+     (testing "Card updates should analyze the card and mark dependents stale for async processing"
        (let [products-id (mt/id :products)
              products (lib.metadata/table mp products-id)]
          (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
@@ -787,13 +787,16 @@
                                              :to_entity_id parent-card-id}]
            (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
            (assert-has-analyses
-            {:card {parent-card-id -1
-                    child-card-id -1}})))))))
+            {:card {parent-card-id -1}})
+           (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                       :analyzed_entity_type :card
+                                       :analyzed_entity_id child-card-id))
+               "entities without analysis findings should not be marked: no fake analysis record should be created")))))))
 
 (deftest ^:sequential card-update-updates-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (testing "Card updates should update existing analyses when they exist"
+     (testing "Card updates should update the card's analysis and mark dependents stale"
        (let [products-id (mt/id :products)
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
@@ -815,13 +818,83 @@
               {:card {parent-card-id old-version
                       child-card-id old-version
                       other-card-id old-version}}))
+           (t2/with-transaction [_conn]
+             (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
+             (testing "Parent should be re-analyzed synchronously"
+               (assert-has-analyses
+                {:card {parent-card-id new-version}}))
+             (testing "Child should be marked stale (not re-analyzed yet)"
+               (let [child-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id child-card-id)]
+                 (is (= old-version (:analysis_version child-finding)))
+                 (is (true? (:stale child-finding)))))
+             (testing "Other card should be unchanged"
+               (let [other-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id other-card-id)]
+                 (is (= old-version (:analysis_version other-finding)))
+                 (is (false? (:stale other-finding))))))))))))
+
+(deftest ^:sequential stale-entities-are-processed-by-job-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "Stale entities are re-analyzed when the job runs"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             current-version models.analysis-finding/*current-analysis-finding-version*]
+         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id child-card-id
+                                             :to_entity_type :card
+                                             :to_entity_id parent-card-id}]
+           ;; Create initial analyses for both cards
+           (deps.findings/upsert-analysis! parent-card)
+           (deps.findings/upsert-analysis! child-card)
+           ;; Update parent - this marks child as stale
+           (t2/with-transaction [_conn]
+             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+             ;; Verify child is stale
+             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                          :analyzed_entity_type :card
+                                          :analyzed_entity_id child-card-id))
+                 "Child should be marked stale after parent update"))
+           ;; Run the job to process stale entities
+           (deps.findings/analyze-batch! :card 10)
+           ;; Verify child is no longer stale and has been re-analyzed
+           (let [child-finding (t2/select-one :model/AnalysisFinding
+                                              :analyzed_entity_type :card
+                                              :analyzed_entity_id child-card-id)]
+             (is (false? (:stale child-finding))
+                 "Child should no longer be stale after job runs")
+             (is (= current-version (:analysis_version child-finding))
+                 "Child should have current analysis version"))))))))
+
+(deftest ^:sequential card-update-transaction-rollback-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "If marking dependents stale fails, analysis upsert is rolled back"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc old-version)]
+         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
+           ;; Create initial analysis
+           (deps.findings/upsert-analysis! card)
+           (testing "Initial analysis exists"
+             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id card-id))))
+           ;; Try to update with mark-dependents-stale! throwing an exception
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
-           (testing "Checking that the analyses were updated appropriately"
-             (assert-has-analyses
-              {:card {parent-card-id new-version
-                      child-card-id new-version
-                      other-card-id old-version}}))))))))
+             (with-redefs [deps.findings/mark-dependents-stale! (fn [_ _] (throw (ex-info "Simulated failure" {})))]
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
+                                     (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})))))
+           ;; Verify analysis was NOT updated (rolled back)
+           (testing "Analysis should be unchanged after failed event"
+             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id card-id))))))))))
 
 (deftest ^:sequential card-update-ignores-native-cards-test
   (run-with-dependencies-setup

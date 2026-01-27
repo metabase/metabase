@@ -356,28 +356,33 @@
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
 
           ;; Step 5: Re-sync the database. The sync-end event will detect the stale analysis
-          ;; (because analyzed_at < field.updated_at) and trigger re-analysis.
+          ;; (because analyzed_at < field.updated_at) and mark it for re-analysis.
           (sync/sync-database! (mt/db))
 
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
 
-          ;; Step 6 & 7: The sync-end event should have triggered re-analysis.
-          ;; Check that analysis now fails with missing column error.
-          (testing "Re-analysis detects the missing column"
-            (let [finding (t2/select-one :model/AnalysisFinding
-                                         :analyzed_entity_type :card
-                                         :analyzed_entity_id card-id)]
-              (is (some? finding) "Analysis finding should exist")
-              (is (false? (:result finding)) "Analysis should fail")
-              (is (not= initial-analysis-time (:analyzed_at finding))
-                  "Analysis should have been re-run"))
-
-            (let [errors (deps.analysis-finding-error/errors-for-entity :card card-id)]
-              (is (seq errors) "Should have analysis errors")
-              (is (some #(= :missing-column (:error_type %)) errors)
-                  "Should have a missing-column error"))))))))
+          ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
+          ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
+          ;; or already reanalyzed (job ran). Check for either valid outcome.
+          (let [finding (t2/select-one :model/AnalysisFinding
+                                       :analyzed_entity_type :card
+                                       :analyzed_entity_id card-id)]
+            (is (some? finding) "Analysis finding should exist")
+            (if (:stale finding)
+              ;; Job hasn't run yet - sync marked it stale, that's the expected behavior
+              (testing "Entity is marked stale for re-analysis"
+                (is (true? (:stale finding))))
+              ;; Job already ran - verify the reanalysis detected the missing column
+              (testing "Re-analysis detects the missing column"
+                (is (false? (:result finding)) "Analysis should fail")
+                (is (not= initial-analysis-time (:analyzed_at finding))
+                    "Analysis should have been re-run")
+                (let [errors (deps.analysis-finding-error/errors-for-entity :card card-id)]
+                  (is (seq errors) "Should have analysis errors")
+                  (is (some #(= :missing-column (:error_type %)) errors)
+                      "Should have a missing-column error"))))))))))
 
 ;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
 ;; cards which depend on that table.
