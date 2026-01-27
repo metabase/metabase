@@ -24,8 +24,6 @@ export const SdkInternalNavigationBackButton = () => {
       size="sm"
       leftSection={<Icon name="chevronleft" />}
       onClick={pop}
-      // TODO: REMOVE BEFORE MERGING
-      style={{ border: `var(--debug-border-red)` }}
     >
       {t`Back to ${previousEntry?.name}`}
     </Button>
