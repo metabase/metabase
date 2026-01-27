@@ -1,7 +1,6 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableDataLayer } from "metabase-types/api";
 

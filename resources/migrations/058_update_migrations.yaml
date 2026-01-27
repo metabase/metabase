@@ -1330,25 +1330,27 @@ databaseChangeLog:
             sql: >-
               DELETE FROM permissions
               WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
+
   - changeSet:
-      id: v58.2025-11-27T13:00:00
+      id: v58.2026-01-27T13:00:00
       author: wotbrew
       comment: Drop medallion names for data_layer enum use (hidden, internal instead)
       changes:
-        - sql: >-
-            UPDATE metabase_table
-            SET data_layer = CASE data_layer
-              WHEN 'copper' THEN 'hidden'
-              ELSE 'internal'
-            END
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'copper' THEN 'hidden'
+                ELSE 'internal'
+              END
       rollback:
-        - sql: >-
-            UPDATE metabase_table
-            SET data_layer = CASE data_layer
-              WHEN 'hidden' THEN 'copper'
-              ELSE 'bronze'
-            END
-
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'hidden' THEN 'copper'
+                ELSE 'bronze'
+              END
 
   - changeSet:
       id: v58.2026-01-23T05:55:14
