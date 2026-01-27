@@ -1,6 +1,6 @@
 import {
   BACKGROUND_DERIVE_OFFSETS,
-  BRAND_DERIVATIONS,
+  BRAND_DERIVE_OFFSETS,
   TEXT_DERIVE_ALPHA_STEPS,
 } from "../constants/lightness-stops";
 import type { MetabaseColorKey } from "../types";
@@ -103,7 +103,7 @@ export function deriveColorsFromInputs(
 
     const brandIsDark = detectedStep >= 50;
 
-    for (const [colorKey, rule] of Object.entries(BRAND_DERIVATIONS)) {
+    for (const [colorKey, rule] of Object.entries(BRAND_DERIVE_OFFSETS)) {
       const derivedColorValue = resolveBrandDerivation(
         rule,
         brandStops,
