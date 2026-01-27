@@ -58,7 +58,6 @@ type QueryEditorBodyProps = {
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
   shouldShowLibrary?: boolean;
-  onBlur?: () => void;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -90,7 +89,6 @@ export function QueryEditorBody({
   shouldDisableDatabase,
   shouldDisableItem,
   shouldShowLibrary,
-  onBlur,
   onChange,
   onRunQuery,
   onToggleDataReference,
@@ -160,7 +158,6 @@ export function QueryEditorBody({
         closeSnippetModal={() => onChangeModalSnippet(null)}
         setNativeEditorSelectedRange={onChangeNativeEditorSelection}
         nativeEditorSelectedText={nativeEditorSelectedText}
-        onBlur={onBlur}
         onOpenModal={onOpenModal}
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
