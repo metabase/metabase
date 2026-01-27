@@ -81,11 +81,11 @@
    [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
-   [:end_time [:maybe :any]]
+   [:end_time {:optional true} [:maybe :any]]
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
-   [:transform_name [:maybe :string]]
-   [:transform_entity_id [:maybe :string]]])
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -122,8 +122,8 @@
    [:end_time {:optional true} [:maybe :any]]
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
-   [:transform_name [:maybe :string]]
-   [:transform_entity_id [:maybe :string]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or just tag_ids when deleted/orphaned
    [:transform [:map {:closed true}
                 [:id {:optional true} pos-int?]
