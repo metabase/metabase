@@ -1,10 +1,10 @@
 import type * as Urls from "metabase/lib/urls";
+
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
 import type {
   DependencyFilterOptions,
   DependencySortOptions,
-} from "metabase-types/api";
-
-import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
+} from "../../types";
 
 import { BROKEN_GROUP_TYPES, UNREFERENCED_GROUP_TYPES } from "./constants";
 import type { DependencyListMode } from "./types";
@@ -19,11 +19,14 @@ export function getFilterOptions(
 ): DependencyFilterOptions {
   const defaultFilterOptions = getDefaultFilterOptions(mode);
   const {
-    groupTypes = defaultFilterOptions.groupTypes,
-    includePersonalCollections = defaultFilterOptions.includePersonalCollections,
+    group_types = defaultFilterOptions.groupTypes,
+    include_personal_collections = defaultFilterOptions.includePersonalCollections,
   } = params;
 
-  return { groupTypes, includePersonalCollections };
+  return {
+    groupTypes: group_types,
+    includePersonalCollections: include_personal_collections,
+  };
 }
 
 export function getDefaultFilterOptions(
@@ -36,10 +39,10 @@ export function getDefaultFilterOptions(
 }
 
 export function getSortOptions({
-  sortColumn,
-  sortDirection,
+  sort_column,
+  sort_direction,
 }: Urls.DependencyListParams): DependencySortOptions | undefined {
-  return sortColumn != null && sortDirection != null
-    ? { column: sortColumn, direction: sortDirection }
+  return sort_column != null && sort_direction != null
+    ? { column: sort_column, direction: sort_direction }
     : undefined;
 }

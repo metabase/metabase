@@ -9,13 +9,13 @@ import {
   useListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
-import type {
-  DependencyEntry,
-  DependencyFilterOptions,
-  DependencySortOptions,
-} from "metabase-types/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../types";
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";
@@ -53,19 +53,19 @@ export function DependencyList({
   const {
     page = 0,
     query,
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    sortColumn,
-    sortDirection,
+    group_types = getAvailableGroupTypes(mode),
+    include_personal_collections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    sort_column,
+    sort_direction,
   } = params;
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: getDependencyTypes(groupTypes),
-    card_types: getCardTypes(groupTypes),
-    query: query,
-    include_personal_collections: includePersonalCollections,
-    sort_column: sortColumn,
-    sort_direction: sortDirection,
+    types: getDependencyTypes(group_types),
+    card_types: getCardTypes(group_types),
+    query,
+    include_personal_collections,
+    sort_column,
+    sort_direction,
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   });
@@ -92,8 +92,8 @@ export function DependencyList({
   }: DependencyFilterOptions) => {
     onParamsChange({
       ...params,
-      groupTypes,
-      includePersonalCollections,
+      group_types: groupTypes,
+      include_personal_collections: includePersonalCollections,
       page: undefined,
     });
   };
@@ -103,8 +103,8 @@ export function DependencyList({
   ) => {
     onParamsChange({
       ...params,
-      sortColumn: sortOptions?.column,
-      sortDirection: sortOptions?.direction,
+      sort_column: sortOptions?.column,
+      sort_direction: sortOptions?.direction,
       page: undefined,
     });
   };
