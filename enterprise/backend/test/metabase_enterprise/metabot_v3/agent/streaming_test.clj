@@ -210,13 +210,13 @@
   (testing "resolves metabase:// links in text parts"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :text :text "[Results](metabase://query/q1)"}]
-          result (into [] (streaming/resolve-links-xf {"q1" query} {}) parts)]
+          result (into [] (streaming/post-process-xf {"q1" query} {}) parts)]
       (is (= 1 (count result)))
       (is (re-find #"\[Results\]\(/question#" (:text (first result))))))
 
   (testing "passes through non-text parts unchanged"
     (let [parts [{:type :tool-input :id "t1" :function "search"}]
-          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
       (is (= parts result))))
 
   (testing "accumulates queries from tool-output structured-output"
@@ -225,13 +225,13 @@
                   :id "t1"
                   :result {:structured-output {:query-id "q1" :query query}}}
                  {:type :text :text "[Results](metabase://query/q1)"}]
-          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
       (is (= 2 (count result)))
       (is (re-find #"\[Results\]\(/question#" (:text (second result))))))
 
   (testing "flushes incomplete links at end"
     (let [parts [{:type :text :text "Check [incomplete"}]
-          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
       ;; Should have original part (with empty/partial text) + flushed part
       (is (<= 1 (count result)))
       (let [all-text (->> result (filter #(= :text (:type %))) (map :text) (apply str))]
@@ -239,7 +239,7 @@
 
   (testing "resolves model/metric/dashboard links without state"
     (let [parts [{:type :text :text "[Model](metabase://model/123)"}]
-          result (into [] (streaming/resolve-links-xf {} {}) parts)]
+          result (into [] (streaming/post-process-xf {} {}) parts)]
       (is (= "[Model](/model/123)" (:text (first result)))))))
 
 (deftest post-process-xf-test
