@@ -5,7 +5,12 @@ import { Box } from "metabase/ui";
 
 import ViewSidebarS from "./ViewSidebar.module.css";
 
-const ViewSidebar = ({ side = "right", width = 400, isOpen, children }) => (
+export const ViewSidebar = ({
+  side = "right",
+  width = 400,
+  isOpen,
+  children,
+}) => (
   // If we passed `width` as prop, it would end up in the final HTML elements.
   // This would ruin the animation, so we pass it as `widthProp`.
   <Box
@@ -34,5 +39,3 @@ ViewSidebar.propTypes = {
   side: PropTypes.oneOf(["left", "right"]),
   children: PropTypes.node,
 };
-
-export default ViewSidebar;

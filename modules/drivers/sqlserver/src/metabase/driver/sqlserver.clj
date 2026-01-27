@@ -9,7 +9,6 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -31,12 +30,15 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv get-in]])
+  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.schema Table)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
@@ -1029,11 +1031,12 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
+;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints/classes to be SQL parser-agnostic
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query sql-query)
+        ^Select parsed-query (driver.u/parsed-query sql-query driver)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
     [(str parsed-query) sql-params]))

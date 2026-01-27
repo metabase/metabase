@@ -1,7 +1,7 @@
 import { render, screen } from "__support__/ui";
 import { getStatusColorRanges } from "metabase/lib/colors/groups";
 
-import ColorRangeToggle, { getColorRangeLabel } from "./ColorRangeToggle";
+import { ColorRangeToggle, getColorRangeLabel } from "./ColorRangeToggle";
 
 const [range] = getStatusColorRanges();
 

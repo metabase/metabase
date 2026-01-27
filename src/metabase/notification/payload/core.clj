@@ -101,15 +101,13 @@
     [:notification/testing   :map]]])
 
 (defn- logo-url
-  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
+   For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
   []
   (let [url (appearance/application-logo-url)]
-    (cond
-      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
-      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
-      ;; (data-uri-svg? url)               (themed-image-url url color)
-      :else nil)))
+    (if (= url "app/assets/img/logo.svg")
+      "http://static.metabase.com/email_logo.png"
+      url)))
 
 (defn- button-style
   "Return a CSS style string for a button with the given color."

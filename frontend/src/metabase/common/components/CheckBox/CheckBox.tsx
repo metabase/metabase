@@ -149,9 +149,6 @@ function CheckboxTooltip({
 /**
  * @deprecated: use Checkbox from "metabase/ui"
  */
-const Checkbox = Object.assign(BaseCheckBox, {
+export const CheckBox = Object.assign(BaseCheckBox, {
   Label: CheckBoxLabel,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Checkbox;

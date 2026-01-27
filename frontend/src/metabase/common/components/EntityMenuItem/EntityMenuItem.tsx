@@ -27,7 +27,7 @@ export interface EntityMenuItemProps {
   htmlId?: string;
 }
 
-const EntityMenuItem = ({
+export const EntityMenuItem = ({
   title,
   icon,
   action,
@@ -141,6 +141,3 @@ const LinkMenuItem = ({
     )}
   </Tooltip>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EntityMenuItem;

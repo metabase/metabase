@@ -1,8 +1,8 @@
 import cx from "classnames";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";

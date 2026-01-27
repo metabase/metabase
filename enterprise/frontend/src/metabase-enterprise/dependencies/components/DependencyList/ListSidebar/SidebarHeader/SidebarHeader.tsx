@@ -34,10 +34,11 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
         fw="bold"
         lh="h3"
         to={link?.url ?? ""}
+        target="_blank"
       >
         {getNodeLabel(node)}
       </Anchor>
-      <Group gap="sm">
+      <Group gap="sm" wrap="nowrap">
         <Tooltip
           label={t`View in dependency graph`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}
@@ -45,6 +46,7 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
           <ActionIcon
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
+            target="_blank"
             aria-label={t`View in dependency graph`}
           >
             <FixedSizeIcon name="dependencies" />

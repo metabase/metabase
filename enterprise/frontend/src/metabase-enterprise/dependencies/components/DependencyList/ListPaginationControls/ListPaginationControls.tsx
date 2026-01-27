@@ -1,24 +1,21 @@
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import type * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
 
 import { PAGE_SIZE } from "../constants";
 
 type ListPaginationControlsProps = {
-  params: Urls.DependencyListParams;
+  page: number;
   pageNodesCount: number;
   totalNodesCount: number;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  onPageChange: (page: number) => void;
 };
 
 export function ListPaginationControls({
-  params,
+  page,
   pageNodesCount,
   totalNodesCount,
-  onParamsChange,
+  onPageChange,
 }: ListPaginationControlsProps) {
-  const { page = 0 } = params;
-
   return (
     <Flex justify="end">
       <PaginationControls
@@ -27,8 +24,8 @@ export function ListPaginationControls({
         itemsLength={pageNodesCount}
         total={totalNodesCount}
         showTotal
-        onPreviousPage={() => onParamsChange({ ...params, page: page - 1 })}
-        onNextPage={() => onParamsChange({ ...params, page: page + 1 })}
+        onPreviousPage={() => onPageChange(page - 1)}
+        onNextPage={() => onPageChange(page + 1)}
       />
     </Flex>
   );

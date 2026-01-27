@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
-import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
+import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import Animation from "metabase/css/core/animation.module.css";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";

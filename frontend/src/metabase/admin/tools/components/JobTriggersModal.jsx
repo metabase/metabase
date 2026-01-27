@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { useGetTasksInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/common/components/ModalContent";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 

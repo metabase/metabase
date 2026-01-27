@@ -4,6 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
@@ -35,6 +36,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     transform,
   } = props;
   const metadata = useSelector(getMetadata);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
@@ -58,7 +60,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     return null;
   }
 
-  if (!isEditMode && !isPythonTransform && !isNative) {
+  if (!isEditMode && !isPythonTransform && !isNative && !isRemoteSyncReadOnly) {
     return <EditDefinitionButton transformId={transform.id} />;
   }
 

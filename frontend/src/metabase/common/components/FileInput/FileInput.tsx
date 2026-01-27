@@ -18,7 +18,7 @@ export interface FileInputProps extends FileInputAttributes {
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
-const FileInput = forwardRef(function FileInput(
+export const FileInput = forwardRef(function FileInput(
   { name, autoFocus, onChange, onFocus, onBlur, ...props }: FileInputProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
@@ -48,6 +48,3 @@ const FileInput = forwardRef(function FileInput(
     </InputRoot>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FileInput;

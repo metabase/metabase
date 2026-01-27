@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import QueryButton from "metabase/common/components/QueryButton";
+import { QueryButton } from "metabase/common/components/QueryButton";
 import D from "metabase/reference/components/Detail.module.css";
 
 import S from "./UsefulQuestions.module.css";

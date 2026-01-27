@@ -990,9 +990,9 @@ describe("scenarios > admin > datamodel", () => {
         );
 
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
       });
 
@@ -1009,9 +1009,9 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getDescriptionInput().should("have.value", "");
 
         cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Orders").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
       });
     });
@@ -1114,9 +1114,9 @@ describe("scenarios > admin > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
       });
 
@@ -1145,9 +1145,9 @@ describe("scenarios > admin > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
       });
     });
@@ -1514,9 +1514,9 @@ describe("scenarios > admin > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New description").should("be.visible");
       });
 
@@ -1546,9 +1546,9 @@ describe("scenarios > admin > datamodel", () => {
         cy.visit(
           `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Total").should("be.visible");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No description yet").should("be.visible");
       });
 
@@ -2018,7 +2018,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.log("verify viz");
           H.openOrdersTable();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Tax (CA$)").should("be.visible");
         });
 
@@ -2581,7 +2581,7 @@ describe("scenarios > admin > datamodel", () => {
 
           cy.signInAsNormalUser();
           H.openReviewsTable({ limit: 1 });
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Rustic Paper Wallet").should("be.visible");
         });
 
@@ -2817,7 +2817,7 @@ describe("scenarios > admin > datamodel", () => {
             fieldId: REVIEWS.RATING,
           });
 
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText(CUSTOM_MAPPING_ERROR).should("exist");
         });
 

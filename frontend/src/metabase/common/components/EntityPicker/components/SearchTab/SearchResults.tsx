@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
