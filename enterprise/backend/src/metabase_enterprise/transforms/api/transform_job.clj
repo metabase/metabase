@@ -57,14 +57,14 @@
   [:map {:closed true}
    [:id pos-int?]
    [:email :string]
-   [:date_joined :any]
+   [:date_joined {:optional true} :any]
    [:first_name [:maybe :string]]
    [:last_name [:maybe :string]]
-   [:last_login [:maybe :any]]
-   [:is_superuser :boolean]
-   [:is_qbnewb :boolean]
-   [:tenant_id [:maybe :string]]
-   [:common_name [:maybe :string]]])
+   [:last_login {:optional true} [:maybe :any]]
+   [:is_superuser {:optional true} :boolean]
+   [:is_qbnewb {:optional true} :boolean]
+   [:tenant_id {:optional true} [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map
