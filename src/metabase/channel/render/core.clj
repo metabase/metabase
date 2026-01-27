@@ -29,6 +29,7 @@
   render-pulse-card-for-display
   render-pulse-section
   render-pulse-card-to-png
+  render-adhoc-card-to-png
   render-pulse-card-to-base64
   png-from-render-info]
  [js.svg
