@@ -52,8 +52,8 @@ const CSS_VAR_CONFIGS = [
     sources: [
       {
         type: "unionType",
-        // eslint-disable-next-line no-literal-metabase-strings -- referencing TypeScript type names
-        names: ["MetabaseColorKey", "ProtectedColorKey"],
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- referencing TypeScript type names
+        names: ["MetabaseColorKey"],
         varPrefix: "--mb-color-",
       },
     ],
@@ -199,6 +199,8 @@ class CssVarsDeclarationPlugin {
 
   /**
    * Extract string literals from a union type alias.
+   * Uses the type checker to fully resolve nested type references
+   * and indexed access types (e.g. `(typeof FOO)[number]`).
    * @param {import('ts-morph').SourceFile} sourceFile
    * @param {string} typeName
    * @param {Set<string>} result
@@ -212,36 +214,12 @@ class CssVarsDeclarationPlugin {
       return;
     }
 
-    const typeNode = typeAlias.getTypeNode();
-    if (typeNode) {
-      this.#extractStringLiteralsFromUnion(typeNode, result);
-    }
-  }
-
-  /**
-   * Recursively extract string literals from a union type node.
-   * @param {import('ts-morph').TypeNode} typeNode
-   * @param {Set<string>} result
-   */
-  #extractStringLiteralsFromUnion(typeNode, result) {
-    const kindName = typeNode.getKindName();
-
-    if (kindName === "UnionType") {
-      const unionType = /** @type {import('ts-morph').UnionTypeNode} */ (
-        typeNode
-      );
-      for (const member of unionType.getTypeNodes()) {
-        this.#extractStringLiteralsFromUnion(member, result);
-      }
-    } else if (kindName === "LiteralType") {
-      const literalType = /** @type {import('ts-morph').LiteralTypeNode} */ (
-        typeNode
-      );
-      const literal = literalType.getLiteral();
-
-      if (literal.getKindName() === "StringLiteral") {
-        const text = literal.getText().replace(/['"]/g, "");
-        result.add(text);
+    const resolvedType = typeAlias.getType();
+    if (resolvedType.isUnion()) {
+      for (const member of resolvedType.getUnionTypes()) {
+        if (member.isStringLiteral()) {
+          result.add(/** @type {string} */ (member.getLiteralValue()));
+        }
       }
     }
   }
