@@ -68,84 +68,86 @@ export const InspectColumnComparisons = ({
     [sourcesFields, comparisonsMap],
   );
 
+  const comparisonsContent = (
+    <Stack gap="lg">
+      <MultiSelect
+        data={fieldsOptions}
+        value={selectedFields}
+        onChange={setSelectedFields}
+        placeholder={t`Select output fields`}
+        searchable
+        clearable
+      />
+      {filteredComparisons.length > 0 && (
+        <Stack gap="md">
+          <SimpleGrid cols={2} spacing="md">
+            <Title order={4}>{t`Fields in input table(s)`}</Title>
+            <Title order={4}>{`Fields in output table`}</Title>
+          </SimpleGrid>
+          <Stack gap="lg">
+            {filteredComparisons.map((comparison) => {
+              const inputCard = comparison.cards.find(
+                (c) => c.source === "input",
+              );
+              const outputCard = comparison.cards.find(
+                (c) => c.source === "output",
+              );
+
+              const sourceField = sourceFieldMap[comparison.output_column];
+              const targetField = targetFieldMap[comparison.output_column];
+
+              return (
+                <Stack
+                  key={comparison.id}
+                  gap="md"
+                  bg="background-tertiary"
+                  bd="1px solid var(--mb-color-border)"
+                  bdrs="md"
+                  p="md"
+                >
+                  <SimpleGrid cols={2} spacing="md">
+                    <Title order={5}>{inputCard?.title}</Title>
+                    <Title order={5}>{outputCard?.title}</Title>
+                  </SimpleGrid>
+
+                  <SimpleGrid cols={2} spacing="md">
+                    <ComparisonCard card={inputCard} />
+                    <ComparisonCard card={outputCard} />
+                  </SimpleGrid>
+
+                  <SimpleGrid cols={2} spacing="md">
+                    <Title order={5}>{t`Source stats`}</Title>
+                    <Title order={5}>{t`Target stats`}</Title>
+                  </SimpleGrid>
+
+                  <SimpleGrid cols={2} spacing="md">
+                    <FieldsStatsTable field={sourceField} />
+                    <FieldsStatsTable field={targetField} />
+                  </SimpleGrid>
+                </Stack>
+              );
+            })}
+          </Stack>
+        </Stack>
+      )}
+    </Stack>
+  );
+
   return (
     <Stack gap="lg">
       <Title order={2}>{t`Columns inspection`}</Title>
-      <Tabs defaultValue="comparisons">
-        <Tabs.List>
-          <Tabs.Tab value="comparisons">{t`Comparisons`}</Tabs.Tab>
-          <Tabs.Tab value="unmapped">{t`Unmapped input fields stats`}</Tabs.Tab>
-        </Tabs.List>
+      {unmappedOutputFields.length > 0 ? (
+        <Tabs defaultValue="comparisons">
+          <Tabs.List>
+            <Tabs.Tab value="comparisons">{t`Comparisons`}</Tabs.Tab>
+            <Tabs.Tab value="unmapped">{t`Unmapped input fields stats`}</Tabs.Tab>
+          </Tabs.List>
 
-        <Tabs.Panel value="comparisons" pt="md">
-          <Stack gap="lg">
-            <MultiSelect
-              data={fieldsOptions}
-              value={selectedFields}
-              onChange={setSelectedFields}
-              placeholder={t`Select output fields`}
-              searchable
-              clearable
-            />
-            {filteredComparisons.length > 0 && (
-              <Stack gap="md">
-                <SimpleGrid cols={2} spacing="md">
-                  <Title order={4}>{t`Fields in input table(s)`}</Title>
-                  <Title order={4}>{`Fields in output table`}</Title>
-                </SimpleGrid>
-                <Stack gap="lg">
-                  {filteredComparisons.map((comparison) => {
-                    const inputCard = comparison.cards.find(
-                      (c) => c.source === "input",
-                    );
-                    const outputCard = comparison.cards.find(
-                      (c) => c.source === "output",
-                    );
+          <Tabs.Panel value="comparisons" pt="md">
+            {comparisonsContent}
+          </Tabs.Panel>
 
-                    const sourceField =
-                      sourceFieldMap[comparison.output_column];
-                    const targetField =
-                      targetFieldMap[comparison.output_column];
-
-                    return (
-                      <Stack
-                        key={comparison.id}
-                        gap="md"
-                        bg="background-tertiary"
-                        bd="1px solid var(--mb-color-border)"
-                        bdrs="md"
-                        p="md"
-                      >
-                        <SimpleGrid cols={2} spacing="md">
-                          <Title order={5}>{inputCard?.title}</Title>
-                          <Title order={5}>{outputCard?.title}</Title>
-                        </SimpleGrid>
-
-                        <SimpleGrid cols={2} spacing="md">
-                          <ComparisonCard card={inputCard} />
-                          <ComparisonCard card={outputCard} />
-                        </SimpleGrid>
-
-                        <SimpleGrid cols={2} spacing="md">
-                          <Title order={5}>{t`Source stats`}</Title>
-                          <Title order={5}>{t`Target stats`}</Title>
-                        </SimpleGrid>
-
-                        <SimpleGrid cols={2} spacing="md">
-                          <FieldsStatsTable field={sourceField} />
-                          <FieldsStatsTable field={targetField} />
-                        </SimpleGrid>
-                      </Stack>
-                    );
-                  })}
-                </Stack>
-              </Stack>
-            )}
-          </Stack>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="unmapped" pt="md">
-          {unmappedOutputFields.length > 0 ? (
+          <Tabs.Panel value="unmapped" pt="md">
             <Stack gap="lg">
               {unmappedOutputFields.map((field) => (
                 <Stack
@@ -165,11 +167,11 @@ export const InspectColumnComparisons = ({
                 </Stack>
               ))}
             </Stack>
-          ) : (
-            <Text>{t`No unmapped input fields`}</Text>
-          )}
-        </Tabs.Panel>
-      </Tabs>
+          </Tabs.Panel>
+        </Tabs>
+      ) : (
+        comparisonsContent
+      )}
     </Stack>
   );
 };
