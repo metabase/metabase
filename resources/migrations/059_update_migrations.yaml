@@ -772,13 +772,9 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
-        - createIndex:
+        - sql:
             dbms: mysql,mariadb,h2
-            tableName: analysis_finding
-            indexName: idx_analysis_finding_stale
-            columns:
-              - column:
-                  name: stale
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
       rollback:
         - dropIndex:
             tableName: analysis_finding
