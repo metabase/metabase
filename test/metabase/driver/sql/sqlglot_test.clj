@@ -13,6 +13,28 @@
             :name)
    db))
 
+(deftest dummy-wip-lineage-no-alias-test
+  (mt/test-driver
+    :postgres
+    (let [sql "select subo.t + subo.st from (select total t, subtotal st from orders) subo"
+          db (driver.sql/default-schema :postgres)
+          catalog (dbname (mt/db))
+          schema @(def ssx (sqlglot/schema (mt/id)))]
+      (is (= {"summe" [["test-data" "public" "orders" "total"]
+                       ["test-data" "public" "orders" "subtotal"]]}
+             @(def gg (sqlglot/returned-columns-lineage :postgres sql catalog db schema)))))))
+
+(deftest dummy-wip-lineage-test
+  (mt/test-driver
+    :postgres
+    (let [sql "select subo.t + subo.st as summe from (select total t, subtotal st from orders) subo"
+          db (driver.sql/default-schema :postgres)
+          catalog (dbname (mt/db))
+          schema @(def ssx (sqlglot/schema (mt/id)))]
+      (is (= {"summe" [["test-data" "public" "orders" "total"]
+                       ["test-data" "public" "orders" "subtotal"]]}
+             @(def gg (sqlglot/returned-columns-lineage :postgres sql catalog db schema)))))))
+
 (deftest referenced-tables-003-test
   (mt/test-driver
     :postgres
