@@ -1,7 +1,7 @@
 import {
-  BACKGROUND_DERIVATIONS,
+  BACKGROUND_DERIVE_OFFSETS,
   BRAND_DERIVATIONS,
-  TEXT_DERIVATIONS,
+  TEXT_DERIVE_ALPHA_STEPS,
 } from "../constants/lightness-stops";
 import type { MetabaseColorKey } from "../types";
 
@@ -51,9 +51,11 @@ export function deriveColorsFromInputs(
     const bgStops = generateLightnessStops(colors["background-primary"]);
     const isLightBackground = bgStops.detectedStep <= 20;
 
-    for (const [key, darkOffset] of Object.entries(BACKGROUND_DERIVATIONS)) {
-      // Light mode uses negative offset, dark mode uses positive
-      const offset = isLightBackground ? -darkOffset : darkOffset;
+    for (const [key, lightOffset] of Object.entries(
+      BACKGROUND_DERIVE_OFFSETS,
+    )) {
+      // Light mode uses offset directly, dark mode uses negative
+      const offset = isLightBackground ? lightOffset : -lightOffset;
       derived[key as MetabaseColorKey] = resolveDerivation({ offset }, bgStops);
     }
 
@@ -68,7 +70,7 @@ export function deriveColorsFromInputs(
     const textStops = generateTextStops(colors["text-primary"]);
     const isLightTheme = detectLightnessStep(colors["text-primary"]) >= 60; // dark text = light theme
 
-    for (const [key, alphaStep] of Object.entries(TEXT_DERIVATIONS)) {
+    for (const [key, alphaStep] of Object.entries(TEXT_DERIVE_ALPHA_STEPS)) {
       // Skip border for light theme (already set from background)
       if (key === "border" && isLightTheme) {
         continue;
@@ -102,17 +104,6 @@ export function deriveColorsFromInputs(
     const brandIsDark = detectedStep >= 50;
 
     for (const [colorKey, rule] of Object.entries(BRAND_DERIVATIONS)) {
-      // text-primary-inverse is based on brand color lightness
-      if (colorKey === "text-primary-inverse") {
-        const brandIsLight = detectedStep <= 40;
-
-        derived[colorKey as MetabaseColorKey] = brandIsLight
-          ? brandStops.solid[100] // Light brand needs dark text
-          : brandStops.solid[5]; // Dark brand needs light text
-
-        continue;
-      }
-
       const derivedColorValue = resolveBrandDerivation(
         rule,
         brandStops,

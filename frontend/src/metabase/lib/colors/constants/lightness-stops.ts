@@ -2,29 +2,30 @@ import type { MetabaseColorKey } from "../types";
 import type { BrandDerivationRule } from "../types/lightness-stops";
 
 /**
- * Background color derivations from background-primary.
+ * Background color offsets from background-primary.
  *
- * The number represents the dark mode offset. Light mode uses the negative.
- * Example: 1 means light: -1, dark: 1
+ * The number represents the offset light mode.
+ * Dark mode is the inverse of this.
+ * Example: 1 = (light: offset by 1 step, dark: offset by -1 step)
  */
-export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
+export const BACKGROUND_DERIVE_OFFSETS: Record<MetabaseColorKey, number> = {
   // background-primary is defined by the user.
-  "background-secondary": 1,
-  "background-tertiary": -2,
-  "background-primary-inverse": -8,
-  "background-secondary-inverse": -7,
-  "background-tertiary-inverse": -4,
-  border: -2,
+  "background-secondary": -1,
+  "background-tertiary": 2,
+  "background-primary-inverse": 8,
+  "background-secondary-inverse": 7,
+  "background-tertiary-inverse": 4,
+  border: 2,
 } as Record<MetabaseColorKey, number>;
 
 /**
- * Text color derivations from text-primary.
+ * Text color alpha steps from text-primary.
  *
  * The number represents the alpha step. The sign indicates source:
  * - Positive N: uses alpha[N] from text-primary (for regular text)
  * - Negative -N: uses contrastingAlpha[N] (for inverse text)
  */
-export const TEXT_DERIVATIONS: Record<MetabaseColorKey, number> = {
+export const TEXT_DERIVE_ALPHA_STEPS: Record<MetabaseColorKey, number> = {
   // text-primary is defined by the user.
   "text-secondary": 60,
   "text-tertiary": 40,
