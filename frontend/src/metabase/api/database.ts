@@ -310,7 +310,6 @@ export const {
   useLazyListDatabaseSchemasQuery,
   usePrefetch: useDatabasePrefetch,
   useListSyncableDatabaseSchemasQuery,
-  useLazyListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
