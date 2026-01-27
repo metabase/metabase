@@ -87,7 +87,7 @@ export function QueryEditor({
 
   return (
     <>
-      <Flex flex={1} h={availableHeight} mih={0} ref={ref}>
+      <Flex flex={1} h="100%" mih={0} ref={ref}>
         <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
           <QueryEditorBody
             availableHeight={availableHeight}
