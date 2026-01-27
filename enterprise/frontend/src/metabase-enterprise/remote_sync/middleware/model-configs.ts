@@ -7,6 +7,7 @@ import { documentApi } from "metabase/api/document";
 import { fieldApi } from "metabase/api/field";
 import { measureApi } from "metabase/api/measure";
 import { segmentApi } from "metabase/api/segment";
+import { snippetApi } from "metabase/api/snippet";
 import { tableApi as coreTableApi } from "metabase/api/table";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
@@ -179,6 +180,12 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     modelType: "measure",
     createEndpoints: [measureApi.endpoints.createMeasure.matchFulfilled],
     updateEndpoints: [measureApi.endpoints.updateMeasure.matchFulfilled],
+    invalidation: { type: InvalidationType.Always },
+  },
+  {
+    modelType: "snippet",
+    createEndpoints: [snippetApi.endpoints.createSnippet.matchFulfilled],
+    updateEndpoints: [snippetApi.endpoints.updateSnippet.matchFulfilled],
     invalidation: { type: InvalidationType.Always },
   },
   {
