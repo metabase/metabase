@@ -62,7 +62,7 @@ export function DataStudioUpsellPage({
         <Stack gap="md">
           <Flex align="center" gap="xs">
             <UpsellGem size={16} />
-            {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
             <Text c="text-primary">{t`Metabase Pro`}</Text>
           </Flex>
           <Title order={2}>{title}</Title>
@@ -70,9 +70,9 @@ export function DataStudioUpsellPage({
           {shouldShowContactAdmin ? (
             <Text fw="bold" mt="lg">
               {anyStoreUserEmailAddress
-                ? // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+                ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
                   t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to upgrade your plan.`
-                : // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+                : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
                   t`Please ask a Metabase Store Admin to upgrade your plan.`}
             </Text>
           ) : (
