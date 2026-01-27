@@ -62,19 +62,23 @@ export function deriveColorsFromInputs(
   // Derive text-related colors from text-primary
   if (colors["text-primary"]) {
     const textStops = generateLightnessStops(colors["text-primary"]);
-    const isDarkText = textStops.detectedStep >= 60;
+    const isLightTheme = textStops.detectedStep >= 60; // dark text = light theme
 
-    for (const [key, rule] of Object.entries(TEXT_DERIVATIONS)) {
+    for (const [key, alphaStep] of Object.entries(TEXT_DERIVATIONS)) {
       // Skip border for light theme (already set from background)
-      if (key === "border" && isDarkText) {
+      if (key === "border" && isLightTheme) {
         continue;
       }
 
-      const derivation = isDarkText ? rule.darkText : rule.lightText;
-      derived[key as MetabaseColorKey] = resolveDerivation(
-        derivation,
-        textStops,
-      );
+      // Positive: light uses alpha, dark uses alphaInverse
+      // Negative: light uses alphaInverse, dark uses alpha
+      const step = Math.abs(alphaStep) as keyof typeof textStops.alpha;
+      const useAlpha = isLightTheme ? alphaStep > 0 : alphaStep < 0;
+      const color = useAlpha
+        ? (textStops.alpha[step] ?? textStops.solid[step])
+        : (textStops.alphaInverse[step] ?? textStops.solid[step]);
+
+      derived[key as MetabaseColorKey] = color;
     }
   }
 

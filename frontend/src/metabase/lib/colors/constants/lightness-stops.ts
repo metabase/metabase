@@ -1,5 +1,5 @@
 import type { MetabaseColorKey } from "../types";
-import type { BrandDerivationRule, Derivation } from "../types/lightness-stops";
+import type { BrandDerivationRule } from "../types/lightness-stops";
 
 /**
  * Background color derivations from background-primary.
@@ -8,6 +8,7 @@ import type { BrandDerivationRule, Derivation } from "../types/lightness-stops";
  * Example: 1 means light: -1, dark: 1
  */
 export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
+  // background-primary is defined by the user.
   "background-secondary": 1,
   "background-tertiary": 2,
   "background-primary-inverse": -8,
@@ -18,19 +19,21 @@ export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
 } as Record<MetabaseColorKey, number>;
 
 /**
- * Text color derivations from text-primary
+ * Text color derivations from text-primary.
+ *
+ * The number represents the alpha step. The sign indicates direction:
+ * - Positive N: light theme uses alpha[N], dark theme uses alphaInverse[N]
+ * - Negative -N: light theme uses alphaInverse[N], dark theme uses alpha[N]
  */
-export const TEXT_DERIVATIONS: Record<
-  MetabaseColorKey,
-  { darkText: Derivation; lightText: Derivation }
-> = {
-  "text-secondary": { darkText: { alpha: 60 }, lightText: 20 },
-  "text-tertiary": { darkText: { alpha: 40 }, lightText: 30 },
-  "text-primary-inverse": { darkText: { alphaInverse: 80 }, lightText: 80 },
-  "text-secondary-inverse": { darkText: { alphaInverse: 60 }, lightText: 60 },
-  "text-tertiary-inverse": { darkText: { alphaInverse: 40 }, lightText: 40 },
-  border: { darkText: 20, lightText: { alpha: 20 } }, // only for dark theme
-} as Record<MetabaseColorKey, { darkText: Derivation; lightText: Derivation }>;
+export const TEXT_DERIVATIONS: Record<MetabaseColorKey, number> = {
+  // text-primary is defined by the user.
+  "text-secondary": 60,
+  "text-tertiary": 40,
+  "text-primary-inverse": -80,
+  "text-secondary-inverse": -60,
+  "text-tertiary-inverse": -40,
+  border: -30,
+} as Record<MetabaseColorKey, number>;
 
 /**
  * Brand color derivations.
