@@ -754,7 +754,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: stale
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: True when the entity needs re-analysis due to upstream changes
                   constraints:
