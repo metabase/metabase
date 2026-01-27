@@ -2,6 +2,7 @@
   "Shared code for all drivers that use SQL under the hood."
   (:refer-clojure :exclude [some])
   (:require
+   #_[metabase.lib.metadata :as lib.metadata]
    [clojure.set :as set]
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
    ;; Driver API namespace?
@@ -15,6 +16,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
+   [metabase.driver.sql.sqlglot :as sqlglot]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
@@ -183,7 +185,7 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
-(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+(mu/defn native-query-deps-macaw-impl :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables (driver-api/tables query)
@@ -196,6 +198,25 @@
         (->> (map :component))
         (->> (into #{} (keep #(->> (normalize-table-spec driver %)
                                    (find-table-or-transform driver db-tables db-transforms))))))))
+
+;; This is WIP, the whole of the referenced tables logic will be moved probably into driver.sql.references
+(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  #_(native-query-deps-macaw-impl driver query)
+  (let [db-tables (driver-api/tables query)
+        db-transforms (driver-api/transforms query)
+        sql (driver-api/raw-native-query query)
+        dbname nil #_(lib.metadata/database query) ; cannonical way of getting the "catalog" name?
+        default-schema* (default-schema driver)
+        ;; should probably live in references...
+        query-tables (sqlglot/referenced-tables driver sql dbname default-schema*)]
+    (into #{}
+          (keep (fn [[_catalog db-aka-our-schema table]]
+                  (find-table-or-transform driver db-tables db-transforms
+                                           (normalize-table-spec driver
+                                                                 {:table table :schema db-aka-our-schema}))))
+          query-tables)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
