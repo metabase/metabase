@@ -2,6 +2,8 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
+   [environ.core :as env]
+   [java-time.api :as t]
    [metabase-enterprise.metabot-v3.settings] ; for setting definitions
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
@@ -80,17 +82,17 @@
 
 (deftest agent-api-error-responses-test
   (with-agent-api-setup!
-    (testing "Missing authorization header"
+    (testing "Missing authorization header (no session, no JWT)"
       (let [response (client/client :get 401 "agent/v1/ping")]
         (is (= {:error   "missing_authorization"
-                :message "Authorization header is required."}
+                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                response))))
 
     (testing "Invalid authorization header format (not Bearer)"
       (let [response (client/client :get 401 "agent/v1/ping"
                                     {:request-options {:headers {"authorization" "Basic xyz"}}})]
         (is (= {:error   "invalid_authorization_format"
-                :message "Authorization header must use Bearer scheme: Authorization: Bearer <token>"}
+                :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
                response))))
 
     (testing "Empty bearer token"
@@ -162,22 +164,24 @@
 (deftest agent-api-session-token-auth-test
   (mt/test-helpers-set-global-values!
     (mt/with-additional-premium-features #{:metabot-v3}
-      (testing "Session tokens (UUID format) authenticate successfully"
+      (testing "Session tokens via X-Metabase-Session header authenticate successfully"
         (let [session-key (session.models/generate-session-key)
               _           (t2/insert! :model/Session
                                       {:id          (session.models/generate-session-id)
                                        :user_id     (mt/user->id :rasta)
                                        :session_key session-key})
               response    (client/client :get 200 "agent/v1/ping"
-                                         {:request-options {:headers {"authorization" (str "Bearer " session-key)}}})]
+                                         {:request-options {:headers {"x-metabase-session" session-key}}})]
           (is (= {:message "pong"} response))))
 
       (testing "Invalid session token returns 401"
         (let [fake-session-key (str (random-uuid))
               response         (client/client :get 401 "agent/v1/ping"
-                                              {:request-options {:headers {"authorization" (str "Bearer " fake-session-key)}}})]
-          (is (= {:error   "invalid_session"
-                  :message "Invalid or expired session token."}
+                                              {:request-options {:headers {"x-metabase-session" fake-session-key}}})]
+          ;; Invalid session means standard middleware doesn't set metabase-user-id,
+          ;; so our middleware sees no auth and returns missing_authorization
+          (is (= {:error   "missing_authorization"
+                  :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                  response)))))))
 
 (deftest agent-api-inactive-user-test
@@ -188,3 +192,20 @@
                 :message "Invalid or expired JWT token."}
                (client/client :get 401 "agent/v1/ping"
                               {:request-options {:headers (auth-headers email)}})))))))
+
+(deftest agent-api-expired-session-test
+  (testing "Expired sessions are rejected by the standard session middleware"
+    (mt/test-helpers-set-global-values!
+      (mt/with-additional-premium-features #{:metabot-v3}
+        ;; Set max-session-age to 1 minute for this test
+        (with-redefs [env/env (assoc env/env :max-session-age "1")]
+          (let [session-key (session.models/generate-session-key)
+                old-time    (t/minus (t/instant) (t/minutes 2))]
+            (mt/with-temp [:model/Session _ {:user_id     (mt/user->id :rasta)
+                                             :session_key session-key
+                                             :created_at  old-time}]
+              (testing "Session older than max-session-age is rejected"
+                (is (= {:error   "missing_authorization"
+                        :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+                       (client/client :get 401 "agent/v1/ping"
+                                      {:request-options {:headers {"x-metabase-session" session-key}}})))))))))))

@@ -1,11 +1,6 @@
 (ns metabase-enterprise.metabot-v3.agent-api.api
   "Customer-facing Agent API for headless BI applications.
-
-  Endpoints are versioned (e.g., /v1/search) and require Bearer token authentication.
-  Supports both session tokens and JWTs for authorization.
-
-  Unlike the internal metabot tools API which uses {:structured_output ...} / {:output ...}
-  conventions, this external API uses standard HTTP semantics (2xx + data, 4xx/5xx + error)."
+  Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
@@ -14,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.request.core :as request]
-   [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -31,14 +25,12 @@
 ;; The Agent API supports two authentication modes:
 ;;
 ;; 1. **Session-based**: Client exchanges JWT at `/auth/sso` endpoint to get a session token,
-;;    then uses that session token for all subsequent requests. The session token is a UUID
-;;    that references a server-side session. Similar to how normal JWT SSO works in Metabase.
+;;    then passes it via `X-Metabase-Session` header. The standard Metabase session middleware
+;;    handles validation and expiration checking automatically.
 ;;
-;; 2. **Stateless JWT**: Client passes a JWT directly on each request. The JWT is validated
-;;    and the user is looked up from claims, but no session is created. Good for simple
-;;    integrations and one-off API calls.
-;;
-;; Both modes use Bearer token authentication: `Authorization: Bearer <token>`
+;; 2. **Stateless JWT**: Client passes a JWT via `Authorization: Bearer <jwt>` header.
+;;    The JWT is validated using the configured shared secret and max-age settings.
+;;    Good for simple integrations and one-off API calls.
 
 (defn- extract-bearer-token
   "Extract the token from a Bearer authorization header."
@@ -53,31 +45,6 @@
    :headers {"Content-Type" "application/json"}
    :body    {:error   error-type
              :message message}})
-
-;;; -------------------------------------------- Session Token Authentication --------------------------------------------
-
-(defn- session-token->user
-  "Look up a user from a session token. Returns the user map if the session is valid,
-   or nil if the session doesn't exist or is expired."
-  [session-key]
-  (let [session (t2/select-one [:model/Session :user_id]
-                               {:select    [:s.user_id]
-                                :from      [[:core_session :s]]
-                                :left-join [[:core_user :u] [:= :s.user_id :u.id]]
-                                :where     [:and
-                                            [:= :u.is_active true]
-                                            [:= :s.key_hashed (session/hash-session-key session-key)]]})]
-    (when session
-      (t2/select-one :model/User :id (:user_id session) :is_active true))))
-
-(defn- authenticate-with-session
-  "Authenticate a request using a session token. Returns {:user <user>} on success,
-   or {:error <type> :message <msg>} on failure."
-  [token]
-  (if-let [user (session-token->user token)]
-    {:user user}
-    {:error   "invalid_session"
-     :message "Invalid or expired session token."}))
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
@@ -122,53 +89,52 @@
       {:error   "invalid_jwt"
        :message "Invalid or expired JWT token."})))
 
-;;; --------------------------------------------- Bearer Token Middleware ---------------------------------------------
+;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
-(defn- enforce-bearer-authentication
-  "Middleware that authenticates requests using Bearer tokens.
+(defn- enforce-authentication
+  "Middleware that ensures requests are authenticated.
 
-   Supports two token types:
-   - **Session tokens** (UUID format): Validated against the session table, user is bound
-     for the request. Also sets X-Metabase-Session header for downstream middleware.
-   - **JWTs** (non-UUID): Validated directly using the jwt-shared-secret and
-     agent-api-jwt-max-age settings. User is bound for the request without creating a session."
+   Supports two authentication modes:
+   - **Session-based**: Uses `X-Metabase-Session` header, validated by standard Metabase
+     session middleware (which runs before this). If `:metabase-user-id` is set on the
+     request, the user is already authenticated.
+   - **Stateless JWT**: Uses `Authorization: Bearer <jwt>` header. The JWT is validated
+     directly using jwt-shared-secret and agent-api-jwt-max-age settings."
   [handler]
-  (fn [{:keys [headers] :as request} respond raise]
-    (let [auth-header  (get headers "authorization")
-          bearer-token (extract-bearer-token auth-header)]
-      (cond
-        ;; No authorization header at all
-        (nil? auth-header)
-        (respond (error-response "missing_authorization"
-                                 "Authorization header is required."))
+  (fn [{:keys [headers metabase-user-id] :as request} respond raise]
+    (cond
+      ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
+      metabase-user-id
+      (handler request respond raise)
 
-        ;; Authorization header present but not Bearer format
-        (nil? bearer-token)
-        (respond (error-response "invalid_authorization_format"
-                                 "Authorization header must use Bearer scheme: Authorization: Bearer <token>"))
+      ;; Not authenticated via session - check for Bearer JWT
+      :else
+      (let [auth-header  (get headers "authorization")
+            bearer-token (extract-bearer-token auth-header)]
+        (cond
+          ;; No authorization header and no session
+          (nil? auth-header)
+          (respond (error-response "missing_authorization"
+                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
 
-        ;; UUID format = session token
-        (re-matches u/uuid-regex bearer-token)
-        (let [result (authenticate-with-session bearer-token)]
-          (if-let [user (:user result)]
-            (request/with-current-user (:id user)
-              ;; Also pass session token for downstream middleware that might need it
-              (handler (assoc-in request [:headers "x-metabase-session"] bearer-token) respond raise))
-            (respond (error-response (:error result) (:message result)))))
+          ;; Authorization header present but not Bearer format
+          (nil? bearer-token)
+          (respond (error-response "invalid_authorization_format"
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
 
-        ;; Non-UUID = JWT, authenticate directly
-        :else
-        (let [result (authenticate-with-jwt bearer-token)]
-          (if-let [user (:user result)]
-            (request/with-current-user (:id user)
-              (handler request respond raise))
-            (respond (error-response (:error result) (:message result)))))))))
+          ;; Validate JWT
+          :else
+          (let [result (authenticate-with-jwt bearer-token)]
+            (if-let [user (:user result)]
+              (request/with-current-user (:id user)
+                (handler request respond raise))
+              (respond (error-response (:error result) (:message result))))))))))
 
-(def ^:private +bearer-auth
-  (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-bearer-authentication))
+(def ^:private +auth
+  (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
-  (api.macros/ns-handler *ns* +bearer-auth))
+  (api.macros/ns-handler *ns* +auth))
