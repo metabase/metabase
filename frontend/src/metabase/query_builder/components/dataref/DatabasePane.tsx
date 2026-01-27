@@ -16,7 +16,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   CollectionId,

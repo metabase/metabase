@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";

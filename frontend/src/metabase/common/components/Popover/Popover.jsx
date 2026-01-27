@@ -4,7 +4,7 @@ import { Children, Component, cloneElement } from "react";
 import ReactDOM from "react-dom";
 import Tether from "tether";
 
-import OnClickOutsideWrapper from "metabase/common/components/OnClickOutsideWrapper";
+import { OnClickOutsideWrapper } from "metabase/common/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -17,10 +17,7 @@ const PAGE_PADDING = 10;
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
 
-/**
- * @deprecated prefer Popover from "metabase/ui" instead
- */
-export default class Popover extends Component {
+export class Popover extends Component {
   constructor(props, context) {
     super(props, context);
 

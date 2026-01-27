@@ -4,7 +4,7 @@ import { diffWords } from "diff";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-export default class TextDiff extends Component {
+export class TextDiff extends Component {
   static propTypes = {
     diff: PropTypes.object.isRequired,
   };

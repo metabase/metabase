@@ -915,7 +915,7 @@ describe("issue 66745", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
       cy.findByText("Something’s gone wrong").should("not.exist");
 
       cy.findByTestId("query-visualization-root").within(() => {

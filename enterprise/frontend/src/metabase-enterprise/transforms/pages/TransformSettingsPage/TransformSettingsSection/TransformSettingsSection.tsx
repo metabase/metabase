@@ -6,7 +6,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

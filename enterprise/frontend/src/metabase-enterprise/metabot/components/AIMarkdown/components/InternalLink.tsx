@@ -1,4 +1,4 @@
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 
 export const InternalLink = ({
   onInternalLinkClick,

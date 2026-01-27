@@ -6,7 +6,7 @@ import { Icon } from "metabase/ui";
 
 import S from "./LabelIcon.module.css";
 
-const LabelIcon = ({ icon, size = 16, className, style }) =>
+export const LabelIcon = ({ icon, size = 16, className, style }) =>
   icon.charAt(0) === "#" ? (
     <span
       className={cx(S.icon, S.colorIcon, className)}
@@ -22,5 +22,3 @@ LabelIcon.propTypes = {
   icon: PropTypes.string,
   size: PropTypes.number,
 };
-
-export default LabelIcon;

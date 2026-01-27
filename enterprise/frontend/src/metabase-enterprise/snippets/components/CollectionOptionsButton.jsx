@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { AccordionList } from "metabase/common/components/AccordionList";
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 

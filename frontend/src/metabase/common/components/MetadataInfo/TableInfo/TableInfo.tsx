@@ -13,8 +13,8 @@ import {
   LoadingSpinner,
 } from "../MetadataInfo.styled";
 
-import ColumnCount from "./ColumnCount";
-import ConnectedTables from "./ConnectedTables";
+import { ColumnCount } from "./ColumnCount";
+import { ConnectedTables } from "./ConnectedTables";
 import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
 export type TableInfoProps = {
@@ -75,7 +75,7 @@ function useDependentTableMetadata({
   return hasFetchedMetadata;
 }
 
-export function TableInfo({
+export function TableInfoInner({
   className,
   tableId,
   table,
@@ -120,5 +120,7 @@ export function TableInfo({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(TableInfo);
+export const TableInfo = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TableInfoInner);

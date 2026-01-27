@@ -6,7 +6,7 @@ import _ from "underscore";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";

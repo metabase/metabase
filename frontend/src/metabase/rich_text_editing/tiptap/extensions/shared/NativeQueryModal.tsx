@@ -13,7 +13,7 @@ import {
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";

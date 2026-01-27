@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import Text from "metabase/common/components/type/Text";
+import { Text } from "metabase/common/components/type/Text";
 import CS from "metabase/css/core/index.css";
 
-const Label = ({ children, ...props }) => (
+export const Label = ({ children, ...props }) => (
   <Text
     className={CS.mb2}
     color="dark"
@@ -13,5 +13,3 @@ const Label = ({ children, ...props }) => (
     {children}
   </Text>
 );
-
-export default Label;

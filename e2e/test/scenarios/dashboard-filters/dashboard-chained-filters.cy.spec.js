@@ -114,7 +114,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("AK").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -148,7 +148,7 @@ describe("scenarios > dashboard > chained filter", () => {
       }
 
       H.filterWidget().contains("GA").click();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
