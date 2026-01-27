@@ -3,7 +3,7 @@ import type {
   QuerySpecWithDatabase,
 } from "metabase-types/api";
 
-export function createQuery(
+export function createTestQuery(
   querySpec: QuerySpecWithDatabase,
 ): Cypress.Chainable<OpaqueDatasetQuery> {
   return cy

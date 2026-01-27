@@ -833,7 +833,7 @@ describe("54205", () => {
         });
       });
 
-      H.createQuery({
+      H.createTestQuery({
         database: WRITABLE_DB_ID,
         stages: [
           {
