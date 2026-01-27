@@ -433,7 +433,7 @@ main() {
     echo "  3. Configure shell integration (with your permission)"
     echo -e "${DIM}     - Puts everything you need on your path when you cd into the project${NC}"
     echo "  4. Install all required development tools"
-    echo -e "${DIM}     - Installs Node.js, Yarn, Clojure, etc.${NC}"
+    echo -e "${DIM}     - Installs Node.js, Bun, Clojure, etc.${NC}"
     echo "  5. Run dev-deps to download project dependencies"
     echo -e "${DIM}     - Downloads and caches JavaScript and Clojure libraries${NC}"
     echo -e "${DIM}       and optionally builds a jar${NC}"
