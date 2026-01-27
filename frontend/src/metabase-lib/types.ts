@@ -710,15 +710,25 @@ export type ColumnSpec = {
   name?: string;
 };
 
+export type TemporalBucketSpec = {
+  unit?: TemporalUnit;
+};
+
+export type BreakoutSpec = ColumnSpec & TemporalBucketSpec;
+
 export type OrderBySpec = ColumnSpec & {
   direction?: OrderByDirection;
 };
 
 export type StageSpec = {
-  source?: SourceSpec;
+  breakouts?: BreakoutSpec[];
   orderBys?: OrderBySpec[];
 };
 
+export type StageWithSourceSpec = StageSpec & {
+  source: SourceSpec;
+};
+
 export type QuerySpec = {
-  stages: StageSpec[];
+  stages: [StageWithSourceSpec, ...StageSpec[]];
 };

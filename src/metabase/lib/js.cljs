@@ -2759,6 +2759,11 @@
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :type keyword)))
 
+          (->breakout-spec [breakout-spec]
+            (-> breakout-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :unit keyword)))
+
           (->order-by-spec [order-by-spec]
             (-> order-by-spec
                 (perf/update-keys js-key->cljs-key)
@@ -2768,6 +2773,7 @@
             (-> stage-spec
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :source ->source-spec)
+                (m/update-existing :breakouts #(mapv ->breakout-spec %))
                 (m/update-existing :order-bys #(mapv ->order-by-spec %))))
 
           (->query-spec [query-spec]

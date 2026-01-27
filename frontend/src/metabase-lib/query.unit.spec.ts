@@ -49,32 +49,83 @@ describe("stageIndexes", () => {
 });
 
 describe("queryFromSpec", () => {
-  it("should create a query with a table source", () => {
-    const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: {
-            type: "table",
-            id: PRODUCTS_ID,
+  describe("source", () => {
+    it("should create a query with a table source", () => {
+      const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
           },
-        },
-      ],
+        ],
+      });
+      expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
     });
-    expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
   });
 
-  it("should create a query with order bys", () => {
-    const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: {
-            type: "table",
-            id: PRODUCTS_ID,
+  describe("breakouts", () => {
+    it("should create a query with breakouts", () => {
+      const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            breakouts: [{ name: "CATEGORY" }],
           },
-          orderBys: [{ name: "CATEGORY" }],
-        },
-      ],
+        ],
+      });
+
+      const breakouts = Lib.breakouts(query, 0);
+      expect(breakouts).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, breakouts[0])).toMatchObject({
+        displayName: "Category",
+      });
     });
-    expect(Lib.orderBys(query, 0)).toHaveLength(1);
+
+    it("should create a query with temporal breakouts", () => {
+      const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            breakouts: [{ name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      });
+
+      const breakouts = Lib.breakouts(query, 0);
+      expect(breakouts).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, breakouts[0])).toMatchObject({
+        displayName: "Created At: Month",
+      });
+    });
+  });
+
+  describe("order bys", () => {
+    it("should create a query with order bys", () => {
+      const query = Lib.queryFromSpec(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            orderBys: [{ name: "CATEGORY" }],
+          },
+        ],
+      });
+
+      const orderBys = Lib.orderBys(query, 0);
+      expect(orderBys).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, orderBys[0])).toMatchObject({
+        displayName: "Category",
+      });
+    });
   });
 });
