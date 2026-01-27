@@ -1,3 +1,5 @@
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -68,6 +70,10 @@ export function DependencyList({
     limit: PAGE_SIZE,
   });
 
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
 
@@ -77,13 +83,19 @@ export function DependencyList({
       : undefined;
 
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query });
+    onParamsChange({ ...params, query, page: undefined });
   };
 
-  const handleFilterOptionsChange = (
-    filterOptions: DependencyFilterOptions,
-  ) => {
-    onParamsChange({ ...params, ...filterOptions });
+  const handleFilterOptionsChange = ({
+    groupTypes,
+    includePersonalCollections,
+  }: DependencyFilterOptions) => {
+    onParamsChange({
+      ...params,
+      groupTypes,
+      includePersonalCollections,
+      page: undefined,
+    });
   };
 
   const handleSortOptionsChange = (
@@ -93,6 +105,7 @@ export function DependencyList({
       ...params,
       sortColumn: sortOptions?.column,
       sortDirection: sortOptions?.direction,
+      page: undefined,
     });
   };
 
@@ -107,7 +120,12 @@ export function DependencyList({
   }, [selectedEntry, selectedNode]);
 
   return (
-    <Flex h="100%">
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+    >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <ListHeader />
         <ListSearchBar
@@ -144,6 +162,9 @@ export function DependencyList({
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
           onClose={() => setSelectedEntry(undefined)}
         />
       )}

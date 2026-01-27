@@ -87,7 +87,7 @@ const CardImageWrapper = ({ database }: { database: string }) => {
       className={CS.rounded}
       style={{
         boxShadow:
-          // eslint-disable-next-line no-color-literals
+          // eslint-disable-next-line metabase/no-color-literals
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >

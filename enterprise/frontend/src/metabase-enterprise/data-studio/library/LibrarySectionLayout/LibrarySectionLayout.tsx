@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,12 +6,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
@@ -30,10 +24,14 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { LibraryEmptyState } from "metabase-enterprise/data-studio/common/components/LibraryEmptyState";
+import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { CreateLibraryModal } from "../components/CreateLibraryModal";
+import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
@@ -91,7 +89,6 @@ function EmptyStateAction({ data, onPublishTable }: EmptyStateActionProps) {
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
-  const dispatch = useDispatch();
   const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
@@ -357,42 +354,50 @@ export function LibrarySectionLayout() {
           px="3.5rem"
           style={{ overflow: "hidden" }}
         >
-          <Flex gap="md">
-            <TextInput
-              placeholder={t`Search...`}
-              leftSection={<Icon name="search" />}
-              bdrs="md"
-              flex="1"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <CreateMenu
-              metricCollectionId={writableMetricCollection?.id}
-              canWriteToMetricCollection={!!writableMetricCollection}
-            />
-          </Flex>
-          <Card withBorder p={0}>
-            {isLoading ? (
-              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
-            ) : (
-              <TreeTable
-                instance={treeTableInstance}
-                emptyState={
-                  emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
-                }
-                onRowClick={(row) => {
-                  if (row.original.model === "empty-state") {
-                    return;
-                  }
-                  if (row.getCanExpand()) {
-                    row.toggleExpanded();
-                  }
-                  // Navigation for leaf nodes is handled by the link
-                }}
-                getRowHref={getRowHref}
-              />
-            )}
-          </Card>
+          {!libraryCollection && !isLoadingCollections ? (
+            <LibraryEmptyState />
+          ) : (
+            <>
+              <Flex gap="md">
+                <TextInput
+                  placeholder={t`Search...`}
+                  leftSection={<Icon name="search" />}
+                  bdrs="md"
+                  flex="1"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <CreateMenu
+                  metricCollectionId={writableMetricCollection?.id}
+                  canWriteToMetricCollection={!!writableMetricCollection}
+                />
+              </Flex>
+              <Card withBorder p={0}>
+                {isLoading ? (
+                  <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
+                ) : (
+                  <TreeTable
+                    instance={treeTableInstance}
+                    emptyState={
+                      emptyMessage ? (
+                        <ListEmptyState label={emptyMessage} />
+                      ) : null
+                    }
+                    onRowClick={(row) => {
+                      if (row.original.model === "empty-state") {
+                        return;
+                      }
+                      if (row.getCanExpand()) {
+                        row.toggleExpanded();
+                      }
+                      // Navigation for leaf nodes is handled by the link
+                    }}
+                    getRowHref={getRowHref}
+                  />
+                )}
+              </Card>
+            </>
+          )}
         </Stack>
       </SectionLayout>
       {editingCollection && (
@@ -408,12 +413,6 @@ export function LibrarySectionLayout() {
           onClose={() => setPermissionsCollectionId(null)}
         />
       )}
-      <CreateLibraryModal
-        isOpened={!isLoadingCollections && !libraryCollection}
-        onClose={() => {
-          dispatch(goBack());
-        }}
-      />
       <PublishTableModal
         opened={isPublishTableModalOpen}
         onClose={() => setIsPublishTableModalOpen(false)}

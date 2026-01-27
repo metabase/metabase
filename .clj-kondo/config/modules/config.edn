@@ -383,7 +383,6 @@
    :uses #{api
            app-db
            collections
-           config
            eid-translation
            events
            lib-be
@@ -809,6 +808,7 @@
            lib-be
            models
            permissions
+           remote-sync
            search
            util}}
 
@@ -1500,7 +1500,6 @@
    :uses #{analytics
            api
            collections
-           config
            events
            models
            util}}
@@ -1650,7 +1649,6 @@
    :uses #{analytics
            api
            app-db
-           config
            database-routing
            driver
            events
@@ -1778,6 +1776,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           audit-app
            lib
            permissions
            premium-features

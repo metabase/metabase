@@ -801,7 +801,7 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("row")
       .eq(rowIndex)
       .findAllByTestId("cell-data")

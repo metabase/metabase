@@ -3,7 +3,7 @@ import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { FixedSizeIcon, Flex, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";
 import { getSearchQuery } from "../../../utils";
@@ -51,7 +51,7 @@ export const ListSearchBar = memo(function ListSearchBar({
   };
 
   return (
-    <Flex gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <TextInput
         value={searchValue}
         placeholder={t`Search…`}
@@ -66,6 +66,6 @@ export const ListSearchBar = memo(function ListSearchBar({
         availableGroupTypes={getAvailableGroupTypes(mode)}
         onFilterOptionsChange={handleFilterOptionsChange}
       />
-    </Flex>
+    </Group>
   );
 });

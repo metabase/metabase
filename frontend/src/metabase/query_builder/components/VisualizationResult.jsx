@@ -27,7 +27,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "zoomedRowIndex",
 ];
 
-export default class VisualizationResult extends Component {
+export class VisualizationResult extends Component {
   state = {
     showCreateAlertModal: false,
   };

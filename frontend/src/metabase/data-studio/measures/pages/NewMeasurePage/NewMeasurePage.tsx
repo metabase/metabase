@@ -40,6 +40,7 @@ export function NewMeasurePage({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
+  const [savedMeasure, setSavedMeasure] = useState<Measure | null>(null);
 
   const isInitialized = useRef(false);
 
@@ -53,7 +54,10 @@ export function NewMeasurePage({
   const { query, aggregations } = useMeasureQuery(definition, metadata);
 
   const isDirty =
-    name.trim().length > 0 || description.length > 0 || aggregations.length > 0;
+    !savedMeasure &&
+    (name.trim().length > 0 ||
+      description.length > 0 ||
+      aggregations.length > 0);
   const isValid = name.trim().length > 0 && aggregations.length === 1;
   const previewUrl =
     aggregations.length === 1
@@ -80,8 +84,8 @@ export function NewMeasurePage({
     if (error) {
       sendErrorToast(t`Failed to create measure`);
     } else if (measure) {
+      setSavedMeasure(measure);
       sendSuccessToast(t`Measure created`);
-      dispatch(push(getSuccessUrl(measure)));
     }
   }, [
     table,
@@ -90,11 +94,15 @@ export function NewMeasurePage({
     description,
     isValid,
     createMeasure,
-    dispatch,
-    getSuccessUrl,
     sendSuccessToast,
     sendErrorToast,
   ]);
+
+  useEffect(() => {
+    if (savedMeasure) {
+      dispatch(push(getSuccessUrl(savedMeasure)));
+    }
+  }, [savedMeasure, dispatch, getSuccessUrl]);
 
   return (
     <PageContainer data-testid="new-measure-page" gap="xl">

@@ -8,6 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
+import S from "../TableSection.module.css";
+
 import { SegmentItem } from "./SegmentItem";
 
 type SegmentListProps = {
@@ -49,6 +51,8 @@ export function SegmentList({ table }: SegmentListProps) {
 
       {segments.length === 0 ? (
         <EmptyState
+          className={S.EmptyState}
+          spacing="sm"
           illustrationElement={
             <Icon name="segment2" size={32} c="text-secondary" />
           }

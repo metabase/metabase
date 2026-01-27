@@ -13,11 +13,12 @@ import EmptyState from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
@@ -99,6 +100,9 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -145,6 +149,13 @@ function TransformQueryPageBody({
       setSourceAndRejectProposed(transform.source);
     }
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
+
+  useEffect(() => {
+    if (isEditMode && isRemoteSyncReadOnly) {
+      // If remote sync is set up to read-only mode, user can't edit transforms
+      dispatch(push(Urls.transform(transform.id)));
+    }
+  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
 
   const handleSave = async () => {
     if (!isCompleteSource(source)) {
@@ -210,8 +221,8 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isEditMode={isEditMode}
               readOnly={readOnly}
+              isEditMode={isEditMode}
               transformId={transform.id}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}

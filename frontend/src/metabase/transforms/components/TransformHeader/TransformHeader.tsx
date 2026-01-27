@@ -5,7 +5,9 @@ import Link from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { StackProps } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
@@ -29,6 +31,9 @@ export function TransformHeader({
   readOnly,
   ...restProps
 }: TransformHeaderProps) {
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: transform.collection_id,
     namespace: "transforms",
@@ -40,7 +45,10 @@ export function TransformHeader({
       icon="transform"
       menu={
         hasMenu && (
-          <TransformMoreMenu transform={transform} readOnly={readOnly} />
+          <TransformMoreMenu
+            readOnly={readOnly || isRemoteSyncReadOnly}
+            transform={transform}
+          />
         )
       }
       tabs={!isEditMode && <TransformTabs transform={transform} />}
