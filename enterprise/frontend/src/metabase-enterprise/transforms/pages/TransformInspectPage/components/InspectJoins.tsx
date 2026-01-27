@@ -5,6 +5,8 @@ import { t } from "ttag";
 import {
   Card,
   Code,
+  Icon,
+  type IconName,
   Stack,
   Text,
   Title,
@@ -12,21 +14,19 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { TransformInspectJoin } from "metabase-types/api";
+import type {
+  TransformInspectJoin,
+  TransformInspectSource,
+} from "metabase-types/api";
 
 type InspectJoinsProps = {
   joins: TransformInspectJoin[];
+  sources: TransformInspectSource[] | undefined;
 };
 
-type JoinRow = TransformInspectJoin & { id: string };
-
-function formatJoinDisplay(join: TransformInspectJoin): string {
-  const strategy = join.strategy.toUpperCase().replace(/-/g, " ");
-  if (join.alias) {
-    return `${strategy} ${join.alias}`;
-  }
-  return strategy;
-}
+type JoinRow = TransformInspectJoin & {
+  id: string;
+};
 
 function formatPercent(value: number | undefined): string {
   if (value === undefined) {
@@ -35,9 +35,13 @@ function formatPercent(value: number | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function InspectJoins({ joins }: InspectJoinsProps) {
+export function InspectJoins({ joins, sources }: InspectJoinsProps) {
   const data: JoinRow[] = useMemo(
-    () => joins.map((join, index) => ({ ...join, id: `join-${index}` })),
+    () =>
+      joins.map((join, index) => ({
+        ...join,
+        id: `join-${index}`,
+      })),
     [joins],
   );
 
@@ -47,7 +51,20 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         id: "join",
         header: t`Join`,
         cell: ({ row }) => (
-          <Code bg="transparent">{formatJoinDisplay(row.original)}</Code>
+          <>
+            <Icon
+              name={getJoinStrategyIcon(row.original.strategy)}
+              c="brand"
+              size={24}
+            />{" "}
+            <Code bg="transparent">
+              {
+                sources?.find(
+                  (source) => source.table_id === row.original.source_table,
+                )?.table_name
+              }
+            </Code>
+          </>
         ),
       },
       {
@@ -81,7 +98,7 @@ export function InspectJoins({ joins }: InspectJoinsProps) {
         ),
       },
     ],
-    [],
+    [sources],
   );
 
   const instance = useTreeTableInstance({
@@ -129,4 +146,15 @@ function getFilledRowsCell(row: JoinRow): string | null {
         `${stats?.left_row_count?.toLocaleString()} / ${stats?.right_row_count?.toLocaleString()}`,
     )
     .otherwise(() => null);
+}
+
+const JOIN_ICONS: Record<string, IconName> = {
+  "left-join": "join_left_outer",
+  "right-join": "join_right_outer",
+  "inner-join": "join_inner",
+  "full-join": "join_full_outer",
+};
+
+export function getJoinStrategyIcon(strategyInfo: string) {
+  return JOIN_ICONS[strategyInfo];
 }

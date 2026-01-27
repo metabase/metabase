@@ -1,7 +1,7 @@
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -308,7 +308,7 @@ export type TransformInspectSummary = {
 };
 
 export type TransformInspectJoin = {
-  strategy: "left-join" | "right-join" | "inner-join" | "full-join";
+  strategy: JoinStrategy;
   alias?: string;
   stats: {
     source_table?: unknown;
