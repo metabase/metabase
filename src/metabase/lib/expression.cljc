@@ -566,9 +566,8 @@
 
 (defn- referred-expressions
   [expr]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match expr :expression)))
+  ;; TODO: verify refactor is correct
+  (set (lib.util.match/match-many expr [:expression & args] (second args))))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -576,9 +575,8 @@
 
 (defn- referred-aggregations
   [agg]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match agg :aggregation)))
+  ;; TODO: verify refactor is correct
+  (set (lib.util.match/match agg [:aggregation & args] (second args))))
 
 (defn- cyclic-definition
   ([node->children]
@@ -698,11 +696,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite-recursive expr :offset true))
+                     (lib.util.match/match-lite expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

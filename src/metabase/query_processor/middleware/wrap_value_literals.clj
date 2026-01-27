@@ -256,7 +256,10 @@
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
-      (into [tag opts field s] more))))
+      (into [tag opts field s] more))
+
+    ;; do not match inner clauses
+    _ nil))
 
 (mu/defn wrap-value-literals :- ::lib.schema/query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
@@ -276,9 +279,9 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-one maybe-value-form
+  (lib.util.match/match-lite maybe-value-form
     [:value x & _] x
-    _              &match))
+    _              maybe-value-form))
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]

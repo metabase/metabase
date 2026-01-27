@@ -85,8 +85,35 @@
   [coll cnt]
   (= (count coll) cnt))
 
+(defn wrap-nil
+  "If `value` is nil, return `::wrapped-nil`, otherwise return `value`."
+  [value]
+  (if (nil? value) ::wrapped-nil value))
+
+(defn unwrap-nil
+  "If `value` is `::wrapped-nil`, return nil, otherwise return `value`."
+  [value]
+  (when-not (= value ::wrapped-nil) value))
+
 (defn match-lite-in-collection
   "Internal impl for `match-lite`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
+  [match-fn form]
+  {:pre [(fn? match-fn)]}
+  (cond
+    (map? form)
+    (reduce-kv (fn [_ _ v]
+                 (when-let [match (match-fn v)]
+                   (reduced match)))
+               nil form)
+
+    (sequential? form)
+    (reduce (fn [_ v]
+              (when-let [match (match-fn v)]
+                (reduced match)))
+            nil form)))
+
+(defn match-many-in-collection
+  "Internal impl for `match-many`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
   [match-fn form]
   {:pre [(fn? match-fn)]}
   (cond

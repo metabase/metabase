@@ -160,9 +160,9 @@
 
 (defn- find-metric-ids
   [x]
-  (lib.util.match/match x
-    [:metric _ (id :guard pos-int?)]
-    id))
+  (lib.util.match/match-many x
+                             [:metric _ (id :guard pos-int?)]
+                             id))
 
 (defn- find-first-metric-id
   [x]

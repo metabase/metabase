@@ -128,13 +128,13 @@
        (some (partial re-find #"_2$")
              (map (comp name :name) result-metadata))))
 
-(mu/defn- card-uses-unnestable-aggregation?
+(mu/defn- card-uses-unnestable-aeggregation?
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
                                          [:dataset_query ::queries.schema/query]]]
-  (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
+  (lib.util.match/match-lite (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"

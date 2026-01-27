@@ -356,6 +356,22 @@
                               true :true-value
                               false :false-value))))))
 
+(t/deftest ^:parallel match-lite-or-syntax
+  (t/is (= 10 (lib.util.match/match-lite [1 2 3]
+                (:or [a] [a b] [a b c]) (* a 10))))
+  (t/is (= nil (lib.util.match/match-lite [1 2 3]
+                 (:or [(a :guard even?) b] [a (b :guard odd?)]) [* a b])))
+  (t/testing ":or can mix with other patterns"
+    (t/is (= 20 (lib.util.match/match-lite [1 2 3]
+                  [a b c d] 10
+                  (:or [a b] [a b c]) 20
+                  _ 30))))
+  (t/testing "doesn't break if same symbols are used for different bindings"
+    (t/is (= 1 (lib.util.match/match-lite [1 2]
+                 (:or [(a :guard even?) b]
+                      [b a])
+                 b)))))
+
 (t/deftest ^:parallel same-result-with-different-bindings-test
   (t/testing "result here should not be treated as a common because it refers to different bindings in branches"
     (t/is (= 1 (lib.util.match/match-lite [1 2]
@@ -384,3 +400,31 @@
   #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
                          (eval '(lib.util.match/match-lite [1]
                                   [(a :guard (fn [x] (odd? x)))] a))))))
+
+(t/deftest ^:parallel return-nil-matches-test
+  (t/testing "a clause can return nil and that is still considered a match"
+    (t/is (= nil (lib.util.match/match-lite [:a nil]
+                   [:a x] x
+                   _ :default)))))
+
+(t/deftest ^:parallel recur-test
+  (t/testing "clause can choose to &recur the match with a different value"
+    (t/is (= :inside (lib.util.match/match-lite [[[[[[:inside]]]]]]
+                       [in] (&recur in)
+                       _ &match)))))
+
+(t/deftest ^:parallel match-many-test
+  (t/is (= [6 15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                             [a b c] (+ a b c))))
+  (t/is (= [1 2 3 4 5 6] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                                    (_ :guard number?) &match)))
+  (t/is (= [] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                         (_ :guard keyword?) &match)))
+  (t/is (= [100] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                            (_ :guard keyword?) &match
+                                            _ 100)))
+
+  (t/testing "nils aren't recorded into the result"
+    (t/is (= [15] (lib.util.match/match-many [[1 2 3] [4 5 6]]
+                                             [a b c] (when (> a 1)
+                                                       (+ a b c)))))))
