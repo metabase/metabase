@@ -229,20 +229,20 @@
 ;; The actual paths are tested in impl_test.clj integration tests which verify
 ;; the full export/import cycle with real database entities.
 
-;;; --------------------------------------------- Select Fields for Sync Tests -----------------------------------------
+;;; --------------------------------------------- Fields for Sync Tests -----------------------------------------------
 
-(deftest select-fields-for-sync-test
-  (testing "select-fields-for-sync returns spec fields"
+(deftest fields-for-sync-test
+  (testing "fields-for-sync returns spec fields"
     (is (= [:name :collection_id :display]
-           (spec/select-fields-for-sync "Card")))
+           (spec/fields-for-sync "Card")))
     (is (= [:name :collection_id]
-           (spec/select-fields-for-sync "Dashboard")))
+           (spec/fields-for-sync "Dashboard")))
     (is (= [:name :collection_id]
-           (spec/select-fields-for-sync "NativeQuerySnippet"))))
+           (spec/fields-for-sync "NativeQuerySnippet"))))
 
-  (testing "select-fields-for-sync returns default for unknown type"
+  (testing "fields-for-sync returns default for unknown type"
     (is (= [:id :name :collection_id]
-           (spec/select-fields-for-sync "UnknownModel")))))
+           (spec/fields-for-sync "UnknownModel")))))
 
 ;;; --------------------------------------------- Export Scope Tests -------------------------------------------------
 

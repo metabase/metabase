@@ -556,16 +556,9 @@ serdes/meta:
           (str/replace (u/lower-case-en name) #"\s+" "_")))
 
 (defn generate-measure-yaml
-  "Generates YAML content for a measure.
-
-  Args:
-    measure-name: The name of the measure.
-    table-name: The name of the table containing this measure.
-    db-name: The name of the database containing this measure.
-    agg-field-name: The name of the field to use in the aggregation clause.
-
-  Returns:
-    A string containing the YAML representation of the measure."
+  "Generates YAML content for a measure with the given `measure-name`, `table-name`, and `db-name`.
+  Optional keyword args include `:schema`, `:description`, `:entity-id`, and `:agg-field-name`
+  for the aggregation field. Returns a string containing the YAML representation of the measure."
   [measure-name table-name db-name & {:keys [schema description entity-id agg-field-name]
                                       :or {description "Test measure"
                                            agg-field-name "Some Field"}}]

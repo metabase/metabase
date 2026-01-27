@@ -48,6 +48,8 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   );
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
   const isValid = name.length > 0 && content.length > 0;
+  const isDirty =
+    name !== t`New SQL snippet` || description.length > 0 || content.length > 0;
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
@@ -112,7 +114,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           actions={
             <PaneHeaderActions
               isValid={isValid}
-              isDirty={true}
+              isDirty={isDirty}
               isSaving={isSaving}
               onSave={handleSave}
               onCancel={handleCancel}
