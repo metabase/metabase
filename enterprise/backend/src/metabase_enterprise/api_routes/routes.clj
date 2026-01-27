@@ -40,8 +40,8 @@
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.transform]
    [metabase.api.util.handlers :as handlers]
+   [metabase.transforms.api.transform]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
@@ -130,9 +130,6 @@
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
-   "/transform"                    (premium-handler metabase.api.transform/routes :transforms)
-   "/transform-job"                (premium-handler metabase.api.transform/transform-job-routes :transforms)
-   "/transform-tag"                (premium-handler metabase.api.transform/transform-tag-routes :transforms)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑

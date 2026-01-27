@@ -512,8 +512,8 @@
 
 (def ^{:arglists '([request respond raise])} transform-tag-routes
   "`/api/transform-tag` routes."
-  (api.macros/ns-handler 'metabase.api.transform-tag +auth))
+  (api.macros/ns-handler 'metabase.transforms.api.transform-tag +auth))
 
 (def ^{:arglists '([request respond raise])} transform-job-routes
   "`/api/transform-job` routes."
-  (api.macros/ns-handler 'metabase.api.transform-job +auth))
+  (api.macros/ns-handler 'metabase.transforms.api.transform-job +auth))

@@ -3,7 +3,6 @@
   (:require
    [java-time.api :as t]
    [metabase.models.transforms.transform-run]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.transforms.settings]
    [metabase.transforms.util]
    [potemkin :as p]
@@ -22,9 +21,8 @@
  [metabase.models.transforms.transform-run
   timeout-run!])
 
-(defenterprise transform-stats
+(defn transform-stats
   "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59"
-  :feature :none
   []
   (let [yesterday-utc (-> (t/offset-date-time (t/zone-offset "+00"))
                           (t/minus (t/days 1)))
