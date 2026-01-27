@@ -7,8 +7,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import { color } from "metabase/ui/utils/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { segmentIsValid } from "metabase/visualizations/lib/utils";
