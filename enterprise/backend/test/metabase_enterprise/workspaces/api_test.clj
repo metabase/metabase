@@ -1766,13 +1766,13 @@
   (testing "GET /api/ee/workspace/database"
     (testing "databases with workspaces_enabled=true show as enabled"
       (mt/with-temp [:model/Database {db-enabled :id} {:name "DB Enabled"
-                                                       :engine :h2
+                                                       :engine driver/*driver*
                                                        :is_audit false
                                                        :is_sample false
                                                        :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}
                                                        :settings                     {:database-enable-workspaces true}}
                      :model/Database {db-disabled :id} {:name "DB Disabled"
-                                                        :engine :h2
+                                                        :engine driver/*driver*
                                                         :is_audit false
                                                         :is_sample false
                                                         :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}
@@ -1787,7 +1787,7 @@
 
     (testing "databases with failed permission check include permissions_status"
       (mt/with-temp [:model/Database {db-failed :id} {:name "DB Failed"
-                                                      :engine :h2
+                                                      :engine driver/*driver*
                                                       :is_audit false
                                                       :is_sample false
                                                       :workspace_permissions_status {:status "failed" :error "permission denied" :checked_at "2025-01-01"}}]
@@ -1799,7 +1799,7 @@
 
     (testing "databases without permission check have unknown permissions_status"
       (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
-                                                        :engine :h2
+                                                        :engine driver/*driver*
                                                         :is_audit false
                                                         :is_sample false}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
