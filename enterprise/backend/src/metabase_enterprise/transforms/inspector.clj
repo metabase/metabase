@@ -348,41 +348,52 @@
 
 ;;; -------------------------------------------------- Column Matching ---------------------------------------------------
 
-(defn- extract-base-field-name
-  "Extract the base field name from a column name.
-   Handles joined column naming like 'Test Customers - Customer__region' → 'region'."
+(defn- parse-joined-column-name
+  "Parse a joined column name like 'Test Customers - Customer__region'.
+   Returns {:alias \"Test Customers - Customer\" :field-name \"region\"} or nil if not a joined column."
   [name]
-  (when name
-    (if-let [[_ base] (re-find #"__(.+)$" name)]
-      base
-      name)))
+  (when-let [[_ alias field-name] (re-find #"^(.+)__(.+)$" name)]
+    {:alias alias :field-name field-name}))
 
 (defn- normalize-column-name
   "Normalize a column name for comparison (lowercase, remove underscores/hyphens)."
   [name]
   (when name
     (-> name
-        extract-base-field-name
         u/lower-case-en
         (str/replace #"[-_]" ""))))
 
 (defn match-columns
   "Find columns that relate between input and output tables.
    One output column may match multiple input columns (e.g., from different join sources).
+   When joins info is provided, uses join alias to match joined columns to the correct source table.
    Returns groups: [{:output-column \"customer_id\"
                      :input-columns [{:table-id 1 :table-name \"orders\" :column \"customer_id\"}
                                      {:table-id 2 :table-name \"customers\" :column \"id\"}]}]"
-  [source-stats target-stats]
+  [source-stats target-stats joins]
   (let [target-fields (:fields target-stats)
+        ;; Build alias → source-table-id mapping from joins
+        alias->source-table (into {} (map (juxt :alias :source-table) joins))
         source-fields (for [{:keys [table-id table-name fields]} source-stats
                             field fields]
                         (assoc field :source-table-id table-id :source-table-name table-name))]
     (for [target-field target-fields
-          :let [target-name (normalize-column-name (:name target-field))
-                matching-inputs (filter #(= target-name (normalize-column-name (:name %)))
-                                        source-fields)]
+          :let [col-name (:name target-field)
+                parsed (parse-joined-column-name col-name)
+                ;; If it's a joined column with known alias, match to specific source table
+                matching-inputs
+                (if-let [source-table-id (some-> parsed :alias alias->source-table)]
+                  ;; Match by alias → specific source table + field name
+                  (let [field-name (normalize-column-name (:field-name parsed))]
+                    (filter #(and (= (:source-table-id %) source-table-id)
+                                  (= field-name (normalize-column-name (:name %))))
+                            source-fields))
+                  ;; No alias or unknown alias → fall back to name matching across all sources
+                  (let [target-name (normalize-column-name (or (:field-name parsed) col-name))]
+                    (filter #(= target-name (normalize-column-name (:name %)))
+                            source-fields)))]
           :when (seq matching-inputs)]
-      {:output-column (:name target-field)
+      {:output-column col-name
        :output-field target-field
        :input-columns (mapv (fn [f]
                               {:table-id   (:source-table-id f)
@@ -452,34 +463,38 @@
 (mu/defn inspect-tables :- ::transforms.schema/generic-inspector-result
   "Generic inspection of input tables vs output table.
    Does not require a transform definition - works with any table IDs.
-   Useful for inspecting transform subgraphs or arbitrary table comparisons."
-  [input-table-ids :- [:sequential pos-int?]
-   output-table-id :- pos-int?]
-  (let [output-table (t2/select-one :model/Table :id output-table-id)
-        db-id (:db_id output-table)
+   Useful for inspecting transform subgraphs or arbitrary table comparisons.
+   Optional joins param enables smarter column matching using join aliases."
+  ([input-table-ids output-table-id]
+   (inspect-tables input-table-ids output-table-id nil))
+  ([input-table-ids :- [:sequential pos-int?]
+    output-table-id :- pos-int?
+    joins :- [:maybe [:sequential :map]]]
+   (let [output-table (t2/select-one :model/Table :id output-table-id)
+         db-id (:db_id output-table)
 
-        ;; Collect stats for all tables
-        source-stats (mapv collect-table-stats input-table-ids)
-        target-stats (collect-table-stats output-table-id)
+         ;; Collect stats for all tables
+         source-stats (mapv collect-table-stats input-table-ids)
+         target-stats (collect-table-stats output-table-id)
 
-        ;; Column matching (same logic as before)
-        column-matches (match-columns source-stats target-stats)
+         ;; Column matching using join alias info when available
+         column-matches (match-columns source-stats target-stats joins)
 
-        ;; Generate comparison cards
-        column-groups (mapv #(make-column-comparison-group % db-id output-table-id (:table-name target-stats))
-                            column-matches)
+         ;; Generate comparison cards
+         column-groups (mapv #(make-column-comparison-group % db-id output-table-id (:table-name target-stats))
+                             column-matches)
 
-        ;; Summary
-        summary (make-summary-stats source-stats target-stats)]
+         ;; Summary
+         summary (make-summary-stats source-stats target-stats)]
 
-    {:name "Table Inspector"
-     :description (tru "Comparison of input tables to output table")
-     :status :ready
+     {:name "Table Inspector"
+      :description (tru "Comparison of input tables to output table")
+      :status :ready
 
-     :summary summary
-     :sources source-stats
-     :target target-stats
-     :column-comparisons column-groups}))
+      :summary summary
+      :sources source-stats
+      :target target-stats
+      :column-comparisons column-groups})))
 
 (mu/defn inspect-transform :- ::transforms.schema/inspector-result
   "Generate inspection data for a transform.
@@ -496,11 +511,9 @@
        :status :not-run
        :sources (mapv #(select-keys % [:table-name :schema]) sources)}
 
-      ;; Target exists - delegate to generic inspect-tables, then add transform-specific data
+      ;; Target exists - extract joins first for smarter column matching
       (let [input-ids (mapv :table-id sources)
-            base-result (inspect-tables input-ids (:id target-table))
-
-            ;; Add transform-specific enrichments: join analysis (MBQL only)
+            ;; Extract joins first (MBQL only) so we can use them for column matching
             joins (when (= source-type :mbql)
                     (try
                       (let [query (-> transform :source :query
@@ -509,7 +522,9 @@
                         (extract-joins query))
                       (catch Exception e
                         (log/warn e "Failed to extract joins")
-                        nil)))]
+                        nil)))
+            ;; Pass joins to inspect-tables for alias-aware column matching
+            base-result (inspect-tables input-ids (:id target-table) joins)]
 
         (assoc base-result
                :name (str "Transform Inspector: " (:name transform))
