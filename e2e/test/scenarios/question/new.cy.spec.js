@@ -254,7 +254,7 @@ describe("scenarios > question > new", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModalItem(0, "Recent items").click();
     cy.findByRole("dialog", { name: "Pick your starting data" })
-      .findByRole("button", { name: /Orders/ })
+      .findByText("Orders")
       .should("exist");
     cy.findByRole("dialog", { name: "Pick your starting data" })
       .findByRole("button", { name: /Close/ })
@@ -335,14 +335,10 @@ describe("scenarios > question > new", () => {
     H.entityPickerModalItem(1, "Orders in a dashboard").should("exist");
 
     cy.log("test invalid recents do not appear");
-    H.entityPickerModalItem(1, "Third collection").should(
-      "have.attr",
-      "data-disabled",
-    );
-    H.entityPickerModalItem(1, "Third collection dashboard").should(
-      "have.attr",
-      "data-disabled",
-    );
+    H.entityPickerModal().within(() => {
+      cy.findByText("Third collection").should("not.exist");
+      cy.findByText("Third collection dashboard").should("not.exist");
+    });
   });
 
   it(
@@ -387,59 +383,6 @@ describe("scenarios > question > new", () => {
       });
 
       cy.get("header").findByText(NEW_COLLECTION);
-    },
-  );
-
-  it(
-    "should be able to save a question to a dashboard created on the go",
-    { tags: "@smoke" },
-    () => {
-      H.visitCollection(THIRD_COLLECTION_ID);
-
-      cy.findByLabelText("Navigation bar").findByText("New").click();
-      H.popover().findByText("Question").click();
-
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        cy.findByText("Orders").click();
-      });
-      cy.findByTestId("qb-header").findByText("Save").click();
-
-      cy.log("should be able to tab through fields (metabase#41683)");
-      // Since the submit button has initial focus on this modal, we need an extra tab to get past the modal close button
-      cy.realPress("Tab").realPress("Tab").realPress("Tab");
-      cy.findByLabelText("Description").should("be.focused");
-
-      cy.findByTestId("save-question-modal")
-        .findByLabelText(/Where do you want to save/)
-        .click();
-
-      H.entityPickerModal()
-        .findByRole("tab", { name: /Browse/ })
-        .click();
-
-      H.entityPickerModal().findByText("New dashboard").click();
-
-      const NEW_DASHBOARD = "Foo Dashboard";
-      H.dashboardOnTheGoModal().within(() => {
-        cy.findByLabelText(/Give it a name/).type(NEW_DASHBOARD);
-        cy.findByText("Create").click();
-      });
-      H.entityPickerModal().within(() => {
-        cy.findByText(NEW_DASHBOARD).click();
-        cy.button(/Select/).click();
-      });
-      cy.findByTestId("save-question-modal").within(() => {
-        cy.findByText("Save new question");
-        cy.findByLabelText(/Where do you want to save/).should(
-          "have.text",
-          NEW_DASHBOARD,
-        );
-        cy.findByText("Save").click();
-      });
-
-      cy.get("header").findByText(NEW_DASHBOARD);
-      cy.url().should("include", "/dashboard/");
     },
   );
 

@@ -436,6 +436,7 @@ describe("dashboard filters auto-wiring", () => {
         .click();
 
       H.modal().findByText("Orders, Count").click();
+      H.modal().button("Select").click();
 
       H.undoToastList()
         .eq(2)

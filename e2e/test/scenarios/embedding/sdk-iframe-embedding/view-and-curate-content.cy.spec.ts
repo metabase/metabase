@@ -231,7 +231,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
           cy.findByText("Our analytics").click();
         });
 
-        cy.findByText("Collections").click();
         cy.findByText("New collection").click();
 
         H.modal()

@@ -110,7 +110,10 @@ export const NewCollectionDialog = () => {
   return (
     <>
       <Button onClick={open} disabled={!canCreateHere}>
-        {t`New collection`}
+        {lastCollection?.namespace === "transforms" ||
+        lastCollection?.namespace === "snippets"
+          ? t`New folder`
+          : t`New collection`}
       </Button>
       <Modal
         title={t`Create a new collection`}
