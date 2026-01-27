@@ -379,10 +379,7 @@
                       {:agent-error? true :status-code 400})))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output (cond
-                   table-id (str "No table found with table_id " table-id)
-                   model-id (str "No model found with model_id " model-id)
-                   :else "Resource not found")
+        {:output       (ex-message e)
          :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
