@@ -11,7 +11,6 @@ import {
 } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import { FormField } from "metabase/common/components/FormField";
-import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import type {
   EntityPickerOptions,
   EntityPickerProps,
@@ -19,6 +18,7 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
