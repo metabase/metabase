@@ -73,10 +73,11 @@
                               :percentile-aggregations   false
                               :regex                     true
                               :test/jvm-timezone-setting false
-                              :transforms/table          true
                               :uuid-type                 true
                               :uploads                   true
-                              :workspace                 true
+                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
+                              ;; is useless with out transforms, so we disable it for now
+                              :workspace                 false
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true
