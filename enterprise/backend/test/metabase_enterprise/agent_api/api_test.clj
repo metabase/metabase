@@ -283,7 +283,7 @@
 
     (testing "Returns 400 for invalid field-id format"
       (let [table-id (mt/id :people)]
-        (is (= "invalid field_id format: not-a-valid-id"
+        (is (= "Invalid field_id format: not-a-valid-id"
                (agent-client :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id))))))))
 
 (deftest search-test

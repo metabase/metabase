@@ -372,11 +372,11 @@
                           (or (table-details (parse-long table-id) options)
                               (throw (ex-info (str "Table " table-id " not found")
                                               {:agent-error? true :status-code 404})))
-                          (throw (ex-info "invalid table_id format"
+                          (throw (ex-info "Invalid table_id format"
                                           {:agent-error? true :status-code 400}))))
 
                       :else
-                      (throw (ex-info "invalid arguments: must provide table-id or model-id"
+                      (throw (ex-info "Invalid arguments: must provide table_id or model_id"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
     (catch Exception e
@@ -393,7 +393,7 @@
                       (or (metric-details metric-id options)
                           (throw (ex-info (str "Metric " metric-id " not found")
                                           {:agent-error? true :status-code 404})))
-                      (throw (ex-info "invalid metric_id format"
+                      (throw (ex-info "Invalid metric_id format"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
     (catch Exception e

@@ -143,7 +143,7 @@
                          :model-id model-id
                          :field-index field-index
                          :available-columns-count (count columns)}))))
-    (throw (ex-info (str "invalid field_id format: " field-id)
+    (throw (ex-info (str "Invalid field_id format: " field-id)
                     {:agent-error? true
                      :status-code 400
                      :field-id field-id}))))

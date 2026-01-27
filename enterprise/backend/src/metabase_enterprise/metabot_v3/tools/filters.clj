@@ -379,8 +379,7 @@
                       {:agent-error? true :status-code 400})))
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output       (ex-message e)
-         :status-code 404}
+        {:output (ex-message e) :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- base-query
