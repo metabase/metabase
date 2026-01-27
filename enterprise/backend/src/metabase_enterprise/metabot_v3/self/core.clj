@@ -82,8 +82,8 @@
 (defn aisdk-xf
   "Collect a stream of AI SDK v5 messages into a list of parts (joins by id)."
   [rf]
-  ;; FIXME: logic relies on chunks pieces not being interleaved which won't hold for long if we will use
-  ;; `tool-executor-xf`
+  ;; NOTE: logic relies on chunks pieces not being interleaved, but even `tool-executor-xf` doesn't break that rule
+  ;; if we ever change it to stream tools rather than collect them in one piece, we'd need to improve logic here too
   (let [current-id (volatile! nil)
         acc        (volatile! [])]
     (fn
