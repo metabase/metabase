@@ -79,7 +79,8 @@
   `db` is name of the `table`'s schema. Can be nil.
   `table` is a name."
   [driver sql catalog db]
-  (let [ctx (python-context)
+  (let [;; for development comment out interpreter so py changes are propagated to our context
+        ctx (or @interpreter (python-context))
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.referenced_tables")
         dialect (name driver)]
