@@ -34,7 +34,7 @@ describe("issue 17768", () => {
     H.openReviewsTable({ mode: "notebook" });
 
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     H.popover().within(() => {

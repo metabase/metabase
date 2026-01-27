@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 
-import AdHocQuestionLoader from "metabase/common/components/AdHocQuestionLoader";
-import SavedQuestionLoader from "metabase/common/components/SavedQuestionLoader";
+import { AdHocQuestionLoader } from "metabase/common/components/AdHocQuestionLoader";
+import { SavedQuestionLoader } from "metabase/common/components/SavedQuestionLoader";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import { serializeCardForUrl } from "metabase/lib/card";
 
@@ -34,19 +34,26 @@ import { serializeCardForUrl } from "metabase/lib/card";
  *
  */
 
-const QuestionLoader = ({
+export const QuestionLoader = ({
   questionObject,
   questionId,
   questionHash,
+  includeSensitiveFields = false,
   children,
 }) =>
   questionObject != null ? (
-    <AdHocQuestionLoader questionHash={serializeCardForUrl(questionObject)}>
+    <AdHocQuestionLoader
+      questionHash={serializeCardForUrl(questionObject)}
+      includeSensitiveFields={includeSensitiveFields}
+    >
       {children}
     </AdHocQuestionLoader>
   ) : // if there's a questionHash it means we're in ad-hoc land
   questionHash != null && questionHash !== "" ? (
-    <AdHocQuestionLoader questionHash={questionHash}>
+    <AdHocQuestionLoader
+      questionHash={questionHash}
+      includeSensitiveFields={includeSensitiveFields}
+    >
       {children}
     </AdHocQuestionLoader>
   ) : // otherwise if there's a non-null questionId it means we're in saved land
@@ -56,7 +63,5 @@ const QuestionLoader = ({
     </SavedQuestionLoader>
   ) : // finally, if neither is present, just don't do anything
   null;
-
-export default QuestionLoader;
 
 export const QuestionLoaderHOC = renderPropToHOC(QuestionLoader);

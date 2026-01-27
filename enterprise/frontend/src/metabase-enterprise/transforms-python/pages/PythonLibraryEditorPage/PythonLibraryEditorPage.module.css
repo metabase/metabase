@@ -4,3 +4,7 @@
   flex-grow: 1;
   background-color: var(--mb-color-background-secondary);
 }
+
+.flexStart {
+  align-self: flex-start;
+}

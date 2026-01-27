@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   Alert,
   Box,

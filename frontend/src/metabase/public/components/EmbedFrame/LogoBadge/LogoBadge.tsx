@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 
 import EmbedFrameS from "../EmbedFrame.module.css";
 
@@ -19,11 +19,11 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
         [LogoBadgeStyle.dark]: dark,
         [LogoBadgeStyle.light]: !dark,
       })}
-      href={`https://www.metabase.com/index?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=${utmContentValue}`}
+      href={`https://www.metabase.com?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=${utmContentValue}`}
       target="_blank"
     >
       <span>{t`Powered by`}</span>
-      {/* eslint-disable-next-line no-literal-metabase-strings -- This embedding badge which we don't want to show the whitelabeled name */}
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This embedding badge which we don't want to show the whitelabeled name */}
       <MetabaseLogoWithText height={32} aria-label="Metabase" />
     </ExternalLink>
   );

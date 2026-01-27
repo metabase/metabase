@@ -1,8 +1,9 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Input from "metabase/common/components/Input";
+import { Input } from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -23,6 +24,7 @@ export function BreakoutColumnList({
   onQueryChange,
   stageIndex = -1,
 }: BreakoutColumnListProps) {
+  const tc = useTranslateContent();
   const {
     onAddBreakout,
     onUpdateBreakout,
@@ -141,7 +143,7 @@ export function BreakoutColumnList({
           {sections.map((section) => (
             <li key={section.name}>
               <Box className={BreakoutColumnListS.ColumnGroupName}>
-                {section.name}
+                {tc(section.name)}
               </Box>
               <ul>
                 {section.items.map((item, itemIndex) => (

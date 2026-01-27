@@ -4,8 +4,8 @@ import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
-import Link from "metabase/common/components/Link";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
 import { QuestionPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";

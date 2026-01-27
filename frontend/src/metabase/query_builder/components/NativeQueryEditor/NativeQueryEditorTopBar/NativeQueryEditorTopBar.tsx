@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, forwardRef } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
-import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
+import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";
@@ -38,7 +38,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   readOnly?: boolean;
 
   snippets?: NativeQuerySnippet[];
-  editorContext?: "question";
+  editorContext?: "question" | "action";
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
@@ -51,11 +51,14 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   onOpenModal?: (modalType: QueryModalType) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setDatasetQuery: (query: NativeQuery) => void;
   databaseIsDisabled?: (database: Database) => boolean;
 }
 
-const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
+export const NativeQueryEditorTopBar = forwardRef<
+  HTMLDivElement,
+  NativeQueryEditorTopBarProps
+>(function NativeQueryEditorTopBarInner(props, ref) {
   const {
     children,
     query,
@@ -122,7 +125,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const parameters = question.parameters();
 
   return (
-    <Flex align="flex-start" data-testid="native-query-top-bar">
+    <Flex align="flex-start" data-testid="native-query-top-bar" ref={ref}>
       {canChangeDatabase && (
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}
@@ -178,6 +181,4 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       </Flex>
     </Flex>
   );
-};
-
-export { NativeQueryEditorTopBar };
+});

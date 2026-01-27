@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import Text from "metabase/common/components/type/Text";
+import { Text } from "metabase/common/components/type/Text";
 
 import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
@@ -11,7 +11,7 @@ import {
   BackIcon,
   SidebarHeader,
 } from "./PermissionsSidebar.styled";
-import { SidebarContentTitle } from "./PermissionsSidebarContent.styled";
+import S from "./PermissionsSidebarContent.module.css";
 
 export interface PermissionsSidebarContentProps {
   title?: string;
@@ -46,7 +46,7 @@ export const PermissionsSidebarContent = memo(
               {title}
             </BackButton>
           ) : (
-            <SidebarContentTitle>{title}</SidebarContentTitle>
+            <div className={S.SidebarContentTitle}>{title}</div>
           )}
           {description && <Text color="text-primary">{description}</Text>}
           {entityViewFocus && onEntityChange && (

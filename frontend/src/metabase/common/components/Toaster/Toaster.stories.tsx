@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Toaster, { type ToasterProps } from "./Toaster";
+import { Toaster, type ToasterProps } from "./Toaster";
 
 export default {
   title: "App/Dashboard/Toaster",

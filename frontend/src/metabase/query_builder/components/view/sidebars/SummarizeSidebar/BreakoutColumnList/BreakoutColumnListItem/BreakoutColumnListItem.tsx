@@ -4,12 +4,13 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -61,6 +62,7 @@ export function BreakoutColumnListItem({
   onRemoveBreakout,
   onReplaceBreakouts,
 }: BreakoutColumnListItemProps) {
+  const tc = useTranslateContent();
   const isSelected = breakout != null;
 
   const handleAddClick = useCallback(() => {
@@ -81,7 +83,7 @@ export function BreakoutColumnListItem({
     [breakout, onRemoveBreakout],
   );
 
-  const displayName = isPinned ? item.longDisplayName : item.displayName;
+  const displayName = tc(isPinned ? item.longDisplayName : item.displayName);
 
   return (
     <HoverParent

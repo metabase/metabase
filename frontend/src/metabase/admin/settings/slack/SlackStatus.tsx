@@ -7,7 +7,7 @@ import {
   useUpdateSlackSettingsMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 

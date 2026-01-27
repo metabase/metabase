@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import { uniq } from "underscore";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import { Sortable } from "metabase/common/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
 import { TabButton } from "metabase/common/components/TabButton";

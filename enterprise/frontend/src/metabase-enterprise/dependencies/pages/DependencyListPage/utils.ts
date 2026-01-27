@@ -1,5 +1,9 @@
 import type * as Urls from "metabase/lib/urls";
-import { DEPENDENCY_GROUP_TYPES } from "metabase-types/api";
+import {
+  DEPENDENCY_GROUP_TYPES,
+  DEPENDENCY_SORT_COLUMNS,
+  DEPENDENCY_SORT_DIRECTIONS,
+} from "metabase-types/api";
 
 import {
   parseBoolean,
@@ -17,9 +21,13 @@ export function parseParams(
   return {
     page: parseNumber(params.page),
     query: parseString(params.query),
-    groupTypes: parseList(params.groupTypes, (item) =>
+    groupTypes: parseList(params.group_types, (item) =>
       parseEnum(item, DEPENDENCY_GROUP_TYPES),
     ),
-    includePersonalCollections: parseBoolean(params.includePersonalCollections),
+    includePersonalCollections: parseBoolean(
+      params.include_personal_collections,
+    ),
+    sortColumn: parseEnum(params.sort_column, DEPENDENCY_SORT_COLUMNS),
+    sortDirection: parseEnum(params.sort_direction, DEPENDENCY_SORT_DIRECTIONS),
   };
 }
