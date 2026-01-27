@@ -63,9 +63,23 @@ export const InspectColumnComparisons = ({
     [comparisons],
   );
 
+  // Build a set of mapped source field names by looking at input cards
+  // This handles joined columns where output_column has a prefix like "Table__field"
+  const mappedSourceFieldNames = useMemo(() => {
+    const mapped = new Set<string>();
+    for (const comparison of comparisons) {
+      for (const card of comparison.cards) {
+        if (card.source === "input" && card.field_name) {
+          mapped.add(card.field_name);
+        }
+      }
+    }
+    return mapped;
+  }, [comparisons]);
+
   const unmappedOutputFields = useMemo(
-    () => sourcesFields.filter((field) => !comparisonsMap[field.name]),
-    [sourcesFields, comparisonsMap],
+    () => sourcesFields.filter((field) => !mappedSourceFieldNames.has(field.name)),
+    [sourcesFields, mappedSourceFieldNames],
   );
 
   const comparisonsContent = (
