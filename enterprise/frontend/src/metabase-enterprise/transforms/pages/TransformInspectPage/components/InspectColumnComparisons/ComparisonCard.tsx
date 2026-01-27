@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import { Box, Card, Loader, Stack, Text } from "metabase/ui";
+import { Box, Card, Loader, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   RawSeries,
@@ -12,6 +12,8 @@ import { createMockCard } from "metabase-types/api/mocks";
 type ComparisonCardProps = {
   card: TransformInspectComparisonCard | undefined;
 };
+
+const VISUALIZATION_HEIGHT = 235;
 
 export const ComparisonCard = ({ card }: ComparisonCardProps) => {
   const { data: dataset, isLoading } = useGetAdhocQueryQuery(
@@ -45,7 +47,12 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
   if (isLoading || !rawSeries) {
     return (
       <Card p="md" shadow="none" withBorder>
-        <Stack gap="sm" align="center" justify="center" h={200}>
+        <Stack
+          gap="sm"
+          align="center"
+          justify="center"
+          h={VISUALIZATION_HEIGHT}
+        >
           <Loader size="sm" />
         </Stack>
       </Card>
@@ -54,14 +61,9 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
 
   return (
     <Card p="md" shadow="none" withBorder>
-      <Stack gap="sm">
-        <Text fw={600} size="sm">
-          {card.title}
-        </Text>
-        <Box h={200}>
-          <Visualization rawSeries={rawSeries} showTitle={false} />
-        </Box>
-      </Stack>
+      <Box h={VISUALIZATION_HEIGHT}>
+        <Visualization rawSeries={rawSeries} />
+      </Box>
     </Card>
   );
 };
