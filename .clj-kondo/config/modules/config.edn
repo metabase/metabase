@@ -600,7 +600,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
            premium-features
            server
            settings
@@ -947,7 +946,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1175,7 +1175,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -2285,6 +2286,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            driver
            events
            lib
@@ -2294,6 +2296,7 @@
            queries
            query-processor
            request
+           revisions
            search
            settings
            sync

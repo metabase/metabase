@@ -162,14 +162,14 @@
           upds {:semantic_type      nil
                 :fk_target_field_id nil}]
       (t2/update! :model/Field k upds)
-      ;; we must explicitely clear user-set fks in this case
+      ;; we must explicitly clear user-set fks in this case
       (t2/update! :model/FieldUserSettings k upds)))
   (sync-user-settings field))
 
 (t2/define-before-delete :model/Field
   [field]
   ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
-  ;; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; because parent_id contributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 
@@ -218,7 +218,7 @@
   (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
-  "Recusively find the field id for a nested field name, return nil if not found.
+  "Recursively find the field id for a nested field name, return nil if not found.
   Nested field here refer to a field that has another field as its parent_id, like nested field in Mongo DB.
 
   This is to differentiate from the json nested field in, which the path is defined in metabase_field.nfc_path."
