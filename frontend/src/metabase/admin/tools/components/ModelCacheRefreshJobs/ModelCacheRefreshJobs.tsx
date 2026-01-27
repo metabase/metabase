@@ -9,9 +9,9 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListPersistedInfoQuery } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
-import EmptyState from "metabase/common/components/EmptyState";
-import Link from "metabase/common/components/Link";
+import { DateTime } from "metabase/common/components/DateTime";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";

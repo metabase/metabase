@@ -1,10 +1,10 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
-import ColorPickerContent from "./ColorPickerContent";
-import ColorPickerTrigger from "./ColorPickerTrigger";
+import { ColorPickerContent } from "./ColorPickerContent";
+import { ColorPickerTrigger } from "./ColorPickerTrigger";
 
 export type ColorPickerAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -18,7 +18,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
   onChange?: (color?: string) => void;
 }
 
-const ColorPicker = forwardRef(function ColorPicker(
+export const ColorPicker = forwardRef(function ColorPicker(
   { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -40,6 +40,3 @@ const ColorPicker = forwardRef(function ColorPicker(
     />
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorPicker;

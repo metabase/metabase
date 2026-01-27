@@ -3,7 +3,7 @@ import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
 import type { SelectChangeEvent } from "metabase/common/components/Select";
-import Select from "metabase/common/components/Select";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
@@ -71,7 +71,7 @@ const DEFAULT_DAY = "mon";
 /**
  * @deprecated use "metabase/common/components/Schedule" instead
  */
-class SchedulePicker extends Component<SchedulePickerProps> {
+export class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,
     value: ScheduleSettings[typeof name],
@@ -311,6 +311,3 @@ function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
   return <>{t`your ${applicationName} timezone`}</>;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SchedulePicker;

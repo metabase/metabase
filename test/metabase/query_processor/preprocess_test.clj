@@ -441,7 +441,7 @@
                                                       [:field "ID" {:base-type :type/BigInteger}]
                                                       [:field (meta/id :checkins :id)
                                                        {:base-type :type/BigInteger, :join-alias "CH"}]]}
-                                      {:source-table        (meta/id :venues)
+                                      {:source-query        {:source-table (meta/id :venues)}
                                        :qp/is-implicit-join true
                                        :fk-join-alias       "CH"
                                        :alias               "VENUES__via__VENUE_ID__via__CH"

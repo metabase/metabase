@@ -17,9 +17,10 @@ import {
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import TokenField, {
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import {
+  TokenField,
   parseStringValue,
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";

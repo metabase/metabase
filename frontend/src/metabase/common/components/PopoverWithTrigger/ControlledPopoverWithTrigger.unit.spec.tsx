@@ -7,7 +7,7 @@ import type {
   PopoverWithTriggerContent,
   RenderTrigger,
 } from "./ControlledPopoverWithTrigger";
-import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";
+import { ControlledPopoverWithTrigger } from "./ControlledPopoverWithTrigger";
 
 console.error = jest.fn();
 

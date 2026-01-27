@@ -7,8 +7,8 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import MetabaseLogo from "metabase/common/components/LogoIcon";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { LogoIcon as MetabaseLogo } from "metabase/common/components/LogoIcon";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 

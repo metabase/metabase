@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import SchedulePicker from "metabase/common/components/SchedulePicker/SchedulePickerView";
+import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
 import { FormField } from "metabase/forms";
 import { Box, rem } from "metabase/ui";
 import type {

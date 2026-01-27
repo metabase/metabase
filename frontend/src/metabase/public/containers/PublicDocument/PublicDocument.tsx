@@ -1,5 +1,5 @@
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
+import { Link } from "@tiptap/extension-link";
 import type { JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Location } from "history";

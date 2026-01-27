@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import Tooltip from "metabase/common/components/Tooltip";
+import { Tooltip } from "metabase/common/components/Tooltip";
 import { getEventTarget } from "metabase/lib/dom";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type {

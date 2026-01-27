@@ -343,4 +343,62 @@ describe("AllChangesView", () => {
       expect(screen.getByText("Total Users")).toBeInTheDocument();
     });
   });
+
+  describe("snippet collections", () => {
+    it("should display snippets in snippet collections with hierarchy", async () => {
+      const snippetCollection = createMockCollection({
+        id: 50,
+        name: "My Snippets",
+        namespace: "snippets",
+        effective_ancestors: [],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 50,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [snippetCollection],
+      });
+
+      expect(await screen.findByText("My Snippets")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
+    });
+
+    it("should display nested snippet collection hierarchy", async () => {
+      const childSnippetCollection = createMockCollection({
+        id: 51,
+        name: "Child Snippet Folder",
+        namespace: "snippets",
+      });
+      const parentSnippetCollection = createMockCollection({
+        id: 50,
+        name: "Parent Snippet Folder",
+        namespace: "snippets",
+        children: [childSnippetCollection],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 51,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [parentSnippetCollection],
+      });
+
+      expect(
+        await screen.findByText("Parent Snippet Folder"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Child Snippet Folder")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
+    });
+  });
 });

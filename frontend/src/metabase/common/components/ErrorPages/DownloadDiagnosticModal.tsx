@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import FormTextArea from "metabase/common/components/FormTextArea";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
 

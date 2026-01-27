@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { useGetVersionInfoQuery } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";

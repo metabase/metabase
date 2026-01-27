@@ -39,7 +39,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -81,7 +81,7 @@
 (deftest all-specs-have-valid-export-path-test
   (testing "Every spec has valid export-path configuration"
     (let [valid-path-types #{:collection-entity :table-path :field-path
-                             :segment-path :measure-path :transform-path :transform-tag-path}]
+                             :segment-path :measure-path :transform-path :transform-tag-path :snippet-path}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-path-types (get-in spec [:export-path :type]))
@@ -151,7 +151,10 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        (is (empty? excluded))))))
+        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        (is (not (contains? excluded "Transform")))
+        (is (not (contains? excluded "TransformTag")))
+        (is (contains? excluded "NativeQuerySnippet"))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -243,7 +246,7 @@
            (spec/select-fields-for-sync "Card")))
     (is (= [:name :collection_id]
            (spec/select-fields-for-sync "Dashboard")))
-    (is (= [:name :id]
+    (is (= [:name :collection_id]
            (spec/select-fields-for-sync "NativeQuerySnippet"))))
 
   (testing "select-fields-for-sync returns default for unknown type"

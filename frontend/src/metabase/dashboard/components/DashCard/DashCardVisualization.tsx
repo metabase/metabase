@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";

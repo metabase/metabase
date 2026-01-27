@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import HelpCard from "metabase/common/components/HelpCard";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { HelpCard } from "metabase/common/components/HelpCard";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 

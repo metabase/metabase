@@ -5,7 +5,7 @@ import {
   COPY_BUTTON_ICON,
   CopyButton,
 } from "metabase/common/components/CopyButton";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   SidesheetCard,
   type SidesheetCardProps,

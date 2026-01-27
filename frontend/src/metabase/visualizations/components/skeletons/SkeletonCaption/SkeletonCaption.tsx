@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Tooltip } from "metabase/ui";
 import {
   LegendDescriptionIcon,

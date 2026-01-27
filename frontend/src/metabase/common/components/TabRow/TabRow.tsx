@@ -26,7 +26,7 @@ import {
 } from "react";
 import { usePreviousDistinct } from "react-use";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { Icon } from "metabase/ui";
 
 import type { TabListProps } from "../TabList/TabList";
