@@ -70,13 +70,16 @@ class CssVarsDeclarationPlugin {
   #frontendSrcPath;
   /** @type {string} */
   #rootPath;
+  /** @type {CssVarConfig[]} */
+  #configs;
 
   /**
-   * @param {{ frontendSrcPath: string, rootPath: string }} options
+   * @param {{ frontendSrcPath: string, rootPath: string, configs?: CssVarConfig[] }} options
    */
-  constructor({ frontendSrcPath, rootPath }) {
+  constructor({ frontendSrcPath, rootPath, configs }) {
     this.#frontendSrcPath = frontendSrcPath;
     this.#rootPath = rootPath;
+    this.#configs = configs ?? CSS_VAR_CONFIGS;
   }
 
   /**
@@ -95,7 +98,7 @@ class CssVarsDeclarationPlugin {
       skipAddingFilesFromTsConfig: true,
     });
 
-    for (const config of CSS_VAR_CONFIGS) {
+    for (const config of this.#configs) {
       this.#processConfig(project, config);
     }
   }
