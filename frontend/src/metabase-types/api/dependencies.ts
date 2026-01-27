@@ -315,4 +315,6 @@ export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
 export type DependencyListUserParams = {
   group_types?: DependencyGroupType[];
   include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };

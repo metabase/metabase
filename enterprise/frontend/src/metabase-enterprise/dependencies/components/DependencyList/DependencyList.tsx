@@ -25,7 +25,7 @@ import { ListPaginationControls } from "./ListPaginationControls";
 import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
-import type { DependencyListMode } from "./types";
+import type { DependencyListMode, DependencyListParamsOptions } from "./types";
 import {
   getAvailableGroupTypes,
   getFilterOptions,
@@ -35,14 +35,22 @@ import {
 type DependencyListProps = {
   mode: DependencyListMode;
   params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  isLoadingLastUsedParams: boolean;
+  onParamsChange: (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => void;
 };
 
 export function DependencyList({
   mode,
   params,
+  isLoadingLastUsedParams,
   onParamsChange,
 }: DependencyListProps) {
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
@@ -59,23 +67,31 @@ export function DependencyList({
     sort_direction,
   } = params;
 
-  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: getDependencyTypes(group_types),
-    card_types: getCardTypes(group_types),
-    query,
-    include_personal_collections,
-    sort_column,
-    sort_direction,
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-  });
-
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
+  const {
+    data,
+    isFetching: isFetchingNodes,
+    isLoading: isLoadingNodes,
+    error,
+  } = useListGraphNodesQuery(
+    {
+      types: getDependencyTypes(group_types),
+      card_types: getCardTypes(group_types),
+      query,
+      include_personal_collections,
+      sort_column,
+      sort_direction,
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    },
+    {
+      skip: isLoadingLastUsedParams,
+    },
+  );
 
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
+  const isFetching = isFetchingNodes || isLoadingLastUsedParams;
+  const isLoading = isLoadingNodes || isLoadingLastUsedParams;
 
   const selectedNode =
     selectedEntry != null
@@ -90,23 +106,29 @@ export function DependencyList({
     groupTypes,
     includePersonalCollections,
   }: DependencyFilterOptions) => {
-    onParamsChange({
-      ...params,
-      group_types: groupTypes,
-      include_personal_collections: includePersonalCollections,
-      page: undefined,
-    });
+    onParamsChange(
+      {
+        ...params,
+        group_types: groupTypes,
+        include_personal_collections: includePersonalCollections,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handleSortOptionsChange = (
     sortOptions: DependencySortOptions | undefined,
   ) => {
-    onParamsChange({
-      ...params,
-      sort_column: sortOptions?.column,
-      sort_direction: sortOptions?.direction,
-      page: undefined,
-    });
+    onParamsChange(
+      {
+        ...params,
+        sort_column: sortOptions?.column,
+        sort_direction: sortOptions?.direction,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handlePageChange = (page: number) => {
