@@ -4,24 +4,15 @@ import {
   TEXT_DERIVE_ALPHA_STEPS,
 } from "../constants/lightness-stops";
 import type { MetabaseColorKey } from "../types";
+import type { GeneratedColorStops } from "../types/lightness-stops";
 
 import {
-  detectLightnessStep,
   generateLightnessStops,
   generateTextStops,
   getRelativeStep,
 } from "./lightness-stops";
 
 type DeriveInputColor = "background-primary" | "text-primary" | "brand";
-
-/**
- * Detects whether the theme is dark based on background and text colors.
- */
-const detectIsDarkTheme = (
-  backgroundPrimary: string,
-  textPrimary: string,
-): boolean =>
-  detectLightnessStep(backgroundPrimary) > detectLightnessStep(textPrimary);
 
 /**
  * Derives additional color keys from the 3 main input colors:
@@ -31,8 +22,6 @@ const detectIsDarkTheme = (
  *
  * This allows customers to set just these 3 colors and have a complete
  * theme derived automatically using lightness stops.
- *
- * Dark/light theme is auto-detected from background-primary and text-primary.
  */
 export function deriveColorsFromInputs(
   colors: Record<DeriveInputColor, string>,
@@ -41,24 +30,23 @@ export function deriveColorsFromInputs(
     return {};
   }
 
-  const derived: Partial<Record<MetabaseColorKey, string>> = {};
+  let derived: Partial<Record<MetabaseColorKey, string>> = {};
 
-  // Derive background-related colors from background-primary
-  if (colors["background-primary"]) {
-    const bgStops = generateLightnessStops(colors["background-primary"]);
-    const isLightBackground = bgStops.detectedStep <= 20;
+  // Detect theme from background-primary (light bg = light theme)
+  const bgStops = colors["background-primary"]
+    ? generateLightnessStops(colors["background-primary"])
+    : null;
+  const isLightTheme = bgStops ? bgStops.detectedStep <= 20 : true;
 
-    for (const [key, lightOffset] of Object.entries(
-      BACKGROUND_DERIVE_OFFSETS,
-    )) {
-      // Light mode uses offset directly, dark mode uses negative
-      const offset = isLightBackground ? lightOffset : -lightOffset;
-      const step = getRelativeStep(bgStops.detectedStep, offset);
-      derived[key as MetabaseColorKey] = bgStops.solid[step];
-    }
+  // Derive background-related colors
+  if (bgStops) {
+    derived = {
+      ...derived,
+      ...deriveFromOffsets(bgStops, BACKGROUND_DERIVE_OFFSETS, isLightTheme),
+    };
 
-    // Remove border if dark background (will be derived from text-primary)
-    if (!isLightBackground) {
+    // Remove border if dark theme (will be derived from text-primary)
+    if (!isLightTheme) {
       delete derived["border"];
     }
   }
@@ -66,7 +54,6 @@ export function deriveColorsFromInputs(
   // Derive text-related colors from text-primary
   if (colors["text-primary"]) {
     const textStops = generateTextStops(colors["text-primary"]);
-    const isLightTheme = detectLightnessStep(colors["text-primary"]) >= 60; // dark text = light theme
 
     for (const [key, alphaStep] of Object.entries(TEXT_DERIVE_ALPHA_STEPS)) {
       // Skip border for light theme (already set from background)
@@ -92,20 +79,30 @@ export function deriveColorsFromInputs(
   // Derive brand-related colors from brand
   if (colors["brand"]) {
     const brandStops = generateLightnessStops(colors["brand"]);
+    derived = {
+      ...derived,
+      ...deriveFromOffsets(brandStops, BRAND_DERIVE_OFFSETS, !isLightTheme),
+    };
+  }
 
-    const isDarkTheme = detectIsDarkTheme(
-      colors["background-primary"],
-      colors["text-primary"],
-    );
+  return derived;
+}
 
-    for (const [colorKey, lightOffset] of Object.entries(
-      BRAND_DERIVE_OFFSETS,
-    )) {
-      // Dark theme uses offset directly, light theme uses negative
-      const offset = isDarkTheme ? lightOffset : -lightOffset;
-      const step = getRelativeStep(brandStops.detectedStep, offset);
-      derived[colorKey as MetabaseColorKey] = brandStops.solid[step];
-    }
+/**
+ * Derives colors from lightness stops using offsets.
+ * When usePositiveOffset is true, uses the offset as-is; otherwise negates it.
+ */
+function deriveFromOffsets(
+  stops: GeneratedColorStops,
+  offsets: Record<string, number>,
+  usePositiveOffset: boolean,
+): Partial<Record<MetabaseColorKey, string>> {
+  const derived: Partial<Record<MetabaseColorKey, string>> = {};
+
+  for (const [key, baseOffset] of Object.entries(offsets)) {
+    const offset = usePositiveOffset ? baseOffset : -baseOffset;
+    const step = getRelativeStep(stops.detectedStep, offset);
+    derived[key as MetabaseColorKey] = stops.solid[step];
   }
 
   return derived;
