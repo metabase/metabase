@@ -1,6 +1,6 @@
 import { type ReactNode, createContext, useCallback, useState } from "react";
 
-import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
+import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbsContextType,
@@ -22,7 +22,7 @@ export const SdkBreadcrumbsProvider = ({
   children,
 }: SdkBreadcrumbsProviderProps) => {
   const [breadcrumbs, setBreadcrumbs] = useState<SdkBreadcrumbItem[]>([]);
-  const navigationContext = useSdkInternalNavigationOptional();
+  const navigationContext = useSdkInternalNavigation();
   const isInInternalNavigation = navigationContext?.canGoBack ?? false;
 
   const reportLocation = useCallback((item: SdkBreadcrumbItem) => {

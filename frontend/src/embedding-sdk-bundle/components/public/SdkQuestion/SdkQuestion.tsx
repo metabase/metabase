@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-// import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigationProvider";
 import {
   BackButton,
   Breakout,
@@ -145,7 +144,6 @@ export const _SdkQuestion = ({
   withChartTypeSelector = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
-  // <SdkInternalNavigationProvider>
   <SdkQuestionProvider
     questionId={questionId}
     token={token}
@@ -180,7 +178,6 @@ export const _SdkQuestion = ({
       />
     )}
   </SdkQuestionProvider>
-  // </SdkInternalNavigationProvider>
 );
 
 const subComponents: SdkQuestionComponents = {

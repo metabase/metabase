@@ -145,7 +145,7 @@ export const SdkQuestionDefaultView = ({
       reportLocation({
         type: "question",
         id: question.id(),
-        name: question.displayName() || t`Question`,
+        name: question.displayName() || "Question",
         onNavigate,
       });
     }

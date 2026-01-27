@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Stack, Text } from "metabase/ui";
 
@@ -10,14 +8,9 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
 interface DefaultViewTitleTextProps
-  extends Pick<SdkQuestionDefaultViewProps, "withResetButton" | "title"> {
-  isQuestionChanged?: boolean;
-  onReset?: () => void;
-  originalName?: string | null;
-}
+  extends Pick<SdkQuestionDefaultViewProps, "title"> {}
 
 const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
-  // const { canGoBack } = useSdkInternalNavigationOptional();
   return (
     <Stack gap="xs">
       <SdkInternalNavigationBackButton />
@@ -26,24 +19,15 @@ const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
   );
 };
 
-export const DefaultViewTitle = ({
-  title,
-  withResetButton = false,
-}: SdkQuestionDefaultViewProps) => {
-  const { question, originalQuestion, onReset } = useSdkQuestionContext();
+export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
+  const { question } = useSdkQuestionContext();
   const tc = useTranslateContent();
-
-  const isQuestionChanged = originalQuestion
-    ? question?.isQueryDirtyComparedTo(originalQuestion)
-    : true;
 
   if (title === false) {
     return null;
   }
 
   if (title === undefined || title === true) {
-    const originalName = tc(originalQuestion?.displayName());
-
     const titleText = tc(getQuestionTitle({ question }));
 
     return (
@@ -55,10 +39,6 @@ export const DefaultViewTitle = ({
             </Text>
           )
         }
-        withResetButton={withResetButton}
-        isQuestionChanged={isQuestionChanged}
-        onReset={onReset}
-        originalName={originalName}
       />
     );
   }
@@ -73,10 +53,6 @@ export const DefaultViewTitle = ({
             {titleText}
           </Text>
         }
-        withResetButton={withResetButton}
-        isQuestionChanged={isQuestionChanged}
-        onReset={onReset}
-        originalName={t`the original exploration`}
       />
     );
   }
