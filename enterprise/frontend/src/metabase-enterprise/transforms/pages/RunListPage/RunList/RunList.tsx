@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -6,7 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Card, Flex, Group, Stack } from "metabase/ui";
+import { Card, Flex, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
@@ -68,7 +69,7 @@ function RunTable({ runs, tags }: RunTableProps) {
   const dispatch = useDispatch();
 
   const handleRowClick = (run: TransformRun) => {
-    if (run.transform) {
+    if (run.transform && !run.transform.deleted) {
       dispatch(push(Urls.transform(run.transform.id)));
     }
   };
@@ -91,48 +92,65 @@ function RunTable({ runs, tags }: RunTableProps) {
           t`Tags`,
         ]}
       >
-        {runs.map((run) => (
-          <tr
-            key={run.id}
-            className={S.row}
-            onClick={() => handleRowClick(run)}
-          >
-            <td className={S.wrap}>{run.transform?.name}</td>
-            <td className={S.nowrap}>
-              {parseTimestampWithTimezone(
-                run.start_time,
-                systemTimezone,
-              ).format("lll")}
-            </td>
-            <td className={S.nowrap}>
-              {run.end_time
-                ? parseTimestampWithTimezone(
-                    run.end_time,
-                    systemTimezone,
-                  ).format("lll")
-                : null}
-            </td>
-            <td className={S.wrap}>
-              <RunStatusInfo
-                transform={run.transform}
-                status={run.status}
-                message={run.message}
-                endTime={
-                  run.end_time != null
-                    ? parseTimestampWithTimezone(
-                        run.end_time,
-                        systemTimezone,
-                      ).toDate()
-                    : null
-                }
-              />
-            </td>
-            <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
-            <td className={S.wrap}>
-              <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />
-            </td>
-          </tr>
-        ))}
+        {runs.map((run) => {
+          const isDeleted = run.transform?.deleted === true;
+
+          return (
+            <tr
+              key={run.id}
+              className={cx(S.row, { [S.deletedRow]: isDeleted })}
+              onClick={() => handleRowClick(run)}
+            >
+              <td className={S.wrap}>
+                {isDeleted ? (
+                  <Tooltip label={t`${run.transform?.name} has been deleted`}>
+                    <Text c="text-tertiary" fs="italic">
+                      <Flex align="center" gap="xs">
+                        <Icon name="trash" />
+                        {run.transform?.name}
+                      </Flex>
+                    </Text>
+                  </Tooltip>
+                ) : (
+                  run.transform?.name
+                )}
+              </td>
+              <td className={S.nowrap}>
+                {parseTimestampWithTimezone(
+                  run.start_time,
+                  systemTimezone,
+                ).format("lll")}
+              </td>
+              <td className={S.nowrap}>
+                {run.end_time
+                  ? parseTimestampWithTimezone(
+                      run.end_time,
+                      systemTimezone,
+                    ).format("lll")
+                  : null}
+              </td>
+              <td className={S.wrap}>
+                <RunStatusInfo
+                  transform={run.transform}
+                  status={run.status}
+                  message={run.message}
+                  endTime={
+                    run.end_time != null
+                      ? parseTimestampWithTimezone(
+                          run.end_time,
+                          systemTimezone,
+                        ).toDate()
+                      : null
+                  }
+                />
+              </td>
+              <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
+              <td className={S.wrap}>
+                <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />
+              </td>
+            </tr>
+          );
+        })}
       </AdminContentTable>
     </Card>
   );

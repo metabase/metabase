@@ -26,6 +26,9 @@ export type Transform = {
   created_at: string;
   updated_at: string;
 
+  // true when transform was deleted but still referenced by runs
+  deleted?: boolean;
+
   // creator fields
   creator_id?: UserId;
 
