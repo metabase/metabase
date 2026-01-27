@@ -348,11 +348,21 @@
 
 ;;; -------------------------------------------------- Column Matching ---------------------------------------------------
 
+(defn- extract-base-field-name
+  "Extract the base field name from a column name.
+   Handles joined column naming like 'Test Customers - Customer__region' → 'region'."
+  [name]
+  (when name
+    (if-let [[_ base] (re-find #"__(.+)$" name)]
+      base
+      name)))
+
 (defn- normalize-column-name
   "Normalize a column name for comparison (lowercase, remove underscores/hyphens)."
   [name]
   (when name
     (-> name
+        extract-base-field-name
         u/lower-case-en
         (str/replace #"[-_]" ""))))
 
