@@ -1,12 +1,11 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  CardId,
-  DatabaseId,
-  FieldId,
-  SegmentId,
-  TableId,
-  TemplateTags,
-} from "metabase-types/api";
+
+import type { CardId } from "./card";
+import type { DatabaseId } from "./database";
+import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { FieldId } from "./field";
+import type { SegmentId } from "./segment";
+import type { TableId } from "./table";
 
 export interface NativeQuery {
   query: string;
@@ -439,3 +438,46 @@ export type DimensionReferenceWithOptions =
 export type DimensionReference =
   | DimensionReferenceWithOptions
   | TemplateTagReference;
+
+export type TableSourceSpec = {
+  type: "table";
+  id: TableId;
+};
+
+export type CardSourceSpec = {
+  type: "card";
+  id: CardId;
+};
+
+export type SourceSpec = TableSourceSpec | CardSourceSpec;
+
+export type ColumnSpec = {
+  name?: string;
+};
+
+export type TemporalBucketSpec = {
+  unit?: TemporalUnit;
+};
+
+export type BreakoutSpec = ColumnSpec & TemporalBucketSpec;
+
+export type OrderBySpec = ColumnSpec & {
+  direction?: "asc" | "desc";
+};
+
+export type StageSpec = {
+  breakouts?: BreakoutSpec[];
+  orderBys?: OrderBySpec[];
+};
+
+export type StageSpecWithSource = StageSpec & {
+  source: SourceSpec;
+};
+
+export type QuerySpec = {
+  stages: [StageSpecWithSource, ...StageSpec[]];
+};
+
+export type QuerySpecWithDatabase = QuerySpec & {
+  database: DatabaseId;
+};

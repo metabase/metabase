@@ -47,6 +47,7 @@
    [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.query.util :as lib.query.util]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
@@ -104,6 +105,7 @@
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
+         lib.query.util/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
          metabase.lib.schema/keep-me
@@ -440,6 +442,8 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
+ [lib.query.util
+  query-from-spec]
  [lib.ref
   field-ref-id
   field-ref-name
