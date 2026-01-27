@@ -24,7 +24,6 @@ import type {
   DependencyErrorInfo,
   DependencyFilterOptions,
   DependencyGroupTypeInfo,
-  DependencySortOptions,
   DependentGroup,
   NodeId,
   NodeLink,
@@ -673,16 +672,6 @@ export function areFilterOptionsEqual(
     areGroupTypesEqual(filterOptions1.groupTypes, filterOptions2.groupTypes) &&
     filterOptions1.includePersonalCollections ===
       filterOptions2.includePersonalCollections
-  );
-}
-
-export function areSortOptionsEqual(
-  sortOptions1: DependencySortOptions,
-  sortOptions2: DependencySortOptions,
-): boolean {
-  return (
-    sortOptions1.column === sortOptions2.column &&
-    sortOptions1.direction === sortOptions2.direction
   );
 }
 

@@ -27,7 +27,6 @@ import type {
 } from "../../../../types";
 import {
   areFilterOptionsEqual,
-  areSortOptionsEqual,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -69,10 +68,6 @@ export function SidebarDependentsSection({
     filterOptions,
     getDefaultFilterOptions(),
   );
-  const hasDefaultSortOptions = areSortOptionsEqual(
-    sortOptions,
-    getDefaultSortOptions(),
-  );
 
   const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
     getListRequest(node, filterOptions, sortOptions),
@@ -102,7 +97,6 @@ export function SidebarDependentsSection({
             <SortOptionsPicker
               sortOptions={sortOptions}
               availableSortColumns={BROKEN_DEPENDENTS_SORT_COLUMNS}
-              hasDefaultSortOptions={hasDefaultSortOptions}
               onSortOptionsChange={setSortOptions}
             />
             <FilterOptionsPicker
