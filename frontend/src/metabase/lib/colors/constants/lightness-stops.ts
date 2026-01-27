@@ -66,9 +66,6 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
       },
     },
 
-    // background-brand: darker to support white text
     "background-brand": 2,
-
-    // focus: subtle tint, same direction as brand-light
-    focus: 2,
+    focus: 3,
   } as Record<MetabaseColorKey, BrandDerivationRule>;
