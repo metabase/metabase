@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.self.openai
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [malli.util :as mut]
@@ -153,14 +152,13 @@
                             :headers {"Authorization" (str "Bearer " (llm/ee-openai-api-key))
                                       "Content-Type"  "application/json"}
                             :body    (json/encode req)})]
-        (core/sse-chan (:body res)))
+        (core/sse-reducible (:body res)))
       (catch Exception e
         (if-let [res (ex-data e)]
           (throw (ex-info (.getMessage e) (json/decode-body res)))
           (throw e))))))
 
 (defn openai
-  "Perform a request to OpenAI"
+  "Call OpenAI API, return AISDK stream."
   [& args]
-  ;; pipe returns destination channel \o/
-  (a/pipe (apply openai-raw args) (a/chan 64 openai->aisdk-xf)))
+  (eduction openai->aisdk-xf (apply openai-raw args)))
