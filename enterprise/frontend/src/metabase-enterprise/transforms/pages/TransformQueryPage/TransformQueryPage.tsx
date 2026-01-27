@@ -231,6 +231,8 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
+              // todo: @uladzimirdev probably not the proper fix
+              uiOptions={{ resizable: isEditMode }}
               isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
