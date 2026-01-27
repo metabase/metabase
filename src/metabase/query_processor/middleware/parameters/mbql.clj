@@ -161,14 +161,14 @@
 
         (not target)
         (do
-          (log/infof "Ignoring parameter %s because it has no target" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no target" (pr-str param))
           (recur stage more-params))
 
         (or (nil? param-value)
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/infof "Ignoring parameter %s because it has no value" (pr-str param-value))
+          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param-value))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)
