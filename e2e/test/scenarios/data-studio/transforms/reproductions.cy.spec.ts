@@ -8,7 +8,7 @@ describe("issue #68378", () => {
     H.activateToken("bleeding-edge");
   });
 
-  it("should show empty schema's when picking a target schema (metabase#68378)", () => {
+  it("should show empty schemas when picking a target schema (metabase#68378)", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
