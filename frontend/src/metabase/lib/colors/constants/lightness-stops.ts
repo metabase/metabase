@@ -44,12 +44,12 @@ export const TEXT_DERIVATIONS: Record<MetabaseColorKey, number> = {
 export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
   {
     // brand-light/lighter: lighter in dark theme, darker in light theme
-    "brand-light": 2,
-    "brand-lighter": 3,
+    "brand-light": 4,
+    "brand-lighter": 6,
 
     // brand-dark/darker: darker in dark theme, lighter in light theme
-    "brand-dark": -1,
-    "brand-darker": -2,
+    "brand-dark": -2,
+    "brand-darker": -4,
 
     // text-brand: needs good contrast on both backgrounds and brand surfaces
     "text-brand": -1,
@@ -67,7 +67,7 @@ export const BRAND_DERIVATIONS: Record<MetabaseColorKey, BrandDerivationRule> =
     },
 
     // background-brand: darker to support white text
-    "background-brand": 4,
+    "background-brand": 2,
 
     // focus: subtle tint, same direction as brand-light
     focus: 2,
