@@ -6,6 +6,7 @@ import _ from "underscore";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,
   MaybeTranslatedSeries,
@@ -67,6 +68,31 @@ export const translateContentString: TranslateContentStringFunction = (
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
   _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
+/**
+ * Translates an aggregation's display name by translating the column name part.
+ * The displayName is a pre-formatted string like "Sum of Total"
+ * where the column name part needs to be translated.
+ */
+export const getTranslatedAggregationDisplayName = (
+  displayName: string,
+  tc: ContentTranslationFunction,
+  columnDisplayName?: string,
+): string => {
+  if (!hasTranslations(tc)) {
+    return displayName;
+  }
+
+  if (columnDisplayName) {
+    const translatedColumnName = tc(columnDisplayName);
+
+    if (translatedColumnName !== columnDisplayName) {
+      return displayName.replace(columnDisplayName, translatedColumnName);
+    }
+  }
+
+  return tc(displayName);
+};
+
 /** Walk through obj and translate any display name fields */
 export const translateDisplayNames = <T>(
   obj: T,
@@ -76,20 +102,36 @@ export const translateDisplayNames = <T>(
   if (!hasTranslations(tc)) {
     return obj;
   }
-  const traverse = (o: T): T => {
-    if (Array.isArray(o)) {
-      return o.map((item) => traverse(item)) as T;
+  const traverse = (element: T): T => {
+    if (Array.isArray(element)) {
+      return element.map((item) => traverse(item)) as T;
     }
-    if (isRecord(o)) {
-      return Object.entries(o).reduce((acc, [key, value]) => {
-        const newValue =
-          fieldsToTranslate.includes(key as string) && typeof value === "string"
-            ? tc(value)
-            : traverse(value as T);
+
+    if (isRecord(element)) {
+      return Object.entries(element).reduce((acc, [key, value]) => {
+        const shouldTranslate =
+          fieldsToTranslate.includes(key as string) &&
+          typeof value === "string";
+
+        const newValue = match({
+          shouldTranslate,
+          source: element.source,
+        })
+          .with({ shouldTranslate: false }, () => traverse(value as T))
+          .with({ shouldTranslate: true, source: "aggregation" }, () =>
+            getTranslatedAggregationDisplayName(
+              value as string,
+              tc,
+              Lib.sourceColumnDisplayName(element),
+            ),
+          )
+          .with({ shouldTranslate: true }, () => tc(value))
+          .exhaustive();
+
         return I.assoc(acc, key, newValue);
-      }, o);
+      }, element);
     }
-    return o;
+    return element;
   };
   return traverse(obj);
 };

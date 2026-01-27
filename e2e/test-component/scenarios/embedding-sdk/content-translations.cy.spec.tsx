@@ -224,6 +224,97 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
+    it("should translate summarize and breakout badges", () => {
+      setupEditor();
+      mountEditor();
+
+      popover().within(() => {
+        cy.findByText("Bestellungen").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Summe von...").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Gesamtsumme").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Produkt ID").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.button("Darstellen").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          cy.findByText("1 Zusammenfassung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("Summe von Gesamtsumme").should("be.visible");
+        });
+
+        cy.findByTestId("interactive-question-result-toolbar").within(() => {
+          cy.findByText("1 Gruppierung").click();
+        });
+
+        popover().within(() => {
+          cy.findByText("Produkt ID").should("be.visible");
+        });
+      });
+    });
+
+    it("should translate aggregation column displayName", () => {
+      setupEditor();
+      mountEditor();
+
+      popover().within(() => {
+        cy.findByText("Bestellungen").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Wähle eine Funktion oder Metrik aus").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Summe von...").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Gesamtsumme").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Wähle eine Spalte für die Gruppierung").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Produkt ID").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.button("Darstellen").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("Produkt ID").should("be.visible");
+          cy.findByText("Summe von Gesamtsumme").should("be.visible");
+        });
+      });
+    });
+
     it("should translate content in sort step", () => {
       setupEditor();
       mountEditor();

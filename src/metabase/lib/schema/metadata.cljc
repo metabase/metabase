@@ -409,6 +409,9 @@
     ;; clauses in question. Required for aggregations and expressions
     [:lib/source-uuid {:optional true} [:maybe [:ref ::lib.schema.common/uuid]]]
     ;;
+    ;; for aggregation columns, the display name of the source column (e.g., "Total" for "Sum of Total")
+    [:lib/source-column-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;;
     ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
     ;; signified by `:lib/source = :source/breakouts` (which has been removed)
     ;;

@@ -1,9 +1,11 @@
 import { useCallback, useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import {
   type AggregationItem,
   getAggregationItems,
 } from "metabase/query_builder/utils/get-aggregation-items";
+import { getTranslatedAggregationDisplayName } from "metabase/querying/aggregations/utils/display";
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../context";
@@ -15,6 +17,7 @@ export interface SDKAggregationItem extends AggregationItem {
 
 export const useSummarizeData = () => {
   const { question, updateQuestion } = useSdkQuestionContext();
+  const tc = useTranslateContent();
 
   const query = question?.query();
   const stageIndex = -1;
@@ -53,14 +56,22 @@ export const useSummarizeData = () => {
               onQueryChange(nextQuery);
             };
 
+            const displayName = getTranslatedAggregationDisplayName(
+              query,
+              stageIndex,
+              aggregationItem.aggregation,
+              tc,
+            );
+
             return {
               ...aggregationItem,
+              displayName,
               onRemoveAggregation,
               onUpdateAggregation,
             };
           })
         : [],
-    [onQueryChange, query, stageIndex],
+    [onQueryChange, query, stageIndex, tc],
   );
 
   return aggregationItems;

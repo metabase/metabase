@@ -8,6 +8,7 @@ import {
 } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
+  getTranslatedAggregationDisplayName,
   getTranslatedFilterDisplayName,
   translateDisplayNames,
   useSortByContentTranslation,
@@ -47,6 +48,7 @@ export function initializePlugin() {
       },
       translateDisplayNames,
       getTranslatedFilterDisplayName,
+      getTranslatedAggregationDisplayName,
       ContentTranslationConfiguration,
     });
   }

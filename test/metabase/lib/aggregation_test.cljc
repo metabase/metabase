@@ -952,4 +952,38 @@
                   :name         "max"}]
                 (lib/aggregations-metadata query 1)))))))
 
-;; trivial change to test CI; remove this next time you see it
+(deftest ^:parallel aggregations-metadata-source-column-display-name-test
+  (testing "aggregations-metadata includes :lib/source-column-display-name for aggregations with a source column"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
+      (is (=? [{:lib/type                       :metadata/column
+                :name                           "sum"
+                :display-name                   "Sum of Price"
+                :lib/source                     :source/aggregations
+                :lib/source-column-display-name "Price"}]
+              (lib/aggregations-metadata query)))))
+  (testing "aggregations-metadata does not include :lib/source-column-display-name for count without a column"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/aggregate (lib/count)))]
+      (is (=? [{:lib/type     :metadata/column
+                :name         "count"
+                :display-name "Count"
+                :lib/source   :source/aggregations}]
+              (lib/aggregations-metadata query)))
+      (is (nil? (:lib/source-column-display-name (first (lib/aggregations-metadata query))))))))
+
+(deftest ^:parallel aggregation-clause-display-info-source-column-display-name-test
+  (testing "display-info for aggregation clauses includes :source-column-display-name"
+    (let [query       (-> (lib.tu/venues-query)
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+          aggregation (first (lib/aggregations query))]
+      (is (=? {:display-name              "Sum of Price"
+               :source-column-display-name "Price"}
+              (lib/display-info query aggregation)))))
+  (testing "display-info for count without column does not include :source-column-display-name"
+    (let [query       (-> (lib.tu/venues-query)
+                          (lib/aggregate (lib/count)))
+          aggregation (first (lib/aggregations query))]
+      (is (=? {:display-name "Count"}
+              (lib/display-info query aggregation)))
+      (is (nil? (:source-column-display-name (lib/display-info query aggregation)))))))

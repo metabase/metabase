@@ -1132,3 +1132,27 @@
       (testing "retired column is NOT included even with :include-sensitive-fields? true"
         (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query -1 {:include-sensitive-fields? true}))]
           (is (not (contains? visible-col-ids (meta/id :venues :longitude)))))))))
+
+(deftest ^:parallel column-metadata-display-info-source-column-display-name-test
+  (testing "display-info for column metadata includes :source-column-display-name when present"
+    (let [query            (-> (lib.tu/venues-query)
+                               (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+          aggregation-cols (lib/aggregations-metadata query)
+          sum-col          (first aggregation-cols)]
+      (testing "column metadata has :lib/source-column-display-name"
+        (is (= "Price" (:lib/source-column-display-name sum-col))))
+      (testing "display-info for column metadata includes :source-column-display-name"
+        (is (=? {:display-name               "Sum of Price"
+                 :source-column-display-name "Price"}
+                (lib/display-info query sum-col))))))
+  (testing "display-info for column metadata without :lib/source-column-display-name does not include it"
+    (let [query            (-> (lib.tu/venues-query)
+                               (lib/aggregate (lib/count)))
+          aggregation-cols (lib/aggregations-metadata query)
+          count-col        (first aggregation-cols)]
+      (testing "column metadata does not have :lib/source-column-display-name"
+        (is (nil? (:lib/source-column-display-name count-col))))
+      (testing "display-info for column metadata does not include :source-column-display-name"
+        (is (=? {:display-name "Count"}
+                (lib/display-info query count-col)))
+        (is (nil? (:source-column-display-name (lib/display-info query count-col))))))))

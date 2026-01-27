@@ -1306,6 +1306,15 @@
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
+(defn ^:export source-column-display-name
+  "For aggregation columns, returns the display name of the source column
+  (e.g., \"Total\" for \"Sum of Total\"). Returns nil for non-aggregation columns.
+
+  > **Code health:** Healthy. Used for content translation of aggregation display names."
+  [column]
+  (or (:lib/source-column-display-name column)
+      (gobject/get column "lib/source-column-display-name")))
+
 (defn ^:export measure-metadata?
   "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
 

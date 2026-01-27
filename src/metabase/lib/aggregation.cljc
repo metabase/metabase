@@ -38,6 +38,7 @@
     [:aggregation options ag-uuid]))
 
 (declare aggregations)
+(declare aggregation-parts)
 
 (mu/defn resolve-aggregation-by-name :- ::lib.schema.aggregation/aggregation
   "Attempt to find an aggregation with `ag-name`. This is mostly for dealing with super broken `:field` refs in
@@ -332,11 +333,39 @@
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)
+                                  {:keys [column]} (aggregation-parts query stage-number aggregation)
+                                  source-column-display-name (when column
+                                                               (lib.metadata.calculation/display-name query stage-number column))]
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation))
+                                  (cond-> source-column-display-name
+                                    (assoc :lib/source-column-display-name source-column-display-name))))))))))
+
+(def ^:private AggregationParts
+  [:map
+   [:lib/type [:= :mbql/aggregation-parts]]
+   [:operator :keyword]
+   [:column {:optional true} [:maybe ::lib.schema.metadata/column]]])
+
+(mu/defn aggregation-parts :- [:maybe AggregationParts]
+  "Return the parts of the aggregation clause `aggregation-clause` in query `query` at stage `stage-number`.
+  Returns a map with `:operator` (the aggregation operator keyword like :sum, :avg) and `:column` (the column metadata, if applicable)."
+  ([query aggregation-clause]
+   (aggregation-parts query -1 aggregation-clause))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    aggregation-clause :- ::lib.schema.aggregation/aggregation]
+   (let [[op _opts first-arg] aggregation-clause
+         columns (lib.metadata.calculation/visible-columns query stage-number)
+         col (when first-arg
+               (lib.equality/find-matching-column query stage-number first-arg columns))]
+     {:lib/type :mbql/aggregation-parts
+      :operator op
+      :column   col})))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -354,6 +383,15 @@
                  :short-name (u/qualified-name short-name)
                  :requires-column requires-column?)
     (some? selected?) (assoc :selected selected?)))
+
+(defmethod lib.metadata.calculation/display-info-method ::aggregation
+  [query stage-number aggregation-clause]
+  (let [default-info (lib.metadata.calculation/default-display-info query stage-number aggregation-clause)
+        {:keys [column]} (aggregation-parts query stage-number aggregation-clause)
+        source-col-display-name (when column
+                                  (lib.metadata.calculation/display-name query stage-number column))]
+    (cond-> default-info
+      source-col-display-name (assoc :source-column-display-name source-col-display-name))))
 
 (mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns for which `aggregation-operator` is applicable."
