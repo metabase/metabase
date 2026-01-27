@@ -284,7 +284,7 @@
       (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
           (recur)))))
 
-(doseq [driver [:postgres :mysql :clickhouse :snowflake]]
+(doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::sleep-query]
     [_driver _feature _database]
     true))
@@ -319,6 +319,23 @@
 
 (defmethod sleep-numbers-query :snowflake [_driver sleep-sec num]
   (format "SELECT SEQ4() + 1 AS a FROM (SELECT SYSTEM$WAIT(%d)), TABLE(GENERATOR(ROWCOUNT => %d))" sleep-sec num))
+
+;; Bigquery doesn't have a generic sleep function so we can't set a specific sleep time.
+;; 110000 has been tested to take 5-10 seconds, adjust this value as needed.
+(defmethod sleep-numbers-query :bigquery-cloud-sdk [_driver _sleep-sec num]
+  (format  "SELECT s
+            FROM UNNEST(GENERATE_ARRAY(1, %d)) AS s
+            JOIN (
+                SELECT ARRAY_LENGTH(
+                    ARRAY(
+                        SELECT SUM(SQRT(x * y))
+                        FROM UNNEST(GENERATE_ARRAY(1, 110000)) AS x
+                        CROSS JOIN UNNEST(GENERATE_ARRAY(1, 1000)) AS y
+                    )
+                ) AS force_eval
+            ) ON force_eval = 1
+            ORDER BY s ASC;"
+           num))
 
 (deftest run-mbql-transform-long-running-transform-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})

@@ -142,23 +142,20 @@
 
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [conn-spec output-table database] :as transform-details} {:keys [overwrite?]}]
-  (let [table-exists? (and overwrite?
-                           database
-                           (driver/table-exists? driver database
-                                                 {:schema (namespace output-table)
-                                                  :name (name output-table)}))]
-    (if table-exists?
-      ;; Table exists and we're overwriting: use temp table + rename pattern
-      ;; This keeps the original table queryable until the new data is ready
+  (let [use-temp-table? (and overwrite?
+                             database
+                             (driver/database-supports? driver :rename database)
+                             (driver/table-exists? driver database
+                                                   {:schema (namespace output-table)
+                                                    :name (name output-table)}))]
+    (if use-temp-table?
       (let [schema (namespace output-table)
             tmp-table (temp-table-name driver schema)
             create-query (driver/compile-transform driver (assoc transform-details :output-table tmp-table))
             rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-        ;; Drop original and rename temp to original
         (driver/drop-table! driver (:id database) output-table)
         (driver/rename-table! driver (:id database) tmp-table output-table)
         {:rows-affected rows-affected})
-      ;; Table doesn't exist or not overwriting: use original behavior
       (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                       overwrite? (cons (driver/compile-drop-table driver output-table)))]
         {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
