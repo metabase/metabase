@@ -23,6 +23,7 @@
               (assoc :lib/metadata mp)
               (->> (deps.native-validation/validate-native-query driver))))))
 
+;; Initial baseline. Passes.
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
