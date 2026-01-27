@@ -38,7 +38,19 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       >
         {getNodeLabel(node)}
       </Anchor>
-      <Group gap="sm" wrap="nowrap">
+      <Group gap="xs" wrap="nowrap">
+        {link != null && (
+          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+            <ActionIcon
+              component={ForwardRefLink}
+              to={link.url}
+              target="_blank"
+              aria-label={link.label}
+            >
+              <FixedSizeIcon name="external" />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <Tooltip
           label={t`View in dependency graph`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}

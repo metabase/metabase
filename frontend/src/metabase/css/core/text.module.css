@@ -78,6 +78,7 @@
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
+  white-space: normal;
 }
 
 .textNoWrap {

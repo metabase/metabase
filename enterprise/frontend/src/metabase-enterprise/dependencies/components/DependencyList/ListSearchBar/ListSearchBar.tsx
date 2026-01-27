@@ -6,10 +6,10 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";
-import { getSearchQuery } from "../../../utils";
+import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";
-import { getAvailableGroupTypes } from "../utils";
+import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
 
 type ListSearchBarProps = {
   mode: DependencyListMode;
@@ -29,6 +29,10 @@ export const ListSearchBar = memo(function ListSearchBar({
   onFilterOptionsChange,
 }: ListSearchBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(mode),
+  );
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;
@@ -64,6 +68,7 @@ export const ListSearchBar = memo(function ListSearchBar({
       <FilterOptionsPicker
         filterOptions={filterOptions}
         availableGroupTypes={getAvailableGroupTypes(mode)}
+        hasDefaultFilterOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={handleFilterOptionsChange}
       />
     </Group>

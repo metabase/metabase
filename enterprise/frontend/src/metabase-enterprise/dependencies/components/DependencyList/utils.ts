@@ -15,12 +15,24 @@ export function getAvailableGroupTypes(mode: DependencyListMode) {
 
 export function getFilterOptions(
   mode: DependencyListMode,
-  {
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-  }: Urls.DependencyListParams,
+  params: Urls.DependencyListParams = {},
 ): DependencyFilterOptions {
+  const defaultFilterOptions = getDefaultFilterOptions(mode);
+  const {
+    groupTypes = defaultFilterOptions.groupTypes,
+    includePersonalCollections = defaultFilterOptions.includePersonalCollections,
+  } = params;
+
   return { groupTypes, includePersonalCollections };
+}
+
+export function getDefaultFilterOptions(
+  mode: DependencyListMode,
+): DependencyFilterOptions {
+  return {
+    groupTypes: getAvailableGroupTypes(mode),
+    includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+  };
 }
 
 export function getSortOptions({
