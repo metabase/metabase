@@ -9,6 +9,7 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
 import * as Urls from "metabase/lib/urls";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
@@ -80,7 +81,7 @@ export const SdkInternalNavigationProvider = ({
   // Custom navigateToNewCard that pushes to the navigation stack
   // This is used when drilling from a question to another ad-hoc question
   const navigateToNewCard = useCallback(
-    async (params: { nextCard: { name?: string | null } }) => {
+    async (params: NavigateToNewCardParams) => {
       const { nextCard } = params;
       // Generate URL for the ad-hoc question
       const url = Urls.question(null, { hash: nextCard });
