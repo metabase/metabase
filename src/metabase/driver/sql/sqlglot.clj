@@ -1,16 +1,16 @@
-  (ns metabase.driver.sql.sqlglot
-    "Basic example of running Python code using GraalVM polyglot."
-    (:require
-     [cheshire.core :as json])
-    (:import
-     (org.graalvm.polyglot Context HostAccess Source Value)))
+(ns metabase.driver.sql.sqlglot
+  "Basic example of running Python code using GraalVM polyglot."
+  (:require
+   [metabase.util.json :as json])
+  (:import
+   (org.graalvm.polyglot Context HostAccess Source Value)))
 
 ;; 1. Install sqlglot into resources
 ;; pip install sqlglot --target resources/python-libs --no-compile
 
 (set! *warn-on-reflection* true)
 
-(defn python-context
+(defn- python-context
   ^Context []
   (.. (Context/newBuilder (into-array String ["python"]))
       (option "engine.WarnInterpreterOnly" "false")
@@ -19,11 +19,14 @@
       (allowIO true)
       (build)))
 
-(def interpreter (delay (python-context)))
+(def ^:private interpreter (delay (python-context)))
 
 (declare analyze-sql)
 
-(defn p [sql]
+;; TODO: Probably should be private.
+(defn p
+  "Parser entrypoint."
+  [sql]
   ;; todo: the shim doesn't 100% return json. need to fix that
   ;;   sqlglot=> (p "-- FIXTURE: interpolation/crosstab
   ;; SELECT * FROM crosstab($$
@@ -48,14 +51,7 @@
   ;; )")
   ;; Execution error (PolyglotException) at <python>/default (encoder.py:161).
   ;; TypeError: Object of type Type is not JSON serializable
-  (json/parse-string (.asString  (analyze-sql @interpreter sql)) true))
-
-(comment
-  (eval-python @interpreter "import sqlglot")
-  (println (.asString (eval-python @interpreter "repr(sqlglot.parse_one(\"SELECT $REDSHIFT$\\nselect 1\\n$REDSHIFT$\", read=\"postgres\"))")))
-
-  (analyze-sql @interpreter "SELECT id FROM users")
-  )
+  (json/decode (.asString  (analyze-sql @interpreter sql)) true))
 
 (defn analyze-sql [context sql]
   ;; 1. Import the module (ensure sql_tools is loaded)
@@ -68,15 +64,23 @@
     ;; GraalVM handles the conversion of the Clojure string to a Python string
     (.execute analyze-fn (object-array [sql]))))
 
-;; Usage
-
-
 (defn eval-python
   ^Value [^Context ctx ^String code]
   (.eval ctx (.buildLiteral (Source/newBuilder "python" code "<eval>"))))
 
-(comment
-  ;; 2. See the sqlglot generated ast
-  (with-open [ctx (init-sqlglot-context)]
-    (eval-python ctx "import sqlglot")
-    (println (.asString (eval-python ctx "repr(sqlglot.parse_one(\"SELECT $REDSHIFT$\\nselect 1\\n$REDSHIFT$\", read=\"postgres\"))")))))
+;; TODO: Make the catalog and db optional.
+;; TODO: Malli schemas.
+(defn referenced-tables
+  "Return tables referenced in the `sql` query.
+
+  Return value is `[[catalog db table]...]`.
+
+  `catalog` is name of the database. Can be nil.
+  `db` is name of the `table`'s schema. Can be nil.
+  `table` is a name."
+  [driver sql catalog db]
+  (let [ctx (python-context)
+        _ (.eval ctx "python" "import sql_tools")
+        pyfn (.eval ctx "python" "sql_tools.referenced_tables")
+        dialect (name driver)]
+    (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db])))))))
