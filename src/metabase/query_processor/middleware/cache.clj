@@ -107,22 +107,35 @@
                                {}))
        (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
              min-duration-ms (:min-duration-ms strategy 0)
-             eligible?       (and @has-rows?
-                                  (> duration-ms min-duration-ms))]
-         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                    (i/short-hex-hash query-hash)
-                    (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration-ms)
-                    (if eligible? "eligible" "not eligible"))
+             has-rows-val    @has-rows?
+             meets-duration? (> duration-ms min-duration-ms)
+             eligible?       (and has-rows-val meets-duration?)]
+         (cond
+           (not has-rows-val)
+           (log/infof "Query %s took %s to run but returned no rows; not eligible for caching"
+                      (i/short-hex-hash query-hash)
+                      (u/format-milliseconds duration-ms))
+
+           (not meets-duration?)
+           (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; not eligible"
+                      (i/short-hex-hash query-hash)
+                      (u/format-milliseconds duration-ms)
+                      (u/format-milliseconds min-duration-ms))
+
+           :else
+           (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; eligible"
+                      (i/short-hex-hash query-hash)
+                      (u/format-milliseconds duration-ms)
+                      (u/format-milliseconds min-duration-ms)))
          (when eligible?
            (cache-results! query-hash))
          (rf (cond-> result
-               (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
+               (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?)))))
 
       ([acc row]
        (add-object-to-cache! row)
        (vreset! has-rows? true)
-       (rf acc row)))))
+       (rf acc row))))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
