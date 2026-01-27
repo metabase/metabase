@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.query
-  "Schemas for query specifications."
+  "Schemas for creating a query for testing purposes."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
