@@ -2,7 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { EntityPickerModal } from "metabase/common/components/Pickers";
+import {
+  QuestionPickerModal,
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
@@ -41,6 +44,20 @@ function DashCardPlaceholderInner({
 
   const pointerEvents = isEditingParameter ? "none" : "all";
 
+  const shouldDisableItem = (item: OmniPickerItem) => {
+    // don't allow adding items that are already saved in a different dashboard
+    // proably only applicable to search and recents
+    if (!isInDbTree(item) && item.dashboard_id) {
+      if (item.dashboard_id !== dashboard.id) {
+        return true;
+      }
+    }
+    if (item.model === "dashboard" && item.id !== dashboard.id) {
+      return true;
+    }
+    return false;
+  };
+
   return (
     <>
       <Flex
@@ -65,7 +82,7 @@ function DashCardPlaceholderInner({
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <EntityPickerModal
+        <QuestionPickerModal
           title={t`Pick what you want to replace this with`}
           value={
             dashboard.collection_id
@@ -77,9 +94,10 @@ function DashCardPlaceholderInner({
           }
           // TODO: account for restrictions on adding personal
           // questions to public dashboards
-          models={["card", "dataset", "metric"]}
+          models={["card", "dataset", "metric", "dashboard"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
+          isDisabledItem={shouldDisableItem}
         />
       )}
     </>

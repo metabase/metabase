@@ -126,6 +126,19 @@ export function getItemFunctions({
       }
     }
 
+    if (item.model === OmniPickerFolderModel.Dashboard) {
+      const hereBelowSet = Array.from(
+        new Set([
+          ...("here" in item && Array.isArray(item.here) ? item.here : []),
+          ...("below" in item && Array.isArray(item.below) ? item.below : []),
+        ]),
+      );
+
+      if (hereBelowSet.some((hereBelowModel) => modelSet.has(hereBelowModel))) {
+        return true;
+      }
+    }
+
     return false;
   };
 

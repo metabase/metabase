@@ -24,7 +24,9 @@ export type QuestionPickerModalProps = Omit<
   EntityPickerModalProps,
   "models" | "onChange"
 > & {
-  models?: OmniPickerQuestionItem["model"][];
+  // you can pass dashboard as a model to allow picking questions within dashboards
+  // but dashboards will never be a finally pickable item
+  models?: (OmniPickerQuestionItem["model"] | "dashboard")[];
   onChange: (item: OmniPickerQuestionItem) => void;
 };
 
@@ -45,6 +47,10 @@ export const QuestionPickerModal = ({
     [onChange],
   );
 
+  const isSelectableItem = (item: OmniPickerItem) => {
+    return canSelectItem(item);
+  };
+
   return (
     <EntityPickerModal
       title={title}
@@ -59,7 +65,7 @@ export const QuestionPickerModal = ({
             ? { filter_items_in_personal_collection: "exclude" }
             : undefined
       }
-      isSelectableItem={canSelectItem}
+      isSelectableItem={isSelectableItem}
       {...props}
     />
   );

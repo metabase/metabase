@@ -418,6 +418,9 @@ class DashboardGridInner extends Component<
           return true;
         }
       }
+      if (item.model === "dashboard" && item.id !== dashboard.id) {
+        return true;
+      }
       return false;
     };
 
@@ -437,7 +440,7 @@ class DashboardGridInner extends Component<
             ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
-        models={["card", "dataset", "metric"]}
+        models={["card", "dataset", "metric", "dashboard"]}
         onChange={handleSelect}
         onClose={handleClose}
         isDisabledItem={shouldDisableItem}
