@@ -126,6 +126,7 @@
           {:lhs-field-id lhs-id
            :rhs-field-id rhs-id})))))
 
+;; TODO: should just be cards
 (defn- compute-join-stats
   "Compute statistics for a join by running analysis queries.
    For left/right/inner joins: computes match rate (% of rows that found a match).
@@ -139,68 +140,69 @@
           lhs-field (lib.metadata/field mp lhs-field-id)
           rhs-field (lib.metadata/field mp rhs-field-id)
 
-          ;; Get baseline counts
-          left-count-query (-> (lib/query mp main-table)
-                               (lib/aggregate (lib/count)))
-          left-count (-> (qp/process-query left-count-query) :data :rows first first)
+          left-count #(-> (lib/query mp main-table)
+                          (lib/aggregate (lib/count))
+                          qp/process-query :data :rows first first)
 
-          right-count-query (-> (lib/query mp join-table)
-                                (lib/aggregate (lib/count)))
-          right-count (-> (qp/process-query right-count-query) :data :rows first first)
+          right-count #(-> (lib/query mp join-table)
+                           (lib/aggregate (lib/count))
+                           qp/process-query :data :rows first first)
 
-          ;; Build join query to count matches and output rows
-          base-query (lib/query mp main-table)
-          join-clause (-> (lib/join-clause join-table
-                                           [(lib/= (lib/ref lhs-field)
-                                                   (lib/ref rhs-field))])
-                          (lib/with-join-alias "joined")
-                          (lib/with-join-strategy strategy))
-          query-with-join (lib/join base-query join-clause)
-          ;; Count total output rows and matched rows
-          rhs-field-with-alias (-> (lib/ref rhs-field)
-                                   (lib/with-join-alias "joined"))
-          query (-> query-with-join
-                    (lib/aggregate (lib/count))
-                    (lib/aggregate (lib/count rhs-field-with-alias)))
-          result (qp/process-query query)
-          [output-row-count matched-count] (-> result :data :rows first)]
+          join-stats #(let [join-clause (-> (lib/join-clause join-table
+                                                             [(lib/= (lib/ref lhs-field)
+                                                                     (lib/ref rhs-field))])
+                                            (lib/with-join-alias "joined")
+                                            (lib/with-join-strategy strategy))
+                            rhs-field-with-alias (-> (lib/ref rhs-field)
+                                                     (lib/with-join-alias "joined"))
+                            query (-> (lib/query mp main-table)
+                                      (lib/join join-clause)
+                                      (lib/aggregate (lib/count))
+                                      (lib/aggregate (lib/count rhs-field-with-alias)))
+                            [output-row-count matched-count] (-> (qp/process-query query) :data :rows first)]
+                        {:output-row-count output-row-count
+                         :matched-count matched-count})]
 
       (case strategy
-        ;; For outer/full joins: report crosses produced (expansion)
         :full-join
-        {:left-row-count left-count
-         :right-row-count right-count
-         :output-row-count output-row-count
-         :expansion-factor (when (and left-count (pos? left-count))
-                             (double (/ output-row-count left-count)))}
+        (let [left-count (left-count)
+              {:keys [output-row-count]} (join-stats)]
+          {:left-row-count left-count
+           :right-row-count (right-count)
+           :output-row-count output-row-count
+           :expansion-factor (when (and left-count (pos? left-count))
+                               (double (/ output-row-count left-count)))})
 
-        ;; For left join: % of left rows that matched
         :left-join
-        {:left-row-count left-count
-         :matched-count matched-count
-         :match-rate (when (and left-count (pos? left-count))
-                       (double (/ matched-count left-count)))}
+        (let [left-count (left-count)
+              {:keys [matched-count]} (join-stats)]
+          {:left-row-count left-count
+           :matched-count matched-count
+           :match-rate (when (and left-count (pos? left-count))
+                         (double (/ matched-count left-count)))})
 
-        ;; For right join: % of right rows that matched
         :right-join
-        {:right-row-count right-count
-         :matched-count matched-count
-         :match-rate (when (and right-count (pos? right-count))
-                       (double (/ matched-count right-count)))}
+        (let [right-count (right-count)
+              {:keys [matched-count]} (join-stats)]
+          {:right-row-count right-count
+           :matched-count matched-count
+           :match-rate (when (and right-count (pos? right-count))
+                         (double (/ matched-count right-count)))})
 
-        ;; For inner join: report both sides
         :inner-join
-        {:left-row-count left-count
-         :right-row-count right-count
-         :output-row-count output-row-count
-         :left-match-rate (when (and left-count (pos? left-count))
-                            (double (/ output-row-count left-count)))
-         :right-match-rate (when (and right-count (pos? right-count))
-                             (double (/ output-row-count right-count)))}
+        (let [left-count (left-count)
+              right-count (right-count)
+              {:keys [output-row-count]} (join-stats)]
+          {:left-row-count left-count
+           :right-row-count right-count
+           :output-row-count output-row-count
+           :left-match-rate (when (and left-count (pos? left-count))
+                              (double (/ output-row-count left-count)))
+           :right-match-rate (when (and right-count (pos? right-count))
+                               (double (/ output-row-count right-count)))})
 
         ;; Default fallback
-        {:output-row-count output-row-count
-         :matched-count matched-count}))
+        (join-stats)))
     (catch Exception e
       (log/warn e "Failed to compute join stats")
       nil)))
@@ -258,12 +260,10 @@
       nil)))
 
 (defn- get-table-row-count
-  "Get the estimated or actual row count for a table.
-   Falls back to running COUNT(*) if no estimate is available."
+  "Get actual row count for a table."
   [table-id]
   (let [table (t2/select-one :model/Table :id table-id)]
-    (or (:estimated_row_count table)
-        (run-count-query (:db_id table) table-id))))
+    (run-count-query (:db_id table) table-id)))
 
 (defn- get-field-stats
   "Get fingerprint stats for a field if available.
