@@ -1,31 +1,55 @@
-import { type FocusEvent, useState } from "react";
-import { jt, t } from "ttag";
+import { type FocusEvent, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useListModelsQuery } from "metabase/api/llm";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Code, Stack, TextInput } from "metabase/ui";
+import { Select, Stack, TextInput } from "metabase/ui";
 
 export function MetabotSQLGenerationSettingsSection() {
   const apiKey = useAdminSetting("llm-anthropic-api-key");
   const model = useAdminSetting("llm-anthropic-model");
   const { updateSetting } = apiKey;
 
-  const isLoading = apiKey.isLoading || model.isLoading;
-  const error = apiKey.error || model.error;
-
   const [localApiKey, setLocalApiKey] = useState<string | null>(null);
-  const [localModel, setLocalModel] = useState<string | null>(null);
-
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
 
   const apiKeyValue = localApiKey ?? apiKey.value ?? "";
-  const modelValue = localModel ?? model.value ?? "";
+  const hasApiKey = apiKeyValue.trim().length > 0;
+
+  const {
+    data: modelsData,
+    isLoading: isModelsLoading,
+    error: modelsError,
+  } = useListModelsQuery(undefined, { skip: !hasApiKey });
+
+  const modelOptions = useMemo(() => {
+    return (modelsData?.models || []).map((m) => ({
+      value: m.id,
+      label: m.display_name,
+    }));
+  }, [modelsData]);
+
+  const isSettingsLoading = apiKey.isLoading || model.isLoading;
+  const settingsError = apiKey.error || model.error;
+
+  if (isSettingsLoading || settingsError) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isSettingsLoading}
+        error={settingsError}
+      />
+    );
+  }
+
+  const modelValue = model.value ?? "";
+  const isModelFieldDisabled = !hasApiKey || isModelsLoading || !!modelsError;
+  const isDeprecatedModel =
+    modelOptions.length > 0 &&
+    !modelOptions.some((opt) => opt.value === modelValue);
 
   const handleApiKeyBlur = (e: FocusEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -35,18 +59,11 @@ export function MetabotSQLGenerationSettingsSection() {
     setLocalApiKey(null);
   };
 
-  const handleModelBlur = (e: FocusEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value !== model.value) {
+  const handleModelChange = (value: string | null) => {
+    if (value && value !== model.value) {
       updateSetting({ key: "llm-anthropic-model", value });
     }
-    setLocalModel(null);
   };
-
-  // eslint-disable-next-line i18next/no-literal-string -- literal value used by our api
-  const defaultModelAlias = <Code key="alias">claude-sonnet-4-5</Code>;
-  // eslint-disable-next-line i18next/no-literal-string -- literal value used by our api
-  const defaultModelId = <Code key="id">claude-sonnet-4-5-20250929</Code>;
 
   return (
     <SettingsPageWrapper>
@@ -64,14 +81,21 @@ export function MetabotSQLGenerationSettingsSection() {
             onBlur={handleApiKeyBlur}
           />
 
-          <TextInput
-            disabled={apiKeyValue.trim().length === 0}
+          <Select
+            disabled={isModelFieldDisabled}
             label={t`Anthropic Model`}
-            description={jt`The model to use for SQL generation. Enter a model alias like ${defaultModelAlias} to use the latest version, or a specific ID like ${defaultModelId} to pin to an exact version.`}
-            placeholder="claude-sonnet-4-5"
-            value={modelValue}
-            onChange={(e) => setLocalModel(e.target.value)}
-            onBlur={handleModelBlur}
+            description={t`The model to use for SQL generation.`}
+            placeholder={isModelsLoading ? t`Loading models...` : undefined}
+            data={modelOptions}
+            value={isDeprecatedModel ? null : modelValue}
+            onChange={handleModelChange}
+            error={
+              modelsError
+                ? t`Failed to load models`
+                : isDeprecatedModel
+                  ? t`The model "${modelValue}" is no longer available. Please select a new model.`
+                  : undefined
+            }
           />
         </Stack>
       </SettingsSection>
