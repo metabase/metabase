@@ -28,6 +28,10 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
           name: card.title,
           display: card.display,
           dataset_query: card.dataset_query,
+          visualization_settings: {
+            "graph.y_axis.labels_enabled": false,
+            "graph.x_axis.labels_enabled": false,
+          },
         }),
         data: dataset.data,
       },

@@ -86,13 +86,18 @@ export const InspectSummary = ({ summary }: InspectSummaryProps) => {
   return (
     <Stack gap="md">
       <Title order={3}>{t`Summary`}</Title>
-      <SimpleGrid cols={2} spacing="lg">
+      <SimpleGrid cols={2} spacing="md">
         <Title order={4}>{t`Input table(s)`}</Title>
         <Title order={4}>{t`Output table`}</Title>
       </SimpleGrid>
 
-      <Box bg="background-tertiary" bdrs="md" p="lg">
-        <SimpleGrid cols={2} spacing="lg">
+      <Box
+        bg="background-tertiary"
+        bdrs="md"
+        p="md"
+        bd="1px solid var(--mb-color-border)"
+      >
+        <SimpleGrid cols={2} spacing="md">
           <Card p={0} shadow="none" withBorder>
             <TreeTable instance={inputInstance} />
           </Card>
