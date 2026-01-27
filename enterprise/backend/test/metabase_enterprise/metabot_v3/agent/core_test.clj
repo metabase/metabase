@@ -10,8 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(mt/initialize-if-needed! :db)
-
 (defn- parts->aisdk-chunks
   "Convert simple test parts to AI SDK v5 chunks (what self/claude returns).
   Accepts parts like {:type :text :text \"Hello\"} or {:type :tool-input :id \"t1\" :function \"search\" :arguments {...}}
