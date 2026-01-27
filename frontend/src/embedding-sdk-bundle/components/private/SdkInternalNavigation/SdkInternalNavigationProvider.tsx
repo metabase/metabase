@@ -180,44 +180,7 @@ export const SdkInternalNavigationProvider = ({
 
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      <DebugInfo stack={stack} />
       {content}
     </SdkInternalNavigationContext.Provider>
-  );
-};
-
-const DebugInfo = ({ stack }: { stack: SdkInternalNavigationEntry[] }) => {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        padding: 20,
-      }}
-    >
-      {/* eslint-disable-next-line i18next/no-literal-string */}
-      <p>debug info</p>
-      <div style={{ display: "flex", gap: 8 }}>
-        {stack.map((entry, index) => {
-          const isPreviousEntry = index === stack.length - 2;
-          return (
-            <pre
-              key={index}
-              style={{
-                padding: 8,
-                border: isPreviousEntry
-                  ? `var(--debug-border-red)`
-                  : `var(--debug-border-blue)`,
-                maxWidth: "300px",
-                overflow: "hidden",
-                margin: 0,
-              }}
-            >
-              {JSON.stringify(entry, null, 2)}
-            </pre>
-          );
-        })}
-      </div>
-    </div>
   );
 };
