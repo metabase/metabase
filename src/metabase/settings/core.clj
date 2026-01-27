@@ -97,6 +97,7 @@
   export?
   get
   get-raw-value
+  get-raw-value-source
   get-value-of-type
   has-advanced-setting-access?
   migrate-encrypted-settings!

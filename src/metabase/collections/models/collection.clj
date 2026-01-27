@@ -179,6 +179,11 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
 
+(defn has-remote-synced-collection?
+  "Return true if any collections are marked remote-sync"
+  []
+  (pos-int? (t2/count :model/Collection :is_remote_synced true)))
+
 (defn library-collection
   "Get the 'library' collection, if it exists."
   []

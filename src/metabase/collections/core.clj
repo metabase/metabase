@@ -9,6 +9,7 @@
 
 (p/import-vars
  [metabase.collections.models.collection
+  has-remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
