@@ -85,7 +85,7 @@ export const InspectSummary = ({ summary }: InspectSummaryProps) => {
 
   return (
     <Stack gap="md">
-      <Title order={3}>{t`Summary`}</Title>
+      <Title order={2}>{t`Summary`}</Title>
       <SimpleGrid cols={2} spacing="md">
         <Title order={4}>{t`Input table(s)`}</Title>
         <Title order={4}>{t`Output table`}</Title>
