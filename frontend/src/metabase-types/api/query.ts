@@ -453,6 +453,7 @@ export type SourceSpec = TableSourceSpec | CardSourceSpec;
 
 export type ColumnSpec = {
   name: string;
+  sourceName?: string;
 };
 
 export type TemporalBucketSpec = {

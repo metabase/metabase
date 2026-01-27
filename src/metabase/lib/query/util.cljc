@@ -21,11 +21,12 @@
 
 (mu/defn- matches-column? :- :boolean
   [query          :- ::lib.schema/query
-   stage-number   :- :int
+   _stage-number   :- :int
    column         :- ::lib.schema.metadata/column
-   {:keys [name]} :- ::lib.schema.query/test-column-spec]
+   {:keys [name source-name]} :- ::lib.schema.query/test-column-spec]
   (cond-> true
-    (some? name) (and (= name (:name column)))))
+    (some? name) (and (= name (:name column)))
+    (some? source-name) (and (= source-name (:name (lib.metadata/table query (:table-id column)))))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
   [query        :- ::lib.schema/query
