@@ -15,7 +15,6 @@ export const BACKGROUND_DERIVATIONS: Record<MetabaseColorKey, number> = {
   "background-secondary-inverse": -7,
   "background-tertiary-inverse": -4,
   border: -2,
-  "tooltip-background": -8,
 } as Record<MetabaseColorKey, number>;
 
 /**
