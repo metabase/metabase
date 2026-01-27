@@ -80,7 +80,7 @@
                   :params {}
                   :body []}
             result (#'defendpoint.open-api/path-item "/api/upload" form)]
-        (is (true? (:deprecated result))))))
+        (is (true? (:deprecated result)))))))
 
 (deftest ^:parallel streaming-response-schema-test
   (testing "server/streaming-response-schema uses content schema for OpenAPI docs"
