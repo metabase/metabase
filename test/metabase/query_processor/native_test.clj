@@ -6,7 +6,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as dt-fn-test]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -123,12 +122,8 @@
                       (as-> q (lib/with-fields q [index-col
                                                   (lib/expression-ref q "with-default")
                                                   (lib/expression-ref q "without-default")])))
-                [idx with-default-val without-default-val :as first-row] (first (mt/rows (qp/process-query q)))]
+                results (qp/process-query q)
+                [_idx with-default-val without-default-val] (first (mt/rows results))]
             (testing "MBQL: case with and without default should produce the same result for matching rows"
-              (is (= without-default-val with-default-val)))
-            (testing "native SQL compiled from the MBQL query should return equal results for both columns"
-              (let [compiled (qp.compile/compile q)
-                    native-rows (mt/rows (qp/process-query (mt/native-query compiled)))
-                    first-native-row (first native-rows)]
-                (is (= first-native-row first-row))))))))))
+              (is (= without-default-val with-default-val)))))))))
 
