@@ -509,8 +509,7 @@
   (api/check-superuser)
   (simple-native-query? query))
 
-(api.macros/defendpoint :post "/extract-columns" :- [:map {:closed true}
-                                                     [:columns [:maybe [:sequential :string]]]]
+(api.macros/defendpoint :post "/extract-columns"
   :- [:map [:columns [:maybe [:sequential :string]]]]
   "Extract column names suitable for incremental transform checkpoint filtering.
 
