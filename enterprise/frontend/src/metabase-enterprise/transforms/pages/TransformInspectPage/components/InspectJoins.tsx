@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
   TreeTable,
   type TreeTableColumnDef,
   useTreeTableInstance,
@@ -56,11 +57,13 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
         header: t`Join`,
         cell: ({ row }) => (
           <>
-            <Icon
-              name={getJoinStrategyIcon(row.original.strategy)}
-              c="brand"
-              size={24}
-            />{" "}
+            <Tooltip label={getJoinStrategyLabel(row.original.strategy)}>
+              <Icon
+                name={getJoinStrategyIcon(row.original.strategy)}
+                c="brand"
+                size={24}
+              />
+            </Tooltip>{" "}
             <Code bg="transparent">{row.original.tableName}</Code>
           </>
         ),
@@ -155,4 +158,15 @@ const JOIN_ICONS: Record<string, IconName> = {
 
 export function getJoinStrategyIcon(strategyInfo: string) {
   return JOIN_ICONS[strategyInfo];
+}
+
+export function getJoinStrategyLabel(strategyInfo: string) {
+  const JOIN_LABELS: Record<string, string> = {
+    "left-join": t`Left Join`,
+    "right-join": t`Right Join`,
+    "inner-join": t`Inner Join`,
+    "full-join": t`Full Join`,
+  };
+
+  return JOIN_LABELS[strategyInfo] || strategyInfo;
 }
