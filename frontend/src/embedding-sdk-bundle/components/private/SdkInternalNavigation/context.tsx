@@ -41,6 +41,21 @@ export type SdkInternalNavigationContextValue = {
 export const SdkInternalNavigationContext =
   createContext<SdkInternalNavigationContextValue | null>(null);
 
-export const useSdkInternalNavigation = () => {
+export const useSdkInternalNavigation =
+  (): SdkInternalNavigationContextValue => {
+    const ctx = useContext(SdkInternalNavigationContext);
+    if (!ctx) {
+      throw new Error(
+        "useSdkInternalNavigation must be used within SdkInternalNavigationProvider",
+      );
+    }
+    return ctx;
+  };
+
+/**
+ * Optional version of useSdkInternalNavigation that returns null if outside provider.
+ * Useful for components that may be rendered outside the navigation context.
+ */
+export const useSdkInternalNavigationOptional = () => {
   return useContext(SdkInternalNavigationContext);
 };
