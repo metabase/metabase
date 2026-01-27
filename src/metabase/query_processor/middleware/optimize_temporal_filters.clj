@@ -30,8 +30,8 @@
                (isa? expr-type :type/Temporal))))))
 
 (defn- optimizable-expr? [expr]
-  (lib.util.match/match-one expr
-    #{:field :expression}
+  (lib.util.match/match-lite expr
+    [#{:field :expression} & _]
     (and (temporal-ref? &match)
          (let [unit (or (lib/raw-temporal-bucket &match) :default)]
            (or (= unit :default)
@@ -44,7 +44,7 @@
 (defn- optimizable-temporal-value?
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
-  (lib.util.match/match-one temporal-value
+  (lib.util.match/match-lite temporal-value
     [:relative-datetime _opts (_n :guard #{0 :current})]
     true
 
@@ -57,7 +57,7 @@
   "Do datetime `field` clause and `temporal-value` clause have 'compatible' units that mean we'll be able to optimize
   the filter clause they're in?"
   [field temporal-value]
-  (lib.util.match/match-one temporal-value
+  (lib.util.match/match-lite temporal-value
     [:relative-datetime _opts (_n :guard #{0 :current})]
     true
 
@@ -71,7 +71,7 @@
 
 (defmethod can-optimize-filter? :default
   [filter-clause]
-  (lib.util.match/match-one filter-clause
+  (lib.util.match/match-lite filter-clause
     [_tag
      _opts
      (field :guard optimizable-expr?)
@@ -90,34 +90,33 @@
 
 (defmethod can-optimize-filter? :>=
   [filter-clause]
-  (lib.util.match/match-one
+  (lib.util.match/match-lite
     filter-clause
     [_tag
      _opts
-    ;; Don't optimize >= with column that has default temporal bucket
-     (field :guard (every-pred not-default-bucket-clause? optimizable-expr?))
+     ;; Don't optimize >= with column that has default temporal bucket
+     (field :guard (and (not-default-bucket-clause? field) (optimizable-expr? field)))
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :<
   [filter-clause]
-  (lib.util.match/match-one
-    filter-clause
+  (lib.util.match/match-lite filter-clause
     [_tag
      _opts
      ;; Don't optimize < with column that has default temporal bucket
-     (field :guard (every-pred not-default-bucket-clause? optimizable-expr?))
+     (field :guard (and (not-default-bucket-clause? field) (optimizable-expr? field)))
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
-  (lib.util.match/match-one filter-clause
+  (lib.util.match/match-lite filter-clause
     [:between
      _opts
      [(_offset :guard #{:+ :-})
       _plus_minus_opts
-      (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
+      (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
       [:interval _interval_opts _n _unit]]
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
@@ -126,7 +125,7 @@
 
     [:between
      _opts
-     (field :guard (every-pred (comp #{:field :expression} first) optimizable-expr?))
+     (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)

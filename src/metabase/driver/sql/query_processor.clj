@@ -1289,30 +1289,29 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one (nth (:aggregation *inner-query*) index)
-    [:aggregation-options ag (options :guard driver-api/qp.add.desired-alias)]
-    (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.desired-alias options)))
+  (driver-api/match-lite (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
+    (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
-    [:aggregation-options ag (options :guard driver-api/qp.add.source-alias)]
-    (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.source-alias options)))
+    [:aggregation-options ag {driver-api/qp.add.source-alias source-alias}]
+    (->honeysql driver (h2x/identifier :field-alias source-alias))
 
-    [:aggregation-options ag (options :guard :name)]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+    [:aggregation-options ag {:name name}]
+    (->honeysql driver (h2x/identifier :field-alias name))
 
     [:aggregation-options ag options]
-    #_{:clj-kondo/ignore [:invalid-arity]}
-    (recur ag)
+    (&recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-    :distinct
+    [:distinct & _]
     (->honeysql driver (h2x/identifier :field-alias :count))
 
-    #{:+ :- :* :/}
+    [#{:+ :- :* :/} & _]
     (->honeysql driver &match)
 
-    [:offset (options :guard :name) _expr _n]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+    [:offset {:name name} _expr _n]
+    (->honeysql driver (h2x/identifier :field-alias name))
 
     ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
     ;;
@@ -1698,9 +1697,8 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-one args
-                         :field          &match
-                         :expression     &match)]
+    (if-let [field-arg (driver-api/match-lite args
+                         [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause
        [:= (->honeysql driver field-arg) nil]]
