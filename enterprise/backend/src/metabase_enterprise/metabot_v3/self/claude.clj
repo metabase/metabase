@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.self.claude
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [malli.util :as mut]
@@ -165,13 +164,19 @@
                                       "anthropic-version" "2023-06-01"
                                       "content-type"      "application/json"}
                             :body    (json/encode req)})]
-        (core/sse-chan (:body res)))
+        (core/sse-reducible (:body res)))
       (catch Exception e
         (if-let [res (ex-data e)]
           (throw (ex-info (.getMessage e) (json/decode-body res)))
           (throw e))))))
 
+(defn claude
+  "Call Claude API, return AISDK stream"
+  [& args]
+  (eduction claude->aisdk-xf (apply claude-raw args)))
+
 (comment
-  (def q (a/<!! (a/into [] (claude-raw {:input [{:role "user" :content "How are you feeling today?"}]}))))
+  ;; Now just use standard `into` - no core.async needed!
+  (def q (into [] (claude-raw {:input [{:role "user" :content "How are you feeling today?"}]})))
 
   (into [] (comp claude->aisdk-xf core/aisdk-xf) q))
