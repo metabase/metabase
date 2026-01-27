@@ -6,6 +6,8 @@ import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { buildCollectionTree } from "metabase/entities/collections";
 import type { CollectionId } from "metabase-types/api";
 
+import type { CollectionId } from "metabase-types/api";
+
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
