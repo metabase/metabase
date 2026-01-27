@@ -5,6 +5,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest upsert-analysis-clears-stale-flag-test
   (testing "upsert-analysis! sets stale to false"
     (mt/with-premium-features #{:dependencies}
