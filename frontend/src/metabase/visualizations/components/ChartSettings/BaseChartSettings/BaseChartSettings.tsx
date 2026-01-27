@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
-import Radio from "metabase/common/components/Radio";
+import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";

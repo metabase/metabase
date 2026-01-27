@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
-import Subhead from "metabase/common/components/type/Subhead";
+import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { Flex, type FlexProps } from "metabase/ui";
 
@@ -15,7 +15,7 @@ export interface ViewSectionProps
   children?: ReactNode;
 }
 
-const ViewSection = ({
+export const ViewSection = ({
   className,
   style,
   children,
@@ -43,6 +43,3 @@ export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (
     {children}
   </div>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ViewSection;

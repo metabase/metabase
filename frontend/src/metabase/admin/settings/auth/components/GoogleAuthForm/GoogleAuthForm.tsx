@@ -10,7 +10,7 @@ import {
   useGetSettingsQuery,
   useUpdateGoogleAuthMutation,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,

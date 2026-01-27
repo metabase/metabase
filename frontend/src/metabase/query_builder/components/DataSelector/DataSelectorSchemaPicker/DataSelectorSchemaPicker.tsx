@@ -18,7 +18,7 @@ type DataSelectorSchemaPickerProps = {
   onChangeSchema: (item: { schema: Schema }) => void;
 };
 
-const DataSelectorSchemaPicker = ({
+export const DataSelectorSchemaPicker = ({
   schemas,
   selectedSchemaId,
   onChangeSchema,
@@ -55,6 +55,3 @@ const DataSelectorSchemaPicker = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorSchemaPicker;

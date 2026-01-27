@@ -239,7 +239,7 @@
     [[1 "a1"]
      [2 "a2"]
      [2 "a3"]]]
-   ["long_col_name_2" [{:field-name "foo"
+   ["long_col_name_2" [{:field-name "foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc"
                         :base-type :type/Integer}
                        {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                         :base-type :type/Text}]
@@ -254,7 +254,7 @@
             table (lib.metadata/table mp (mt/id :long_col_name))
             query (lib/query mp table)
             fk-field (mt/id :long_col_name :fk)
-            id-2-field (mt/id :long_col_name_2 :foo)]
+            id-2-field (mt/id :long_col_name_2 :foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc)]
         (t2/update! :model/Field fk-field {:semantic_type :type/FK
                                            :fk_target_field_id id-2-field})
         (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
@@ -272,7 +272,7 @@
           (let [table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
                 join-cols (lib/joinable-columns query -1 table-2)
                 fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
-                id-col (m/find-first #(= (u/lower-case-en (:name %)) "foo") join-cols)
+                id-col (m/find-first #(str/starts-with? (u/lower-case-en (:name %)) "foo") join-cols)
                 join-clause (-> (lib/join-clause table-2)
                                 (lib/with-join-conditions [(lib/= fk-col id-col)])
                                 (lib/with-join-fields :all))

@@ -1,5 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -7,9 +7,9 @@ import { t } from "ttag";
 import { useCreateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -17,7 +17,10 @@ import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import type { RegularCollectionId } from "metabase-types/api";
+import type {
+  NativeQuerySnippet,
+  RegularCollectionId,
+} from "metabase-types/api";
 
 import {
   PaneHeader,
@@ -40,27 +43,37 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
+  const [savedSnippet, setSavedSnippet] = useState<NativeQuerySnippet | null>(
+    null,
+  );
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
   const isValid = name.length > 0 && content.length > 0;
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
   ) => {
-    try {
-      const result = await createSnippet({
-        name,
-        content,
-        description: description.trim().length > 0 ? description.trim() : null,
-        collection_id: collectionId,
-      }).unwrap();
-      dispatch(push(Urls.dataStudioSnippet(result.id)));
-    } catch (error) {
+    const { data: snippet, error } = await createSnippet({
+      name,
+      content,
+      description: description.trim().length > 0 ? description.trim() : null,
+      collection_id: collectionId,
+    });
+
+    if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to create snippet`),
         icon: "warning",
       });
+    } else if (snippet) {
+      setSavedSnippet(snippet);
     }
   };
+
+  useEffect(() => {
+    if (savedSnippet) {
+      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+    }
+  }, [savedSnippet, dispatch]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -147,7 +160,10 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           </Stack>
         </Flex>
       </PageContainer>
-      <LeaveRouteConfirmModal route={route} isEnabled={!isSaving} />
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={!savedSnippet && !isSaving}
+      />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}
         onSelect={handleCollectionSelected}

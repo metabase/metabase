@@ -11,6 +11,7 @@ import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
+  createMockSnippetsCollection,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -187,6 +188,142 @@ describe("useHasLibraryDirtyChanges", () => {
 
     await waitFor(() => {
       expect(result.current).toBe(false);
+    });
+  });
+
+  describe("snippet dirty state", () => {
+    it("returns true when a dirty snippet exists", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "My Snippet",
+            collection_id: 100,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns true when a dirty snippet exists in root (no collection)", async () => {
+      const { result } = setup({
+        collections: [createLibraryCollection({ id: 1 })],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "Root Snippet",
+            collection_id: undefined,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns true when a dirty collection in snippets namespace exists", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 100,
+            model: "collection",
+            name: "Snippets Folder",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns false when dirty collection is not in snippets namespace", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createRegularCollection({ id: 2 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 2,
+            model: "collection",
+            name: "Regular Collection",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns false when dirty snippets exist but git sync is not visible", async () => {
+      const { result } = setup({
+        isGitSyncVisible: false,
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "My Snippet",
+            collection_id: 100,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns true when nested snippets collection is dirty", async () => {
+      const parentSnippetsCollection = createMockSnippetsCollection({
+        id: 100,
+        name: "Parent Snippets Folder",
+      });
+      const childSnippetsCollection = createMockSnippetsCollection({
+        id: 101,
+        name: "Child Snippets Folder",
+      });
+      // Set up parent-child relationship
+      parentSnippetsCollection.children = [childSnippetsCollection];
+
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          parentSnippetsCollection,
+          childSnippetsCollection,
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 101,
+            model: "collection",
+            name: "Child Snippets Folder",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
     });
   });
 });

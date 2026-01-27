@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import {
   getDefaultTimelineName,
   getSortedTimelines,

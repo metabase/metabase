@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Text } from "metabase/ui";
 
 export function DatabaseReplicationPostgresInfo() {

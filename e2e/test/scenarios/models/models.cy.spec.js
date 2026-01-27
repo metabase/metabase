@@ -272,9 +272,9 @@ describe("scenarios > models", () => {
     H.echartsContainer();
 
     turnIntoModel();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a model now.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
     H.echartsContainer();
@@ -294,12 +294,12 @@ describe("scenarios > models", () => {
 
     cy.wait("@cardUpdate");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a question now.");
     H.openQuestionActions();
     assertIsQuestion();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     H.openQuestionActions();
@@ -340,7 +340,7 @@ describe("scenarios > models", () => {
 
   it("shows 404 when opening a question with a /dataset URL", () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/We're a little lost/i);
   });
 
@@ -457,17 +457,17 @@ describe("scenarios > models", () => {
         cy.button("Add filter").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
       selectFromDropdown("Count of rows");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       selectFromDropdown("Created At");
 
       H.visualize();
       H.echartsContainer();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
       cy.findByTestId("save-question-modal").within(() => {
@@ -584,7 +584,7 @@ describe("scenarios > models", () => {
       cy.wait("@updateCard");
 
       cy.findByDisplayValue("M1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("foo");
     });
   });
@@ -624,12 +624,12 @@ describe("scenarios > models", () => {
     H.closeQuestionActions();
 
     // Check card tags are supported by models
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     H.NativeEditor.focus().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click({ force: true });
 
     cy.findByTestId("save-question-modal").within((modal) => {
@@ -689,9 +689,9 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
 
     H.visitCollection("root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Useful data").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A model").should("not.exist");
   });
 

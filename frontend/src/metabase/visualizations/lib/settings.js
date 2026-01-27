@@ -6,10 +6,10 @@ import {
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
-import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
+import { ChartSettingColorsPicker } from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { ChartSettingFieldsPartition } from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
-import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import { ChartSettingFieldsPicker } from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import { ChartSettingInput } from "metabase/visualizations/components/settings/ChartSettingInput";
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";

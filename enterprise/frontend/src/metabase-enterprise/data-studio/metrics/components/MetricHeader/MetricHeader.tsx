@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {

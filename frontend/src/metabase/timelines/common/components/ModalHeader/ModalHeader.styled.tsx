@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 

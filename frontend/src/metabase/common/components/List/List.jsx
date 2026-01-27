@@ -4,10 +4,10 @@ import { memo } from "react";
 
 import S from "./List.module.css";
 
-const List = ({ children }) => <ul className={S.list}>{children}</ul>;
+const ListInner = ({ children }) => <ul className={S.list}>{children}</ul>;
 
-List.propTypes = {
+ListInner.propTypes = {
   children: PropTypes.any.isRequired,
 };
 
-export default memo(List);
+export const List = memo(ListInner);

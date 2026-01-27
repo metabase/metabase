@@ -5,8 +5,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.events :as lib.events]
+   [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -239,142 +241,87 @@
                 (first entries)))))))
 
 (deftest snippet-create-event-creates-entry-test
-  (testing "snippet-create event creates remote sync object entry with create status"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-create
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "NativeQuerySnippet"
-                 :model_id (:id snippet)
-                 :status "create"}
-                (first entries)))))))
+  (testing "snippet-create event creates remote sync object entry with create status when Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id (:id snippet-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "create"}
+                  (first entries))))))))
 
 (deftest snippet-update-event-creates-entry-test
-  (testing "snippet-update event creates or updates remote sync object entry with update status"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-update
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "NativeQuerySnippet"
-                 :model_id (:id snippet)
-                 :status "update"}
-                (first entries)))))))
+  (testing "snippet-update event creates or updates remote sync object entry with update status when Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id (:id snippet-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/snippet-update
+                               {:object snippet :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "update"}
+                  (first entries))))))))
 
 (deftest snippet-update-archived-sets-delete-test
-  (testing "snippet-update event with archived=true sets delete status"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-update
-                             {:object (assoc snippet :archived true)
-                              :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "NativeQuerySnippet"
-                 :model_id (:id snippet)
-                 :status "delete"}
-                (first entries)))))))
+  (testing "snippet-update event with archived=true sets delete status when Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id (:id snippet-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/snippet-update
+                               {:object (assoc snippet :archived true)
+                                :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "delete"}
+                  (first entries))))))))
 
 (deftest snippet-delete-event-creates-entry-test
-  (testing "snippet-delete event creates remote sync object entry with delete status"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
+  (testing "snippet-delete event creates remote sync object entry with delete status when Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id (:id snippet-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/snippet-delete
+                               {:object snippet :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "delete"}
+                  (first entries))))))))
+
+(deftest snippet-event-when-library-not-synced-no-entry-test
+  (testing "snippet events don't create entries when Library is not synced"
+    (when-let [library (collection/library-collection)]
+      (t2/update! :model/Collection (:id library) {:is_remote_synced false}))
+    (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                    :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                       :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-delete
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "NativeQuerySnippet"
-                 :model_id (:id snippet)
-                 :status "delete"}
-                (first entries)))))))
-
-(deftest snippet-event-in-normal-collection-no-entry-test
-  (testing "snippet events in non-remote-sync collections don't create entries"
-    (mt/with-temp [:model/Collection normal-collection {:name "Normal" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Normal Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id normal-collection)}]
+                                                      :collection_id (:id snippet-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/snippet-create
                              {:object snippet :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
-
-(deftest existing-snippet-moved-out-of-remote-synced-collection-test
-  (testing "snippet moved out of remote-synced collection is marked as removed"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (#'impl/sync-objects! (t/instant) {"NativeQuerySnippet" #{(:entity_id snippet)}} nil nil)
-
-      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
-        (is (= "synced" (:status initial-entry)))
-        (events/publish-event! :event/snippet-update
-                               {:object (assoc snippet :collection_id (:id normal-collection))
-                                :user-id (mt/user->id :rasta)})
-
-        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
-          (is (= "removed" (:status update-entry)))
-          (is (= (:id initial-entry) (:id update-entry)))))
-      "done")))
-
-(deftest new-snippet-moved-out-of-remote-synced-collection-test
-  (testing "new snippet moved out of remote-synced collection are not tracked"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-create
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
-        (is (= "create" (:status initial-entry)))
-        (events/publish-event! :event/snippet-update
-                               {:object (assoc snippet :collection_id (:id normal-collection))
-                                :user-id (mt/user->id :rasta)})
-        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
-          (is (nil? update-entry)))))))
-
-(deftest snippet-moved-into-remote-synced-collection-test
-  (testing "snippet moved into remote-synced collection gets tracked"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :namespace "snippets"}
-                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id normal-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-create
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (is (= 0 (count (t2/select :model/RemoteSyncObject))))
-
-      ;; Move snippet to remote-synced collection
-      (events/publish-event! :event/snippet-update
-                             {:object (assoc snippet :collection_id (:id remote-sync-collection))
-                              :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "NativeQuerySnippet"
-                 :model_id (:id snippet)
-                 :status "update"}
-                (first entries)))))))
 
 (deftest collection-create-event-creates-entry-test
   (testing "collection-create event creates remote sync object entry with create status"
@@ -496,7 +443,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (t2/delete! :model/RemoteSyncObject)
         (let [hydrate-fn (fn [id] (t2/select-one [:model/Card :name :collection_id :display] :id id))]
-          (#'lib.events/create-or-update-remote-sync-object-entry! "Card" (:id card) "create" hydrate-fn)
+          (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Card" (:id card) "create" hydrate-fn)
           (let [entries (t2/select :model/RemoteSyncObject)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "Card"
@@ -512,12 +459,12 @@
         (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
               hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
           (t/with-clock clock-t1
-            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "update" hydrate-fn))
+            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "update" hydrate-fn))
           (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))
                 initial-time (:status_changed_at initial-entry)
                 clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
+              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
             (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
               (is (= 1 (count entries)))
               (let [update-entry (first entries)]
@@ -533,11 +480,11 @@
         (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
               hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
           (t/with-clock clock-t1
-            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "create" hydrate-fn))
+            (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "create" hydrate-fn))
           (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))
                 clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
+              (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Dashboard" (:id dashboard) "synced" hydrate-fn))
             (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
               (is (= 1 (count entries)))
               (let [update-entry (first entries)]
@@ -551,7 +498,7 @@
       (t2/delete! :model/RemoteSyncObject)
       (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])
             hydrate-fn (fn [id] (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))]
-        (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create" hydrate-fn)
+        (#'remote-sync.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create" hydrate-fn)
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Collection"
@@ -708,37 +655,37 @@
 
 (deftest ^:parallel card-event-derivation-test
   (testing "card events properly derive from :metabase/event"
-    (is (isa? ::lib.events/card-change-event :metabase/event))
-    (is (isa? :event/card-create ::lib.events/card-change-event))
-    (is (isa? :event/card-update ::lib.events/card-change-event))
-    (is (isa? :event/card-delete ::lib.events/card-change-event))))
+    (is (isa? ::remote-sync.events/card-change-event :metabase/event))
+    (is (isa? :event/card-create ::remote-sync.events/card-change-event))
+    (is (isa? :event/card-update ::remote-sync.events/card-change-event))
+    (is (isa? :event/card-delete ::remote-sync.events/card-change-event))))
 
 (deftest ^:parallel dashboard-event-derivation-test
   (testing "dashboard events properly derive from :metabase/event"
-    (is (isa? ::lib.events/dashboard-change-event :metabase/event))
-    (is (isa? :event/dashboard-create ::lib.events/dashboard-change-event))
-    (is (isa? :event/dashboard-update ::lib.events/dashboard-change-event))
-    (is (isa? :event/dashboard-delete ::lib.events/dashboard-change-event))))
+    (is (isa? ::remote-sync.events/dashboard-change-event :metabase/event))
+    (is (isa? :event/dashboard-create ::remote-sync.events/dashboard-change-event))
+    (is (isa? :event/dashboard-update ::remote-sync.events/dashboard-change-event))
+    (is (isa? :event/dashboard-delete ::remote-sync.events/dashboard-change-event))))
 
 (deftest ^:parallel document-event-derivation-test
   (testing "document events properly derive from :metabase/event"
-    (is (isa? ::lib.events/document-change-event :metabase/event))
-    (is (isa? :event/document-create ::lib.events/document-change-event))
-    (is (isa? :event/document-update ::lib.events/document-change-event))
-    (is (isa? :event/document-delete ::lib.events/document-change-event))))
+    (is (isa? ::remote-sync.events/document-change-event :metabase/event))
+    (is (isa? :event/document-create ::remote-sync.events/document-change-event))
+    (is (isa? :event/document-update ::remote-sync.events/document-change-event))
+    (is (isa? :event/document-delete ::remote-sync.events/document-change-event))))
 
 (deftest ^:parallel snippet-event-derivation-test
   (testing "snippet events properly derive from :metabase/event"
-    (is (isa? ::lib.events/snippet-change-event :metabase/event))
-    (is (isa? :event/snippet-create ::lib.events/snippet-change-event))
-    (is (isa? :event/snippet-update ::lib.events/snippet-change-event))
-    (is (isa? :event/snippet-delete ::lib.events/snippet-change-event))))
+    (is (isa? ::remote-sync.events/snippet-change-event :metabase/event))
+    (is (isa? :event/snippet-create ::remote-sync.events/snippet-change-event))
+    (is (isa? :event/snippet-update ::remote-sync.events/snippet-change-event))
+    (is (isa? :event/snippet-delete ::remote-sync.events/snippet-change-event))))
 
 (deftest ^:parallel collection-event-derivation-test
   (testing "collection events properly derive from :metabase/event"
-    (is (isa? ::lib.events/collection-change-event :metabase/event))
-    (is (isa? :event/collection-create ::lib.events/collection-change-event))
-    (is (isa? :event/collection-update ::lib.events/collection-change-event))))
+    (is (isa? ::remote-sync.events/collection-change-event :metabase/event))
+    (is (isa? :event/collection-create ::remote-sync.events/collection-change-event))
+    (is (isa? :event/collection-update ::remote-sync.events/collection-change-event))))
 
 (deftest timeline-create-event-creates-entry-test
   (testing "timeline-create event creates remote sync object entry with create status"
@@ -983,10 +930,10 @@
 
 (deftest ^:parallel table-event-derivation-test
   (testing "table events properly derive from :metabase/event"
-    (is (isa? ::lib.events/table-change-event :metabase/event))
-    (is (isa? :event/table-create ::lib.events/table-change-event))
-    (is (isa? :event/table-update ::lib.events/table-change-event))
-    (is (isa? :event/table-delete ::lib.events/table-change-event))))
+    (is (isa? ::remote-sync.events/table-change-event :metabase/event))
+    (is (isa? :event/table-create ::remote-sync.events/table-change-event))
+    (is (isa? :event/table-update ::remote-sync.events/table-change-event))
+    (is (isa? :event/table-delete ::remote-sync.events/table-change-event))))
 
 (deftest collection-becomes-remote-synced-tracks-existing-tables-test
   (testing "when collection becomes remote-synced, existing published tables are tracked with 'create' status"
@@ -1171,10 +1118,10 @@
 
 (deftest ^:parallel segment-event-derivation-test
   (testing "segment events properly derive from :metabase/event"
-    (is (isa? ::lib.events/segment-change-event :metabase/event))
-    (is (isa? :event/segment-create ::lib.events/segment-change-event))
-    (is (isa? :event/segment-update ::lib.events/segment-change-event))
-    (is (isa? :event/segment-delete ::lib.events/segment-change-event))))
+    (is (isa? ::remote-sync.events/segment-change-event :metabase/event))
+    (is (isa? :event/segment-create ::remote-sync.events/segment-change-event))
+    (is (isa? :event/segment-update ::remote-sync.events/segment-change-event))
+    (is (isa? :event/segment-delete ::remote-sync.events/segment-change-event))))
 
 ;;; Field Event Tests
 
@@ -1258,7 +1205,7 @@
 
 (deftest ^:parallel field-event-derivation-test
   (testing "field events properly derive from :metabase/event"
-    (is (isa? ::lib.events/field-change-event :metabase/event))
-    (is (isa? :event/field-create ::lib.events/field-change-event))
-    (is (isa? :event/field-update ::lib.events/field-change-event))
-    (is (isa? :event/field-delete ::lib.events/field-change-event))))
+    (is (isa? ::remote-sync.events/field-change-event :metabase/event))
+    (is (isa? :event/field-create ::remote-sync.events/field-change-event))
+    (is (isa? :event/field-update ::remote-sync.events/field-change-event))
+    (is (isa? :event/field-delete ::remote-sync.events/field-change-event))))

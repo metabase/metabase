@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Modal } from "metabase/ui";
 
 import { type UpsellBigCardProps, _UpsellBigCard } from "./UpsellBigCard";
