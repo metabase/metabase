@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
-/**
- * Generates a license disclaimer file for all npm dependencies.
- * Uses bun pm licenses command. Ensure bun is installed for license generation.
- *
- * Usage: node bin/generate-license-disclaimer.js
- * Output: resources/license-frontend-third-party.txt
- */
+// Usage: node bin/generate-license-disclaimer.js
 
-const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
@@ -18,6 +11,8 @@ const OUTPUT_FILE = path.join(
   "resources",
   "license-frontend-third-party.txt",
 );
+
+const BUN_MODULES_DIR = path.join(__dirname, "..", "node_modules", ".bun");
 
 const LICENSE_FILE_NAMES = [
   "LICENSE",
@@ -34,10 +29,10 @@ const LICENSE_FILE_NAMES = [
   "COPYING.txt",
 ];
 
-// ============== Pure Functions (tested) ==============
-
 function normalizeRepoUrl(url) {
-  if (!url) return null;
+  if (!url) {
+    return undefined;
+  }
   return url
     .replace(/^git\+/, "")
     .replace(/\.git$/, "")
@@ -45,46 +40,100 @@ function normalizeRepoUrl(url) {
 }
 
 /**
- * Generate disclaimer text from bun licenses data.
- *
- * @param {object} licensesData - Raw output from `bun pm licenses --json`
- * @param {function} getLicenseInfo - Callback (pkg) => {licenseText, repoUrl} to resolve license info for each package
- * @returns {string} The disclaimer text
+ * Parse a bun package folder name like "@scope+pkg@1.0.0" or "lodash@4.17.21"
+ * Returns { name, version } or undefined if invalid.
  */
-function generateDisclaimerText(licensesData, getLicenseInfo) {
-  // Flatten all packages from the grouped-by-license structure
-  const allPackages = [];
-  for (const [, packages] of Object.entries(licensesData)) {
-    for (const pkg of packages) {
-      // Handle packages with multiple versions
-      for (let i = 0; i < pkg.paths.length; i++) {
-        const version = pkg.versions[i] || pkg.versions[0];
-        const pkgPath = pkg.paths[i];
-        allPackages.push({
-          name: pkg.name,
-          version,
-          path: pkgPath,
-          homepage: pkg.homepage,
-          description: pkg.description,
-          author: pkg.author,
-        });
-      }
-    }
+function parseBunFolderName(folderName) {
+  const lastAtIndex = folderName.lastIndexOf("@");
+  if (lastAtIndex <= 0) {
+    return undefined;
+  }
+  const name = folderName.slice(0, lastAtIndex).replace(/\+/g, "/");
+  const version = folderName.slice(lastAtIndex + 1);
+  return { name, version };
+}
+
+/**
+ * Scan node_modules/.bun/ and return array of packages with their paths.
+ */
+function scanBunPackages(bunModulesDir) {
+  if (!fs.existsSync(bunModulesDir)) {
+    throw new Error(`Bun modules directory not found: ${bunModulesDir}`);
   }
 
-  // Enrich with license text and repo URL
-  const packagesWithLicenses = allPackages.map(pkg => {
-    const { licenseText, repoUrl } = getLicenseInfo(pkg);
+  const folders = fs.readdirSync(bunModulesDir);
+  const packages = [];
+
+  for (const folder of folders) {
+    const parsed = parseBunFolderName(folder);
+    if (!parsed) {
+      continue;
+    }
+
+    const packagePath = path.join(
+      bunModulesDir,
+      folder,
+      "node_modules",
+      parsed.name,
+    );
+
+    if (!fs.existsSync(packagePath)) {
+      continue;
+    }
+
+    packages.push({
+      name: parsed.name,
+      version: parsed.version,
+      path: packagePath,
+    });
+  }
+
+  return packages;
+}
+
+function findLicenseFile(packagePath) {
+  for (const name of LICENSE_FILE_NAMES) {
+    const licensePath = path.join(packagePath, name);
+    if (fs.existsSync(licensePath)) {
+      return fs.readFileSync(licensePath, "utf-8").trim();
+    }
+  }
+  return undefined;
+}
+
+function getPackageInfo(packagePath) {
+  const pkgJsonPath = path.join(packagePath, "package.json");
+  if (!fs.existsSync(pkgJsonPath)) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Generate disclaimer text from package list.
+ *
+ * @param {Array} packages - Array of {name, version, path}
+ * @param {function} getPackageDetails - Callback (pkg) => {licenseText, repoUrl, homepage}
+ * @returns {string} The disclaimer text
+ */
+function generateDisclaimerText(packages, getPackageDetails) {
+  const enriched = packages.map((pkg) => {
+    const details = getPackageDetails(pkg);
     return {
       ...pkg,
-      licenseText: licenseText || `License: See ${pkg.homepage || "package"}`,
-      repoUrl,
+      licenseText:
+        details.licenseText ||
+        `License: See ${details.homepage || pkg.name} package`,
+      repoUrl: details.repoUrl,
     };
   });
 
-  // Group packages by (normalized repo URL + license text)
   const groups = new Map();
-  for (const pkg of packagesWithLicenses) {
+  for (const pkg of enriched) {
     const normalizedRepo = normalizeRepoUrl(pkg.repoUrl);
     const key = `${normalizedRepo || pkg.name}|||${pkg.licenseText}`;
 
@@ -98,34 +147,27 @@ function generateDisclaimerText(licensesData, getLicenseInfo) {
     groups.get(key).packages.push(pkg);
   }
 
-  // Sort groups alphabetically by first package name
   const sortedGroups = Array.from(groups.values()).sort((a, b) => {
     const aName = a.packages[0].name.toLowerCase();
     const bName = b.packages[0].name.toLowerCase();
     return aName.localeCompare(bName);
   });
 
-  // Generate output
   const lines = [
     "THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES FOR THIRD PARTY SOFTWARE THAT MAY BE CONTAINED IN PORTIONS OF THE METABASE PRODUCT.",
     "",
   ];
 
   for (const group of sortedGroups) {
-    // Sort packages within group by name
     group.packages.sort((a, b) => a.name.localeCompare(b.name));
-
-    // Dedupe package names (multiple versions of same package)
-    const uniqueNames = [...new Set(group.packages.map(p => p.name))];
+    const uniqueNames = [...new Set(group.packages.map((p) => p.name))];
     const packageList = uniqueNames.join(", ");
 
-    // Build source URLs string
     let sourceInfo = "";
     if (group.repoUrl) {
       if (uniqueNames.length > 1) {
-        // Multiple packages from same repo - list each with its URL
         const urlParts = uniqueNames.map(
-          name => `${group.repoUrl} (${name})`,
+          (name) => `${group.repoUrl} (${name})`,
         );
         sourceInfo = `A copy of the source code may be downloaded from ${urlParts.join(", ")}.`;
       } else {
@@ -146,59 +188,35 @@ function generateDisclaimerText(licensesData, getLicenseInfo) {
   return lines.join("\n");
 }
 
-// ============== IO Functions (not tested) ==============
-
-function getLicensesJson() {
-  const output = execSync("bun pm licenses --json", {
-    encoding: "utf-8",
-    maxBuffer: 50 * 1024 * 1024,
-  });
-  return JSON.parse(output);
-}
-
-function findLicenseFile(packagePath) {
-  for (const name of LICENSE_FILE_NAMES) {
-    const licensePath = path.join(packagePath, name);
-    if (fs.existsSync(licensePath)) {
-      return fs.readFileSync(licensePath, "utf-8").trim();
-    }
-  }
-  return null;
-}
-
-function getRepoUrl(pkg) {
-  const pkgJsonPath = path.join(pkg.path, "package.json");
-  if (fs.existsSync(pkgJsonPath)) {
-    try {
-      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
-      if (pkgJson.repository) {
-        if (typeof pkgJson.repository === "string") {
-          return pkgJson.repository;
-        }
-        if (pkgJson.repository.url) {
-          return pkgJson.repository.url;
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }
-  return pkg.homepage || null;
-}
-
-// ============== Main ==============
-
 if (require.main === module) {
-  console.log("Fetching licenses from bun...");
-  const licensesData = getLicensesJson();
+  console.log("Scanning bun packages...");
+  const packages = scanBunPackages(BUN_MODULES_DIR);
+  console.log(`Found ${packages.length} packages`);
 
-  const output = generateDisclaimerText(licensesData, pkg => ({
-    licenseText: findLicenseFile(pkg.path),
-    repoUrl: getRepoUrl(pkg),
-  }));
+  const output = generateDisclaimerText(packages, (pkg) => {
+    const pkgJson = getPackageInfo(pkg.path) || {};
+    const licenseFile = findLicenseFile(pkg.path);
+    // Fall back to license field from package.json if no LICENSE file found
+    const licenseText = licenseFile || pkgJson.license || undefined;
+
+    const repo = pkgJson.repository;
+    const repoUrl =
+      (typeof repo === "string" ? repo : repo?.url) ||
+      pkgJson.homepage ||
+      undefined;
+    return {
+      licenseText,
+      repoUrl: repoUrl,
+      homepage: pkgJson.homepage,
+    };
+  });
 
   fs.writeFileSync(OUTPUT_FILE, output);
   console.log(`Generated ${OUTPUT_FILE}`);
 }
 
-module.exports = { generateDisclaimerText };
+module.exports = {
+  generateDisclaimerText,
+  parseBunFolderName,
+  scanBunPackages,
+};
