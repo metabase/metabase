@@ -4,18 +4,16 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
-
-(def ^:private test-jwt-secret (u.random/secure-hex 32))
 
 (defn- current-epoch-seconds []
   (int (/ (System/currentTimeMillis) 1000)))
@@ -24,22 +22,18 @@
   "Sign a JWT with the test secret. Automatically adds `iat` claim if not present,
    which is required for max-age validation."
   [claims]
-  (jwt/sign (merge {:iat (current-epoch-seconds)} claims) test-jwt-secret))
+  (jwt/sign (merge {:iat (current-epoch-seconds)} claims) sso.test-setup/default-jwt-secret))
 
 (defmacro with-agent-api-setup!
-  "Sets up JWT authentication for Agent API tests. Uses test-helpers-set-global-values!
-   to ensure settings are visible to the HTTP server thread.
-
-   Enables both jwt-enabled and jwt-shared-secret since the auth-identity JWT provider
-   checks both settings."
+  "Sets up JWT authentication for Agent API tests.
+   Reuses the SSO JWT test setup which handles premium features and settings correctly."
   [& body]
-  `(mt/test-helpers-set-global-values!
-     (mt/with-additional-premium-features #{:metabot-v3 :sso-jwt}
-       (mt/with-temporary-setting-values [~'jwt-enabled       true
-                                          ~'jwt-shared-secret ~'test-jwt-secret]
-         ~@body))))
+  `(sso.test-setup/with-jwt-default-setup!
+     (mt/with-additional-premium-features #{:metabot-v3}
+       ~@body)))
 
 (defn- auth-headers
+  "Create authorization headers with a signed JWT for the given email."
   ([]
    (auth-headers "rasta@metabase.com"))
   ([email]
