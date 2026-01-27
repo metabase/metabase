@@ -65,16 +65,24 @@
         ;; in that case, we'll format the results with the target timezone.
         ;; Otherwise format it with results-timezone
         cols-zone-id (perf/mapv #(t/zone-id (get % :converted_timezone timezone-id)) (:cols metadata))
-        ;; For columns with converted_timezone, if the JDBC driver returns an
+        ;; For columns with converted_timezone, if the driver returns an
         ;; OffsetDateTime/ZonedDateTime, the value has already been timezone-converted
-        ;; by the SQL but Postgres may have re-wrapped it as timestamptz. We need to
+        ;; in SQL but the db may have re-cast it as timestamp with tz. We need to
         ;; strip the offset and treat it as a LocalDateTime so format-value attaches
         ;; the target zone instead of shifting from UTC. (#68712)
         converted?   (perf/mapv #(boolean (:converted_timezone %)) (:cols metadata))
         normalize    (fn [v converted-col?]
-                       (if (and converted-col?
-                                (instance? OffsetDateTime v))
+                       (cond
+                         (not converted-col?)
+                         v
+
+                         (instance? OffsetDateTime v)
                          (.toLocalDateTime ^OffsetDateTime v)
+
+                         (instance? ZonedDateTime v)
+                         (.toLocalDateTime ^ZonedDateTime v)
+
+                         :else
                          v))]
     (fn
       ([]
