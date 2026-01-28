@@ -139,10 +139,8 @@ export function SearchNew({
       return [];
     }
 
-    filterSelectedTables(tables.map((table) => table.id));
-
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
-  }, [allowedDatabaseIds, tables, filterSelectedTables]);
+  }, [allowedDatabaseIds, tables]);
 
   const isLoading = isLoadingTables || isLoadingDatabases;
 
@@ -150,6 +148,10 @@ export function SearchNew({
     () => buildResultTree(filteredTables),
     [filteredTables],
   );
+
+  useEffect(() => {
+    filterSelectedTables(filteredTables.map((table) => table.id));
+  }, [filteredTables, filterSelectedTables]);
 
   useEffect(() => {
     resetSelection();
