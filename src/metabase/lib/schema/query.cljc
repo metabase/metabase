@@ -26,6 +26,7 @@
 
 (mr/def ::test-column-spec
   [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
    [:source-name {:optional true} [:maybe string?]]])
 
@@ -78,15 +79,21 @@
    [:left [:ref ::test-expression-spec]]
    [:right [:ref ::test-expression-spec]]])
 
+(mr/def ::test-aggregation-spec
+  [:or
+   [:ref ::test-expression-spec]
+   [:ref ::test-named-expression-spec]])
+
 (mr/def ::test-stage-spec
   [:map
-   [:source      {:optional true} [:maybe ::test-source-spec]]
-   [:expressions {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
-   [:joins       {:optional true} [:maybe [:sequential ::test-join-spec]]]
-   [:filters     {:optional true} [:maybe [:sequential ::test-expression-spec]]]
-   [:breakouts   {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
-   [:order-bys   {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
-   [:limit       {:optional true} [:maybe number?]]])
+   [:source       {:optional true} [:maybe ::test-source-spec]]
+   [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
+   [:joins        {:optional true} [:maybe [:sequential ::test-join-spec]]]
+   [:filters      {:optional true} [:maybe [:sequential ::test-expression-spec]]]
+   [:aggregations {:optional true} [:maybe [:sequential ::test-aggregation-spec]]]
+   [:breakouts    {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
+   [:order-bys    {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
+   [:limit        {:optional true} [:maybe number?]]])
 
 (mr/def ::test-query-spec
   [:map

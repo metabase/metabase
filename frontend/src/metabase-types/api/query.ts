@@ -462,6 +462,8 @@ export type ExpressionSpec = LiteralSpec | OperatorSpec | ColumnSpec;
 
 export type FilterSpec = ExpressionSpec;
 
+export type AggregationSpec = ExpressionSpec | NamedExpressionSpec;
+
 export type NamedExpressionSpec = {
   name: string;
   value: ExpressionSpec;
@@ -504,8 +506,9 @@ export type OrderBySpec = ColumnSpec & {
 
 export type StageSpec = {
   expressions?: NamedExpressionSpec[];
-  filters?: FilterSpec[];
   joins?: JoinSpec[];
+  filters?: FilterSpec[];
+  aggregations?: AggregationSpec[];
   breakouts?: BreakoutSpec[];
   orderBys?: OrderBySpec[];
   limit?: number;

@@ -267,6 +267,38 @@ describe("createTestQuery", () => {
     });
   });
 
+  describe("aggregations", () => {
+    it("should create a query with aggregations", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            aggregations: [
+              {
+                type: "operator",
+                operator: ">=",
+                args: [
+                  { type: "column", name: "PRICE" },
+                  { type: "literal", value: 100 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const aggregations = Lib.aggregations(query, -1);
+      expect(aggregations).toHaveLength(1);
+
+      expect(Lib.displayInfo(query, -1, aggregations[0])).toMatchObject({
+        displayName: "Price is greater than or equal to 100",
+      });
+    });
+  });
+
   describe("order bys", () => {
     it("should create a query with order bys", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {

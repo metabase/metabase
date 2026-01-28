@@ -2770,6 +2770,13 @@
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :value ->expression-spec)))
 
+          (->named-or-plain-expression-spec [named-or-plain-expression-spec]
+            (-> named-or-plain-expression-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :type keyword)
+                (m/update-existing :args #(mapv ->expression-spec %))
+                (m/update-existing :value #(->expression-spec %))))
+
           (->filter-spec [filter-spec]
             (-> filter-spec
                 ->expression-spec))
@@ -2804,6 +2811,7 @@
                 (m/update-existing :source ->source-spec)
                 (m/update-existing :expressions #(mapv ->named-expression-spec %))
                 (m/update-existing :filters #(mapv ->filter-spec %))
+                (m/update-existing :aggregations #(mapv ->named-or-plain-expression-spec %))
                 (m/update-existing :joins #(mapv ->join-spec %))
                 (m/update-existing :breakouts #(mapv ->breakout-spec %))
                 (m/update-existing :order-bys #(mapv ->order-by-spec %))))

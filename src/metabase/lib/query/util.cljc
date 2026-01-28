@@ -1,5 +1,6 @@
 (ns metabase.lib.query.util
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
@@ -106,12 +107,14 @@
   [query             :- ::lib.schema/query
    stage-number      :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
-   expression-spec   :- ::lib.schema.query/test-expression-spec]
-  (lib.fe-util/expression-clause
-   (expression-spec->expression-parts query
-                                      stage-number
-                                      available-columns
-                                      expression-spec)))
+   expression-spec   :- [:or ::lib.schema.query/test-expression-spec ::lib.schema.query/test-named-expression-spec]]
+  (if (:value expression-spec)
+    (lib.expression/with-expression-name (expression-spec->expression-clause query stage-number available-columns (:value expression-spec)) (:name expression-spec))
+    (lib.fe-util/expression-clause
+     (expression-spec->expression-parts query
+                                        stage-number
+                                        available-columns
+                                        expression-spec))))
 
 (mu/defn- append-expression :- ::lib.schema/query
   [query                :- ::lib.schema/query
@@ -189,6 +192,21 @@
           query
           filter-specs))
 
+(mu/defn- append-aggregation :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   aggregation-spec  :- [:sequential ::lib.schema.query/aggregation-spec]]
+  (let [aggregation-clause (expression-spec->expression-clause query stage-number (lib.aggregation/aggregable-columns query stage-number) aggregation-spec)]
+    (lib.aggregation/aggregate query stage-number aggregation-clause)))
+
+(mu/defn- append-aggregations  :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   aggregation-specs  :- [:sequential ::lib.schema.query/aggregation-spec]]
+  (reduce #(append-aggregation %1 stage-number %2)
+          query
+          aggregation-specs))
+
 (mu/defn- append-order-by :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
@@ -210,11 +228,12 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [expressions filters joins breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [expressions filters joins aggregations breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
     joins (append-joins stage-number joins)
     filters (append-filters stage-number filters)
+    aggregations (append-aggregations stage-number aggregations)
     breakouts (append-breakouts stage-number breakouts)
     order-bys (append-order-bys stage-number order-bys)
     limit (lib.limit/limit stage-number limit)))
