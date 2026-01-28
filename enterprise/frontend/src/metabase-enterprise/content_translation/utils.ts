@@ -168,15 +168,16 @@ export const translateDisplayNames = <T>(
         const shouldTranslate =
           fieldsToTranslate.includes(key as string) &&
           typeof value === "string";
-        const isAggregation = element.source === "aggregation";
 
-        const newValue = match({ shouldTranslate, isAggregation })
+        const newValue = match({ shouldTranslate })
           .with({ shouldTranslate: false }, () => traverse(value as T))
-          .with({ shouldTranslate: true, isAggregation: true }, () =>
+          .with({ shouldTranslate: true }, () =>
+            // We can't detect if an element is an aggregation-related or not here.
+            // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
+            // the `source` field contains the `fields` value, not the `aggregation` one.
+            // As the solution, we always try to translate the display name as an aggregation one,
+            // and inside `translateAggregationDisplayName` we fallback to regular tc() call if no aggregation pattern is matched.
             translateAggregationDisplayName(value as string, tc),
-          )
-          .with({ shouldTranslate: true, isAggregation: false }, () =>
-            tc(value as string),
           )
           .exhaustive();
 
