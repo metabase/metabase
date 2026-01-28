@@ -9,7 +9,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableDataLayer | null) => void;
 }
 
-const dataLayers = ["hidden", "internal", "published"] as const;
+const dataLayers = ["hidden", "internal", "final"] as const;
 
 export const LayerInput = ({
   comboboxProps,
@@ -38,7 +38,7 @@ export const LayerInput = ({
       data={[
         { value: "hidden" as const, label: t`Hidden` },
         { value: "internal" as const, label: t`Internal` },
-        { value: "published" as const, label: t`Published` },
+        { value: "final" as const, label: t`Final` },
       ]}
       label={t`Visibility type`}
       renderOption={(item) => {
@@ -82,5 +82,5 @@ function VisibilityIcon({ value }: { value: string | null }): React.ReactNode {
 const VISIBILITY_ICONS = {
   hidden: "eye_filled",
   internal: "database",
-  published: "published",
+  final: "published",
 } as const;

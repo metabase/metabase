@@ -111,8 +111,8 @@ describe("Table editing", () => {
       .findByText("Table owner updated")
       .should("be.visible");
 
-    H.selectHasValue("Visibility type", "Bronze").click();
-    H.selectDropdown().contains("Published").click();
+    H.selectHasValue("Visibility type", "Internal").click();
+    H.selectDropdown().contains("Final").click();
     H.undoToastListContainer()
       .findByText("Table visibility type updated")
       .should("be.visible");
@@ -134,7 +134,7 @@ describe("Table editing", () => {
     TablePicker.getTable("Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
-    H.selectHasValue("Visibility type", "Published");
+    H.selectHasValue("Visibility type", "Final");
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });

@@ -551,8 +551,8 @@ describe("scenarios > data studio > datamodel", () => {
         updateTableAttributes({
           databaseId: SAMPLE_DB_ID,
           displayName: "Orders",
-          attributes: { data_layer: "published" },
-        }).as("publishedTableId");
+          attributes: { data_layer: "final" },
+        }).as("finalTableId");
 
         updateTableAttributes({
           databaseId: SAMPLE_DB_ID,
@@ -569,7 +569,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.TablePicker.getFilterForm().should("not.exist");
 
         openFilterPopover();
-        selectFilterOption("Visibility type", "Published");
+        selectFilterOption("Visibility type", "Final");
         applyFilters();
         H.expectUnstructuredSnowplowEvent({
           event: "data_studio_table_picker_filters_applied",
@@ -578,7 +578,7 @@ describe("scenarios > data studio > datamodel", () => {
           event: "data_studio_table_picker_search_performed",
         });
 
-        cy.get<TableId>("@publishedTableId").then(expectTableVisible);
+        cy.get<TableId>("@finalTableId").then(expectTableVisible);
         cy.get<TableId>("@hiddenTableId").then(expectTableNotVisible);
       });
 
