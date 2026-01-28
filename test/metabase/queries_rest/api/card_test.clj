@@ -3873,8 +3873,8 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[message {:keys [card-id table-id source-card-id]}]
-                    {"Card 1 (source Table)" {:card-id card-id-1, :table-id (mt/id :products)}
+            (doseq [[message {:keys [card-id source-card-id]}]
+                    {"Card 1 (source Table)" {:card-id card-id-1}
                      "Card 2 (source Card)"  {:card-id card-id-2, :source-card-id card-id-1}}]
               (testing message
                 (is (=? {:fields    empty?
