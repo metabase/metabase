@@ -20,8 +20,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException PreparedStatement]
-            [java.time LocalDate]))
+            [java.sql Connection SQLException PreparedStatement]
+            [java.time LocalDate]
+            [java.util.concurrent Executors]))
 
 (set! *warn-on-reflection* true)
 
@@ -312,6 +313,18 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
+
+(defonce ^:private connection-abort-executor
+  (delay (Executors/newCachedThreadPool)))
+
+(defmethod sql-jdbc.execute/maybe-abort-connection-on-error! :clickhouse
+  [_ conn exception]
+  ;; Connections with this error are unusable for subsequent queries so abort it (68674)
+  (when (and (instance? SQLException exception)
+             (str/includes? (.getMessage ^SQLException exception) "UNKNOWN_ROLE"))
+    (try
+      (.abort ^Connection conn @connection-abort-executor)
+      (catch Exception _ nil))))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
