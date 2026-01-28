@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
 import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";

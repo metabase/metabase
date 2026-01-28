@@ -252,26 +252,26 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.addSummaryField({ metric: "Count of rows" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     H.popover().within(() => {
       cy.findByText("City").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualize").click();
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by City");
 
     H.chartPathWithFillColor("#509EE3").first().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("See this CA Person").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("City is Beaver Dams");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Dominique Leffler");
   });
 
@@ -571,15 +571,15 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "table",
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than or equal to 10");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is less than 20");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 85 rows");
   });
 
@@ -601,14 +601,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     // click on the Count column cell showing the count of null rows
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16,845").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
     H.tableHeaderClick("Discount ($)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
@@ -706,7 +706,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       H.visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.chartPathWithFillColor("#509EE3").last().click();
       H.popover().findByTextEnsureVisible("See these Products").click();
     });

@@ -10,7 +10,7 @@ import type {
   RefObject,
 } from "react";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Anchor, Box, Button, Divider, Stack } from "metabase/ui";
 

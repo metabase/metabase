@@ -638,7 +638,7 @@ describe("Dashboard > Dashboard Questions", () => {
       // remove the card saved inside the dashboard
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("trash").last().click();
       H.undoToast().findByText("Trashed and removed card");
       H.saveDashboard();

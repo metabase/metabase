@@ -6,8 +6,9 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -21,9 +22,10 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Transform, UserId } from "metabase-types/api";
 
-import { useUpdateTransformMutation } from "../../../../api/transform";
 import { TitleSection } from "../../../components/TitleSection";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
@@ -36,25 +38,29 @@ type TransformSettingsSectionProps = {
 
 export const TransformSettingsSection = ({
   transform,
-}: TransformSettingsSectionProps) => (
-  <Stack gap="2.5rem">
-    <OwnerSection transform={transform} />
-    <TitleSection
-      label={t`Transform target`}
-      description={t`Change what this transform generates and where.`}
-    >
-      <Group p="lg">
-        <TargetInfo transform={transform} />
-      </Group>
-      <Divider />
-      <Group p="lg">
-        <EditTargetButton transform={transform} />
-        <EditMetadataButton transform={transform} />
-      </Group>
-    </TitleSection>
-    <UpdateIncrementalSettings transform={transform} />
-  </Stack>
-);
+}: TransformSettingsSectionProps) => {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  return (
+    <Stack gap="2.5rem">
+      <OwnerSection transform={transform} />
+      <TitleSection
+        label={t`Transform target`}
+        description={t`Change what this transform generates and where.`}
+      >
+        <Group p="lg">
+          <TargetInfo transform={transform} />
+        </Group>
+        <Divider />
+        <Group p="lg">
+          {!isRemoteSyncReadOnly && <EditTargetButton transform={transform} />}
+          <EditMetadataButton transform={transform} />
+        </Group>
+      </TitleSection>
+      <UpdateIncrementalSettings transform={transform} />
+    </Stack>
+  );
+};
 
 type TargetInfoProps = {
   transform: Transform;

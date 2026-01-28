@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 interface Props {
   [key: string]: any;
 }

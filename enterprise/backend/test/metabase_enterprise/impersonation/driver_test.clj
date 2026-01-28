@@ -718,11 +718,13 @@
            driver db-id options
            (fn [^Connection conn]
              (.countDown ^CountDownLatch start-latch)
-             (.await ^CountDownLatch start-latch)
+             (when-not (.await ^CountDownLatch start-latch 30 java.util.concurrent.TimeUnit/SECONDS)
+               (throw (ex-info "Timeout waiting for all connections to be acquired" {})))
              (f conn)))
           (finally
             (.countDown ^CountDownLatch finish-latch)))))
-    (.await ^CountDownLatch finish-latch)))
+    (when-not (.await ^CountDownLatch finish-latch 60 java.util.concurrent.TimeUnit/SECONDS)
+      (throw (ex-info "Timeout waiting for all futures to complete" {})))))
 
 (deftest nested-do-with-connection-with-options-test
   (testing "nested calls to `do-with-connection-with-options` have the correct connection options set"
@@ -745,6 +747,8 @@
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                 (sync/sync-database! database {:scan :schema})
+                ;; Give the connection pool time to release any connections held by sync
+                (Thread/sleep 1000)
                 (do-on-all-connection-in-pool driver/*driver* (mt/id) {}
                                               (fn [^Connection conn]
                                                 (driver/set-role! driver/*driver* conn role-a)))

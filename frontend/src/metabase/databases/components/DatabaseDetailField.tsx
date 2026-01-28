@@ -1,4 +1,4 @@
-import FormFileInput from "metabase/common/components/FormFileInput";
+import { FormFileInput } from "metabase/common/components/FormFileInput";
 import {
   FormNumberInput,
   FormSelect,

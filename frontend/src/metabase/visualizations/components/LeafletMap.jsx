@@ -11,7 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
-export default class LeafletMap extends Component {
+export class LeafletMap extends Component {
   constructor(props) {
     super(props);
 

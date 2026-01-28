@@ -8,16 +8,16 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
-  Avatar,
   Card,
   EntityNameCell,
   Flex,
@@ -33,6 +33,7 @@ import { useListTransformsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
@@ -80,6 +81,7 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -166,35 +168,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
           if (hasUserName) {
             const displayName = getUserName(owner as NamedUser);
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" name={displayName} />
-                <Ellipsified>{displayName}</Ellipsified>
-              </Flex>
-            );
+            return <Ellipsified>{displayName}</Ellipsified>;
           }
 
           const ownerEmail = row.original.owner_email ?? owner?.email;
           if (ownerEmail) {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="initials" name="emails">
-                  <Icon name="mail" />
-                </Avatar>
-                <Ellipsified>{ownerEmail}</Ellipsified>
-              </Flex>
-            );
-          }
-
-          if (row.original.nodeType === "transform") {
-            return (
-              <Flex align="center" gap="sm">
-                <Avatar size="sm" color="background-secondary" name="unknown">
-                  <Icon name="person" c="text-secondary" />
-                </Avatar>
-                <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>
-              </Flex>
-            );
+            return <Ellipsified>{ownerEmail}</Ellipsified>;
           }
 
           return null;
@@ -314,7 +293,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <CreateTransformMenu />
+          {!isRemoteSyncReadOnly && <CreateTransformMenu />}
         </Flex>
 
         <Card withBorder p={0}>

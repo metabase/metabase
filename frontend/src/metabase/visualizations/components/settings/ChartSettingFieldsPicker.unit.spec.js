@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import { ChartSettingFieldsPicker } from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 
 const DEFAULT_PROPS = {
   options: [

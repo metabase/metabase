@@ -8,7 +8,7 @@ export interface TabPanelProps<T> extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
-const TabPanel = forwardRef(function TabPanel<T>(
+export const TabPanel = forwardRef(function TabPanel<T>(
   { value, children, ...props }: TabPanelProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -30,6 +30,3 @@ const TabPanel = forwardRef(function TabPanel<T>(
     </div>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TabPanel;

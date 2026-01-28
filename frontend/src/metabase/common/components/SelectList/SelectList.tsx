@@ -7,7 +7,7 @@ import { SelectListItem } from "./SelectListItem";
 
 type SelectListProps = Omit<HTMLProps<HTMLUListElement>, "role"> & BoxProps;
 
-const SelectList = forwardRef<HTMLUListElement, SelectListProps>(
+const SelectListInner = forwardRef<HTMLUListElement, SelectListProps>(
   function SelectList(props: SelectListProps, ref) {
     return (
       <Box
@@ -21,8 +21,7 @@ const SelectList = forwardRef<HTMLUListElement, SelectListProps>(
   },
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SelectList, {
+export const SelectList = Object.assign(SelectListInner, {
   BaseItem: BaseSelectListItem,
   Item: SelectListItem,
 });

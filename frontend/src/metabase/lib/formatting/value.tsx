@@ -3,7 +3,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";

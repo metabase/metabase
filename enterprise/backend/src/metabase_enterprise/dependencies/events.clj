@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -89,8 +90,8 @@
 (derive :event/update-transform ::transform-deps)
 
 ;; On *saving* a transform, the upstream deps of its query are computed and saved.
-(defn- drop-outdated-target-dep! [{:keys [id source target] :as _transform}]
-  (let [db-id                (some-> source :query :database)
+(defn- drop-outdated-target-dep! [{:keys [id target] :as transform}]
+  (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
                                                :from_entity_type :table
                                                :to_entity_type   :transform

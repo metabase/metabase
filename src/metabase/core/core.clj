@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
@@ -221,18 +222,23 @@
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
-  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (u/since-ms-wall-clock start-time)]
-    (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
+  (log/info "Metabase Initialization COMPLETE"))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time (t/zoned-date-time)]
+  (let [start-time          (t/zoned-date-time)
+        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (system/startup-time-millis!
-     (.toMillis (t/duration start-time (t/zoned-date-time))))))
+    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+          jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
+      (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
+                 (u/format-milliseconds init-duration-ms)
+                 (u/format-milliseconds jvm-to-complete-ms))
+      (system/startup-time-millis! init-duration-ms)
+      (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
+      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

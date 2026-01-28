@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.table :as api.table]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]

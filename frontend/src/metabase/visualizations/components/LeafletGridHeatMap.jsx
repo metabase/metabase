@@ -9,12 +9,12 @@ import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInterval } from "../lib/numeric";
 
-import LeafletMap from "./LeafletMap";
+import { LeafletMap } from "./LeafletMap";
 
 const isValidCoordinatesColumn = (column) =>
   column.binning_info || (column.source === "native" && isNumeric(column));
 
-export default class LeafletGridHeatMap extends LeafletMap {
+export class LeafletGridHeatMap extends LeafletMap {
   static isSensible({ cols }) {
     return (
       cols.filter(isValidCoordinatesColumn).length >= 2 &&

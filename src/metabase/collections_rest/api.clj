@@ -824,6 +824,16 @@
                (into #{}))
           #{})
 
+        collections-containing-transforms
+        (if (premium-features/has-feature? :transforms)
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :transform
+                            :where [:in :collection_id descendant-collection-ids]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
                (t2/query {:select-distinct [:collection_id]
@@ -846,7 +856,8 @@
         (merge child-type->coll-id-set
                {:table collections-containing-tables
                 :collection collections-containing-collections
-                :dashboard collections-containing-dashboards})
+                :dashboard collections-containing-dashboards
+                :transform collections-containing-transforms})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
