@@ -8,9 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-import S from "../TableSection.module.css";
-
-import { MeasureItem } from "./MeasureItem";
+import S from "../../TableSection.module.css";
+import { MeasureItem } from "../MeasureItem";
 
 type MeasureListProps = {
   table: Table;

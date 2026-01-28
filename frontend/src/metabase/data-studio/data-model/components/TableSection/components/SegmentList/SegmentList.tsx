@@ -8,9 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-import S from "../TableSection.module.css";
-
-import { SegmentItem } from "./SegmentItem";
+import S from "../../TableSection.module.css";
+import { SegmentItem } from "../SegmentItem";
 
 type SegmentListProps = {
   table: Table;

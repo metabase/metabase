@@ -1,56 +1,11 @@
-import { Route } from "react-router";
+import { screen } from "__support__/ui";
+import { createMockMeasure } from "metabase-types/api/mocks";
 
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { EnterpriseSettings, Measure, Table } from "metabase-types/api";
-import {
-  createMockMeasure,
-  createMockTable,
-  createMockUser,
-} from "metabase-types/api/mocks";
-
-import { MeasureList } from "./MeasureList";
-
-type SetupOpts = {
-  measures?: Measure[];
-  table?: Partial<Table>;
-  isAdmin?: boolean;
-  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-};
-
-function setup({
-  measures = [],
-  table = {},
-  isAdmin = true,
-  remoteSyncType,
-}: SetupOpts = {}) {
-  const mockTable = createMockTable({
-    id: 1,
-    db_id: 1,
-    schema: "PUBLIC",
-    measures,
-    is_published: true,
-    ...table,
-  });
-
-  renderWithProviders(
-    <Route path="/" component={() => <MeasureList table={mockTable} />} />,
-    {
-      withRouter: true,
-      storeInitialState: {
-        currentUser: createMockUser({ is_superuser: isAdmin }),
-        settings: mockSettings({
-          "remote-sync-type": remoteSyncType,
-          "remote-sync-enabled": !!remoteSyncType,
-        }),
-      },
-    },
-  );
-}
+import { setup } from "./setup";
 
 describe("MeasureList", () => {
   it("should render empty state when no measures", () => {
-    setup({ measures: [] });
+    setup({ isEnterprise: true, measures: [] });
 
     expect(screen.getByText("No measures yet")).toBeInTheDocument();
     expect(
@@ -72,7 +27,7 @@ describe("MeasureList", () => {
       }),
       createMockMeasure({ id: 2, name: "Order Count" }),
     ];
-    setup({ measures });
+    setup({ isEnterprise: true, measures });
 
     expect(screen.getByRole("list")).toBeInTheDocument();
     expect(screen.getByText("Total Revenue")).toBeInTheDocument();
@@ -88,7 +43,7 @@ describe("MeasureList", () => {
 
   describe("'new measure' link", () => {
     it("is rendered when user is an admin", () => {
-      setup({ measures: [], isAdmin: true });
+      setup({ isEnterprise: true, measures: [], isAdmin: true });
 
       expect(
         screen.getByRole("link", { name: /New measure/i }),
@@ -96,7 +51,7 @@ describe("MeasureList", () => {
     });
 
     it("is not rendered when user is not an admin", () => {
-      setup({ measures: [], isAdmin: false });
+      setup({ isEnterprise: true, measures: [], isAdmin: false });
 
       expect(
         screen.queryByRole("link", { name: /New measure/i }),
@@ -104,7 +59,12 @@ describe("MeasureList", () => {
     });
 
     it("is not rendered when remote sync is set to read-only", () => {
-      setup({ measures: [], isAdmin: true, remoteSyncType: "read-only" });
+      setup({
+        isEnterprise: true,
+        measures: [],
+        isAdmin: true,
+        remoteSyncType: "read-only",
+      });
 
       expect(
         screen.queryByRole("link", { name: /New measure/i }),
@@ -113,6 +73,7 @@ describe("MeasureList", () => {
 
     it("is still rendered when remote sync is set to read-only but table is not published", () => {
       setup({
+        isEnterprise: true,
         measures: [],
         isAdmin: true,
         remoteSyncType: "read-only",
