@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.util :as sql.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -119,6 +120,8 @@
     table-id         (assoc table-id replacement)
     in-default-schema? (assoc [db-id nil table] replacement)))
 
+(defn- quote-name [driver s] (when s (sql.util/quote-name driver :table s)))
+
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput, WorkspaceOutputExternal, WorkspaceInput, and
   ;; WorkspaceInputExternal data.
@@ -156,11 +159,15 @@
         db-ids           (into #{} (map :db_id) (concat all-outputs all-inputs))
         databases        (when (seq db-ids)
                            (t2/select [:model/Database :id :engine :details] :id [:in db-ids]))
+        db-id->engine    (into {} (map (juxt :id :engine)) databases)
         db-id->default   (into {}
                                (map (fn [{:keys [id engine details]}]
-                                      [id (or (driver.sql/default-schema engine)
-                                              ;; For MySQL and similar, use database name from connection details
-                                              ((some-fn :dbname :db) details))]))
+                                      ;; Pre-quote the default schema/database name because it will be spliced into SQL
+                                      ;; for unqualified references (e.g. `orders` → `"public"."orders"` or `test-data`.`orders`).
+                                      ;; These names don't appear in the original SQL, so macaw won't quote them for us.
+                                      [id (quote-name engine (or (driver.sql/default-schema engine)
+                                                                 ;; For MySQL and similar, use database name from connection details
+                                                                 ((some-fn :dbname :db) details)))]))
                                databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
@@ -190,7 +197,7 @@
                             (let [default-schema (get db-id->default db_id)
                                   ;; For inputs, determine the schema to use for qualification:
                                   ;; - If table has a schema, use it (PostgreSQL with non-default schema)
-                                  ;; - Otherwise use default-schema (includes MySQL database name)
+                                  ;; - Otherwise use default-schema (already quoted via db-id->default)
                                   qualify-schema (or schema default-schema)]
                               (if (some? qualify-schema)
                                 (add-table-mapping-entries m

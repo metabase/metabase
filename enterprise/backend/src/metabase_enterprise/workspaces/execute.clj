@@ -15,7 +15,6 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
-   [metabase.driver.sql.util :as sql.util]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -50,16 +49,12 @@
     (update source :source-tables update-vals remap)))
 
 (defn- remap-sql-source [table-mapping source]
-  (let [db-id     (get-in source [:query :database])
-        driver    (t2/select-one-fn :engine :model/Database :id db-id)
-        ;; Quote identifiers using driver-specific quoting (backticks for MySQL, double quotes for ANSI)
-        quote-name (fn [s] (when s (sql.util/quote-name driver :table s)))
-        remapping (reduce
+  (let [remapping (reduce
                    (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
                      (assoc-in remapping [:tables {:schema source-schema
                                                    :table  source-table}]
-                               {:schema (quote-name target-schema)
-                                :table  (quote-name target-table)}))
+                               {:schema target-schema
+                                :table  target-table}))
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
