@@ -35,7 +35,7 @@ export function DependencyListPage({
 
   const {
     value: lastUsedParams,
-    isLoading: isLoadingLastUsedParams,
+    isLoading: isLoadingParams,
     setValue: setLastUsedParams,
   } = useUserKeyValue({
     namespace: "dependency_list",
@@ -65,7 +65,7 @@ export function DependencyListPage({
     <DependencyList
       mode={mode}
       params={params}
-      isLoadingLastUsedParams={isLoadingLastUsedParams}
+      isLoadingParams={isLoadingParams}
       onParamsChange={handleParamsChange}
     />
   );

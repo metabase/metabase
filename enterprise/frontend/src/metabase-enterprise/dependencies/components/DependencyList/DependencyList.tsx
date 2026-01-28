@@ -35,7 +35,7 @@ import {
 type DependencyListProps = {
   mode: DependencyListMode;
   params: Urls.DependencyListParams;
-  isLoadingLastUsedParams: boolean;
+  isLoadingParams: boolean;
   onParamsChange: (
     params: Urls.DependencyListParams,
     options?: DependencyListParamsOptions,
@@ -45,7 +45,7 @@ type DependencyListProps = {
 export function DependencyList({
   mode,
   params,
-  isLoadingLastUsedParams,
+  isLoadingParams,
   onParamsChange,
 }: DependencyListProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -84,14 +84,14 @@ export function DependencyList({
       limit: PAGE_SIZE,
     },
     {
-      skip: isLoadingLastUsedParams,
+      skip: isLoadingParams,
     },
   );
 
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
-  const isFetching = isFetchingNodes || isLoadingLastUsedParams;
-  const isLoading = isLoadingNodes || isLoadingLastUsedParams;
+  const isFetching = isFetchingNodes || isLoadingParams;
+  const isLoading = isLoadingNodes || isLoadingParams;
 
   const selectedNode =
     selectedEntry != null
