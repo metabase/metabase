@@ -28,7 +28,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  breadcrumbs?: ReactNode;
+  breadcrumbs: ReactNode;
   showMetabotButton?: boolean;
 }
 
@@ -45,16 +45,14 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      {(breadcrumbs || showMetabotButton) && (
-        <Flex mb="lg" mt="md" w="100%">
-          {breadcrumbs}
+      <Flex mb="lg" mt="md" w="100%">
+        {breadcrumbs}
 
-          <Group ml="auto" gap="md">
-            {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
-            <ProfileLink className={S.ProfileLink} />
-          </Group>
-        </Flex>
-      )}
+        <Group ml="auto" gap="md">
+          {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
+          <ProfileLink className={S.ProfileLink} />
+        </Group>
+      </Flex>
       <Group
         className={className}
         gap="sm"

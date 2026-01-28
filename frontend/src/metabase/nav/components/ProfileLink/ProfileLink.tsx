@@ -86,6 +86,11 @@ export function ProfileLink({ className }: { className?: string }) {
 
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
+
+    if (!canAccessDataStudio && !showAdminSettingsItem) {
+      return null;
+    }
+
     const items: React.ReactNode[] = [
       <Menu.Item
         key="main-app-link"
@@ -137,12 +142,12 @@ export function ProfileLink({ className }: { className?: string }) {
       );
     }
 
-    return items.length > 1 ? (
+    return (
       <>
         <Divider key="app-sectiondivider" w="100%" my="sm" />
         <Box px="md">{items}</Box>
       </>
-    ) : null;
+    );
   }, [canAccessDataStudio, adminItems, currentApp]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
@@ -183,12 +188,12 @@ export function ProfileLink({ className }: { className?: string }) {
               data-testid="mode-switcher-profile-link"
             >
               <Group wrap="nowrap">
-                <Avatar color="brand" radius="lg">
+                <Avatar color="brand" radius="lg" size={32}>
                   {user ? userInitials(user) : "?"}
                 </Avatar>
-                <Stack gap={0}>
-                  <Text>{user?.first_name}</Text>
-                  <Text c="text-tertiary" fz="md">
+                <Stack gap="xs">
+                  <Text lh="xs">{user?.first_name}</Text>
+                  <Text c="text-tertiary" fz="md" lh="xs">
                     {user?.email}
                   </Text>
                 </Stack>
@@ -230,7 +235,6 @@ export function ProfileLink({ className }: { className?: string }) {
                   }}
                 >{t`Download diagnostics`}</Menu.Item>
                 <Menu.Item onClick={() => openModal("about")}>
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
                   {t`About ${applicationName}`}
                 </Menu.Item>
               </Menu.Sub.Dropdown>
