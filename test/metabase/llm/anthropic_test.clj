@@ -117,3 +117,21 @@
   (testing "default model is defined and reasonable"
     (is (string? anthropic/default-model))
     (is (str/includes? anthropic/default-model "claude"))))
+
+;;; ------------------------------------------- model->simplified-provider-model Tests -------------------------------------------
+
+(deftest ^:parallel model->simplified-provider-model-test
+  (testing "strips date suffix and adds provider prefix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5-20250929")))
+    (is (= "anthropic/claude-opus-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-opus-4-5-20250514")))))
+
+(deftest ^:parallel model->simplified-provider-model-no-suffix-test
+  (testing "handles model without date suffix"
+    (is (= "anthropic/claude-sonnet-4-5"
+           (#'anthropic/model->simplified-provider-model "claude-sonnet-4-5")))))
+
+(deftest ^:parallel model->simplified-provider-model-nil-model-test
+  (testing "returns nil for nil input"
+    (is (nil? (#'anthropic/model->simplified-provider-model nil)))))
