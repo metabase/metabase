@@ -145,40 +145,39 @@ export const _SdkQuestion = ({
   withChartTypeSelector = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
-  <SdkQuestionProvider
-    questionId={questionId}
-    token={token}
-    options={options}
-    deserializedCard={deserializedCard}
-    componentPlugins={plugins}
-    onNavigateBack={onNavigateBack}
-    onBeforeSave={onBeforeSave}
-    onSave={onSave}
-    onRun={onRun}
-    isSaveEnabled={isSaveEnabled}
-    entityTypes={entityTypes}
-    targetCollection={targetCollection}
-    initialSqlParameters={initialSqlParameters}
-    hiddenParameters={hiddenParameters}
-    withDownloads={withDownloads}
-    targetDashboardId={targetDashboardId}
-    backToDashboard={backToDashboard}
-    getClickActionMode={getClickActionMode}
-    navigateToNewCard={navigateToNewCard}
-    onVisualizationChange={onVisualizationChange}
+  <SdkInternalNavigationProvider
+    renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
+    drillThroughQuestionProps={{
+      height: height,
+      width: width,
+      className: className,
+      style: style,
+      title: title,
+      withResetButton: withResetButton,
+      withChartTypeSelector: withChartTypeSelector,
+    }}
   >
-    <SdkInternalNavigationProvider
-      // dashboardProps={{}}
-      renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
-      drillThroughQuestionProps={{
-        height: height,
-        width: width,
-        className: className,
-        style: style,
-        title: title,
-        withResetButton: withResetButton,
-        withChartTypeSelector: withChartTypeSelector,
-      }}
+    <SdkQuestionProvider
+      questionId={questionId}
+      token={token}
+      options={options}
+      deserializedCard={deserializedCard}
+      componentPlugins={plugins}
+      onNavigateBack={onNavigateBack}
+      onBeforeSave={onBeforeSave}
+      onSave={onSave}
+      onRun={onRun}
+      isSaveEnabled={isSaveEnabled}
+      entityTypes={entityTypes}
+      targetCollection={targetCollection}
+      initialSqlParameters={initialSqlParameters}
+      hiddenParameters={hiddenParameters}
+      withDownloads={withDownloads}
+      targetDashboardId={targetDashboardId}
+      backToDashboard={backToDashboard}
+      getClickActionMode={getClickActionMode}
+      navigateToNewCard={navigateToNewCard}
+      onVisualizationChange={onVisualizationChange}
     >
       {children ?? (
         <SdkQuestionDefaultView
@@ -191,8 +190,8 @@ export const _SdkQuestion = ({
           withChartTypeSelector={withChartTypeSelector}
         />
       )}
-    </SdkInternalNavigationProvider>
-  </SdkQuestionProvider>
+    </SdkQuestionProvider>
+  </SdkInternalNavigationProvider>
 );
 
 const subComponents: SdkQuestionComponents = {
