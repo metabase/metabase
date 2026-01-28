@@ -52,10 +52,6 @@ export const Default: StoryFn<{ series: RawSeries }> = ({
   );
 };
 
-Default.parameters = {
-  loki: { skip: true },
-};
-
 export const WithLongNames = () => {
   const [series, setSeries] = useState([
     {
@@ -99,8 +95,4 @@ export const WithLongNames = () => {
       </Box>
     </VisualizationWrapper>
   );
-};
-
-WithLongNames.parameters = {
-  loki: { skip: true },
 };

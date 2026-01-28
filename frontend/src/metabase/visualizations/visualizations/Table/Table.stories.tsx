@@ -114,9 +114,6 @@ const ColumnFormattingTemplate: StoryFn<{
 };
 
 export const DefaultTable = {
-  parameters: {
-    loki: { skip: true },
-  },
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,
@@ -282,9 +279,6 @@ export const DashboardTableWithRowId = {
 };
 
 export const PreserveWhitespaceWrapped = {
-  parameters: {
-    loki: { skip: true },
-  },
   render: DefaultTemplate,
   args: {
     series: data.preserveWhitespaceWrapped,
@@ -299,9 +293,6 @@ export const PreserveWhitespaceUnwrapped = {
 };
 
 export const Watermark = {
-  parameters: {
-    loki: { skip: true },
-  },
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,
