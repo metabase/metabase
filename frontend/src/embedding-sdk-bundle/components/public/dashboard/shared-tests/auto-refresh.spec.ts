@@ -53,37 +53,18 @@ export function addEnterpriseAutoRefreshTests(
       }
     });
 
-    it("should not auto-refresh when interval is 0", async () => {
+    it.each([
+      { name: "null", value: null },
+      { name: "undefined", value: undefined },
+      { name: "0", value: 0 },
+      { name: "negative", value: -10 },
+    ])("should not auto-refresh when interval is $name", async ({ value }) => {
       jest.useFakeTimers();
 
       try {
-        await setup({ props: { autoRefreshInterval: 0 } });
+        // Forces the type, because users can literally pass any type here
+        await setup({ props: { autoRefreshInterval: value as number } });
 
-        // Wait for initial dashboard load
-        await waitFor(async () => {
-          const initialRequests = await getDashboardQueryRequests();
-          expect(initialRequests.length).toBe(
-            DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
-        });
-
-        // Advance time significantly
-        jest.advanceTimersByTime(30000);
-
-        // Verify no additional requests were made
-        const finalRequests = await getDashboardQueryRequests();
-        expect(finalRequests.length).toBe(DASHBOARD_CARD_QUERY_REQUEST_COUNT);
-      } finally {
-        jest.runOnlyPendingTimers();
-        jest.useRealTimers();
-      }
-    });
-
-    it("should not auto-refresh when interval is negative", async () => {
-      jest.useFakeTimers();
-
-      try {
-        await setup({ props: { autoRefreshInterval: -10 } });
         // Wait for initial dashboard load
         await waitFor(async () => {
           const initialRequests = await getDashboardQueryRequests();
