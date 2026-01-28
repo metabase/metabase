@@ -1,6 +1,8 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
+   [metabase.models.serialization :as serdes]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -26,7 +28,7 @@
     (update library :path normalize-path)
     library))
 
-(doseq [trait [:metabase/model :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
 (def ^:private allowed-paths
@@ -59,3 +61,35 @@
                                        {:path normalized-path}
                                        (constantly {:path normalized-path :source source}))]
       (t2/select-one :model/PythonLibrary id))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes/make-spec "PythonLibrary"
+  [_model-name _opts]
+  {:copy      [:path :source :entity_id]
+   :transform {:created_at (serdes/date)}})
+
+(defmethod serdes/hash-fields :model/PythonLibrary
+  [_model]
+  [:path])
+
+(defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
+  (let [{:keys [id label]} (-> entity serdes/path last)]
+    ["python-libraries" (serdes/storage-leaf-file-name id label)]))
+
+;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
+
+;; Event type hierarchy for remote-sync tracking
+(derive ::event :metabase/event)
+(doseq [e [:event/python-library-create :event/python-library-update :event/python-library-delete]]
+  (derive e ::event))
+
+(t2/define-after-insert :model/PythonLibrary
+  [library]
+  (events/publish-event! :event/python-library-create {:object library})
+  library)
+
+(t2/define-after-update :model/PythonLibrary
+  [library]
+  (events/publish-event! :event/python-library-update {:object library})
+  library)

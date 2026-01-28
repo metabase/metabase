@@ -193,3 +193,11 @@
           (when (and (contains? settings k)
                      (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))
+
+(defn library-is-remote-synced?
+  "Returns true if the Library collection exists and is remote-synced.
+   When true, all snippets and snippet collections should be synced."
+  []
+  (boolean
+   (when-let [library (collection/library-collection)]
+     (collection/remote-synced-collection? library))))
