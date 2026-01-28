@@ -78,13 +78,13 @@ def analyze(sql: str) -> str:
     return json.dumps(result)
 
 def table_parts(table):
-    parts = (table.catalog or None, table.db or None, table.name or None)
-    assert isinstance(parts[2], str), "Missing table name."
+    # table.db maps to what is known as table schema
+    parts = (table.db or None, table.name or None)
+    assert isinstance(parts[1], str), "Missing table name."
     return parts
 
-# TODO: Make catalog and db optional
 # TODO: Add type info
-def referenced_tables(dialect, sql, catalog, db):
+def referenced_tables(dialect, sql, default_table_schema):
     """
     Return referenced tables.
 
@@ -100,8 +100,7 @@ def referenced_tables(dialect, sql, catalog, db):
     """
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
-                          catalog=catalog,
-                          db=db,
+                          db=default_table_schema,
                           dialect=dialect,
                           sql=sql)
     root_scope = optimizer.build_scope(ast)
@@ -145,17 +144,13 @@ def is_pure_column(root):
 
 
 # TODO: Comment on everything is aliased?
-def returned_columns_lineage(dialect, sql, catalog, db, schema):
+def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema):
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
-                        catalog=catalog,
-                        db=db,
-                        dialect=dialect,
-                        schema=schema,
-                        sql=sql,
-                        # Useful for checking
-                        #validate_qualify_columns=False
-                        )
+                          db=default_table_schema,
+                          dialect=dialect,
+                          schema=sqlglot_schema,
+                          sql=sql)
 
     assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
 
@@ -173,13 +168,13 @@ def returned_columns_lineage(dialect, sql, catalog, db, schema):
         leaves = set()
         for node in select_elm_lineage.walk():
             if (# Leaf nodes of `.walk` are `exp.Table`s. We are interested
-                # in the columns selected from those tables. The condition
-                # is intended to examine those columns.
+                # in the columns selected from those tables (i.e. penultimate
+                # level). The condition is intended to examine those columns.
                 len(node.downstream) == 1
                 and isinstance(node.downstream[0].expression, exp.Table)
                 and not node.downstream[0].downstream):
                 assert isinstance(node.expression.this, exp.Column), "Leaf node is not a `Column`."
-                # TODO: The column is missing cat, db because source table
+                # TODO: The column is missing table schema because source table
                 # is aliased to its name. Maybe there's a cleaner way. Figure that
                 # out!
                 table = table_parts(node.downstream[0].expression)
