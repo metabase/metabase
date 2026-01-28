@@ -170,9 +170,9 @@
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
-  ;; sync any tables that are changed from copper to something else
-  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
-                          (filter #(= :copper (:data_layer %)) existing-tables))))
+  ;; sync any tables that are changed from hidden to something else
+  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :hidden data_layer))
+                          (filter #(= :hidden (:data_layer %)) existing-tables))))
 
 (api.macros/defendpoint :post "/edit" :- [:map {:closed true}]
   "Bulk updating tables."

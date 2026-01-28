@@ -346,7 +346,7 @@
 
 (def ^:private sync-tables-kv-args
   {:active          true
-   ;; TODO (Ngoc 2025-11-13) replace this with `metabase_table.data_layer = copper` see the docstring of
+   ;; TODO (Ngoc 2025-11-13) replace this with `metabase_table.data_layer = hidden` see the docstring of
    ;; [[metabase.warehouse-schema.models.table/data-layer-types]]
    :visibility_type nil})
 
