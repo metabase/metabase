@@ -51,18 +51,20 @@
 
 ;;; Migration constants/utils
 
-(def ^:private v1-jar-url
-  "https://repo1.maven.org/maven2/com/h2database/h2/1.4.197/h2-1.4.197.jar")
+;;; Migration constants/utils
+
+(def ^:private v2-jar-url
+  "https://repo1.maven.org/maven2/com/h2database/h2/2.1.214/h2-2.1.214.jar")
 
 (defn- tmp-path
   [& components]
   (str (apply u.files/get-path (System/getProperty "java.io.tmpdir") components)))
 
 (def ^:private jar-path
-  (tmp-path (last (.split ^String v1-jar-url "/"))))
+  (tmp-path (last (.split ^String v2-jar-url "/"))))
 
 (def ^:private migration-sql-path
-  (tmp-path "metabase-migrate-h2-db-v1-v2.sql"))
+  (tmp-path "metabase-migrate-h2-db-v2-v3.sql"))
 
 ;;; Migration logic
 
@@ -70,19 +72,19 @@
   "Updates existing H2 v1 database to H2 v2"
   [jdbc-url]
   (when-not (.exists (io/file jar-path))
-    (log/info "Downloading" v1-jar-url)
-    (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path)))
+    (log/info "Downloading" v2-jar-url)
+    (io/copy (:body (http/get v2-jar-url {:as :stream})) (io/file jar-path)))
   (log/info "Creating v1 database backup at" migration-sql-path)
   (let [result (sh/sh "java" "-cp" jar-path "org.h2.tools.Script" "-url" jdbc-url "-script" migration-sql-path)]
     (when-not (= 0 (:exit result))
       (throw (ex-info "Dumping H2 database failed." {:result result}))))
   (let [base-path (h2-base-path jdbc-url)
-        backup-path (str base-path ".v1-backup.mv.db")]
+        backup-path (str base-path ".v2-backup.mv.db")]
     (log/info "Moving old app database to" backup-path)
     (Files/move (u.files/get-path (str base-path ".mv.db"))
                 (u.files/get-path backup-path)
                 (into-array java.nio.file.CopyOption [])))
-  (log/info "Restoring backup into v2 database")
+  (log/info "Restoring backup into v3 database")
   (jdbc/execute! {:connection-uri jdbc-url} ["RUNSCRIPT FROM ? FROM_1X" migration-sql-path])
   (log/info "Backup restored into H2 v2 database. Update complete!"))
 
