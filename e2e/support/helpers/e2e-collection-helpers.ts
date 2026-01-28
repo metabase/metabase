@@ -93,7 +93,7 @@ export function pickEntity({
   path,
   select,
 }: {
-  path?: string[];
+  path?: (string | RegExp)[];
   select?: boolean;
 }) {
   if (path) {

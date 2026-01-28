@@ -1521,10 +1521,10 @@ describe("issue #67903", () => {
     cy.signInAsAdmin();
   });
 
-  it("shoult not show preview table headers on top of other elements (metabase#67903)", () => {
+  it("should not show preview table headers on top of other elements (metabase#67903)", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(1, "Orders").click();
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
     H.getNotebookStep("data").findByTestId("step-preview-button").click();
     H.queryBuilderHeader().findByLabelText("View SQL").click();
     cy.findByTestId("table-header").should("not.be.visible");

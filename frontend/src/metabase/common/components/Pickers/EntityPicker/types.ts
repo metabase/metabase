@@ -127,6 +127,7 @@ export type OmniPickerTableItem = {
   database_name?: string;
   schema?: SchemaName;
   name: string;
+  is_published?: boolean;
 };
 
 export type OmniPickerQuestionItem = Omit<

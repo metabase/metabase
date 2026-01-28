@@ -225,7 +225,7 @@ const EditSandboxingModal = ({
                   hasLibrary: false,
                   hasRootCollection: true,
                   hasPersonalCollections: true,
-                  hasConfirmButtons: false,
+                  hasConfirmButtons: true,
                 }}
               />
             )}

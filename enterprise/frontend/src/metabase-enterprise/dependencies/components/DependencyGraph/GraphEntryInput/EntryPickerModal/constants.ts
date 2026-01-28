@@ -7,7 +7,7 @@ import type { RecentContexts } from "metabase-types/api";
 export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
 export const ENTITY_PICKER_OPTIONS = {
-  // ...defaultOptions,
+  hasDatabases: true,
   hasConfirmButtons: false,
   hasRecents: true,
 };

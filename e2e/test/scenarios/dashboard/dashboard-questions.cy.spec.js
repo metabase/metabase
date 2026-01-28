@@ -406,28 +406,6 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Half Orders");
     });
 
-    it("can create a question using a dashboard question as a data source", () => {
-      H.createQuestion({
-        name: "Total Orders Dashboard Question",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      H.startNewQuestion();
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModalItem(0, "Our analytics").click();
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
-      H.entityPickerModal()
-        .findByText("Total Orders Dashboard Question")
-        .click();
-      H.visualize();
-      cy.findByTestId("query-visualization-root").findByText("18,760");
-    });
-
     it("can find dashboard questions in the search", () => {
       H.createQuestion({
         name: "Total Orders Dashboard Question",

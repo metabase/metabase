@@ -27,10 +27,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Databases").click();
-      cy.findByText("Orders").click();
-    });
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
