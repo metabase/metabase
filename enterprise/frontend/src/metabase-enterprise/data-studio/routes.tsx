@@ -33,7 +33,7 @@ export function getDataStudioRoutes(
   _CanAccessTransforms: ComponentType,
 ) {
   return (
-    <Route component={CanAccessDataStudio}>
+    <Route component={CanAccessDataStudio} app="data-studio">
       <Route path="data-studio" component={DataStudioLayout}>
         <IndexRoute
           onEnter={(_state, replace) => {
