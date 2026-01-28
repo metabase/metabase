@@ -78,19 +78,16 @@
 (defn referenced-tables
   "Return tables referenced in the `sql` query.
 
-  Return value is `[[catalog db table]...]`.
-
-  `catalog` is name of the database. Can be nil.
-  `db` is name of the `table`'s schema. Can be nil.
-  `table` is a name."
-  [driver sql catalog db]
+  Return value is `[[table_schema table]...]`."
+  [driver sql default-table-schema]
   (let [;; for development comment out interpreter so py changes are propagated to our context
         ctx (or #_@interpreter (python-context))
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.referenced_tables")
         dialect (when-not (= :h2 driver)
                   (name driver))]
-    (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db])))))))
+    (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql
+                                                               default-table-schema])))))))
 
 ;; TODO: should live in shim probably
 ;; TODO: Malli
@@ -108,14 +105,16 @@
 
 ;; TODO: Rename lineage to something more accurate
 (defn returned-columns-lineage
-  "WIP"
-  [driver sql catalog db schema]
+  [driver sql default-table-schema sqlglot-schema]
   (let [;; for development comment out interpreter so py changes are propagated to our context
         ctx (or #_@interpreter (python-context))
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.returned_columns_lineage")
         dialect (when-not (= :h2 driver)
                   (name driver))
-        lineage (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db schema]))))
+        lineage (json/decode (.asString (.execute pyfn (object-array [dialect
+                                                                      sql
+                                                                      default-table-schema
+                                                                      sqlglot-schema]))))
         normalized (mapv (partial normalized-dependencies driver) lineage)]
     normalized))

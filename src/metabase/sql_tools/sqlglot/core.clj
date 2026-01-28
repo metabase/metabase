@@ -5,7 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.parsers.sqlglot.shim :as sqlglot.shim]
+   [metabase.sql-tools.sqlglot.shim :as sqlglot.shim]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
@@ -42,13 +42,13 @@
 ;; TODO: Clean this up. This is breaking lib encapsulation.
 (defn- resolve-column
   [schema->table->col single-lineage]
-  (let [[alias pure? [[_catalog db table column]]] single-lineage]
+  (let [[alias pure? [[table-schema table column]]] single-lineage]
     (merge
      (if-not pure?
        {:base-type :type/*
         :effective-type :type/*
         :semantic-type :type/*}
-       (select-keys (get-in schema->table->col [db table column])
+       (select-keys (get-in schema->table->col [table-schema table column])
                     [:base-type :effective-type :semantic-type :database-type]))
      {:lib/type :metadata/column
       :lib/desired-column-alias alias
@@ -57,6 +57,8 @@
 
 (defn- lineage->returned-columns
   [schema->table->col* lineage]
+  (def stc schema->table->col*)
+  (def lass lineage)
   (mapv (partial resolve-column schema->table->col*) lineage))
 
 (defn returned-columns
@@ -67,7 +69,7 @@
   (let [schema (sqlglot-schema driver query)
         sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        lineage (sqlglot.shim/returned-columns-lineage driver sql-str nil default-schema* schema)
+        lineage (sqlglot.shim/returned-columns-lineage driver sql-str default-schema* schema)
         schema->table->col* (schema->table->col query)
         returned-columns (lineage->returned-columns schema->table->col* lineage)]
     returned-columns))
@@ -81,15 +83,14 @@
   (let [db-tables (lib.metadata/tables query)
         db-transforms (lib.metadata/transforms query)
         sql (lib/raw-native-query query)
-        dbname nil #_(lib.metadata/database query) ; cannonical way of getting the "catalog" name?
-        default-schema* (driver.sql/default-schema driver)
-        query-tables (sqlglot.shim/referenced-tables driver sql dbname default-schema*)]
+        default-table-schema* (driver.sql/default-schema driver)
+        query-tables (sqlglot.shim/referenced-tables driver sql default-table-schema*)]
     (into #{}
-          (keep (fn [[_catalog db-aka-our-schema table]]
+          (keep (fn [[table-schema table]]
                   (sql-tools.common/find-table-or-transform
                    driver db-tables db-transforms
                    (sql-tools.common/normalize-table-spec
-                    driver {:table table :schema db-aka-our-schema}))))
+                    driver {:table table :schema table-schema}))))
           query-tables)))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
