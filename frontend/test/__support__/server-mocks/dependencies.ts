@@ -1,6 +1,13 @@
 import fetchMock from "fetch-mock";
 
-import type { CheckDependenciesResponse } from "metabase-types/api";
+import type {
+  CheckDependenciesResponse,
+  DependencyGraph,
+} from "metabase-types/api";
+
+export function setupGetDependencyGraphEndpoint(response: DependencyGraph) {
+  fetchMock.get("express:/api/ee/dependencies/graph", response);
+}
 
 export function setupCheckCardDependenciesEndpoint(
   response: CheckDependenciesResponse,
