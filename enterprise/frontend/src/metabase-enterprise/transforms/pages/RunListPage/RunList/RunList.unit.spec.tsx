@@ -1,9 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { push } from "react-router-redux";
+import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
-import type { TransformRun, TransformTag } from "metabase-types/api";
+import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,
   createMockTransformRun,
@@ -11,27 +10,28 @@ import {
 
 import { RunList } from "./RunList";
 
-jest.mock("react-router-redux", () => ({
-  ...jest.requireActual("react-router-redux"),
-  push: jest.fn().mockReturnValue({ type: "@@router/CALL_HISTORY_METHOD" }),
-}));
-
-const pushMock = push as jest.MockedFunction<typeof push>;
-
 type SetupOpts = {
   runs?: TransformRun[];
-  tags?: TransformTag[];
-  totalCount?: number;
 };
 
-function setup({
-  runs = [createMockTransformRun({ transform: createMockTransform() })],
-  tags = [],
-  totalCount = runs.length,
-}: SetupOpts = {}) {
-  pushMock.mockClear();
-  renderWithProviders(
-    <RunList runs={runs} tags={tags} totalCount={totalCount} params={{}} />,
+function setup({ runs = [] }: SetupOpts = {}) {
+  return renderWithProviders(
+    <>
+      <Route
+        path="/data-studio/transforms/runs"
+        component={() => (
+          <RunList params={{}} runs={runs} tags={[]} totalCount={runs.length} />
+        )}
+      />
+      <Route
+        path="/data-studio/transforms/:id"
+        component={() => <div data-testid="transform-detail" />}
+      />
+    </>,
+    {
+      initialRoute: "/data-studio/transforms/runs",
+      withRouter: true,
+    },
   );
 }
 
@@ -47,12 +47,15 @@ describe("RunList", () => {
   it("should navigate to transform detail when clicking a row", async () => {
     const transform = createMockTransform({ id: 123, name: "Test Transform" });
     const run = createMockTransformRun({ transform });
-    setup({ runs: [run] });
+    const { history } = setup({ runs: [run] });
 
     const row = screen.getByRole("row", { name: /Test Transform/ });
     await userEvent.click(row);
 
-    expect(pushMock).toHaveBeenCalledWith(Urls.transform(123));
+    expect(history?.getCurrentLocation()?.pathname).toBe(
+      "/data-studio/transforms/123",
+    );
+    expect(screen.getByTestId("transform-detail")).toBeInTheDocument();
   });
 
   describe("deleted transforms", () => {
@@ -74,12 +77,15 @@ describe("RunList", () => {
         deleted: true,
       });
       const run = createMockTransformRun({ transform });
-      setup({ runs: [run] });
+      const { history } = setup({ runs: [run] });
 
       const row = screen.getByRole("row", { name: /Deleted Transform/ });
       await userEvent.click(row);
 
-      expect(pushMock).not.toHaveBeenCalled();
+      expect(history?.getCurrentLocation()?.pathname).toBe(
+        "/data-studio/transforms/runs",
+      );
+      expect(screen.queryByTestId("transform-detail")).not.toBeInTheDocument();
     });
   });
 });
