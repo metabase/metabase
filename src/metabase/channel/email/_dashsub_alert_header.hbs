@@ -96,6 +96,7 @@
         }
         .container {
           padding: 10px !important;
+          max-width: 100% !important;
         }
 
         {{!-- Collapse filters to a single column on small screens --}}
@@ -105,5 +106,17 @@
           line-height: 12px !important;
         }
       }
+      
+      .container {
+        max-width: 768px !important;
+      }
+
+      {{!-- Wider emails on larger screens --}}
+      @media screen and (min-width: 1440px) {
+        .container {
+          max-width: 1024px !important;
+        }
+      }
+
     </style>
   </head>
