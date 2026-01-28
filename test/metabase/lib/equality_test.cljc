@@ -16,7 +16,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1398,3 +1399,54 @@
                {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}]
               (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
                    marked))))))
+
+(deftest ^:parallel x-test
+  (let [mp          meta/metadata-provider
+        model-query (-> (lib/query mp (meta/table-metadata :accounts))
+                        (lib/with-fields [(meta/field-metadata :accounts :id)])
+                        (lib/join (-> (lib/join-clause (meta/table-metadata :analytic-events))
+                                      (lib/with-join-alias "Analytic Events")
+                                      (lib/with-join-conditions [(lib/= (-> (meta/field-metadata :analytic-events :account-id)
+                                                                            (lib/with-join-alias "Analytic Events"))
+                                                                        2)])
+                                      (lib/with-join-fields [(meta/field-metadata :analytic-events :id)
+                                                             (meta/field-metadata :analytic-events :account-id)])))
+                        #_(lib/join (-> (lib/join-clause (meta/table-metadata :invoices))
+                                        (lib/with-join-alias "Invoices")
+                                        (lib/with-join-conditions [(lib/= (-> (meta/field-metadata :invoices :account-id)
+                                                                              (lib/with-join-alias "Invoices"))
+                                                                          3)])
+                                        (lib/with-join-fields [(meta/field-metadata :invoices :id)
+                                                               (meta/field-metadata :invoices :account-id)])))
+                        (lib/limit 10))
+        mp          (lib.tu/mock-metadata-provider
+                     mp
+                     {:cards [{:id            1
+                               :type          :model
+                               :name          "M1"
+                               :dataset-query model-query}]})
+        query       (-> (lib/query mp (lib.metadata/card mp 1))
+                        (lib/aggregate (lib/count))
+                        (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                           $query
+                                                           (lib/breakoutable-columns $query)
+                                                           {:display-name "M1"}
+                                                           {:display-name "ID"})))
+                        (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                           $query
+                                                           (lib/breakoutable-columns $query)
+                                                           {:display-name "Analytic Events → Account"}
+                                                           {:display-name "ID"}))))
+        col         [:field
+                     {:lib/uuid          "5fda5967-798a-48c4-b78d-6515127d48cd",
+                      :effective-type    :type/BigInteger
+                      :base-type         :type/BigInteger
+                      :source-field      (meta/id :analytic-events :account-id)
+                      :source-field-name "Analytic Events__ACCOUNT_ID"}
+                     (meta/id :accounts :id)]
+        cols        (lib/breakoutable-columns query)]
+    (is (=? {:table-id                (meta/id :accounts)
+             :id                      (meta/id :accounts :id)
+             :fk-field-id             (meta/id :analytic-events :account-id)
+             :lib/source-column-alias "ID"}
+            (lib.equality/find-matching-column query -1 col cols)))))
