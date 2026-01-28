@@ -112,6 +112,39 @@ def referenced_tables(dialect, sql, catalog, db):
 
     return json.dumps(tuple(tables))
 
+# TODO: Double check when settled.
+def is_pure_column(root):
+    """
+    Check whether the lineage graph is a path of columns terminated by table.
+
+    :param root: The root of the lineage graph
+    """
+    for node in root.walk():
+        expression = node.expression
+        downstream = node.downstream
+
+        # We are looking for "path"...
+        if len(downstream) > 1:
+            return False
+
+        examined = None
+        if (isinstance(expression, exp.Alias)):
+            examined = expression.this
+        else:
+            examined = expression
+
+        # ...of `exp.Column`s...
+        if isinstance(examined, exp.Column):
+            continue
+        # ...terminated by the `exp.Table`
+        elif isinstance(examined, exp.Table):
+            continue
+        else:
+            return False
+    return True
+
+
+# TODO: Comment on everything is aliased?
 def returned_columns_lineage(dialect, sql, catalog, db, schema):
     ast = sqlglot.parse_one(sql, read=dialect)
     ast = qualify.qualify(ast,
@@ -126,16 +159,19 @@ def returned_columns_lineage(dialect, sql, catalog, db, schema):
 
     assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
 
-    dependencies = {}
+    dependencies = []
     for select in ast.named_selects:
 
-        # TODO: Duplicated aliases are not verified. 
-        # We have to do it ourselves.
+        # TODO: Duplicated aliases are not verified. # We have to do it ourselves.
+        # TODO: Because they are allowed! How can we handle that?
         assert select not in dependencies, \
             "Duplicate alias `{}`.".format(select)
 
+        select_elm_lineage = lineage.lineage(select, ast.sql(dialect))
+        is_pure_select = is_pure_column(select_elm_lineage)
+
         leaves = set()
-        for node in lineage.lineage(select, ast.sql(dialect)).walk():
+        for node in select_elm_lineage.walk():
             if (# Leaf nodes of `.walk` are `exp.Table`s. We are interested
                 # in the columns selected from those tables. The condition
                 # is intended to examine those columns.
@@ -150,6 +186,6 @@ def returned_columns_lineage(dialect, sql, catalog, db, schema):
                 namespaced_column = table + (node.expression.this.name, )
                 leaves.add(namespaced_column)
 
-        dependencies[select] = tuple(leaves)
+        dependencies.append((select, is_pure_select, tuple(leaves), ))
 
     return json.dumps(dependencies)
