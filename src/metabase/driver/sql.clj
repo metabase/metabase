@@ -16,8 +16,8 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
-   [metabase.driver.sql.sqlglot :as sqlglot]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
@@ -204,19 +204,7 @@
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
   #_(native-query-deps-macaw-impl driver query)
-  (let [db-tables (driver-api/tables query)
-        db-transforms (driver-api/transforms query)
-        sql (driver-api/raw-native-query query)
-        dbname nil #_(lib.metadata/database query) ; cannonical way of getting the "catalog" name?
-        default-schema* (default-schema driver)
-        ;; should probably live in references...
-        query-tables (sqlglot/referenced-tables driver sql dbname default-schema*)]
-    (into #{}
-          (keep (fn [[_catalog db-aka-our-schema table]]
-                  (find-table-or-transform driver db-tables db-transforms
-                                           (normalize-table-spec driver
-                                                                 {:table table :schema db-aka-our-schema}))))
-          query-tables)))
+  (sql-tools/referenced-tables driver query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
@@ -318,17 +306,26 @@
   [_driver _metadata-provider _col-spec]
   [])
 
+(defn native-result-metadata-impl-macaw
+  [driver native-query]
+  (let [{:keys [returned-fields]} (-> native-query
+                                      driver-api/raw-native-query
+                                      macaw/parsed-query
+                                      (as-> $ (do (def pp $) $))
+                                      macaw/->ast
+                                      (as-> $ (do (def aa $) $))
+                                      (->> (sql.references/field-references driver))
+                                      (as-> $ (do (def rr $) $)))]
+    @(def ret (mapcat #(->> (resolve-field driver native-query %)
+                            (keep :col))
+                      returned-fields))))
+
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [returned-fields]} (->> native-query
-                                       driver-api/raw-native-query
-                                       macaw/parsed-query
-                                       macaw/->ast
-                                       (sql.references/field-references driver))]
-    (mapcat #(->> (resolve-field driver native-query %)
-                  (keep :col))
-            returned-fields)))
+  #_@(def ahoj (native-result-metadata-impl-macaw driver native-query))
+  ;; not yet flawfless, pg works
+  @(def cauko (sql-tools/returned-columns driver native-query)))
 
 (mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
