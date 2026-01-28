@@ -1,8 +1,7 @@
-(ns metabase.sql-tools.parsers.sqlglot.core
+(ns metabase.sql-tools.sqlglot.core
   (:require
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.core :as sql-tools]
@@ -10,24 +9,22 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
-;;; TODO: explain namespacing, catalog
-;;; TODO: use driver-api maybe
+;; TODO: explain namespacing, catalog, db...
 
-;; TODO: Either remove (use only schema table col) or find a cannonical way
-(defn- database-name
-  [db]
-  (or (some-> db :settings :database-source-dataset-name)
-      (:name db)))
+(defn table-schema
+  [driver table]
+  (or (:schema table)
+      (driver.sql/default-schema driver)))
 
-;; TODO: mp vs direct appdb calls
 ;; TODO: there are some 1000+ fields schemas lurking, this functionality should be disabled for them!
-(defn- schema-for-sqlglot
-  "WIP"
-  [mp]
+(defn- sqlglot-schema
+  "Generate the database schema structure processable by Sqlglot."
+  [driver mp]
   (reduce (fn [acc table]
-            (assoc-in acc [(:schema table) (:name table)]
+            (assoc-in acc [(table-schema driver table) (:name table)]
                       (u/for-map
                        [field (lib.metadata/fields mp (:id table))]
+                       ;; TODO: Proper type mappings (if that unlocks some useful functionality)
                         [(:name field) "UNKNOWN"])))
           {}
           (lib.metadata/tables mp)))
@@ -42,7 +39,7 @@
           {}
           (lib.metadata/tables mp)))
 
-;; This is breaking lib encapsulation (as the former logic). Will clean that up.
+;; TODO: Clean this up. This is breaking lib encapsulation.
 (defn- resolve-column
   [schema->table->col single-lineage]
   (let [[alias pure? [[_catalog db table column]]] single-lineage]
@@ -62,17 +59,14 @@
   [schema->table->col* lineage]
   (mapv (partial resolve-column schema->table->col*) lineage))
 
-;; WIP: moving to impl without catalog!!!
 (defn returned-columns
-  "Given a native query return its columns."
+  "Given a native query return columns it produces.
+
+  Normalizes identifiers returned by the Sqlglot. (TODO: questionable! get back to this.)"
   [driver query]
-  ;; driver support
-  ;; database support (x for mongo)
-  (let [schema (schema-for-sqlglot query)
-        sql-str (driver-api/raw-native-query query)
-        ;; should not use the default, bc I'll be matching against it (mp names vs sqlglot names)
+  (let [schema (sqlglot-schema driver query)
+        sql-str (lib/raw-native-query query)
         default-schema* (driver.sql/default-schema driver)
-        ;; driver normalization of those names?
         lineage (sqlglot.shim/returned-columns-lineage driver sql-str nil default-schema* schema)
         schema->table->col* (schema->table->col query)
         returned-columns (lineage->returned-columns schema->table->col* lineage)]
@@ -84,11 +78,11 @@
 
 (defn- referenced-tables
   [driver query]
-  (let [db-tables (driver-api/tables query)
-        db-transforms (driver-api/transforms query)
-        sql (driver-api/raw-native-query query)
+  (let [db-tables (lib.metadata/tables query)
+        db-transforms (lib.metadata/transforms query)
+        sql (lib/raw-native-query query)
         dbname nil #_(lib.metadata/database query) ; cannonical way of getting the "catalog" name?
-        default-schema* (driver/default-schema driver)
+        default-schema* (driver.sql/default-schema driver)
         query-tables (sqlglot.shim/referenced-tables driver sql dbname default-schema*)]
     (into #{}
           (keep (fn [[_catalog db-aka-our-schema table]]
