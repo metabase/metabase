@@ -68,12 +68,20 @@ export function getEmbeddingThemeOverride(
 
   // Apply whitelabeled colors from appearance settings
   for (const key in whitelabeledColors) {
+    if (!override.colors) {
+      override.colors = {};
+    }
+
     override.colors[key as MetabaseColorKey] = colorTuple(
       whitelabeledColors[key],
     );
   }
 
   if (theme.colors) {
+    if (!override.colors) {
+      override.colors = {};
+    }
+
     const userColors = { ...theme.colors };
 
     // Apply fallback colors for missing colors that the user forgot to define.
