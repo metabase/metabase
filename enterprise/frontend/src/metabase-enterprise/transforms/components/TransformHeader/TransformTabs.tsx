@@ -31,6 +31,10 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
+    {
+      label: t`Inspect`,
+      to: Urls.transformInspect(id),
+    },
   ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {

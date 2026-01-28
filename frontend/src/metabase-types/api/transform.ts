@@ -1,10 +1,11 @@
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { CardDisplayType } from "./visualization";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -276,4 +277,107 @@ export type CheckQueryComplexityRequest = string;
 export type QueryComplexity = {
   is_simple: boolean;
   reason: string;
+};
+
+export type TransformInspectFieldStats = {
+  distinct_count?: number;
+  nil_percent?: number;
+  min?: number;
+  max?: number;
+  avg?: number;
+};
+
+export type TransformInspectField = {
+  id?: number;
+  name: string;
+  display_name?: string;
+  base_type?: string;
+  semantic_type?: string;
+  stats?: TransformInspectFieldStats;
+};
+
+export type TransformInspectSummaryTable = {
+  table_name: string;
+  row_count?: number;
+  column_count: number;
+};
+
+export type TransformInspectSummary = {
+  inputs: TransformInspectSummaryTable[];
+  output: TransformInspectSummaryTable;
+};
+
+export type TransformInspectJoin = {
+  strategy: JoinStrategy;
+  alias?: string;
+  source_table: ConcreteTableId;
+  stats: {
+    source_table?: unknown;
+    left_row_count?: number;
+    right_row_count?: number;
+    matched_count?: number;
+    match_rate?: number;
+    left_match_rate?: number;
+    right_match_rate?: number;
+    output_row_count?: number;
+    expansion_factor?: number;
+    rhs_null_key_count?: number;
+    rhs_null_key_percent?: number;
+  };
+};
+
+export type TransformInspectSource = {
+  table_id?: number;
+  table_name: string;
+  schema?: string;
+  db_id?: number;
+  row_count?: number;
+  column_count: number;
+  fields: TransformInspectField[];
+};
+
+export type TransformInspectTarget = {
+  table_id: number;
+  table_name: string;
+  schema?: string;
+  row_count?: number;
+  column_count: number;
+  fields: TransformInspectField[];
+};
+
+export type TransformInspectComparisonCard = {
+  id: string;
+  source: "input" | "output";
+  table_name: string;
+  field_name: string;
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+};
+
+export type TransformInspectColumnComparison = {
+  id: string;
+  output_column: string;
+  cards: TransformInspectComparisonCard[];
+};
+
+export type TransformInspectStatus = "not-run" | "ready";
+
+export type TransformInspectVisitedFields = {
+  join_fields?: number[];
+  filter_fields?: number[];
+  group_by_fields?: number[];
+  all?: number[];
+};
+
+export type TransformInspectResponse = {
+  name: string;
+  description: string;
+  status: TransformInspectStatus;
+  summary?: TransformInspectSummary;
+  joins?: TransformInspectJoin[];
+  sources: TransformInspectSource[];
+  target?: TransformInspectTarget;
+  column_comparisons?: TransformInspectColumnComparison[];
+  visited_fields?: TransformInspectVisitedFields;
 };

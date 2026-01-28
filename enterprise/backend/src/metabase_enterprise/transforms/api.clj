@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.inspector :as transforms.inspector]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -489,6 +490,32 @@
         driver-name (driver/the-initialized-driver (:engine database))
         columns     (extract-incremental-filter-columns-from-query driver-name database-id query)]
     {:columns columns}))
+
+(api.macros/defendpoint :get "/:id/inspect"
+  :- ::transforms.schema/inspector-result
+  "Get inspection dashboard for a transform with visualization cards.
+   Returns summary statistics, join analysis, column distribution comparisons,
+   and diagnostics to help understand what the transform is doing."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (check-feature-enabled! transform)
+    (transforms.inspector/inspect-transform transform)))
+
+(api.macros/defendpoint :post "/inspect"
+  :- ::transforms.schema/generic-inspector-result
+  "Inspect a set of input tables against an output table.
+   Generic endpoint that works without a transform definition.
+   Useful for inspecting transform subgraphs or arbitrary table comparisons."
+  [_route-params
+   _query-params
+   {:keys [input-table-ids output-table-id]} :- ::transforms.schema/inspect-tables-request]
+  (api/check-400 (seq input-table-ids)
+                 (deferred-tru "At least one input table is required."))
+  ;; Check read access on all tables
+  (doseq [table-id (conj input-table-ids output-table-id)]
+    (api/read-check :model/Table table-id))
+  (transforms.inspector/inspect-tables input-table-ids output-table-id))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
