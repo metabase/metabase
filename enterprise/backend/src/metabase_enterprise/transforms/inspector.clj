@@ -100,6 +100,50 @@
                    (:join-alias (second rhs)))
           rhs)))))
 
+(defn- get-join-key-field-ids
+  "Extract both LHS and RHS field IDs from join conditions.
+   Returns {:lhs-field-id <id> :rhs-field-id <id>} or nil."
+  [conditions]
+  (when-let [condition (first conditions)]
+    (when (and (vector? condition) (>= (count condition) 4))
+      (let [[_op _opts lhs rhs] condition
+            lhs-id (when (and (vector? lhs) (= :field (first lhs)) (>= (count lhs) 3))
+                     (nth lhs 2))
+            rhs-id (when (and (vector? rhs) (= :field (first rhs)) (>= (count rhs) 3))
+                     (nth rhs 2))]
+        (when (and (int? lhs-id) (int? rhs-id))
+          {:lhs-field-id lhs-id
+           :rhs-field-id rhs-id})))))
+
+(defn- count-null-in-field
+  "Count NULL values in a specific field of a table.
+   Returns {:null-count <n> :total-count <n> :null-percent <0.0-1.0>}."
+  [mp table-id field-id]
+  (try
+    (let [table-metadata (lib.metadata/table mp table-id)
+          field-metadata (lib.metadata/field mp field-id)
+
+          ;; Total count
+          total-query (-> (lib/query mp table-metadata)
+                          (lib/aggregate (lib/count)))
+          total-count (run-pmbql-query total-query)
+
+          ;; Non-null count (COUNT(field) excludes NULLs)
+          non-null-query (-> (lib/query mp table-metadata)
+                             (lib/aggregate (lib/count (lib/ref field-metadata))))
+          non-null-count (run-pmbql-query non-null-query)
+
+          null-count (- total-count non-null-count)
+          null-percent (if (pos? total-count)
+                         (double (/ null-count total-count))
+                         0.0)]
+      {:null-count null-count
+       :total-count total-count
+       :null-percent null-percent})
+    (catch Exception e
+      (log/warnf e "Failed to count nulls for field %d in table %d" field-id table-id)
+      nil)))
+
 (defn- query-with-n-joins
   "Return a copy of query with only the first n joins from the first stage.
    When n=0, removes all joins."
@@ -225,6 +269,11 @@
                                      {:null-count null-count
                                       :matched-count non-null-count})))
 
+                    ;; Count NULL join keys in the RHS table (table being joined)
+                    rhs-null-key-stats (when-let [field-ids (get-join-key-field-ids (:conditions current-join))]
+                                         (when (int? join-source-table)
+                                           (count-null-in-field mp join-source-table (:rhs-field-id field-ids))))
+
                     ;; Map iterative stats to existing field names for FE compatibility:
                     ;; - left-row-count = prev-row-count (rows before this join)
                     ;; - right-row-count = source-row-count (the table being joined)
@@ -235,6 +284,11 @@
                             ;; Merge null stats for outer joins
                             null-stats
                             (merge null-stats)
+
+                            ;; Add null join key stats for RHS table
+                            rhs-null-key-stats
+                            (assoc :rhs-null-key-count (:null-count rhs-null-key-stats)
+                                   :rhs-null-key-percent (:null-percent rhs-null-key-stats))
 
                             ;; Add derived metrics based on join type
                             (#{:inner-join :cross-join} strategy)
@@ -589,8 +643,8 @@
             base-result (inspect-tables input-ids (:id target-table) joins-seq query-source-table-id)]
 
         (cond-> (assoc base-result
-                        :name (str "Transform Inspector: " (:name transform))
-                        :description (tru "Analysis of transform inputs, outputs, and joins"))
+                       :name (str "Transform Inspector: " (:name transform))
+                       :description (tru "Analysis of transform inputs, outputs, and joins"))
           ;; Add base-row-count at top level (row count before any joins)
           (:base-row-count join-stats)
           (assoc :base-row-count (:base-row-count join-stats))

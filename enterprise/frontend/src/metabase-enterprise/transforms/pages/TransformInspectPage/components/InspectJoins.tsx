@@ -92,8 +92,8 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
       {
         id: "warnings",
         header: t`Warnings`,
-        width: 150,
-        cell: ({ row }) => getCrossProductWarningCell(row.original),
+        width: 220,
+        cell: ({ row }) => getWarningsCell(row.original),
       },
     ],
     [],
@@ -234,6 +234,7 @@ function getCrossProductWarningCell(
 }
 
 const CROSS_PRODUCT_THRESHOLD = 2;
+const NULL_KEY_WARNING_THRESHOLD = 0.05;
 
 function getHasCrossProductWarning(row: JoinRow) {
   const { stats, strategy } = row;
@@ -279,4 +280,64 @@ function getHasCrossProductWarning(row: JoinRow) {
       return expansion_factor > CROSS_PRODUCT_THRESHOLD;
     })
     .otherwise(() => false);
+}
+
+function getNullKeyWarningCell(row: JoinRow): React.ReactNode | null {
+  const { stats, strategy } = row;
+
+  const nullCount = stats?.rhs_null_key_count;
+  const nullPercent = stats?.rhs_null_key_percent;
+
+  if (
+    nullCount === undefined ||
+    nullPercent === undefined ||
+    nullCount === 0 ||
+    nullPercent < NULL_KEY_WARNING_THRESHOLD
+  ) {
+    return null;
+  }
+
+  const warningMessage = match(strategy)
+    .with(
+      "inner-join",
+      () =>
+        t`${nullCount.toLocaleString()} rows (${formatPercent(nullPercent)}) have NULL join keys and won't match in this inner join`,
+    )
+    .with(
+      P.union("left-join", "right-join", "full-join"),
+      () =>
+        t`${nullCount.toLocaleString()} rows (${formatPercent(nullPercent)}) have NULL join keys`,
+    )
+    .otherwise(() => null);
+
+  if (!warningMessage) {
+    return null;
+  }
+
+  return (
+    <Tooltip label={warningMessage} multiline maw={300}>
+      <Flex gap="xs" align="center" justify="flex-end">
+        <Icon name="warning" c="warning" size={16} />
+        <Text size="sm" c="warning">
+          {t`NULL join keys`}
+        </Text>
+      </Flex>
+    </Tooltip>
+  );
+}
+
+function getWarningsCell(row: JoinRow): React.ReactNode {
+  const crossProductWarning = getCrossProductWarningCell(row);
+  const nullKeyWarning = getNullKeyWarningCell(row);
+
+  if (!crossProductWarning && !nullKeyWarning) {
+    return null;
+  }
+
+  return (
+    <Stack gap="xs" align="flex-end">
+      {crossProductWarning}
+      {nullKeyWarning}
+    </Stack>
+  );
 }

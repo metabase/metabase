@@ -321,6 +321,8 @@ export type TransformInspectJoin = {
     right_match_rate?: number;
     output_row_count?: number;
     expansion_factor?: number;
+    rhs_null_key_count?: number;
+    rhs_null_key_percent?: number;
   };
 };
 

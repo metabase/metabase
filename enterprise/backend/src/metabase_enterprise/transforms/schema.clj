@@ -125,7 +125,11 @@
    - match-rate: matched-count / left-row-count
 
    For inner/cross/full joins:
-   - expansion-factor: output-row-count / left-row-count"
+   - expansion-factor: output-row-count / left-row-count
+
+   For null join key detection:
+   - rhs-null-key-count: count of NULL values in RHS table's join key column
+   - rhs-null-key-percent: percentage of NULL values in RHS table's join key column"
   [:map
    [:left-row-count {:optional true} [:maybe :int]]
    [:right-row-count {:optional true} [:maybe :int]]
@@ -135,7 +139,9 @@
    [:match-rate {:optional true} [:maybe :double]]
    [:left-match-rate {:optional true} [:maybe :double]]
    [:right-match-rate {:optional true} [:maybe :double]]
-   [:expansion-factor {:optional true} [:maybe :double]]])
+   [:expansion-factor {:optional true} [:maybe :double]]
+   [:rhs-null-key-count {:optional true} [:maybe :int]]
+   [:rhs-null-key-percent {:optional true} [:maybe :double]]])
 
 (mr/def ::inspector-join
   "Join information from MBQL transform."
