@@ -3,6 +3,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
@@ -44,6 +45,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges =
       useHasTransformDirtyChanges;
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;
