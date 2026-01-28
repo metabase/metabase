@@ -52,10 +52,16 @@ export function getComputedSettings(
   }
 
   if (isEmbeddingSdk()) {
-    return _.compose(
-      removeInternalClickBehaviors,
+    // TODO: refactor this
+    const enableEntityNavigation = extra.enableEntityNavigation;
+
+    const result = _.compose(
+      // remove internal click behaviors unless internal navigation is enabled
+      enableEntityNavigation ? _.identity : removeInternalClickBehaviors,
       convertLinkColumnToClickBehavior,
     )(computedSettings);
+
+    return result;
   }
 
   return computedSettings;

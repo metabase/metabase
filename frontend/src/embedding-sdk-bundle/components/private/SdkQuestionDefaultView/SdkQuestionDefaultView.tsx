@@ -34,7 +34,6 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
 import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
@@ -60,11 +59,6 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   title?: SdkQuestionTitleProps;
 
   /**
-   * Determines whether a reset button is displayed. Only relevant when using the default layout.
-   */
-  withResetButton?: boolean;
-
-  /**
    * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
    */
   withChartTypeSelector?: boolean;
@@ -76,7 +70,6 @@ export const SdkQuestionDefaultView = ({
   className,
   style,
   title,
-  withResetButton,
   withChartTypeSelector,
 }: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
@@ -94,7 +87,7 @@ export const SdkQuestionDefaultView = ({
     queryQuestion,
   } = useSdkQuestionContext();
 
-  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+  const { reportLocation } = useSdkBreadcrumbs();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const isQuestionSaved = question?.isSaved();
@@ -193,20 +186,14 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" py="md" pr="md">
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
           <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
-            </Box>
-            <DefaultViewTitle
-              title={title}
-              withResetButton={withResetButton && !isBreadcrumbEnabled}
-            />
+            <DefaultViewTitle title={title} />
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
         </Group>

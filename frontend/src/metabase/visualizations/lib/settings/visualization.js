@@ -97,16 +97,18 @@ export function getStoredSettingsForSeries(series) {
 /**
  * @import { ComputedVisualizationSettings } from "metabase/visualizations/types";
  *
+ * @param {any} series
+ * @param {{ enableEntityNavigation?: boolean }} [extra]
  * @returns {ComputedVisualizationSettings}
  */
-export function getComputedSettingsForSeries(series) {
+export function getComputedSettingsForSeries(series, extra = {}) {
   if (!series) {
     return {};
   }
 
   const settingsDefs = getSettingDefinitionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
-  return getComputedSettings(settingsDefs, series, storedSettings);
+  return getComputedSettings(settingsDefs, series, storedSettings, extra);
 }
 
 export function getPersistableDefaultSettingsForSeries(series) {

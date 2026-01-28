@@ -14,7 +14,6 @@ interface SdkAdHocQuestionProps {
 
 export const SdkAdHocQuestion = ({
   questionPath,
-  withResetButton = true,
   title,
   plugins,
   height,
@@ -32,10 +31,10 @@ export const SdkAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
   onVisualizationChange,
+  navigateToNewCard,
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
-    | "withResetButton"
     | "title"
     | "plugins"
     | "height"
@@ -52,6 +51,7 @@ export const SdkAdHocQuestion = ({
     | "withDownloads"
     | "initialSqlParameters"
     | "onVisualizationChange"
+    | "navigateToNewCard"
   >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -82,12 +82,12 @@ export const SdkAdHocQuestion = ({
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
+      navigateToNewCard={navigateToNewCard}
       height={height}
       width={width}
       className={className}
       style={style}
       title={title}
-      withResetButton={withResetButton}
       withChartTypeSelector={withChartTypeSelector}
       onVisualizationChange={onVisualizationChange}
     >
