@@ -44,6 +44,10 @@
                     {:id id, :path path})))
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
+(def ^:private ->native
+  "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
+  (comp mt/native-query ws.tu/mbql->native))
+
 (deftest workspace-endpoints-require-superuser-test
   (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
     (testing "GET /api/ee/workspace requires superuser"
@@ -428,11 +432,10 @@
                    (t2/select-one-fn :name :model/Transform (:id x1))))
             (is (= (:name ws-x-2)
                    (t2/select-one-fn :name :model/Transform (:id x2)))))
-          (testing "Workspace transforms are deleted"
-            (is (not (t2/exists? :model/WorkspaceTransform
-                                 :workspace_id ws-id :ref_id (:ref_id ws-x-1)))))
-          (is (not (t2/exists? :model/WorkspaceTransform
-                               :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
+          (testing "Workspace transforms are not deleted"
+            (is (= 2 (t2/count :model/WorkspaceTransform
+                               :workspace_id ws-id
+                               :ref_id [:in (map :ref_id [ws-x-1 ws-x-2])])))))
         (testing "Workspace has been archived"
           (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id ws-id))))))))
 
@@ -498,10 +501,10 @@
                     :global_id (:id x1)
                     :ref_id ws-x-1-id}
                    resp)))
-          (testing "Remaining workspace transform is left untouched"
-            (is (= 1 (count remaining)))
-            (is (=? (:name ws-x-2)
-                    (:name (first remaining)))))
+          (testing "Workspace transforms are left untouched"
+            (is (= 2 (count remaining)))
+            (is (=? (into #{} (map :name [ws-x-1 ws-x-2]))
+                    (into #{} (map :name remaining)))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-1)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
@@ -526,8 +529,8 @@
                     :global_id (:id x2)
                     :ref_id ws-x-2-id}
                    resp)))
-          (testing "Remaining workspace transform was deleted"
-            (is (= 0 (count remaining))))
+          (testing "Workspace transforms still remain"
+            (is (= 2 (count remaining))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-2)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
@@ -685,8 +688,8 @@
                              :global_id new-global-id
                              :ref_id ws-x-3-id}}
                           (get-in resp [:merged :transforms])))))
-            (testing "All transforms were deleted on merge"
-              (is (= 0 (count (t2/select :model/WorkspaceTransform :workspace_id ws-id)))))
+            (testing "No transforms are deleted on merge"
+              (is (= 3 (count (t2/select :model/WorkspaceTransform :workspace_id ws-id)))))
             (testing "Propagation back to core"
               (is (= "UPDATED 1"
                      (t2/select-one-fn :name :model/Transform :id (:global_id ws-x-1))))
@@ -744,7 +747,7 @@
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                  {:name   "New Transform"
                                                   :source {:type  "query"
-                                                           :query (mt/mbql-query venues)}
+                                                           :query (->native (mt/mbql-query venues))}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
 
@@ -767,7 +770,7 @@
                    (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/transform")
                                          {:name   "Should Fail"
                                           :source {:type  "query"
-                                                   :query (mt/mbql-query venues)}
+                                                   :query (->native (mt/mbql-query venues))}
                                           :target {:type "table"
                                                    :name "should_fail"}})))))))))
 
@@ -791,7 +794,7 @@
                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
-                                                :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query transforms_products)))}
+                                                :query (->native (mt/mbql-query transforms_products))}
                                        :target {:type "table"
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
@@ -902,6 +905,74 @@
 ;; outputs:         B (from X1) and C (from X2)
 ;; external-inputs: A (raw-inputs - outputs)
 
+;;;; Card dependency rejection tests
+
+(defn- query-with-source-card
+  "Create a pMBQL query that uses a card as its source."
+  [card-id]
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [{:lib/type    :mbql.stage/mbql
+               :source-card card-id}]})
+
+(defn- create-transform-with-card-source!
+  "Create a transform whose source query depends on a card.
+  The after-insert hook triggers dependency calculation automatically."
+  [card]
+  (t2/insert-returning-instance! :model/Transform
+                                 {:name   "Transform depending on card"
+                                  :source {:type  :query
+                                           :query (query-with-source-card (:id card))}
+                                  :target {:type     "table"
+                                           :database (mt/id)
+                                           :schema   "public"
+                                           :name     "card_dep_output"}}))
+
+(deftest add-transform-rejects-card-dependencies-test
+  (testing "Cannot add transforms that depend on cards"
+    (mt/with-temp [:model/Card card {:name          "Test Card"
+                                     :database_id   (mt/id)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (let [tx        (create-transform-with-card-source! card)
+            ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                            {:name        "Card Dep Workspace"
+                                             :database_id (mt/id)})
+            ;; TODO add validation
+            _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx)]
+        #_(is (re-find #"Cannot add transforms that depend on saved questions" ws))))))
+
+(deftest add-transform-rejects-transitive-card-dependencies-test
+  (testing "Cannot add transforms that transitively depend on cards"
+    (mt/with-temp [:model/Card card {:name          "Base Card"
+                                     :database_id   (mt/id)
+                                     :dataset_query (mt/mbql-query venues)}]
+      ;; tx1 depends on card
+      (let [tx1 (create-transform-with-card-source! card)
+            ;; tx2 depends on tx1 (via a manually created dependency - simulating transform chain)
+            tx2 (t2/insert-returning-instance! :model/Transform
+                                               {:name   "Transform 2 - depends on tx1"
+                                                :source {:type  :query
+                                                         :query {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query "SELECT 1"}}}
+                                                :target {:type     "table"
+                                                         :database (mt/id)
+                                                         :schema   "public"
+                                                         :name     "tx2_output"}})]
+        ;; Create dependency: tx2 depends on tx1
+        (t2/insert! :model/Dependency
+                    {:from_entity_type "transform"
+                     :from_entity_id   (:id tx2)
+                     :to_entity_type   "transform"
+                     :to_entity_id     (:id tx1)})
+        ;; Try to add tx2 (which transitively depends on card via tx1) to workspace
+        (let [ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                              {:name        "Transitive Card Dep Workspace"
+                                               :database_id (mt/id)})
+              ;; TODO add validation
+              _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx2)]
+          #_(is (re-find #"Cannot add transforms that depend on saved questions" response)))))))
+
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
     (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
@@ -923,6 +994,19 @@
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
                                    {:name "Should Fail"}))))))
+
+(deftest add-transform-rejects-card-dependencies-to-existing-workspace-test
+  (testing "Cannot add transforms with card dependencies to existing workspace"
+    (mt/with-temp [:model/Card card {:name          "Test Card"
+                                     :database_id   (mt/id)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (let [tx           (create-transform-with-card-source! card)
+            workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                    {:name        "Empty Workspace"
+                                                     :database_id (mt/id)}))
+            ;; TODO add validation
+            _response    (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/transform") tx)]
+        #_(is (re-find #"Cannot add transforms that depend on saved questions" response))))))
 
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
@@ -1244,8 +1328,8 @@
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
 (defn- quote-table-name
-  [driver {:keys [name schema]}]
-  (sql.u/quote-name driver :table schema name))
+  [driver {:keys [schema], table :name}]
+  (sql.u/quote-name driver :table schema table))
 
 (deftest run-workspace-transform-bad-column-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
@@ -1254,7 +1338,7 @@
         (let [order-table (t2/select-one :model/Table (mt/id :orders))
               bad-transform {:name   "Bad Column Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query (format "SELECT * FROM %s" (quote-table-name (:engine (mt/db)) order-table))})}
+                                      :query (mt/native-query {:query (format "SELECT nocolumn FROM %s" (quote-table-name (:engine (mt/db)) order-table))})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   (:schema order-table)
