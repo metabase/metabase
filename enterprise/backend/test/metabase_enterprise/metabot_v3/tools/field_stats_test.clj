@@ -53,11 +53,11 @@
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]
-            (= {:structured-output {:result-type    :field-metadata
-                                    :field_id       field-id
-                                    :value_metadata value-metadata}}
-               (metabot-v3.tools.field-stats/field-values
-                {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
+             (= {:structured-output {:result-type    :field-metadata
+                                     :field_id       field-id
+                                     :value_metadata value-metadata}}
+                (metabot-v3.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id   birth-date-id {:statistics
                                      {:distinct-count 2308
                                       :percent-null   0.0
