@@ -8,11 +8,25 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(declare validate-tool-definition!)
+(def ^:private tool-definition-schema
+  [:map
+   [:tool-name [:and :string [:fn #(not (str/blank? %))]]]
+   [:schema [:fn some?]]
+   [:doc {:optional true} [:maybe :string]]
+   [:system-instructions {:optional true} [:maybe :string]]])
 
 (def ^:private *profiles
   "Map of profile-id to profile configuration"
   (atom {}))
+
+(defn- validate-tool-definition!
+  [tool-var]
+  (let [definition (select-keys (meta tool-var) [:tool-name :schema :doc :system-instructions])]
+    (when-not (mr/validate tool-definition-schema definition)
+      (throw (ex-info "Invalid tool definition metadata"
+                      {:tool       tool-var
+                       :definition definition
+                       :errors     (me/humanize (mu/explain tool-definition-schema definition))})))))
 
 (mu/defn ^:private register-profile!
   "Register new profile configuration.
@@ -109,22 +123,6 @@
                     #'agent-tools/create-chart-tool
                     #'agent-tools/edit-chart-tool]})
 
-(def ^:private tool-definition-schema
-  [:map
-   [:tool-name [:and :string [:fn #(not (str/blank? %))]]]
-   [:schema [:fn some?]]
-   [:doc {:optional true} [:maybe :string]]
-   [:system-instructions {:optional true} [:maybe :string]]])
-
-(defn- validate-tool-definition!
-  [tool-var]
-  (let [definition (select-keys (meta tool-var) [:tool-name :schema :doc :system-instructions])]
-    (when-not (mr/validate tool-definition-schema definition)
-      (throw (ex-info "Invalid tool definition metadata"
-                      {:tool       tool-var
-                       :definition definition
-                       :errors     (me/humanize (mu/explain tool-definition-schema definition))})))))
-
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
   Removes tools that require capabilities the user doesn't have."
@@ -152,4 +150,3 @@
           :tools
           (filter-by-capabilities capabilities)
           tool-map))
-
