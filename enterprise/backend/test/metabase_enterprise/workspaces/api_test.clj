@@ -1245,7 +1245,7 @@
 
 (defn- quote-table-name
   [driver {:keys [name schema]}]
-  (sql.u/quote-name driver :table name schema))
+  (sql.u/quote-name driver :table schema name))
 
 (deftest run-workspace-transform-bad-column-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"

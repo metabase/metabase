@@ -15,6 +15,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
+   [metabase.driver.sql.util :as sql.util]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -49,12 +50,16 @@
     (update source :source-tables update-vals remap)))
 
 (defn- remap-sql-source [table-mapping source]
-  (let [remapping (reduce
+  (let [db-id     (get-in source [:query :database])
+        driver    (t2/select-one-fn :engine :model/Database :id db-id)
+        ;; Quote identifiers using driver-specific quoting (backticks for MySQL, double quotes for ANSI)
+        quote-name (fn [s] (when s (sql.util/quote-name driver :table s)))
+        remapping (reduce
                    (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
                      (assoc-in remapping [:tables {:schema source-schema
                                                    :table  source-table}]
-                               {:schema target-schema
-                                :table  target-table}))
+                               {:schema (quote-name target-schema)
+                                :table  (quote-name target-table)}))
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
@@ -147,9 +152,9 @@
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e
-     (log/error e "Failed to run sql preview")
-     {:status  :failed
-      :message (ex-message e)})))
+      (log/error e "Failed to run sql preview")
+      {:status  :failed
+       :message (ex-message e)})))
 
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.

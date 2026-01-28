@@ -1236,16 +1236,15 @@
   [_driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
   ;; We create a separate database for workspace isolation.
-  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
-        user      (driver.u/workspace-isolation-user-name workspace)
-        password  (driver.u/random-workspace-password)
-        read-user {:user user, :password password}]
+  (let [db-name  (driver.u/workspace-isolation-namespace-name workspace)
+        user     (driver.u/workspace-isolation-user-name workspace)
+        password (driver.u/random-workspace-password)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (let [user-sql (if (mysql-user-exists? t-conn (:user read-user))
+      (let [user-sql (if (mysql-user-exists? t-conn user)
                        (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               (:user read-user) (:password read-user))
+                               user password)
                        (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               (:user read-user) (:password read-user)))]
+                               user password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
                        (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
@@ -1255,7 +1254,7 @@
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
-     :database_details read-user}))
+     :database_details {:user user, :password password :db db-name}}))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
