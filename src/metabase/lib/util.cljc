@@ -84,11 +84,14 @@
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
-  (isa?
-   (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
-       (lib.schema.expression/type-of expression))
-   typ))
+  (let [expr-type (or (and (clause? expression)
+                           ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
+                      (lib.schema.expression/type-of expression))]
+    ;; type-of can return a set of types for ambiguous cases (e.g. #{:type/Text :type/Date} for date strings).
+    ;; Check if any of the types in the set match.
+    (if (coll? expr-type)
+      (some #(isa? % typ) expr-type)
+      (isa? expr-type typ))))
 
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."

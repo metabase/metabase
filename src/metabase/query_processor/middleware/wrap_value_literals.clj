@@ -241,6 +241,10 @@
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
     [tag opts field (add-type-info x (*type-info* query path field))]
 
+    ;; literal and field (literal on LHS)
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) field]
+    [tag opts (add-type-info x (*type-info* query path field)) field]
+
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
 
