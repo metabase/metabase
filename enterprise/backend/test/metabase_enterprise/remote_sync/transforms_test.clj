@@ -478,7 +478,7 @@ is_sample: false
               (let [test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
                                         (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
-                                        (generate-transform-yaml remote-transform-entity-id "Remote Transform")}}
+                                        (generate-transform-yaml remote-transform-entity-id "Remote Transform" (mt/id) (mt/id :venues))}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result))
