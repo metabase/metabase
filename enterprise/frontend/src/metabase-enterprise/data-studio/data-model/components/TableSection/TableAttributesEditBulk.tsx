@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -59,6 +60,9 @@ export function TableAttributesEditBulk({
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [modalType, setModalType] = useState<TableModalType>();
+  const previousTables = usePrevious(selectedTables);
+  const previousSchemas = usePrevious(selectedSchemas);
+  const previousDatabases = usePrevious(selectedDatabases);
 
   const hasOnlyTablesSelected =
     selectedTables.size > 0 &&
@@ -141,12 +145,30 @@ export function TableAttributesEditBulk({
   };
 
   useEffect(() => {
-    setDataLayer(null);
-    setDataSource(null);
-    setEmail(null);
-    setEntityType(null);
-    setUserId(null);
-  }, [selectedTables, selectedSchemas, selectedDatabases]);
+    if (!previousTables || !previousSchemas || !previousDatabases) {
+      return;
+    }
+
+    const shouldReset =
+      !selectedTables.isSubsetOf(previousTables) ||
+      !selectedSchemas.isSubsetOf(previousSchemas) ||
+      !selectedDatabases.isSubsetOf(previousDatabases);
+
+    if (shouldReset) {
+      setDataLayer(null);
+      setDataSource(null);
+      setEmail(null);
+      setEntityType(null);
+      setUserId(null);
+    }
+  }, [
+    previousDatabases,
+    previousSchemas,
+    previousTables,
+    selectedDatabases,
+    selectedSchemas,
+    selectedTables,
+  ]);
 
   return (
     <>
