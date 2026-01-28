@@ -82,7 +82,7 @@ export function PanelHeader({
               {hasFilterPicker && (
                 <FilterOptionsPicker
                   filterOptions={filterOptions}
-                  compact
+                  isCompact
                   hasDefaultFilterOptions={hasDefaultFilterOptions}
                   onFilterOptionsChange={onFilterOptionsChange}
                 />

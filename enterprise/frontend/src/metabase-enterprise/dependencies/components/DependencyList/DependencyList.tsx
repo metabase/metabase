@@ -154,7 +154,8 @@ export function DependencyList({
           mode={mode}
           query={query}
           filterOptions={getFilterOptions(mode, params)}
-          hasLoader={isFetching && !isLoading}
+          isFetching={isFetching}
+          isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
         />

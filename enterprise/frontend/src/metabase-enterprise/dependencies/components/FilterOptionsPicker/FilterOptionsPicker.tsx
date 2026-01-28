@@ -20,7 +20,8 @@ import { TypeFilterPicker } from "./TypeFilterPicker";
 type FilterOptionsPickerProps = {
   filterOptions: DependencyFilterOptions;
   availableGroupTypes?: DependencyGroupType[];
-  compact?: boolean;
+  isCompact?: boolean;
+  isDisabled?: boolean;
   hasDefaultFilterOptions?: boolean;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -28,7 +29,8 @@ type FilterOptionsPickerProps = {
 export function FilterOptionsPicker({
   filterOptions,
   availableGroupTypes = [],
-  compact = false,
+  isCompact = false,
+  isDisabled = false,
   hasDefaultFilterOptions = false,
   onFilterOptionsChange,
 }: FilterOptionsPickerProps) {
@@ -37,14 +39,22 @@ export function FilterOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <Indicator offset={compact ? 6 : 12} disabled={hasDefaultFilterOptions}>
-          {compact ? (
-            <ActionIcon aria-label={t`Filter`} onClick={toggle}>
+        <Indicator
+          offset={isCompact ? 6 : 12}
+          disabled={hasDefaultFilterOptions}
+        >
+          {isCompact ? (
+            <ActionIcon
+              aria-label={t`Filter`}
+              disabled={isDisabled}
+              onClick={toggle}
+            >
               <FixedSizeIcon c="text-primary" name="filter" />
             </ActionIcon>
           ) : (
             <Button
               leftSection={<FixedSizeIcon name="filter" aria-hidden />}
+              disabled={isDisabled}
               data-testid="dependency-filter-button"
               onClick={toggle}
             >

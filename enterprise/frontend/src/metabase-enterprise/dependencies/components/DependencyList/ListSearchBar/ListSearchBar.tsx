@@ -15,7 +15,8 @@ type ListSearchBarProps = {
   mode: DependencyListMode;
   query?: string;
   filterOptions: DependencyFilterOptions;
-  hasLoader: boolean;
+  isFetching: boolean;
+  isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -24,11 +25,13 @@ export const ListSearchBar = memo(function ListSearchBar({
   mode,
   query,
   filterOptions,
-  hasLoader,
+  isFetching,
+  isLoading,
   onQueryChange,
   onFilterOptionsChange,
 }: ListSearchBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
+  const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areFilterOptionsEqual(
     filterOptions,
     getDefaultFilterOptions(mode),
@@ -68,6 +71,7 @@ export const ListSearchBar = memo(function ListSearchBar({
       <FilterOptionsPicker
         filterOptions={filterOptions}
         availableGroupTypes={getAvailableGroupTypes(mode)}
+        isDisabled={isLoading}
         hasDefaultFilterOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={handleFilterOptionsChange}
       />

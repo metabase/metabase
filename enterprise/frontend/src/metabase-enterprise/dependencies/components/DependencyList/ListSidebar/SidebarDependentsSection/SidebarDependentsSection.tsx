@@ -102,7 +102,7 @@ export function SidebarDependentsSection({
             <FilterOptionsPicker
               filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
-              compact
+              isCompact
               hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />
