@@ -155,6 +155,10 @@
                                                         "com.mchange namespace. You must raise the log level for"
                                                         "com.mchange to INFO via a custom log4j config in order to"
                                                         "see stacktraces in the logs.")))
+   ;; [From c3p0 docs] If true, Statement.cancel() will be called prior to Statement.close() when c3p0
+   ;; automatically closes statements because a Connection with open Statements has exceeded its
+   ;; unreturnedConnectionTimeout. This can help terminate hanging queries on the database server side. (#66656)
+   "cancelAutomaticallyClosedStatements" true
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
