@@ -34,7 +34,6 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
 import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
@@ -187,16 +186,13 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" py="md" pr="md">
         <Group
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
           <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
-            </Box>
             <DefaultViewTitle title={title} />
           </Group>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}

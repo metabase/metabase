@@ -17,6 +17,7 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
@@ -183,6 +184,7 @@ const SdkDashboardInner = ({
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const internalNavigation = useSdkInternalNavigationOptional();
 
   const {
     resourceId: dashboardId,
@@ -340,17 +342,37 @@ const SdkDashboardInner = ({
             : onNavigateToNewCardFromDashboard
         }
         onNewQuestion={() => {
+          const openNewQuestion = () => {
+            if (internalNavigation && dashboard) {
+              // Use the navigation stack when inside SdkInternalNavigationProvider
+              internalNavigation.push({
+                type: "new-question",
+                dashboardId: dashboard.id,
+                dashboardName: dashboard.name,
+                name: dashboard.name,
+                dataPickerProps,
+                onQuestionCreated: (question) => {
+                  setNewDashboardQuestionId(question.id);
+                  dashboardContextProviderRef.current?.refetchDashboard();
+                },
+              });
+            } else {
+              // Fall back to local state when not inside navigation provider
+              setRenderMode("queryBuilder");
+            }
+          };
+
           if (isDashboardDirty) {
             show({
               title: t`Save your changes?`,
-              message: t`You’ll need to save your changes before leaving to create a new question.`,
+              message: t`You'll need to save your changes before leaving to create a new question.`,
               confirmButtonText: t`Save changes`,
               onConfirm: async () => {
                 /**
                  * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
                  * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
                  */
-                setRenderMode("queryBuilder");
+                openNewQuestion();
                 dispatch(dismissAllUndo());
                 await dispatch(updateDashboardAndCards());
                 // After saving the dashboard, it will exit the editing mode.
@@ -361,7 +383,7 @@ const SdkDashboardInner = ({
               },
             });
           } else {
-            setRenderMode("queryBuilder");
+            openNewQuestion();
           }
         }}
         downloadsEnabled={displayOptions.downloadsEnabled}
@@ -412,6 +434,9 @@ const SdkDashboardInner = ({
                   className={className}
                   style={style}
                 >
+                  {/* <SdkInternalNavigationBackButton
+                    style={{ border: "5px solid yellow" }}
+                  /> */}
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                 </SdkDashboardStyledWrapperWithRef>
               )}

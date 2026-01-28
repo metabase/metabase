@@ -86,7 +86,11 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
 // Outer component that provides the navigation context
 export const EditableDashboardInner = (props: EditableDashboardProps) => {
   return (
-    <SdkInternalNavigationProvider dashboardProps={props}>
+    <SdkInternalNavigationProvider
+      style={props.style}
+      className={props.className}
+      dashboardProps={props}
+    >
       <EditableDashboardContent {...props} />
     </SdkInternalNavigationProvider>
   );

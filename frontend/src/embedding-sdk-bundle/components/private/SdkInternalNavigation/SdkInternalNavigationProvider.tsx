@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import {
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useContext,
@@ -9,14 +10,17 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types/question";
 import * as Urls from "metabase/lib/urls";
+import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type { DrillThroughQuestionProps } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
 import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
+import { NewQuestionBuilder } from "../SdkQuestion/NewQuestionBuilder";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
@@ -31,9 +35,13 @@ type Props = {
   renderDrillThroughQuestion?: () => ReactNode;
   /** Props to pass to drill-through question components */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
+  style?: CSSProperties;
+  className?: string;
 };
 
 export const SdkInternalNavigationProvider = ({
+  style,
+  className,
   children,
   dashboardProps,
   renderDrillThroughQuestion: RenderDrillThroughQuestion,
@@ -137,50 +145,64 @@ export const SdkInternalNavigationProvider = ({
       () => children,
     )
     .with({ currentEntry: { type: "dashboard" } }, ({ currentEntry }) => (
-      <div style={{ height: "100%" }}>
-        <SdkInternalNavigationBackButton />
+      <>
+        <Stack align="flex-start">
+          <SdkInternalNavigationBackButton />
+        </Stack>
         <InteractiveDashboardContent
           {...dashboardProps}
+          style={undefined}
+          className={undefined}
           dashboardId={currentEntry.id}
           initialParameters={currentEntry.parameters}
         />
-      </div>
+      </>
     ))
     .with({ currentEntry: { type: "question" } }, ({ currentEntry }) => (
-      <div style={{ height: "100%" }}>
-        {/* No need, SdkQuestion renders the button */}
-        {/* <SdkInternalNavigationBackButton /> */}
-        <SdkQuestion
-          questionId={currentEntry.id}
-          onNavigateBack={pop}
-          navigateToNewCard={navigateToNewCard}
-          initialSqlParameters={currentEntry.parameters}
-          {...drillThroughQuestionProps}
-        >
-          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
-        </SdkQuestion>
-      </div>
+      <SdkQuestion
+        questionId={currentEntry.id}
+        onNavigateBack={pop}
+        navigateToNewCard={navigateToNewCard}
+        initialSqlParameters={currentEntry.parameters}
+        {...drillThroughQuestionProps}
+      >
+        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+      </SdkQuestion>
     ))
     .with({ currentEntry: { type: "adhoc-question" } }, ({ currentEntry }) => (
-      <div style={{ height: "100%" }}>
-        {/* No need, SdkAdHocQuestion renders the button */}
-        {/* <SdkInternalNavigationBackButton /> */}
-        <SdkAdHocQuestion
-          questionPath={currentEntry.questionPath}
-          onNavigateBack={pop}
-          navigateToNewCard={navigateToNewCard}
-          isSaveEnabled={false}
-          {...drillThroughQuestionProps}
-        >
-          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
-        </SdkAdHocQuestion>
-      </div>
+      <SdkAdHocQuestion
+        questionPath={currentEntry.questionPath}
+        onNavigateBack={pop}
+        navigateToNewCard={navigateToNewCard}
+        isSaveEnabled={false}
+        {...drillThroughQuestionProps}
+      >
+        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+      </SdkAdHocQuestion>
+    ))
+    .with({ currentEntry: { type: "new-question" } }, ({ currentEntry }) => (
+      <NewQuestionBuilder
+        dashboardId={currentEntry.dashboardId}
+        dashboardName={currentEntry.dashboardName}
+        dataPickerProps={currentEntry.dataPickerProps}
+        onNavigateBack={pop}
+        onQuestionCreated={(question, _dashboardTabId) => {
+          currentEntry.onQuestionCreated(question);
+          pop();
+        }}
+      />
     ))
     .otherwise(() => children);
 
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      {content}
+      {stack.length > 1 ? (
+        <SdkDashboardStyledWrapper className={className} style={style}>
+          {content}
+        </SdkDashboardStyledWrapper>
+      ) : (
+        content
+      )}
     </SdkInternalNavigationContext.Provider>
   );
 };

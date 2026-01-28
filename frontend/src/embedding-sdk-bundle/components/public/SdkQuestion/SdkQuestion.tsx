@@ -165,6 +165,8 @@ export const _SdkQuestion = ({
     <SdkInternalNavigationProvider
       renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
       drillThroughQuestionProps={drillThroughQuestionProps}
+      style={style}
+      className={className}
     >
       <SdkQuestionProvider
         questionId={questionId}
