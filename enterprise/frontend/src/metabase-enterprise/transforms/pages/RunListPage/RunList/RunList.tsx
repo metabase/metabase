@@ -93,16 +93,16 @@ function RunTable({ runs, tags }: RunTableProps) {
         ]}
       >
         {runs.map((run) => {
-          const isDeleted = run.transform?.deleted === true;
+          const isTransformDeleted = run.transform?.deleted === true;
 
           return (
             <tr
               key={run.id}
-              className={cx(S.row, { [S.deletedRow]: isDeleted })}
+              className={cx(S.row, { [S.deletedRow]: isTransformDeleted })}
               onClick={() => handleRowClick(run)}
             >
               <td className={S.wrap}>
-                {isDeleted ? (
+                {isTransformDeleted ? (
                   <Tooltip label={t`${run.transform?.name} has been deleted`}>
                     <Text c="text-tertiary" fs="italic">
                       <Flex align="center" gap="xs">
