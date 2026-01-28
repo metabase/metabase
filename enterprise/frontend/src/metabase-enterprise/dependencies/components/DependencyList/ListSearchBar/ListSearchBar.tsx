@@ -6,16 +6,17 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
 
 import type { DependencyFilterOptions } from "../../../types";
-import { getSearchQuery } from "../../../utils";
+import { areFilterOptionsEqual, getSearchQuery } from "../../../utils";
 import { FilterOptionsPicker } from "../../FilterOptionsPicker";
 import type { DependencyListMode } from "../types";
-import { getAvailableGroupTypes } from "../utils";
+import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
 
 type ListSearchBarProps = {
   mode: DependencyListMode;
   query?: string;
   filterOptions: DependencyFilterOptions;
-  hasLoader: boolean;
+  isFetching: boolean;
+  isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
 };
@@ -24,11 +25,17 @@ export const ListSearchBar = memo(function ListSearchBar({
   mode,
   query,
   filterOptions,
-  hasLoader,
+  isFetching,
+  isLoading,
   onQueryChange,
   onFilterOptionsChange,
 }: ListSearchBarProps) {
   const [searchValue, setSearchValue] = useState(query ?? "");
+  const hasLoader = isFetching && !isLoading;
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(mode),
+  );
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;
@@ -64,6 +71,8 @@ export const ListSearchBar = memo(function ListSearchBar({
       <FilterOptionsPicker
         filterOptions={filterOptions}
         availableGroupTypes={getAvailableGroupTypes(mode)}
+        isDisabled={isLoading}
+        hasDefaultFilterOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={handleFilterOptionsChange}
       />
     </Group>

@@ -1,5 +1,6 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DependencyListUserParams } from "./dependencies";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type UserId = number;
@@ -186,6 +187,11 @@ export type UserKeyValue =
       namespace: "data_studio";
       key: string;
       value: boolean;
+    }
+  | {
+      namespace: "dependency_list";
+      key: string;
+      value: DependencyListUserParams;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
