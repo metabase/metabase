@@ -38,8 +38,8 @@
                   (every? mi/can-write? transforms))
                 true)))))
   ([_model pk]
-   (when-let [transform (t2/select-one :model/TransformJob :id pk)]
-     (mi/can-write? transform))))
+   (when-let [job (t2/select-one :model/TransformJob :id pk)]
+     (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
   [_model instance]

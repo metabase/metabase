@@ -27,11 +27,10 @@
    (or api/*is-superuser?*
        (and api/*is-data-analyst?*
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms))
-            true)))
+              (every? mi/can-write? transforms)))))
   ([_model pk]
-   (when-let [transform (t2/select-one :model/TransformTag :id pk)]
-     (mi/can-write? transform))))
+   (when-let [tag (t2/select-one :model/TransformTag :id pk)]
+     (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
