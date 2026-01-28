@@ -54,7 +54,7 @@ export const useChartEvents = (
   {
     card,
     rawSeries,
-    isVisualizerViz,
+    isVisualizerCard,
     visualizerRawSeries = [],
     selectedTimelineEventIds,
     settings,
@@ -76,7 +76,7 @@ export const useChartEvents = (
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      if (isVisualizerViz) {
+      if (isVisualizerCard) {
         const index = getVisualizerSeriesCardIndex(cardId);
         const nextCard = visualizerRawSeries[index].card;
         onChangeCardAndRun?.({ nextCard });
@@ -86,7 +86,13 @@ export const useChartEvents = (
         onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
+    [
+      card,
+      rawSeries,
+      visualizerRawSeries,
+      isVisualizerCard,
+      onChangeCardAndRun,
+    ],
   );
 
   const hoveredSeriesDataKey = useMemo(
@@ -245,7 +251,7 @@ export const useChartEvents = (
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
           const eventData = getBrushData(
-            isVisualizerViz ? visualizerRawSeries : rawSeries,
+            isVisualizerCard ? visualizerRawSeries : rawSeries,
             metadata,
             chartModel,
             event,
@@ -280,7 +286,7 @@ export const useChartEvents = (
       onOpenQuestion,
       rawSeries,
       visualizerRawSeries,
-      isVisualizerViz,
+      isVisualizerCard,
       metadata,
       onChangeCardAndRun,
     ],
