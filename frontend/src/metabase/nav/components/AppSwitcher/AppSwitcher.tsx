@@ -217,7 +217,7 @@ export const AppSwitcher = withRouter(
                   )}
                   {showOnboardingLink && (
                     <Menu.Item component={ForwardRefLink} to="/getting-started">
-                      {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
+                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
                       {t`How to use Metabase`}
                     </Menu.Item>
                   )}

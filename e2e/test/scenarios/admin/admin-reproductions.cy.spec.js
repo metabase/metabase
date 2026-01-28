@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { mainAppLinkText } from "e2e/support/helpers";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -163,7 +164,6 @@ describe("(metabase#45042)", () => {
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
       cy.findByRole("link", { name: "Settings" }).should("exist");
-      cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
 
     // dismiss nav list
@@ -171,6 +171,10 @@ describe("(metabase#45042)", () => {
       .should("be.visible")
       .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");
+
+    //ensure that app switcher is visible and functional
+    H.getProfileLink().click();
+    H.popover().findByText(mainAppLinkText).should("exist");
   });
 });
 

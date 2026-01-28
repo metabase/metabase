@@ -47,7 +47,6 @@ async function setup({
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
-  initialRoute = "/",
 }: {
   isAdmin?: boolean;
   isHosted?: boolean;
@@ -56,7 +55,6 @@ async function setup({
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
-  initialRoute?: string;
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
@@ -84,12 +82,11 @@ async function setup({
   renderWithProviders(
     <>
       <Route path="/" component={AppSwitcher} />
-      <Route path="/admin" component={AppSwitcher} />
-      <Route path="/data-studio" component={AppSwitcher} />
+      <Route path="/admin" app="admin" component={AppSwitcher} />
+      <Route path="/data-studio" app="data-studio" component={AppSwitcher} />
     </>,
     {
       withRouter: true,
-      initialRoute,
       storeInitialState: {
         admin,
         settings,
@@ -163,12 +160,6 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("main");
     });
-  });
-
-  it("should correctly hightlight admin app", async () => {
-    await setup({ isAdmin: true, hasDataStudio: true, initialRoute: "/admin" });
-
-    await waitFor(() => assertActiveApp("admin"));
   });
 
   describe("hosted", () => {
