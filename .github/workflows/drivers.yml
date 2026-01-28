@@ -1020,6 +1020,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          logs-artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'

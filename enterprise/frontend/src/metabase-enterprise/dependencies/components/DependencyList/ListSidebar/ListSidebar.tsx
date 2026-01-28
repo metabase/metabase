@@ -6,48 +6,60 @@ import type { DependencyNode } from "metabase-types/api";
 import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
 
 import S from "./ListSidebar.module.css";
-import { SidebarCreationInfo } from "./SidebarCreationInfo";
-import { SidebarDependentsInfo } from "./SidebarDependentsInfo";
-import { SidebarErrorInfo } from "./SidebarErrorInfo";
+import { SidebarCreationSection } from "./SidebarCreationSection";
+import { SidebarDependentsSection } from "./SidebarDependentsSection";
+import { SidebarErrorSection } from "./SidebarErrorSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarLocationInfo } from "./SidebarLocationInfo";
-import { SidebarTransformInfo } from "./SidebarTransformInfo";
+import { SidebarLocationSection } from "./SidebarLocationSection";
+import { SidebarResizableBox } from "./SidebarResizableBox";
+import { SidebarTransformSection } from "./SidebarTransformSection";
 
 type ListSidebarProps = {
   node: DependencyNode;
+  containerWidth: number;
+  onResizeStart: () => void;
+  onResizeStop: () => void;
   onClose: () => void;
 };
 
 export const ListSidebar = memo(function ListSidebar({
   node,
+  containerWidth,
+  onResizeStart,
+  onResizeStop,
   onClose,
 }: ListSidebarProps) {
   const errors = getDependencyErrors(node.dependents_errors ?? []);
   const errorGroups = getDependencyErrorGroups(errors);
 
   return (
-    <Stack
-      className={S.sidebar}
-      p="lg"
-      w="32rem"
-      gap="xl"
-      bg="background-primary"
-      data-testid="dependency-list-sidebar"
+    <SidebarResizableBox
+      containerWidth={containerWidth}
+      onResizeStart={onResizeStart}
+      onResizeStop={onResizeStop}
     >
-      <Stack gap="lg">
-        <SidebarHeader node={node} onClose={onClose} />
-        <SidebarLocationInfo node={node} />
-        <SidebarTransformInfo node={node} />
-        <SidebarCreationInfo node={node} />
+      <Stack
+        className={S.sidebar}
+        p="lg"
+        gap="xl"
+        bg="background-primary"
+        data-testid="dependency-list-sidebar"
+      >
+        <Stack gap="lg">
+          <SidebarHeader node={node} onClose={onClose} />
+          <SidebarLocationSection node={node} />
+          <SidebarTransformSection node={node} />
+          <SidebarCreationSection node={node} />
+        </Stack>
+        {errorGroups.map((errorGroup) => (
+          <SidebarErrorSection
+            key={errorGroup.type}
+            type={errorGroup.type}
+            errors={errorGroup.errors}
+          />
+        ))}
+        <SidebarDependentsSection node={node} />
       </Stack>
-      {errorGroups.map((errorGroup) => (
-        <SidebarErrorInfo
-          key={errorGroup.type}
-          type={errorGroup.type}
-          errors={errorGroup.errors}
-        />
-      ))}
-      <SidebarDependentsInfo node={node} />
-    </Stack>
+    </SidebarResizableBox>
   );
 });

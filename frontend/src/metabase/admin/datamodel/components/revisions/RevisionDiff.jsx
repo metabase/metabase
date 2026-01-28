@@ -4,11 +4,11 @@ import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
 
-import QueryDiff from "./QueryDiff";
+import { QueryDiff } from "./QueryDiff";
 import { EditIcon, ErrorIcon, SuccessIcon } from "./RevisionDiff.styled";
-import TextDiff from "./TextDiff";
+import { TextDiff } from "./TextDiff";
 
-export default class RevisionDiff extends Component {
+export class RevisionDiff extends Component {
   static propTypes = {
     property: PropTypes.string.isRequired,
     diff: PropTypes.object.isRequired,

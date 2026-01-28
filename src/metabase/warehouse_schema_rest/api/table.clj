@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
-   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -233,12 +232,9 @@
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
-      ;; Publish update events for remote sync tracking, only when ee extensions are available to provide
-      ;; a handler for these events
-      (when config/ee-available?
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*})))
+      (doseq [table updated-tables]
+        (events/publish-event! :event/table-update {:object  table
+                                                    :user-id api/*current-user-id*}))
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

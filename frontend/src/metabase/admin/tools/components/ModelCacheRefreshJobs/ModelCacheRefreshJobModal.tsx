@@ -3,9 +3,9 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { PersistedModels } from "metabase/entities/persisted-models";
 import { connect } from "metabase/lib/redux";

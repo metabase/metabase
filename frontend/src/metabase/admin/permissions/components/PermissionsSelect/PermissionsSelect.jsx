@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import { lighten } from "metabase/lib/colors";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 

@@ -22,6 +22,7 @@ import type {
   DependencyError,
   DependencyErrorGroup,
   DependencyErrorInfo,
+  DependencyFilterOptions,
   DependencyGroupTypeInfo,
   DependentGroup,
   NodeId,
@@ -396,14 +397,25 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
+export function canHaveViewCount(type: DependencyType): boolean {
+  switch (type) {
+    case "card":
+    case "dashboard":
+    case "document":
+      return true;
+    case "table":
+    case "transform":
+    case "snippet":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return false;
+  }
+}
+
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
-      // view_count is not calculated property for models and metrics since
-      // they are typically not run directly
-      return node.data.type === "question"
-        ? (node.data.view_count ?? null)
-        : null;
     case "dashboard":
     case "document":
       return node.data.view_count ?? null;
@@ -573,6 +585,16 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   return groups.filter(({ count }) => count !== 0);
 }
 
+export function getDependentsCount(node: DependencyNode): number {
+  if (node.dependents_count == null) {
+    return 0;
+  }
+  return Object.values(node.dependents_count).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
 export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
@@ -629,6 +651,28 @@ export function getDependentGroupLabel({
         count,
       );
   }
+}
+
+function areGroupTypesEqual(
+  groupTypes1: DependencyGroupType[],
+  groupTypes2: DependencyGroupType[],
+): boolean {
+  const groupTypes1Set = new Set(groupTypes1);
+  return (
+    groupTypes1Set.size === groupTypes2.length &&
+    groupTypes2.every((groupType) => groupTypes1Set.has(groupType))
+  );
+}
+
+export function areFilterOptionsEqual(
+  filterOptions1: DependencyFilterOptions,
+  filterOptions2: DependencyFilterOptions,
+): boolean {
+  return (
+    areGroupTypesEqual(filterOptions1.groupTypes, filterOptions2.groupTypes) &&
+    filterOptions1.includePersonalCollections ===
+      filterOptions2.includePersonalCollections
+  );
 }
 
 export function getErrorTypeLabel(

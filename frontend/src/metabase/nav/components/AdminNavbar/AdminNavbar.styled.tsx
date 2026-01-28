@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { alpha, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,

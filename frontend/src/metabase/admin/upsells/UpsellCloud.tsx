@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 
 import { UpsellBigCard } from "./components";

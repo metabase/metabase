@@ -4673,6 +4673,10 @@
         },
         "required" : [ "type" ]
       },
+      "metabase-enterprise.transforms.schema.id" : {
+        "type" : "integer",
+        "minimum" : 1
+      },
       "metabase-enterprise.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.checkpoint-strategy"
@@ -4777,6 +4781,9 @@
               "type" : "null"
             } ]
           },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.id"
+          },
           "name" : {
             "type" : "string"
           },
@@ -4787,7 +4794,7 @@
             "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
           }
         },
-        "required" : [ "name", "source", "target" ]
+        "required" : [ "id", "name", "source", "target" ]
       },
       "metabase-enterprise.transforms.schema.transform-source" : {
         "oneOf" : [ {
@@ -12561,6 +12568,10 @@
             "type" : "string",
             "enum" : [ "alert", "sync", "fingerprint", "subscription" ]
           },
+          "started-at" : {
+            "type" : "string",
+            "minLength" : 1
+          },
           "status" : {
             "type" : "string",
             "enum" : [ "started", "success", "failed", "abandoned" ]
@@ -13401,6 +13412,38 @@
           }
         },
         "tags" : [ "/api/activity" ]
+      }
+    },
+    "/api/agent/v1/ping" : {
+      "get" : {
+        "summary" : "GET /api/agent/v1/ping",
+        "description" : "Health check endpoint for the Agent API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent" ]
       }
     },
     "/api/alert/" : {
@@ -22780,7 +22823,7 @@
     "/api/ee/dependencies/graph/dependents" : {
       "get" : {
         "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent_types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent_types=card&dependent_types=dashboard\n   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.\n     Ignored if dependent_types doesn't include :card. Example: ?dependent_card_types=question&dependent_card_types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)",
+        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent_types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent_types=card&dependent_types=dashboard\n   - `dependent_card_types`: Card types to filter by when dependent_types includes :card.\n     Ignored if dependent_types doesn't include :card. Example: ?dependent_card_types=question&dependent_card_types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include_personal_collections`: Include items in personal collections (default: false)\n   - `sort_column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort_direction`: Sort direction - asc or desc (default: asc)",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -22840,6 +22883,36 @@
           "required" : false,
           "schema" : {
             "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_personal_collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "name", "view-count", "location" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
           }
         } ],
         "responses" : {
@@ -26063,6 +26136,13 @@
                       "type" : "null"
                     } ]
                   },
+                  "remote-sync-auto-import" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "remote-sync-branch" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -26073,6 +26153,13 @@
                   "remote-sync-token" : {
                     "oneOf" : [ {
                       "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "remote-sync-transforms" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
                     }, {
                       "type" : "null"
                     } ]
@@ -28166,11 +28253,31 @@
     "/api/ee/transform/extract-columns" : {
       "post" : {
         "summary" : "POST /api/ee/transform/extract-columns",
-        "description" : "Extract column names from an MBQL query without executing it.\n\n  Compiles the query to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
+        "description" : "Extract column names suitable for incremental transform checkpoint filtering.\n\n  This endpoint is specifically for populating the checkpoint column dropdown in\n  incremental transforms. It only returns columns with types supported for checkpoint\n  filtering: temporal (timestamp/tz) and numeric (int/float) types.\n\n  Text, boolean, and other unsupported column types are filtered out.\n\n  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  and types using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "columns" : {
+                      "oneOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "columns" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -37423,6 +37530,14 @@
           "schema" : {
             "type" : "string",
             "enum" : [ "alert", "sync", "fingerprint", "subscription" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "started-at",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {

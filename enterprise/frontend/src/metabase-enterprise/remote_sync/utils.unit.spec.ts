@@ -1,6 +1,10 @@
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { buildCollectionMap, getCollectionPathSegments } from "./utils";
+import {
+  buildCollectionMap,
+  getCollectionPathSegments,
+  isTableChildModel,
+} from "./utils";
 
 describe("remote_sync utils", () => {
   describe("buildCollectionMap", () => {
@@ -186,6 +190,32 @@ describe("remote_sync utils", () => {
       expect(segments[0]).toEqual({ id: 1, name: "Parent" });
       expect(segments[1]).toEqual({ id: 2, name: "Child" });
       expect(segments[2]).toEqual({ id: 3, name: "Grandchild" });
+    });
+  });
+
+  describe("isTableChildModel", () => {
+    it("should return true for field model", () => {
+      expect(isTableChildModel("field")).toBe(true);
+    });
+
+    it("should return true for segment model", () => {
+      expect(isTableChildModel("segment")).toBe(true);
+    });
+
+    it("should return true for measure model", () => {
+      expect(isTableChildModel("measure")).toBe(true);
+    });
+
+    it("should return false for card model", () => {
+      expect(isTableChildModel("card")).toBe(false);
+    });
+
+    it("should return false for table model", () => {
+      expect(isTableChildModel("table")).toBe(false);
+    });
+
+    it("should return false for dashboard model", () => {
+      expect(isTableChildModel("dashboard")).toBe(false);
     });
   });
 });

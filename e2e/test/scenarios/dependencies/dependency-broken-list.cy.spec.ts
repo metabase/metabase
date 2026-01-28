@@ -90,7 +90,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("analysis", () => {
     it("should show broken dependencies", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
       checkList({
         visibleEntities: BROKEN_DEPENDENCIES,
         hiddenEntities: BROKEN_DEPENDENTS,
@@ -100,10 +100,10 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sidebar", () => {
     it("should show broken dependents", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("table dependents");
-      H.DataStudio.Tasks.list().findByText(TABLE_DISPLAY_NAME).click();
+      H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
       checkSidebar({
         entityName: TABLE_DISPLAY_NAME,
         transformName: TABLE_TRANSFORM,
@@ -112,7 +112,7 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("question dependents");
-      H.DataStudio.Tasks.list().findByText(TABLE_BASED_QUESTION).click();
+      H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
       checkSidebar({
         entityName: TABLE_BASED_QUESTION,
         missingColumns: ["PRICE"],
@@ -120,7 +120,7 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("model dependents");
-      H.DataStudio.Tasks.list().findByText(TABLE_BASED_MODEL).click();
+      H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
       checkSidebar({
         entityName: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT"],
@@ -131,8 +131,8 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.searchInput().type(TABLE_DISPLAY_NAME);
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type(TABLE_DISPLAY_NAME);
       checkList({
         visibleEntities: [TABLE_DISPLAY_NAME],
         hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
@@ -142,8 +142,8 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("filtering", () => {
     it("should filter entities by type", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.filterButton().click();
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().within(() => {
         cy.findByText("Table").click();
         cy.findByText("Question").click();
@@ -188,8 +188,8 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should filter entities by location", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
-      H.DataStudio.Tasks.filterButton().click();
+      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.filterButton().click();
       H.popover().within(() => {
         cy.findByText("Include items in personal collections").click();
       });
@@ -205,7 +205,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sorting", () => {
     it("should sort by name", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("sorted by name by default");
       checkListSorting({
@@ -213,39 +213,39 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("sorted by name ascending");
-      H.DataStudio.Tasks.list().findByText("Dependency").click();
+      H.DependencyDiagnostics.list().findByText("Dependency").click();
       checkListSorting({
         visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
       });
 
       cy.log("sorted by name descending");
-      H.DataStudio.Tasks.list().findByText("Dependency").click();
+      H.DependencyDiagnostics.list().findByText("Dependency").click();
       checkListSorting({
         visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
       });
     });
 
     it("should sort by location", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("sorted by location ascending");
-      H.DataStudio.Tasks.list().findByText("Location").click();
+      H.DependencyDiagnostics.list().findByText("Location").click();
       checkListSorting({
         visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
       });
 
       cy.log("sorted by location descending");
-      H.DataStudio.Tasks.list().findByText("Location").click();
+      H.DependencyDiagnostics.list().findByText("Location").click();
       checkListSorting({
         visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_LOCATION].reverse(),
       });
     });
 
     it("should sort by dependents errors", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("sorted by dependents errors ascending");
-      H.DataStudio.Tasks.list().findByText("Problems").click();
+      H.DependencyDiagnostics.list().findByText("Problems").click();
       checkListSorting({
         visibleEntities: [
           ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
@@ -253,17 +253,17 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("sorted by dependents errors descending");
-      H.DataStudio.Tasks.list().findByText("Problems").click();
+      H.DependencyDiagnostics.list().findByText("Problems").click();
       checkListSorting({
         visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
       });
     });
 
     it("should sort by dependents with errors", () => {
-      H.DataStudio.Tasks.visitBrokenEntities();
+      H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("sorted by dependents with errors ascending");
-      H.DataStudio.Tasks.list().findByText("Broken dependents").click();
+      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
       checkListSorting({
         visibleEntities: [
           ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
@@ -271,7 +271,7 @@ describe("scenarios > dependencies > broken list", () => {
       });
 
       cy.log("sorted by dependents with errors descending");
-      H.DataStudio.Tasks.list().findByText("Broken dependents").click();
+      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
       checkListSorting({
         visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
       });
@@ -484,7 +484,7 @@ function checkList({
   visibleEntities?: string[];
   hiddenEntities?: string[];
 }) {
-  H.DataStudio.Tasks.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
       cy.findByText(name).should("exist");
     });
@@ -505,24 +505,24 @@ function checkSidebar({
   missingColumns?: string[];
   brokenDependents?: string[];
 }) {
-  H.DataStudio.Tasks.sidebar().within(() => {
-    H.DataStudio.Tasks.Sidebar.header()
+  H.DependencyDiagnostics.sidebar().within(() => {
+    H.DependencyDiagnostics.Sidebar.header()
       .findByText(entityName)
       .should("be.visible");
     if (transformName) {
-      H.DataStudio.Tasks.Sidebar.transformInfo()
+      H.DependencyDiagnostics.Sidebar.transformSection()
         .findByText(transformName)
         .should("exist");
     }
     if (missingColumns) {
-      H.DataStudio.Tasks.Sidebar.missingColumnsInfo().within(() => {
+      H.DependencyDiagnostics.Sidebar.missingColumnsSection().within(() => {
         missingColumns.forEach((column) => {
           cy.findByText(column).should("exist");
         });
       });
     }
     if (brokenDependents) {
-      H.DataStudio.Tasks.Sidebar.brokenDependentsInfo().within(() => {
+      H.DependencyDiagnostics.Sidebar.brokenDependentsSection().within(() => {
         brokenDependents.forEach((dependent) => {
           cy.findByText(dependent).should("exist");
         });
@@ -532,7 +532,7 @@ function checkSidebar({
 }
 
 function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
-  H.DataStudio.Tasks.list().within(() => {
+  H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name, index) => {
       cy.findByText(name)
         .parents("[data-index]")

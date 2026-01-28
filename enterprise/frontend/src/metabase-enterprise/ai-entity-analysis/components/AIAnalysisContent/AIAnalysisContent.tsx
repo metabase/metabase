@@ -1,4 +1,4 @@
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Repeat, Skeleton } from "metabase/ui";
 
 import S from "./AIAnalysisContent.module.css";

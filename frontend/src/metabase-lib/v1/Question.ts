@@ -15,7 +15,6 @@ import {
 import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -579,23 +578,6 @@ class Question {
   databaseId(): DatabaseId | null {
     const query = this.query();
     return Lib.databaseID(query);
-  }
-
-  legacyQueryTable(): Table | null {
-    const query = this.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
-    if (isNative) {
-      return this.legacyNativeQuery().table();
-    } else {
-      const tableId = Lib.sourceTableOrCardId(query);
-      const metadata = this.metadata();
-      return metadata.table(tableId);
-    }
-  }
-
-  legacyQueryTableId(): TableId | null {
-    const table = this.legacyQueryTable();
-    return table ? table.id : null;
   }
 
   isArchived(): boolean {

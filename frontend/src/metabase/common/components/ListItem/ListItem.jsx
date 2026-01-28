@@ -3,7 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
 
-import Card from "metabase/common/components/Card";
+import { Card } from "metabase/common/components/Card";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
@@ -11,7 +11,7 @@ import { Icon } from "metabase/ui";
 
 import { ListItemLink, Root } from "./ListItem.styled";
 
-const ListItem = ({
+const ListItemInner = ({
   "data-testid": dataTestId,
   name,
   url,
@@ -60,7 +60,7 @@ const ListItem = ({
   );
 };
 
-ListItem.propTypes = {
+ListItemInner.propTypes = {
   "data-testid": PropTypes.string,
   name: PropTypes.string.isRequired,
   url: PropTypes.string,
@@ -70,4 +70,4 @@ ListItem.propTypes = {
   icon: PropTypes.string,
 };
 
-export default memo(ListItem);
+export const ListItem = memo(ListItemInner);

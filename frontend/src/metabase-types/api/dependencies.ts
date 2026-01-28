@@ -250,8 +250,12 @@ export type ListNodeDependentsRequest = {
   type: DependencyType;
   dependent_types?: DependencyType[];
   dependent_card_types?: CardType[];
+  query?: string;
   broken?: boolean;
+  include_personal_collections?: boolean;
   archived?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };
 
 export type CheckDependenciesResponse = {
@@ -272,6 +276,7 @@ export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",
   "location",
+  "view-count",
   "dependents-errors",
   "dependents-with-errors",
 ] as const;
@@ -280,18 +285,6 @@ export type DependencySortColumn = (typeof DEPENDENCY_SORT_COLUMNS)[number];
 export const DEPENDENCY_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type DependencySortDirection =
   (typeof DEPENDENCY_SORT_DIRECTIONS)[number];
-
-export type DependencySortingOptions = {
-  column: DependencySortColumn;
-  direction: DependencySortDirection;
-};
-
-/**
- * Entity types that can be the source of validation errors (breaking other entities).
- * Only tables and cards can be sources of errors in analysis_finding_error.
- */
-export const BREAKING_ENTITY_TYPES = ["card", "table"] as const;
-export type BreakingEntityType = (typeof BREAKING_ENTITY_TYPES)[number];
 
 export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
@@ -317,4 +310,11 @@ export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
 
 export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
   data: DependencyNode[];
+};
+
+export type DependencyListUserParams = {
+  group_types?: DependencyGroupType[];
+  include_personal_collections?: boolean;
+  sort_column?: DependencySortColumn;
+  sort_direction?: DependencySortDirection;
 };

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Group, Icon } from "metabase/ui";
 

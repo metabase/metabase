@@ -645,7 +645,7 @@ describe("scenarios > filters > filter sources", () => {
 });
 
 function addNewFilter() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 }
 

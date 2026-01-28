@@ -24,7 +24,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SegmentApp from "./SegmentApp";
+import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
 

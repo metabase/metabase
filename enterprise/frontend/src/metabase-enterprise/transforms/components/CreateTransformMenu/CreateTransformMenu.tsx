@@ -89,7 +89,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="folder" />}
                 onClick={openCollectionModal}
               >
-                {t`New collection`}
+                {t`Transform folder`}
               </Menu.Item>
             </>
           )}

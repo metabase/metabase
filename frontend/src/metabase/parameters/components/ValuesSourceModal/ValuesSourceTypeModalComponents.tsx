@@ -4,7 +4,8 @@ import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
-import TextArea, {
+import {
+  TextArea,
   type TextAreaProps,
 } from "metabase/common/components/TextArea";
 import { Box, type BoxProps } from "metabase/ui";

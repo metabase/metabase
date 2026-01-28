@@ -12,7 +12,7 @@
 (deftest all-specs-have-required-keys-test
   (testing "Every spec has all required keys"
     (let [required-keys #{:model-type :model-key :identity :events :eligibility
-                          :archived-key :tracking :removal :export-path :enabled?}]
+                          :archived-key :tracking :removal :enabled?}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (let [missing-keys (set/difference required-keys (set (keys spec)))]
@@ -39,7 +39,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -78,15 +78,6 @@
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
 
-(deftest all-specs-have-valid-export-path-test
-  (testing "Every spec has valid export-path configuration"
-    (let [valid-path-types #{:collection-entity :table-path :field-path
-                             :segment-path :transform-path :transform-tag-path}]
-      (doseq [[model-key spec] spec/remote-sync-specs]
-        (testing (str "Spec for " model-key)
-          (is (contains? valid-path-types (get-in spec [:export-path :type]))
-              (str "Invalid export-path type: " (get-in spec [:export-path :type]))))))))
-
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
 (deftest spec-for-model-type-test
@@ -94,12 +85,14 @@
     (is (= :model/Card (:model-key (spec/spec-for-model-type "Card"))))
     (is (= :model/Dashboard (:model-key (spec/spec-for-model-type "Dashboard"))))
     (is (= :model/Table (:model-key (spec/spec-for-model-type "Table"))))
+    (is (= :model/Measure (:model-key (spec/spec-for-model-type "Measure"))))
     (is (nil? (spec/spec-for-model-type "NonExistent")))))
 
 (deftest spec-for-model-key-test
   (testing "spec-for-model-key returns correct spec"
     (is (= "Card" (:model-type (spec/spec-for-model-key :model/Card))))
     (is (= "Dashboard" (:model-type (spec/spec-for-model-key :model/Dashboard))))
+    (is (= "Measure" (:model-type (spec/spec-for-model-key :model/Measure))))
     (is (nil? (spec/spec-for-model-key :model/NonExistent)))))
 
 (deftest all-model-types-test
@@ -111,9 +104,10 @@
       (is (contains? types "Table"))
       (is (contains? types "Field"))
       (is (contains? types "Segment"))
+      (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 11 (count types))))))
+      (is (= 13 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -133,6 +127,7 @@
           (is (not (contains? path-specs :model/Card))))
         (testing "hybrid specs"
           (is (contains? hybrid-specs :model/Segment))
+          (is (contains? hybrid-specs :model/Measure))
           (is (not (contains? hybrid-specs :model/Card))))))))
 
 (deftest excluded-model-types-test
@@ -147,7 +142,10 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        (is (empty? excluded))))))
+        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        (is (not (contains? excluded "Transform")))
+        (is (not (contains? excluded "TransformTag")))
+        (is (contains? excluded "NativeQuerySnippet"))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -239,7 +237,7 @@
            (spec/select-fields-for-sync "Card")))
     (is (= [:name :collection_id]
            (spec/select-fields-for-sync "Dashboard")))
-    (is (= [:name :id]
+    (is (= [:name :collection_id]
            (spec/select-fields-for-sync "NativeQuerySnippet"))))
 
   (testing "select-fields-for-sync returns default for unknown type"
@@ -300,6 +298,8 @@
 
   (testing "query-export-roots with :parent-table eligibility returns nil (derived)"
     (let [field-spec (spec/spec-for-model-key :model/Field)
-          segment-spec (spec/spec-for-model-key :model/Segment)]
+          segment-spec (spec/spec-for-model-key :model/Segment)
+          measure-spec (spec/spec-for-model-key :model/Measure)]
       (is (nil? (spec/query-export-roots field-spec)))
-      (is (nil? (spec/query-export-roots segment-spec))))))
+      (is (nil? (spec/query-export-roots segment-spec)))
+      (is (nil? (spec/query-export-roots measure-spec))))))

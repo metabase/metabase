@@ -9,13 +9,15 @@ export type RemoteSyncEntityModel =
   | "dashboard"
   | "collection"
   | "document"
-  | "snippet"
+  | "nativequerysnippet"
   | "table"
   | "field"
   | "segment"
+  | "measure"
   | "transform"
   | "transformtag"
-  | "transformjob";
+  | "transformjob"
+  | "pythonlibrary";
 
 export type RemoteSyncEntityStatus =
   | "create"

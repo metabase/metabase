@@ -40,7 +40,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         if (["Is", "Is not"].includes(filter)) {
@@ -63,11 +63,11 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
     H.setFilter("Text or Category", "Is");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Is").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Gizmo");
@@ -86,7 +86,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     applyFilterByType("Is", "Doohickey", { buttonLabel: "Update filter" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });

@@ -157,7 +157,7 @@ describe("issue 15860", { tags: "@skip" }, () => {
 
     H.visitIframe();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q1 Category").click();
 
     H.popover().within(() => {
@@ -166,7 +166,7 @@ describe("issue 15860", { tags: "@skip" }, () => {
         .and("contain", "Gizmo");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2 Category").click();
 
     H.popover().within(() => {
@@ -333,7 +333,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
         });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Locked").click();
 
     H.modal().within(() => {
@@ -349,7 +349,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     H.visitIframe();
 
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text").should("not.exist");
     cy.get(".CardVisualization").within(() => {
       cy.contains("foo");

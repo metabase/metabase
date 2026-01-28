@@ -528,7 +528,7 @@ const actionButtonContainer = () =>
   cy.findByTestId("action-button-full-container");
 
 const dashCard = () =>
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy
     .findAllByTestId("dashcard-container")
     .last()
