@@ -173,7 +173,7 @@ export type ColumnDisplayInfo = {
   isBreakout: boolean;
   table?: TableInlineDisplayInfo;
   fingerprint?: FingerprintDisplayInfo;
-  sourceColumnDisplayName?: string;
+
   breakoutPositions?: number[];
   filterPositions?: number[];
   orderByPosition?: number;
@@ -267,9 +267,7 @@ export type ClauseDisplayInfo = Pick<
   isNamed?: boolean;
 };
 
-export type AggregationClauseDisplayInfo = ClauseDisplayInfo & {
-  sourceColumnDisplayName?: string;
-};
+export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo & {
   isTemporalExtraction?: boolean;

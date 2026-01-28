@@ -252,9 +252,3 @@ export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
 export function isSegmentMetadata(arg: unknown): arg is SegmentMetadata {
   return ML.segment_metadata_QMARK_(arg);
 }
-
-export function sourceColumnDisplayName(
-  column: ColumnMetadata | Record<string, unknown>,
-): string | undefined {
-  return ML.source_column_display_name(column) ?? undefined;
-}

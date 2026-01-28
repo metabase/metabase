@@ -26,11 +26,6 @@ const getDefaultPluginContentTranslation = () => ({
     _tc: ContentTranslationFunction,
     _columnDisplayName: string | undefined,
   ): string => displayName,
-  getTranslatedAggregationDisplayName: (
-    displayName: string,
-    _tc: ContentTranslationFunction,
-    _columnDisplayName: string | undefined,
-  ): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>

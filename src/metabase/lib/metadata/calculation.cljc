@@ -444,8 +444,6 @@
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-     (when-let [source-col-display-name (:lib/source-column-display-name x-metadata)]
-       {:source-column-display-name source-col-display-name})
      (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
