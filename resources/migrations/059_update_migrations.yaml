@@ -825,20 +825,6 @@ databaseChangeLog:
             constraintName: fk_transform_run_transform_id
             onDelete: SET NULL
 
-  - changeSet:
-      id: v59.2026-01-23T13:00:06
-      author: nvoxland
-      comment: Drop unique constraint idx_unique_active_transform_run as it is incompatible with nullable transform_id
-      changes:
-        - dropUniqueConstraint:
-            tableName: transform_run
-            constraintName: idx_unique_active_transform_run
-      rollback:
-        - addUniqueConstraint:
-            tableName: transform_run
-            constraintName: idx_unique_active_transform_run
-            columnNames: transform_id, is_active
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
