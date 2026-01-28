@@ -167,7 +167,7 @@
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest ^:parallel joined-dependencies-test
-  (when-not (= driver/*driver* :clickouse) ;; clickhouse doesn't support left join
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                               {:database (mt/id),
                                                :type "query",

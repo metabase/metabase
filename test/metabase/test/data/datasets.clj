@@ -40,5 +40,7 @@
   {:style/indent :defn}
   [drivers & body]
   `(doseq [driver# ~drivers]
-     (test-driver driver#
-       ~@body)))
+     ;; If we're already within a mt/test-drivers, this macro acts as an addition filter
+     (when (or (nil? driver/*driver*) (= driver# driver/*driver*))
+       (test-driver driver#
+         ~@body))))
