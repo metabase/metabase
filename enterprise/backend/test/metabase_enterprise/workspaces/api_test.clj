@@ -231,7 +231,7 @@
         (testing "We've got our workspace with transform to merge"
           (is (int? ws-id))
           ;; (sanya) TODO: maybe switch to using transform APIs once we get our own
-          (t2/update! :model/WorkspaceTransform :ref_id ws-tx-ref-id {:description "Modified in workspace"}))
+          (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified in workspace"}))
         (testing "returns merged transforms"
           (is (=? {:merged    {:transforms [{:global_id (:id x1)}]}
                    :errors    []
@@ -272,7 +272,7 @@
 
           (testing "workspace transform has User B as creator"
             (is (= (:id user-b)
-                   (t2/select-one-fn :creator_id :model/WorkspaceTransform :ref_id ws-tx-ref-id))))
+                   (t2/select-one-fn :creator_id :model/WorkspaceTransform :workspace_id ws-id :ref_id ws-tx-ref-id))))
 
           ;; NOTE: it's user-c merging the workspace
           (let [res              (mt/user-http-request user-c :post 200 (ws-url ws-id "/merge")
@@ -554,7 +554,7 @@
                                                                    (select-keys x1 [:name :description :source :target])))
             commit-msg                "Test merge for history endpoint"]
         ;; Modify and merge the transform
-        (t2/update! :model/WorkspaceTransform :ref_id ws-tx-ref-id {:description "Modified for history test"})
+        (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ws-tx-ref-id} {:description "Modified for history test"})
         (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
                               {:commit-message commit-msg})
 
@@ -1197,7 +1197,7 @@
                                         (ws-url (:id workspace1) "/transform" (:ref_id transform))
                                         {:name        "Updated Name"
                                          :description "Updated description"})))
-          (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :ref_id (:ref_id transform)))))
+          (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :workspace_id (:id workspace1) :ref_id (:ref_id transform)))))
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
@@ -1228,8 +1228,8 @@
         (testing "deletes transform"
           (is (nil? (mt/user-http-request :crowberto :delete 204
                                           (ws-url (:id workspace1) "/transform" (:ref_id transform2)))))
-          (is (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform1)))
-          (is (not (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform2)))))))))
+          (is (t2/exists? :model/WorkspaceTransform :workspace_id (:id workspace1) :ref_id (:ref_id transform1)))
+          (is (not (t2/exists? :model/WorkspaceTransform :workspace_id (:id workspace1) :ref_id (:ref_id transform2)))))))))
 
 (deftest run-workspace-transform-not-found-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run returns 404 if transform not in workspace"

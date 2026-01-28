@@ -31,14 +31,15 @@
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
-  [{:keys [inputs outputs entities dependencies] :as _result} id-map]
+  [workspace-id {:keys [inputs outputs entities dependencies] :as _result} id-map]
   (let [reverse-map (u/for-map [[k v] id-map] [v k])
         table->kw   (comp reverse-map :id)
         node->kw    (fn [{:keys [node-type id]}]
                       (reverse-map (case node-type
                                      :table (:id id)
                                      :external-transform id
-                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id] :ref_id id))))]
+                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id]
+                                                                            :workspace_id workspace-id :ref_id id))))]
     {:inputs       (into #{} (map table->kw) inputs)
      :outputs      (into #{} (map table->kw) outputs)
      :entities     (into #{} (map node->kw) entities)
@@ -56,7 +57,7 @@
       (ws.tu/analyze-workspace! workspace-id)
       (let [entity     {:entity-type :transform, :id (workspace-map :x2)}
             result     (ws.dag/path-induced-subgraph workspace-id [entity])
-            translated (translate-result result global-map)]
+            translated (translate-result workspace-id result global-map)]
         (is (=? {:inputs       #{:t1}
                  :outputs      #{:t2}
                  :entities     #{:x2}
@@ -78,7 +79,7 @@
       (let [entities   (for [tx [:x2 :x4]]
                          {:entity-type :transform, :id (workspace-map tx)})
             result     (ws.dag/path-induced-subgraph workspace-id entities)
-            translated (translate-result result global-map)]
+            translated (translate-result workspace-id result global-map)]
         (is (=? {:inputs       #{:t1 :t8 :t10}
                  :outputs      #{:t2 :t3 :t4}
                  :entities     #{:x2 :x3 :x4}

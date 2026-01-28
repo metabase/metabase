@@ -517,14 +517,14 @@
 
 (defn- fetch-transforms-for-graph
   "Batch fetch all transforms needed for the graph. Returns {:external {id -> tx}, :workspace {ref_id -> tx}}."
-  [entities]
+  [ws-id entities]
   (let [external-ids (into [] (keep #(when (= :external-transform (:node-type %)) (:id %))) entities)
-        workspace-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
+        ref-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
         external-txs (when (seq external-ids)
                        (m/index-by :id (t2/select [:model/Transform :id :name :target] :id [:in external-ids])))
-        workspace-txs (when (seq workspace-ids)
-                        ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target] :ref_id [:in workspace-ids])))]
+        workspace-txs (when (seq ref-ids)
+                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target]
+                                                       :workspace_id ws-id :ref_id [:in ref-ids])))]
     {:external external-txs
      :workspace workspace-txs}))
 
@@ -545,7 +545,7 @@
         driver         (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
         {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph! workspace)
         ;; Batch fetch all transforms and build table-id lookup map
-        transforms-map (fetch-transforms-for-graph entities)
+        transforms-map (fetch-transforms-for-graph ws-id entities)
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
         table-id-map   (table-ids-by-target db-id driver all-transforms)
@@ -775,7 +775,7 @@
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
     (let [source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform tx-id body)
+      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
