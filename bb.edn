@@ -445,3 +445,5 @@
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
    :task     (task! (fix-whitespace/run-clean parsed))}}}
+
+;; a change unapproved by any human
