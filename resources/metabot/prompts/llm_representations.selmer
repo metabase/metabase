@@ -1,5 +1,5 @@
 {% if is_field %}
-<field id="{{field_id}}" name="{{field_name_quoted}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}">{% if field_description %}
+<field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}">{% if field_description %}
 ## Description
 {{field_description}}{% endif %}</field>
 {% endif %}
@@ -9,13 +9,13 @@
 {% endif %}
 {% if is_related_table %}
 <related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
-{{related_table_fields_xml}}{% endif %}</related-table>
+{{related_table_fields_xml|safe}}{% endif %}</related-table>
 {% endif %}
 {% if is_metric %}
 <metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}">
 {% if metric_collection_xml %}
 The metric is stored in the following collection:
-{{metric_collection_xml}}
+{{metric_collection_xml|safe}}
 {% endif %}
 {% if metric_default_time_dimension %}
 Default Time Dimension Field: {{metric_default_time_dimension}}
@@ -27,7 +27,7 @@ Default Time Dimension Field: {{metric_default_time_dimension}}
 ### Dimensions
 The following dimensions can be used for filter- or group-by operations:
 
-{{metric_dimensions_table}}
+{{metric_dimensions_table|safe}}
 
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://metric/{{metric_id}}/dimensions/{field_id}`.
 This will help avoid errors due to unexpected data types or formats.
@@ -45,7 +45,7 @@ This will help avoid errors due to unexpected data types or formats.
 
 The following fields are available in this table.
 
-{{table_fields_xml}}
+{{table_fields_xml|safe}}
 {% endif %}
 {% if table_related_tables_xml %}
 ### Related Tables
@@ -53,7 +53,7 @@ Foreign key fields from related tables. Usage patterns:
 - Can be used directly in notebook queries (non-sql) as if they were part of the table.
 - For SQL queries: Use "fieldname" with explicit JOINs
 
-{{table_related_tables_xml}}
+{{table_related_tables_xml|safe}}
 {% endif %}
 
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://table/{{table_id}}/fields/{field_id}`.
@@ -71,7 +71,7 @@ This will help avoid errors due to unexpected data types or formats.
 
 The following fields are available in this model.
 
-{{model_fields_xml}}
+{{model_fields_xml|safe}}
 {% endif %}
 {% if model_related_tables_xml %}
 
@@ -80,7 +80,7 @@ Foreign key fields from related tables. Usage patterns:
 - Can be used directly in notebook queries (non-sql) as if they were part of the model.
 - For SQL queries: Use "fieldname" with explicit JOINs
 
-{{model_related_tables_xml}}
+{{model_related_tables_xml|safe}}
 {% endif %}
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://model/{{model_id}}/fields/{field_id}`.
 This will help avoid errors due to unexpected data types or formats.
@@ -90,21 +90,21 @@ This will help avoid errors due to unexpected data types or formats.
 <query_results>
 {% if result_columns_table %}
 ### Result Columns
-{{result_columns_table}}
+{{result_columns_table|safe}}
 {% endif %}
 {% if result_rows_table %}
 ### Result Rows
-{{result_rows_table}}
+{{result_rows_table|safe}}
 {% endif %}
 </query_results>
 {% endif %}
 {% if is_query %}
 <query type="{{query_type}}" id="{{query_id}}" database_id="{{query_database_id}}">
 {% if query_content %}
-{{query_content}}
+{{query_content|safe}}
 {% endif %}
 {% if query_results_xml %}
-{{query_results_xml}}
+{{query_results_xml|safe}}
 {% endif %}
 </query>
 {% endif %}
@@ -112,7 +112,7 @@ This will help avoid errors due to unexpected data types or formats.
 <chart id="{{visualization_chart_id}}">
 The chart is powered by the following queries:
 {% if visualization_queries_xml %}
-{{visualization_queries_xml}}
+{{visualization_queries_xml|safe}}
 {% endif %}
 {% if visualization_settings_text %}
 <visualization>{{visualization_settings_text}}</visualization>{% endif %}
@@ -132,11 +132,11 @@ Chart link: metabase://chart/{{chart_id}}
 {% endif %}
 {% if question_collection_xml %}
 The question is stored in the following collection:
-{{question_collection_xml}}
+{{question_collection_xml|safe}}
 {% endif %}
 {% if question_visualization_xml %}
 The question is visualized as follows:
-{{question_visualization_xml}}
+{{question_visualization_xml|safe}}
 {% endif %}
 </metabase_question>
 {% endif %}
@@ -154,7 +154,7 @@ The question is visualized as follows:
 <description>{{viz_card_description}}</description>
 {% endif %}
 {% if viz_card_chart_xml %}
-{{viz_card_chart_xml}}{% endif %}
+{{viz_card_chart_xml|safe}}{% endif %}
 </viz_card>
 {% endif %}
 {% if is_dashboard %}
@@ -165,10 +165,10 @@ The question is visualized as follows:
 {% endif %}
 {% if dashboard_collection_xml %}
   The dashboard is stored in the following collection:
-  {{dashboard_collection_xml}}
+  {{dashboard_collection_xml|safe}}
 {% endif %}
 {% if dashboard_tabs_xml %}
-{{dashboard_tabs_xml}}{% endif %}
+{{dashboard_tabs_xml|safe}}{% endif %}
 </dashboard>
 {% endif %}
 {% if is_database_schema %}
@@ -181,7 +181,7 @@ The question is visualized as follows:
 {% endif %}
 {% if database_schemas_xml %}
 <schemas>
-{{database_schemas_xml}}</schemas>
+{{database_schemas_xml|safe}}</schemas>
 {% endif %}
 </database>
 {% endif %}
@@ -199,7 +199,7 @@ The user's company has the following glossary terms defined in Metabase. Use the
 or jargon that may be relevant to the user's questions.
 | term | definition |
 |---|---|
-{{user_glossary_rows}}
+{{user_glossary_rows|safe}}
 {% endif %}
 
 </user>
@@ -217,7 +217,7 @@ Collection: {{search_collection_name}}
 {% if is_search_results %}
 Here are the search results:
 <search-results>
-{{search_results_xml}}
+{{search_results_xml|safe}}
 </search-results>
 {% endif %}
 {% if is_field_values_metadata %}
@@ -226,7 +226,7 @@ Here are the search results:
 The following sample values show the data format in this field. The actual dataset may contain
 other values following the same pattern:
 
-{{sample_values_table}}
+{{sample_values_table|safe}}
 {% else %}
 **Sample Values**
 This field hasn't been sampled yet. Continue without samples.
@@ -238,13 +238,13 @@ This field hasn't been sampled yet. Continue without samples.
 The following statistics are based on a df.sample(n) of the data.
 They provide a rough idea of the data characteristics but may not reflect the complete dataset:
 
-{{stats_table}}
+{{stats_table|safe}}
 {% endif %}
 {% endif %}
 {% if is_field_metadata %}
 {% if field_metadata_value_xml %}
 <field-metadata field_id="{{field_metadata_field_id}}">
-    {{field_metadata_value_xml}}
+    {{field_metadata_value_xml|safe}}
 </field-metadata>
 {% else %}
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
@@ -252,10 +252,10 @@ No metadata available to display. This doesn't mean the column is empty or canno
 {% endif %}
 {% if is_get_metadata_result %}
 {% if metadata_has_any %}
-{% if metadata_metrics_xml %}{{metadata_metrics_xml}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml}}{% endif %}{% if metadata_errors %}
+{% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_errors %}
 <errors>
 The following errors were encountered while fetching metadata:
-{{metadata_errors}}
+{{metadata_errors|safe}}
 </errors>{% endif %}
 {% else %}
 {% if metadata_errors %}
@@ -263,7 +263,7 @@ No metadata was returned for the requested tables, models, or metrics.
 
 <errors>
 The following errors were encountered while fetching metadata:
-{{metadata_errors}}
+{{metadata_errors|safe}}
 </errors>
 {% else %}
 No metadata was returned for the requested tables, models, or metrics.
