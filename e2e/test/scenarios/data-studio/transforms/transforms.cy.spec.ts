@@ -1723,7 +1723,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("not.exist");
 
         cy.log("results panel should be hidden in read-only mode");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
 
         cy.log("library buttons should be hidden in read-only mode");
         cy.findByLabelText("Import common library").should("not.exist");
@@ -1760,7 +1760,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("be.visible");
 
         cy.log("results panel should be visible in edit mode");
-        cy.findByTestId("python-results").should("be.visible");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
 
         cy.log("Edit definition button should be hidden in edit mode");
         H.DataStudio.Transforms.editDefinition().should("not.exist");
@@ -1803,7 +1803,7 @@ LIMIT
         cy.url().should("not.include", "/edit");
         H.DataStudio.Transforms.editDefinition().should("be.visible");
         cy.findByTestId("python-data-picker").should("not.exist");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
       },
     );
 
@@ -3663,6 +3663,42 @@ describe(
         firstRows: [["43"]],
       });
     });
+
+    it("should display preview notice message", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonTransform({
+            body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42}])
+            `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      H.DataStudio.Transforms.editDefinition().click();
+
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("not.exist");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("not.exist");
+
+      runPythonScriptAndWaitForSuccess();
+
+      cy.log("Preview disclaimer should appear");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("be.visible");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("be.visible");
+    });
   },
 );
 
@@ -3996,7 +4032,7 @@ function runPythonScriptAndWaitForSuccess() {
     .findByTestId("loading-indicator", { timeout: 60000 })
     .should("not.exist");
 
-  cy.findByTestId("python-results").should("be.visible");
+  H.DataStudio.Transforms.pythonResults().should("be.visible");
 }
 
 function getRowNames(): Cypress.Chainable<string[]> {
