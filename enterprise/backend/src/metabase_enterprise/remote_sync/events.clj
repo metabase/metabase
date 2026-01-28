@@ -187,24 +187,6 @@
   [id]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))
 
-(defn- track-published-tables-in-collection!
-  "When a collection becomes remote-synced, find all published tables in it
-   and create 'create' entries for them in RemoteSyncObject (if not already tracked)."
-  [collection-id]
-  (let [published-tables (t2/select :model/Table
-                                    :collection_id collection-id
-                                    :is_published true)
-        table-spec       (spec/remote-sync-specs :model/Table)]
-    (doseq [table published-tables]
-      (let [existing (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Table"
-                                    :model_id (:id table))]
-        (when (or (nil? existing)
-                  (contains? #{"removed" "synced"} (:status existing)))
-          (log/infof "Creating remote sync object entry for published table %s in newly remote-synced collection %s"
-                     (:id table) collection-id)
-          (create-or-update-sync-object-from-spec! table-spec (:id table) "create"))))))
-
 (defn- handle-library-sync-status-change!
   "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
    This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
@@ -226,8 +208,6 @@
         should-sync? (spec/should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
-        was-synced? (and existing-entry
-                         (not (contains? #{"removed"} (:status existing-entry))))
         status (if (:archived object)
                  "delete"
                  (case topic
@@ -240,9 +220,7 @@
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
-        (when (and is-remote-synced? (not was-synced?))
-          (track-published-tables-in-collection! (:id object))))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))

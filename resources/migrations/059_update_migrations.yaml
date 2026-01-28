@@ -744,6 +744,102 @@ databaseChangeLog:
             sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
       rollback:
 
+  - changeSet:
+      id: v59.2026-01-27T12:00:00
+      author: epaget
+      comment: Add entity_id column to python_library table
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: python_library
+            columnName: entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:01
+      author: epaget
+      comment: Backfill entity_id for existing common.py python_library row
+      changes:
+        - sql:
+            sql: UPDATE python_library SET entity_id = 'cWWH9qJPvHNB3rP2vLZrK' WHERE path = 'common.py' AND entity_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE python_library SET entity_id = NULL WHERE path = 'common.py'
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:02
+      author: epaget
+      comment: Add index on entity_id column in python_library table
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+            columns:
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:03
+      author: epaget
+      comment: Add unique constraint on entity_id column in python_library table
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: entity_id
+            constraintName: unique_python_library_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: unique_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:00
+      author: metamben
+      comment: Add stale column to analysis_finding for asynchronous dependent updates
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:01
+      author: metamben
+      comment: Add partial index on analysis_finding.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
