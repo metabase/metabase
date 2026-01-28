@@ -104,7 +104,7 @@
    [:dependency_analysis_version :int]
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
-   [:tag_ids [:sequential pos-int?]]
+   [:tag_ids {:optional true} [:sequential pos-int?]]
    [:transform_tag_ids {:optional true} [:sequential pos-int?]]
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
