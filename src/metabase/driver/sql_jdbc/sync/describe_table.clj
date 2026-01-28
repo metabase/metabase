@@ -150,23 +150,22 @@
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
+          :jdbc-type                  (.getInt rs "DATA_TYPE")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
-
          ;; in the same way drivers are free to not return these attributes, and leave them undefined
          ;; we should treat unknown values accordingly
          (u/remove-nils
           {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
            ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
-           :database-default           (not-empty default)
-           :database-is-generated      generated
-           :database-is-nullable       nullable})
-
+           :database-default      (not-empty default)
+           :database-is-generated generated
+           :database-is-nullable  nullable})
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
 
-(defn ^:private fields-metadata
+(defn- fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
@@ -229,7 +228,8 @@
                                          :database-required
                                          :database-is-auto-increment
                                          :database-is-generated
-                                         :database-is-nullable])
+                                         :database-is-nullable
+                                         :jdbc-type])
              {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
