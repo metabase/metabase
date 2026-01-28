@@ -79,10 +79,10 @@ jobs:
       - name: Extract version number from  version.properties
         id: version-properties
         run: |
-          cat version.properties
+          cat metabase/version.properties
           echo "commit=$(cat ./COMMIT-ID)" >> $GITHUB_OUTPUT
 
-          version=$(grep -o '^tag=.*' version.properties | cut -d'=' -f2)
+          version=$(grep -o '^tag=.*' metabase/version.properties | cut -d'=' -f2)
 
           if [[ "${{ matrix.edition }}" == "ee" ]]; then
             echo "ee_version=$version" >> $GITHUB_OUTPUT
@@ -177,8 +177,9 @@ jobs:
           name: metabase-test-${{ matrix.edition }}-uberjar
       - name: Get the version info
         run: |
-          jar xf metabase.jar version.properties
-          mv version.properties resources/
+          jar xf metabase.jar metabase/version.properties
+          mkdir -p resources/metabase
+          mv metabase/version.properties resources/metabase/
 
       - name: Move jar
         run: mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar

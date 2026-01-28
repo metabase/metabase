@@ -160,14 +160,14 @@ jobs:
 
     - name: Update version.properties in jar
       run: | # sh
-        jar xf metabase.jar version.properties
+        jar xf metabase.jar metabase/version.properties
         echo "Old version.properties:"
-        cat version.properties
-        sed -i "s/^tag=.*/tag=$VERSION/" version.properties
+        cat metabase/version.properties
+        sed -i "s/^tag=.*/tag=$VERSION/" metabase/version.properties
         echo "\n\nNew version.properties:"
-        cat version.properties
+        cat metabase/version.properties
         echo "\n\nUpdating metabase.jar with new version.properties"
-        jar uf metabase.jar version.properties
+        jar uf metabase.jar metabase/version.properties
 
     - name: Store commit's SHA-1 hash
       run:  echo ${{ inputs.commit }} > COMMIT-ID

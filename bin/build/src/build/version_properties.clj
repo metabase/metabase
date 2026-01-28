@@ -6,7 +6,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private version-properties-filename
-  (u/filename u/project-root-directory "resources" "version.properties"))
+  (u/filename u/project-root-directory "resources" "metabase" "version.properties"))
 
 (defn- shell-output-when-nonzero
   "Call an external shell command, and return the first line that is output if it has a nonzero exit code. (Sometimes

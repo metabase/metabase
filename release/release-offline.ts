@@ -169,7 +169,7 @@ async function checkJar() {
   });
 
   const versionProperties = (
-    await $`jar xf ${JAR_PATH}/metabase.jar version.properties && cat version.properties`
+    await $`jar xf ${JAR_PATH}/metabase.jar metabase/version.properties && cat metabase/version.properties`
   ).toString();
 
   log(versionProperties, "green");

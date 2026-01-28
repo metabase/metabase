@@ -108,7 +108,7 @@
 ;;; Version stuff
 
 (defn- version-info-from-properties-file []
-  (when-let [props-file (io/resource "version.properties")]
+  (when-let [props-file (io/resource "metabase/version.properties")]
     (with-open [reader (io/reader props-file)]
       (let [props (java.util.Properties.)]
         (.load props reader)

@@ -1,5 +1,6 @@
 (ns metabase.util.markdown-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.test.util :as tu]
    [metabase.util.markdown :as markdown]))
@@ -249,3 +250,8 @@
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
     (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))
+
+(deftest ^:parallel html-entities-resource-namespaced-test
+  (testing "html-entities.edn is loaded from metabase/ subdirectory to avoid classpath conflicts"
+    (let [url (io/resource "metabase/html-entities.edn")]
+      (is (some? url) "Resource should exist at metabase/html-entities.edn"))))

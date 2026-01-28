@@ -103,3 +103,10 @@
     (is (not= password hashed))
     (testing "Can verify our hashed passwords"
       (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))
+
+(deftest ^:parallel common-passwords-resource-namespaced-test
+  (testing "common_passwords.txt is loaded from metabase/ subdirectory to avoid classpath conflicts"
+    (let [url u.password/common-passwords-url]
+      (is (some? url) "Resource URL should not be nil")
+      (is (re-find #"metabase/common_passwords\.txt" (str url))
+          "Resource should be loaded from metabase/ subdirectory"))))
