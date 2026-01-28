@@ -1,35 +1,40 @@
 import { isEmail } from "metabase/lib/email";
-import type { Group, User } from "metabase-types/api";
+import type { BaseUser, Group } from "metabase-types/api";
 
-export function userInitials(
-  user:
-    | Partial<Pick<User, "first_name" | "last_name" | "email" | "common_name">>
-    | Pick<Group, "name">,
-) {
-  if (user) {
-    return nameInitials(user) || emailInitials(user as User);
+export type PartialUser = Partial<
+  Pick<BaseUser, "first_name" | "last_name" | "email" | "common_name">
+>;
+export type PartialGroup = Pick<Group, "name">;
+
+const isUser = (user: PartialUser | PartialGroup): user is PartialUser => {
+  return "common_name" in user || "email" in user;
+};
+
+export function userInitials(user: PartialGroup | PartialUser) {
+  const initials = nameInitials(user);
+
+  if (initials) {
+    return initials;
+  } else if (isUser(user)) {
+    return emailInitials(user);
   }
 
   return null;
 }
 
-function nameInitials(
-  user:
-    | Partial<Pick<User, "first_name" | "last_name" | "common_name">>
-    | Pick<Group, "name">,
-) {
-  if ("common_name" in user) {
+function nameInitials(user: PartialUser | PartialGroup) {
+  if (isUser(user)) {
     return initial(user.first_name) + initial(user.last_name);
+  } else {
+    // render group
+    return initial(user.name);
   }
-
-  // render group
-  return initial((user as Group).name);
 }
 export function initial(name?: string | null) {
   return name ? name.charAt(0).toUpperCase() : "";
 }
 
-function emailInitials(user: User) {
+function emailInitials(user: PartialUser) {
   const email = [user.email, user.common_name].find((maybeEmail) =>
     isEmail(maybeEmail),
   );

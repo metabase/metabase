@@ -1,17 +1,19 @@
-import { initial, userInitials } from "metabase/common/utils/user";
-import type { Group, User } from "metabase-types/api";
+import {
+  type PartialGroup,
+  type PartialUser,
+  initial,
+  userInitials,
+} from "metabase/common/utils/user";
 
 import type { AvatarProps } from "./UserAvatar.styled";
 import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
-  user: Partial<
-    Pick<User, "first_name" | "last_name" | "email" | "common_name">
-  >;
+  user: PartialUser;
 }
 
 interface GroupProps {
-  user: Pick<Group, "name">;
+  user: PartialGroup;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
