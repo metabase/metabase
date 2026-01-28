@@ -163,7 +163,7 @@
 
 ;;; ------------------------------------------------ Protocol --------------------------------------------------------
 
-(defprotocol PythonEval
+(p/defprotocol+ PythonEval
   "Protocol for evaluating Python code. Abstracts over raw Context and pooled contexts."
   (eval-python [this code]
     "Evaluate Python code."))
@@ -297,6 +297,46 @@
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
     (analyze-sql-impl ctx sql)))
+
+(defn- analyze-table-joins-impl
+  "Internal implementation that takes a context and extracts table join information."
+  ^Value [context sql]
+  ;; 1. Import the module (ensure sql_tools is loaded)
+  (eval-python context "import sql_tools")
+
+  ;; 2. Get the Python function object
+  (let [analyze-joins-fn (eval-python context "sql_tools.analyze_table_joins")]
+
+    ;; 3. Call it directly with arguments
+    (.execute ^Value analyze-joins-fn (object-array [sql]))))
+
+(defn analyze-table-joins
+  "Analyze SQL to extract table names and their join relationships.
+  Returns a map with:
+  - :tables - vector of table names
+  - :joins - vector of join relationships, each containing:
+    - :left-table - the left table in the join
+    - :right-table - the right table in the join
+    - :join-type - the type of join (INNER, LEFT, RIGHT, etc.)
+
+  Example:
+  (analyze-table-joins \"SELECT * FROM a LEFT JOIN b ON a.id = b.a_id JOIN c ON a.id = c.a_id\")
+  => {:tables [\"a\" \"b\" \"c\"]
+      :joins [{:left-table \"a\" :right-table \"b\" :join-type \"LEFT\"}
+              {:left-table \"a\" :right-table \"c\" :join-type \"INNER\"}]}"
+  [sql]
+  (with-open [^Closeable ctx (if #_config/is-dev? false
+                               (acquire-dev-context)
+                               (acquire-context @python-context-pool))]
+    (json/parse-string (.asString ^Value (analyze-table-joins-impl ctx sql)) true)))
+
+(comment
+  (analyze-table-joins "
+   SELECT *
+   FROM a LEFT JOIN b ON a.id = b.a_id
+   JOIN c ON a.id = c.a_id
+   LEFT JOIN d ON c.id = d.c_id")
+  )
 
 (defn p
   "Parse SQL and return Clojure data structure.
