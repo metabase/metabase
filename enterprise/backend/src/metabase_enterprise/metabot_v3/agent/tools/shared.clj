@@ -10,19 +10,23 @@
   nil)
 
 (defn current-memory
+  "Returns the current agent memory map, or nil if not in an agent context."
   []
   (when *memory-atom*
     @*memory-atom*))
 
 (defn current-queries-state
+  "Returns the current queries state map from agent memory."
   []
   (get-in (current-memory) [:state :queries] {}))
 
 (defn current-charts-state
+  "Returns the current charts state map from agent memory."
   []
   (get-in (current-memory) [:state :charts] {}))
 
 (defn current-context
+  "Returns the current agent context from memory."
   []
   (get (current-memory) :context))
 
