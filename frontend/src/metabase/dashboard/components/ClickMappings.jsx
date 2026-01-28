@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/common/components/Select";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";

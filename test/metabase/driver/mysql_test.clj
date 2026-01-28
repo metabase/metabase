@@ -974,7 +974,8 @@
                                                  :password "password"
                                                  :ssl true
                                                  :additional-options "trustServerCertificate=true")]
-              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details
+                                                       :dbms_version {:flavor "MySQL"}}]
                 (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))

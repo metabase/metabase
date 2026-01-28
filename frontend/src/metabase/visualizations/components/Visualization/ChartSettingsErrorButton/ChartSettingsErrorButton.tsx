@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { Box } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 

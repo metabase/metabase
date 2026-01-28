@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { CollectionId, User } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
 

@@ -801,6 +801,66 @@ databaseChangeLog:
             sql: INSERT INTO python_library (path, source) VALUES ('common.py', '')
       rollback:
 
+  - changeSet:
+      id: v59.2026-01-27T12:00:00
+      author: epaget
+      comment: Add entity_id column to python_library table
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: python_library
+            columnName: entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:01
+      author: epaget
+      comment: Backfill entity_id for existing common.py python_library row
+      changes:
+        - sql:
+            sql: UPDATE python_library SET entity_id = 'cWWH9qJPvHNB3rP2vLZrK' WHERE path = 'common.py' AND entity_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE python_library SET entity_id = NULL WHERE path = 'common.py'
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:02
+      author: epaget
+      comment: Add index on entity_id column in python_library table
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+            columns:
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: python_library
+            indexName: idx_python_library_entity_id
+
+  - changeSet:
+      id: v59.2026-01-27T12:00:03
+      author: epaget
+      comment: Add unique constraint on entity_id column in python_library table
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: entity_id
+            constraintName: unique_python_library_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: unique_python_library_entity_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 
 import { LogoLink } from "./AppBarLogo.styled";

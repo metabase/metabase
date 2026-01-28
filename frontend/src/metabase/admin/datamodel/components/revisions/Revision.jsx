@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 
 import { RevisionDiff } from "./RevisionDiff";

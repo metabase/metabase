@@ -1,4 +1,4 @@
-import PinMap from "metabase/visualizations/components/PinMap";
+import { PinMap } from "metabase/visualizations/components/PinMap";
 
 describe("PinMap", () => {
   it("should filter out rows with null values in either the lat, long, or metric column", () => {

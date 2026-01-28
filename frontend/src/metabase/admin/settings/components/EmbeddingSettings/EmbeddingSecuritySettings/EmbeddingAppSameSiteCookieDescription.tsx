@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
-import Alert from "metabase/common/components/Alert";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { Alert } from "metabase/common/components/Alert";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { isSameOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";

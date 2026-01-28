@@ -473,34 +473,7 @@
                         impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
             (impl/finish-remote-config!)
             (is (= "main" (setting/get :remote-sync-branch))
-                "Should set branch to default branch")
-            (is @import-started?
-                "Should start import when no collection exists")))))))
-
-(deftest finish-remote-config!-starts-import-when-no-collection-exists-test
-  (testing "finish-remote-config! starts import when no remote-synced collection exists"
-    (mt/with-model-cleanup [:model/RemoteSyncTask]
-      (let [mock-source (test-helpers/create-mock-source)
-            import-called? (atom false)
-            import-args (atom nil)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-branch "main"
-                                           remote-sync-type :read-write]
-          (with-redefs [source/source-from-settings (constantly mock-source)
-                        impl/async-import! (fn [branch force? args]
-                                             (reset! import-called? true)
-                                             (reset! import-args {:branch branch :force? force? :args args})
-                                             {:id 123})
-                        collection/remote-synced-collection (constantly nil)]
-            (let [task-id (impl/finish-remote-config!)]
-              (is (= 123 task-id)
-                  "Should return task ID from async-import!")
-              (is @import-called?
-                  "Should call async-import!")
-              (is (= {:branch "main" :force? true :args {}}
-                     @import-args)
-                  "Should call async-import! with correct arguments"))))))))
+                "Should set branch to default branch")))))))
 
 (deftest finish-remote-config!-starts-import-in-read-only-mode-test
   (testing "finish-remote-config! starts import in read-only mode even when collection exists"

@@ -5,6 +5,7 @@ import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
@@ -48,8 +49,9 @@ function _CartesianChart(props: VisualizationProps) {
     actionButtons,
     isDashboard,
     isEditing,
+    isVisualizer,
     isQueryBuilder,
-    isVisualizerViz,
+    isVisualizerCard,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -138,7 +140,7 @@ function _CartesianChart(props: VisualizationProps) {
   // so title selection is disabled in this case
   const canSelectTitle =
     !!onChangeCardAndRun &&
-    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+    (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
@@ -186,7 +188,14 @@ function _CartesianChart(props: VisualizationProps) {
           eventHandlers={eventHandlers}
           onResize={handleResize}
           onInit={handleInit}
-        />
+        >
+          <DataPointsVisiblePopover
+            isDashboard={isDashboard}
+            isVisualizer={isVisualizer}
+            chartModel={chartModel}
+            settings={settings}
+          />
+        </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
       {seriesColorsCss}
     </CartesianChartRoot>

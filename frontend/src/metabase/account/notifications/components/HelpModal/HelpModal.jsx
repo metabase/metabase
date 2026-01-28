@@ -1,9 +1,9 @@
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
