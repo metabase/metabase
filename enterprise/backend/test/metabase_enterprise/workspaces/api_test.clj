@@ -432,11 +432,10 @@
                    (t2/select-one-fn :name :model/Transform (:id x1))))
             (is (= (:name ws-x-2)
                    (t2/select-one-fn :name :model/Transform (:id x2)))))
-          (testing "Workspace transforms are deleted"
-            (is (not (t2/exists? :model/WorkspaceTransform
-                                 :workspace_id ws-id :ref_id (:ref_id ws-x-1)))))
-          (is (not (t2/exists? :model/WorkspaceTransform
-                               :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
+          (testing "Workspace transforms are not deleted"
+            (is (= 2 (t2/count :model/WorkspaceTransform
+                               :workspace_id ws-id
+                               :ref_id [:in (map :ref_id [ws-x-1 ws-x-2])])))))
         (testing "Workspace has been archived"
           (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id ws-id))))))))
 
@@ -502,10 +501,10 @@
                     :global_id (:id x1)
                     :ref_id ws-x-1-id}
                    resp)))
-          (testing "Remaining workspace transform is left untouched"
-            (is (= 1 (count remaining)))
-            (is (=? (:name ws-x-2)
-                    (:name (first remaining)))))
+          (testing "Workspace transforms are left untouched"
+            (is (= 2 (count remaining)))
+            (is (=? (into #{} (map :name [ws-x-1 ws-x-2]))
+                    (into #{} (map :name remaining)))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-1)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
@@ -530,8 +529,8 @@
                     :global_id (:id x2)
                     :ref_id ws-x-2-id}
                    resp)))
-          (testing "Remaining workspace transform was deleted"
-            (is (= 0 (count remaining))))
+          (testing "Workspace transforms still remain"
+            (is (= 2 (count remaining))))
           (testing "Propagation back to core"
             (is (= (:name ws-x-2)
                    (t2/select-one-fn :name :model/Transform :id (:global_id resp)))))
@@ -689,8 +688,8 @@
                              :global_id new-global-id
                              :ref_id ws-x-3-id}}
                           (get-in resp [:merged :transforms])))))
-            (testing "All transforms were deleted on merge"
-              (is (= 0 (count (t2/select :model/WorkspaceTransform :workspace_id ws-id)))))
+            (testing "No transforms are deleted on merge"
+              (is (= 3 (count (t2/select :model/WorkspaceTransform :workspace_id ws-id)))))
             (testing "Propagation back to core"
               (is (= "UPDATED 1"
                      (t2/select-one-fn :name :model/Transform :id (:global_id ws-x-1))))
