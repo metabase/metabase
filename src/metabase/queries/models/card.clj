@@ -1236,7 +1236,7 @@
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
     (next-method card json-generator)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defn- export-result-metadata [metadata]
   (when metadata
