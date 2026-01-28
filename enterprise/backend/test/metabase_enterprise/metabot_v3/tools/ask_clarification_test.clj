@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.ask-clarification-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.ask-clarification :as ask-clarification]))
 
@@ -27,7 +28,7 @@
     (let [result (ask-clarification/ask-for-sql-clarification {:question "Any question?"})]
       (is (contains? result :instructions))
       (is (string? (:instructions result)))
-      (is (clojure.string/includes? (:instructions result) "wait")))))
+      (is (str/includes? (:instructions result) "wait")))))
 
 (deftest final-response-behavior-test
   (testing "final-response? signals agent should stop"
