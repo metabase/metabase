@@ -12,6 +12,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -92,13 +93,14 @@
     (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
     (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
   [field-id]
-  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
-    {:model-tag model-tag
-     ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
-     :model-id (if (= model-tag "q")
-                 model-id
-                 (parse-long model-id))
-     :field-index (parse-long field-index)}))
+  (when (and field-id (string? field-id))
+    (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
+      {:model-tag model-tag
+       ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
+       :model-id (if (= model-tag "q")
+                   model-id
+                   (parse-long model-id))
+       :field-index (parse-long field-index)})))
 
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
@@ -121,6 +123,11 @@
       (when-not (if (string? expected-prefix)
                   (str/starts-with? field-id expected-prefix)
                   (re-matches expected-prefix field-id))
+        (log/warn "Field id prefix mismatch"
+                  {:field-id field-id
+                   :expected-prefix expected-prefix
+                   :model-tag model-tag
+                   :model-id model-id})
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
                          :field-id field-id

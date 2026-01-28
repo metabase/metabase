@@ -1,5 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
+   [buddy.core.codecs :as codecs]
+   [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
+   [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -9,7 +12,32 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
+
+;;; URL Generation for Auto-Navigation
+
+(defn- query->url-hash
+  "Convert an MLv2/MBQL query to a base64-encoded URL hash."
+  [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [dataset-query (if (and (map? query) (:lib/type query))
+                        (lib/->legacy-MBQL query)
+                        query)]
+    (-> {:dataset_query dataset-query}
+        json/encode
+        (.getBytes "UTF-8")
+        codecs/bytes->b64-str)))
+
+(defn- query->results-url
+  "Convert a query to a /question# URL for navigation."
+  [query]
+  (str "/question#" (query->url-hash query)))
+
+;;; Filter Operations
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -181,11 +209,16 @@
                            returned-cols)}))
 
 (defn query-metric
-  "Create a query based on a metric."
+  "Create a query based on a metric.
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [metric-id] :as arguments}]
   (try
     (if (int? metric-id)
-      {:structured-output (query-metric* arguments)}
+      (let [result (query-metric* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output (assoc result :result-type :query)
+         :instructions instructions/query-created-instructions
+         :data-parts [(streaming/navigate-to-part results-url)]})
       {:output (str "Invalid metric_id " metric-id)})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
@@ -254,6 +287,10 @@
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        _ (log/debug "query_model field-id expectations"
+                     {:model-id model-id
+                      :field-id-prefix field-id-prefix
+                      :field-ids (vec (keep :field-id (concat fields filters group-by)))})
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -286,11 +323,16 @@
                            returned-cols)}))
 
 (defn query-model
-  "Create a query based on a model."
+  "Create a query based on a model.
+  Returns structured output with the query and a navigate_to data part."
   [{:keys [model-id] :as arguments}]
   (try
     (if (int? model-id)
-      {:structured-output (query-model* arguments)}
+      (let [result (query-model* arguments)
+            results-url (query->results-url (:query result))]
+        {:structured-output (assoc result :result-type :query)
+         :instructions instructions/query-created-instructions
+         :data-parts [(streaming/navigate-to-part results-url)]})
       {:output (str "Invalid model_id " model-id)})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
@@ -353,8 +395,8 @@
   (try
     (cond
       (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id" {:agent-error? true}))
-      (int? model-id) {:structured-output (query-datasource* arguments)}
-      (int? table-id) {:structured-output (query-datasource* arguments)}
+      (int? model-id) {:structured-output (assoc (query-datasource* arguments) :result-type :query)}
+      (int? table-id) {:structured-output (assoc (query-datasource* arguments) :result-type :query)}
       model-id        {:output (str "Invalid model_id " model-id)}
       table-id        {:output (str "Invalid table_id " table-id)}
       :else           {:output "Either table_id or model_id must be provided"})
@@ -417,7 +459,8 @@
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output
-       {:type :query
+       {:result-type :query
+        :type :query
         :query-id query-id
         :query query
         :result-columns (into []
