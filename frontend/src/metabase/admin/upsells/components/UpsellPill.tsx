@@ -22,7 +22,11 @@ export function _UpsellPill({
   source: string;
   onClick?: () => void;
 }) {
-  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+  const {
+    onClick: upgradeOnClick,
+    url: upgradeUrl,
+    modal,
+  } = useUpgradeAction({
     url: link,
     campaign,
     location,
@@ -37,28 +41,34 @@ export function _UpsellPill({
 
   if (handleClick) {
     return (
-      <UnstyledButton
-        onClick={handleClick}
-        onClickCapture={() => trackUpsellClicked({ location, campaign })}
-        className={S.UpsellPillComponent}
-        data-testid="upsell-pill"
-      >
-        <UpsellGem />
-        {children}
-      </UnstyledButton>
+      <>
+        <UnstyledButton
+          onClick={handleClick}
+          onClickCapture={() => trackUpsellClicked({ location, campaign })}
+          className={S.UpsellPillComponent}
+          data-testid="upsell-pill"
+        >
+          <UpsellGem />
+          {children}
+        </UnstyledButton>
+        {modal}
+      </>
     );
   }
 
   return (
-    <ExternalLink
-      href={upgradeUrl}
-      onClickCapture={() => trackUpsellClicked({ location, campaign })}
-      data-testid="upsell-pill"
-      className={S.UpsellPillComponent}
-    >
-      <UpsellGem />
-      {children}
-    </ExternalLink>
+    <>
+      <ExternalLink
+        href={upgradeUrl}
+        onClickCapture={() => trackUpsellClicked({ location, campaign })}
+        data-testid="upsell-pill"
+        className={S.UpsellPillComponent}
+      >
+        <UpsellGem />
+        {children}
+      </ExternalLink>
+      {modal}
+    </>
   );
 }
 

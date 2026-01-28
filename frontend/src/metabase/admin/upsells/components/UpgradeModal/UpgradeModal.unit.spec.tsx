@@ -1,51 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import {
+  setupChangePlanPreviewEndpoint,
+  setupGetPlanEndpoint,
+  setupTrialAvailableEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { UpgradeModal } from "./UpgradeModal";
-
-const TRIAL_AVAILABLE_RESPONSE = {
-  available: true,
-  plan_alias: "pro-cloud",
-};
-
-const TRIAL_NOT_AVAILABLE_RESPONSE = {
-  available: false,
-  plan_alias: "pro-cloud",
-};
-
-const CHANGE_PLAN_PREVIEW_ON_TRIAL_RESPONSE = {
-  amount_due_now: 0,
-  next_payment_date: "2026-02-15T00:00:00Z",
-  next_payment_amount: 57500,
-  warnings: null,
-};
-
-const CHANGE_PLAN_PREVIEW_NOT_ON_TRIAL_RESPONSE = {
-  amount_due_now: 50000,
-  next_payment_date: "2026-02-15T00:00:00Z",
-  next_payment_amount: 57500,
-  warnings: null,
-};
-
-const GET_PLAN_RESPONSE = {
-  id: 16,
-  name: "Metabase Pro Cloud",
-  description: "Metabase Pro Cloud",
-  alias: "pro-cloud",
-  product: "prod_K79Voj2md354w8",
-  price: "$575.00",
-  per_user_price: "$12.00",
-  users_included: 10,
-  trial_days: 14,
-  billing_period_months: 1,
-  can_purchase: true,
-  token_features: ["no-upsell"],
-  hosting_features: ["custom-domain"],
-};
 
 const setup = ({ opened = true }: { opened?: boolean } = {}) => {
   const onClose = jest.fn();
@@ -63,10 +28,10 @@ describe("UpgradeModal", () => {
   // State 1: Trial up available
   describe("state 1: trial up available", () => {
     beforeEach(() => {
-      fetchMock.post(
-        "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
-        TRIAL_AVAILABLE_RESPONSE,
-      );
+      setupTrialAvailableEndpoint({
+        available: true,
+        plan_alias: "pro-cloud",
+      });
     });
 
     it("should show trial UI with $0.00 due today", async () => {
@@ -127,15 +92,31 @@ describe("UpgradeModal", () => {
   // State 2: Trial up not available, but currently on trial
   describe("state 2: trial up not available, on trial", () => {
     beforeEach(() => {
-      fetchMock.post(
-        "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
-        TRIAL_NOT_AVAILABLE_RESPONSE,
-      );
-      fetchMock.post(
-        "path:/api/ee/cloud-proxy/mb-plan-change-plan-preview",
-        CHANGE_PLAN_PREVIEW_ON_TRIAL_RESPONSE,
-      );
-      fetchMock.post("path:/api/ee/cloud-proxy/get-plan", GET_PLAN_RESPONSE);
+      setupTrialAvailableEndpoint({
+        available: false,
+        plan_alias: "pro-cloud",
+      });
+      setupChangePlanPreviewEndpoint({
+        amount_due_now: 0,
+        next_payment_date: "2026-02-15T00:00:00Z",
+        next_payment_amount: 57500,
+        warnings: null,
+      });
+      setupGetPlanEndpoint({
+        id: 16,
+        name: "Metabase Pro Cloud",
+        description: "Metabase Pro Cloud",
+        alias: "pro-cloud",
+        product: "prod_K79Voj2md354w8",
+        price: "$575.00",
+        per_user_price: "$12.00",
+        users_included: 10,
+        trial_days: 14,
+        billing_period_months: 1,
+        can_purchase: true,
+        token_features: ["no-upsell"],
+        hosting_features: ["custom-domain"],
+      });
     });
 
     it("should show upgrade UI with $0 due and plan pricing", async () => {
@@ -176,14 +157,16 @@ describe("UpgradeModal", () => {
   // State 3: Trial up not available, not on trial
   describe("state 3: trial up not available, not on trial", () => {
     beforeEach(() => {
-      fetchMock.post(
-        "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
-        TRIAL_NOT_AVAILABLE_RESPONSE,
-      );
-      fetchMock.post(
-        "path:/api/ee/cloud-proxy/mb-plan-change-plan-preview",
-        CHANGE_PLAN_PREVIEW_NOT_ON_TRIAL_RESPONSE,
-      );
+      setupTrialAvailableEndpoint({
+        available: false,
+        plan_alias: "pro-cloud",
+      });
+      setupChangePlanPreviewEndpoint({
+        amount_due_now: 50000,
+        next_payment_date: "2026-02-15T00:00:00Z",
+        next_payment_amount: 57500,
+        warnings: null,
+      });
     });
 
     it("should show upgrade UI with amount due", async () => {

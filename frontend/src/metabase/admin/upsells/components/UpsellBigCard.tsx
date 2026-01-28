@@ -43,7 +43,11 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   children,
   ...props
 }: UpsellBigCardProps) => {
-  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+  const {
+    onClick: upgradeOnClick,
+    url: upgradeUrl,
+    modal,
+  } = useUpgradeAction({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -87,28 +91,31 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   };
 
   return (
-    <Box
-      data-testid="upsell-big-card"
-      className={S.UpsellBigCardComponent}
-      bg="background-primary"
-      {...props}
-    >
-      <Flex px="xl" py="md">
-        <UpsellGem size={24} />
-        <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
-          <Title order={2} lh={1} mb="sm">
-            {title}
-          </Title>
-          <Text lh="xl" mb="lg">
-            {children}
-          </Text>
-          {renderCta()}
-        </Stack>
-      </Flex>
-      {illustrationSrc && (
-        <Image src={illustrationSrc} p="md" pl={0} w="auto" />
-      )}
-    </Box>
+    <>
+      <Box
+        data-testid="upsell-big-card"
+        className={S.UpsellBigCardComponent}
+        bg="background-primary"
+        {...props}
+      >
+        <Flex px="xl" py="md">
+          <UpsellGem size={24} />
+          <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
+            <Title order={2} lh={1} mb="sm">
+              {title}
+            </Title>
+            <Text lh="xl" mb="lg">
+              {children}
+            </Text>
+            {renderCta()}
+          </Stack>
+        </Flex>
+        {illustrationSrc && (
+          <Image src={illustrationSrc} p="md" pl={0} w="auto" />
+        )}
+      </Box>
+      {modal}
+    </>
   );
 };
 

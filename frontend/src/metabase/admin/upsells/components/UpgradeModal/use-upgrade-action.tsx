@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
+
 import { useSetting } from "metabase/common/hooks";
 
 import { useUpsellLink } from "../use-upsell-link";
 
-import { useUpgradeModal } from "./UpgradeModalContext";
+import { UpgradeModal } from "./UpgradeModal";
 
 interface UseUpgradeActionProps {
   url: string;
@@ -13,6 +16,7 @@ interface UseUpgradeActionProps {
 interface UseUpgradeActionResult {
   onClick: (() => void) | undefined;
   url: string | undefined;
+  modal: ReactNode;
 }
 
 export function useUpgradeAction({
@@ -21,18 +25,27 @@ export function useUpgradeAction({
   location,
 }: UseUpgradeActionProps): UseUpgradeActionResult {
   const isHosted = useSetting("is-hosted?");
-  const { openUpgradeModal } = useUpgradeModal();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const urlWithParams = useUpsellLink({ url, campaign, location });
+
+  const openModal = useCallback(() => setIsModalOpen(true), []);
+  const closeModal = useCallback(() => setIsModalOpen(false), []);
+
+  const modal = isHosted ? (
+    <UpgradeModal opened={isModalOpen} onClose={closeModal} />
+  ) : null;
 
   if (isHosted) {
     return {
-      onClick: openUpgradeModal,
+      onClick: openModal,
       url: undefined,
+      modal,
     };
   }
 
   return {
     onClick: undefined,
     url: urlWithParams,
+    modal,
   };
 }
