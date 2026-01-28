@@ -20,15 +20,17 @@ import {
 } from "./utils";
 
 type DependencyListPageProps = {
-  location: Location<DependencyListQueryParams>;
+  location: Pick<Location<DependencyListQueryParams>, "query">;
 };
 
-type DependencyListPageOwnProps = {
+type DependencyListPageOwnProps = DependencyListPageProps & {
   mode: DependencyListMode;
-  location: Location<DependencyListQueryParams>;
 };
 
-function DependencyListPage({ mode, location }: DependencyListPageOwnProps) {
+export function DependencyListPage({
+  mode,
+  location,
+}: DependencyListPageOwnProps) {
   const dispatch = useDispatch();
 
   const {

@@ -13,6 +13,10 @@ import type {
   DependencyGraph,
   DocumentDependencyNode,
   DocumentDependencyNodeData,
+  ListBrokenGraphNodesRequest,
+  ListBrokenGraphNodesResponse,
+  ListUnreferencedGraphNodesRequest,
+  ListUnreferencedGraphNodesResponse,
   MeasureDependencyNode,
   MeasureDependencyNodeData,
   SandboxDependencyNode,
@@ -325,6 +329,46 @@ export function createMockMeasureDependencyNode(
     type: "measure",
     data: createMockMeasureDependencyNodeData(),
     dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockListBrokenGraphNodesRequest(
+  opts?: Partial<ListBrokenGraphNodesRequest>,
+): ListBrokenGraphNodesRequest {
+  return {
+    ...opts,
+  };
+}
+
+export function createMockListBrokenGraphNodesResponse(
+  opts?: Partial<ListBrokenGraphNodesResponse>,
+): ListBrokenGraphNodesResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockListUnreferencedGraphNodesRequest(
+  opts?: Partial<ListUnreferencedGraphNodesRequest>,
+): ListUnreferencedGraphNodesRequest {
+  return {
+    ...opts,
+  };
+}
+
+export function createMockListUnreferencedGraphNodesResponse(
+  opts?: Partial<ListUnreferencedGraphNodesResponse>,
+): ListUnreferencedGraphNodesResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
     ...opts,
   };
 }
