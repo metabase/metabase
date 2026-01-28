@@ -121,6 +121,42 @@ describe("scenarios > data studio > snippets", () => {
 
       H.DataStudio.Snippets.editPage().should("be.visible");
     });
+
+    it("should preserve unsaved content changes when description or name is edited", () => {
+      cy.log("Navigate to a snippet and edit its content");
+      H.createSnippet({
+        name: "Test snippet",
+        content: "SELECT * FROM orders",
+      });
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+      H.DataStudio.Snippets.editor.type("1");
+
+      cy.log("Edit its name");
+      cy.findByPlaceholderText("Name").type("1").blur();
+      H.undoToast().findByText("Snippet name updated").should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Edit its description");
+      H.DataStudio.Snippets.descriptionInput().type("desc").blur();
+      H.undoToast()
+        .findByText("Snippet description updated")
+        .should("be.visible");
+      H.undoToast().icon("close").click();
+
+      cy.log("Verify unsaved changes are preserved");
+      H.DataStudio.Snippets.editor
+        .value()
+        .should("eq", "SELECT * FROM orders1");
+
+      cy.log(
+        "Verify Save button saves the content without reverting the name and description changes",
+      );
+      H.DataStudio.Snippets.saveButton().click();
+      H.undoToast().findByText("Snippet content updated").should("be.visible");
+      cy.findByPlaceholderText("Name").should("have.value", "Test snippet1");
+      H.DataStudio.Snippets.editPage().findByText("desc").should("be.visible");
+    });
   });
 
   describe("description", () => {

@@ -10,3 +10,7 @@
     border-bottom: 1px solid var(--mb-color-border);
   }
 }
+
+.link {
+  white-space: normal;
+}

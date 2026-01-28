@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -9,6 +9,7 @@ import { getUserCanWriteMeasures } from "metabase-enterprise/data-studio/selecto
 import type { Table } from "metabase-types/api";
 
 import { MeasureItem } from "./MeasureItem";
+import S from "./TableSection.module.css";
 
 type MeasureListProps = {
   table: Table;
@@ -49,6 +50,8 @@ export function MeasureList({ table }: MeasureListProps) {
 
       {measures.length === 0 ? (
         <EmptyState
+          className={S.EmptyState}
+          spacing="sm"
           illustrationElement={<Icon name="sum" size={32} c="text-secondary" />}
           title={t`No measures yet`}
           message={t`Create a measure to define a reusable aggregation for this table.`}

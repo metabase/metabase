@@ -5,7 +5,7 @@ import { Children, cloneElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 
-const SidebarLayout = ({ className, style, sidebar, children }) => (
+export const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
     className={className}
     style={{ ...style, display: "flex", flexDirection: "row" }}
@@ -46,5 +46,3 @@ SidebarLayout.propTypes = {
   sidebar: PropTypes.element.isRequired,
   children: PropTypes.element.isRequired,
 };
-
-export default SidebarLayout;

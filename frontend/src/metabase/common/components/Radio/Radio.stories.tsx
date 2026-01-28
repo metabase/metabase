@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import Radio, { type RadioProps } from "./Radio";
+import { Radio, type RadioProps } from "./Radio";
 
 export default {
   title: "Deprecated/Components/Radio",

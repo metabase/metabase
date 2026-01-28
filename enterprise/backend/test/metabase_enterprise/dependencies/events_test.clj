@@ -18,15 +18,16 @@
 (comment
   metabase-enterprise.dependencies.events/keep-me)
 
-(defn- run-with-dependencies-setup [thunk]
+(defn- run-with-dependencies-setup! [thunk]
   (mt/with-test-user :rasta
     (mt/with-premium-features #{:dependencies}
-      (lib-be/with-metadata-provider-cache
-        (let [mp (mt/metadata-provider)]
-          (thunk mp))))))
+      (mt/with-model-cleanup [:model/AnalysisFinding]
+        (lib-be/with-metadata-provider-cache
+          (let [mp (mt/metadata-provider)]
+            (thunk mp)))))))
 
 (deftest dashboard-update-sets-correct-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (let [products-id (mt/id :products)
            orders-id (mt/id :orders)
@@ -143,7 +144,7 @@
              (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard))))))))))
 
 (deftest document-update-sets-correct-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (let [products-id (mt/id :products)
            products (lib.metadata/table mp products-id)]
@@ -196,7 +197,7 @@
 
 (deftest sandbox-update-sets-correct-dependencies
   (mt/with-premium-features #{:sandboxes}
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
                       :model/Card {card1-id :id} {}
@@ -226,7 +227,7 @@
 
 (deftest card-dependency-calculation-error-handling-test
   (testing "When dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [mp]
        (let [products-id (mt/id :products)
              products (lib.metadata/table mp products-id)]
@@ -254,7 +255,7 @@
 
 (deftest snippet-dependency-calculation-error-handling-test
   (testing "When snippet dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "test snippet"
                                                                               :content "SELECT 1"}]
@@ -279,9 +280,167 @@
                       (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet :id snippet-id)))
                (is (empty? (t2/select :model/Dependency :from_entity_id snippet-id :from_entity_type :snippet)))))))))))
 
+(deftest ^:sequential native-transform-updates-dependencies-test
+  (testing "native transform update events trigger dependency calculations"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [source {:query (lib/native-query mp "select * from orders")
+                     :type :query}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+           (is (= models.dependency/current-dependency-analysis-version
+                  (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+           (is (=? [{:from_entity_type :transform,
+                     :from_entity_id transform-id,
+                     :to_entity_type :table,
+                     :to_entity_id (mt/id :orders)}]
+                   (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
+
+(deftest ^:sequential mbql-transform-updates-dependencies-test
+  (testing "mbql transform update events trigger dependency calculations"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [source {:query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     :type :query}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+           (is (= models.dependency/current-dependency-analysis-version
+                  (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+           (is (=? [{:from_entity_type :transform,
+                     :from_entity_id transform-id,
+                     :to_entity_type :table,
+                     :to_entity_id (mt/id :orders)}]
+                   (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
+
+(deftest ^:sequential python-transform-updates-dependencies-test
+  (testing "python transform update events trigger dependency calculations"
+    (run-with-dependencies-setup!
+     (fn [_]
+       (let [source {:type :python,
+                     :source-database 2,
+                     :source-tables {"orders" {:database_id (mt/id),
+                                               :schema "public",
+                                               :table "orders",
+                                               :table_id (mt/id :orders)}},
+                     :body
+                     "import pandas as pd\n\ndef transform(orders):\n    return orders"}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
+           (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})
+           (is (= models.dependency/current-dependency-analysis-version
+                  (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+           (is (=? [{:from_entity_type :transform,
+                     :from_entity_id transform-id,
+                     :to_entity_type :table,
+                     :to_entity_id (mt/id :orders)}]
+                   (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
+
+(deftest ^:sequential transform-run-updates-dependencies-test
+  (testing "transform run events trigger dependency calculations"
+    (run-with-dependencies-setup!
+     (fn [_]
+       (let [target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
+         (mt/with-temp [:model/Transform {transform-id :id} {:target target}
+                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}]
+           (events/publish-event! :event/transform-run-complete
+                                  {:object {:db-id (mt/id)
+                                            :output-schema "Other"
+                                            :output-table :test_table
+                                            :transform-id transform-id}
+                                   :user-id api/*current-user-id*})
+           (is (= models.dependency/current-dependency-analysis-version
+                  (t2/select-one-fn :dependency_analysis_version :model/Transform :id transform-id)))
+           (is (=? [{:from_entity_type :table
+                     :from_entity_id table-id,
+                     :to_entity_type :transform,
+                     :to_entity_id transform-id}]
+                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))
+
+(deftest ^:sequential python-transform-update-handles-downstream-dependencies-test
+  (testing "python transform update events handles downstream dependencies"
+    (run-with-dependencies-setup!
+     (fn [_]
+       (let [source {:type :python,
+                     :source-database (mt/id),
+                     :source-tables {"orders" {:database_id (mt/id),
+                                               :schema "public",
+                                               :table "orders",
+                                               :table_id (mt/id :orders)}},
+                     :body
+                     "import pandas as pd\n\ndef transform(orders):\n    return orders"}
+             target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target
+                                                                           :source source}
+                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
+                        :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
+           (testing "initial run"
+             (events/publish-event! :event/transform-run-complete
+                                    {:object {:db-id (mt/id)
+                                              :output-schema "Other"
+                                              :output-table :test_table
+                                              :transform-id transform-id}
+                                     :user-id api/*current-user-id*})
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+           (testing "keeping target"
+             (events/publish-event! :event/update-transform
+                                    {:object transform
+                                     :user-id api/*current-user-id*})
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+           (testing "changing target update"
+             (events/publish-event! :event/update-transform
+                                    {:object (assoc-in transform [:target :name] "test_table2")
+                                     :user-id api/*current-user-id*})
+             (is (empty?
+                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+
+(deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
+  (testing "query transform update events handles downstream dependencies"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [source {:query (lib/native-query mp "select * from orders")
+                     :type :query}
+             target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target :source source}
+                        :model/Table {table-id :id} {:schema "Other", :db_id (mt/id), :name "test_table"}
+                        :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
+           (testing "initial run"
+             (events/publish-event! :event/transform-run-complete
+                                    {:object {:db-id (mt/id)
+                                              :output-schema "Other"
+                                              :output-table :test_table
+                                              :transform-id transform-id}
+                                     :user-id api/*current-user-id*})
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+           (testing "keeping target"
+             (events/publish-event! :event/update-transform
+                                    {:object transform
+                                     :user-id api/*current-user-id*})
+             (is (=? [{:from_entity_type :table
+                       :from_entity_id table-id,
+                       :to_entity_type :transform,
+                       :to_entity_id transform-id}]
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+           (testing "changing target update"
+             (events/publish-event! :event/update-transform
+                                    {:object (assoc-in transform [:target :name] "test_table2")
+                                     :user-id api/*current-user-id*})
+             (is (empty?
+                  (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
+
 (deftest transform-dependency-calculation-error-handling-test
   (testing "When transform dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/Transform {transform-id :id :as transform} {}]
          (log.capture/with-log-messages-for-level [messages ["metabase-enterprise.dependencies.events" :error]]
@@ -307,7 +466,7 @@
 
 (deftest dashboard-dependency-calculation-error-handling-test
   (testing "When dashboard dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/Dashboard {dashboard-id :id :as dashboard} {}]
          (log.capture/with-log-messages-for-level [messages ["metabase-enterprise.dependencies.events" :error]]
@@ -333,7 +492,7 @@
 
 (deftest document-dependency-calculation-error-handling-test
   (testing "When document dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/Document {document-id :id :as document} {:content_type "application/json+vnd.prose-mirror"
                                                                       :document {:type "doc" :content []}}]
@@ -361,7 +520,7 @@
 (deftest sandbox-dependency-calculation-error-handling-test
   (testing "When sandbox dependency calculation throws an error, it should be logged and the version should still be updated"
     (mt/with-premium-features #{:sandboxes}
-      (run-with-dependencies-setup
+      (run-with-dependencies-setup!
        (fn [_]
          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "test group"}
                         :model/Card {card-id :id} {}
@@ -390,7 +549,7 @@
                  (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))))))
 
 (deftest segment-update-sets-correct-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)
@@ -421,7 +580,7 @@
            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 
 (deftest card-with-segment-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [_]
      (let [products-id (mt/id :products)
            price-field-id (mt/id :products :price)]
@@ -447,7 +606,7 @@
 
 (deftest segment-dependency-calculation-error-handling-test
   (testing "When segment dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [_]
        (let [products-id (mt/id :products)
              price-field-id (mt/id :products :price)]
@@ -475,7 +634,7 @@
                  (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))
 
 (deftest measure-update-sets-correct-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (mt/with-test-user :rasta
        (let [orders-id (mt/id :orders)
@@ -510,7 +669,7 @@
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
 (deftest measure-with-measure-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (let [orders-id (mt/id :orders)
            orders (lib.metadata/table mp orders-id)
@@ -539,7 +698,7 @@
                                      (t2/select :model/Dependency :from_entity_id measure2-id :from_entity_type :measure)))))))))))))
 
 (deftest card-with-measure-dependencies
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (let [orders-id (mt/id :orders)
            orders (lib.metadata/table mp orders-id)
@@ -567,7 +726,7 @@
 
 (deftest measure-dependency-calculation-error-handling-test
   (testing "When measure dependency calculation throws an error, it should be logged and the version should still be updated"
-    (run-with-dependencies-setup
+    (run-with-dependencies-setup!
      (fn [mp]
        (let [orders-id (mt/id :orders)
              orders (lib.metadata/table mp orders-id)
@@ -616,9 +775,9 @@
             (is (= expected-version (analyses-map id)))))))))
 
 (deftest ^:sequential card-update-works-with-no-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card updates should publish new analyses when no existing ones exist"
+     (testing "Card updates should analyze the card and mark dependents stale for async processing"
        (let [products-id (mt/id :products)
              products (lib.metadata/table mp products-id)]
          (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
@@ -629,13 +788,16 @@
                                              :to_entity_id parent-card-id}]
            (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
            (assert-has-analyses
-            {:card {parent-card-id -1
-                    child-card-id -1}})))))))
+            {:card {parent-card-id -1}})
+           (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                       :analyzed_entity_type :card
+                                       :analyzed_entity_id child-card-id))
+               "entities without analysis findings should not be marked: no fake analysis record should be created")))))))
 
 (deftest ^:sequential card-update-updates-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card updates should update existing analyses when they exist"
+     (testing "Card updates should update the card's analysis and mark dependents stale"
        (let [products-id (mt/id :products)
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
@@ -657,16 +819,86 @@
               {:card {parent-card-id old-version
                       child-card-id old-version
                       other-card-id old-version}}))
+           (t2/with-transaction [_conn]
+             (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
+             (testing "Parent should be re-analyzed synchronously"
+               (assert-has-analyses
+                {:card {parent-card-id new-version}}))
+             (testing "Child should be marked stale (not re-analyzed yet)"
+               (let [child-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id child-card-id)]
+                 (is (= old-version (:analysis_version child-finding)))
+                 (is (true? (:stale child-finding)))))
+             (testing "Other card should be unchanged"
+               (let [other-finding (t2/select-one :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id other-card-id)]
+                 (is (= old-version (:analysis_version other-finding)))
+                 (is (false? (:stale other-finding))))))))))))
+
+(deftest ^:sequential stale-entities-are-processed-by-job-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "Stale entities are re-analyzed when the job runs"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             current-version models.analysis-finding/*current-analysis-finding-version*]
+         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id child-card-id
+                                             :to_entity_type :card
+                                             :to_entity_id parent-card-id}]
+           ;; Create initial analyses for both cards
+           (deps.findings/upsert-analysis! parent-card)
+           (deps.findings/upsert-analysis! child-card)
+           ;; Update parent - this marks child as stale
+           (t2/with-transaction [_conn]
+             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+             ;; Verify child is stale
+             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                          :analyzed_entity_type :card
+                                          :analyzed_entity_id child-card-id))
+                 "Child should be marked stale after parent update"))
+           ;; Run the job to process stale entities
+           (deps.findings/analyze-batch! :card 10)
+           ;; Verify child is no longer stale and has been re-analyzed
+           (let [child-finding (t2/select-one :model/AnalysisFinding
+                                              :analyzed_entity_type :card
+                                              :analyzed_entity_id child-card-id)]
+             (is (false? (:stale child-finding))
+                 "Child should no longer be stale after job runs")
+             (is (= current-version (:analysis_version child-finding))
+                 "Child should have current analysis version"))))))))
+
+(deftest ^:sequential card-update-transaction-rollback-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing "If marking dependents stale fails, analysis upsert is rolled back"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc old-version)]
+         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
+           ;; Create initial analysis
+           (deps.findings/upsert-analysis! card)
+           (testing "Initial analysis exists"
+             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id card-id))))
+           ;; Try to update with mark-dependents-stale! throwing an exception
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
-           (testing "Checking that the analyses were updated appropriately"
-             (assert-has-analyses
-              {:card {parent-card-id new-version
-                      child-card-id new-version
-                      other-card-id old-version}}))))))))
+             (with-redefs [deps.findings/mark-dependents-stale! (fn [_ _] (throw (ex-info "Simulated failure" {})))]
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
+                                     (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})))))
+           ;; Verify analysis was NOT updated (rolled back)
+           (testing "Analysis should be unchanged after failed event"
+             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                  :analyzed_entity_type :card
+                                                  :analyzed_entity_id card-id))))))))))
 
 (deftest ^:sequential card-update-ignores-native-cards-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native card updates should not trigger analysis"
        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/native-query mp "select * from products")}
@@ -681,7 +913,7 @@
                   child-card-id nil}}))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "Card updates should continue analyzing through a transform"
        (let [products-id (mt/id :products)
@@ -715,15 +947,26 @@
                       child-card-id old-version}
                :transform {transform-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*}))
-           (testing "Checking that analyses were updated correctly"
-             (assert-has-analyses
-              {:card {parent-card-id new-version
-                      child-card-id old-version}
-               :transform {transform-id new-version}}))))))))
+             (t2/with-transaction [_conn]
+               (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+               (testing "parent card should be re-analyzed synchronously"
+                 (is (=? {:analysis_version new-version :stale false}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id parent-card-id))))
+               (testing "transform (direct dependent) should be marked stale"
+                 (is (=? {:analysis_version old-version :stale true}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :transform
+                                        :analyzed_entity_id transform-id))))
+               (testing "child card (transitive dependent) should be marked stale"
+                 (is (=? {:analysis_version old-version :stale true}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id child-card-id))))))))))))
 
 (deftest ^:sequential transform-update-works-with-no-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "transform update creates new analyses"
        (let [products-id (mt/id :products)
@@ -746,7 +989,7 @@
              :transform {transform-id -1}})))))))
 
 (deftest ^:sequential transform-update-updates-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "transform update updates analyses when they exist"
        (let [products-id (mt/id :products)
@@ -786,7 +1029,7 @@
                  :transform {transform-id new-version}})))))))))
 
 (deftest ^:sequential transform-update-ignores-native-transforms-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native transform updates should not trigger analysis"
        (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
@@ -800,9 +1043,9 @@
           {:transform {transform-id nil}}))))))
 
 (deftest ^:sequential transform-run-works-with-no-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
-     (testing "transform runs create analyses for dependent cards"
+     (testing "transform runs work when dependent cards have no pre-existing analyses"
        (let [products-id (mt/id :products)
              products (lib.metadata/table mp products-id)]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
@@ -816,25 +1059,23 @@
                                              :from_entity_id card-id
                                              :to_entity_type :transform
                                              :to_entity_id transform-id}]
-           (events/publish-event! :event/transform-run-complete
-                                  {:object {:db-id (mt/id)
-                                            :output-schema "public"
-                                            :output-table "sample"
-                                            :transform-id transform-id}
-                                   :user-id api/*current-user-id*})
-           (assert-has-analyses
-            {:card {card-id -1}})))))))
+           ;; Event should complete without error even when there are no pre-existing analyses
+           (is (some? (events/publish-event! :event/transform-run-complete
+                                             {:object {:db-id (mt/id)
+                                                       :output-schema "public"
+                                                       :output-table "sample"
+                                                       :transform-id transform-id}
+                                              :user-id api/*current-user-id*})))))))))
 
 (deftest ^:sequential transform-run-updates-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "transform runs update existing analyses when they exist"
        (let [products-id (mt/id :products)
              orders-id (mt/id :orders)
              products (lib.metadata/table mp products-id)
              orders (lib.metadata/table mp orders-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+             old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
                         :model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                     :query (lib/query mp products)}
@@ -855,49 +1096,33 @@
               {:card {card-id old-version
                       other-card-id old-version}
                :transform {transform-id old-version}}))
-           (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
+           (t2/with-transaction [_conn]
              (events/publish-event! :event/transform-run-complete
                                     {:object {:db-id (mt/id)
                                               :output-schema "public"
                                               :output-table "sample"
                                               :transform-id transform-id}
-                                     :user-id api/*current-user-id*}))
-           (testing "checking that analyses were updated appropriately"
-             (assert-has-analyses
-              {:card {card-id new-version
-                      other-card-id old-version}
-               :transform {transform-id old-version}}))))))))
-
-(deftest ^:sequential transform-run-triggers-analysis-for-native-transforms-test
-  (run-with-dependencies-setup
-   (fn [mp]
-     (testing "Native transform runs should still trigger analysis"
-       (let [products-id (mt/id :products)
-             products (lib.metadata/table mp products-id)]
-         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                        :model/Transform {transform-id :id} {:source {:type :query
-                                                                      :query (lib/native-query mp "select * from products")}
-                                                             :name "transform_sample"
-                                                             :target {:schema "public"
-                                                                      :name "sample"
-                                                                      :type :table}}
-                        :model/Dependency _ {:from_entity_type :card
-                                             :from_entity_id card-id
-                                             :to_entity_type :transform
-                                             :to_entity_id transform-id}]
-           (events/publish-event! :event/transform-run-complete
-                                  {:object {:db-id (mt/id)
-                                            :output-schema "public"
-                                            :output-table "sample"
-                                            :transform-id transform-id}
-                                   :user-id api/*current-user-id*})
-           (assert-has-analyses
-            {:card {card-id -1}})))))))
+                                     :user-id api/*current-user-id*})
+             (testing "dependent card should be marked stale"
+               (is (=? {:analysis_version old-version :stale true}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :card
+                                      :analyzed_entity_id card-id))))
+             (testing "other card should be unchanged"
+               (is (=? {:analysis_version old-version :stale false}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :card
+                                      :analyzed_entity_id other-card-id))))
+             (testing "transform should be unchanged"
+               (is (=? {:analysis_version old-version :stale false}
+                       (t2/select-one :model/AnalysisFinding
+                                      :analyzed_entity_type :transform
+                                      :analyzed_entity_id transform-id)))))))))))
 
 (deftest ^:sequential segment-update-works-with-no-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
-     (testing "segment update creates analyses when necessary"
+     (testing "segment update creates analysis for the segment itself"
        (let [products-id (mt/id :products)
              price-field-id (mt/id :products :price)
              products (lib.metadata/table mp products-id)]
@@ -909,12 +1134,12 @@
                                              :to_entity_type :segment
                                              :to_entity_id segment-id}]
            (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+           ;; Segment should be analyzed synchronously
            (assert-has-analyses
-            {:card {card-id -1}
-             :segment {segment-id -1}})))))))
+            {:segment {segment-id -1}})))))))
 
 (deftest ^:sequential segment-update-updates-analyses-test
-  (run-with-dependencies-setup
+  (run-with-dependencies-setup!
    (fn [mp]
      (testing "segment update updates analyses when they exist"
        (let [products-id (mt/id :products)
@@ -935,9 +1160,16 @@
              (assert-has-analyses
               {:card {card-id old-version}
                :segment {segment-id old-version}}))
-           (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-             (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
-           (testing "checking that analyses were updated correctly"
-             (assert-has-analyses
-              {:card {card-id new-version}
-               :segment {segment-id new-version}}))))))))
+           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+             (t2/with-transaction [_conn]
+               (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+               (testing "segment should be re-analyzed synchronously"
+                 (is (=? {:analysis_version new-version :stale false}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :segment
+                                        :analyzed_entity_id segment-id))))
+               (testing "dependent card should be marked stale"
+                 (is (=? {:analysis_version old-version :stale true}
+                         (t2/select-one :model/AnalysisFinding
+                                        :analyzed_entity_type :card
+                                        :analyzed_entity_id card-id))))))))))))

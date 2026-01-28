@@ -4,7 +4,7 @@ import { Label, LabelContainer } from "../MetadataInfo.styled";
 
 import { TableIcon } from "./TableLabel.styled";
 
-function TableLabel({
+export function TableLabel({
   className,
   table,
 }: {
@@ -18,6 +18,3 @@ function TableLabel({
     </LabelContainer>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TableLabel;

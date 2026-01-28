@@ -33,7 +33,7 @@ export function DependenciesSection({ jobId }: DependenciesSectionProps) {
       {isLoading || error != null ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : transforms.length === 0 ? (
-        <Card shadow="none" withBorder>
+        <Card shadow="none">
           <ListEmptyState label={t`There are no transforms for this job.`} />
         </Card>
       ) : (

@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
-import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
+import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";
@@ -55,7 +55,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   databaseIsDisabled?: (database: Database) => boolean;
 }
 
-const NativeQueryEditorTopBar = forwardRef<
+export const NativeQueryEditorTopBar = forwardRef<
   HTMLDivElement,
   NativeQueryEditorTopBarProps
 >(function NativeQueryEditorTopBarInner(props, ref) {
@@ -182,5 +182,3 @@ const NativeQueryEditorTopBar = forwardRef<
     </Flex>
   );
 });
-
-export { NativeQueryEditorTopBar };

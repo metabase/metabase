@@ -20,10 +20,10 @@ import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,

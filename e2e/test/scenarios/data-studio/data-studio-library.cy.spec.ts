@@ -22,14 +22,9 @@ describe("scenarios > data studio > library", () => {
     H.DataModel.visitDataStudio();
     H.DataStudio.nav().findByLabelText("Library").click();
 
-    cy.log("Closing the modal should send you back");
-    H.modal().button("Cancel").click();
-    H.DataModel.get().should("exist");
-
-    cy.log("Create library via modal");
-    H.DataStudio.nav().findByLabelText("Library").click();
-    H.modal().within(() => {
-      cy.findByText("Create your Library").should("be.visible");
+    cy.log("Create library via inline empty state");
+    H.DataStudio.Library.libraryPage().within(() => {
+      cy.findByText("A source of truth for analytics").should("be.visible");
       cy.findByText("Create my Library").click();
     });
 

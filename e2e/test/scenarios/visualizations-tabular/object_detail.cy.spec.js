@@ -298,7 +298,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
       .last()
@@ -364,9 +364,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail");
 
     cy.log("metabase(#29023)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
 

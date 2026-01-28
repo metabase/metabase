@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable metabase/no-color-literals */
 
 // Note: these functions need to return an array of two elements, when styling
 // console.logs, the style needs to passed as second argument

@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as rs-object]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -452,86 +453,88 @@
 
 (deftest dirty-objects-all-model-types-including-new-test
   (testing "dirty-objects handles all supported model types including Table, Field, and Segment"
-    (mt/with-temp
-      [:model/Collection collection {:name "Test Collection"
-                                     :location "/"}
-       :model/Collection snip-collection {:name "Snippet Collection"
-                                          :namespace "snippets"
-                                          :location "/"}
-       :model/Card card {:name "Card Item"
-                         :collection_id (:id collection)
-                         :creator_id (mt/user->id :rasta)
-                         :display "table"
-                         :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/Dashboard dashboard {:name "Dashboard Item"
+    ;; Mock excluded-model-types to return empty set so all model types (including NativeQuerySnippet) are included
+    (with-redefs [spec/excluded-model-types (constantly #{})]
+      (mt/with-temp
+        [:model/Collection collection {:name "Test Collection"
+                                       :location "/"}
+         :model/Collection snip-collection {:name "Snippet Collection"
+                                            :namespace "snippets"
+                                            :location "/"}
+         :model/Card card {:name "Card Item"
+                           :collection_id (:id collection)
+                           :creator_id (mt/user->id :rasta)
+                           :display "table"
+                           :dataset_query (mt/native-query {:query "SELECT 1"})}
+         :model/Dashboard dashboard {:name "Dashboard Item"
+                                     :collection_id (:id collection)
+                                     :creator_id (mt/user->id :rasta)}
+         :model/Document document {:name "Document Item"
                                    :collection_id (:id collection)
                                    :creator_id (mt/user->id :rasta)}
-       :model/Document document {:name "Document Item"
-                                 :collection_id (:id collection)
-                                 :creator_id (mt/user->id :rasta)}
-       :model/NativeQuerySnippet snippet {:name "Snippet Item"
-                                          :collection_id (:id snip-collection)
-                                          :creator_id (mt/user->id :rasta)
-                                          :content "SELECT * FROM table"}
-       :model/Table table {:name "Table Item"
-                           :collection_id (:id collection)
-                           :is_published true}
-       :model/Field field {:name "field_item"
-                           :table_id (:id table)
-                           :base_type :type/Text
-                           :database_type "TEXT"}
-       :model/Segment segment {:name "Segment Item"
-                               :table_id (:id table)
-                               :creator_id (mt/user->id :rasta)
-                               :definition {:source-table (:id table)
-                                            :filter [:= [:field (:id field) nil] "test"]}}
-       :model/RemoteSyncObject _ {:model_type "Collection"
-                                  :model_id (:id collection)
-                                  :model_name "Test Collection"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Card"
-                                  :model_id (:id card)
-                                  :model_name "Card Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Dashboard"
-                                  :model_id (:id dashboard)
-                                  :model_name "Dashboard Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Document"
-                                  :model_id (:id document)
-                                  :model_name "Document Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet"
-                                  :model_id (:id snippet)
-                                  :model_name "Snippet Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Table"
-                                  :model_id (:id table)
-                                  :model_name "Table Item"
-                                  :model_table_id (:id table)
-                                  :model_table_name "Table Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Field"
-                                  :model_id (:id field)
-                                  :model_name "field_item"
-                                  :model_table_id (:id table)
-                                  :model_table_name "Table Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Segment"
-                                  :model_id (:id segment)
-                                  :model_name "Segment Item"
-                                  :model_table_id (:id table)
-                                  :model_table_name "Table Item"
-                                  :status "pending"
-                                  :status_changed_at (java.time.OffsetDateTime/now)}]
-      (let [dirty-items (rs-object/dirty-objects)
-            models (set (map :model dirty-items))]
-        (is (= 8 (count dirty-items)))
-        (is (= #{"collection" "card" "dashboard" "document" "nativequerysnippet" "table" "field" "segment"} models))))))
+         :model/NativeQuerySnippet snippet {:name "Snippet Item"
+                                            :collection_id (:id snip-collection)
+                                            :creator_id (mt/user->id :rasta)
+                                            :content "SELECT * FROM table"}
+         :model/Table table {:name "Table Item"
+                             :collection_id (:id collection)
+                             :is_published true}
+         :model/Field field {:name "field_item"
+                             :table_id (:id table)
+                             :base_type :type/Text
+                             :database_type "TEXT"}
+         :model/Segment segment {:name "Segment Item"
+                                 :table_id (:id table)
+                                 :creator_id (mt/user->id :rasta)
+                                 :definition {:source-table (:id table)
+                                              :filter [:= [:field (:id field) nil] "test"]}}
+         :model/RemoteSyncObject _ {:model_type "Collection"
+                                    :model_id (:id collection)
+                                    :model_name "Test Collection"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Card"
+                                    :model_id (:id card)
+                                    :model_name "Card Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Dashboard"
+                                    :model_id (:id dashboard)
+                                    :model_name "Dashboard Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Document"
+                                    :model_id (:id document)
+                                    :model_name "Document Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet"
+                                    :model_id (:id snippet)
+                                    :model_name "Snippet Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Table"
+                                    :model_id (:id table)
+                                    :model_name "Table Item"
+                                    :model_table_id (:id table)
+                                    :model_table_name "Table Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Field"
+                                    :model_id (:id field)
+                                    :model_name "field_item"
+                                    :model_table_id (:id table)
+                                    :model_table_name "Table Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}
+         :model/RemoteSyncObject _ {:model_type "Segment"
+                                    :model_id (:id segment)
+                                    :model_name "Segment Item"
+                                    :model_table_id (:id table)
+                                    :model_table_name "Table Item"
+                                    :status "pending"
+                                    :status_changed_at (java.time.OffsetDateTime/now)}]
+        (let [dirty-items (rs-object/dirty-objects)
+              models (set (map :model dirty-items))]
+          (is (= 8 (count dirty-items)))
+          (is (= #{"collection" "card" "dashboard" "document" "nativequerysnippet" "table" "field" "segment"} models)))))))

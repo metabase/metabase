@@ -4,11 +4,11 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import FormTextArea from "metabase/common/components/FormTextArea";
+import { Button } from "metabase/common/components/Button";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -49,7 +49,7 @@ interface SnippetLoaderProps {
 }
 type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
 
-function SnippetForm({
+function SnippetFormInner({
   snippet,
   snippetCollections,
   isEditing,
@@ -136,5 +136,6 @@ function SnippetForm({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(SnippetCollections.loadList())(SnippetForm);
+export const SnippetForm = _.compose(SnippetCollections.loadList())(
+  SnippetFormInner,
+);

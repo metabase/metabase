@@ -32,7 +32,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";

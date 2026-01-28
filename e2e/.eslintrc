@@ -1,8 +1,8 @@
 {
   "rules": {
-    "no-unscoped-text-selectors": 2,
+    "metabase/no-unscoped-text-selectors": 2,
     "import/no-commonjs": 0,
-    "no-color-literals": 0,
+    "metabase/no-color-literals": 0,
     "no-console": 0,
     "@typescript-eslint/no-namespace": "off",
     "cypress/no-assigning-return-values": "error",
@@ -49,9 +49,9 @@
         ]
       }
     ],
-    "no-direct-helper-import": 2,
-    "no-unsafe-element-filtering": ["warn"],
-    "no-unordered-test-helpers": 2
+    "metabase/no-direct-helper-import": 2,
+    "metabase/no-unsafe-element-filtering": ["warn"],
+    "metabase/no-unordered-test-helpers": 2
   },
   "env": {
     "cypress/globals": true,

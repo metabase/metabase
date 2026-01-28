@@ -3,7 +3,7 @@ import { forwardRef, useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import Tooltip from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 const defaultTooltip = "tooltip content";
 

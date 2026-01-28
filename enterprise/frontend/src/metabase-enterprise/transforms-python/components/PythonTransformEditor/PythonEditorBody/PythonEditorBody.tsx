@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 

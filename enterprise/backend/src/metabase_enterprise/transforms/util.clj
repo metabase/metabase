@@ -9,10 +9,12 @@
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,10 +50,15 @@
     (keyword schema name)
     (keyword name)))
 
+(defn transform-type
+  "Get the type of a transform"
+  [transform]
+  (-> transform :source :type keyword))
+
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
   [transform]
-  (= :query (-> transform :source :type keyword)))
+  (= :query (transform-type transform)))
 
 (defn native-query-transform?
   "Check if this is a native query transform.
@@ -64,7 +71,14 @@
 (defn python-transform?
   "Check if this is a Python transform."
   [transform]
-  (= :python (-> transform :source :type keyword)))
+  (= :python (transform-type transform)))
+
+(defn transform-source-database
+  "Get the source database from a transform"
+  [transform]
+  (case (transform-type transform)
+    :query (-> transform :source :query :database)
+    :python (-> transform :source :source-database)))
 
 (defn normalize-transform
   "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
@@ -663,3 +677,29 @@
         (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
           (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
           (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
+
+(mu/defn handle-transform-complete!
+  "Handles followup tasks for when a transform has completed.
+
+  Specifically, this syncs the target db, publishes a `:event/transform-run-complete` event, and potentially updates
+  the target table's index.
+
+  See [[metabase.transforms-util/decide-secondary-index-ddl]] for details on the index handling."
+  [& {:keys [run-id transform db]}
+   :- [:map
+       [:run-id ::transforms.schema/run-id]
+       [:transform ::transforms.schema/transform]
+       [:db [:fn {:error/message "Must a t2 database object"} #(= (t2/model %) :model/Database)]]]]
+  (let [target (:target transform)]
+    (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
+      (sync-target! target db)
+      ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+      (events/publish-event! :event/transform-run-complete
+                             {:object {:db-id (:id db)
+                                       :transform-id (:id transform)
+                                       :transform-type (keyword (:type target))
+                                       :output-schema (:schema target)
+                                       :output-table (qualified-table-name (:engine db) target)}})
+      ;; Creating an index after sync means the filter column is known in the appdb.
+      ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
+      (execute-secondary-index-ddl-if-required! transform run-id db target))))

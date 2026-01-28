@@ -104,7 +104,7 @@ export const EnableEmbeddingCard = ({
             <HoverCard.Dropdown>
               <Stack maw={340} p="md" gap="md">
                 <Text fz="sm" lh="lg">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- User facing text */}
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
                   {t`When you embed charts or dashboards from Metabase in your
                     own application that application isn't subject to the Affero
                     General Public License that covers the rest of Metabase,

@@ -4,7 +4,7 @@ import { UpsellPermissions } from "metabase/admin/upsells";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box } from "metabase/ui";
 
-import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
+import S from "./PermissionsEditor.module.css";
 import {
   PermissionsEditorContent,
   permissionEditorContentPropTypes,
@@ -18,7 +18,7 @@ export const permissionEditorPropTypes = {
 
 export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
   return (
-    <PermissionsEditorRoot>
+    <div className={S.PermissionsEditorRoot}>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <>
           <Box mx="xl" mb="md">
@@ -27,7 +27,7 @@ export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
           <PermissionsEditorContent {...contentProps} />
         </>
       </LoadingAndErrorWrapper>
-    </PermissionsEditorRoot>
+    </div>
   );
 };
 

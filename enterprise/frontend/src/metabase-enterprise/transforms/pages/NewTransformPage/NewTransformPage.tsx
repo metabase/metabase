@@ -172,6 +172,7 @@ function NewTransformPageBody({
             />
           ) : (
             <TransformEditor
+              isEditMode
               source={source}
               proposedSource={
                 proposedSource?.type === "query" ? proposedSource : undefined

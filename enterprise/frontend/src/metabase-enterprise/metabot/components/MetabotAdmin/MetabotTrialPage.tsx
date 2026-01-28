@@ -7,8 +7,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   Form,
   FormCheckbox,
@@ -63,7 +63,7 @@ export const MetabotTrialPage = () => {
     <SettingsPageWrapper title={t`Metabot AI`}>
       <SettingsSection
         title={
-          /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+          /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
           t`Get a free month of Metabot, the new AI assistant for Metabase.`
         }
       >
@@ -72,7 +72,7 @@ export const MetabotTrialPage = () => {
           <List>
             <List.Item>
               <Markdown>{
-                /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
                 t`**Act as a SQL generation copilot** in the Metabase SQL editor`
               }</Markdown>
             </List.Item>
@@ -133,7 +133,7 @@ export const MetabotTrialPage = () => {
         ) : (
           <Text fw="bold">
             {
-              /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+              /* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */
               t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`
             }
           </Text>
