@@ -85,7 +85,6 @@ jobs:
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' || needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -135,7 +134,6 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -207,7 +205,6 @@ jobs:
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' || needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -289,7 +286,6 @@ jobs:
 
   be-tests-druid-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-should-run == 'true' || needs.determine-driver-skips.outputs.druid-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -337,7 +333,6 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -385,7 +380,6 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -433,7 +427,6 @@ jobs:
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -482,7 +475,6 @@ jobs:
 
   be-tests-h2:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -512,7 +504,6 @@ jobs:
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -648,7 +639,6 @@ jobs:
 
   be-tests-mongo:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -728,7 +718,6 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -804,7 +793,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
+
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -849,7 +838,6 @@ jobs:
 
   be-tests-oracle:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' || needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -934,7 +922,6 @@ jobs:
 
   be-tests-postgres:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1043,7 +1030,6 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.presto-jdbc-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1124,7 +1110,6 @@ jobs:
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' || needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1214,7 +1199,6 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' || needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1296,7 +1280,6 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' || needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1342,7 +1325,6 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' || needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1383,7 +1365,6 @@ jobs:
 
   be-tests-sqlserver:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' || needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -1504,7 +1485,6 @@ jobs:
 
   login-to-ecr:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -1534,7 +1514,6 @@ jobs:
 
   be-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
