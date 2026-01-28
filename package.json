@@ -10,6 +10,7 @@
     "yarn": "^1.12.3"
   },
   "dependencies": {
+    "@adobe/leonardo-contrast-colors": "^1.0.0",
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/lang-javascript": "^6.2.2",

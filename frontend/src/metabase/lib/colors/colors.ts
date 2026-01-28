@@ -3,7 +3,7 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
-import { deriveFullMetabaseTheme } from "./derive-theme";
+import { deriveFullMetabaseTheme } from "./derives";
 import type { MetabaseColorKey } from "./types/color-keys";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);

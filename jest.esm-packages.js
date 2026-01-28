@@ -5,7 +5,12 @@
  * This list is used by both jest.config.js and jest.tz.unit.conf.js
  */
 const esmPackages = [
+  "@adobe/leonardo-contrast-colors",
+  "apca-w3",
   "bail",
+  "chroma-js",
+  "ciecam02",
+  "colorparsley",
   "ccount",
   "character-entities.*",
   "character-reference-invalid",
