@@ -55,7 +55,7 @@ const CURRENT_APP_ICON_OVERRIDES: {
   c: ColorName;
 } = { name: "check_filled", c: "brand" };
 
-export function ProfileLink({ className }: { className?: string }) {
+export function AppSwitcher({ className }: { className?: string }) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const dispatch = useDispatch();
 
