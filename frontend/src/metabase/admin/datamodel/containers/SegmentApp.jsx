@@ -9,7 +9,7 @@ import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 
-import SegmentForm from "../components/SegmentForm";
+import { SegmentForm } from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
 

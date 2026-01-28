@@ -356,6 +356,22 @@
                               true :true-value
                               false :false-value))))))
 
+(t/deftest ^:parallel match-lite-or-syntax
+  (t/is (= 10 (lib.util.match/match-lite [1 2 3]
+                (:or [a] [a b] [a b c]) (* a 10))))
+  (t/is (= nil (lib.util.match/match-lite [1 2 3]
+                 (:or [(a :guard even?) b] [a (b :guard odd?)]) [* a b])))
+  (t/testing ":or can mix with other patterns"
+    (t/is (= 20 (lib.util.match/match-lite [1 2 3]
+                  [a b c d] 10
+                  (:or [a b] [a b c]) 20
+                  _ 30))))
+  (t/testing "doesn't break if same symbols are used for different bindings"
+    (t/is (= 1 (lib.util.match/match-lite [1 2]
+                 (:or [(a :guard even?) b]
+                      [b a])
+                 b)))))
+
 (t/deftest ^:parallel same-result-with-different-bindings-test
   (t/testing "result here should not be treated as a common because it refers to different bindings in branches"
     (t/is (= 1 (lib.util.match/match-lite [1 2]

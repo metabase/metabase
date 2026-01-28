@@ -53,6 +53,7 @@
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
+                              :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
                               :standard-deviation-aggregations  true
@@ -65,10 +66,6 @@
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:clickhouse :schemas]
-  [_driver _feature db]
-  (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})

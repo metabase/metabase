@@ -6,7 +6,6 @@
 
 .link {
   color: var(--mb-color-text-primary);
-  white-space: normal;
 
   &:hover {
     color: var(--mb-color-brand);

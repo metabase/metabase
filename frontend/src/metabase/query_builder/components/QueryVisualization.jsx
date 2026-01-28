@@ -5,7 +5,7 @@ import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";

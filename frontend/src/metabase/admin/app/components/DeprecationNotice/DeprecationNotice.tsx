@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { Icon } from "metabase/ui";
 
 import S from "./DeprecationNotice.module.css";

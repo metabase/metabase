@@ -4,7 +4,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import {
   HoverParent,
   QueryColumnInfoIcon,

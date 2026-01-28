@@ -510,6 +510,37 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-h2-oss:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+    name: H2 (OSS)
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test H2 driver (OSS)
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-h2-oss'
+        edition: 'oss'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
@@ -1020,6 +1051,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          logs-artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'

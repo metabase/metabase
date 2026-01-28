@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { StackProps } from "metabase/ui";

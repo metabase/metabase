@@ -137,14 +137,17 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where]}]
-  ;; NativeQuerySnippets leave in their own special collections, so the logic is the following:
+(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where skip-archived]}]
+  ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:or
-                                                                  [:in :collection_id (remove nil? collection-set)]
-                                                                  (when (some nil? collection-set)
-                                                                    [:= :collection_id nil])]}
+  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
+                                                                  (when skip-archived [:not :archived])
+                                                                  [:or
+                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
+                                                                     [:in :collection_id collection-ids])
+                                                                   (when (some nil? collection-set)
+                                                                     [:= :collection_id nil])]]}
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]

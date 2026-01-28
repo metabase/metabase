@@ -85,10 +85,8 @@
   {:deprecated "0.57.0"}
   [compound-type subclauses]
   (mapcat #(lib.util.match/match-lite %
-             [(t :guard (= t compound-type)) & args]
-             args
-             _
-             [%])
+             [#{compound-type} & args] args
+             _                         [%])
           subclauses))
 
 (declare simplify-compound-filter)
@@ -388,7 +386,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+    (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
       (into [clause field] (lib.util.match/replace args

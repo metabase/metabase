@@ -7,8 +7,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   Form,
   FormCheckbox,

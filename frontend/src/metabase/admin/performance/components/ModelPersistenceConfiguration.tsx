@@ -8,7 +8,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";

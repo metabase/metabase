@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import Text from "metabase/common/components/type/Text";
+import { Text } from "metabase/common/components/type/Text";
 
 import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";

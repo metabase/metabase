@@ -7,7 +7,7 @@ import {
   useGetCollectionQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,

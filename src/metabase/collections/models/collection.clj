@@ -162,15 +162,6 @@
   []
   (t2/select-one :model/Collection :is_remote_synced true :location "/"))
 
-(defn create-remote-synced-collection!
-  "Create the remote-synced-collection"
-  []
-  (when-not (nil? (remote-synced-collection))
-    (throw (ex-info "Remote-synced collection already exists" {})))
-  (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
-                                                    :is_remote_synced true
-                                                    :location "/"}))
-
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
