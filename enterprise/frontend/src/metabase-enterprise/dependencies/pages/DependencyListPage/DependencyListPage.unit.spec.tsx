@@ -127,30 +127,43 @@ describe("DependencyListPage", () => {
   });
 
   describe("URL parameters", () => {
-    it("should update group_types in URL only when not all types are selected", async () => {
+    it("should set the group_types parameter when not all types are selected", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: {} },
+        location: { query: { group_types: ["table", "question", "model"] } },
       });
 
       await waitForListToLoad();
       await userEvent.click(await getFilterButton());
       const popover = await getFilterPopover();
       await userEvent.click(getTypeCheckbox(popover, "Table"));
+
       expect(history?.getCurrentLocation().query).toEqual({
         group_types: ["question", "model"],
       });
-
-      await userEvent.click(getTypeCheckbox(popover, "Table"));
-      expect(history?.getCurrentLocation().query).toEqual({});
     });
 
-    it("should update include_personal_collections in URL only when unchecked", async () => {
+    it("should not set the group_types parameter when all types are selected", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        location: { query: {} },
+        location: { query: { group_types: ["table", "question"] } },
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(await getFilterButton());
+      const popover = await getFilterPopover();
+      await userEvent.click(getTypeCheckbox(popover, "Model"));
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+
+    it("should set the include_personal_collections parameter when it is unchecked", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: { include_personal_collections: "true" } },
       });
 
       await waitForListToLoad();
@@ -160,15 +173,31 @@ describe("DependencyListPage", () => {
         name: "Include items in personal collections",
       });
       await userEvent.click(checkbox);
+
       expect(history?.getCurrentLocation().query).toEqual({
         include_personal_collections: "false",
       });
+    });
 
+    it("should not set the include_personal_collections parameter when it is checked", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: { include_personal_collections: "false" } },
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(await getFilterButton());
+      const popover = await getFilterPopover();
+      const checkbox = within(popover).getByRole("checkbox", {
+        name: "Include items in personal collections",
+      });
       await userEvent.click(checkbox);
+
       expect(history?.getCurrentLocation().query).toEqual({});
     });
 
-    it("should update page in URL only when not on the first page", async () => {
+    it("should set the page parameter when navigating to the next page and it is not the first page", async () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
@@ -178,9 +207,35 @@ describe("DependencyListPage", () => {
 
       await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Next page"));
-      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
 
+      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+    });
+
+    it("should set the page parameter when navigating to the previous page and it is not the first page", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        total: 50,
+        location: { query: { page: "2" } },
+      });
+
+      await waitForListToLoad();
       await userEvent.click(screen.getByLabelText("Previous page"));
+
+      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+    });
+
+    it("should not set the page parameter when it is the first page", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: { page: "1" } },
+        total: 50,
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(screen.getByLabelText("Previous page"));
+
       expect(history?.getCurrentLocation().query).toEqual({});
     });
   });
