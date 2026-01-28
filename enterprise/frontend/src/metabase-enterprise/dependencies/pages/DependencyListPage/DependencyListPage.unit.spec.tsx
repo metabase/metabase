@@ -46,6 +46,7 @@ type SetupOpts = {
   mode?: DependencyListMode;
   location?: Pick<Location<DependencyListQueryParams>, "query">;
   nodes?: DependencyNode[];
+  total?: number;
   lastUsedParams?: DependencyListUserParams;
 };
 
@@ -53,6 +54,7 @@ function setup({
   mode = "broken",
   location = { query: {} },
   nodes = [],
+  total,
   lastUsedParams = {},
 }: SetupOpts) {
   const path = getPageUrl(mode, {});
@@ -61,14 +63,14 @@ function setup({
     setupListBrokenGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
         data: nodes,
-        total: nodes.length,
+        total: total ?? nodes.length,
       }),
     );
   } else {
     setupListUnreferencedGraphNodesEndpoint(
       createMockListUnreferencedGraphNodesResponse({
         data: nodes,
-        total: nodes.length,
+        total: total ?? nodes.length,
       }),
     );
   }
@@ -121,6 +123,65 @@ describe("DependencyListPage", () => {
 
       expect(await screen.findByText("Question 1")).toBeInTheDocument();
       expect(await screen.findByText("Question 2")).toBeInTheDocument();
+    });
+  });
+
+  describe("URL parameters", () => {
+    it("should update group_types in URL only when not all types are selected", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: {} },
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(await getFilterButton());
+      const popover = await getFilterPopover();
+      await userEvent.click(getTypeCheckbox(popover, "Table"));
+      expect(history?.getCurrentLocation().query).toEqual({
+        group_types: ["question", "model"],
+      });
+
+      await userEvent.click(getTypeCheckbox(popover, "Table"));
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+
+    it("should update include_personal_collections in URL only when unchecked", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: {} },
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(await getFilterButton());
+      const popover = await getFilterPopover();
+      const checkbox = within(popover).getByRole("checkbox", {
+        name: "Include items in personal collections",
+      });
+      await userEvent.click(checkbox);
+      expect(history?.getCurrentLocation().query).toEqual({
+        include_personal_collections: "false",
+      });
+
+      await userEvent.click(checkbox);
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+
+    it("should update page in URL only when not on the first page", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        total: 50,
+        location: { query: {} },
+      });
+
+      await waitForListToLoad();
+      await userEvent.click(screen.getByLabelText("Next page"));
+      expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+
+      await userEvent.click(screen.getByLabelText("Previous page"));
+      expect(history?.getCurrentLocation().query).toEqual({});
     });
   });
 
