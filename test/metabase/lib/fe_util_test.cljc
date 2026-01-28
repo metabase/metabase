@@ -336,6 +336,7 @@
                              string-field
                              "default"]}
 
+                     ;; Nested case in default is flattened during normalization, so use flat structure
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -344,12 +345,9 @@
                               :options {}
                               :args [boolean-field
                                      string-field
-                                     {:lib/type :mbql/expression-parts
-                                      :operator :case
-                                      :options {}
-                                      :args [boolean-field
-                                             string-field
-                                             "default"]}]}]}
+                                     boolean-field
+                                     string-field
+                                     "default"]}]}
 
                      {:lib/type :mbql/expression-parts
                       :operator :upper

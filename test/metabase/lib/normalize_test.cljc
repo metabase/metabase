@@ -2,8 +2,10 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -212,3 +214,139 @@
                         :lib/type     :mbql.stage/mbql}]
             :lib/type :mbql/query}
            (lib/normalize query)))))
+
+;;; ---------------------------------- Expression flattening tests ----------------------------------
+;;; These tests verify that deeply nested expressions are flattened before Malli validation
+;;; to avoid excessive memory allocation. The flattening happens in `flatten-expressions`.
+
+(defn- normalize-and-strip-uuids
+  "Normalize an expression and recursively remove :lib/uuid from all maps for easier comparison."
+  [x]
+  (let [result (lib.normalize/normalize x)]
+    (walk/postwalk
+     (fn [form]
+       (if (map? form)
+         (dissoc form :lib/uuid)
+         form))
+     result)))
+
+(deftest ^:parallel flatten-case-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :case in default branch is flattened
+    [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+    [:case {} [[[:= {} 1 1] "a"]] [:case {} [[[:= {} 2 2] "b"]] "c"]]
+
+    ;; nested :if in default branch is flattened
+    [:if {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+    [:if {} [[[:= {} 1 1] "a"]] [:if {} [[[:= {} 2 2] "b"]] "c"]]
+
+    ;; deeply nested case is fully flattened
+    [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"] [[:= {} 3 3] "c"]] "d"]
+    [:case {} [[[:= {} 1 1] "a"]]
+     [:case {} [[[:= {} 2 2] "b"]]
+      [:case {} [[[:= {} 3 3] "c"]] "d"]]]
+
+    ;; string tags are handled
+    [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+    ["case" {} [[["=" {} 1 1] "a"]] ["case" {} [[["=" {} 2 2] "b"]] "c"]]))
+
+(deftest ^:parallel flatten-and-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :and is flattened
+    [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+    [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:= {} 3 3]]]
+
+    ;; deeply nested :and is fully flattened
+    [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3] [:= {} 4 4]]
+    [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:and {} [:= {} 3 3] [:= {} 4 4]]]]
+
+    ;; string tags are handled
+    [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+    ["and" {} ["=" {} 1 1] ["and" {} ["=" {} 2 2] ["=" {} 3 3]]]))
+
+(deftest ^:parallel flatten-or-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :or is flattened
+    [:or {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+    [:or {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]
+
+    ;; deeply nested :or is fully flattened
+    [:or {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3] [:= {} 4 4]]
+    [:or {} [:= {} 1 1] [:or {} [:= {} 2 2] [:or {} [:= {} 3 3] [:= {} 4 4]]]]))
+
+(deftest ^:parallel flatten-coalesce-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :coalesce is flattened
+    [:coalesce {} [:field {} 1] [:field {} 2] [:field {} 3]]
+    [:coalesce {} [:field {} 1] [:coalesce {} [:field {} 2] [:field {} 3]]]
+
+    ;; deeply nested :coalesce is fully flattened
+    [:coalesce {} [:field {} 1] [:field {} 2] [:field {} 3] "default"]
+    [:coalesce {} [:field {} 1]
+     [:coalesce {} [:field {} 2]
+      [:coalesce {} [:field {} 3] "default"]]]))
+
+(deftest ^:parallel flatten-plus-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :+ is flattened
+    [:+ {} 1 2 3]
+    [:+ {} 1 [:+ {} 2 3]]
+
+    ;; deeply nested :+ is fully flattened
+    [:+ {} 1 2 3 4]
+    [:+ {} 1 [:+ {} 2 [:+ {} 3 4]]]))
+
+(deftest ^:parallel flatten-multiply-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :* is flattened
+    [:* {} 1 2 3]
+    [:* {} 1 [:* {} 2 3]]
+
+    ;; deeply nested :* is fully flattened
+    [:* {} 1 2 3 4]
+    [:* {} 1 [:* {} 2 [:* {} 3 4]]]))
+
+(deftest ^:parallel flatten-concat-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; nested :concat is flattened
+    [:concat {} "a" "b" "c"]
+    [:concat {} "a" [:concat {} "b" "c"]]
+
+    ;; deeply nested :concat is fully flattened
+    [:concat {} "a" "b" "c" "d"]
+    [:concat {} "a" [:concat {} "b" [:concat {} "c" "d"]]]))
+
+(deftest ^:parallel no-flatten-non-associative-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; :- is not flattened (not associative)
+    [:- {} 1 [:- {} 2 3]]
+    [:- {} 1 [:- {} 2 3]]
+
+    ;; :/ is not flattened (not associative)
+    [:/ {} 1 [:/ {} 2 3]]
+    [:/ {} 1 [:/ {} 2 3]]))
+
+(deftest ^:parallel flatten-mixed-operators-test
+  (are [expected input] (= expected (normalize-and-strip-uuids input))
+    ;; different operators are not flattened together
+    [:and {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]
+    [:and {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]
+
+    ;; flattening happens at each level independently
+    [:and {} [:= {} 1 1] [:= {} 2 2] [:or {} [:= {} 3 3] [:= {} 4 4] [:= {} 5 5]]]
+    [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:or {} [:= {} 3 3] [:or {} [:= {} 4 4] [:= {} 5 5]]]]]))
+
+(deftest ^:parallel flatten-legacy-native-query-test
+  (testing "legacy queries with native :query string should not throw"
+    (is (= {:type     :native
+            :database 1
+            :native   {:query "SELECT * FROM orders"}}
+           (lib.normalize/normalize
+            {:type     :native
+             :database 1
+             :native   {:query "SELECT * FROM orders"}}))))
+  (testing "NativeQuery schema normalization with :query string"
+    ;; This is the structure used by metabase.test.data/native-query
+    (is (= {:query "SELECT * FROM orders"}
+           (lib.normalize/normalize :metabase.legacy-mbql.schema/NativeQuery
+                                    {:query "SELECT * FROM orders"})))))

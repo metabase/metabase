@@ -1,9 +1,10 @@
 (ns metabase.lib.normalize
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [every? mapv some])
   (:require
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [medley.core :as m]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -13,7 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [every? mapv some]]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -66,6 +67,142 @@
                  (log/debugf "Building :normalize coercer for schema %s" (pr-str schema))
                  (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
 
+;;; ---------------------------------- Pre-normalization expression flattening ----------------------------------
+;;; Flatten deeply nested expressions before Malli validation to avoid excessive memory allocation.
+;;; Nested :case/:if/:and/:or/:coalesce/:+/:*/:concat expressions are semantically equivalent when flattened.
+
+(defn- clause-tag
+  "Get the tag of a clause as keyword. Handles both keyword and string tags. Returns nil if not a clause."
+  [x]
+  (when (vector? x)
+    (let [tag (get x 0)]
+      (cond
+        (keyword? tag) tag
+        (string? tag)  (keyword tag)
+        :else          nil))))
+
+(defn- clause-opts-and-args
+  "Parse a clause into [opts args-vector]. Handles both pMBQL [tag opts & args] and legacy [tag & args]."
+  [clause]
+  (if (map? (get clause 1))
+    [(get clause 1) (subvec clause 2)]
+    [nil (subvec clause 1)]))
+
+(declare flatten-expression)
+
+(defn- flattenable-case-opts?
+  "Returns true if opts only contains keys that are safe to discard when flattening :case/:if."
+  [opts]
+  (or (nil? opts)
+      (every? #{:lib/uuid :default} (keys opts))))
+
+(defn- flatten-case
+  "Flatten a :case or :if clause by merging nested case/if from the default branch.
+  Structure: [tag opts? [[pred1 expr1] ...] default?]
+  Only flattens if outer opts contains nothing beyond :lib/uuid and :default."
+  [clause]
+  (let [tag                       (clause-tag clause)
+        [opts [pairs default]]    (clause-opts-and-args clause)
+        pairs'                    (mapv (fn [[pred expr]]
+                                          [(flatten-expression pred) (flatten-expression expr)])
+                                        pairs)
+        default'                  (flatten-expression default)
+        [nested-opts nested-args] (when (and (= tag (clause-tag default'))
+                                             (flattenable-case-opts? opts))
+                                    (clause-opts-and-args default'))
+        ;; Keep :lib/uuid from outer clause, merge with nested opts
+        merged-opts               (when (or opts nested-opts)
+                                    (cond-> (or nested-opts {})
+                                      (:lib/uuid opts) (assoc :lib/uuid (:lib/uuid opts))))]
+    (if nested-args
+      ;; Flatten: merge nested case/if branches
+      (let [[nested-pairs nested-default] nested-args]
+        (cond-> [tag]
+          merged-opts            (conj merged-opts)
+          true                   (conj (into pairs' nested-pairs))
+          (some? nested-default) (conj nested-default)))
+      ;; No flattening needed
+      (cond-> [tag]
+        opts             (conj opts)
+        true             (conj pairs')
+        (some? default') (conj default')))))
+
+(defn- flatten-variadic
+  "Flatten a variadic clause (:and, :or, :coalesce) by merging nested clauses of the same type.
+  Structure: [tag opts? & args]"
+  [clause]
+  (let [tag         (clause-tag clause)
+        [opts args] (clause-opts-and-args clause)]
+    (into (cond-> [tag]
+            opts (conj opts))
+          (mapcat (fn [arg]
+                    (let [arg' (flatten-expression arg)]
+                      (if (= (clause-tag arg') tag)
+                        ;; Same tag: splice in the nested args
+                        (second (clause-opts-and-args arg'))
+                        [arg']))))
+          args)))
+
+(defn- flatten-clause
+  "Flatten a single clause, recursing into its arguments."
+  [clause]
+  (case (clause-tag clause)
+    (:case :if)
+    (flatten-case clause)
+
+    (:and :or :coalesce :+ :* :concat)
+    (flatten-variadic clause)
+
+    ;; Other clause: just recurse into args
+    (let [tag         (clause-tag clause)
+          [opts args] (clause-opts-and-args clause)]
+      (into (cond-> [tag]
+              opts (conj opts))
+            (map flatten-expression)
+            args))))
+
+(defn- flatten-expression
+  "Flatten a single expression (clause). Handles both keyword and string tags."
+  [x]
+  (if (clause-tag x)
+    (flatten-clause x)
+    x))
+
+(defn- flatten-expression-list
+  "Flatten a sequence of expressions."
+  [exprs]
+  (mapv flatten-expression exprs))
+
+(declare flatten-stage)
+
+(defn- flatten-join
+  "Flatten expressions within a join. Joins have :stages and :conditions.
+
+  NOTE: Keep in sync with [[metabase.lib.schema.join/join]] - if expression-containing keys
+  are added there, they must be added here too."
+  [join]
+  (-> join
+      (m/update-existing :stages     #(mapv flatten-stage %))
+      (m/update-existing :conditions flatten-expression-list)))
+
+(defn- flatten-stage
+  "Flatten expressions within a single MBQL stage. Only processes known expression-containing
+  keys to avoid converting non-expression data like parameter values.
+
+  NOTE: Keep in sync with [[metabase.lib.schema/stage.mbql]] - if expression-containing keys
+  are added there, they must be added here too."
+  [stage]
+  (if-not (map? stage)
+    stage
+    (-> stage
+        (m/update-existing :expressions flatten-expression-list)
+        (m/update-existing :breakout    flatten-expression-list)
+        (m/update-existing :aggregation flatten-expression-list)
+        (m/update-existing :fields      flatten-expression-list)
+        (m/update-existing :filters     flatten-expression-list)
+        (m/update-existing :order-by    flatten-expression-list)
+        (m/update-existing :joins       #(mapv flatten-join %)))))
+
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
   deserialized JSON (from the app DB or a REST API request). This is intended for things that are already in a
@@ -89,9 +226,33 @@
    (normalize schema x nil))
 
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
-   (let [schema (or schema (infer-schema x))
-         thunk  (^:once fn* []
-                  ((coercer schema) x))]
+   (let [schema         (or schema (infer-schema x))
+         ;; Only flatten within known expression-containing keys in :stages.
+         ;; For non-map inputs, only flatten if the schema indicates an MBQL clause.
+         flatten-stages #(mapv flatten-stage %)
+         ;; :query is a legacy query map that has :query (MBQL) or :native inside.
+         ;; For native queries, :query may be a string (SQL), not a map, so check first.
+         flatten-query  (fn [q]
+                          (cond-> q
+                            (map? q)
+                            (-> (m/update-existing :query flatten-stage)
+                                (m/update-existing "query" flatten-stage))))
+         x              (cond
+                          (map? x)
+                          (-> x
+                              (m/update-existing :stages flatten-stages)
+                              (m/update-existing "stages" flatten-stages)
+                              (m/update-existing :query flatten-query)
+                              (m/update-existing "query" flatten-query))
+
+                          (and (qualified-keyword? schema)
+                               (= (namespace schema) "mbql.clause"))
+                          (flatten-expression x)
+
+                          :else
+                          x)
+         thunk          (^:once fn* []
+                          ((coercer schema) x))]
      (if throw?
        (binding [*error-fn* (fn [error]
                               (throw (ex-info (i18n/tru "Normalization error")
