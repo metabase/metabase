@@ -33,7 +33,7 @@ This runs both the [frontend](#frontend) and [backend](#backend). Alternatively,
 
 To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
 
-**Hint:** If you often reset your Metabase instance and start from scratch, a predefined [Metabase config](https://www.metabase.com/docs/latest/configuring-metabase/config-file) can save you a lot of time.
+To skip the setup wizard and pre-configure users, database connections, and settings, add a [`config.yml`](https://www.metabase.com/docs/latest/configuring-metabase/config-file) to the directory where you run Metabase.
 
 ### Frontend
 
