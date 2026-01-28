@@ -1,8 +1,6 @@
-import {
-  entityPickerModal,
-  modal,
-  popover,
-} from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+
+import { pickEntity } from "./e2e-collection-helpers";
 
 export function setDropdownFilterType() {
   cy.findByText("Dropdown list").click();
@@ -20,11 +18,7 @@ export function setFilterQuestionSource({ question, field }) {
     cy.findByText("Pick a model or question…").click();
   });
 
-  entityPickerModal().within(() => {
-    cy.findByText("Our analytics").click();
-    cy.findByText(question).click();
-    cy.findByText("Select").click();
-  });
+  pickEntity({ path: [/Our analytics/, question], select: true });
 
   modal().within(() => {
     cy.findByText("Pick a column…").click();
