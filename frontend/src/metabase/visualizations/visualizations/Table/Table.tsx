@@ -139,7 +139,7 @@ export class Table extends Component<TableProps, TableState> {
           return false;
         }
 
-        return getDefaultPivotColumn(data.cols, data.rows) != null;
+        return getDefaultPivotColumn(data.cols, data.rows, card.id) != null;
       },
     },
 
@@ -153,10 +153,11 @@ export class Table extends Component<TableProps, TableState> {
       widget: "field",
       getDefault: ([
         {
+          card,
           data: { cols, rows },
         },
       ]: Series) => {
-        return getDefaultPivotColumn(cols, rows)?.name;
+        return getDefaultPivotColumn(cols, rows, card.id)?.name;
       },
       getProps: ([
         {
