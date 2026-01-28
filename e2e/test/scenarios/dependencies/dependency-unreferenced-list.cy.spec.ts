@@ -188,6 +188,19 @@ describe("scenarios > dependencies > unreferenced list", () => {
       checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
     });
 
+    it("should persist filter changes after page reload", () => {
+      createEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().findByText("Model").click();
+      checkList({ hiddenEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: METRIC_NAMES, hiddenEntities: MODEL_NAMES });
+    });
+
     it("should filter by location", () => {
       createEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
