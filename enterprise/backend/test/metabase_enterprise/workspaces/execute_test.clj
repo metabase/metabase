@@ -29,6 +29,7 @@
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
             ;; get initialized fields
             workspace    (t2/select-one :model/Workspace (:id workspace))
+            graph        (ws.impl/get-or-calculate-graph! workspace)
             ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
@@ -39,7 +40,7 @@
                    :table      {:name   #(str/includes? % output-table)
                                 :schema ws-schema}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.impl/run-transform! workspace ws-transform))))
+                    (ws.impl/run-transform! workspace graph ws-transform))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
 
@@ -71,6 +72,7 @@
                                  :schema   nil
                                  :name     "ws_dryrun_test"}}
           ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          graph        (ws.impl/get-or-calculate-graph! workspace)
           before       {:xf    (t2/count :model/Transform)
                         :xfrun (t2/count :model/TransformRun)}]
 
@@ -79,7 +81,7 @@
                  :data   {:rows [[1 "hello"] [2 "world"]]
                           :cols [{:name #"(ID)|(id)"} {:name #"(NAME)|(name)"}]}}
                 (mt/with-current-user (mt/user->id :crowberto)
-                  (ws.impl/dry-run-transform workspace ws-transform)))))
+                  (ws.impl/dry-run-transform workspace graph ws-transform)))))
 
       (testing "last_run_at is NOT updated in dry-run mode"
         (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
@@ -106,6 +108,7 @@
                                    :schema   nil
                                    :name     "ws_python_dryrun_test"}}
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            graph        (ws.impl/get-or-calculate-graph! workspace)
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
 
@@ -114,7 +117,7 @@
                    :data   {:rows [[1 "hello"] [2 "world"]]
                             :cols [{:name "id"} {:name "name"}]}}
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.impl/dry-run-transform workspace ws-transform)))))
+                    (ws.impl/dry-run-transform workspace graph ws-transform)))))
 
         (testing "last_run_at is NOT updated in dry-run mode"
           (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))

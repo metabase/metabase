@@ -107,7 +107,11 @@
                  map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
        map-entry))))
 
-(defn- build-remapping [workspace]
+(defn- build-remapping
+  "Build the mapping of external tables to isolated tables within the workspace schema.
+   Takes `graph` as a parameter to ensure that analysis has been performed.
+   Currently, it queries the related analysis tables directly, but in theory this data could be saved in the graph."
+  [workspace _graph]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
   ;; Also maps global_table_id -> same. This is more convenient and reliable for MBQL queries and Python transforms.
@@ -193,10 +197,10 @@
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
 (defn run-transform!
-  "Execute the given workspace transform or enclosed external transform."
-  ([workspace transform]
-   (run-transform! workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
+  "Execute the given workspace transform or enclosed external transform. Graph is taken to ensure analysis has run."
+  ([workspace graph transform]
+   (run-transform! workspace graph transform (build-remapping workspace graph)))
+  ([workspace _graph transform remapping]
    (let [ref-id      (:ref_id transform)
          external-id (:id transform)
          start-time  (db-time)
@@ -230,12 +234,10 @@
 (defn dry-run-transform
   "Execute the given workspace transform without persisting to the target table.
    Returns the first 2000 rows of transform output for preview purposes."
-  ([workspace transform]
-   (dry-run-transform workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
-   (ws.isolation/with-workspace-isolation
-     workspace
-     (ws.execute/run-transform-preview transform remapping))))
+  [workspace graph transform]
+  (ws.isolation/with-workspace-isolation
+    workspace
+    (ws.execute/run-transform-preview transform (build-remapping workspace graph))))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
@@ -551,18 +553,16 @@
 
 (defn execute-workspace!
   "Execute all the transforms within a given workspace."
-  [workspace & {:keys [stale-only?] :or {stale-only? false}}]
+  [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
-        remapping (build-remapping workspace)]
-    ;; Ensure analysis is up-to-date
-    (get-or-calculate-graph! workspace)
+        remapping (build-remapping workspace graph)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
          (try
            ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (run-transform! workspace transform remapping)))
+           (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
              (update acc :succeeded conj id-str)
              ;; Perhaps the status might indicate it never ran?
              (update acc :failed conj id-str))
