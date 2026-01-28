@@ -7,7 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Card, Flex, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Card, Flex, Group, Stack, Text, Tooltip } from "metabase/ui";
 import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
@@ -94,6 +94,7 @@ function RunTable({ runs, tags }: RunTableProps) {
       >
         {runs.map((run) => {
           const isTransformDeleted = run.transform?.deleted === true;
+          const transformName = run.transform?.name || t`Unnamed transform`;
 
           return (
             <tr
@@ -103,16 +104,18 @@ function RunTable({ runs, tags }: RunTableProps) {
             >
               <td className={S.wrap}>
                 {isTransformDeleted ? (
-                  <Tooltip label={t`${run.transform?.name} has been deleted`}>
-                    <Text c="text-tertiary" fs="italic">
-                      <Flex align="center" gap="xs">
-                        <Icon name="trash" />
-                        {run.transform?.name}
-                      </Flex>
+                  <Tooltip label={t`${transformName} has been deleted`}>
+                    <Text
+                      c="text-tertiary"
+                      component="span"
+                      display="inline"
+                      fs="italic"
+                    >
+                      {transformName}
                     </Text>
                   </Tooltip>
                 ) : (
-                  run.transform?.name
+                  transformName
                 )}
               </td>
               <td className={S.nowrap}>
