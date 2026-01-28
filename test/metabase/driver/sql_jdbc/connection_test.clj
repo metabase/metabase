@@ -269,6 +269,12 @@
                (sql-jdbc.conn/jdbc-data-warehouse-debug-unreturned-connection-stack-traces))
             (str "setting=" setting))))))
 
+(deftest ^:parallel include-cancel-automatically-closed-statements-test
+  (testing "We should be setting cancelAutomaticallyClosedStatements to help terminate hung queries (#66656)"
+    (is (true?
+         (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))
+              "cancelAutomaticallyClosedStatements")))))
+
 (deftest debug-unreturned-connection-stack-traces-misconfigured-c3p0-log-warning-test
   (testing "We should log a warning if debug stack traces are enabled but c3p0 INFO logs are not (#47981)\n"
     ;; kondo thinks the c3p0-log-level binding is unused
