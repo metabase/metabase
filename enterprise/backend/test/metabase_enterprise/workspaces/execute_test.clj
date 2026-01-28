@@ -41,7 +41,7 @@
                   (mt/with-current-user (mt/user->id :crowberto)
                     (ws.impl/run-transform! workspace ws-transform))))
           (is (=? {:last_run_at some?}
-                  (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
+                  (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
 
           (testing "The isolated_table_id gets populated"
             (ws.impl/get-or-calculate-graph! workspace)
@@ -82,7 +82,7 @@
                   (ws.impl/dry-run-transform workspace ws-transform)))))
 
       (testing "last_run_at is NOT updated in dry-run mode"
-        (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))))
+        (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
       (testing "app DB records are NOT created in dry-run mode"
         (is (= before
@@ -117,7 +117,7 @@
                     (ws.impl/dry-run-transform workspace ws-transform)))))
 
         (testing "last_run_at is NOT updated in dry-run mode"
-          (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))))
+          (is (nil? (:last_run_at (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
 
         (testing "app DB records are NOT created in dry-run mode"
           (is (= before
