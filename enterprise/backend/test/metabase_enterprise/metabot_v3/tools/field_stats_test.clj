@@ -57,7 +57,7 @@
                 (metabot-v3.tools.field-stats/field-values
                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id birth-date-id {:statistics
-                                   {:distinct-count 2308
+                                   {:distinct-count 2279
                                     :percent-null   0.0
                                     :earliest       "1958-04-26"
                                     :latest         "2000-04-03"}}
@@ -148,7 +148,7 @@
                                         :percent-null   0.0}
                            :values     [0 1 2 3 4]}
             birth-date-id {:statistics
-                           {:distinct-count 2308
+                           {:distinct-count 2279
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))

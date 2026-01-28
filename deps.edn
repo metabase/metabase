@@ -6,8 +6,6 @@
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
-  bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
-                                             :exclusions  [junit/junit]}
   buddy/buddy-core                          {:mvn/version "1.12.0-430"          ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
                                                            org.bouncycastle/bcpkix-jdk15on
@@ -30,9 +28,6 @@
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
-  com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
-                                             :exclusions  [it.unimi.dsi/fastutil
-                                                           org.slf4j/slf4j-api]}
   com.clojure-goes-fast/jvm-alloc-rate-meter{:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
@@ -114,6 +109,8 @@
   net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
+  org.apache.datasketches/datasketches-java ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
+                                            {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.3"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.3"}             ; apache logging framework

@@ -97,20 +97,20 @@
                         [#t "2013" #t "2018" #t "2015"]))))))
 
 (deftest ^:parallel fingerprint-numeric-values-test
-  (is (= {:global {:distinct-count 3
+  (is (= {:global {:distinct-count 99
                    :nil%           0.0}
-          :type   {:type/Number {:avg 2.0
-                                 :min 1.0
-                                 :max 3.0
-                                 :q1  1.25
-                                 :q3  2.75
-                                 :sd  1.0}}}
+          :type   {:type/Number {:avg 49.0
+                                 :min 0.0
+                                 :max 98.0
+                                 :q1  24.0
+                                 :q3  74.0
+                                 :sd  28.722813232690143}}}
          (transduce identity
                     (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
-                    [1.0 2.0 3.0])))
+                    (map double (range 99)))))
   (testing "we respect effective_type"
     (is (= {:global {:distinct-count 4, :nil% 0.0},
-            :type {:type/Number {:min 1.0, :q1 1.15, :q3 2.15, :max 2.3, :sd 0.6027713773341707, :avg 1.65}}}
+            :type   {:type/Number {:min 1.0, :q1 1.0, :q3 2.0, :max 2.3, :sd 0.6027713773341707, :avg 1.65}}}
            (transduce identity
                       (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Number}))
                       ["1" "2" "1.3" "2.3"]))))
@@ -120,8 +120,8 @@
             :type   {:type/Number {:avg 2.0
                                    :min 1.0
                                    :max 3.0
-                                   :q1  1.25
-                                   :q3  2.75
+                                   :q1  1.0
+                                   :q3  3.0
                                    :sd  1.0}}}
            (transduce identity
                       (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Number}))
@@ -167,9 +167,9 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "date fingerprints"
-        (is (=? {:global {:distinct-count (if (= driver/*driver* :mongo)
-                                            383 ; mongo samples the last 500 rows only
-                                            618)
+        (is (=? {:global {:distinct-count #(if (= driver/*driver* :mongo)
+                                             (= % 383) ; mongo samples the last 500 rows only
+                                             (<= 610 % 630)) ; cardinality estimation fluctuates a bit depending on db
                           :nil%           0.0}
                  :type   {:type/DateTime {:earliest #(str/starts-with? % "2013-01-03")
                                           :latest   #(str/starts-with? % "2015-12-29")}}}
@@ -182,11 +182,11 @@
         (is (=? {:global {:distinct-count 4
                           :nil%           0.0}
                  :type   {:type/Number {:min 1.0
-                                        :q1  #(< 1.44 % 1.46)
-                                        :q3  #(< 2.4 % 2.5)
+                                        :q1  2.0
+                                        :q3  2.0
                                         :max 4.0
                                         :sd  #(< 0.76 % 0.78)
-                                        :avg 2.03}}}
+                                        :avg #(< 2.02 % 2.04)}}}
                 (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :price))))))))
 
 (deftest ^:parallel valid-serialized-json?-test

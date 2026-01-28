@@ -87,7 +87,7 @@
                                                             :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:statistics
-                                   {:distinct_count 2499,
+                                   {:distinct_count 2474,
                                     :percent_null 0.0,
                                     :percent_json 0.0,
                                     :percent_url 0.0,

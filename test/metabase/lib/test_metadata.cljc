@@ -306,7 +306,7 @@
    :display-name        "Date"
    :database-position   1
    :database-required   false
-   :fingerprint         {:global {:distinct-count 618, :nil% 0.0}
+   :fingerprint         {:global {:distinct-count 614, :nil% 0.0}
                          :type   #:type{:DateTime {:earliest "2013-01-03", :latest "2015-12-29"}}}
    :base-type           :type/Date
    :points-of-interest  nil
@@ -765,8 +765,8 @@
    :fingerprint         {:global {:distinct-count 4, :nil% 0.0}
                          :type   #:type{:Number
                                         {:min 1.0
-                                         :q1  1.4591129021415095
-                                         :q3  2.493086095768049
+                                         :q1  2.0
+                                         :q3  2.0
                                          :max 4.0
                                          :sd  0.7713951678941896
                                          :avg 2.03}}}
@@ -1614,7 +1614,7 @@
    :display-name               "Name"
    :database-position          4
    :database-required          false
-   :fingerprint                {:global {:distinct-count 2499, :nil% 0.0}
+   :fingerprint                {:global {:distinct-count 2474, :nil% 0.0}
                                 :type   {:type/Text {:percent-json   0.0
                                                      :percent-url    0.0
                                                      :percent-email  0.0

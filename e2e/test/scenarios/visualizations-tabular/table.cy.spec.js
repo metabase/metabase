@@ -323,7 +323,7 @@ describe("scenarios > visualizations > table", () => {
           // description
           cy.findByText("The city of the account’s billing address");
           // fingerprint
-          cy.findByText("1,966 distinct values");
+          cy.findByText(/[\d,]+ distinct values/);
         },
       ],
       [
