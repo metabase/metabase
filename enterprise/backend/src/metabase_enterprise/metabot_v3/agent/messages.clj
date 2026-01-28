@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.agent.messages
   "Message formatting and history construction for the agent loop."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.prompts :as prompts]
    [metabase-enterprise.metabot-v3.agent.tool-results :as tool-results]
