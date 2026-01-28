@@ -523,13 +523,13 @@
       (calculate-and-persist-graph! workspace graph-version)))
 
 (defn- transforms-to-execute
-  "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
-  [{ws-id :id :as workspace} & {:keys [stale-only?]}]
+  "Given a workspace, graph, and an optional filter, return the global and workspace definitions to run, in order."
+  [{ws-id :id :as _workspace} graph & {:keys [stale-only?]}]
   ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
   ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
   ;; Why is there all this weird code then? To avoid unused references.
   (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
-        entities     (:entities (get-or-calculate-graph! workspace))
+        entities     (:entities graph)
         type->ids    (u/group-by :node-type :id entities)
         id->tx       (merge
                       {}
@@ -572,4 +572,4 @@
      {:succeeded []
       :failed    []
       :not_run   []}
-     (transforms-to-execute workspace {:stale-only stale-only?}))))
+     (transforms-to-execute workspace graph {:stale-only stale-only?}))))
