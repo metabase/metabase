@@ -252,6 +252,109 @@ describe("dataset transform functions", () => {
       const result = getJoinedCardsDataset([], []);
       expect(result).toEqual([]);
     });
+
+    it("should properly aggregate duplicate Date dimension values when combining cards (metabase#65304)", () => {
+      // Reproducing bug #65304: when combining questions with duplicate date dimension values
+      // and using ordinal x-axis, the duplicate dates should be aggregated properly.
+      // The bug occurs because Date objects use reference equality in Map, not value equality.
+
+      const date1 = new Date("2025-01-01");
+      const date2a = new Date("2025-01-02"); // First instance
+      const date2b = new Date("2025-01-02"); // Duplicate with different object reference
+      const date3 = new Date("2025-02-01");
+      const date4 = new Date("2025-02-02");
+
+      const columnsCard1: CartesianChartColumns = {
+        dimension: { index: 0, column: createMockColumn({ name: "date" }) },
+        metrics: [
+          {
+            index: 1,
+            column: createMockColumn({
+              name: "c",
+              base_type: "type/Integer",
+            }),
+          },
+        ],
+      };
+
+      const columnsCard2: CartesianChartColumns = {
+        dimension: { index: 0, column: createMockColumn({ name: "date" }) },
+        metrics: [
+          {
+            index: 1,
+            column: createMockColumn({
+              name: "c",
+              base_type: "type/Integer",
+            }),
+          },
+        ],
+      };
+
+      const rawSeriesCard1: SingleSeries = {
+        card: createMockCard({ id: 1 }),
+        data: createMockDatasetData({
+          rows: [
+            [date1, 1],
+            [date2a, 2],
+            [date2b, 3], // Duplicate date with different object reference
+          ],
+          cols: [columnsCard1.dimension.column, columnsCard1.metrics[0].column],
+        }),
+      };
+
+      const rawSeriesCard2: SingleSeries = {
+        card: createMockCard({ id: 2 }),
+        data: createMockDatasetData({
+          rows: [
+            [date3, 3],
+            [date4, 4],
+          ],
+          cols: [columnsCard2.dimension.column, columnsCard2.metrics[0].column],
+        }),
+      };
+
+      const result = getJoinedCardsDataset(
+        [rawSeriesCard1, rawSeriesCard2],
+        [columnsCard1, columnsCard2],
+      );
+
+      // The duplicate date2a and date2b should be aggregated into a single entry
+      expect(result.length).toBe(4); // Should be 4, not 5
+
+      // Find the entry for 2025-01-02
+      const date2Entry = result.find((datum) => {
+        const xValue = datum[X_AXIS_DATA_KEY];
+        return xValue instanceof Date && xValue.getTime() === date2a.getTime();
+      });
+
+      expect(date2Entry).toBeDefined();
+      // The values should be summed: 2 + 3 = 5
+      expect(date2Entry?.["1:c"]).toBe(5);
+
+      // Verify all entries are present (only keys for cards that have that dimension value)
+      expect(result).toEqual([
+        {
+          [X_AXIS_DATA_KEY]: date1,
+          "1:date": date1,
+          "1:c": 1,
+        },
+        {
+          [X_AXIS_DATA_KEY]: date2a, // Uses the first Date object encountered
+          "1:date": date2a,
+          "1:c": 5, // 2 + 3 aggregated
+        },
+        {
+          [X_AXIS_DATA_KEY]: date3,
+          "2:date": date3,
+          "2:c": 3,
+        },
+        {
+          [X_AXIS_DATA_KEY]: date4,
+          "2:date": date4,
+          "2:c": 4,
+        },
+      ]);
+    });
   });
 
   describe("replaceValues", () => {
