@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
@@ -52,7 +53,7 @@
     (or
      (some (fn [item]
              (when (= "native" (normalize-context-type (:type item)))
-               (some-> (:sql_engine item) str/lower-case)))
+               (some-> (:sql_engine item) u/lower-case-en)))
            viewing)
      ;; Default to nil if not found
      nil)))
