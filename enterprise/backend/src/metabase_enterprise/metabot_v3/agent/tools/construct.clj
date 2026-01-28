@@ -184,9 +184,9 @@
 (mu/defn ^{:tool-name "construct_notebook_query"} construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning query visualization]} :- [:map {:closed true}
-                                               [:reasoning :string]
-                                               [:query construct-query-schema]
-                                               [:visualization construct-visualization-schema]]]
+                                                [:reasoning :string]
+                                                [:query construct-query-schema]
+                                                [:visualization construct-visualization-schema]]]
   (try
     (let [normalized-query (normalize-ai-args query)
           normalized-visualization (normalize-ai-args visualization)
