@@ -8,23 +8,23 @@ const TABLE_NAME = "test_transform_table";
 const TABLE_DISPLAY_NAME = "Test Transform Table";
 const TABLE_TRANSFORM = "Test Transform";
 const TABLE_BASED_QUESTION_BROKEN_FIELD =
-  "Table-based question with broken field";
+  "Test Table-based question with broken field";
 const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
-  "Table-based question with broken expression";
+  "Test Table-based question with broken expression";
 const TABLE_BASED_QUESTION_BROKEN_FILTER =
-  "Table-based question with broken filter";
+  "Test Table-based question with broken filter";
 const TABLE_BASED_QUESTION_BROKEN_BREAKOUT =
-  "Table-based question with broken breakout";
+  "Test Table-based question with broken breakout";
 const TABLE_BASED_QUESTION_BROKEN_AGGREGATION =
-  "Table-based question with broken aggregation";
+  "Test Table-based question with broken aggregation";
 const TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN =
-  "Table-based question with broken explicit join";
-const TABLE_BASED_QUESTION = "Table-based question";
+  "Test Table-based question with broken explicit join";
+const TABLE_BASED_QUESTION = "Test Table-based question";
 const QUESTION_BASED_QUESTION_BROKEN_FILTER =
-  "Question-based question with broken filter";
-const TABLE_BASED_MODEL = "Table-based model";
+  "Test Question-based question with broken filter";
+const TABLE_BASED_MODEL = "Test Table-based model";
 const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
-  "Model-based model with broken aggregation";
+  "Test Model-based model with broken aggregation";
 
 const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
 const BROKEN_TABLE_DEPENDENTS = [
@@ -206,6 +206,7 @@ describe("scenarios > dependencies > broken list", () => {
   describe("sorting", () => {
     it("should sort by name", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by name by default");
       checkListSorting({
@@ -227,6 +228,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by location", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by location ascending");
       H.DependencyDiagnostics.list().findByText("Location").click();
@@ -243,6 +245,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by dependents errors", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents errors ascending");
       H.DependencyDiagnostics.list().findByText("Problems").click();
@@ -261,6 +264,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by dependents with errors", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents with errors ascending");
       H.DependencyDiagnostics.list().findByText("Broken dependents").click();
