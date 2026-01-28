@@ -317,6 +317,7 @@ export type VisualizationSettings = {
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
   "scalar.segments"?: ScalarSegment[];
+  "scalar.formatting"?: ScalarFormattingSetting[];
 
   // Pie Settings
   "pie.dimension"?: string | string[];
@@ -503,3 +504,25 @@ export type ScalarSegment = {
   color: string;
   label?: string;
 };
+
+export type ScalarFormattingOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+
+export type ScalarSingleFormattingSetting = {
+  type: "single";
+  operator: ScalarFormattingOperator;
+  color: string;
+  value: string | number;
+};
+
+export type ScalarRangeFormattingSetting = {
+  type: "range";
+  colors: string[];
+  min_type: "custom";
+  max_type: "custom";
+  min_value?: number;
+  max_value?: number;
+};
+
+export type ScalarFormattingSetting =
+  | ScalarSingleFormattingSetting
+  | ScalarRangeFormattingSetting;
