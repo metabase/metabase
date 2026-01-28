@@ -18,7 +18,7 @@ import {
   createMockAdminState,
 } from "metabase-types/store/mocks";
 
-import { ProfileLink } from "./ProfileLink";
+import { AppSwitcher } from "./AppSwitcher";
 
 const USER = createMockUser();
 
@@ -83,9 +83,9 @@ async function setup({
 
   renderWithProviders(
     <>
-      <Route path="/" component={ProfileLink} />
-      <Route path="/admin" component={ProfileLink} />
-      <Route path="/data-studio" component={ProfileLink} />
+      <Route path="/" component={AppSwitcher} />
+      <Route path="/admin" component={AppSwitcher} />
+      <Route path="/data-studio" component={AppSwitcher} />
     </>,
     {
       withRouter: true,

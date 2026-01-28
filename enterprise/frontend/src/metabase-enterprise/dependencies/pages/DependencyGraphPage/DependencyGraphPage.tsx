@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useContext } from "react";
 
 import * as Urls from "metabase/lib/urls";
-import { ProfileLink } from "metabase/nav/components/ProfileLink/ProfileLink";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 
@@ -36,7 +36,7 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
         withEntryPicker={withEntryPicker}
       />
-      <ProfileLink className={S.ProfileLink} />
+      <AppSwitcher className={S.ProfileLink} />
     </Stack>
   );
 }

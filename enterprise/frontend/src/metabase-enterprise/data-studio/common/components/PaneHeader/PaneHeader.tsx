@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useSelector } from "metabase/lib/redux";
-import { ProfileLink } from "metabase/nav/components/ProfileLink/ProfileLink";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -50,7 +50,7 @@ export const PaneHeader = ({
 
         <Group ml="auto" gap="md">
           {showMetabotButton && <PLUGIN_METABOT.MetabotDataStudioButton />}
-          <ProfileLink className={S.ProfileLink} />
+          <AppSwitcher className={S.ProfileLink} />
         </Group>
       </Flex>
       <Group
