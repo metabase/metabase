@@ -143,56 +143,65 @@ export const _SdkQuestion = ({
   title,
   withChartTypeSelector = true,
   onVisualizationChange,
-}: SdkQuestionProps): JSX.Element | null => (
-  <SdkInternalNavigationProvider
-    renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
-    drillThroughQuestionProps={{
-      height: height,
-      width: width,
-      className: className,
-      style: style,
-      title: title,
-      withChartTypeSelector: withChartTypeSelector,
-      isSaveEnabled: isSaveEnabled,
-      targetCollection: targetCollection,
-      entityTypes: entityTypes,
-    }}
-  >
-    <SdkQuestionProvider
-      questionId={questionId}
-      token={token}
-      options={options}
-      deserializedCard={deserializedCard}
-      componentPlugins={plugins}
-      onNavigateBack={onNavigateBack}
-      onBeforeSave={onBeforeSave}
-      onSave={onSave}
-      onRun={onRun}
-      isSaveEnabled={isSaveEnabled}
-      entityTypes={entityTypes}
-      targetCollection={targetCollection}
-      initialSqlParameters={initialSqlParameters}
-      hiddenParameters={hiddenParameters}
-      withDownloads={withDownloads}
-      targetDashboardId={targetDashboardId}
-      backToDashboard={backToDashboard}
-      getClickActionMode={getClickActionMode}
-      navigateToNewCard={navigateToNewCard}
-      onVisualizationChange={onVisualizationChange}
+}: SdkQuestionProps): JSX.Element | null => {
+  const drillThroughQuestionProps: DrillThroughQuestionProps = {
+    height,
+    width,
+    className,
+    style,
+    title,
+    withChartTypeSelector,
+    isSaveEnabled,
+    targetCollection,
+    entityTypes,
+    onBeforeSave,
+    onSave,
+    onRun,
+    withDownloads,
+    plugins,
+  };
+
+  return (
+    <SdkInternalNavigationProvider
+      renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
+      drillThroughQuestionProps={drillThroughQuestionProps}
     >
-      {children ?? (
-        <SdkQuestionDefaultView
-          height={height}
-          width={width}
-          className={className}
-          style={style}
-          title={title}
-          withChartTypeSelector={withChartTypeSelector}
-        />
-      )}
-    </SdkQuestionProvider>
-  </SdkInternalNavigationProvider>
-);
+      <SdkQuestionProvider
+        questionId={questionId}
+        token={token}
+        options={options}
+        deserializedCard={deserializedCard}
+        componentPlugins={plugins}
+        onNavigateBack={onNavigateBack}
+        onBeforeSave={onBeforeSave}
+        onSave={onSave}
+        onRun={onRun}
+        isSaveEnabled={isSaveEnabled}
+        entityTypes={entityTypes}
+        targetCollection={targetCollection}
+        initialSqlParameters={initialSqlParameters}
+        hiddenParameters={hiddenParameters}
+        withDownloads={withDownloads}
+        targetDashboardId={targetDashboardId}
+        backToDashboard={backToDashboard}
+        getClickActionMode={getClickActionMode}
+        navigateToNewCard={navigateToNewCard}
+        onVisualizationChange={onVisualizationChange}
+      >
+        {children ?? (
+          <SdkQuestionDefaultView
+            height={height}
+            width={width}
+            className={className}
+            style={style}
+            title={title}
+            withChartTypeSelector={withChartTypeSelector}
+          />
+        )}
+      </SdkQuestionProvider>
+    </SdkInternalNavigationProvider>
+  );
+};
 
 const subComponents: SdkQuestionComponents = {
   BackButton: BackButton,
