@@ -18,6 +18,7 @@
 (defn- query->url-hash
   "Convert an MLv2/MBQL query to a base64-encoded URL hash."
   [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (let [dataset-query (if (and (map? query) (:lib/type query))
                         (lib/->legacy-MBQL query)
                         query)]
