@@ -44,6 +44,10 @@
                     {:id id, :path path})))
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
+(def ^:private ->native
+  "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
+  (comp mt/native-query ws.tu/mbql->native))
+
 (deftest workspace-endpoints-require-superuser-test
   (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
     (testing "GET /api/ee/workspace requires superuser"
@@ -744,7 +748,7 @@
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                  {:name   "New Transform"
                                                   :source {:type  "query"
-                                                           :query (mt/mbql-query venues)}
+                                                           :query (->native (mt/mbql-query venues))}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
 
@@ -767,7 +771,7 @@
                    (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/transform")
                                          {:name   "Should Fail"
                                           :source {:type  "query"
-                                                   :query (mt/mbql-query venues)}
+                                                   :query (->native (mt/mbql-query venues))}
                                           :target {:type "table"
                                                    :name "should_fail"}})))))))))
 
@@ -791,7 +795,7 @@
                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
-                                                :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query transforms_products)))}
+                                                :query (->native (mt/mbql-query transforms_products))}
                                        :target {:type "table"
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
@@ -1325,8 +1329,8 @@
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
 (defn- quote-table-name
-  [driver {:keys [name schema]}]
-  (sql.u/quote-name driver :table name schema))
+  [driver {:keys [schema], table :name}]
+  (sql.u/quote-name driver :table schema table))
 
 (deftest run-workspace-transform-bad-column-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
@@ -1335,7 +1339,7 @@
         (let [order-table (t2/select-one :model/Table (mt/id :orders))
               bad-transform {:name   "Bad Column Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query (format "SELECT * FROM %s" (quote-table-name (:engine (mt/db)) order-table))})}
+                                      :query (mt/native-query {:query (format "SELECT nocolumn FROM %s" (quote-table-name (:engine (mt/db)) order-table))})}
                              :target {:type     "table"
                                       :database (mt/id)
                                       :schema   (:schema order-table)

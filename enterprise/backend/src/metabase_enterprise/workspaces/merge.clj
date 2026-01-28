@@ -88,10 +88,8 @@
 
     result))
 
-;; TODO (crisptrutski 2025-12-XX): When there are more entity types support, this should update those too.
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
-   This should also clear the entire Changeset, as it no longer has any changes.
 
    - workspace: The workspace map (must have :id and :name keys)
    - merging-user-id: user performing the merge
@@ -117,12 +115,10 @@
                           (if error
                             (reduced (-> acc
                                          (update :errors conj result)
-                                         (assoc-in [:merged :transforms] [])
-                                         #_(assoc :short_circuit true)))
+                                         (assoc-in [:merged :transforms] [])))
                             (update-in acc [:merged :transforms] conj result))))
                       {:merged {:transforms []}
-                       :errors []
-                       #_#_:short_circuit false}
+                       :errors []}
                       (t2/select :model/WorkspaceTransform :workspace_id (:id workspace)))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
