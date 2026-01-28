@@ -38,7 +38,7 @@ import Question from "metabase-lib/v1/Question";
  * The raw un-connected component is also exported so we can unit test it
  * without the redux store.
  */
-export class AdHocQuestionLoader extends Component {
+export class AdHocQuestionLoaderView extends Component {
   state = {
     // this will store the loaded question
     question: null,
@@ -97,7 +97,9 @@ export class AdHocQuestionLoader extends Component {
       // (tables, source db, segments, etc) into
       // the redux store, the resulting metadata will be available as metadata on the
       // component props once it's available
-      await this.props.loadMetadataForCard(card);
+      await this.props.loadMetadataForCard(card, {
+        includeSensitiveFields: this.props.includeSensitiveFields,
+      });
 
       // instantiate a new question object using the metadata and saved question
       // so we can use metabase-lib methods to retrieve information and modify
@@ -122,9 +124,11 @@ export class AdHocQuestionLoader extends Component {
 }
 
 // redux stuff
-function mapStateToProps(state) {
+function mapStateToProps(state, ownProps) {
   return {
-    metadata: getMetadata(state),
+    metadata: getMetadata(state, {
+      includeSensitiveFields: ownProps.includeSensitiveFields,
+    }),
   };
 }
 
@@ -132,7 +136,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
 };
 
-export default connect(
+export const AdHocQuestionLoader = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(AdHocQuestionLoader);
+)(AdHocQuestionLoaderView);

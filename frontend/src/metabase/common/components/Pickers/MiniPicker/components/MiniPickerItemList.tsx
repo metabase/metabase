@@ -57,7 +57,7 @@ export function MiniPickerItemList() {
 }
 
 function RootItemList() {
-  const { data: databases } = useListDatabasesQuery();
+  const { data: databases } = useListDatabasesQuery({ "can-query": true });
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { isLoading: isLoadingRootCollection, error: rootCollectionError } =
@@ -152,7 +152,9 @@ function DatabaseItemList({
   const { setPath, onChange, isHidden } = useMiniPickerContext();
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
-      parent.model === "database" ? { id: parent.id } : skipToken,
+      parent.model === "database"
+        ? { id: parent.id, "can-query": true }
+        : skipToken,
     );
 
   const schemaName: SchemaName | null =
@@ -170,6 +172,7 @@ function DatabaseItemList({
         ? {
             id: dbId,
             schema: schemaName,
+            "can-query": true,
           }
         : skipToken,
     );

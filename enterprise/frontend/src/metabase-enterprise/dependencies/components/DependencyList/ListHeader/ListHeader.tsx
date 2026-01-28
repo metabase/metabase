@@ -12,14 +12,14 @@ import {
 export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Broken entities`,
+      label: t`Broken dependencies`,
       to: Urls.brokenDependencies(),
-      icon: "list",
+      icon: "broken_link",
     },
     {
       label: t`Unreferenced entities`,
       to: Urls.unreferencedDependencies(),
-      icon: "list",
+      icon: "unreferenced",
     },
   ];
 

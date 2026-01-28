@@ -18,13 +18,13 @@
     (lib/returned-columns query)))
 
 ;; Analyzing an entity in memory ================================================================
-(mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error]]
-  "Find any bad refs in a `query`."
+(mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error-with-source]]
+  "Find any bad refs in a `query`. Returns errors with source entity information when possible."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (if (lib/any-native-stage? query)
     (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs query)))
+    (lib/find-bad-refs-with-source query)))
 
 (defmulti check-entity
   "Given a metadata provider, an entity type and an entity id, find any bad refs in that entity."
@@ -36,9 +36,9 @@
   [_metadata-provider _entity-type _entity-id]
   nil)
 
-(mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.validate/error]]
+(mu/defmethod check-entity :card :- [:set [:ref ::lib.schema.validate/error-with-source]]
   "Given a `MetadataProvider` and a card ID, analyses the card's query to find any bad refs or other issues.
-  Returns any findings, and `nil` for a clean query."
+  Returns any findings with source information, and `nil` for a clean query."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    card-id           :- ::lib.schema.id/card]
@@ -46,10 +46,10 @@
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
 
-(mu/defmethod check-entity :transform :- [:set [:ref ::lib.schema.validate/error]]
+(mu/defmethod check-entity :transform :- [:set [:ref ::lib.schema.validate/error-with-source]]
   "Given a `MetadataProvider` and a transform ID, analyses the transform's query to find any bad refs or other issues.
 
-  Returns any findings, and `nil` for a clean transform."
+  Returns any findings with source information, and `nil` for a clean transform."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    transform-id      :- ::lib.schema.id/transform]
@@ -67,7 +67,7 @@
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))
 
-(mu/defmethod check-entity :segment :- [:set [:ref ::lib.schema.validate/error]]
+(mu/defmethod check-entity :segment :- [:set [:ref ::lib.schema.validate/error-with-source]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    segment-id        :- ::lib.schema.id/segment]

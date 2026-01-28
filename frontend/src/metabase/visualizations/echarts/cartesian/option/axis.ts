@@ -10,6 +10,7 @@ import type {
   TimeSeriesXAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getPaddedAxisLabel } from "metabase/visualizations/echarts/cartesian/option/utils";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -258,7 +259,7 @@ export const buildNumericDimensionAxis = (
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
         }
-        return ` ${formatter(fromEChartsAxisValue(rawValue))} `;
+        return getPaddedAxisLabel(formatter(fromEChartsAxisValue(rawValue)));
       },
     },
     ...(isPadded
@@ -298,7 +299,9 @@ export const buildTimeSeriesDimensionAxis = (
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
-          return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]"))} `; // spaces force padding between ticks
+          return getPaddedAxisLabel(
+            formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")),
+          );
         }
         return "";
       },
@@ -347,10 +350,10 @@ export const buildCategoricalDimensionAxis = (
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
         if (isNumericBaseType(column) && numberValue !== null) {
-          return ` ${formatter(numberValue)} `;
+          return getPaddedAxisLabel(formatter(numberValue));
         }
 
-        return ` ${formatter(value)} `; // spaces force padding between ticks
+        return getPaddedAxisLabel(formatter(value));
       },
     },
   };

@@ -281,6 +281,10 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
+export function dataStudioMetricCaching(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/caching`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }

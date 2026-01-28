@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import SelectList from "metabase/common/components/SelectList";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { SelectList } from "metabase/common/components/SelectList";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

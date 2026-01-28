@@ -85,13 +85,13 @@ describe("issue 19737", () => {
 
     moveModel(modelName, personalCollectionName);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     H.miniPickerBrowseAll().click();
@@ -107,7 +107,7 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "First collection");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
@@ -115,7 +115,7 @@ describe("issue 19737", () => {
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
@@ -134,13 +134,13 @@ describe("issue 19737", () => {
 
     moveModel(modelName, personalCollectionName);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
     cy.findByLabelText("Navigation bar").within(() => {
       cy.findByText("New").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     H.miniPickerBrowseAll().click();
@@ -172,9 +172,9 @@ describe("issue 20042", () => {
 
     cy.wait("@query");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders Model");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });
@@ -279,11 +279,11 @@ describe("issue 20624", { tags: "@skip" }, () => {
 
   it("models metadata should override previously defined column settings (metabase#20624)", () => {
     openDetailsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Customize metadata").click();
 
     // Open settings for this column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(renamedColumn).click();
     // Let's set a new name for it
     cy.findByDisplayValue(renamedColumn).clear().type("Foo").blur();
@@ -366,7 +366,7 @@ describe("issue 22517", () => {
     );
 
     H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit metadata").click();
 
     renameColumn("ID", "Foo");
@@ -380,11 +380,11 @@ describe("issue 22517", () => {
     { tags: "@skip" },
     () => {
       H.openQuestionActions();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit query definition").click();
 
       // Make sure previous metadata changes are reflected in the UI
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
 
       // This will edit the original query and add the `SIZE` column
@@ -397,13 +397,13 @@ describe("issue 22517", () => {
       cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
     },
   );
@@ -427,7 +427,7 @@ describe("issue 22518", () => {
 
   it("UI should immediately reflect model query changes upon saving (metabase#22518)", () => {
     H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
     H.NativeEditor.focus().type(", 'b' bar");
@@ -470,9 +470,9 @@ describe("issue 22519", { tags: "@skip" }, () => {
       fieldId: REVIEWS.REVIEWS,
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("UNIX seconds → Datetime").click();
     cy.wait("@updateField");
   });
@@ -480,13 +480,13 @@ describe("issue 22519", { tags: "@skip" }, () => {
   it("model query should not fail when data model is using casting (metabase#22519)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
 
     turnIntoModel();
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
   });
 });
@@ -505,9 +505,6 @@ describe("filtering based on the remapped column name should result in a correct
           'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
       },
     }).then(({ body: { id } }) => {
-      // Visit the question to first load metadata
-      H.visitQuestion(id);
-
       // Turn the question into a model
       cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
@@ -538,7 +535,7 @@ describe("filtering based on the remapped column name should result in a correct
       cy.findByText("Today").click();
     });
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Today").should("not.exist");
     cy.get("[data-testid=cell-data]")
       .should("have.length", 4)
@@ -817,7 +814,7 @@ describe("issue 28193", () => {
 
   function assertOnColumns() {
     cy.findAllByText("2.07").should("be.visible").and("have.length", 2);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
       .should("be.visible")
       .last()
@@ -838,7 +835,7 @@ describe("issue 28193", () => {
     // Go directly to model's query definition
     cy.visit(`/model/${ORDERS_QUESTION_ID}/query`);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "[Tax]",
@@ -929,9 +926,9 @@ describe("issue 29378", () => {
     H.createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
       "be.visible",
     );
@@ -942,9 +939,9 @@ describe("issue 29378", () => {
       .should("exist");
     H.closeCommandPalette();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
       "be.visible",
     );
@@ -983,9 +980,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1093,9 +1091,10 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1292,9 +1291,10 @@ FROM
 
   it("Create model, set metadata, distinct", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1507,7 +1507,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.button("Get Answer").should("be.visible");
     H.saveMetadataChanges();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
     H.tableHeaderColumn("ID").as("idHeader");
     H.moveDnDKitElementByAlias("@idHeader", { horizontal: 100 });
@@ -1949,7 +1949,7 @@ describe("issue 37009", () => {
       .button("Save")
       .should("be.enabled")
       .click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

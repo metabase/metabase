@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
+import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selectors";
 import type { Table } from "metabase-types/api";
 
 import {
@@ -16,8 +16,17 @@ type TableSegmentsProps = {
 };
 
 export function TableSegments({ table }: TableSegmentsProps) {
-  const canWriteSegments = useSelector(getUserCanWriteSegments);
+  const canWriteSegments = useSelector((state) =>
+    getUserCanWriteSegments(state, table.is_published),
+  );
   const segments = table.segments ?? [];
+  let newButtonLabel: string | undefined;
+  let newButtonUrl: string | undefined;
+
+  if (canWriteSegments) {
+    newButtonLabel = t`New segment`;
+    newButtonUrl = Urls.dataStudioPublishedTableSegmentNew(table.id);
+  }
 
   return (
     <Flex direction="column" flex={1}>
@@ -29,12 +38,8 @@ export function TableSegments({ table }: TableSegmentsProps) {
           title: t`No segments yet`,
           message: t`Create a segment to filter rows in this table.`,
         }}
-        newButtonLabel={canWriteSegments ? t`New segment` : undefined}
-        newButtonUrl={
-          canWriteSegments
-            ? Urls.dataStudioPublishedTableSegmentNew(table.id)
-            : undefined
-        }
+        newButtonLabel={newButtonLabel}
+        newButtonUrl={newButtonUrl}
         renderItem={(segment) => (
           <EntityListItem
             key={segment.id}

@@ -58,7 +58,7 @@
 .messageContainerUser {
   align-items: flex-end;
   align-self: flex-end;
-  max-width: 80%;
+  max-width: 90%;
   min-width: 6rem;
   width: fit-content;
 }
@@ -78,6 +78,8 @@
   padding: 0.5rem 1rem;
   border-radius: 1rem;
   background: var(--mb-color-background-tertiary);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .messageUserAction {

@@ -12,9 +12,8 @@
 (deftest basic-cards-test
   (testing "overriding a single card, it is returned correctly"
     (let [card    (:orders (lib.tu/mock-cards))
-          mp      (-> card
-                      lib.tu/metadata-provider-with-mock-card
-                      deps.mp/override-metadata-provider)]
+          mp      (deps.mp/override-metadata-provider
+                   {:base-provider (lib.tu/metadata-provider-with-mock-card card)})]
       (deps.mp/add-override mp :card (:id card)
                             (-> card
                                 (assoc-in [:dataset-query :query :fields]
@@ -42,8 +41,8 @@
           by-name    (m/index-by :name (lib/returned-columns (lib/query mp1 card1)))
           downstream (-> (lib/query mp1 card1)
                          (lib/filter (lib/= (get by-name "count") 1)))
-          mp         (-> (lib.tu/metadata-provider-with-card-from-query mp1 2 downstream)
-                         deps.mp/override-metadata-provider)]
+          mp         (deps.mp/override-metadata-provider
+                      {:base-provider (lib.tu/metadata-provider-with-card-from-query mp1 2 downstream)})]
       (deps.mp/add-override mp :card 1
                             (-> upstream
                                 (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day))
@@ -103,8 +102,8 @@
           xform-cols (m/index-by :name (lib.metadata/fields mp2 123000000))
           downstream (-> (lib/query mp2 (lib.metadata/table mp2 123000000))
                          (lib/filter (lib/= (get xform-cols "count") 1)))
-          mp         (-> (lib.tu/metadata-provider-with-card-from-query mp2 2 downstream)
-                         deps.mp/override-metadata-provider)]
+          mp         (deps.mp/override-metadata-provider
+                      {:base-provider (lib.tu/metadata-provider-with-card-from-query mp2 2 downstream)})]
       (deps.mp/add-override mp :card 1
                             (-> upstream
                                 (lib/remove-clause (first (lib/breakouts upstream)))

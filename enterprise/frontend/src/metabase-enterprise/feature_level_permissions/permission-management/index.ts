@@ -2,6 +2,7 @@ import type {
   DataPermissionValue,
   EntityId,
   PermissionSubject,
+  SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
@@ -12,14 +13,16 @@ import { buildDownloadPermission } from "./download-permission";
 export const getFeatureLevelDataPermissions = (
   entityId: EntityId,
   groupId: number,
-  isAdmin: boolean,
-  isExternal: boolean,
+  groupType: SpecialGroupType,
   permissions: GroupsPermissions,
   dataAccessPermissionValue: DataPermissionValue,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
   permissionView?: "group" | "database",
 ) => {
+  const isAdmin = groupType === "admin";
+  const isExternal = groupType === "external";
+
   const downloadPermission = buildDownloadPermission(
     entityId,
     groupId,
@@ -35,8 +38,7 @@ export const getFeatureLevelDataPermissions = (
     buildDataModelPermission(
       entityId,
       groupId,
-      isAdmin,
-      isExternal,
+      groupType,
       permissions,
       defaultGroup,
       permissionSubject,

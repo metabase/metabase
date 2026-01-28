@@ -65,19 +65,19 @@
       (testing card-type
         (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
           (mt/with-test-user :rasta
-            (is (= {:object card :user-id (mt/user->id :rasta)}
-                   (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})))
-            (is (partial=
-                 {:topic    :card-update
-                  :user_id  (mt/user->id :rasta)
-                  :model    "Card"
-                  :model_id (:id card)
-                  :details  (cond-> {:name        "My Cool Card"
-                                     :description nil
-                                     :table_id    nil
-                                     :database_id (mt/id)}
-                              (= card-type :model) (assoc :model? true))}
-                 (mt/latest-audit-log-entry "card-update" (:id card))))))))))
+            (let [old-card (assoc card :name "Old Name", :type :question)]
+              (is (= {:object card :previous-object old-card :user-id (mt/user->id :rasta)}
+                     (events/publish-event! :event/card-update {:object card :previous-object old-card :user-id (mt/user->id :rasta)})))
+              (is (partial=
+                   {:topic    :card-update
+                    :user_id  (mt/user->id :rasta)
+                    :model    "Card"
+                    :model_id (:id card)
+                    :details  {:previous (cond-> {:name "Old Name"}
+                                           (= card-type :model) (assoc :model? false))
+                               :new (cond-> {:name "My Cool Card"}
+                                      (= card-type :model) (assoc :model? true))}}
+                   (mt/latest-audit-log-entry "card-update" (:id card)))))))))))
 
 (deftest card-delete-event-test
   (testing :card-delete

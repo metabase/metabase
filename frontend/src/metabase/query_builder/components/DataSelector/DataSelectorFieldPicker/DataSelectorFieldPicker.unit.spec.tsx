@@ -4,7 +4,7 @@ import { checkNotNull } from "metabase/lib/types";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
+import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

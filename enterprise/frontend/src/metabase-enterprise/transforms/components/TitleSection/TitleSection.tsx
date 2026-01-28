@@ -4,7 +4,7 @@ import { Card, Group, Stack, Text, Title } from "metabase/ui";
 
 type TitleSectionProps = {
   label: string;
-  description?: string;
+  description?: ReactNode;
   children?: ReactNode;
 };
 

@@ -2,11 +2,12 @@ import cx from "classnames";
 import { useLayoutEffect, useRef } from "react";
 import { t } from "ttag";
 
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import EditBar from "metabase/common/components/EditBar";
+import { Button } from "metabase/common/components/Button";
+import { EditBar } from "metabase/common/components/EditBar";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import type Question from "metabase-lib/v1/Question";
 

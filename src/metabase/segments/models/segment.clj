@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -70,9 +71,7 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/write-policy.superuser)
-  (derive ::mi/create-policy.superuser))
+  (derive :hook/entity-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
@@ -85,6 +84,57 @@
       (u/the-id table))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
+
+;; Segments can be written by superusers, but only if the parent table is editable
+;; (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-write? :model/Segment
+  ([instance]
+   (let [table (or (:table instance)
+                   (t2/select-one :model/Table :id (:table_id instance)))]
+     (and (mi/superuser?)
+          (remote-sync/table-editable? table))))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
+
+;; Segments can be created by superusers, but only if the parent table is editable
+;; (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-create? :model/Segment
+  [_model instance]
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (mi/superuser?)
+         (remote-sync/table-editable? table))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
+  "Batched hydration for :can_write on segments. First hydrates :table for all segments,
+   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
+   on each segment. This avoids N+1 queries when checking permissions for multiple segments."
+  [_model k segments]
+  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
+        ;; Get all unique collection IDs from the hydrated tables
+        collection-ids (->> segments-with-tables
+                            (keep (comp :collection_id :table))
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each segment's table
+        segments-with-collection (for [segment segments-with-tables
+                                       :let [table (:table segment)
+                                             coll-id (:collection_id table)]]
+                                   (if (and table coll-id)
+                                     (assoc-in segment [:table :collection]
+                                               {:id coll-id
+                                                :is_remote_synced (get collection-synced-map coll-id false)})
+                                     segment))]
+    (mi/instances-with-hydrated-data
+     segments k
+     #(u/index-by :id mi/can-write? segments-with-collection)
+     :id
+     {:default false})))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]

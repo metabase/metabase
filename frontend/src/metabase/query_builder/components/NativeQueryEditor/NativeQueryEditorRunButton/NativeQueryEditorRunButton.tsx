@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
 import type * as Lib from "metabase-lib";
 
 import S from "./NativeQueryEditorRunButton.module.css";
@@ -11,12 +11,14 @@ interface NativeQueryEditorRunButtonProps {
   isResultDirty: boolean;
   isRunnable: boolean;
   isRunning: boolean;
-  nativeEditorSelectedText?: string;
+  nativeEditorSelectedText?: string | null;
   questionErrors?: Lib.ValidationError[] | null;
   runQuery?: () => void;
 }
 
-const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
+export const NativeQueryEditorRunButton = (
+  props: NativeQueryEditorRunButtonProps,
+) => {
   const {
     cancelQuery,
     isResultDirty,
@@ -57,5 +59,3 @@ const NativeQueryEditorRunButton = (props: NativeQueryEditorRunButtonProps) => {
     />
   );
 };
-
-export { NativeQueryEditorRunButton };

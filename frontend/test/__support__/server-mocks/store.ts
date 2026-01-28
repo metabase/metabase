@@ -49,7 +49,7 @@ export function setupStoreEETieredMetabotAI(
         status: 403,
       }))
       .with("error-no-connection", () => ({
-        // eslint-disable-next-line no-literal-metabase-strings -- Used for fetch mock only
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
         body: "Could not establish a connection to Metabase Cloud.",
         status: 404,
       }))

@@ -121,6 +121,10 @@
    :data-model     {:schemas :all}
    :details        :yes})
 
+(def ^:private data-analyst-perms
+  "Data Analysts have implicit manage-table-metadata permission for all databases."
+  {:data-model {:schemas :all}})
+
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
@@ -137,6 +141,27 @@
                  (nil? (seq group-ids))))
       (reduce (fn [api-graph db-id]
                 (assoc-in api-graph [admin-group-id db-id] admin-perms))
+              api-graph
+              db-ids)
+      api-graph)))
+
+(defn- add-data-analyst-perms-to-permissions-graph
+  "Data Analysts have implicit manage-table-metadata permission for all databases.
+  This is not stored in the data-permissions table, so we add it to the graph for the API."
+  [api-graph {:keys [db-id group-ids group-id audit?]}]
+  (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
+        db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
+                                                                   {:where [:and
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])]}))]
+    ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
+    (if (or (= group-id data-analyst-group-id)
+            (contains? (set group-ids) data-analyst-group-id)
+            ;; If we're not filtering on specific group IDs, always include the data analyst group
+            (and (nil? group-id)
+                 (nil? (seq group-ids))))
+      (reduce (fn [api-graph db-id]
+                (update-in api-graph [data-analyst-group-id db-id]
+                           #(merge % data-analyst-perms)))
               api-graph
               db-ids)
       api-graph)))
@@ -219,7 +244,8 @@
                   remove-empty-vals
                   (add-sandboxes-to-permissions-graph opts)
                   (add-impersonations-to-permissions-graph opts)
-                  (add-admin-perms-to-permissions-graph opts))})))
+                  (add-admin-perms-to-permissions-graph opts)
+                  (add-data-analyst-perms-to-permissions-graph opts))})))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -395,6 +421,19 @@
           (throw (ee-permissions-exception :blocked)))
         (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
 
+(defn- check-data-analyst-locked-permissions
+  "Check that we're not modifying data-model permission for the Data Analysts group.
+   Data Analysts always have full data-model (manage-table-metadata) permissions."
+  [group-updates]
+  (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))]
+    (when-let [da-updates (get group-updates data-analyst-group-id)]
+      (doseq [[_db-id db-changes] da-updates]
+        (when (and (contains? db-changes :data-model)
+                   (not= (:data-model db-changes) (:data-model data-analyst-perms)))
+          (throw (ex-info (tru "You cannot modify the data model permission for the ''{0}'' group."
+                               (:name (perms/data-analyst-group)))
+                          {:status-code 400})))))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -424,7 +463,7 @@
            :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
            :details        (update-details-perms! group-id db-id new-perms))))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
@@ -435,12 +474,13 @@
    (when (seq graph-updates)
      (cluster-lock/with-cluster-lock ::update-data-perms-graph
        (let [group-updates (:groups graph-updates)]
+         (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
          (t2/with-transaction [_conn]
            (update-data-perms-graph!* group-updates)
            (delete-impersonations-if-needed-after-permissions-change! group-updates)
            (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
 
-  ;; The following arity is provided soley for convenience for tests/REPL usage
+  ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))

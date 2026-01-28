@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { humanize, titleize } from "metabase/lib/formatting";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
@@ -22,6 +23,8 @@ export const ResultItem = ({
   isSelected?: boolean;
   isLast?: boolean;
 }) => {
+  const tc = useTranslateContent();
+
   const icon = getIcon(item);
   const parentInfo = getParentInfo(item);
 
@@ -43,7 +46,7 @@ export const ResultItem = ({
           }}
         />
         <Ellipsified style={{ fontWeight: "bold" }}>
-          {getName(item)}
+          {tc(getName(item))}
         </Ellipsified>
         <PLUGIN_MODERATION.ModerationStatusIcon
           status={item.moderated_status}
@@ -51,7 +54,7 @@ export const ResultItem = ({
           size={14}
         />
         {item.description && (
-          <Tooltip maw="20rem" multiline label={item.description}>
+          <Tooltip maw="20rem" multiline label={tc(item.description)}>
             <FixedSizeIcon c="brand" name="info" />
           </Tooltip>
         )}

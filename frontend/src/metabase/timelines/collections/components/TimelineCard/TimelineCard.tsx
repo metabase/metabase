@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { getEventCount, getTimelineName } from "metabase/lib/timelines";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";

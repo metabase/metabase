@@ -10,16 +10,16 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import CollectionName from "metabase/common/components/CollectionName";
+import { CollectionName } from "metabase/common/components/CollectionName";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerModalProps,
   type CollectionPickerOptions,
 } from "metabase/common/components/Pickers/CollectionPicker";
-import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";

@@ -16,6 +16,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
@@ -190,7 +191,7 @@
         db-transforms (driver-api/transforms query)]
     (-> query
         driver-api/raw-native-query
-        macaw/parsed-query
+        (driver.u/parsed-query driver)
         (macaw/query->components {:strip-contexts? true})
         :tables
         (->> (map :component))
@@ -300,11 +301,11 @@
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [returned-fields]} (->> native-query
-                                       driver-api/raw-native-query
-                                       macaw/parsed-query
-                                       macaw/->ast
-                                       (sql.references/field-references driver))]
+  (let [{:keys [returned-fields]} (-> native-query
+                                      driver-api/raw-native-query
+                                      (driver.u/parsed-query driver)
+                                      macaw/->ast
+                                      (->> (sql.references/field-references driver)))]
     (mapcat #(->> (resolve-field driver native-query %)
                   (keep :col))
             returned-fields)))
@@ -312,11 +313,11 @@
 (mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
-  (let [{:keys [used-fields returned-fields errors]} (->> native-query
-                                                          driver-api/raw-native-query
-                                                          macaw/parsed-query
-                                                          macaw/->ast
-                                                          (sql.references/field-references driver))
+  (let [{:keys [used-fields returned-fields errors]} (-> native-query
+                                                         driver-api/raw-native-query
+                                                         (driver.u/parsed-query driver)
+                                                         macaw/->ast
+                                                         (->> (sql.references/field-references driver)))
         check-fields #(mapcat (fn [col-spec]
                                 (->> (resolve-field driver (driver-api/->metadata-provider native-query) col-spec)
                                      (keep :error)))

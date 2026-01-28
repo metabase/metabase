@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -142,55 +143,36 @@ export function TableAttributesEditSingle({ table }: Props) {
     }
   };
 
+  const isOwnerSpecified = table.owner_email || table.owner_user_id;
+
   return (
     <TableSectionGroup title={t`Attributes`}>
       <div className={S.container}>
         <UserInput
           email={table.owner_email}
           label={t`Owner`}
-          userId={
-            !table.owner_email && !table.owner_user_id
-              ? "unknown"
-              : table.owner_user_id
-          }
+          userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
           onEmailChange={handleOwnerEmailChange}
           onUserIdChange={handleOwnerUserIdChange}
-          styles={{
-            label: {
-              gridColumn: 1,
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
           className={S.gridLabelInput}
+          unknownUserLabel={t`No owner`}
+          classNames={{
+            input: cx(S.input, !isOwnerSpecified && S.unset),
+            label: S.label,
+          }}
         />
 
         <LayerInput
           value={table.data_layer ?? "copper"}
           onChange={handleLayerChange}
-          styles={{
-            label: {
-              gridColumn: 1,
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
+          classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
         />
 
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
           onChange={handleEntityTypeChange}
-          styles={{
-            label: {
-              gridColumn: 1,
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
+          classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
         />
 
@@ -198,14 +180,7 @@ export function TableAttributesEditSingle({ table }: Props) {
           disabled={table.data_source === "metabase-transform"}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
-          styles={{
-            label: {
-              gridColumn: 1,
-            },
-            input: {
-              gridColumn: 2,
-            },
-          }}
+          classNames={{ input: S.input, label: S.label }}
           className={S.gridLabelInput}
         />
 

@@ -87,7 +87,8 @@ describe("issue 45255", () => {
 
     // Can reorder (empty)
     H.getDraggableElements().eq(2).should("have.text", "(empty)");
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+    H.getDraggableElements().first().as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
     H.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
@@ -615,6 +616,236 @@ describe("issue 55853", () => {
           value: "0.01%",
         },
       ],
+    });
+  });
+});
+
+describe("issue 10493", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should display bar chart for binned column distribution after applying filter (metabase#10493)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    cy.log("Click on Quantity column header and select Distribution");
+    H.tableHeaderClick("Quantity");
+    H.popover().findByText("Distribution").click();
+
+    cy.log("Verify bar chart is displayed with binned quantity as dimension");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
+
+    cy.log("Apply filter: count >= 20");
+    cy.findByTestId("qb-header-action-panel").findByText("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
+    });
+    H.selectFilterOperator("Greater than or equal to");
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("20");
+      cy.button("Apply filter").click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.log(
+      "Verify bar chart is still displayed (binned column should still be treated as dimension)",
+    );
+    cy.findByTestId("query-builder-main")
+      .findByText(/^Doing science/)
+      .should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("not.exist");
+    cy.findByTestId("visualization-root").should(
+      "have.attr",
+      "data-viz-ui-name",
+      "Bar",
+    );
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor("#509EE3").should("exist");
+  });
+});
+
+describe("UXW-2696", () => {
+  const getChartPoints = () =>
+    H.echartsContainer().get("path[fill='hsla(0, 0%, 100%, 1.00)']");
+  const getNoPointsMessage = () =>
+    cy.findByRole("dialog", { name: /data points are off screen/i });
+
+  const assertNoPoints = (assertMessage = true) => {
+    getChartPoints().should("have.length", 0);
+    if (assertMessage) {
+      getNoPointsMessage().should("exist");
+    }
+  };
+
+  const assertDataVisible = () => {
+    getChartPoints().should("have.length.greaterThan", 0);
+    getNoPointsMessage().should("not.exist");
+  };
+
+  const QUESTION_NAME = "Count of orders by month";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        name: QUESTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.y_axis.min": 700,
+          "graph.y_axis.max": 1000,
+          "graph.y_axis.auto_range": false,
+        },
+      },
+      { wrapId: true },
+    );
+  });
+
+  it("should show you a popover when all data points are outside the y-axis range in the notebook editor", () => {
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+
+    assertNoPoints();
+
+    // Check that message is displayed
+    cy.findByRole("dialog", { name: /data points are off screen/i });
+
+    H.openVizSettingsSidebar();
+
+    H.vizSettingsSidebar().findByText("Axes").click();
+    H.vizSettingsSidebar().findByLabelText("Min").clear().type("70").blur();
+
+    assertDataVisible();
+
+    H.vizSettingsSidebar().findByLabelText("Min").clear().type("700").blur();
+
+    assertNoPoints();
+
+    cy.findByRole("switch", { name: /auto y-axis range/i }).click({
+      force: true,
+    });
+
+    assertDataVisible();
+  });
+
+  it("should show the message on pinned cards", () => {
+    H.visitCollection("root");
+    H.openCollectionItemMenu(QUESTION_NAME);
+    H.popover().findByText("Pin this").click();
+
+    H.getPinnedSection().within(() => {
+      assertNoPoints();
+    });
+    // assert that the menu trigger is not covered
+    H.openPinnedItemMenu(QUESTION_NAME);
+    H.popover().should("exist");
+  });
+
+  it("should show the message in documents", () => {
+    //setup a document
+    cy.visit("/document/new");
+    H.documentContent().click();
+
+    H.addToDocument("/ord", false);
+    H.commandSuggestionItem(new RegExp(QUESTION_NAME)).click();
+
+    H.getDocumentCard(QUESTION_NAME).within(() => {
+      assertNoPoints();
+    });
+
+    H.openDocumentCardMenu(QUESTION_NAME);
+    H.popover().findByText("Edit Visualization").click();
+
+    H.getDocumentSidebar().within(() => {
+      cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+      cy.findByRole("switch", { name: /auto y-axis range/i }).should(
+        "not.have.attr",
+        "data-checked",
+      );
+
+      cy.findByLabelText("Min").clear().type("70");
+    });
+
+    H.getDocumentCard(QUESTION_NAME).within(() => {
+      assertDataVisible();
+    });
+  });
+
+  describe("dashcard", () => {
+    beforeEach(() => {
+      cy.get<number>("@questionId").then((cardId) => {
+        H.createDashboard(
+          {
+            name: "Test Dashboard",
+          },
+          {
+            wrapId: true,
+          },
+        );
+
+        cy.get<number>("@dashboardId").then((dashboardId) =>
+          H.addQuestionToDashboard({ dashboardId, cardId }),
+        );
+      });
+    });
+
+    it("should show you a message on a dashboard", () => {
+      cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+
+      cy.findByTestId("dashcard").within(() => {
+        assertNoPoints();
+      });
+
+      H.editDashboard();
+      H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: false });
+
+      H.modal().within(() => {
+        cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+        cy.findByRole("switch", { name: /auto y-axis range/i }).should(
+          "not.have.attr",
+          "data-checked",
+        );
+
+        assertNoPoints(false);
+        getNoPointsMessage().should("not.exist");
+
+        cy.findByLabelText("Min").clear().type("70").blur();
+
+        assertDataVisible();
+      });
+      H.saveDashcardVisualizerModal();
+
+      H.dashboardSaveButton().click();
+
+      cy.findByTestId("edit-bar").should("not.exist");
+
+      cy.findByTestId("dashcard").within(() => {
+        getChartPoints().should("have.length.greaterThan", 0);
+      });
     });
   });
 });

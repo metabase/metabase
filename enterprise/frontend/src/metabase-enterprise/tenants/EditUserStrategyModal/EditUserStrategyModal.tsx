@@ -109,7 +109,7 @@ export const EditUserStrategyModal = ({
     {
       value: "single-tenant",
       title: t`Single tenant`,
-      // eslint-disable-next-line no-literal-metabase-strings -- in admin settings
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- in admin settings
       description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
     },
   ];

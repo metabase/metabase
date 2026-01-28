@@ -105,7 +105,7 @@
 
 (deftest ^:parallel top-level-column-rename-options-test
   (testing `lib.underlying/top-level-column
-    (testing "respects rename-superflous-options?"
+    (testing "respects rename-superfluous-options?"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                       (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
@@ -125,7 +125,7 @@
                 rename?        [true false]]
           (let [orig-key      (keyword "metabase.lib.field" key-name)
                 renamed-key   (keyword "metabase.lib.underlying" key-name)
-                top-level-col (lib.underlying/top-level-column query col :rename-superflous-options? rename?)]
+                top-level-col (lib.underlying/top-level-column query col :rename-superfluous-options? rename?)]
             (testing (str "\nrename? " rename?
                           "\norig-key " orig-key
                           "\nrenamed-key " renamed-key

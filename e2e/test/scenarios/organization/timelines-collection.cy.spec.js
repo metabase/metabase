@@ -171,21 +171,21 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
       H.modal().findByText("Metrics").click();
       openMenu("RC2");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
       H.modal().button("Move").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
 
       cy.icon("chevronleft").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2");
     });
 
@@ -202,19 +202,19 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
       H.modal().findByText("Metrics").click();
       openMenu("RC2");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
       H.modal().button("Move").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -227,15 +227,15 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("not.exist");
     });
 
@@ -248,16 +248,16 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -269,23 +269,23 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived events").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archived events").should("be.visible");
       openMenu("RC1");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Unarchive event").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No events found").should("be.visible");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -297,18 +297,18 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived events").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archived events").should("be.visible");
       openMenu("RC1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Delete event").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Delete").click();
       cy.wait("@deleteEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No events found").should("be.visible");
     });
 
@@ -317,7 +317,7 @@ describe("scenarios > organization > timelines > collection", () => {
       H.createTimeline({ name: "Metrics" });
 
       cy.visit("/collection/root/timelines/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
       cy.icon("chevronleft").click();
@@ -329,7 +329,7 @@ describe("scenarios > organization > timelines > collection", () => {
       H.createTimeline({ name: "Releases" });
 
       cy.visit("/collection/root/timelines/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
       cy.icon("chevronleft").should("not.exist");
     });
@@ -342,16 +342,16 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New timeline").click();
       cy.findByLabelText("Name").type("Launches");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create").click();
       cy.wait("@createTimeline");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Launches").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("be.visible");
     });
 
@@ -363,14 +363,14 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
       cy.findByLabelText("Name").clear().type("Launches");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update").click();
       cy.wait("@updateTimeline");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Launches").should("be.visible");
     });
 
@@ -391,9 +391,9 @@ describe("scenarios > organization > timelines > collection", () => {
         cy.wait("@updateTimeline");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${H.getFullName(admin)}'s Personal Collection`).should(
         "be.visible",
       );
@@ -407,24 +407,24 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive timeline and all events").click();
       cy.wait("@updateTimeline");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("be.visible");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Undo").click();
       cy.wait("@updateTimeline");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("be.visible");
     });
 
@@ -440,9 +440,9 @@ describe("scenarios > organization > timelines > collection", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Holiday list").should("be.visible");
     });
 
@@ -460,7 +460,7 @@ describe("scenarios > organization > timelines > collection", () => {
       });
 
       cy.visit("/collection/root/timelines");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Release notes").should("be.visible");
     });
 
@@ -472,24 +472,24 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive timeline and all events").click();
       cy.wait("@updateTimeline");
 
       openMenu("Our analytics events");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived timelines").click();
 
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Unarchive timeline").click();
       cy.wait("@updateTimeline");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
       H.modal().icon("chevronleft").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
     });
 
@@ -501,38 +501,38 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive timeline and all events").click();
       cy.wait("@updateTimeline");
 
       openMenu("Our analytics events");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("View archived timelines").click();
 
       openMenu("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Delete timeline").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Delete").click();
       cy.wait("@deleteTimeline");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
       H.modal().icon("chevronleft").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events");
     });
 
     it("should preserve collection names for default timelines", () => {
       cy.visit(`/collection/${FIRST_COLLECTION_ID}/timelines`);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").click();
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
       cy.wait("@createTimeline");
       cy.icon("close").click();
@@ -545,12 +545,12 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.icon("calendar").click();
       openMenu("1st collection events");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit timeline details").click();
       cy.findByLabelText("Name").clear().type("Releases");
       cy.button("Update").click();
       cy.wait("@updateTimeline");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
     });
 
@@ -564,14 +564,14 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
       cy.findByDisplayValue("2022/10/12").should("be.visible");
 
       cy.findByLabelText("Date").clear().type("2022/10/15");
       cy.button("Update").click();
       cy.wait("@updateEvent");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2022/10/15").should("be.visible");
     });
 
@@ -603,9 +603,9 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root");
 
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
     });
 
@@ -620,9 +620,9 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.signIn("readonly");
       cy.visit("/collection/root");
       cy.icon("calendar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("not.exist");
     });
   });
@@ -657,7 +657,7 @@ describe("scenarios > collections > timelines", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Create event").click();
     cy.findByLabelText("Event name").type("Event");
     cy.findByLabelText("Date").type("10/20/2026");

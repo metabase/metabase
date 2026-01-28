@@ -2,10 +2,10 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import { cleanPulse } from "metabase/lib/pulse";
 
-export default class SendTestPulse extends Component {
+export class SendTestPulse extends Component {
   static propTypes = {
     channel: PropTypes.object.isRequired,
     channelSpecs: PropTypes.object.isRequired,

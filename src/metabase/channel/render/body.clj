@@ -85,6 +85,15 @@
     :else
     (str value)))
 
+(defn get-color-from-segment
+  "Returns the color of the first segment who's max is higher than value and min is lower than value"
+  [viz-settings value]
+  (let [{segments :scalar.segments} viz-settings]
+    (some (fn [{:keys [min max color]}]
+            (when (and (some? min) (some? max) (<= min value max))
+              color))
+          segments)))
+
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
 (defn- create-remapping-lookup
@@ -374,12 +383,13 @@
                           [0 (first cols)])
         row           (first rows)
         raw-value     (get row row-idx)
-        value         (format-scalar-value timezone-id raw-value col viz-settings)]
+        value         (format-scalar-value timezone-id raw-value col viz-settings)
+        color         (get-color-from-segment viz-settings raw-value)]
     {:attachments
      nil
 
      :content
-     [:div {:style (style/style (style/scalar-style))}
+     [:div {:style (style/style (style/scalar-style color))}
       (h value)]
      :render/text (str value)}))
 
@@ -517,7 +527,7 @@
              enabled? :enabled} funnel-viz
             :when               enabled?]
         [k (get rows k)]))
-    ;; re-create the rows with the label/visibilty specified in the funnel-viz
+    ;; re-create the rows with the label/visibility specified in the funnel-viz
     (let [rows-data (map (fn [{k :key enabled? :enabled} [_ value]]
                            (when enabled?
                              [k value])) funnel-viz raw-rows)]

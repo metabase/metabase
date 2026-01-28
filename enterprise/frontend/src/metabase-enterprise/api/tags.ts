@@ -50,6 +50,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "collection-is-dirty",
   "remote-sync-branches",
   "remote-sync-current-task",
+  "remote-sync-has-remote-changes",
   "python-transform-library",
   "support-access-grant",
   "support-access-grant-current",

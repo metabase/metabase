@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Text from "metabase/common/components/type/Text";
+import { Text } from "metabase/common/components/type/Text";
 import { alpha } from "metabase/lib/colors";
 import { color } from "metabase/ui/utils/colors";
 

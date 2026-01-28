@@ -1553,7 +1553,7 @@
                                                                                                     :dimension dimension}}}}})}}}]
 
       (testing "selecting a collection includes settings metabot and data model by default"
-        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting" "TransformTag" "TransformJob"}
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "PythonLibrary" "Setting" "TransformTag" "TransformJob"}
                (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
@@ -2291,6 +2291,11 @@
                            {_field-id :id}
                            {:name "Some Field" :table_id table-id}
 
+                           :model/Collection
+                           {coll-id :id coll-eid :entity_id}
+                           {:name "Transform Collection"
+                            :namespace :transforms}
+
                            ;; Create tags for associations
                            :model/TransformTag
                            {hourly-tag-id :id
@@ -2314,6 +2319,7 @@
                            {:name "Test Transform"
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
+                            :collection_id coll-id
                             :source {:query {:database db-id
                                              :type     "query"
                                              :query    {:source-table table-id}}
@@ -2364,8 +2370,9 @@
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
 
-            (testing "dependencies include source table and tags"
+            (testing "dependencies include collection, source table, and tags"
               (let [deps (set (serdes/dependencies ser))]
+                (is (contains? deps [{:model "Collection" :id coll-eid}]))
                 (is (contains? deps [{:model "Database" :id "My Database"}
                                      {:model "Table" :id "Schemaless Table"}]))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2512,3 +2519,70 @@
             (is (not (contains? table-names "Other Table"))))
           (testing "database is not exported (no-data-model: true)"
             (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))
+
+(deftest collection-export-includes-fields-and-segments-test
+  (testing "Exporting a collection with published tables includes their Fields and Segments"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}          {:name "My Database"}
+                         :model/Collection {coll-id :id}        {:name "Export Collection"}
+                         :model/Table      {table-id :id}       {:name          "Published Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  true
+                                                                 :collection_id coll-id}
+                         :model/Field      {field1-id :id}      {:name      "Field One"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Integer}
+                         :model/Field      {field2-id :id}      {:name      "Field Two"
+                                                                 :table_id  table-id
+                                                                 :base_type :type/Text}
+                         :model/Segment    {segment-id :id}     {:name       "Test Segment"
+                                                                 :table_id   table-id
+                                                                 :definition {}}
+                         ;; Create another table with fields that should NOT be exported
+                         :model/Table      {other-table-id :id} {:name          "Other Table"
+                                                                 :db_id         db-id
+                                                                 :is_published  false}
+                         :model/Field      _                    {:name      "Other Field"
+                                                                 :table_id  other-table-id
+                                                                 :base_type :type/Integer}]
+        (let [opts        {:targets       [["Collection" coll-id]]
+                           :no-data-model true
+                           :no-settings   true}
+              extracted   (into [] (extract/extract opts))
+              field-ids   (->> extracted
+                               (filter #(= "Field" (-> % :serdes/meta last :model)))
+                               (map #(t2/select-one-pk :model/Field
+                                                       :table_id (t2/select-one-pk :model/Table :name (-> % :serdes/meta butlast last :id))
+                                                       :name (-> % :serdes/meta last :id)))
+                               set)
+              segment-ids (->> extracted
+                               (filter #(= "Segment" (-> % :serdes/meta last :model)))
+                               (map #(:id (t2/select-one :model/Segment :entity_id (:entity_id %))))
+                               set)]
+          (testing "fields from published table are exported"
+            (is (contains? field-ids field1-id))
+            (is (contains? field-ids field2-id)))
+          (testing "segments from published table are exported"
+            (is (contains? segment-ids segment-id)))
+          (testing "fields from non-published table are NOT exported"
+            (is (= 2 (count field-ids)))))))))
+
+(deftest python-library-test
+  (mt/with-empty-h2-app-db!
+    ;; Delete any pre-existing python_library entries from migrations
+    (t2/delete! :model/PythonLibrary)
+    (ts/with-temp-dpc [:model/PythonLibrary {lib-id :id lib-entity-id :entity_id} {:path   "common"
+                                                                                   :source "def helper():\n    return 42"}]
+      (testing "python library extraction"
+        (let [ser (serdes/extract-one "PythonLibrary" {} (t2/select-one :model/PythonLibrary :id lib-id))]
+          (is (=? {:serdes/meta [{:model "PythonLibrary"
+                                  :id    lib-entity-id}]
+                   :path        "common.py"
+                   :source      "def helper():\n    return 42"
+                   :entity_id   lib-entity-id
+                   :created_at  string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))

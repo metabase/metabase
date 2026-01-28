@@ -119,6 +119,7 @@
           (mt/with-premium-features #{}
             (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
                                :is-superuser?     false
+                               :is-data-analyst?  false
                                :user-locale       nil})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
@@ -126,6 +127,7 @@
             (mt/with-premium-features #{:advanced-permissions}
               (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
                                  :is-superuser?     false
+                                 :is-data-analyst?  false
                                  :is-group-manager? false
                                  :user-locale       nil})
                      (#'mw.session/merge-current-user-info req))))))))))
@@ -232,7 +234,11 @@
       (t2/insert! :model/Session {:id         test-session-id
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :lucky)})
-      (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+      (is (= {:metabase-user-id (mt/user->id :lucky),
+              :is-superuser? false,
+              :is-group-manager? false,
+              :user-locale nil
+              :is-data-analyst? false}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -243,7 +249,11 @@
       (t2/insert! :model/Session {:id         test-session-id
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :crowberto)})
-      (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
+      (is (= {:metabase-user-id (mt/user->id :crowberto),
+              :is-superuser? true,
+              :is-group-manager? false,
+              :user-locale nil
+              :is-data-analyst? false}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -291,7 +301,11 @@
                                     :key_hashed      test-session-key-hashed
                                     :user_id         (mt/user->id :lucky)
                                     :anti_csrf_token test-anti-csrf-token})
-        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+        (is (= {:metabase-user-id (mt/user->id :lucky),
+                :is-superuser? false,
+                :is-group-manager? false,
+                :user-locale nil
+                :is-data-analyst? false}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
           (t2/delete! :model/Session :id test-session-id)))

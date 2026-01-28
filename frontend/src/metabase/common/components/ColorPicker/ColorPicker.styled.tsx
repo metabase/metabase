@@ -13,7 +13,7 @@ export const ContentContainer = styled.div`
 // to fix this we copy relevant styles here
 // https://github.com/casesandberg/react-color/blob/v2.18.1/src/components/common/Hue.js#L78
 // https://github.com/casesandberg/react-color/blob/v2.18.1/src/components/common/Saturation.js#L94
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 export const ControlsRoot = styled.div`
   .hue-horizontal {
     background: linear-gradient(

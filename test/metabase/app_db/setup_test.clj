@@ -32,7 +32,7 @@
     (letfn [(test* [data-source]
               (is (= :done
                      (mdb.setup/setup-db! :h2 data-source true true)))
-              (is (= ["Administrators" "All Users" "All tenant users"]
+              (is (= ["Administrators" "All Users" "All tenant users" "Data Analysts"]
                      (mapv :name (jdbc/query {:datasource data-source}
                                              "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
       (let [subname (fn [] (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name)))]

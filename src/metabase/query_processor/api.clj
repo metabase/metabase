@@ -26,6 +26,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -62,8 +63,7 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (when-not (mi/can-read? :model/Database database)
-        (api/throw-403)))
+      (api/query-check :model/Database database))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
@@ -89,11 +89,8 @@
                                       rff))
           (qp/process-query (update query :info merge info) rff))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
@@ -124,11 +121,8 @@
     json-key
     (keyword json-key)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
                                [:export-format ::qp.schema/export-format]]
@@ -137,7 +131,7 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     visualization-settings        :visualization_settings}
-   ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
+   ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map
@@ -178,13 +172,21 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
-  "Get all of the required query metadata for an ad-hoc query."
+  "Get all of the required query metadata for an ad-hoc query.
+
+  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
+  visibility_type :sensitive in the response."
   [_route-params
    _query-params
    query :- [:map
-             [:database ms/PositiveInt]]]
+             [:database ms/PositiveInt]
+             [:settings {:optional true} [:maybe [:map
+                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
   (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata [query])))
+    (queries/batch-fetch-query-metadata
+     [query]
+     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+       {:include-sensitive-fields? include-sensitive-fields}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -205,11 +207,8 @@
       (cond-> compiled
         pretty (update :query prettify)))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params

@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -429,6 +430,124 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(defn collect-all-props-by-name
+  "Recursively collect all properties into a flat map by name, including nested group fields.
+  This creates a complete lookup map keyed by property name.
+
+  Groups have :type :group and contain a :fields array with nested properties. This function
+  flattens the structure to make all properties available for lookups and filtering.
+
+  Properties without a :name are skipped."
+  [props]
+  (reduce (fn [acc prop]
+            (cond
+              ;; Group with nested fields - recursively collect from nested fields
+              (= :group (:type prop))
+              (merge acc (collect-all-props-by-name (:fields prop)))
+
+              ;; Regular fields
+              (:name prop)
+              (assoc acc (:name prop) prop)
+
+              ;; This should not happen but let's leave it as a fallback
+              :else
+              acc))
+          {}
+          props))
+
+(defn- resolve-transitive-visible-if
+  "Resolves transitive visible-if dependencies for a property.
+
+  If property x depends on y having a value, but y itself depends on z having a value,
+  then x should be hidden if y is. This function computes the full transitive closure
+  of visible-if dependencies.
+
+  Throws an exception if a cycle is detected in the dependency graph."
+  [prop props-by-name driver]
+  (let [v-ifs*
+        (loop [props* [prop]
+               acc    {}]
+          (if (seq props*)
+            (let [all-visible-ifs  (reduce
+                                    #(reduce-kv (fn [acc prop-name v]
+                                                  (if (or (contains? props-by-name (->str prop-name))
+                                                          ;; If v is false then this depended on a removed :checked-section
+                                                          ;; and the dependency should be dropped.
+                                                          (not (false? v)))
+                                                    (assoc acc prop-name v)
+                                                    acc))
+                                                %1 (:visible-if %2))
+                                    {} props*)
+                  visible-keys     (keys all-visible-ifs)
+                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  next-acc         (into acc all-visible-ifs)]
+              (if-not (perf/some #(contains? acc %) visible-keys)
+                (recur transitive-props next-acc)
+                (let [cyclic-props (set/intersection (set visible-keys)
+                                                     (set (keys acc)))]
+                  (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                           driver cyclic-props)
+                      (ex-info {:type               qp.error-type/driver
+                                :driver             driver
+                                :cyclic-visible-ifs cyclic-props})
+                      throw))))
+            acc))]
+    (cond-> prop
+      (seq v-ifs*) (assoc :visible-if v-ifs*)
+      (empty? v-ifs*) (dissoc :visible-if))))
+
+(defn- resolve-transitive-visible-if-recursive
+  "Recursively resolve transitive visible-if for properties, including nested groups.
+
+  Groups are processed recursively to maintain their structure while resolving dependencies
+  for all nested fields. This allows dependencies to cross group boundaries - top-level fields
+  can depend on nested fields and vice versa."
+  [prop props-by-name driver]
+  (cond
+    ;; If it's a group, recursively process its nested fields while preserving group structure
+    (= :group (:type prop))
+    (update prop :fields
+            (fn [fields]
+              (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver)
+                    fields)))
+
+    ;; Regular property - resolve its transitive visible-if dependencies
+    :else
+    (resolve-transitive-visible-if prop props-by-name driver)))
+
+(defn- process-connection-prop
+  "Recursively processes a single connection property, handling special types like :secret, :info, :group, etc.
+
+  For :group types, this function:
+  - Flattens any vectors in the :fields array (e.g., ssh-tunnel-preferences)
+  - Recursively processes each nested field
+
+  Returns a vector of processed properties (most types return a single property, some like :secret may expand to multiple)."
+  [conn-prop]
+  (case (keyword (:type conn-prop))
+    :secret
+    (expand-secret-conn-prop conn-prop)
+
+    :info
+    (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+      [conn-prop']
+      [])
+
+    :checked-section
+    (resolve-checked-section-conn-prop conn-prop)
+
+    :schema-filters
+    (expand-schema-filters-prop conn-prop)
+
+    :group
+    (let [processed-fields (into []
+                                 (comp (mapcat u/one-or-many)
+                                       (mapcat process-connection-prop))
+                                 (:fields conn-prop))]
+      [(assoc conn-prop :fields processed-fields)])
+
+    [conn-prop]))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -440,66 +559,13 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props
-        (persistent!
-         (reduce (fn [acc conn-prop]
-                   ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
-                   (let [expanded-props (case (keyword (:type conn-prop))
-                                          :secret
-                                          (expand-secret-conn-prop conn-prop)
-
-                                          :info
-                                          (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
-                                            [conn-prop']
-                                            [])
-
-                                          :checked-section
-                                          (resolve-checked-section-conn-prop conn-prop)
-
-                                          :schema-filters
-                                          (expand-schema-filters-prop conn-prop)
-
-                                          [conn-prop])]
-                     (reduce conj! acc expanded-props)))
-                 (transient [])
-                 conn-props))
-        props-by-name (reduce #(assoc %1 (:name %2) %2) {} final-props)]
+  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+        ;; Build complete props-by-name map including nested fields from groups
+        props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
-    ;; should be hidden if y is)
-    (mapv (fn [prop]
-            (let [v-ifs*
-                  (loop [props* [prop]
-                         acc    {}]
-                    (if (seq props*)
-                      (let [all-visible-ifs  (reduce
-                                              #(reduce-kv (fn [acc prop-name v]
-                                                            (if (or (contains? props-by-name (->str prop-name))
-                                                                    ;; If v is false then this depended on a removed :checked-section
-                                                                    ;; and the dependency should be dropped.
-                                                                    (not (false? v)))
-                                                              (assoc acc prop-name v)
-                                                              acc))
-                                                          %1 (:visible-if %2))
-                                              {} props*)
-                            visible-keys     (keys all-visible-ifs)
-                            transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
-                            next-acc         (into acc all-visible-ifs)]
-                        (if-not (perf/some #(contains? acc %) visible-keys)
-                          (recur transitive-props next-acc)
-                          (let [cyclic-props (set/intersection (set visible-keys)
-                                                               (set (keys acc)))]
-                            (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     driver cyclic-props)
-                                (ex-info {:type               qp.error-type/driver
-                                          :driver             driver
-                                          :cyclic-visible-ifs cyclic-props})
-                                throw))))
-                      acc))]
-              (cond-> prop
-                (seq v-ifs*) (assoc :visible-if v-ifs*)
-                (empty? v-ifs*) (dissoc :visible-if))))
-          final-props)))
+    ;; should be hidden if y is). This works recursively to handle nested groups.
+    (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver) final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"
@@ -678,3 +744,81 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Macaw parsing helpers                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private considered-drivers
+  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to explicitly
+  mention all sub-types. This is probably not a bad thing."
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+
+;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
+;; Using a separate list to the above, as we may want this to be more restrictive.
+(def trusted-for-table-permissions?
+  "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
+  #{:h2 :mysql :postgres})
+
+(defn macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  (merge
+   ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
+   (when (contains? considered-drivers driver)
+     {;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
+      ;; engines are implemented this way.
+      ;;
+      ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
+      ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
+      ;; reference is quoted.
+      ;;
+      ;; For MySQL the case sensitivity of databases and tables depends on both the underlying file system, and a system
+      ;; variable used to initialize the database. For SQL Server it depends on the collation settings of the collection
+      ;; where the corresponding schema element is defined.
+      ;;
+      ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
+      ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
+      ;;
+      ;; In future, Macaw may support discriminating on the identifier type, in which case we could be more precise for
+      ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
+      ;; which is likely a step too far in complexity.
+      ;;
+      ;; Currently, we go with :agnostic, as it is the most relaxed semantics (the case of both the identifiers and the
+      ;; underlying schema is totally ignored, and correspondence is non-deterministic), but Macaw supports more nuanced
+      ;; :lower and :upper configuration values which coerce the query identifiers to a given case then do an exact
+      ;; comparison with the schema.
+      :case-insensitive      :agnostic
+      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
+      ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
+      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
+      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
+                              :square-bracket-quotes  (= :sqlserver driver)
+                              :unsupported-statements false
+                              :backslash-escape-char  true
+                              ;; This will slow things down, but until we measure the difference, opt for correctness.
+                              :complex-parsing        true}
+      ;; 10 seconds
+      :timeout               10000})
+   {;; There is no plan to be exhaustive yet.
+    ;; Note that while an allowed list would be more conservative, at the time of writing only 1 of the bundled
+    ;; drivers use FINAL as a reserved word, and mentioning them all would be prohibitive.
+    ;; In the future, we will use multimethods to define this explicitly per driver, or even discover it automatically
+    ;; through the JDBC connection, where possible.
+    :non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
+                                                :final)]))}))
+
+(defn parsed-query
+  "Wrapped for `parsed-query` providing default options and throwing exceptions on parsing failures."
+  [sql driver & {:as opts}]
+  (let [result
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (macaw/parsed-query sql (merge (macaw-options driver)
+                                       opts))]
+    ;; TODO (lbrdnk 2026-01-23): In follow-up work we should ensure that failure to parse is not silently swallowed.
+    ;;                           I'm leaving that off at the moment to avoid potential log flooding.
+    #_(when (and (map? result) (some? (:error result)))
+        (throw (ex-info "SQL parsing failed."
+                        {:macaw-error (:error result)}
+                        (-> result :context :cause))))
+    result))

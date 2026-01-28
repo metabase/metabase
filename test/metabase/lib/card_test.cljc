@@ -624,3 +624,26 @@
             ["Product__RATING" true]]
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
+
+(deftest ^:parallel card-returned-columns-source-model-without-query-test
+  (testing "should not throw when the source model does not have a query (metabase#68012)"
+    (let [model-id 1
+          model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+               ;; intentionally omitting `:dataset-query`
+              {:cards [{:id              model-id
+                        :type            :model
+                        :database-id     (meta/id)
+                        :result-metadata (lib/returned-columns model-query)}]})
+          question-id 2
+          question-query (lib/query mp (lib.metadata/card mp model-id))
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id              question-id
+                        :type            :question
+                        :database-id     (meta/id)
+                        :dataset-query   question-query
+                        :result-metadata (lib/returned-columns question-query)}]})
+          adhoc-query (lib/query mp (lib.metadata/card mp question-id))]
+      (is (some? (lib/returned-columns adhoc-query))))))

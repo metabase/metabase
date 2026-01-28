@@ -8,7 +8,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -3408,3 +3408,36 @@
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
           (is (not (some #(= table-id (:id %)) items))
               "Published table should NOT be in root collection items in OSS"))))))
+
+(deftest unarchive-collection-requires-curate-perms-on-destination-test
+  (testing "PUT /api/collection/:id"
+    (testing "Unarchiving a collection to a specific destination collection requires curate permissions on the destination"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection archived-collection {:name "Archived"}
+                       :model/Collection destination {:name "Destination"}]
+          ;; Give user curate permissions on the archived collection
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection)
+          ;; Revoke all permissions on the destination
+          (perms/revoke-collection-permissions! (perms/all-users-group) destination)
+          ;; Archive the collection first (as admin)
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id archived-collection))
+                                {:archived true})
+          ;; Attempt to unarchive to destination without curate perms - should fail
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
+                                       {:archived false :parent_id (u/the-id destination)}))))))))
+
+(deftest unarchive-collection-requires-curate-permissions-on-children-test
+  (testing "PUT /api/collection/:id"
+    (testing "Unarchiving a collection requires curate permissions on its children"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection archived-collection {:name "Archived"}
+                       :model/Collection child-collection {:name "Archived Child" :location (collection/children-location archived-collection)}
+                       :model/Collection dest-collection {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection)
+          (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id archived-collection)) {:archived true})
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
+                                       {:archived false :parent_id (u/the-id dest-collection)}))))))))

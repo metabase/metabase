@@ -455,8 +455,12 @@
   [& args]
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
-    (u/with-timeout response-timeout-ms
-      (-mock-client parsed))))
+    ;; despite no timeout, it is still important to run the server logic in a future, to ensure any server-set .interrupted flag
+    ;; does not influence subsequent client calls.
+    (try
+      @(future (-mock-client parsed))
+      (catch java.util.concurrent.ExecutionException ex
+        (throw (ex-cause ex))))))
 
 (defn client-real-response
   "Identical to `real-client` except returns the full HTTP response map, not just the body of the response."

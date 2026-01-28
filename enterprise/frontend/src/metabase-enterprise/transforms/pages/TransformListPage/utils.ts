@@ -48,6 +48,8 @@ export function buildTreeData(
       icon: "transform",
       updated_at: transform.updated_at,
       target: transform.target,
+      owner: transform.owner,
+      owner_email: transform.owner_email,
       transformId: transform.id,
     };
   }

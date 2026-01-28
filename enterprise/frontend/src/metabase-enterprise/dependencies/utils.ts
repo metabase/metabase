@@ -4,21 +4,25 @@ import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  AnalysisFindingError,
+  AnalysisFindingErrorType,
   CardType,
   DependencyEntry,
-  DependencyError,
-  DependencyErrorType,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
   DependencyType,
   LastEditInfo,
+  Transform,
   UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
 
 import type {
+  DependencyError,
+  DependencyErrorGroup,
   DependencyErrorInfo,
+  DependencyFilterOptions,
   DependencyGroupTypeInfo,
   DependentGroup,
   NodeId,
@@ -393,14 +397,25 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   }
 }
 
+export function canHaveViewCount(type: DependencyType): boolean {
+  switch (type) {
+    case "card":
+    case "dashboard":
+    case "document":
+      return true;
+    case "table":
+    case "transform":
+    case "snippet":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return false;
+  }
+}
+
 export function getNodeViewCount(node: DependencyNode): number | null {
   switch (node.type) {
     case "card":
-      // view_count is not calculated property for models and metrics since
-      // they are typically not run directly
-      return node.data.type === "question"
-        ? (node.data.view_count ?? null)
-        : null;
     case "dashboard":
     case "document":
       return node.data.view_count ?? null;
@@ -414,15 +429,15 @@ export function getNodeViewCount(node: DependencyNode): number | null {
   }
 }
 
-export function getNodeDependentsCount(node: DependencyNode): number {
-  const dependentsCount = node.dependents_count;
-  if (dependentsCount == null) {
-    return 0;
+export function getNodeViewCountLabel(viewCount: number): string {
+  return ngettext(msgid`${viewCount} view`, `${viewCount} views`, viewCount);
+}
+
+export function getNodeTransform(node: DependencyNode): Transform | null {
+  if (node.type === "table") {
+    return node.data.transform ?? null;
   }
-  return Object.values(dependentsCount).reduce(
-    (total, count) => total + count,
-    0,
-  );
+  return null;
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {
@@ -570,6 +585,16 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   return groups.filter(({ count }) => count !== 0);
 }
 
+export function getDependentsCount(node: DependencyNode): number {
+  if (node.dependents_count == null) {
+    return 0;
+  }
+  return Object.values(node.dependents_count).reduce(
+    (total, count) => total + count,
+    0,
+  );
+}
+
 export function getDependencyGroupTitle(
   node: DependencyNode,
   groups: DependentGroup[],
@@ -628,71 +653,116 @@ export function getDependentGroupLabel({
   }
 }
 
-export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
+function areGroupTypesEqual(
+  groupTypes1: DependencyGroupType[],
+  groupTypes2: DependencyGroupType[],
+): boolean {
+  const groupTypes1Set = new Set(groupTypes1);
+  return (
+    groupTypes1Set.size === groupTypes2.length &&
+    groupTypes2.every((groupType) => groupTypes1Set.has(groupType))
+  );
+}
+
+export function areFilterOptionsEqual(
+  filterOptions1: DependencyFilterOptions,
+  filterOptions2: DependencyFilterOptions,
+): boolean {
+  return (
+    areGroupTypesEqual(filterOptions1.groupTypes, filterOptions2.groupTypes) &&
+    filterOptions1.includePersonalCollections ===
+      filterOptions2.includePersonalCollections
+  );
+}
+
+export function getErrorTypeLabel(
+  type: AnalysisFindingErrorType,
+  count = 0,
+): string {
   switch (type) {
-    case "validate/missing-column":
-      return t`Missing column`;
-    case "validate/missing-table-alias":
-      return t`Missing table alias`;
-    case "validate/duplicate-column":
-      return t`Duplicate column`;
-    case "validate/syntax-error":
-      return t`Syntax error`;
-    case "validate/validation-error":
-      return t`Unknown error`;
+    case "missing-column":
+      return count === 1 ? t`Missing column` : t`Missing columns`;
+    case "missing-table-alias":
+      return count === 1 ? t`Missing table alias` : t`Missing table aliases`;
+    case "duplicate-column":
+      return count === 1 ? t`Duplicate column` : t`Duplicate columns`;
+    case "syntax-error":
+      return count === 1 ? t`Syntax error` : t`Syntax errors`;
+    case "validation-error":
+      return count === 1 ? t`Unknown problem` : t`Unknown problems`;
   }
 }
 
-export function getDependencyErrorTypeCountMessage(
-  type: DependencyErrorType,
-  count: number,
+export function getErrorTypeLabelWithCount(
+  type: AnalysisFindingErrorType,
+  count = 0,
 ): string {
   switch (type) {
-    case "validate/missing-column":
+    case "missing-column":
       return ngettext(
         msgid`${count} missing column`,
         `${count} missing columns`,
         count,
       );
-    case "validate/missing-table-alias":
+    case "missing-table-alias":
       return ngettext(
         msgid`${count} missing table alias`,
         `${count} missing table aliases`,
         count,
       );
-    case "validate/duplicate-column":
+    case "duplicate-column":
       return ngettext(
         msgid`${count} duplicate column`,
         `${count} duplicate columns`,
         count,
       );
-    case "validate/syntax-error":
+    case "syntax-error":
       return ngettext(
         msgid`${count} syntax error`,
         `${count} syntax errors`,
         count,
       );
-    case "validate/validation-error":
+    case "validation-error":
       return ngettext(
-        msgid`${count} unknown error`,
-        `${count} unknown errors`,
+        msgid`${count} unknown problem`,
+        `${count} unknown problems`,
         count,
       );
   }
 }
 
-export function getDependencyErrorDetail(
-  error: DependencyError,
-): string | null {
-  switch (error.type) {
-    case "validate/missing-column":
-    case "validate/missing-table-alias":
-    case "validate/duplicate-column":
-      return error.name;
-    case "validate/syntax-error":
-    case "validate/validation-error":
-      return null;
+export function getDependentErrorNodesLabel(count = 0): string {
+  return count === 1 ? t`Broken dependent` : t`Broken dependents`;
+}
+
+export function getDependencyErrors(
+  errors: AnalysisFindingError[],
+): DependencyError[] {
+  const errorByKey = new Map<string, DependencyError>();
+  for (const error of errors) {
+    const { error_type: type, error_detail: detail } = error;
+    const key = `${type}-${detail}`;
+    errorByKey.set(key, { type, detail });
   }
+  return Array.from(errorByKey.values());
+}
+
+export function getDependencyErrorGroups(
+  errors: DependencyError[],
+): DependencyErrorGroup[] {
+  const groups = new Map<AnalysisFindingErrorType, DependencyError[]>();
+  for (const error of errors) {
+    const group = groups.get(error.type);
+    if (group != null) {
+      group.push(error);
+    } else {
+      groups.set(error.type, [error]);
+    }
+  }
+  return Array.from(groups.entries()).map(([type, errors]) => ({
+    type,
+    errors,
+  }));
 }
 
 export function getDependencyErrorInfo(
@@ -704,8 +774,8 @@ export function getDependencyErrorInfo(
 
   if (errors.length === 1) {
     const [error] = errors;
-    const label = getDependencyErrorTypeLabel(error.type);
-    const detail = getDependencyErrorDetail(error);
+    const label = getErrorTypeLabel(error.type, errors.length);
+    const detail = error.detail;
     return { label, detail };
   }
 
@@ -713,23 +783,42 @@ export function getDependencyErrorInfo(
   if (types.size === 1) {
     const [type] = types;
     return {
-      label: getDependencyErrorTypeCountMessage(type, errors.length),
+      label: getErrorTypeLabelWithCount(type, errors.length),
       detail: null,
     };
   }
 
   return {
     label: ngettext(
-      msgid`${errors.length} error`,
-      `${errors.length} errors`,
+      msgid`${errors.length} problem`,
+      `${errors.length} problems`,
       errors.length,
     ),
     detail: null,
   };
 }
 
+export function getDependentErrorNodesCount(
+  errors: AnalysisFindingError[],
+): number {
+  const nodeIds = new Set();
+  errors.forEach((error) => {
+    nodeIds.add(
+      getNodeId(error.analyzed_entity_id, error.analyzed_entity_type),
+    );
+  });
+  return nodeIds.size;
+}
+
 export function parseString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+export function parseNumber(value: unknown): number | undefined {
+  if (typeof value === "string" && value.trim() !== "") {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
 }
 
 export function parseBoolean(value: unknown): boolean | undefined {

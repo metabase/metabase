@@ -1,5 +1,5 @@
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { FixedSizeIcon, Flex } from "metabase/ui";
+import { FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../../../../utils";
@@ -13,9 +13,9 @@ export function NameCell({ node }: NameCellProps) {
   const icon = getNodeIcon(node);
 
   return (
-    <Flex align="center" gap="sm" miw={0}>
+    <Group align="center" gap="sm" miw={0} wrap="nowrap">
       {icon && <FixedSizeIcon name={icon} />}
       <Ellipsified tooltipProps={{ openDelay: 300 }}>{label}</Ellipsified>
-    </Flex>
+    </Group>
   );
 }

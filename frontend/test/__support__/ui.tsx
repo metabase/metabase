@@ -228,7 +228,11 @@ export function getTestStoreAndWrapper({
  **/
 const GlobalStylesForTest = () => {
   const theme = useMantineTheme();
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
+
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
+
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 

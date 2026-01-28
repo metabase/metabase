@@ -8,8 +8,8 @@ import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import LogoIcon from "metabase/common/components/LogoIcon";
-import Modal from "metabase/common/components/Modal";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { Modal } from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
@@ -123,7 +123,7 @@ function ProfileLinkInner({
     }
     if (showOnboardingLink) {
       menuItems.push({
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
         title: t`How to use Metabase`,
         icon: null,
         link: "/getting-started",
@@ -291,9 +291,9 @@ function ProfileLinkInner({
               )}
             >
               <span className={CS.block}>
-                {/* eslint-disable-next-line i18next/no-literal-string, no-literal-metabase-strings -- This only shows on OSS instance */}
+                {/* eslint-disable-next-line i18next/no-literal-string, metabase/no-literal-metabase-strings -- This only shows on OSS instance */}
                 <span className={CS.textBold}>Metabase</span>{" "}
-                {/* eslint-disable-next-line i18next/no-literal-string, no-literal-metabase-strings -- This only shows on OSS instance */}
+                {/* eslint-disable-next-line i18next/no-literal-string, metabase/no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>

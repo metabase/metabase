@@ -11,6 +11,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -57,9 +58,7 @@ const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 const radians = (degrees) => (degrees * Math.PI) / 180;
 const degrees = (radians) => (radians * 180) / Math.PI;
 
-const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
-
-export default class Gauge extends Component {
+export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";

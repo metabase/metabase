@@ -61,3 +61,33 @@ export const createMockCollectionEssential = (
   name: `Collection ${opts?.id || 1}`,
   ...opts,
 });
+
+export const createMockLibraryCollection = (
+  opts?: Partial<Collection>,
+): Collection =>
+  createMockCollection({
+    id: 1,
+    name: "Library",
+    type: "library",
+    ...opts,
+  });
+
+export const createMockTransformsCollection = (
+  opts?: Partial<Collection>,
+): Collection =>
+  createMockCollection({
+    id: 100,
+    name: "Transforms",
+    namespace: "transforms",
+    ...opts,
+  });
+
+export const createMockSnippetsCollection = (
+  opts?: Partial<Collection>,
+): Collection =>
+  createMockCollection({
+    id: 101,
+    name: "Snippets",
+    namespace: "snippets",
+    ...opts,
+  });

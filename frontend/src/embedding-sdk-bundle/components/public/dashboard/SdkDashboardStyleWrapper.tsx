@@ -6,6 +6,8 @@ import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Flex } from "metabase/ui";
 
+import SdkDashboardStyleWrapperS from "./SdkDashboardStyleWrapper.module.css";
+
 export const SdkDashboardStyledWrapper = forwardRef(
   function SdkDashboardStyledWrapperInner(
     { className, style, children }: PropsWithChildren<CommonStylingProps>,
@@ -16,12 +18,12 @@ export const SdkDashboardStyledWrapper = forwardRef(
         direction="column"
         justify="flex-start"
         align="stretch"
-        className={cx(className, CS.overflowAuto)}
-        style={{
-          minHeight: "100vh",
-          backgroundColor: "var(--mb-color-bg-dashboard)",
-          ...style,
-        }}
+        className={cx(
+          className,
+          SdkDashboardStyleWrapperS.SdkDashboardStyleWrapper,
+          CS.overflowAuto,
+        )}
+        style={style}
         ref={fullscreenRef}
       >
         {children}

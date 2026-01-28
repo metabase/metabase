@@ -7,7 +7,7 @@ import { isRootTrashCollection } from "metabase/collections/utils";
 
 import { dragTypeForItem } from ".";
 
-class ItemDragSource extends Component {
+class ItemDragSourceInner extends Component {
   componentDidMount() {
     // Use empty image as a drag preview so browsers don't draw it
     // and we can draw whatever we want on the custom drag layer instead.
@@ -30,7 +30,7 @@ class ItemDragSource extends Component {
   }
 }
 
-export default DragSource(
+export const ItemDragSource = DragSource(
   (props) => dragTypeForItem(props.item),
   {
     canDrag({ isSelected, selected, collection, item }, monitor) {
@@ -81,4 +81,4 @@ export default DragSource(
     connectDragPreview: connect.dragPreview(),
     isDragging: monitor.isDragging(),
   }),
-)(ItemDragSource);
+)(ItemDragSourceInner);

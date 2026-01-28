@@ -183,9 +183,9 @@
         result (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
-(defn get-checkpoint-value [transform-id]
+(defn get-checkpoint-value [transform]
   (#'transforms.u/next-checkpoint-value
-   (transforms.u/next-checkpoint transform-id)))
+   (transforms.u/next-checkpoint transform)))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
@@ -258,7 +258,7 @@
                       (is (= field-name (-> transform :source :source-incremental-strategy :checkpoint-filter)))
 
                       (testing "No checkpoint exists initially"
-                        (is (nil? (get-checkpoint-value (:id transform)))))
+                        (is (nil? (get-checkpoint-value transform))))
 
                       (testing "Can retrieve transform via API"
                         (let [retrieved (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" (:id transform)))]
@@ -294,7 +294,7 @@
                         (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
 
                         (testing "Checkpoint is created after first run"
-                          (let [checkpoint (get-checkpoint-value (:id transform))]
+                          (let [checkpoint (get-checkpoint-value transform)]
                             (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint)
                                 (format "Checkpoint should be MAX(%s) from first 10 rows" (:field-name checkpoint-config)))))))
 
@@ -304,7 +304,7 @@
                             distinct-timestamps (get-distinct-timestamp-count target-table)]
                         (is (= 16 row-count) "Second run should add remaining 6 rows")
                         (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")
-                        (let [checkpoint (get-checkpoint-value (:id transform))]
+                        (let [checkpoint (get-checkpoint-value transform)]
                           (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint)
                               (format "Checkpoint should be MAX(%s) from all 16 rows" (:field-name checkpoint-config))))))))))))))))
 
@@ -327,7 +327,7 @@
                       (transforms.tu/wait-for-table target-table 10000)
                       (let [row-count (get-table-row-count target-table)
                             distinct-timestamps (get-distinct-timestamp-count target-table)
-                            checkpoint (get-checkpoint-value (:id transform))]
+                            checkpoint (get-checkpoint-value transform)]
                         (is (= 10 row-count) "Initial run should process first 10 products")
                         (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
                         (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be created")))
@@ -391,7 +391,7 @@
                         (is (= 1 distinct-timestamps) "All rows should have same timestamp from non-incremental run")
 
                         (testing "No checkpoint exists"
-                          (let [checkpoint (get-checkpoint-value (:id transform))]
+                          (let [checkpoint (get-checkpoint-value transform)]
                             (is (nil? checkpoint) "No checkpoint for non-incremental transform")))))
 
                     (testing "Switch to incremental via PUT API"
@@ -405,7 +405,7 @@
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)
-                              checkpoint (get-checkpoint-value (:id transform))]
+                              checkpoint (get-checkpoint-value transform)]
                           (is (= 16 row-count) "Should process remaining 6 entries")
                           (is (= 2 distinct-timestamps) "Should have 2 distinct timestamp")
                           (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))
@@ -421,7 +421,7 @@
                           (let [transform (t2/select-one :model/Transform (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count (get-table-row-count target-table)
-                                  checkpoint (get-checkpoint-value (:id transform))]
+                                  checkpoint (get-checkpoint-value transform)]
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               ;; For integer checkpoints, we can verify exact value >= 17
                               ;; For float/temporal, just verify checkpoint exists
@@ -453,7 +453,7 @@
                       (transforms.execute/execute! transform {:run-method :manual})
                       (transforms.tu/wait-for-table target-table 10000)
                       (let [row-count (get-table-row-count target-table)
-                            checkpoint (get-checkpoint-value (:id transform))]
+                            checkpoint (get-checkpoint-value transform)]
                         (is (= 16 row-count) "First run should process all 16 products")
                         (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint)
                             (format "Checkpoint should be MAX(%s) = %s" (:field-name checkpoint-config) expected-second-checkpoint))))
@@ -477,9 +477,32 @@
 
                           (transforms.execute/execute! transform {:run-method :manual})
                           (let [row-count (get-table-row-count target-table)
-                                checkpoint (get-checkpoint-value (:id transform))]
+                                checkpoint (get-checkpoint-value transform)]
                             (is (= 18 row-count) "Should append 2 new rows (16 + 2 = 18)")
                             (is (some? checkpoint) "Checkpoint should be updated")))))))))))))))
+
+(deftest unsupported-checkpoint-column-type-test
+  (testing "Transform fails at runtime with unsupported checkpoint column type"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table "unsupported_type_test"]
+            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                  ;; Create transform with text column (unsupported type) as checkpoint
+                  transform-payload {:name "Invalid Checkpoint Type Transform"
+                                     :source {:type "query"
+                                              :query (make-incremental-source-query-without-template-tag schema)
+                                              :source-incremental-strategy {:type "checkpoint"
+                                                                            :checkpoint-filter "name"}}
+                                     :target {:type "table-incremental"
+                                              :schema schema
+                                              :name target-table
+                                              :database (mt/id)
+                                              :target-incremental-strategy {:type "append"}}}]
+              (testing "API validation rejects unsupported checkpoint column type"
+                (let [response (mt/user-http-request :crowberto :post 400 "ee/transform" transform-payload)]
+                  (is (string? response))
+                  (is (re-find #"unsupported type" response)))))))))))
 
 (deftest ^:postgres-only native-query-with-temporal-checkpoint-test
   (testing "Native query with temporal checkpoint"
@@ -522,7 +545,7 @@
                   (transforms.tu/wait-for-table target-table 10000)
                   (let [row-count (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
-                        checkpoint (get-checkpoint-value (:id transform))]
+                        checkpoint (get-checkpoint-value transform)]
                     (is (= 10 row-count) "First run should process the first 10 products")
                     (is (= 1 distinct-timestamps) "All rows should have the same timestamp from first run")
                     (is (compare-checkpoint-values :temporal expected-initial-checkpoint checkpoint)
@@ -532,7 +555,7 @@
                   (transforms.execute/execute! transform {:run-method :manual})
                   (let [row-count (get-table-row-count target-table)
                         distinct-timestamps (get-distinct-timestamp-count target-table)
-                        checkpoint (get-checkpoint-value (:id transform))]
+                        checkpoint (get-checkpoint-value transform)]
                     (is (= 16 row-count) "Second run should add remaining 6 rows")
                     (is (= 2 distinct-timestamps) "Should have 2 distinct timestamps (one per incremental run)")
                     (is (compare-checkpoint-values :temporal expected-second-checkpoint checkpoint)
@@ -552,7 +575,7 @@
 
                     (transforms.execute/execute! transform {:run-method :manual})
                     (let [row-count (get-table-row-count target-table)
-                          checkpoint (get-checkpoint-value (:id transform))]
+                          checkpoint (get-checkpoint-value transform)]
                       (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                       (is (some? checkpoint) "Checkpoint should be updated"))))))))))))
 
@@ -582,7 +605,7 @@
             (testing "sync has picked up table"
               (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
             (testing "checkpoint is recognized"
-              (is (some? (transforms.u/next-checkpoint (:id transform)))))))))))
+              (is (some? (transforms.u/next-checkpoint transform))))))))))
 
 (deftest checkpoint-field-does-not-exist-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
@@ -609,7 +632,7 @@
             (testing "target table has expected data"
               (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
             (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
-              (is (nil? (transforms.u/next-checkpoint (:id transform)))))
+              (is (nil? (transforms.u/next-checkpoint transform))))
             ;; Maybe this is unrealistic - you cannot select a column that does not exist
             ;; But the source tables schema can change, e.g. rename: you change event_time to event_ts or something
             ;; so one would have to be careful to disable or delete transforms ahead of a schema change like this

@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   JWT_SHARED_SECRET,
+  embedModalEnableEmbedding,
   entityPickerModal,
   getParametersContainer,
 } from "e2e/support/helpers";
@@ -376,8 +377,13 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           cy.findByText("Back").click();
 
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-          cy.findByLabelText("Metabase account (SSO)").click();
 
+          cy.findByLabelText("Metabase account (SSO)").click();
+        });
+
+        embedModalEnableEmbedding();
+
+        getEmbedSidebar().within(() => {
           cy.findByText("Next").click();
           cy.findByText("Next").click();
           cy.findByText("Get code").click();

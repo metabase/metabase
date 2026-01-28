@@ -1,5 +1,5 @@
 import { useHotkeys } from "@mantine/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { GlossaryItem } from "metabase/api";
@@ -8,6 +8,7 @@ import {
   Box,
   Group,
   Icon,
+  Text,
   TextInput,
   Textarea,
   Tooltip,
@@ -20,6 +21,7 @@ type GlossaryRowEditorProps = {
   onSave: (term: string, definition: string) => void | Promise<void>;
   onCancel: () => void;
   autoFocusField?: "term" | "definition";
+  existingTerms?: string[];
 };
 
 export function GlossaryRowEditor({
@@ -27,11 +29,24 @@ export function GlossaryRowEditor({
   onSave,
   onCancel,
   autoFocusField = "term",
+  existingTerms = [],
 }: GlossaryRowEditorProps) {
   const [term, setTerm] = useState(item.term);
   const [definition, setDefinition] = useState(item.definition);
 
-  const canSave = term.trim() !== "" && definition.trim() !== "";
+  const isDuplicate = useMemo(() => {
+    const trimmedTerm = term.trim().toLowerCase();
+    if (!trimmedTerm) {
+      return false;
+    }
+
+    return existingTerms.some(
+      (existingTerm) => existingTerm.toLowerCase() === trimmedTerm,
+    );
+  }, [term, existingTerms]);
+
+  const canSave =
+    term.trim() !== "" && definition.trim() !== "" && !isDuplicate;
 
   const save = useCallback(() => {
     void onSave(term.trim(), definition.trim());
@@ -53,7 +68,7 @@ export function GlossaryRowEditor({
       <Box component="td" valign="top">
         <TextInput
           classNames={{
-            input: S.input,
+            input: isDuplicate ? S.inputError : S.input,
           }}
           fw="bold"
           variant="unstyled"
@@ -66,27 +81,37 @@ export function GlossaryRowEditor({
         />
       </Box>
       <Box component="td" valign="top" pr="0">
-        <Textarea
-          classNames={{
-            input: S.input,
-          }}
-          variant="unstyled"
-          placeholder={t`A warm-blooded, egg-laying vertebrate of the class Aves.`}
-          value={definition}
-          onChange={(e) => setDefinition(e.currentTarget.value)}
-          autosize
-          minRows={1}
-          maxRows={6}
-          autoFocus={autoFocusField === "definition"}
-          styles={{
-            input: {
-              paddingTop: "0.75rem",
-              paddingBottom: "0.25rem",
-              lineHeight: 1.2,
-            },
-          }}
-          ref={definitionRef}
-        />
+        {isDuplicate ? (
+          <Group gap="xs" pt="sm" wrap="nowrap">
+            <Icon c="text-secondary" name="info" />
+            <Text
+              c="text-secondary"
+              fw="normal"
+            >{t`This term already exists in the Glossary`}</Text>
+          </Group>
+        ) : (
+          <Textarea
+            classNames={{
+              input: S.input,
+            }}
+            variant="unstyled"
+            placeholder={t`A warm-blooded, egg-laying vertebrate of the class Aves.`}
+            value={definition}
+            onChange={(e) => setDefinition(e.currentTarget.value)}
+            autosize
+            minRows={1}
+            maxRows={6}
+            autoFocus={autoFocusField === "definition"}
+            styles={{
+              input: {
+                paddingTop: "0.75rem",
+                paddingBottom: "0.25rem",
+                lineHeight: 1.2,
+              },
+            }}
+            ref={definitionRef}
+          />
+        )}
       </Box>
       <Box component="td" valign="top" align="center" px="md" pt="sm" pb={0}>
         <Group justify="flex-end" gap="xs" wrap="nowrap">
@@ -99,16 +124,18 @@ export function GlossaryRowEditor({
               <Icon name="close" />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label={t`Save`}>
-            <ActionIcon
-              aria-label={t`Save`}
-              variant={canSave ? "filled" : "subtle"}
-              disabled={!canSave}
-              onClick={save}
-            >
-              <Icon name="check" />
-            </ActionIcon>
-          </Tooltip>
+          {!isDuplicate && (
+            <Tooltip label={t`Save`}>
+              <ActionIcon
+                aria-label={t`Save`}
+                variant={canSave ? "filled" : "subtle"}
+                disabled={!canSave}
+                onClick={save}
+              >
+                <Icon name="check" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Group>
       </Box>
     </>

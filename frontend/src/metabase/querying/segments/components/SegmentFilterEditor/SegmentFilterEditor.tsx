@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import * as Lib from "metabase-lib";
 
@@ -19,12 +22,15 @@ export function SegmentFilterEditor({
   onChange,
   readOnly = false,
 }: SegmentFilterEditorProps) {
+  const tc = useTranslateContent();
   const filters = useMemo(() => Lib.filters(query, STAGE_INDEX), [query]);
 
-  const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) =>
-      Lib.displayInfo(query, STAGE_INDEX, filter).longDisplayName,
-    [query],
+  const renderFilterName = useMemo(
+    () =>
+      _.memoize((filter: Lib.FilterClause) =>
+        getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc),
+      ),
+    [query, tc],
   );
 
   const handleSelectFilter = useCallback(

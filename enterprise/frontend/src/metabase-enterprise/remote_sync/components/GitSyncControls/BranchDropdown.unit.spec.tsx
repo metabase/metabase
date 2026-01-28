@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupRemoteSyncBranchesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Combobox, useCombobox } from "metabase/ui";
 
@@ -33,9 +34,7 @@ function WrapperComponent({
 }
 
 const setupEndpoints = () => {
-  fetchMock.get("path:/api/ee/remote-sync/branches", {
-    items: ["main", "develop", "feature-1"],
-  });
+  setupRemoteSyncBranchesEndpoint(["main", "develop", "feature-1"]);
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
 };
 

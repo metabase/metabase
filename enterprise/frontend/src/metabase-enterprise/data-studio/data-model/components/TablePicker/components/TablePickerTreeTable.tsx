@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -18,27 +19,34 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { TableId, UserId } from "metabase-types/api";
+import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
   type NodeSelection,
+  addDatabaseToSelection,
+  addSchemaToSelection,
+  addTableToSelection,
+  cloneSelection,
   getSchemaId,
   isItemSelected,
   toggleDatabaseSelection,
+  toggleInSet,
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { TYPE_ICONS } from "../constants";
-import type {
-  ChangeOptions,
-  RootNode,
-  TablePickerTreeNode,
-  TreePath,
+import {
+  type ChangeOptions,
+  type RootNode,
+  type TablePickerTreeNode,
+  type TreeNode,
+  type TreePath,
+  isDatabaseNode,
+  isSchemaNode,
+  isTableNode,
 } from "../types";
 import {
-  getDatabases,
-  getSchemas,
-  getTables,
+  getTreeMap,
   nodeToTreePath,
   transformToTreeTableFormat,
 } from "../utils";
@@ -73,7 +81,7 @@ export function TablePickerTreeTable({
   } = useSelection();
 
   const formatNumber = useNumberFormatter(NUMBER_FORMAT_OPTIONS);
-  const lastSelectedTableIndex = useRef<number | null>(null);
+  const lastSelectedRowIndex = useRef<number | null>(null);
   const instanceRef = useRef<ReturnType<
     typeof useTreeTableInstance<TablePickerTreeNode>
   > | null>(null);
@@ -102,13 +110,7 @@ export function TablePickerTreeTable({
     return map;
   }, [treeData]);
 
-  const nodeKeyToOriginal = useMemo(() => {
-    return new Map(
-      [...getDatabases(tree), ...getSchemas(tree), ...getTables(tree)].map(
-        (n) => [n.key, n],
-      ),
-    );
-  }, [tree]);
+  const nodeKeyToOriginal = useMemo(() => getTreeMap(tree), [tree]);
 
   const expandedIds = useMemo(() => {
     const ids = new Set<string>();
@@ -165,95 +167,23 @@ export function TablePickerTreeTable({
         databases: selectedDatabases,
       };
 
-      const isTable = row.original.type === "table";
-      const lastIndex = lastSelectedTableIndex.current;
+      const result = changeCheckboxSelection({
+        row,
+        index,
+        isShiftPressed,
+        selection,
+        lastSelectedRowIndex: lastSelectedRowIndex.current,
+        rows: instanceRef.current?.rows ?? [],
+        nodeKeyToOriginal,
+      });
 
-      if (isShiftPressed && isTable && lastIndex != null) {
-        const rows = instanceRef.current?.rows ?? [];
-        const start = Math.min(lastIndex, index);
-        const end = Math.max(lastIndex, index);
-        const rangeRows = rows
-          .slice(start, end + 1)
-          .filter((r) => !r.original.isDisabled && r.original.type === "table");
+      setSelectedTables(result.selection.tables);
+      setSelectedSchemas(result.selection.schemas);
+      setSelectedDatabases(result.selection.databases);
+      lastSelectedRowIndex.current = result.lastSelectedRowIndex;
 
-        const tableIds = rangeRows
-          .map((r) => r.original.tableId)
-          .filter((id): id is TableId => id != null);
-
-        if (tableIds.length > 0) {
-          setSelectedTables((prev) => {
-            const newSet = new Set(prev);
-            tableIds.forEach((id) => newSet.add(id));
-            return newSet;
-          });
-          lastSelectedTableIndex.current = index;
-
-          if (row.original.tableId != null) {
-            onChange?.(nodeToTreePath(row.original));
-          }
-          return;
-        }
-      }
-
-      if (row.original.type === "table") {
-        const tableId = row.original.tableId;
-        if (tableId == null) {
-          return;
-        }
-
-        setSelectedTables((prev) => {
-          const newSet = new Set(prev);
-          newSet.has(tableId) ? newSet.delete(tableId) : newSet.add(tableId);
-          return newSet;
-        });
-        lastSelectedTableIndex.current = index;
-
+      if (row.original.type === "table" && row.original.tableId != null) {
         onChange?.(nodeToTreePath(row.original));
-      } else if (row.original.type === "database") {
-        const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
-        if (!originalNode || originalNode.type !== "database") {
-          return;
-        }
-
-        if (originalNode.children.length > 0) {
-          const { schemas, tables, databases } = toggleDatabaseSelection(
-            originalNode,
-            selection,
-          );
-          setSelectedSchemas(schemas);
-          setSelectedTables(tables);
-          setSelectedDatabases(databases);
-        } else {
-          const databaseId = row.original.databaseId;
-          if (databaseId) {
-            setSelectedDatabases((prev) => {
-              const newSet = new Set(prev);
-              newSet.has(databaseId)
-                ? newSet.delete(databaseId)
-                : newSet.add(databaseId);
-              return newSet;
-            });
-          }
-        }
-      } else if (row.original.type === "schema") {
-        const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
-        if (!originalNode || originalNode.type !== "schema") {
-          return;
-        }
-
-        if (originalNode.children.length > 0) {
-          const { tables } = toggleSchemaSelection(originalNode, selection);
-          setSelectedTables(tables);
-        } else {
-          const schemaId = getSchemaId(originalNode);
-          setSelectedSchemas((prev) => {
-            const newSet = new Set(prev);
-            newSet.has(schemaId)
-              ? newSet.delete(schemaId)
-              : newSet.add(schemaId);
-            return newSet;
-          });
-        }
       }
     },
     [
@@ -315,7 +245,7 @@ export function TablePickerTreeTable({
           }
           const rowCount = row.original.table.estimated_row_count;
           return rowCount != null ? (
-            <Box w="100%" ta="center" data-testid="table-expected-rows">
+            <Box w="100%" ta="right" data-testid="table-expected-rows">
               {formatNumber(rowCount)}
             </Box>
           ) : null;
@@ -410,7 +340,7 @@ export function TablePickerTreeTable({
 
   useEffect(() => {
     if (selectedItemsCount === 0) {
-      lastSelectedTableIndex.current = null;
+      lastSelectedRowIndex.current = null;
     }
   }, [selectedItemsCount]);
 
@@ -492,6 +422,178 @@ export function TablePickerTreeTable({
       ariaLabel={t`Tables`}
     />
   );
+}
+
+export interface CheckboxToggleResult {
+  selection: NodeSelection;
+  lastSelectedRowIndex: number;
+}
+
+export function changeCheckboxSelection(params: {
+  row: Row<TablePickerTreeNode>;
+  index: number;
+  isShiftPressed: boolean;
+  selection: NodeSelection;
+  lastSelectedRowIndex: number | null;
+  rows: Row<TablePickerTreeNode>[];
+  nodeKeyToOriginal: Map<string, TreeNode>;
+}): CheckboxToggleResult {
+  const {
+    row,
+    index,
+    isShiftPressed,
+    selection,
+    lastSelectedRowIndex,
+    rows,
+    nodeKeyToOriginal,
+  } = params;
+
+  if (isShiftPressed && lastSelectedRowIndex != null) {
+    return handleRangeCheckboxSelection({
+      startIndex: Math.min(lastSelectedRowIndex, index),
+      endIndex: Math.max(lastSelectedRowIndex, index),
+      currentIndex: index,
+      rows,
+      nodeKeyToOriginal,
+      baseSelection: selection,
+    });
+  }
+
+  return handleSingleCheckboxSelection({
+    row,
+    index,
+    selection,
+    nodeKeyToOriginal,
+  });
+}
+
+function handleRangeCheckboxSelection(params: {
+  startIndex: number;
+  endIndex: number;
+  currentIndex: number;
+  rows: Row<TablePickerTreeNode>[];
+  nodeKeyToOriginal: Map<string, TreeNode>;
+  baseSelection: NodeSelection;
+}): CheckboxToggleResult {
+  const {
+    startIndex,
+    endIndex,
+    currentIndex,
+    rows,
+    nodeKeyToOriginal,
+    baseSelection,
+  } = params;
+
+  const rangeRows = rows
+    .slice(startIndex, endIndex + 1)
+    .filter((r) => !r.original.isDisabled);
+
+  // Skip a parent if its next item is its child (deeper in the tree).
+  // This allows partial selection within expanded parents.
+  const indexesToSkip = rangeRows.reduce<number[]>((memo, row, i, arr) => {
+    const nextRow = arr[i + 1];
+    if (nextRow?.depth > row.depth) {
+      memo.push(i);
+    }
+    return memo;
+  }, []);
+
+  const nextSelection: NodeSelection = rangeRows.reduce(
+    (memo, row, rowIndex) => {
+      const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
+      if (indexesToSkip.includes(rowIndex) || !originalNode) {
+        return memo;
+      }
+      return match(originalNode)
+        .when(isTableNode, (treeNode) => addTableToSelection(treeNode, memo))
+        .when(isSchemaNode, (schemaNode) =>
+          addSchemaToSelection(schemaNode, memo),
+        )
+        .when(isDatabaseNode, (databaseNode) =>
+          addDatabaseToSelection(databaseNode, memo),
+        )
+        .otherwise(() => memo);
+    },
+    cloneSelection(baseSelection),
+  );
+
+  return {
+    selection: nextSelection,
+    lastSelectedRowIndex: currentIndex,
+  };
+}
+
+function handleSingleCheckboxSelection(params: {
+  row: Row<TablePickerTreeNode>;
+  index: number;
+  selection: NodeSelection;
+  nodeKeyToOriginal: Map<string, TreeNode>;
+}): CheckboxToggleResult {
+  const { row, index, selection, nodeKeyToOriginal } = params;
+
+  if (row.original.type === "table") {
+    const tableId = row.original.tableId;
+    if (tableId == null) {
+      return { selection, lastSelectedRowIndex: index };
+    }
+    return {
+      selection: {
+        ...selection,
+        tables: toggleInSet(selection.tables, tableId),
+      },
+      lastSelectedRowIndex: index,
+    };
+  }
+
+  if (row.original.type === "database") {
+    const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
+    if (!originalNode || originalNode.type !== "database") {
+      return { selection, lastSelectedRowIndex: index };
+    }
+
+    if (originalNode.children.length > 0) {
+      return {
+        selection: toggleDatabaseSelection(originalNode, selection),
+        lastSelectedRowIndex: index,
+      };
+    }
+
+    const databaseId = row.original.databaseId;
+    if (databaseId) {
+      return {
+        selection: {
+          ...selection,
+          databases: toggleInSet(selection.databases, databaseId),
+        },
+        lastSelectedRowIndex: index,
+      };
+    }
+  }
+
+  if (row.original.type === "schema") {
+    const originalNode = nodeKeyToOriginal.get(row.original.nodeKey);
+    if (!originalNode || originalNode.type !== "schema") {
+      return { selection, lastSelectedRowIndex: index };
+    }
+
+    if (originalNode.children.length > 0) {
+      return {
+        selection: toggleSchemaSelection(originalNode, selection),
+        lastSelectedRowIndex: index,
+      };
+    }
+
+    const schemaId = getSchemaId(originalNode);
+    return {
+      selection: {
+        ...selection,
+        schemas: toggleInSet(selection.schemas, schemaId),
+      },
+      lastSelectedRowIndex: index,
+    };
+  }
+
+  return { selection, lastSelectedRowIndex: index };
 }
 
 function isChildrenLoading(row: Row<TablePickerTreeNode>): boolean {

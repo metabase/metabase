@@ -39,6 +39,7 @@ import type {
   Segment,
   Table,
   Task,
+  TaskRun,
   Timeline,
   TimelineEvent,
   UserInfo,
@@ -619,6 +620,18 @@ export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
+}
+
+export function provideTaskRunListTags(
+  taskRuns: TaskRun[],
+): TagDescription<TagType>[] {
+  return [listTag("task-run"), ...taskRuns.flatMap(provideTaskRunTags)];
+}
+
+export function provideTaskRunTags(
+  taskRun: TaskRun,
+): TagDescription<TagType>[] {
+  return [idTag("task-run", taskRun.id)];
 }
 
 export function provideTimelineEventListTags(

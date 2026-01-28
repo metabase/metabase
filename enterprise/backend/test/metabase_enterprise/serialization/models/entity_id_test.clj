@@ -33,6 +33,7 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:model/AnalysisFinding
+    :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction
@@ -90,6 +91,7 @@
     :model/Session
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
@@ -98,7 +100,6 @@
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
-    :model/PythonLibrary
     :model/Undo
     :model/User
     :model/UserParameterValue

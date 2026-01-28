@@ -291,8 +291,8 @@
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
 
-  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
-                                                      :offset (request/offset)})]
+  (let [clauses (user/filter-clauses {:limit  (request/limit)
+                                      :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]

@@ -60,12 +60,12 @@ describe("SchemaFormSelect", () => {
     const input = screen.getByRole("textbox");
     act(() => input.focus());
 
-    await userEvent.type(input, "fo"); // codespell:ignore fo
+    await userEvent.type(input, "fo");
     expect(screen.getByText("foo")).toBeInTheDocument();
     expect(screen.getByText(/Create new schema/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByText(/Create new schema/));
-    expect(input).toHaveValue("fo"); // codespell:ignore fo
+    expect(input).toHaveValue("fo");
 
     expect(
       screen.getByText(

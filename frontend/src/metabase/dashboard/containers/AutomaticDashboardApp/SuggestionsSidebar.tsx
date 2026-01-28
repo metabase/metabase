@@ -3,8 +3,8 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Card from "metabase/common/components/Card";
-import Link from "metabase/common/components/Link";
+import { Card } from "metabase/common/components/Card";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, type IconName, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";

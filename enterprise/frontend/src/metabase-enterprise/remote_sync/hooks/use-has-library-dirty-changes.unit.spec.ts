@@ -1,39 +1,21 @@
-import fetchMock from "fetch-mock";
-
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupCollectionsEndpoints,
+  setupPropertiesEndpoints,
+  setupRemoteSyncDirtyEndpoint,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
-
-// Mock isLibraryCollection to return true for collections with type "library"
-jest.mock("metabase/collections/utils", () => ({
-  ...jest.requireActual("metabase/collections/utils"),
-  isLibraryCollection: (collection: { type: string | null }) =>
-    collection?.type === "library",
-}));
-
-// Mock useRemoteSyncDirtyState
-const mockHasDirtyInCollectionTree = jest.fn(
-  (_collectionIds: Set<number>) => false,
-);
-const mockIsDirty = jest.fn(() => false);
-jest.mock("./use-remote-sync-dirty-state", () => ({
-  useRemoteSyncDirtyState: () => ({
-    hasDirtyInCollectionTree: mockHasDirtyInCollectionTree,
-    isDirty: mockIsDirty(),
-  }),
-}));
-
-// Mock useGitSyncVisible
-const mockUseGitSyncVisible = jest.fn<
-  { isVisible: boolean; currentBranch: string | null },
-  []
->(() => ({
-  isVisible: true,
-  currentBranch: "main",
-}));
-jest.mock("./use-git-sync-visible", () => ({
-  useGitSyncVisible: () => mockUseGitSyncVisible(),
-}));
+import type { Collection, RemoteSyncEntity } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockSettings,
+  createMockSnippetsCollection,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useHasLibraryDirtyChanges } from "./use-has-library-dirty-changes";
 
@@ -57,31 +39,82 @@ const createRegularCollection = (
     ...overrides,
   });
 
-const setupCollectionsEndpoint = (collections: Collection[]) => {
-  fetchMock.get("path:/api/collection/tree", collections);
+const createMockDirtyEntity = (
+  overrides: Partial<RemoteSyncEntity> = {},
+): RemoteSyncEntity => ({
+  id: 1,
+  name: "Test Entity",
+  model: "card",
+  sync_status: "update",
+  collection_id: 1,
+  ...overrides,
+});
+
+interface SetupOptions {
+  isGitSyncVisible?: boolean;
+  collections?: Collection[];
+  dirty?: RemoteSyncEntity[];
+}
+
+/**
+ * Compute changedCollections map from dirty entities.
+ * This mirrors what the backend does - marking collections that contain dirty entities.
+ */
+const computeChangedCollections = (
+  dirty: RemoteSyncEntity[],
+): Record<number, boolean> => {
+  const changedCollections: Record<number, boolean> = {};
+  for (const entity of dirty) {
+    if (entity.collection_id != null) {
+      changedCollections[entity.collection_id] = true;
+    }
+  }
+  return changedCollections;
 };
 
-const setup = () => {
-  return renderHookWithProviders(() => useHasLibraryDirtyChanges(), {});
+const setup = ({
+  isGitSyncVisible = true,
+  collections = [],
+  dirty = [],
+}: SetupOptions = {}) => {
+  setupEnterprisePlugins();
+
+  const tokenFeatures = createMockTokenFeatures({ data_studio: true });
+  const settings = createMockSettings({
+    "remote-sync-enabled": isGitSyncVisible,
+    "remote-sync-branch": isGitSyncVisible ? "main" : null,
+    "remote-sync-type": "read-write",
+    "token-features": tokenFeatures,
+  });
+
+  const changedCollections = computeChangedCollections(dirty);
+
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([]);
+  setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+  setupCollectionsEndpoints({ collections });
+
+  const storeInitialState = createMockState({
+    currentUser: createMockUser({ is_superuser: true }),
+    settings: mockSettings({
+      "remote-sync-enabled": isGitSyncVisible,
+      "remote-sync-branch": isGitSyncVisible ? "main" : null,
+      "remote-sync-type": "read-write",
+      "token-features": tokenFeatures,
+    }),
+  });
+
+  return renderHookWithProviders(() => useHasLibraryDirtyChanges(), {
+    storeInitialState,
+  });
 };
 
 describe("useHasLibraryDirtyChanges", () => {
-  beforeEach(() => {
-    fetchMock.removeRoutes();
-    fetchMock.clearHistory();
-    mockUseGitSyncVisible.mockReturnValue({
-      isVisible: true,
-      currentBranch: "main",
-    });
-    mockIsDirty.mockReturnValue(false);
-    mockHasDirtyInCollectionTree.mockReturnValue(false);
-  });
-
   it("returns false when no dirty changes exist", async () => {
-    setupCollectionsEndpoint([createLibraryCollection()]);
-    mockIsDirty.mockReturnValue(false);
-
-    const { result } = setup();
+    const { result } = setup({
+      collections: [createLibraryCollection()],
+      dirty: [],
+    });
 
     await waitFor(() => {
       expect(result.current).toBe(false);
@@ -89,14 +122,13 @@ describe("useHasLibraryDirtyChanges", () => {
   });
 
   it("returns false when dirty changes exist but not in Library collections", async () => {
-    setupCollectionsEndpoint([
-      createLibraryCollection({ id: 1 }),
-      createRegularCollection({ id: 2 }),
-    ]);
-    mockIsDirty.mockReturnValue(true);
-    mockHasDirtyInCollectionTree.mockReturnValue(false);
-
-    const { result } = setup();
+    const { result } = setup({
+      collections: [
+        createLibraryCollection({ id: 1 }),
+        createRegularCollection({ id: 2 }),
+      ],
+      dirty: [createMockDirtyEntity({ collection_id: 2 })],
+    });
 
     await waitFor(() => {
       expect(result.current).toBe(false);
@@ -104,64 +136,194 @@ describe("useHasLibraryDirtyChanges", () => {
   });
 
   it("returns true when Library collection has dirty items", async () => {
-    setupCollectionsEndpoint([createLibraryCollection({ id: 1 })]);
-    mockIsDirty.mockReturnValue(true);
-    // When hasDirtyInCollectionTree is called with the library IDs, return true
-    mockHasDirtyInCollectionTree.mockReturnValue(true);
-
-    const { result } = setup();
+    const { result } = setup({
+      collections: [createLibraryCollection({ id: 1 })],
+      dirty: [createMockDirtyEntity({ collection_id: 1 })],
+    });
 
     await waitFor(() => {
       expect(result.current).toBe(true);
     });
   });
 
-  it("calls hasDirtyInCollectionTree when Library exists and isDirty", async () => {
-    setupCollectionsEndpoint([createLibraryCollection({ id: 42 })]);
-    mockIsDirty.mockReturnValue(true);
-    mockHasDirtyInCollectionTree.mockReturnValue(false);
-
-    const { result } = setup();
+  it("returns false when no Library collection exists", async () => {
+    const { result } = setup({
+      collections: [createRegularCollection()],
+      dirty: [createMockDirtyEntity({ collection_id: 2 })],
+    });
 
     await waitFor(() => {
       expect(result.current).toBe(false);
     });
-
-    // Verify hasDirtyInCollectionTree was called with a Set
-    expect(mockHasDirtyInCollectionTree).toHaveBeenCalled();
-    const calledWith = mockHasDirtyInCollectionTree.mock.calls[0]?.[0];
-    expect(calledWith).toBeInstanceOf(Set);
-    // The Set should contain numeric IDs (exact IDs depend on buildCollectionTree transformation)
-    expect(calledWith?.size).toBeGreaterThan(0);
   });
 
-  it("returns false when no Library collection exists", async () => {
-    setupCollectionsEndpoint([createRegularCollection()]);
-    mockIsDirty.mockReturnValue(true);
-    mockHasDirtyInCollectionTree.mockReturnValue(true);
-
-    const { result } = setup();
+  it("returns true when there are removed items even if no other dirty changes", async () => {
+    const { result } = setup({
+      collections: [createLibraryCollection()],
+      dirty: [createMockDirtyEntity({ sync_status: "removed" })],
+    });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when there are removed items even without Library collection", async () => {
+    const { result } = setup({
+      collections: [createRegularCollection()],
+      dirty: [createMockDirtyEntity({ sync_status: "removed" })],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
     });
   });
 
   it("returns false when git sync is not visible", async () => {
-    setupCollectionsEndpoint([createLibraryCollection()]);
-    mockUseGitSyncVisible.mockReturnValue({
-      isVisible: false,
-      currentBranch: null,
+    const { result } = setup({
+      isGitSyncVisible: false,
+      collections: [createLibraryCollection()],
+      dirty: [createMockDirtyEntity({ collection_id: 1 })],
     });
-    mockIsDirty.mockReturnValue(true);
-    mockHasDirtyInCollectionTree.mockReturnValue(true);
 
-    const { result } = setup();
-
-    // When git sync is not visible, collections query is skipped,
-    // so no library collection will be found
     await waitFor(() => {
       expect(result.current).toBe(false);
+    });
+  });
+
+  describe("snippet dirty state", () => {
+    it("returns true when a dirty snippet exists", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "My Snippet",
+            collection_id: 100,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns true when a dirty snippet exists in root (no collection)", async () => {
+      const { result } = setup({
+        collections: [createLibraryCollection({ id: 1 })],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "Root Snippet",
+            collection_id: undefined,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns true when a dirty collection in snippets namespace exists", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 100,
+            model: "collection",
+            name: "Snippets Folder",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
+    });
+
+    it("returns false when dirty collection is not in snippets namespace", async () => {
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createRegularCollection({ id: 2 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 2,
+            model: "collection",
+            name: "Regular Collection",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns false when dirty snippets exist but git sync is not visible", async () => {
+      const { result } = setup({
+        isGitSyncVisible: false,
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          createMockSnippetsCollection({ id: 100 }),
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            name: "My Snippet",
+            collection_id: 100,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns true when nested snippets collection is dirty", async () => {
+      const parentSnippetsCollection = createMockSnippetsCollection({
+        id: 100,
+        name: "Parent Snippets Folder",
+      });
+      const childSnippetsCollection = createMockSnippetsCollection({
+        id: 101,
+        name: "Child Snippets Folder",
+      });
+      // Set up parent-child relationship
+      parentSnippetsCollection.children = [childSnippetsCollection];
+
+      const { result } = setup({
+        collections: [
+          createLibraryCollection({ id: 1 }),
+          parentSnippetsCollection,
+          childSnippetsCollection,
+        ],
+        dirty: [
+          createMockDirtyEntity({
+            id: 101,
+            model: "collection",
+            name: "Child Snippets Folder",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(true);
+      });
     });
   });
 });

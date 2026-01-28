@@ -46,6 +46,8 @@ import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
+import { TenantUsersList } from "./components/TenantUsersList";
+import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -233,6 +235,9 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
     PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
+    PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
+    PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
+      TenantUsersPersonalCollectionList;
 
     // Category 1: UI Components
     PLUGIN_TENANTS.GroupDescription = function GroupDescription({ group }) {

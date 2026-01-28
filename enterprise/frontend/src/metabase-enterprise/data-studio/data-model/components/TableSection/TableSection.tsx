@@ -6,7 +6,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -21,7 +21,6 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -35,6 +34,7 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
@@ -62,7 +62,6 @@ const TableSectionBase = ({
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
-  const isAdmin = useSelector(getUserIsAdmin);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
@@ -72,6 +71,7 @@ const TableSectionBase = ({
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -215,7 +215,7 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        {isAdmin && (
+        {!remoteSyncReadOnly && (
           <Button
             flex="1"
             p="sm"
@@ -262,7 +262,7 @@ const TableSectionBase = ({
 
       {table.is_published && <TableCollection table={table} />}
 
-      <Box px="lg">
+      <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
             <Tabs.Tab
@@ -311,7 +311,11 @@ const TableSectionBase = ({
               </Group>
 
               {!hasFields && (
-                <EmptyState message={t`This table has no fields`} />
+                <EmptyState
+                  className={S.EmptyState}
+                  message={t`This table has no fields`}
+                  spacing="sm"
+                />
               )}
 
               {hasFields && (

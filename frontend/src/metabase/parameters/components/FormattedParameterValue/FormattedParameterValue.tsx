@@ -90,7 +90,7 @@ function FormattedParameterValue({
     );
   };
 
-  if (isStringParameter(parameter)) {
+  if (isStringParameter(parameter) || isDateParameter(parameter)) {
     const hasLongValue = typeof first === "string" && first.length > 80;
     return (
       <Ellipsified

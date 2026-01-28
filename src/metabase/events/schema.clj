@@ -185,6 +185,17 @@
    [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
+;; table write events
+
+(mr/def ::table
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+
+(mr/def :event/table-create ::table)
+(mr/def :event/table-update ::table)
+(mr/def :event/table-delete ::table)
+
 (mr/def ::permission-failure
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
@@ -223,3 +234,14 @@
 (mr/def :event/snippet-create ::snippet)
 (mr/def :event/snippet-update ::snippet)
 (mr/def :event/snippet-delete ::snippet)
+
+;; field events
+
+(mr/def ::field
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Field %)]]])
+
+(mr/def :event/field-create ::field)
+(mr/def :event/field-update ::field)
+(mr/def :event/field-delete ::field)

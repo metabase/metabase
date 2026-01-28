@@ -11,6 +11,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { State } from "metabase-types/store";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
@@ -42,6 +43,8 @@ const getDefaultPluginRemoteSync = () => ({
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
+  useHasTransformDirtyChanges: () => false,
+  getIsRemoteSyncReadOnly: () => false,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -53,7 +56,7 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
-  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
+  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
     taskType: any;
@@ -66,6 +69,8 @@ export const PLUGIN_REMOTE_SYNC: {
     currentBranch: string | null | undefined;
   };
   useHasLibraryDirtyChanges: () => boolean;
+  useHasTransformDirtyChanges: () => boolean;
+  getIsRemoteSyncReadOnly: (state: State) => boolean;
 } = getDefaultPluginRemoteSync();
 
 /**
