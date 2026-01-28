@@ -26,6 +26,7 @@ import type {
   DependencySortOptions,
 } from "../../../../types";
 import {
+  areFilterOptionsEqual,
   getDependentErrorNodesCount,
   getDependentErrorNodesLabel,
   getNodeIcon,
@@ -63,6 +64,10 @@ export function SidebarDependentsSection({
   const [sortOptions, setSortOptions] = useState<DependencySortOptions>(
     getDefaultSortOptions(),
   );
+  const hasDefaultFilterOptions = areFilterOptionsEqual(
+    filterOptions,
+    getDefaultFilterOptions(),
+  );
 
   const { data: dependents = [], isFetching } = useListNodeDependentsQuery(
     getListRequest(node, filterOptions, sortOptions),
@@ -97,7 +102,8 @@ export function SidebarDependentsSection({
             <FilterOptionsPicker
               filterOptions={filterOptions}
               availableGroupTypes={BROKEN_DEPENDENTS_GROUP_TYPES}
-              compact
+              isCompact
+              hasDefaultFilterOptions={hasDefaultFilterOptions}
               onFilterOptionsChange={setFilterOptions}
             />
           </Group>
