@@ -3,26 +3,24 @@
    [metabase.app-db.core :as app-db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]))
 
-(defenterprise user->tenant-collection-and-descendant-ids
-  "OSS version of user->tenant-collection-and-descendant-ids. Returns an empty vector since tenants are an EE feature."
-  metabase-enterprise.tenants.model
+(defn user->tenant-collection-and-descendant-ids
+  "Returns descendant IDs for the user's tenant collection. Returns an empty vector in OSS since tenants are an EE feature."
   [_user-or-id]
   [])
 
-(defenterprise has-any-transforms-permission?
-  "OSS version of has-any-transforms-permission? Returns false since transforms are an EE feature."
-  metabase.transforms.util
-  [_user-id]
-  false)
+(defn has-any-transforms-permission?
+  "Returns true if the user has the transforms permission for any database."
+  [user-id]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.transforms.util/has-any-transforms-permission?) user-id))
 
-(defenterprise has-db-transforms-permission?
-  "OSS version of has-db-transforms-permission? Returns false since transforms are an EE feature."
-  metabase.transforms.util
-  [_user-id _database-id]
-  false)
+(defn has-db-transforms-permission?
+  "Returns true if the user has the transforms permission for the given database."
+  [user-id database-id]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  ((requiring-resolve 'metabase.transforms.util/has-db-transforms-permission?) user-id database-id))
 
 (defn user-permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"

@@ -43,8 +43,6 @@ describe("NavbarLibrarySection", () => {
       });
       setup({
         collections: [libraryCollection],
-        dirtyCollectionIds: [10],
-        isGitSyncVisible: false,
       });
 
       await waitFor(() => {
@@ -62,8 +60,6 @@ describe("NavbarLibrarySection", () => {
       });
       setup({
         collections: [libraryCollection],
-        dirtyCollectionIds: [],
-        isGitSyncVisible: true,
       });
 
       await waitFor(() => {

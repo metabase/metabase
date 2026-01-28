@@ -1,8 +1,14 @@
-import type { TagDescription } from "@reduxjs/toolkit/query";
+import type {
+  BaseQueryFn,
+  QueryDefinition,
+  TagDescription,
+} from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
+import type { TagType } from "metabase/api/tags";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";
+import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
@@ -11,7 +17,10 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type {
+  RemoteSyncChangesResponse,
+  RemoteSyncEntity,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export type CollectionsNavTreeProps = {
@@ -43,7 +52,11 @@ export interface RemoteSyncDirtyState {
   /** Check if any dirty entity (including collections) is in the given set of IDs */
   hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
   /** Refetch the dirty state data */
-  refetch: () => Promise<any>; // TODO [OSS]: fix this type
+  refetch: ReturnType<
+    UseQuery<
+      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
+    >
+  >["refetch"];
 }
 
 const getDefaultPluginRemoteSync = () => ({
@@ -68,7 +81,10 @@ const getDefaultPluginRemoteSync = () => ({
   useHasLibraryDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
-  useRemoteSyncDirtyState: () => ({}) as RemoteSyncDirtyState, // TODO [OSS]: implement this
+  useRemoteSyncDirtyState: () =>
+    ({
+      isCollectionDirty: false,
+    }) as unknown as RemoteSyncDirtyState,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
