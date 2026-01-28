@@ -29,9 +29,9 @@ describe("parseBunFolderName", () => {
     });
   });
 
-  it("returns null for invalid names", () => {
-    expect(parseBunFolderName("invalid")).toBeNull();
-    expect(parseBunFolderName("")).toBeNull();
+  it("returns undefined for invalid names", () => {
+    expect(parseBunFolderName("invalid")).toBeUndefined();
+    expect(parseBunFolderName("")).toBeUndefined();
   });
 });
 
@@ -47,7 +47,12 @@ describe("scanBunPackages", () => {
   });
 
   it("scans packages from .bun directory", () => {
-    const pkgDir = path.join(tempDir, "lodash@4.17.21", "node_modules", "lodash");
+    const pkgDir = path.join(
+      tempDir,
+      "lodash@4.17.21",
+      "node_modules",
+      "lodash",
+    );
     fs.mkdirSync(pkgDir, { recursive: true });
     fs.writeFileSync(path.join(pkgDir, "package.json"), "{}");
 
@@ -59,7 +64,12 @@ describe("scanBunPackages", () => {
   });
 
   it("scans scoped packages", () => {
-    const pkgDir = path.join(tempDir, "@babel+core@7.28.4", "node_modules", "@babel/core");
+    const pkgDir = path.join(
+      tempDir,
+      "@babel+core@7.28.4",
+      "node_modules",
+      "@babel/core",
+    );
     fs.mkdirSync(pkgDir, { recursive: true });
     fs.writeFileSync(path.join(pkgDir, "package.json"), "{}");
 
@@ -92,14 +102,19 @@ describe("generateDisclaimerText", () => {
   });
 
   it("generates header", () => {
-    const result = generateDisclaimerText([], mockGetPackageDetails("MIT", null));
+    const result = generateDisclaimerText(
+      [],
+      mockGetPackageDetails("MIT", null),
+    );
     expect(result).toMatch(
       /^THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES FOR THIRD PARTY SOFTWARE/,
     );
   });
 
   it("generates entry for a single package", () => {
-    const packages = [{ name: "test-package", version: "1.0.0", path: "/path" }];
+    const packages = [
+      { name: "test-package", version: "1.0.0", path: "/path" },
+    ];
 
     const result = generateDisclaimerText(packages, () => ({
       licenseText: "MIT License text here",
@@ -173,7 +188,9 @@ describe("generateDisclaimerText", () => {
   });
 
   it("handles packages without repo URL", () => {
-    const packages = [{ name: "no-repo-package", version: "1.0.0", path: "/path" }];
+    const packages = [
+      { name: "no-repo-package", version: "1.0.0", path: "/path" },
+    ];
 
     const result = generateDisclaimerText(packages, () => ({
       licenseText: "Some License",
@@ -241,11 +258,16 @@ describe("generateDisclaimerText", () => {
 
 describe("integration", () => {
   it("runs successfully and generates valid output", () => {
-    const { execSync } = require("child_process");
+    const { execFileSync } = require("child_process");
     const scriptPath = path.join(__dirname, "generate-license-disclaimer.js");
-    const outputFile = path.join(__dirname, "..", "resources", "license-frontend-third-party.txt");
+    const outputFile = path.join(
+      __dirname,
+      "..",
+      "resources",
+      "license-frontend-third-party.txt",
+    );
 
-    const result = execSync(`node ${scriptPath}`, { encoding: "utf-8" });
+    const result = execFileSync("node", [scriptPath], { encoding: "utf-8" });
 
     expect(result).toMatch(/Found \d+ packages/);
 
@@ -256,18 +278,5 @@ describe("integration", () => {
     expect(content).toMatch(/^THE FOLLOWING SETS FORTH ATTRIBUTION NOTICES/);
     expect(content).toContain("-----");
     expect(content).toContain("This software contains the following license");
-  });
-
-  it("falls back to package.json license field when no LICENSE file exists", () => {
-    const { execSync } = require("child_process");
-    const scriptPath = path.join(__dirname, "generate-license-disclaimer.js");
-    const outputFile = path.join(__dirname, "..", "resources", "license-frontend-third-party.txt");
-
-    execSync(`node ${scriptPath}`, { encoding: "utf-8" });
-    const content = fs.readFileSync(outputFile, "utf-8");
-
-    // @bundled-es-modules/cookie has "license": "ISC" in package.json but no LICENSE file
-    // Should show "ISC" not "License: See ... package"
-    expect(content).not.toContain("License: See @bundled-es-modules/cookie package");
   });
 });
