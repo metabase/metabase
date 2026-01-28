@@ -93,25 +93,36 @@
                       (integer? field-id))]
      field-id)))
 
-(mu/defn- batch-fetch-query-metadata*
+(mu/defn- batch-fetch-query-metadata* :- [:map
+                                          {:closed true}
+                                          [:databases [:sequential [:map [:id ::lib.schema.id/database]]]]
+                                          [:tables    [:sequential [:map [:id ::lib.schema.id/table]]]]
+                                          [:cards     [:sequential [:map [:id ::lib.schema.id/card]]]]
+                                          [:fields    [:sequential [:map [:id ::lib.schema.id/field]]]]
+                                          [:snippets  [:sequential [:map [:id ::lib.schema.id/snippet]]]]]
   "Fetch dependent metadata for ad-hoc queries.
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
    opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
-  (let [source-table-ids       (into #{}
-                                     (mapcat lib/all-source-table-ids)
-                                     queries)
-        source-card-ids        (into #{}
+  (let [source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
-                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                      {:include-database? false}))
-        fk-target-field-ids    (into #{} (comp (mapcat :fields)
-                                               (keep :fk_target_field_id))
+        cards                  (schema.table/batch-fetch-card-query-metadatas source-card-ids)
+        card-table-ids         (into #{}
+                                     (comp (map :dataset_query)
+                                           (mapcat lib/all-source-table-ids))
+                                     cards)
+        source-table-ids       (into card-table-ids
+                                     (mapcat lib/all-source-table-ids)
+                                     queries)
+        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
+        fk-target-field-ids    (into #{}
+                                     (comp (mapcat :fields)
+                                           (keep :fk_target_field_id))
                                      source-tables)
-        fk-target-table-ids    (into #{} (remove source-table-ids)
+        fk-target-table-ids    (into #{}
+                                     (remove source-table-ids)
                                      (field-ids->table-ids fk-target-field-ids))
         fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
         tables                 (concat source-tables fk-target-tables)
@@ -128,18 +139,9 @@
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
-     ;; apparently some of these tables come back with normal integer IDs and some come back with string IDs... not sure
-     ;; what the hecc is going on but I guess maybe some of them in 2024 are still using that old `card__<id>` hack or
-     ;; something. Idk. Anyways let's just sort the ones with numeric IDs first and the ones with string IDs last. We're
-     ;; sorting these in a sane order because lots of tests expect them to be sorted by numeric ID and break if you sort
-     ;; by something like `(str (:id %))`. -- Cam
-     :tables    (sort-by (fn [{:keys [id]}]
-                           (if (integer? id)
-                             [id ""]
-                             [Integer/MAX_VALUE (str id)]))
-                         tables)
+     :tables    (sort-by :id tables)
+     :cards     (sort-by :id cards)
      :fields    (sort-by :id (schema.field/get-fields all-field-ids))
-     ;; Add snippets to the response
      :snippets  (sort-by :id snippets)}))
 
 (defn batch-fetch-query-metadata
@@ -233,17 +235,17 @@
                                             [:card   {:optional true} [:maybe ::queries.schema/card]]
                                             [:series {:optional true} [:maybe [:sequential [:map
                                                                                             [:dataset_query ::queries.schema/query]]]]]]]]]]]
-  (let [dashcards (mapcat :dashcards dashboards)
-        cards     (for [{:keys [card series]} dashcards
-                        :let   [all (conj series card)]
-                        card all]
-                    card)
-        card-ids  (into #{} (map :id) cards)
-        links     (batch-fetch-dashboard-links dashcards)]
-    (merge
-     (->> (remove (comp card-ids :id) (:cards links))
-          (concat cards)
-          (filter some?)
-          batch-fetch-card-metadata)
-     {:cards      (or (:cards links)      [])
-      :dashboards (or (:dashboards links) [])})))
+  (let [dashcards      (mapcat :dashcards dashboards)
+        cards          (for [{:keys [card series]} dashcards
+                             :let                  [all (conj series card)]
+                             card                  all]
+                         card)
+        card-ids       (into #{} (map :id) cards)
+        links          (batch-fetch-dashboard-links dashcards)
+        card-metadatas (->> (remove (comp card-ids :id) (:cards links))
+                            (concat cards)
+                            (filter some?)
+                            batch-fetch-card-metadata)]
+    (-> card-metadatas
+        (update :cards concat (or (:cards links) []))
+        (assoc :dashboards (or (:dashboards links) [])))))
