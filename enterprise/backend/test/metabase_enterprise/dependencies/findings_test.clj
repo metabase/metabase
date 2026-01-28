@@ -7,7 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- backfill-all-entity-analyses! []
   (doseq [model [:card :transform :segment]]
@@ -44,12 +47,17 @@
         (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
 
 (deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
-  (backfill-all-entity-analyses!)
-  (mt/with-premium-features #{:dependencies}
-    (is (= 0 (deps.findings/analyze-batch! :card 2)))
-    (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-      ;; can't check the actual cards analyzed here because this could be any starting card in the data
-      (is (= 2 (deps.findings/analyze-batch! :card 2))))))
+  (let [mp (mt/metadata-provider)
+        products (lib.metadata/table mp (mt/id :products))
+        orders (lib.metadata/table mp (mt/id :orders))]
+    (mt/with-premium-features #{:dependencies}
+      (backfill-all-entity-analyses!)
+      (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp products)}
+                     :model/Card _ {:dataset_query (lib/query mp orders)}]
+        (is (= 2 (deps.findings/analyze-batch! :card 2)))
+        (is (= 0 (deps.findings/analyze-batch! :card 2)))
+        (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
+          (is (= 2 (deps.findings/analyze-batch! :card 2))))))))
 
 (deftest ^:sequential does-not-analyze-native-entities-test
   (testing "assumes native queries are always fine"
@@ -70,6 +78,26 @@
   (t2/select-fn->fn :analyzed_entity_id :stale :model/AnalysisFinding
                     :analyzed_entity_type :card
                     :analyzed_entity_id [:in card-ids]))
+
+(deftest ^:sequential analyze-batch-picks-up-missing-analyses-test
+  (testing "analyze-batch! picks up entities with no pre-existing AnalysisFinding"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
+            (testing "card has no analysis finding initially"
+              (is (not (t2/exists? :model/AnalysisFinding
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id card-id))))
+            (testing "analyze-batch! creates analysis for the card"
+              (lib-be/with-metadata-provider-cache
+                (is (pos? (deps.findings/analyze-batch! :card 10)))))
+            (testing "card now has an analysis finding"
+              (is (t2/exists? :model/AnalysisFinding
+                              :analyzed_entity_type :card
+                              :analyzed_entity_id card-id)))))))))
 
 (deftest mark-dependents-stale-test
   (testing "mark-dependents-stale! marks direct dependents as stale"
