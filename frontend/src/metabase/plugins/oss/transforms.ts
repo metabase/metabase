@@ -1,9 +1,6 @@
-import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -18,28 +15,9 @@ import type {
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
-// Types
-export type TransformPickerItem = {
-  id: TransformId;
-  name: string;
-  model: "transform";
-};
-
-export type TransformPickerProps = {
-  value: TransformPickerItem | undefined;
-  onItemSelect: (transform: TransformPickerItem) => void;
-};
 
 export type TransformsPlugin = {
   isEnabled: boolean;
-  canAccessTransforms: (state: State) => boolean;
-  getDataStudioTransformRoutes(): ReactNode;
-  TransformPicker: ComponentType<TransformPickerProps>;
-  useGetTransformQuery: UseQuery<
-    QueryDefinition<TransformId, BaseQueryFn, TagType, Transform>
-  >;
 };
 
 export type PythonTransformEditorProps = {
@@ -73,6 +51,7 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
+  sharedLibImportPath: string;
 };
 
 type DependenciesPlugin = {
@@ -143,12 +122,7 @@ function useCheckDependencies<TChange>({
 }
 
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
-  isEnabled: false,
-  canAccessTransforms: () => false,
-  getDataStudioTransformRoutes: () => null,
-  TransformPicker: PluginPlaceholder,
-  useGetTransformQuery:
-    (() => []) as unknown as TransformsPlugin["useGetTransformQuery"],
+  isEnabled: true,
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
@@ -162,6 +136,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
+  sharedLibImportPath: "",
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();

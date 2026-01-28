@@ -18,7 +18,7 @@ import {
   TablePicker,
   type TablePickerStatePath,
 } from "metabase/common/components/Pickers/TablePicker";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { TransformPicker } from "metabase/transforms/components/TransformPicker";
 import {
   type DependencyEntry,
   type DependencyNode,
@@ -108,7 +108,7 @@ export function EntryPickerModal({
         folderModels: [],
         icon: "transform",
         render: ({ onItemSelect }) => (
-          <PLUGIN_TRANSFORMS.TransformPicker
+          <TransformPicker
             value={value ? getTransformPickerItem(value) : undefined}
             onItemSelect={onItemSelect}
           />

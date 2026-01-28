@@ -9,6 +9,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -24,7 +25,6 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import { useLazyGetTransformQuery } from "metabase-enterprise/api";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,

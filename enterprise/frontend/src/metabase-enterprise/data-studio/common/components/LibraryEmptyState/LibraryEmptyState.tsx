@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -16,7 +17,6 @@ import {
   Title,
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
-import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 
 export function LibraryEmptyState() {
   const [createLibrary, { isLoading, isSuccess }] = useCreateLibraryMutation();

@@ -40,7 +40,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   documents: "metabase-enterprise/documents",
   semantic_search: "metabase-enterprise/semantic_search",
   database_replication: "metabase-enterprise/database_replication",
-  "data-studio": "metabase-enterprise/data-studio",
+  library: "metabase-enterprise/data-studio/library",
   caching: "metabase-enterprise/caching",
   group_managers: "metabase-enterprise/group_managers",
   collections: "metabase-enterprise/collections",

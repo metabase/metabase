@@ -6,10 +6,10 @@ import {
 } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
+import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
+import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
-import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type { Database, DatabaseId, TransformId } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";

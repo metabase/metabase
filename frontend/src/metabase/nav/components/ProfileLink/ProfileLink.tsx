@@ -12,6 +12,7 @@ import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { Modal } from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -19,7 +20,6 @@ import {
 import { capitalize } from "metabase/lib/formatting";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import {
@@ -37,7 +37,7 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
-  canAccessDataStudio: PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
+  canAccessDataStudio: canAccessDataStudio(state),
   isNewInstance: getIsNewInstance(state),
 });
 

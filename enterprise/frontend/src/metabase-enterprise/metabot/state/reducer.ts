@@ -3,7 +3,11 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
+import type {
+  MetabotCodeEdit,
+  MetabotSuggestedTransform,
+  SuggestedTransform,
+} from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -19,7 +23,6 @@ import {
 import type {
   MetabotAgentChatMessage,
   MetabotErrorMessage,
-  MetabotSuggestedTransform,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId } from "./utils";
