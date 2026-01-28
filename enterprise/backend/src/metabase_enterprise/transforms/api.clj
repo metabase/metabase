@@ -21,6 +21,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -97,7 +98,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
+  (api/check-403 (perms/is-data-analyst? api/*current-user-id*))
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
@@ -309,7 +310,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
+  (api/check-403 (perms/is-data-analyst? api/*current-user-id*))
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
