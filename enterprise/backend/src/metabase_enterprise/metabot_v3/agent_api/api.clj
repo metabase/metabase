@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase-enterprise.metabot-v3.settings :as metabot-settings]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
@@ -12,12 +11,10 @@
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-filters]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-search]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -25,7 +22,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
