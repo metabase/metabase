@@ -44,11 +44,6 @@ export function deriveColorsFromInputs(
       ...derived,
       ...deriveFromOffsets(bgStops, BACKGROUND_DERIVE_OFFSETS, isLightTheme),
     };
-
-    // Remove border if dark theme (will be derived from text-primary)
-    if (!isLightTheme) {
-      delete derived["border"];
-    }
   }
 
   // Derive text-related colors from text-primary
@@ -56,19 +51,20 @@ export function deriveColorsFromInputs(
     const textStops = generateTextStops(colors["text-primary"]);
 
     for (const [key, alphaStep] of Object.entries(TEXT_DERIVE_ALPHA_STEPS)) {
-      // Skip border for light theme (already set from background)
-      if (key === "border" && isLightTheme) {
-        continue;
-      }
-
-      // Positive: uses alpha from text-primary (for regular text colors)
-      // Negative: uses contrastingAlpha (for inverse text colors)
       const step = Math.abs(alphaStep) as keyof typeof textStops.alpha;
-      const useContrastingAlpha = alphaStep < 0;
 
-      const color = useContrastingAlpha
-        ? textStops.contrastingAlpha[step]
-        : textStops.alpha[step];
+      let color: string | undefined;
+
+      if (key === "border") {
+        // Border always uses alpha from text-primary (works for both themes)
+        color = textStops.alpha[step];
+      } else {
+        // Other colors: positive = alpha, negative = contrastingAlpha
+        const useContrastingAlpha = alphaStep < 0;
+        color = useContrastingAlpha
+          ? textStops.contrastingAlpha[step]
+          : textStops.alpha[step];
+      }
 
       if (color) {
         derived[key as MetabaseColorKey] = color;

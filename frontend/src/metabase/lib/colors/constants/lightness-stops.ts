@@ -14,7 +14,6 @@ export const BACKGROUND_DERIVE_OFFSETS = {
   "background-primary-inverse": 8,
   "background-secondary-inverse": 7,
   "background-tertiary-inverse": 4,
-  border: 2,
 } satisfies Partial<Record<MetabaseColorKey, number>>;
 
 /**
@@ -31,7 +30,7 @@ export const TEXT_DERIVE_ALPHA_STEPS = {
   "text-primary-inverse": -80,
   "text-secondary-inverse": -60,
   "text-tertiary-inverse": -40,
-  border: -30,
+  border: 20,
 } satisfies Partial<Record<MetabaseColorKey, number>>;
 
 /**
