@@ -1000,7 +1000,7 @@
                                                             (str 8)) ; quantity
                                            :limit       15}
                                           :conversation_id conversation-id})]
-      (is (=? {:structured_output {:values int-sequence?}
+      (is (=? {:structured_output {:value_metadata {:field_values int-sequence?}}
                :conversation_id conversation-id}
               response)))))
 
