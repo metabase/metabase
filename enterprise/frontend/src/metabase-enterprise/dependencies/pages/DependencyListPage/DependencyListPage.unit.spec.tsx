@@ -36,6 +36,10 @@ const CARD_NODES = [
     id: 1,
     data: createMockCardDependencyNodeData({ name: "Question 1" }),
   }),
+  createMockCardDependencyNode({
+    id: 2,
+    data: createMockCardDependencyNodeData({ name: "Question 2" }),
+  }),
 ];
 
 type SetupOpts = {
@@ -112,18 +116,7 @@ async function waitForListToLoad() {
 describe("DependencyListPage", () => {
   describe("list", () => {
     it("renders provided nodes in the list", async () => {
-      const nodes = [
-        createMockCardDependencyNode({
-          id: 1,
-          data: createMockCardDependencyNodeData({ name: "Question 1" }),
-        }),
-        createMockCardDependencyNode({
-          id: 2,
-          data: createMockCardDependencyNodeData({ name: "Question 2" }),
-        }),
-      ];
-
-      setup({ nodes });
+      setup({ nodes: CARD_NODES });
 
       expect(await screen.findByText("Question 1")).toBeInTheDocument();
       expect(await screen.findByText("Question 2")).toBeInTheDocument();
