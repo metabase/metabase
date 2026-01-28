@@ -2119,6 +2119,7 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
+           enterprise/llm
            enterprise/transforms
            enterprise/transforms-python}}
 
