@@ -363,6 +363,10 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByRole("button", { name: "Save" }).click();
       cy.findByRole("button", { name: /Saved/ }).should("exist");
 
+      // wait for the save button to disappear - that means the form is no longer dirty
+      // and navigating away won't show the confirmation modal that was causing flakes
+      cy.findByRole("button", { name: /Saved/ }).should("not.exist");
+
       cy.log("Navigate away and come back to verify the change is persisted");
       H.DataStudio.Metrics.overviewTab().click();
       H.DataStudio.Metrics.cachingTab().click();

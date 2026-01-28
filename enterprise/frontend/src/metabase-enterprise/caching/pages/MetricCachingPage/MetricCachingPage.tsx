@@ -18,7 +18,7 @@ import { MetricHeader } from "metabase-enterprise/data-studio/library/metrics/co
 import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";
 
-const configurableModels: CacheableModel[] = ["question"];
+const model: CacheableModel[] = ["question"];
 
 export function MetricCachingPage({ params }: MetricSettingsPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
@@ -31,27 +31,20 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
 
   const {
     configs,
-    setConfigs,
-    loading: isLoadingConfigs,
+    isLoading: isLoadingConfigs,
     error: configsError,
   } = useCacheConfigs({
-    configurableModels,
+    model,
     id: cardId,
   });
 
-  const { savedStrategy, filteredConfigs } = useMemo(() => {
-    const targetConfig = _.findWhere(configs, { model_id: cardId });
+  const { savedStrategy } = useMemo(() => {
+    const targetConfig = _.findWhere(configs ?? [], { model_id: cardId });
     const savedStrategy = targetConfig?.strategy;
-    const filteredConfigs = _.compact([targetConfig]);
-    return { savedStrategy, filteredConfigs };
+    return { savedStrategy };
   }, [configs, cardId]);
 
-  const saveStrategy = useSaveStrategy(
-    cardId ?? null,
-    filteredConfigs,
-    setConfigs,
-    "question",
-  );
+  const saveStrategy = useSaveStrategy(cardId ?? null, "question");
 
   const { confirmationModal, setIsStrategyFormDirty } =
     useConfirmIfFormIsDirty();

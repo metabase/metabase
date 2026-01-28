@@ -861,6 +861,42 @@ databaseChangeLog:
             tableName: python_library
             constraintName: unique_python_library_entity_id
 
+  - changeSet:
+      id: v59.2026-01-28T10:00:00
+      author: metamben
+      comment: Add stale column to analysis_finding for asynchronous dependent updates
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs re-analysis due to upstream changes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: stale
+
+  - changeSet:
+      id: v59.2026-01-28T10:00:01
+      author: metamben
+      comment: Add partial index on analysis_finding.stale for efficient polling
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
+      rollback:
+        - dropIndex:
+            tableName: analysis_finding
+            indexName: idx_analysis_finding_stale
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
