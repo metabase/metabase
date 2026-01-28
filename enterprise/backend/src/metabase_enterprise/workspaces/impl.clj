@@ -107,11 +107,32 @@
                  map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
        map-entry))))
 
+(defn- add-table-mapping-entries
+  "Add table mapping entries for a single table.
+   Adds:
+   - [db-id schema table] -> replacement (for qualified SQL references)
+   - table-id -> replacement (for MBQL/Python, if table-id provided)
+   - [db-id nil table] -> replacement (for unqualified SQL, if in-default-schema? is true)"
+  [m {:keys [db-id schema table table-id replacement in-default-schema?]}]
+  (cond-> m
+    true             (assoc [db-id schema table] replacement)
+    table-id         (assoc table-id replacement)
+    in-default-schema? (assoc [db-id nil table] replacement)))
+
 (defn- build-remapping [workspace]
-  ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
+  ;; Build table remapping from stored WorkspaceOutput, WorkspaceOutputExternal, WorkspaceInput, and
+  ;; WorkspaceInputExternal data.
+  ;;
+  ;; For OUTPUTS (isolated tables):
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
   ;; Also maps global_table_id -> same. This is more convenient and reliable for MBQL queries and Python transforms.
   ;; Also maps [db_id nil global_table] for tables in the default schema, so unqualified SQL references work.
+  ;;
+  ;; For INPUTS (external tables read from source DB):
+  ;; Maps [db_id schema table] -> {:db-id :schema :table :id} to qualify references.
+  ;; This ensures "SELECT * FROM orders" becomes "SELECT * FROM public.orders" (or "mydb.orders" for MySQL).
+  ;;
+  ;; Output mappings take precedence over input mappings (merged last).
   ;; This is used to remap queries, sources and targets to reflect the "isolated" tables used to seal the Workspace.
   (let [outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
@@ -122,33 +143,71 @@
                                      :isolated_schema :isolated_table :isolated_table_id]
                                     :workspace_id (:id workspace))
         all-outputs      (concat outputs external-outputs)
-        ;; Get default schema for each database involved
-        db-ids           (into #{} (map :db_id) all-outputs)
-        db-id->default   (when (seq db-ids)
-                           (t2/select-fn->fn :id #(driver.sql/default-schema (:engine %))
-                                             [:model/Database :id :engine]
-                                             :id [:in db-ids]))
+        ;; Fetch input tables (external tables that transforms read from)
+        inputs           (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                    :workspace_id (:id workspace))
+        external-inputs  (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
+                                    :workspace_id (:id workspace))
+        all-inputs       (concat inputs external-inputs)
+        ;; Get default schema for each database involved (both inputs and outputs)
+        ;; For databases with schemas (PostgreSQL), this is the default schema (e.g., "public").
+        ;; For databases without schemas (MySQL), default-schema returns nil, but we can use the
+        ;; database name from connection details for qualification (e.g., "mydb.orders").
+        db-ids           (into #{} (map :db_id) (concat all-outputs all-inputs))
+        databases        (when (seq db-ids)
+                           (t2/select [:model/Database :id :engine :details] :id [:in db-ids]))
+        db-id->default   (into {}
+                               (map (fn [{:keys [id engine details]}]
+                                      [id (or (driver.sql/default-schema engine)
+                                              ;; For MySQL and similar, use database name from connection details
+                                              ((some-fn :dbname :db) details))]))
+                               databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
-        table-map        (reduce
+        ;; Build output mappings (remap to isolated tables)
+        output-map       (reduce
                           (fn [m {:keys [db_id global_schema global_table global_table_id
                                          isolated_schema isolated_table isolated_table_id]}]
-                            (let [global_table_id   (or global_table_id
-                                                        (fallback-map [db_id global_schema global_table]))
-                                  isolated_table_id (or isolated_table_id
-                                                        (fallback-map [db_id isolated_schema isolated_table]))
-                                  replacement       {:db-id  db_id
-                                                     :schema isolated_schema
-                                                     :table  isolated_table
-                                                     :id     isolated_table_id}
-                                  default-schema    (get db-id->default db_id)]
-                              (cond-> (assoc m [db_id global_schema global_table] replacement)
-                                global_table_id (assoc global_table_id replacement)
-                                ;; Add nil-schema entry for tables in the default schema
-                                (= global_schema default-schema) (assoc [db_id nil global_table] replacement))))
+                            (let [default-schema (get db-id->default db_id)]
+                              (add-table-mapping-entries m
+                                                         {:db-id              db_id
+                                                          :schema             global_schema
+                                                          :table              global_table
+                                                          :table-id           (or global_table_id
+                                                                                  (fallback-map [db_id global_schema global_table]))
+                                                          :replacement        {:db-id  db_id
+                                                                               :schema isolated_schema
+                                                                               :table  isolated_table
+                                                                               :id     (or isolated_table_id
+                                                                                           (fallback-map [db_id isolated_schema isolated_table]))}
+                                                          :in-default-schema? (= global_schema default-schema)})))
                           {}
-                          all-outputs)]
+                          all-outputs)
+        ;; Build input mappings (qualify references to external tables)
+        input-map        (reduce
+                          (fn [m {:keys [db_id schema table table_id]}]
+                            (let [default-schema (get db-id->default db_id)
+                                  ;; For inputs, determine the schema to use for qualification:
+                                  ;; - If table has a schema, use it (PostgreSQL with non-default schema)
+                                  ;; - Otherwise use default-schema (includes MySQL database name)
+                                  qualify-schema (or schema default-schema)]
+                              (if (some? qualify-schema)
+                                (add-table-mapping-entries m
+                                                           {:db-id              db_id
+                                                            :schema             qualify-schema
+                                                            :table              table
+                                                            :table-id           table_id
+                                                            :replacement        {:db-id  db_id
+                                                                                 :schema qualify-schema
+                                                                                 :table  table
+                                                                                 :id     table_id}
+                                                            :in-default-schema? (or (nil? schema) (= schema default-schema))})
+                                m)))
+                          {}
+                          all-inputs)
+        ;; Merge with outputs taking precedence
+        table-map        (merge input-map output-map)]
     {:tables          table-map
      ;; We never want to write to any global tables, so remap on-the-fly if we hit an un-mapped target.
      :target-fallback (fn [[d s t]]
