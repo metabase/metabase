@@ -47,3 +47,11 @@
     (throw (ex-info "ref_id required for WorkspaceTransform insertion."
                     {:instance instance})))
   instance)
+
+(t2/define-before-update :model/WorkspaceTransform
+  [instance]
+  ;; global_id is immutable - a transform's link to the global transform it was checked out from cannot change
+  (when (contains? (t2/changes instance) :global_id)
+    (throw (ex-info "Cannot change global_id of an existing workspace transform."
+                    {:ref_id (:ref_id instance)})))
+  instance)
