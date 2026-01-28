@@ -3,7 +3,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
-import { useRemoteSyncDirtyState } from "metabase-enterprise/remote_sync/hooks/use-remote-sync-dirty-state";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
@@ -20,6 +19,7 @@ import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
 import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
 import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
 import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
+import { useRemoteSyncDirtyState } from "./hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { getIsRemoteSyncReadOnly } from "./selectors";

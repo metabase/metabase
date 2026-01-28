@@ -118,7 +118,7 @@ export const useRootCollectionPickerItems = (
         ...libraryCollection,
         model: "collection",
         moderated_status: null,
-      });
+      } as CollectionPickerItem);
     }
 
     if (options?.showDatabases && databases.length > 0) {

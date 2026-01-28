@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
@@ -53,7 +54,8 @@ export function setup({
       settings,
       currentUser: createMockUser({ is_superuser: isAdmin }),
     });
-    ["library", "remote_sync"].forEach(setupEnterpriseOnlyPlugin);
+    const pluginNames: ENTERPRISE_PLUGIN_NAME[] = ["library", "remote_sync"];
+    pluginNames.forEach(setupEnterpriseOnlyPlugin);
   } else {
     state = createMockState({
       settings: mockSettings({

@@ -79,10 +79,18 @@ describe("NavbarLibrarySection", () => {
       const libraryCollection = createLibraryCollection({
         children: [createChildCollection({ id: 10, name: "Metrics" })],
       });
+
+      fetchMock.get("path:/api/ee/remote-sync/dirty", {
+        dirty: [
+          {
+            collection_id: 10,
+          },
+        ],
+      });
+
       setup({
+        isEnterprise: true,
         collections: [libraryCollection],
-        dirtyCollectionIds: [10],
-        isGitSyncVisible: true,
       });
 
       await waitFor(() => {
@@ -101,15 +109,24 @@ describe("NavbarLibrarySection", () => {
           createChildCollection({ id: 11, name: "Clean Collection" }),
         ],
       });
+
+      fetchMock.get("path:/api/ee/remote-sync/dirty", {
+        dirty: [
+          {
+            collection_id: 10,
+          },
+        ],
+      });
+
       setup({
+        isEnterprise: true,
         collections: [libraryCollection],
-        dirtyCollectionIds: [10],
-        isGitSyncVisible: true,
       });
 
       await waitFor(() => {
         expect(screen.getByText("Dirty Collection")).toBeInTheDocument();
       });
+
       expect(screen.getByText("Clean Collection")).toBeInTheDocument();
 
       await waitFor(() => {

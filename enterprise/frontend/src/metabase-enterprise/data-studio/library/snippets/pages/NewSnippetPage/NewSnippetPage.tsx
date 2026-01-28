@@ -22,7 +22,10 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Card, Flex, Stack } from "metabase/ui";
-import type { NativeQuerySnippet,RegularCollectionId } from "metabase-types/api";
+import type {
+  NativeQuerySnippet,
+  RegularCollectionId,
+} from "metabase-types/api";
 
 import S from "./NewSnippetPage.module.css";
 

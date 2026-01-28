@@ -1,9 +1,9 @@
-(ns metabase.transforms.models.transform-tag-test
+(ns metabase.models.transforms.transform-tag-test
   "Tests for the transform tag model."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.transforms.transform-tag :as transform-tag]
    [metabase.test :as mt]
-   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 

@@ -4,11 +4,11 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.models.transforms.transform :as transform.model]
+   [metabase.models.transforms.transform-job :as transform-job]
+   [metabase.models.transforms.transform-tag :as transform-tag]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.transforms.models.transform :as transform.model]
-   [metabase.transforms.models.transform-job :as transform-job]
-   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

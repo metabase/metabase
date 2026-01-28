@@ -1,10 +1,21 @@
 import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { NavbarLibrarySection } from "../NavbarLibrarySection";
@@ -35,27 +46,41 @@ export const createLibraryCollection = (
   } as Partial<Collection>);
 export const setup = ({
   collections = [createLibraryCollection()],
-  dirtyCollectionIds = [] as number[],
-  isGitSyncVisible = true,
+  isEnterprise = false,
 }: {
   collections?: Collection[];
-  dirtyCollectionIds?: number[];
-  isGitSyncVisible?: boolean;
+  isEnterprise?: boolean;
 } = {}) => {
-  jest.spyOn(PLUGIN_REMOTE_SYNC, "useGitSyncVisible").mockReturnValue({
-    isVisible: isGitSyncVisible,
-    currentBranch: "main",
-  });
+  let state: State;
+  if (isEnterprise) {
+    const settings = createMockSettings({
+      "expand-library-in-nav": true,
+      "remote-sync-enabled": true,
+      "remote-sync-branch": "main",
+      "remote-sync-type": "read-write",
+      "token-features": createMockTokenFeatures({
+        data_studio: true,
+        remote_sync: true,
+      }),
+    });
+    setupPropertiesEndpoints(settings);
+    state = createMockState({
+      settings: mockSettings(settings),
+      currentUser: createMockUser({ is_superuser: true }),
+    });
 
-  jest.spyOn(PLUGIN_REMOTE_SYNC, "useRemoteSyncDirtyState").mockReturnValue({
-    isCollectionDirty: (id: number | string | undefined) =>
-      typeof id === "number" && dirtyCollectionIds.includes(id),
-  });
+    const pluginNames: ENTERPRISE_PLUGIN_NAME[] = ["library", "remote_sync"];
+    pluginNames.forEach(setupEnterpriseOnlyPlugin);
+  } else {
+    state = createMockState({
+      settings: mockSettings({
+        "expand-library-in-nav": true,
+      }),
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+  }
 
-  // eslint-disable-next-line react/display-name
-  PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge = () => (
-    <div data-testid="remote-sync-status">BADGE</div>
-  );
+  setupSettingsEndpoints([]);
 
   return renderWithProviders(
     <Route
@@ -69,11 +94,7 @@ export const setup = ({
       )}
     />,
     {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "expand-library-in-nav": true,
-        }),
-      }),
+      storeInitialState: state,
       withRouter: true,
       withDND: true,
     },

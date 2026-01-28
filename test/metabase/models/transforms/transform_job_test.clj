@@ -1,9 +1,9 @@
-(ns metabase.transforms.models.transform-job-test
+(ns metabase.models.transforms.transform-job-test
   "Tests for the transform job model."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.transforms.transform-job :as transform-job]
    [metabase.test :as mt]
-   [metabase.transforms.models.transform-job :as transform-job]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
