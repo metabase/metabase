@@ -75,8 +75,13 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
-  frontend-tests:
+  generate-openapi:
     needs: files-changed
+    uses: ./.github/workflows/generate-openapi.yml
+    secrets: inherit
+
+  frontend-tests:
+    needs: [files-changed, generate-openapi]
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
