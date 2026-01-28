@@ -29,6 +29,7 @@ const propTypes = {
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
   isReversed: PropTypes.bool,
+  legendPosition: PropTypes.oneOf(["auto", "top", "bottom", "left", "right", "none"]),
 };
 
 export const LegendLayout = ({
@@ -46,6 +47,7 @@ export const LegendLayout = ({
   onSelectSeries,
   onToggleSeriesVisibility,
   isReversed,
+  legendPosition = "auto",
 }) => {
   const hasDimensions = width != null && height != null;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
@@ -56,14 +58,34 @@ export const LegendLayout = ({
 
   const isNarrow = width < MIN_LEGEND_WIDTH;
 
-  const isVertical = maxXItems < items.length;
-  const isHorizontal = !isVertical;
+  // Determine orientation and visibility based on legendPosition setting
+  let isVertical;
+  let isVisible;
 
-  const isVisible = hasLegend && !(isVertical && isNarrow);
+  if (legendPosition === "none") {
+    isVertical = false;
+    isVisible = false;
+  } else if (legendPosition === "left" || legendPosition === "right") {
+    isVertical = true;
+    isVisible = hasLegend && !isNarrow;
+  } else if (legendPosition === "top" || legendPosition === "bottom") {
+    isVertical = false;
+    isVisible = hasLegend;
+  } else {
+    // "auto" - use the original auto-detection logic
+    isVertical = maxXItems < items.length;
+    isVisible = hasLegend && !(isVertical && isNarrow);
+  }
+
+  const isHorizontal = !isVertical;
   const visibleLength = isVertical ? minYLabels : items.length;
 
   const legend = (
-    <LegendContainer isVertical={isVertical} isQueryBuilder={isQueryBuilder}>
+    <LegendContainer
+      isVertical={isVertical}
+      isQueryBuilder={isQueryBuilder}
+      legendPosition={legendPosition}
+    >
       <Legend
         items={items}
         hovered={hovered}
@@ -81,16 +103,26 @@ export const LegendLayout = ({
     </LegendContainer>
   );
 
+  // Determine if legend should appear before or after the main container
+  const isLegendFirst =
+    legendPosition === "top" ||
+    legendPosition === "left" ||
+    (legendPosition === "auto" && isHorizontal);
+
   return (
-    <LegendLayoutRoot className={className} isVertical={isVertical}>
-      {isVisible && isHorizontal && legend}
+    <LegendLayoutRoot
+      className={className}
+      isVertical={isVertical}
+      legendPosition={legendPosition}
+    >
+      {isVisible && isLegendFirst && legend}
       <MainContainer>
         {isVertical && actionButtons && (
           <LegendActions>{actionButtons}</LegendActions>
         )}
         {hasDimensions && <ChartContainer>{children}</ChartContainer>}
       </MainContainer>
-      {isVisible && isVertical && legend}
+      {isVisible && !isLegendFirst && legend}
     </LegendLayoutRoot>
   );
 };

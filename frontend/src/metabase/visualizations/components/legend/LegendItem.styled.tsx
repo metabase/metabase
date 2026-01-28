@@ -5,10 +5,15 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
+  margin-bottom: ${({ isVertical }) => (isVertical ? "4px" : "")};
 
   &:not(:first-of-type) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.25rem" : "")};
     margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
+  }
+
+  &:last-of-type {
+    margin-bottom: 0;
   }
 `;
 

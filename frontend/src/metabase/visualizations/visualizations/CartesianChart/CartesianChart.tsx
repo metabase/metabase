@@ -181,6 +181,7 @@ function _CartesianChart(props: VisualizationProps) {
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
+        legendPosition={settings["legend.position"] ?? "auto"}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
