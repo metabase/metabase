@@ -355,61 +355,6 @@ is_sample: false
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
-<<<<<<< HEAD
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
-                         {:name "Transforms Collection"
-                          :namespace collection/transforms-ns
-                          :entity_id "arch-transforms-collx"
-                          :location "/"}
-                         :model/Transform {transform-id :id transform-eid :entity_id}
-                         {:name "Child Transform"
-                          :collection_id coll-id
-                          :entity_id "child-transform-xxxxx"}
-                         :model/Transform {root-transform-id :id root-transform-eid :entity_id}
-                         {:name "Root Transform"
-                          :collection_id nil
-                          :entity_id "root-transform-xxxxxx"}]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection"
-                          :model_id coll-id
-                          :model_name "Transforms Collection"
-                          :status "synced"
-                          :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform"
-                          :model_id transform-id
-                          :model_name "Child Transform"
-                          :model_collection_id coll-id
-                          :status "synced"
-                          :status_changed_at (t/offset-date-time)}
-                         {:model_type "Transform"
-                          :model_id root-transform-id
-                          :model_name "Root Transform"
-                          :model_collection_id nil
-                          :status "create"
-                          :status_changed_at (t/offset-date-time)}])
-            (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
-                                         (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
-                                         (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                         (generate-transform-yaml transform-eid "Child Transform" (mt/id) (mt/id :venues))}}
-                  mock-source (test-helpers/create-mock-source :initial-files initial-files)]
-              (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
-              (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
-              (t2/update! :model/Collection coll-id {:archived true})
-              (events/publish-event! :event/collection-update
-                                     {:object (t2/select-one :model/Collection :id coll-id)
-                                      :user-id (mt/user->id :rasta)})
-              (is (= "delete" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
-              (is (= "delete" (:status (t2/select-one :model/RemoteSyncObject :model_type "Transform" :model_id transform-id))))
-              (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
-                (is (= :success (:status result)))
-                (let [files-after-export (get @(:files-atom mock-source) "main")]
-                  (is (not (some #(str/includes? % coll-eid) (keys files-after-export))))
-                  (is (not (some #(str/includes? % transform-eid) (keys files-after-export))))
-                  ;; Root transform should still be exported
-                  (is (some #(str/includes? % root-transform-eid) (keys files-after-export))
-                      "Root transform should be exported"))))))))))
-=======
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
@@ -445,7 +390,7 @@ is_sample: false
               (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
                                            (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
                                            (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                           (generate-transform-yaml transform-eid "Child Transform")}}
+                                           (generate-transform-yaml transform-eid "Child Transform" (mt/id) (mt/id :venues))}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
@@ -739,4 +684,3 @@ serdes/meta:
                     (is (some? library) "PythonLibrary should still exist")
                     (is (str/includes? (:source library) "# remote version")
                         "PythonLibrary source should be updated with remote version")))))))))))
->>>>>>> origin/master
