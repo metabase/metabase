@@ -19,7 +19,7 @@ import {
   useGetTableQuery,
   useListMentionsQuery,
 } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
   type IconModel,
