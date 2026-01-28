@@ -1378,6 +1378,14 @@
            system
            util}}
 
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{driver
+           lib
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
