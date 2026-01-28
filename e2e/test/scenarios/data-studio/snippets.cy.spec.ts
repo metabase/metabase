@@ -188,7 +188,9 @@ describe("scenarios > data studio > snippets", () => {
 
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
-      cy.findByTestId("snippet-header").findByRole("button").click();
+      cy.findByTestId("snippet-header")
+        .findByRole("button", { name: /Snippet menu options/ })
+        .click();
       H.popover().findByText("Delete").click();
 
       H.modal().within(() => {

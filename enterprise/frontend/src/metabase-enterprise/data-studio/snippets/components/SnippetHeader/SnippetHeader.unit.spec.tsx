@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
@@ -18,9 +20,14 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
 
   renderWithProviders(
-    <SnippetHeader
-      snippet={mockSnippet}
-      actions={<div data-testid="custom-actions" />}
+    <Route
+      path="/"
+      component={() => (
+        <SnippetHeader
+          snippet={mockSnippet}
+          actions={<div data-testid="custom-actions" />}
+        />
+      )}
     />,
     {
       storeInitialState: createMockState({
@@ -29,6 +36,7 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
           "remote-sync-enabled": !!remoteSyncType,
         }),
       }),
+      withRouter: true,
     },
   );
 };

@@ -13,6 +13,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
 import type { AdminPath } from "metabase-types/store";
 
+import { AppSwitcher } from "../AppSwitcher";
 import StoreLink from "../StoreLink";
 
 import { AdminNavItem } from "./AdminNavItem";
@@ -20,7 +21,6 @@ import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
   AdminButtons,
-  AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
   AdminLogoText,
@@ -95,10 +95,7 @@ export const AdminNavbar = ({
         {!isPaidPlan && isAdmin && <StoreLink />}
 
         <AdminButtons>
-          <AdminExitLink
-            to="/"
-            data-testid="exit-admin"
-          >{t`Exit admin`}</AdminExitLink>
+          <AppSwitcher />
         </AdminButtons>
       </MobileHide>
     </AdminNavbarRoot>
@@ -121,13 +118,16 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         onClick={() => setMobileNavOpen((prev) => !prev)}
         variant="subtle"
         p="0.25rem"
-      >
-        <Icon
-          name="burger"
-          size={32}
-          className={AdminNavCS.MobileHamburgerIcon}
-        />
-      </Button>
+        leftSection={
+          <Icon
+            name="burger"
+            size={32}
+            className={AdminNavCS.MobileHamburgerIcon}
+          />
+        }
+      />
+      <AppSwitcher />
+
       {mobileNavOpen && (
         <AdminMobileNavBarItems aria-label={t`Navigation links`}>
           {adminPaths.map(({ name, key, path }) => (
@@ -140,7 +140,6 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               {name}
             </AdminNavLink>
           ))}
-          <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}
     </AdminMobileNavbar>
