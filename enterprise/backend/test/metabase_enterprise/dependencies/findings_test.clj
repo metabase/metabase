@@ -47,11 +47,11 @@
         (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
 
 (deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
+  (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products (lib.metadata/table mp (mt/id :products))
         orders (lib.metadata/table mp (mt/id :orders))]
     (mt/with-premium-features #{:dependencies}
-      (backfill-all-entity-analyses!)
       (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp products)}
                      :model/Card _ {:dataset_query (lib/query mp orders)}]
         (is (= 2 (deps.findings/analyze-batch! :card 2)))
