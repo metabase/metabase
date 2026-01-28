@@ -71,9 +71,7 @@
                 entity-id-clause (if (seq entity-ids)
                                    [:not-in entity-ids]
                                    :entity_id)
-                ;; :scope-key determines collection scoping - nil means global
                 scope-key (get-in model-spec [:removal :scope-key])
-                ;; Extra conditions to protect certain rows from removal (e.g. built-in TransformTags)
                 extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
@@ -158,27 +156,21 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            ;; Always include all paths - no longer conditional on settings
             (let [path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
                                 #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
-                  ;; Create ingestable first to check for transforms
                   base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                  ;; Check for transforms before starting import (to auto-enable setting on success)
                   has-transforms? (snapshot-has-transforms? base-ingestable)
-                  ;; Wrap with progress tracking for actual import
                   ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
-              ;; Auto-enable transforms setting BEFORE cleanup when remote has transforms
-              ;; This ensures all-syncable-collection-ids includes transforms namespace
-              (when (and has-transforms?
-                         (not (settings/remote-sync-transforms)))
-                (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
-                (settings/remote-sync-transforms! true))
+
               (let [load-result (serdes/with-cache
                                   (serialization/load-metabase! ingestable-snapshot))
                     seen-paths (:seen load-result)
-                    ;; Use spec system to extract entity identities from serdes paths
                     imported-data (spec/extract-imported-entities seen-paths)]
                 (remote-sync.task/update-progress! task-id 0.8)
+                (when (and has-transforms?
+                           (not (settings/remote-sync-transforms)))
+                  (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
+                  (settings/remote-sync-transforms! true))
                 (t2/with-transaction [_conn]
                   (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
                   (sync-objects! sync-timestamp imported-data)
