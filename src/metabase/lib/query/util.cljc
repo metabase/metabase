@@ -1,11 +1,15 @@
 (ns metabase.lib.query.util
   (:require
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -81,6 +85,48 @@
             query
             breakout-specs)))
 
+(mu/defn- expression-spec->expression-parts
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   available-columns :- [:sequential ::lib.schema.metadata/column]
+   expression-spec   :- ::lib.schema.query/test-expression-spec]
+  (case (:type expression-spec)
+    :literal  (:value expression-spec)
+    :column   (find-column query stage-number available-columns expression-spec)
+    :operator {:lib/type :mbql/expression-parts
+               :operator (:operator expression-spec)
+               :options {}
+               :args (mapv #(expression-spec->expression-parts query stage-number available-columns %)
+                           (:args expression-spec))}))
+
+(mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   available-columns :- [:sequential ::lib.schema.metadata/column]
+   expression-spec   :- ::lib.schema.query/test-expression-spec]
+  (lib.fe-util/expression-clause
+   (expression-spec->expression-parts query
+                                      stage-number
+                                      available-columns
+                                      expression-spec)))
+
+(mu/defn- append-expression :- ::lib.schema/query
+  [query                :- ::lib.schema/query
+   stage-number         :- :int
+   available-columns    :- [:sequential ::lib.schema.metadata/column]
+   {:keys [name value]} :- ::lib.schema.query/test-named-expression-spec]
+  (let [expression-clause (expression-spec->expression-clause query stage-number available-columns value)]
+    (lib.expression/expression query stage-number name expression-clause)))
+
+(mu/defn- append-expressions :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   available-columns :- [:sequential ::lib.schema.metadata/column]
+   expression-specs  :- [:sequential ::lib.schema.query/test-named-expression-spec]]
+  (reduce #(append-expression %1 stage-number available-columns %2)
+          query
+          expression-specs))
+
 (mu/defn- append-order-by :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
@@ -102,8 +148,9 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [expressions breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
+    expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
     breakouts (append-breakouts stage-number breakouts)
     order-bys (append-order-bys stage-number order-bys)
     limit (lib.limit/limit stage-number limit)))

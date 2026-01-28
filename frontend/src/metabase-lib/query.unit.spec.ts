@@ -65,6 +65,41 @@ describe("createTestQuery", () => {
     });
   });
 
+  describe("expressions", () => {
+    it("should create a query with expressions", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            expressions: [
+              {
+                name: "Foo",
+                value: {
+                  type: "operator",
+                  operator: "+",
+                  args: [
+                    { type: "column", name: "ID" },
+                    { type: "literal", value: 42 },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      const expressions = Lib.expressions(query, 0);
+      expect(expressions).toHaveLength(1);
+
+      expect(Lib.displayInfo(query, 0, expressions[0])).toMatchObject({
+        displayName: "Foo",
+      });
+    });
+  });
+
   describe("breakouts", () => {
     it("should create a query with breakouts", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {

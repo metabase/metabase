@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -24,7 +25,7 @@
 
 (mr/def ::test-column-spec
   [:map
-   [:name  string?]
+   [:name string?]
    [:source-name {:optional true} [:maybe string?]]])
 
 (mr/def ::test-temporal-bucket-spec
@@ -42,12 +43,35 @@
    [:map
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
+(mr/def ::test-literal-expression-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
+   [:value [:ref ::literal/literal]]])
+
+(mr/def ::test-operator-expression-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
+   [:operator string?] ;; TODO(@romeovs): be more specific here and limit to all valid operators?
+   [:args [:sequential [:ref ::test-expression-spec]]]])
+
+(mr/def ::test-expression-spec
+  [:multi {:dispatch (comp keyword :type)}
+   [:column [:ref ::test-column-spec]]
+   [:literal [:ref ::test-literal-expression-spec]]
+   [:operator [:ref ::test-operator-expression-spec]]])
+
+(mr/def ::test-named-expression-spec
+  [:map
+   [:name string?]
+   [:value [:ref ::test-expression-spec]]])
+
 (mr/def ::test-stage-spec
   [:map
-   [:source    {:optional true} [:maybe ::test-source-spec]]
-   [:breakouts {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
-   [:order-bys {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
-   [:limit {:optional true} [:maybe number?]]])
+   [:source      {:optional true} [:maybe ::test-source-spec]]
+   [:expressions {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
+   [:breakouts   {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
+   [:order-bys   {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
+   [:limit       {:optional true} [:maybe number?]]])
 
 (mr/def ::test-query-spec
   [:map

@@ -452,8 +452,27 @@ export type CardSourceSpec = {
 export type SourceSpec = TableSourceSpec | CardSourceSpec;
 
 export type ColumnSpec = {
+  type: "column";
   name: string;
   sourceName?: string;
+};
+
+export type ExpressionSpec = LiteralSpec | OperatorSpec | ColumnSpec;
+
+export type NamedExpressionSpec = {
+  name: string;
+  value: ExpressionSpec;
+};
+
+export type LiteralSpec = {
+  type: "literal";
+  value: number | bigint | string | boolean;
+};
+
+export type OperatorSpec = {
+  type: "operator";
+  operator: string;
+  args: ExpressionSpec[];
 };
 
 export type TemporalBucketSpec = {
@@ -467,6 +486,7 @@ export type OrderBySpec = ColumnSpec & {
 };
 
 export type StageSpec = {
+  expressions?: NamedExpressionSpec[];
   breakouts?: BreakoutSpec[];
   orderBys?: OrderBySpec[];
   limit?: number;
