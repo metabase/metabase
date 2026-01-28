@@ -141,7 +141,6 @@ export const _SdkQuestion = ({
   className,
   style,
   title,
-  withResetButton = true,
   withChartTypeSelector = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
@@ -153,8 +152,10 @@ export const _SdkQuestion = ({
       className: className,
       style: style,
       title: title,
-      withResetButton: withResetButton,
       withChartTypeSelector: withChartTypeSelector,
+      isSaveEnabled: isSaveEnabled,
+      targetCollection: targetCollection,
+      entityTypes: entityTypes,
     }}
   >
     <SdkQuestionProvider
@@ -186,7 +187,6 @@ export const _SdkQuestion = ({
           className={className}
           style={style}
           title={title}
-          withResetButton={withResetButton}
           withChartTypeSelector={withChartTypeSelector}
         />
       )}

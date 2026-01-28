@@ -32,7 +32,6 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
     width: Yup.mixed().optional(),
     withChartTypeSelector: Yup.mixed().optional(),
     withDownloads: Yup.mixed().optional(),
-    withResetButton: Yup.mixed().optional(),
   })
     .optional()
     .noUnknown(),

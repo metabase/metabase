@@ -14,7 +14,6 @@ interface SdkAdHocQuestionProps {
 
 export const SdkAdHocQuestion = ({
   questionPath,
-  withResetButton = true,
   title,
   plugins,
   height,
@@ -36,7 +35,6 @@ export const SdkAdHocQuestion = ({
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
-    | "withResetButton"
     | "title"
     | "plugins"
     | "height"
@@ -90,7 +88,6 @@ export const SdkAdHocQuestion = ({
       className={className}
       style={style}
       title={title}
-      withResetButton={withResetButton}
       withChartTypeSelector={withChartTypeSelector}
       onVisualizationChange={onVisualizationChange}
     >

@@ -47,10 +47,6 @@ export const SdkInternalNavigationProvider = ({
 
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
 
-  // useEffect(() => {
-  //   console.log("stack", stack);
-  // }, [stack]);
-
   const push = useCallback((entry: SdkInternalNavigationEntry) => {
     setStack((prev) => [...prev, entry]);
   }, []);
