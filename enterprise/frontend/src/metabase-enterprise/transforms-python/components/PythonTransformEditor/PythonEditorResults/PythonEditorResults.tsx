@@ -68,7 +68,7 @@ function ExecutionResultTabs({
           }}
         >
           <Tabs.List>
-            <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
+            <Tabs.Tab value="results">{t`Results preview`}</Tabs.Tab>
             <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
           </Tabs.List>
         </Tabs>
