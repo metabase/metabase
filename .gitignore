@@ -1,5 +1,6 @@
 *.class
 *.*.rej
+*.d.css
 *.iml
 *.jar
 *.log
@@ -166,4 +167,3 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
-

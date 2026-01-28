@@ -18,6 +18,9 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  CssVarsDeclarationPlugin,
+} = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -424,6 +427,10 @@ if (isDevMode) {
     new WebpackNotifierPlugin({
       excludeWarnings: true,
       skipFirstNotification: true,
+    }),
+    new CssVarsDeclarationPlugin({
+      frontendSrcPath: __dirname + "/frontend/src",
+      rootPath: __dirname,
     }),
   );
 }
