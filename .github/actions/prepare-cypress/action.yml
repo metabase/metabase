@@ -15,11 +15,8 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v111
-      uses: browser-actions/setup-chrome@v2
-      with:
-        # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 1097615
+    - name: Install latest Chromium
+      uses: browser-actions/setup-chromium@v1
       id: setup-chrome
 
     - name: Get cache keys
