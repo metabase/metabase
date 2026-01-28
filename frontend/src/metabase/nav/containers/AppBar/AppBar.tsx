@@ -1,14 +1,14 @@
-import { withRouter } from "react-router";
-import _ from "underscore";
+import type { Location } from "history";
 
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
 } from "metabase/documents/selectors";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import { useCompatLocation, useCompatParams } from "metabase/routing/compat";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
@@ -25,33 +25,80 @@ import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
-import AppBar from "../../components/AppBar";
+import AppBarComponent from "../../components/AppBar";
 
-const mapStateToProps = (state: State, props: RouterProps) => ({
-  currentUser: getUser(state),
-  collectionId: Collections.selectors.getInitialCollectionId(state, props),
-  isNavBarOpen: getIsNavbarOpen(state),
-  isNavBarEnabled: getIsNavBarEnabled(state, props),
-  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
-  isDocumentSidebarOpen: getSidebarOpen(state),
-  isCommentSidebarOpen: getCommentSidebarOpen(state),
-  isLogoVisible: getIsLogoVisible(state),
-  isSearchVisible: getIsSearchVisible(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
-  isNewButtonVisible: getIsNewButtonVisible(state),
-  isProfileLinkVisible: getIsProfileLinkVisible(state),
-  isCollectionPathVisible: getIsCollectionPathVisible(state, props),
-  isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
-  detailView: getDetailViewState(state),
-});
+/**
+ * Wrapper component that provides routing context via hooks.
+ * This replaces the withRouter HOC pattern.
+ */
+function AppBarContainer() {
+  const compatLocation = useCompatLocation();
+  const params = useCompatParams();
+
+  // Cast to v3 Location type for selector compatibility
+  const location = compatLocation as unknown as Location;
+
+  // Create props object that matches RouterProps for selectors
+  const routerProps: RouterProps = { location };
+
+  // Use selectors with router props
+  const currentUser = useSelector(getUser);
+  const collectionId = useSelector((state: State) =>
+    Collections.selectors.getInitialCollectionId(state, routerProps),
+  );
+  const isNavBarOpen = useSelector(getIsNavbarOpen);
+  const isNavBarEnabled = useSelector((state: State) =>
+    getIsNavBarEnabled(state, routerProps),
+  );
+  const isMetabotVisible = useSelector((state: State) =>
+    PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+  );
+  const isDocumentSidebarOpen = useSelector(getSidebarOpen);
+  const isCommentSidebarOpen = useSelector(getCommentSidebarOpen);
+  const isLogoVisible = useSelector(getIsLogoVisible);
+  const isSearchVisible = useSelector(getIsSearchVisible);
+  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isNewButtonVisible = useSelector(getIsNewButtonVisible);
+  const isProfileLinkVisible = useSelector(getIsProfileLinkVisible);
+  const isCollectionPathVisible = useSelector((state: State) =>
+    getIsCollectionPathVisible(state, routerProps),
+  );
+  const isQuestionLineageVisible = useSelector((state: State) =>
+    getIsQuestionLineageVisible(state, routerProps),
+  );
+  const detailView = useSelector(getDetailViewState);
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return (
+    <ConnectedAppBar
+      currentUser={currentUser}
+      collectionId={collectionId}
+      isNavBarOpen={isNavBarOpen}
+      isNavBarEnabled={isNavBarEnabled}
+      isMetabotVisible={isMetabotVisible}
+      isDocumentSidebarOpen={isDocumentSidebarOpen}
+      isCommentSidebarOpen={isCommentSidebarOpen}
+      isLogoVisible={isLogoVisible}
+      isSearchVisible={isSearchVisible}
+      isEmbeddingIframe={isEmbeddingIframe}
+      isNewButtonVisible={isNewButtonVisible}
+      isProfileLinkVisible={isProfileLinkVisible}
+      isCollectionPathVisible={isCollectionPathVisible}
+      isQuestionLineageVisible={isQuestionLineageVisible}
+      detailView={detailView}
+    />
+  );
+}
 
 const mapDispatchToProps = {
   onToggleNavbar: toggleNavbar,
   onCloseNavbar: closeNavbar,
 };
 
+const ConnectedAppBar = connect(null, mapDispatchToProps)(AppBarComponent);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(AppBar);
+export default AppBarContainer;
