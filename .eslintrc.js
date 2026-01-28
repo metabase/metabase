@@ -143,7 +143,7 @@ module.exports = {
     jest: true,
     "jest/globals": true,
   },
-  parser: "babel-eslint",
+  parser: "@babel/eslint-parser",
   plugins,
   extends: [
     "eslint:recommended",
