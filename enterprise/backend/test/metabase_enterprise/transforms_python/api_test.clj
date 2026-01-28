@@ -37,7 +37,7 @@
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
     (mt/with-premium-features #{:transforms-python :transforms}
-      (testing "requires superuser permissions"
+      (testing "requires transform permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ee/transforms-python/library/common"
                                      {:source "def test(): pass"}))))
