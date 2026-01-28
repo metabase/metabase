@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { Box, Flex, Loader, Text } from "metabase/ui";
@@ -17,6 +17,8 @@ interface CollectionSyncListProps {
   isLoading: boolean;
   error: string | null;
   emptyMessage: string;
+  /** Content rendered at the top of the list (e.g., Library row, Transforms row) */
+  headerContent?: ReactNode;
 }
 
 export const CollectionSyncList = ({
@@ -24,6 +26,7 @@ export const CollectionSyncList = ({
   isLoading,
   error,
   emptyMessage,
+  headerContent,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -60,7 +63,9 @@ export const CollectionSyncList = ({
     return <Text c="error">{error}</Text>;
   }
 
-  if (collections.length === 0) {
+  const hasAnyContent = collections.length > 0 || headerContent;
+
+  if (!hasAnyContent) {
     return <Text c="text-secondary">{emptyMessage}</Text>;
   }
 
@@ -73,6 +78,7 @@ export const CollectionSyncList = ({
         overflow: "hidden",
       }}
     >
+      {headerContent}
       {collections.map((collection, index) => (
         <CollectionSyncRow
           key={collection.id}
