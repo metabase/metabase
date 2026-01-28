@@ -81,7 +81,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route
       path={path}
       component={() => <DependencyListPage mode={mode} location={location} />}
@@ -94,6 +94,8 @@ function setup({
       },
     },
   );
+
+  return { history };
 }
 
 function getFilterButton() {
@@ -183,6 +185,22 @@ describe("DependencyListPage", () => {
       expect(getTypeCheckbox(popover, "Table")).not.toBeChecked();
       expect(getTypeCheckbox(popover, "Question")).not.toBeChecked();
       expect(getTypeCheckbox(popover, "Model")).toBeChecked();
+    });
+
+    it("should update URL with last used parameters when there is no query string", async () => {
+      const { history } = setup({
+        mode: "broken",
+        nodes: CARD_NODES,
+        location: { query: {} },
+        lastUsedParams: { group_types: ["table", "question"] },
+      });
+
+      await waitForListToLoad();
+
+      const currentLocation = history?.getCurrentLocation();
+      expect(currentLocation?.query).toEqual({
+        group_types: ["table", "question"],
+      });
     });
   });
 });
