@@ -5,7 +5,6 @@ import { Route } from "react-router";
 import {
   setupListBrokenGraphNodesEndpoint,
   setupListUnreferencedGraphNodesEndpoint,
-  setupNullGetUserKeyValueEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -30,6 +29,7 @@ import type { DependencyListMode } from "../../components/DependencyList/types";
 
 import { DependencyListPage } from "./DependencyListPage";
 import type { DependencyListQueryParams } from "./types";
+import { getPageUrl } from "./utils";
 
 const CARD_NODES = [
   createMockCardDependencyNode({
@@ -53,8 +53,10 @@ function setup({
   mode = "broken",
   location = { query: {} },
   nodes = [],
-  lastUsedParams,
+  lastUsedParams = {},
 }: SetupOpts) {
+  const path = getPageUrl(mode, {});
+
   if (mode === "broken") {
     setupListBrokenGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
@@ -71,25 +73,22 @@ function setup({
     );
   }
 
-  if (lastUsedParams != null) {
-    setupUserKeyValueEndpoints({
-      namespace: "dependency_list",
-      key: mode,
-      value: lastUsedParams,
-    });
-  } else {
-    setupNullGetUserKeyValueEndpoints();
-  }
+  setupUserKeyValueEndpoints({
+    namespace: "dependency_list",
+    key: mode,
+    value: lastUsedParams,
+  });
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   renderWithProviders(
     <Route
-      path="/"
+      path={path}
       component={() => <DependencyListPage mode={mode} location={location} />}
     />,
     {
       withRouter: true,
+      initialRoute: path,
       storeInitialState: {
         currentUser: createMockUser(),
       },

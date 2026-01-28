@@ -1,4 +1,4 @@
-import type * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import {
   DEPENDENCY_GROUP_TYPES,
   DEPENDENCY_SORT_COLUMNS,
@@ -6,6 +6,7 @@ import {
   type DependencyListUserParams,
 } from "metabase-types/api";
 
+import type { DependencyListMode } from "../../components/DependencyList/types";
 import {
   parseBoolean,
   parseEnum,
@@ -15,6 +16,15 @@ import {
 } from "../../utils";
 
 import type { DependencyListQueryParams } from "./types";
+
+export function getPageUrl(
+  mode: DependencyListMode,
+  params: Urls.DependencyListParams,
+): string {
+  return mode === "broken"
+    ? Urls.brokenDependencies(params)
+    : Urls.unreferencedDependencies(params);
+}
 
 export function parseUrlParams(
   params: DependencyListQueryParams,
@@ -43,7 +53,7 @@ export function parseUserParams(
   return typeof params === "object" && params != null ? params : {};
 }
 
-export function extractUserParams(
+export function getUserParams(
   params: Urls.DependencyListParams,
 ): DependencyListUserParams {
   return {

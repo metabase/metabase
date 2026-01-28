@@ -1,9 +1,10 @@
 import type { Location } from "history";
+import { useEffect, useMemo } from "react";
 import { replace } from "react-router-redux";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/lib/urls";
 
 import { DependencyList } from "../../components/DependencyList";
 import type {
@@ -13,7 +14,8 @@ import type {
 
 import type { DependencyListQueryParams } from "./types";
 import {
-  extractUserParams,
+  getPageUrl,
+  getUserParams,
   isEmptyParams,
   parseUrlParams,
   parseUserParams,
@@ -34,7 +36,7 @@ export function DependencyListPage({
   const dispatch = useDispatch();
 
   const {
-    value: lastUsedParams,
+    value: rawLastUsedParams,
     isLoading: isLoadingParams,
     setValue: setLastUsedParams,
   } = useUserKeyValue({
@@ -42,24 +44,27 @@ export function DependencyListPage({
     key: mode,
   });
 
-  const params = isEmptyParams(location.query)
-    ? parseUserParams(lastUsedParams)
-    : parseUrlParams(location.query);
+  const params = useMemo(() => {
+    return isEmptyParams(location.query)
+      ? parseUserParams(rawLastUsedParams)
+      : parseUrlParams(location.query);
+  }, [location.query, rawLastUsedParams]);
 
   const handleParamsChange = (
     params: Urls.DependencyListParams,
     { withSetLastUsedParams = false }: DependencyListParamsOptions = {},
   ) => {
-    const url =
-      mode === "broken"
-        ? Urls.brokenDependencies(params)
-        : Urls.unreferencedDependencies(params);
-    dispatch(replace(url));
-
     if (withSetLastUsedParams) {
-      setLastUsedParams(extractUserParams(params));
+      setLastUsedParams(getUserParams(params));
     }
+    dispatch(replace(getPageUrl(mode, params)));
   };
+
+  useEffect(() => {
+    if (!isLoadingParams) {
+      dispatch(replace(getPageUrl(mode, params)));
+    }
+  }, [mode, params, isLoadingParams, dispatch]);
 
   return (
     <DependencyList
