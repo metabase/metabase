@@ -40,6 +40,21 @@ describe("InteractiveEmbeddingSettingsCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show a link to the doc", async () => {
+    await setup({ enabled: true });
+
+    expect(await screen.findByText("Documentation")).toBeInTheDocument();
+
+    // eslint-disable-next-line testing-library/no-node-access
+    const linkToDoc = (await screen.findByText("Documentation")).closest("a");
+
+    expect(linkToDoc).not.toBeNull();
+
+    expect(linkToDoc?.href).toBe(
+      "https://www.metabase.com/docs/latest/embedding/full-app-embedding.html",
+    );
+  });
+
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
     const toggle = await screen.findByLabelText(
