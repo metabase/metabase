@@ -265,7 +265,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
-  it.only("should support nested navigations dashboard -> dashboard -> question -> drill -> back through all", () => {
+  it("should support nested navigations dashboard -> dashboard -> question -> drill -> back through all", () => {
     cy.get<number>("@dashboardAId").then((dashboardAId) => {
       mountSdkContent(
         <InteractiveDashboard
