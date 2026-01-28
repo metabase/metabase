@@ -65,13 +65,15 @@ export const translateContentString: TranslateContentStringFunction = (
   return msgstr;
 };
 
+export type AggregationPattern = (value: string) => string;
+
 /**
  * Patterns for aggregation display names.
  * These must match the patterns used in the backend (metabase.lib.aggregation).
  * Each pattern is a function that takes a column name and returns the full display name.
  * More specific patterns must come before less specific ones.
  */
-const AGGREGATION_PATTERNS = [
+const AGGREGATION_PATTERNS: AggregationPattern[] = [
   (value: string) => t`Average of ${value}`,
   (value: string) => t`Count of ${value}`,
   (value: string) => t`Cumulative count of ${value}`,
@@ -88,8 +90,6 @@ const AGGREGATION_PATTERNS = [
 
 // Unique marker to find where the value placeholder is in a pattern
 const VALUE_MARKER = "\u0000";
-
-export type AggregationPattern = (value: string) => string;
 
 /**
  * Translates an aggregation column display name by recursively parsing the
