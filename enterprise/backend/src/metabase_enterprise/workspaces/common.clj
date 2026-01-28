@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -11,15 +10,6 @@
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
-
-;; should be encapsulated in our dag namespace, or dependency module
-(defn check-no-card-dependencies!
-  "Check that transforms don't depend on cards. Throws 400 if they do."
-  [transform-ids]
-  (when-let [card-ids (seq (ws.dag/unsupported-dependency? transform-ids))]
-    (api/check-400 false
-                   (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
-                           (pr-str (vec card-ids))))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."

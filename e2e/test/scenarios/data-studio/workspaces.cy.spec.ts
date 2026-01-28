@@ -126,6 +126,10 @@ describe("scenarios > data studio > workspaces", () => {
           H.popover().findByText("Delete").should("not.exist");
           H.popover().findByText("Archive").click();
           verifyAndCloseToast("Workspace archived successfully");
+          cy.log("Updates setup logs (GDGT-1583)");
+          Workspaces.getWorkspaceContent()
+            .findByText("Workspace is archived")
+            .should("be.visible");
 
           cy.log("shows archived workspaces and their status");
           Workspaces.getWorkspaceItem(workspaceNameA).should(
@@ -234,7 +238,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("archives and unarchives populated workspace", () => {
+    it("archives and unarchives populated workspace (GDGT-1583)", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -251,10 +255,14 @@ describe("scenarios > data studio > workspaces", () => {
         Workspaces.getSaveTransformButton().click();
 
         cy.log("Archive the workspace");
+        Workspaces.openSetupTab();
         Workspaces.getWorkspaceItemActions(workspaceName).click();
         H.popover().findByText("Archive").click();
         verifyAndCloseToast("Workspace archived successfully");
-
+        cy.log("Updates setup logs (GDGT-1583)");
+        Workspaces.getWorkspaceContent()
+          .findByText("Workspace is archived")
+          .should("be.visible");
         Workspaces.getWorkspaceItem(workspaceName).should(
           "contain.text",
           "Archived",
@@ -277,10 +285,14 @@ describe("scenarios > data studio > workspaces", () => {
         H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
 
         cy.log("Unarchive the workspace");
+        Workspaces.openSetupTab();
         Workspaces.getWorkspaceItemActions(workspaceName).click();
         H.popover().findByText("Restore").click();
         verifyAndCloseToast("Workspace restored successfully");
-
+        cy.log("Updates setup logs (GDGT-1583)");
+        Workspaces.getWorkspaceContent()
+          .findByText("Workspace ready!")
+          .should("be.visible");
         Workspaces.getWorkspaceItemStatus(workspaceName).should(
           "contain.text",
           "Ready",

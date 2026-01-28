@@ -56,10 +56,6 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isEditMode && isNative) {
-    return null;
-  }
-
   if (!isEditMode && !isPythonTransform && !isNative && !isRemoteSyncReadOnly) {
     return <EditDefinitionButton transformId={transform.id} />;
   }

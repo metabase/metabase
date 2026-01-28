@@ -1,11 +1,6 @@
 import { Route } from "react-router";
 
-import {
-  setupWorkspaceCheckoutEndpoint,
-  setupWorkspacesEndpoint,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as transformsUtils from "metabase-enterprise/transforms/utils";
 import type { DraftTransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks";
@@ -15,10 +10,6 @@ import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn(),
 }));
-
-const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
-  typeof hasPremiumFeature
->;
 
 const mockQuerySource: DraftTransformSource = {
   type: "query",
@@ -106,10 +97,6 @@ function setup({
 describe("TransformPaneHeaderActions", () => {
   beforeEach(() => {
     jest.spyOn(console, "error").mockImplementation(() => {});
-
-    mockHasPremiumFeature.mockImplementation((feature) => {
-      return feature === "workspaces";
-    });
   });
 
   afterEach(() => {
@@ -179,7 +166,7 @@ describe("TransformPaneHeaderActions", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render nothing for native transforms", () => {
+    it("should render nothing for native transforms when workspaces not available", () => {
       setup({ isEditMode: false, isNative: true });
 
       expect(
@@ -206,35 +193,11 @@ describe("TransformPaneHeaderActions", () => {
 
     describe("workspaces feature availability", () => {
       it("should render EditDefinitionButton when workspaces feature is not available", () => {
-        mockHasPremiumFeature.mockReturnValue(false);
         setup({ isEditMode: false, isNative: false });
 
         expect(
           screen.getByRole("link", { name: /edit definition/i }),
         ).toBeInTheDocument();
-      });
-
-      it("should render EditTransformMenu when workspaces feature is available", async () => {
-        mockHasPremiumFeature.mockReturnValue(true);
-        setupWorkspacesEndpoint([]);
-
-        // Explicitly set checkout_disabled to null to ensure button is enabled
-        setupWorkspaceCheckoutEndpoint({ checkout_disabled: null });
-        setup({ isEditMode: false, isNative: false });
-
-        const editButton = await screen.findByRole("button", {
-          name: /edit/i,
-        });
-
-        // Wait for loading to finish (button should no longer have data-loading="true")
-        await waitFor(() => {
-          expect(editButton).not.toHaveAttribute("data-loading", "true");
-        });
-
-        expect(editButton).toBeEnabled();
-        expect(
-          screen.queryByRole("link", { name: /edit definition/i }),
-        ).not.toBeInTheDocument();
       });
     });
   });

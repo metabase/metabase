@@ -231,6 +231,8 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
+              // todo: @uladzimirdev probably not the proper fix
+              uiOptions={{ resizable: isEditMode }}
               isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
@@ -278,6 +280,8 @@ export type TransformQueryPageEditorProps = {
   uiOptions?: TransformEditorProps["uiOptions"];
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
+  /** Custom run handler for Python transforms (used in workspace for dry-run) */
+  onRun?: () => void;
 };
 
 export function TransformQueryPageEditor({
@@ -289,11 +293,12 @@ export function TransformQueryPageEditor({
   databases,
   setSourceAndRejectProposed,
   setUiState,
-  isEditMode,
+  isEditMode = false,
   acceptProposed,
   rejectProposed,
   onRunQueryStart,
   onRunTransform,
+  onRun,
 }: TransformQueryPageEditorProps) {
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
@@ -302,11 +307,12 @@ export function TransformQueryPageEditor({
       proposedSource={
         proposedSource?.type === "python" ? proposedSource : undefined
       }
-      isEditMode={isEditMode || false}
+      isEditMode={isEditMode}
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
       onRunTransform={onRunTransform}
+      onRun={onRun}
     />
   ) : (
     <TransformEditor

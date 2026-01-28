@@ -37,6 +37,10 @@ export const Workspaces = {
     return cy.findByTestId("workspace-sidebar");
   },
 
+  openSetupTab() {
+    this.getWorkspaceContent().findByRole("tab", { name: "Setup" }).click();
+  },
+
   openCodeTab() {
     this.getWorkspaceSidebar().findByRole("tab", { name: "Code" }).click();
   },

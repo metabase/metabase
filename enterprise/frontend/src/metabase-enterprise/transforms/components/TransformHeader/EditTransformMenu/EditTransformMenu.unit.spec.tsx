@@ -7,7 +7,6 @@ import {
   setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Transform,
   Workspace,
@@ -17,14 +16,6 @@ import type {
 import { createMockTransform } from "metabase-types/api/mocks";
 
 import { EditTransformMenu } from "./EditTransformMenu";
-
-jest.mock("metabase-enterprise/settings", () => ({
-  hasPremiumFeature: jest.fn(),
-}));
-
-const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
-  typeof hasPremiumFeature
->;
 
 const DATABASE_ID = 1;
 
@@ -85,10 +76,6 @@ function setup({
   );
 }
 
-async function openMenu() {
-  await userEvent.click(await screen.findByRole("button", { name: /Edit/i }));
-}
-
 function findMenuItemByText(text: string) {
   return screen.getAllByRole("menuitem").find((item) => {
     return item.textContent?.includes(text);
@@ -96,44 +83,6 @@ function findMenuItemByText(text: string) {
 }
 
 describe("EditTransformMenu", () => {
-  beforeEach(() => {
-    mockHasPremiumFeature.mockImplementation(
-      (feature) => feature === "workspaces",
-    );
-  });
-
-  describe("workspaces feature availability", () => {
-    it("should not render workspace options when workspaces feature is not available", async () => {
-      mockHasPremiumFeature.mockReturnValue(false);
-      setup();
-
-      await openMenu();
-
-      expect(screen.getByText("Edit definition")).toBeInTheDocument();
-      expect(screen.queryByText("Add to workspace")).not.toBeInTheDocument();
-      expect(screen.queryByText("New workspace")).not.toBeInTheDocument();
-    });
-
-    it("should render workspace options when workspaces feature is available", async () => {
-      mockHasPremiumFeature.mockImplementation(
-        (feature) => feature === "workspaces",
-      );
-      setup();
-
-      // Wait for button to finish loading before clicking
-      const editButton = await screen.findByRole("button", { name: /Edit/i });
-      await waitFor(() => {
-        expect(editButton).not.toHaveAttribute("data-loading", "true");
-      });
-
-      await userEvent.click(editButton);
-
-      expect(screen.getByText("Edit definition")).toBeInTheDocument();
-      expect(screen.getByText("Add to workspace")).toBeInTheDocument();
-      expect(screen.getByText("New workspace")).toBeInTheDocument();
-    });
-  });
-
   it("should render menu items and sort workspaces with existing checkouts first", async () => {
     setup({
       workspaces: [

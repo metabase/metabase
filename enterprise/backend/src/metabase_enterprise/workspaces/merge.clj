@@ -76,7 +76,7 @@
                    {:error e}))))]
 
     (when-not error
-      (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
+      (t2/delete! :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref_id)
       (create-merge-transform-history!
        (:op result)
        {:workspace_merge_id workspace-merge-id

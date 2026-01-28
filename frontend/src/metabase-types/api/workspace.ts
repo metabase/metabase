@@ -542,6 +542,8 @@ export type WorkspaceTransformDryRunResponse = {
   status: "succeeded" | "failed";
   message?: string | null;
   data?: WorkspaceTransformDryRunData;
+  /** Logs from Python transform execution (only present for Python transforms) */
+  logs?: string;
 };
 
 export type WorkspacePermissionsStatus = {

@@ -517,14 +517,14 @@
 
 (defn- fetch-transforms-for-graph
   "Batch fetch all transforms needed for the graph. Returns {:external {id -> tx}, :workspace {ref_id -> tx}}."
-  [entities]
+  [ws-id entities]
   (let [external-ids (into [] (keep #(when (= :external-transform (:node-type %)) (:id %))) entities)
-        workspace-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
+        ref-ids (into [] (keep #(when (= :workspace-transform (:node-type %)) (:id %))) entities)
         external-txs (when (seq external-ids)
                        (m/index-by :id (t2/select [:model/Transform :id :name :target] :id [:in external-ids])))
-        workspace-txs (when (seq workspace-ids)
-                        ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target] :ref_id [:in workspace-ids])))]
+        workspace-txs (when (seq ref-ids)
+                        (m/index-by :ref_id (t2/select [:model/WorkspaceTransform :ref_id :name :target]
+                                                       :workspace_id ws-id :ref_id [:in ref-ids])))]
     {:external external-txs
      :workspace workspace-txs}))
 
@@ -545,7 +545,7 @@
         driver         (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
         {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph! workspace)
         ;; Batch fetch all transforms and build table-id lookup map
-        transforms-map (fetch-transforms-for-graph entities)
+        transforms-map (fetch-transforms-for-graph ws-id entities)
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
         table-id-map   (table-ids-by-target db-id driver all-transforms)
@@ -715,6 +715,14 @@
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
+          ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
+          _         (let [source-type (transforms/transform-source-type (:source body))
+                          reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
+                      (api/check-400 (nil? reason)
+                                     (case reason
+                                       "mbql"           (deferred-tru "MBQL transforms cannot be added to workspaces.")
+                                       "card-reference" (deferred-tru "Transforms that reference other questions cannot be added to workspaces.")
+                                       (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
           ;; For uninitialized workspaces, preserve the target database from the request body
           ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
           ;; For initialized workspaces, ensure the target database matches the workspace database
@@ -775,7 +783,7 @@
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
     (let [source-or-target-changed? (or (:source body) (:target body))]
-      (t2/update! :model/WorkspaceTransform tx-id body)
+      (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
         (ws.impl/increment-analysis-version! ws-id tx-id)
@@ -929,7 +937,7 @@
       :string]
   "This will:
    1. Update original transforms with workspace versions
-   2. Delete the workspace and clean up isolated resources
+   2. Archive the workspace and clean up isolated resources
    Returns a report of merged entities, or error in errors key.
 
    Request body may include:
@@ -953,7 +961,7 @@
        :errors    errors
        :workspace {:id ws-id, :name (:name ws)}}
       (when-not (seq errors)
-        (ws.model/delete! ws)))))
+        (ws.model/archive! ws)))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/merge"
   :- [:map
