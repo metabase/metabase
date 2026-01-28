@@ -197,7 +197,7 @@
   (:t (first (t2/query {:select [[:%now :t]]}))))
 
 (defn run-transform!
-  "Execute the given workspace transform or enclosed external transform. Graph is taken to ensure analysis has run."
+  "Execute the given workspace transform or enclosed external transform."
   ([workspace graph transform]
    (run-transform! workspace graph transform (build-remapping workspace graph)))
   ([workspace _graph transform remapping]
