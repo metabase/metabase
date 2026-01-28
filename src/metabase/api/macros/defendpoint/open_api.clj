@@ -11,7 +11,6 @@
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -50,14 +49,6 @@
                                                                 (cond-> additional-properties
                                                                   (map? additional-properties) fix-json-schema))))]
       (cond
-        ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
-        ;; it needs to be cleaned up to be presented in OpenAPI viewers
-        (and (:oneOf schema)
-             (= (second (:oneOf schema)) {:type :null}))
-        (fix-json-schema (merge (first (:oneOf schema))
-                                (select-keys schema [:description :default])
-                                {:optional true}))
-
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
         (let [schema (update schema :allOf (partial remove (partial = {})))]
@@ -140,10 +131,14 @@
 (mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
   "Convert a Malli schema to an OpenAPI response schema.
 
-  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema."
+  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema.
+
+  If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
+  is used for documentation instead of the actual schema. This allows streaming endpoints to document the
+  JSON content they return while validating that the return value is a StreamingResponse instance."
   [schema]
   (let [jss-schema (mjs-collect-definitions schema)]
-    {"2XX" (-> {:description (or (:description jss-schema) (umd/describe schema))}
+    {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
                (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
 
 (comment

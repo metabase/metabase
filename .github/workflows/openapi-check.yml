@@ -1,0 +1,44 @@
+name: OpenAPI Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-openapi-specs:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: contains(github.event.pull_request.labels.*.name, 'openapi-self-healing')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # we're intentionally using METABASE_AUTOMATION_USER_TOKEN to trigger the whole CI pipeline again
+          #  after the self-healing commit is created
+          #  if we used GITHUB_TOKEN, the self-healing commit would not trigger the CI pipeline again
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          # fetch full git history to allow fetching the latest base branch commit and comparing changes
+          fetch-depth: 0
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Generate version.properties
+        run: ./bin/build.sh :steps [:version]
+      - name: Get latest base branch commit
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          echo "LATEST_BASE_SHA=$(git rev-parse origin/${{ github.event.pull_request.base.ref }})" >> $GITHUB_ENV
+      - name: Check OpenAPI specs are up to date
+        env:
+          AUTO_COMMIT: "true"
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ env.LATEST_BASE_SHA }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./bin/openapi-check.sh
