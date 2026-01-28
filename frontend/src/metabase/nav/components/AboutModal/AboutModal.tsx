@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import LogoIcon from "metabase/common/components/LogoIcon";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSetting } from "metabase/common/hooks";
 import { capitalize } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
@@ -59,7 +59,8 @@ export const AboutModal = ({
               <Divider size={2} w="100%" />
               <Stack align="center" gap={0}>
                 <Text fz="sm" fw="bold" c="text-secondary" lh="sm">
-                  Metabase {t`is a Trademark of`} Metabase, Inc
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This only shows on OSS instance */}
+                  {t`Metabase is a Trademark of Metabase, Inc`}
                 </Text>
                 <Text
                   fz="sm"

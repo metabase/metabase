@@ -16,7 +16,6 @@ interface GroupProps {
   user: PartialGroup;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export function UserAvatar({ user, ...props }: UserAvatarProps | GroupProps) {
   return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
 }
