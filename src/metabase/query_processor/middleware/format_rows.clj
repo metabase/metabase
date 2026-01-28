@@ -71,7 +71,7 @@
 (defn- format-rows-xform [rf metadata]
   {:pre [(fn? rf)]}
   (log/debugf "Formatting rows with results timezone ID %s" (qp.timezone/results-timezone-id))
-  (let [cols-converted-timezones (perf/mapv :converted_timezone metadata)
+  (let [cols-converted-timezones (perf/mapv :converted_timezone (:cols metadata))
         timezone-id (t/zone-id (qp.timezone/results-timezone-id))
         format (fn [value converted-timezone]
                  (cond-> value
