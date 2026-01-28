@@ -16,8 +16,11 @@ import type {
   ComputedVisualizationSettings,
   Formatter,
 } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
+  DatasetQuery,
   MaybeTranslatedSeries,
   RawSeries,
   RowValue,
@@ -320,7 +323,7 @@ export function getPieRows(
         isOther: false,
       };
     });
-    // Case 2: Preserve manual sort for existing rows, sort `added` rows
+    // Case 2: Preserve manual sort for existing rows, add rows according to order of data rows
   } else {
     const added = _.difference(currentDataKeys, savedPieKeys);
     const kept = _.intersection(savedPieKeys, currentDataKeys);
@@ -345,10 +348,9 @@ export function getPieRows(
 
       return dataRow;
     });
-    const sortedAddedRows = getSortedRows(addedRows, metricDesc.index);
 
     newPieRows.push(
-      ...sortedAddedRows.map((addedDataRow) => {
+      ...addedRows.map((addedDataRow) => {
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const color = Color(colors[String(dimensionValue)]).hex();
@@ -382,7 +384,7 @@ export function getPieRows(
   });
   newPieRows.push(...removedPieRows);
 
-  // Make any slices below mimium slice percentage hidden
+  // Make any slices below minimum slice percentage hidden
   const total = newPieRows.reduce((currTotal, pieRow) => {
     if (pieRow.hidden || !pieRow.enabled) {
       return currTotal;
@@ -432,4 +434,25 @@ export const getPieSortRowsDimensionSetting = (
   return settings["pie.dimension"];
 };
 
-export const getDefaultSortRows = () => true;
+export const getDefaultSortRows = (series: MaybeTranslatedSeries) => {
+  const [{ card }] = series;
+
+  // Auto-sort only when there's NO explicit order-by in the query
+  const hasOrderBy = hasExplicitOrderBy(card.dataset_query);
+
+  return !hasOrderBy;
+};
+
+function hasExplicitOrderBy(datasetQuery: DatasetQuery | null): boolean {
+  if (!datasetQuery) {
+    return false;
+  }
+
+  const question = Question.create({ dataset_query: datasetQuery });
+  if (question.isNative()) {
+    return false;
+  }
+
+  const orderBys = Lib.orderBys(question.query(), -1);
+  return orderBys.length > 0;
+}
