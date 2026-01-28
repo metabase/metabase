@@ -5,7 +5,9 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private test-ns
-  ['mage.core-test 'mage.start-db-test])
+  ['mage.core-test
+   'mage.quick-test-runner-test
+   'mage.start-db-test])
 
 (when (= *file* (System/getProperty "babashka.file"))
   (doseq [tns test-ns]
