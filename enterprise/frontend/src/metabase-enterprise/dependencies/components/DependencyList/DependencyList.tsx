@@ -29,6 +29,7 @@ import type { DependencyListMode, DependencyListParamsOptions } from "./types";
 import {
   getAvailableGroupTypes,
   getFilterOptions,
+  getParamsWithoutDefaults,
   getSortOptions,
 } from "./utils";
 
@@ -98,15 +99,22 @@ export function DependencyList({
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
+  const handleParamsChange = (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => {
+    onParamsChange(getParamsWithoutDefaults(mode, params), options);
+  };
+
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query, page: undefined });
+    handleParamsChange({ ...params, query, page: undefined });
   };
 
   const handleFilterOptionsChange = ({
     groupTypes,
     includePersonalCollections,
   }: DependencyFilterOptions) => {
-    onParamsChange(
+    handleParamsChange(
       {
         ...params,
         group_types: groupTypes,
@@ -120,7 +128,7 @@ export function DependencyList({
   const handleSortOptionsChange = (
     sortOptions: DependencySortOptions | undefined,
   ) => {
-    onParamsChange(
+    handleParamsChange(
       {
         ...params,
         sort_column: sortOptions?.column,
@@ -132,7 +140,7 @@ export function DependencyList({
   };
 
   const handlePageChange = (page: number) => {
-    onParamsChange({ ...params, page });
+    handleParamsChange({ ...params, page });
   };
 
   useLayoutEffect(() => {
