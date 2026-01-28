@@ -16,10 +16,10 @@ runs:
   using: "composite"
   steps:
     - name: Install latest Chromium
-      uses: browser-actions/setup-chrome@v2
+      uses: browser-actions/setup-chrome@v1
       with:
         # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 148313
+        chrome-version: 1575978
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
