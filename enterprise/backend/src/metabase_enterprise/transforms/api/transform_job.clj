@@ -63,6 +63,7 @@
    [:last_login {:optional true} [:maybe :any]]
    [:is_superuser {:optional true} :boolean]
    [:is_qbnewb {:optional true} :boolean]
+   [:is_data_analyst {:optional true} :boolean]
    [:tenant_id {:optional true} [:maybe :string]]
    [:common_name {:optional true} [:maybe :string]]])
 
