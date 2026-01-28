@@ -58,7 +58,6 @@ import {
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import {
   formatVisualizerClickObject,
   isVisualizerDashboardCard,
@@ -180,10 +179,6 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
-  onEditVisualization?: (initialState?: Partial<VisualizerUiState>) => void;
-  onUpdateVisualizerVizSettings?: (
-    settings: Partial<VisualizationSettings>,
-  ) => void;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -979,10 +974,6 @@ class Visualization extends PureComponent<
                     rowChecked={rowChecked}
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
-                    onEditVisualization={this.props.onEditVisualization}
-                    onUpdateVisualizerVizSettings={
-                      this.props.onUpdateVisualizerVizSettings
-                    }
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

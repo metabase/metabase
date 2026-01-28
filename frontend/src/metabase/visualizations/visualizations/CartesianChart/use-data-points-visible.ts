@@ -12,7 +12,7 @@ export const useAreAllDataPointsOutOfRange = (
   const { "graph.y_axis.min": yMin, "graph.y_axis.max": yMax } = settings;
 
   if (yMax === undefined || yMin === undefined) {
-    return true;
+    return false;
   }
 
   const dataKeys = chartModel.seriesModels.map(

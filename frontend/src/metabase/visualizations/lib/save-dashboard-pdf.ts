@@ -232,6 +232,7 @@ export const saveDashboardPdf = async ({
     useCORS: true,
     backgroundColor,
     scale: window.devicePixelRatio || 1,
+    removeContainer: false,
     /**
      * html2canvas-pro creates inline <style> elements that can be blocked by
      * CSP (observed from Firefox). We created a temporary patch to support

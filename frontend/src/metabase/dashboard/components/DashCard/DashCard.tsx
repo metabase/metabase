@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { getIn, merge } from "icepick";
+import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
@@ -7,12 +7,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import {
-  addParameter,
-  duplicateCard,
-  replaceCardWithVisualization,
-  updateDashboardAndCards,
-} from "metabase/dashboard/actions";
+import { addParameter, duplicateCard } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -31,7 +26,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
@@ -93,7 +87,6 @@ export interface DashCardProps {
   onEditVisualization: (
     dashcard: StoreDashcard,
     initialState: VisualizerVizDefinitionWithColumns,
-    initialUiState: Partial<VisualizerUiState>,
   ) => void;
 }
 
@@ -326,33 +319,11 @@ function DashCardInner({
     }
   }, [dashcard, datasets, series]);
 
-  const onEditVisualizationClick = useCallback(
-    (uiState: Partial<VisualizerUiState> = {}) => {
-      const initialState = getVisualizerInitialState();
+  const onEditVisualizationClick = useCallback(() => {
+    const initialState = getVisualizerInitialState();
 
-      onEditVisualization(dashcard, initialState, uiState);
-    },
-    [dashcard, onEditVisualization, getVisualizerInitialState],
-  );
-
-  const onUpdateVisualizerVizSettings = useCallback(
-    async (_settings: VisualizationSettings) => {
-      const initialState = getVisualizerInitialState();
-
-      await dispatch(
-        replaceCardWithVisualization({
-          dashcardId: dashcard.id,
-          visualization: {
-            columnValuesMapping: initialState.columnValuesMapping,
-            display: initialState.display,
-            settings: merge(initialState.settings, _settings),
-          },
-        }),
-      );
-      await dispatch(updateDashboardAndCards());
-    },
-    [getVisualizerInitialState, dashcard, dispatch],
-  );
+    onEditVisualization(dashcard, initialState);
+  }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -443,8 +414,11 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onTogglePreviewing={handlePreviewToggle}
-          onEditVisualization={onEditVisualizationClick}
-          onUpdateVisualizerVizSettings={onUpdateVisualizerVizSettings}
+          onEditVisualization={
+            isVisualizerDashboardCard(dashcard)
+              ? onEditVisualizationClick
+              : undefined
+          }
         />
       </Box>
     </ErrorBoundary>

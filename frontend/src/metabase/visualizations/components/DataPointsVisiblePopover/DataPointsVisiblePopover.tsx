@@ -36,11 +36,18 @@ export const DataPointsVisiblePopover = ({
     >
       {/* Adjust position of the card so that it is centered in the dashcard. we need to account for height of card title */}
       {isDashboard ? (
-        <Card withBorder py="sm" maw="9rem" pos="relative" top={-10}>
+        <Card
+          withBorder
+          py="sm"
+          maw="9rem"
+          pos="relative"
+          top={-10}
+          shadow="none"
+        >
           <Text ta="center">{t`Every data point is out of range`}</Text>
         </Card>
       ) : (
-        <Card withBorder py="sm">
+        <Card withBorder py="sm" shadow="none">
           <Text>{t`Every data point is off-screen because of your y-axis settings`}</Text>
         </Card>
       )}

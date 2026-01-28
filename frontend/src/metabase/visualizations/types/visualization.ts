@@ -13,7 +13,6 @@ import type {
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
-import type { VisualizerUiState } from "metabase/visualizer/components/VisualizerUiContext";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -186,14 +185,6 @@ export interface VisualizationProps {
    * Used for visualizer cards to jump to underlying questions
    */
   titleMenuItems?: React.ReactNode;
-
-  /**
-   * used by dashcards to invoke visualizer or update visualizer settings
-   */
-  onEditVisualization?: (initialState?: Partial<VisualizerUiState>) => void;
-  onUpdateVisualizerVizSettings?: (
-    settings: Partial<VisualizationSettings>,
-  ) => void;
 }
 
 export type VisualizationPassThroughProps = {

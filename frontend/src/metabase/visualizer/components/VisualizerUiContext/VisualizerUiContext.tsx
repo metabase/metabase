@@ -14,13 +14,17 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getDatasets } from "metabase/visualizer/selectors";
 
-type _VisualizerUiState = VisualizerUiState & {
+type VisualizerUiState = {
+  isDataSidebarOpen: boolean;
+  isVizSettingsSidebarOpen: boolean;
+  isSwapAffordanceVisible: boolean;
+
   setDataSidebarOpen: Dispatch<SetStateAction<boolean>>;
   setVizSettingsSidebarOpen: Dispatch<SetStateAction<boolean>>;
   setSwapAffordanceVisible: Dispatch<SetStateAction<boolean>>;
 };
 
-const VisualizerUiContext = createContext<_VisualizerUiState>({
+const VisualizerUiContext = createContext<VisualizerUiState>({
   isDataSidebarOpen: false,
   isVizSettingsSidebarOpen: false,
   isSwapAffordanceVisible: false,
@@ -28,12 +32,6 @@ const VisualizerUiContext = createContext<_VisualizerUiState>({
   setVizSettingsSidebarOpen: _.noop,
   setSwapAffordanceVisible: _.noop,
 });
-
-export interface VisualizerUiState {
-  isDataSidebarOpen: boolean;
-  isVizSettingsSidebarOpen: boolean;
-  isSwapAffordanceVisible: boolean;
-}
 
 interface VisualizerUiProviderProps {
   children: ReactNode;

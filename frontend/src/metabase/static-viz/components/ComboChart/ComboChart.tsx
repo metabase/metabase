@@ -19,6 +19,11 @@ const WIDTH = 540;
 const HEIGHT = 360;
 const LEGEND_PADDING = 8;
 
+const DATA_OUT_OF_RANGE_RECT = {
+  height: 40,
+  width: 210,
+};
+
 registerEChartsModules();
 
 export const ComboChart = ({
@@ -110,13 +115,13 @@ export const ComboChart = ({
         {allPointsOutOfRange && (
           <g>
             <rect
-              x={width / 2 - 105}
-              y={totalHeight / 2 - 20}
+              x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
+              y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
               fill={renderingContext.getColor("background-primary")}
               stroke={renderingContext.getColor("border")}
               strokeWidth="1"
-              width="210"
-              height="40"
+              width={DATA_OUT_OF_RANGE_RECT.width}
+              height={DATA_OUT_OF_RANGE_RECT.height}
               rx="8"
             />
             <text x="50%" y={totalHeight / 2 + 4} textAnchor="middle">

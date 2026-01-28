@@ -681,7 +681,7 @@ describe("issue 10493", () => {
   });
 });
 
-describe("issue 68156", () => {
+describe("UXW-2696", () => {
   const getChartPoints = () =>
     H.echartsContainer().get("path[fill='hsla(0, 0%, 100%, 1.00)']");
   const getNoPointsMessage = () =>
