@@ -1114,14 +1114,12 @@
 
 (defn- join-lhs-display-name-for-first-join-in-first-stage
   [query stage-number join-or-joinable]
-  (when (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
-             (first-join? query stage-number join-or-joinable)           ; first join?
-             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
-    (let [table-id (lib.util/source-table-id query)
-          table    (lib.metadata/table query table-id)]
+  (when-let [table (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
+                        (first-join? query stage-number join-or-joinable)           ; first join?
+                        (lib.metadata.calculation/primary-source-table query))]     ; query ultimately uses source Table?
       ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
       ;; `:long` for a Table anyway
-      (lib.metadata.calculation/display-name query stage-number table))))
+    (lib.metadata.calculation/display-name query stage-number table)))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
   "Get the display name for whatever we are joining. See #32015 and #32764 for screenshot examples.

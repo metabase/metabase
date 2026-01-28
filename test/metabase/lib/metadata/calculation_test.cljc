@@ -1132,3 +1132,32 @@
       (testing "retired column is NOT included even with :include-sensitive-fields? true"
         (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query -1 {:include-sensitive-fields? true}))]
           (is (not (contains? visible-col-ids (meta/id :venues :longitude)))))))))
+
+(deftest ^:parallel primary-source-table-test
+  (testing `lib.metadata.calculation/primary-source-table
+    (let [table-query (lib.tu/venues-query)
+          mp          lib.tu/metadata-provider-with-card
+          card-query  (lib/query mp (lib.metadata/card mp 1))]
+      (testing "returns the `:metadata/table` for a query based on a table"
+        (is (= (meta/table-metadata :venues)
+               (lib.metadata.calculation/primary-source-table table-query)))
+        (testing "likewise for primary-source"
+          (is (= (meta/table-metadata :venues)
+                 (lib.metadata.calculation/primary-source table-query)))))
+      (testing "returns nil for a query based on a card"
+        (is (nil? (lib.metadata.calculation/primary-source-table card-query)))))))
+
+(deftest ^:parallel primary-source-card-test
+  (testing `lib.metadata.calculation/primary-source-card
+    (let [table-query (lib.tu/venues-query)
+          mp          (lib.tu/metadata-provider-with-mock-cards)
+          card        (lib.metadata/card mp 1)
+          card-query  (lib/query mp card)]
+      (testing "returns the `:metadata/card` for a query based on a card"
+        (is (= card
+               (lib.metadata.calculation/primary-source-card card-query)))
+        (testing "likewise for primary-source"
+          (is (= card
+                 (lib.metadata.calculation/primary-source card-query)))))
+      (testing "returns nil for a query based on a table"
+        (is (nil? (lib.metadata.calculation/primary-source-card table-query)))))))

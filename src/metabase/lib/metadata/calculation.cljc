@@ -738,3 +738,29 @@
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
           (returned-columns no-fields stage-number))))
+
+(mu/defn primary-source-table :- [:maybe ::lib.schema.metadata/table]
+  "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
+
+  Returns nil if the query is native or has a `:source-card`."
+  [query]
+  (some->> query lib.util/source-table-id (lib.metadata/table query)))
+
+(mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
+  "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
+
+  Returns nil if the query is native or has a `:source-table`."
+  [query]
+  (some->> query lib.util/source-card-id (lib.metadata/card query)))
+
+(mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "If this query has an MBQL first stage with a `:source-table` or `:source-card`, return the corresponding
+  `:metadata/table` or `:metadata/card`.
+
+  Returns nil if the query is native."
+  [query]
+  (or (primary-source-table query)
+      (primary-source-card  query)))
+
+;; XXX: START HERE: Scan call-sites of lib.util/source-card-id and source-table-id and update them to use these.
+;; If necessary, move these to another namespace. Export them from lib.core as well.

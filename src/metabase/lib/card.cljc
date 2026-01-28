@@ -303,9 +303,7 @@
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
   [query :- ::lib.schema/query]
-  (when-let [card-id (lib.util/source-card-id query)]
-    (when-let [card (lib.metadata/card query card-id)]
-      (:type card))))
+  (some-> query lib.metadata.calculation/primary-source-card :type))
 
 (mu/defn source-card-is-model? :- :boolean
   "Is the query's source-card a model?"
