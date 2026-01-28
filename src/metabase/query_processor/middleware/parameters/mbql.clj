@@ -168,7 +168,7 @@
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/infof "Ignoring parameter %s because it has no value" (pr-str param-value))
+          (log/infof "Ignoring parameter %s because it has no value" (pr-str param))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)
