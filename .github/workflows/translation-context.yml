@@ -1,0 +1,32 @@
+name: Crowdin Context Harvester
+
+on:
+  push: # TEMPORARY - FOR TESTING ONLY
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 2" # Tuesday at 06:00 UTC
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Harvest and write AI context to Crowdin
+        env:
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          OPENAI_KEY: ${{ secrets.CROWDIN_OPENAI_API_KEY }}
+        run: |
+          npx --yes crowdin-context-harvester@latest harvest \
+            --project="$CROWDIN_PROJECT_ID" \
+            --crowdinFiles "metabase.po" \
+            --ai="openai" \
+            --model="gpt-5.1" \
+            --croql='not (context contains "✨ AI Context")' \
+            --output="csv" \
+            --concurrency=10
