@@ -6,7 +6,8 @@ import type { EChartsRendererProps } from "metabase/visualizations/components/EC
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 
-export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
+export interface ResponsiveEChartsRendererProps
+  extends React.PropsWithChildren<EChartsRendererProps> {
   onResize?: (width: number, height: number) => void;
 }
 
@@ -18,6 +19,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
     onResize,
     width,
     height,
+    children,
     ...echartsRenderedProps
   }: ResponsiveEChartsRendererProps,
   ref,
@@ -40,6 +42,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
         width={width}
         height={height}
       />
+      {children}
     </ResponsiveEChartsRendererStyled>
   );
 });
