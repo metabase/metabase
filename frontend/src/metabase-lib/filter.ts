@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs, { type Dayjs } from "dayjs";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { CardId } from "metabase-types/api";
@@ -147,7 +146,12 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map((value) => dayjs(value)),
+    values.map((value) => {
+      const d = dayjs(value);
+      // When hasTime is true, format as ISO-8601 datetime string to preserve time component (including 00:00)
+      // When hasTime is false, format as date-only string
+      return hasTime ? d.format("YYYY-MM-DDTHH:mm:ss") : d.format("YYYY-MM-DD");
+    }),
     hasTime,
   );
 }
@@ -167,8 +171,11 @@ export function specificDateFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Moment) =>
-      value.local(true).toDate(),
+    // The CLJS code returns dayjs objects in UTC mode. We need to convert them to local Date objects
+    // while preserving the time values (not converting the instant). dayjs.local(true) doesn't work
+    // like moment.local(true), so we format and reparse as local time.
+    values: filterParts.values.map((value: Dayjs) =>
+      dayjs(value.format("YYYY-MM-DDTHH:mm:ss.SSS")).toDate(),
     ),
   };
 }
@@ -239,7 +246,7 @@ export function timeFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Moment) => value.toDate()),
+    values: filterParts.values.map((value: Dayjs) => value.toDate()),
   };
 }
 
