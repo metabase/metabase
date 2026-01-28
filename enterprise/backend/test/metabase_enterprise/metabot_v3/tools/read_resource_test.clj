@@ -4,8 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.read-resource :as read-resource]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (deftest parse-uri-test
   (testing "parses table URI"

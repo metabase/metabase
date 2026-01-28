@@ -52,7 +52,7 @@
 ;; Mock tool for testing
 (mu/defn test-search-tool
   "Mock search tool that returns test data."
-  [{:keys [query]} :- [:map {:closed true}
+  [{:keys [_query]} :- [:map {:closed true}
                        [:query :string]]]
   {:structured-output {:data [{:id 1 :name "Test Result"}]}})
 
@@ -209,14 +209,14 @@
                   :result {:output "no results"}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
-      (is (empty? (get-in (memory/get-state updated) [:queries])))))
+      (is (empty? (:queries (memory/get-state updated))))))
 
   (testing "ignores non-tool-output parts"
     (let [parts [{:type :text :text "hello"}
                  {:type :tool-input :id "t1" :function "search"}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
-      (is (empty? (get-in (memory/get-state updated) [:queries]))))))
+      (is (empty? (:queries (memory/get-state updated)))))))
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
@@ -251,4 +251,4 @@
                   :result {:structured-output {:data []}}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (empty? (get-in (memory/get-state updated) [:charts]))))))
+      (is (empty? (:charts (memory/get-state updated)))))))
