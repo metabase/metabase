@@ -1,5 +1,6 @@
 (ns metabase.llm.api-test
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,7 +11,8 @@
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]))
 
 (set! *warn-on-reflection* true)
 
@@ -211,6 +213,42 @@
                        :source "oss_metabot"
                        :tag "oss-sqlgen"}
                       @tracked-usage)))))))))
+
+(deftest generate-sql-streaming-tracks-token-usage-test
+  (testing "successful /generate-sql-streaming call tracks token usage via snowplow"
+    (mt/with-temp [:model/Database db {:engine :postgres}
+                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
+                   :model/Field _ {:table_id (:id table) :name "name" :base_type :type/Text}]
+      (let [tracked-events (atom [])
+            mock-chan (a/chan 10)]
+        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:promptTokens 1500}})
+        (a/>!! mock-chan {:type :text-delta :delta "{\"sql\":\"SELECT * FROM users\"}"})
+        (a/>!! mock-chan {:type :usage :id "anthropic/claude-sonnet-4" :usage {:completionTokens 250}})
+        (a/close! mock-chan)
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+          (with-redefs [llm.anthropic/chat-completion-stream (constantly mock-chan)
+                        snowplow/track-event! (fn [schema data user-id]
+                                                (swap! tracked-events conj {:schema schema
+                                                                            :data data
+                                                                            :user-id user-id}))]
+            (let [response (mt/user-http-request :rasta :post 202 "llm/generate-sql-streaming"
+                                                 {:prompt "get all users"
+                                                  :database_id (:id db)
+                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
+              ;; Wait for the background thread to complete tracking
+              (tu/poll-until 2000 (seq @tracked-events))
+              (is (string? response))
+              (is (str/includes? response "SELECT * FROM users"))
+              (is (=? [{:schema :snowplow/token_usage
+                        :data {:model-id "anthropic/claude-sonnet-4"
+                               :prompt-tokens 1500
+                               :completion-tokens 250
+                               :total-tokens 1750
+                               :duration-ms pos?
+                               :source "oss_metabot"
+                               :tag "oss-sqlgen-streaming"}}]
+                      @tracked-events)))))))))
 
 ;;; ------------------------------------------- Token Usage Tracking Tests -------------------------------------------
 

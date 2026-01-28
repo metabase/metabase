@@ -168,8 +168,10 @@
 (defn chat-completion-stream
   "Send a streaming chat completion request to Anthropic.
 
-   Returns a core.async channel that emits AI SDK v5 formatted text delta chunks:
-   {:type :text-delta :delta \"text chunk\"}
+   Returns a core.async channel that emits AI SDK v5 formatted chunks:
+   - {:type :text-delta :delta \"text chunk\"} for content
+   - {:type :usage :id \"anthropic/model\" :usage {:promptTokens N}} from message_start
+   - {:type :usage :id \"anthropic/model\" :usage {:completionTokens N}} from message_delta
 
    The channel closes when the stream completes or on error.
 
@@ -182,9 +184,14 @@
     (when-not api-key
       (throw (ex-info "LLM is not configured. Please set an Anthropic API key via MB_LLM_ANTHROPIC_API_KEY."
                       {:type :llm-not-configured})))
-    (let [model        (or model (llm-settings/llm-anthropic-model) default-model)
-          request      {:model model :system system :messages messages}
-          request-body (build-streaming-request-body request)]
+    (let [model              (or model (llm-settings/llm-anthropic-model) default-model)
+          ;; Transform the :id field on usage parts to simplified provider model format
+          simplify-model-xf (map (fn [chunk]
+                                   (if (and (= :usage (:type chunk)) (:id chunk))
+                                     (update chunk :id model->simplified-provider-model)
+                                     chunk)))
+          request            {:model model :system system :messages messages}
+          request-body       (build-streaming-request-body request)]
       (try
         (let [response (http/post anthropic-messages-url
                                   {:as                 :stream
@@ -195,7 +202,8 @@
                                    :connection-timeout (llm-settings/llm-connection-timeout-ms)})]
           (if (<= 200 (:status response) 299)
             (a/pipe (streaming/anthropic-sse-chan (:body response))
-                    (a/chan 64 streaming/anthropic-chat->aisdk-xf))
+                    (a/chan 64 (comp streaming/anthropic-chat->aisdk-xf
+                                     simplify-model-xf)))
             (handle-streaming-error (:status response) (:body response))))
         (catch Exception e
           (log/error e "Anthropic streaming request failed with exception")

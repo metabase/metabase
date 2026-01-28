@@ -430,17 +430,19 @@
    request]
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
-    (let [{:keys [prompt database_id]} body
+    (let [{:keys [prompt database_id]}      body
           {:keys [system-prompt table-ids]} (validate-and-prepare-context body)
-          timestamp (current-timestamp)]
+          timestamp                         (current-timestamp)]
 
       (when (debug-logging-enabled?)
         (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
       (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-        (let [llm-chan (llm.anthropic/chat-completion-stream {:system   system-prompt
-                                                              :messages [{:role "user" :content prompt}]})
-              text-acc (StringBuilder.)]
+        (let [start-time (u/start-timer)
+              llm-chan   (llm.anthropic/chat-completion-stream {:system   system-prompt
+                                                                :messages [{:role "user" :content prompt}]})
+              text-acc   (StringBuilder.)
+              usage-acc  (volatile! {})]
           (loop []
             (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
               (cond
@@ -454,6 +456,15 @@
                       referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
                   (when (debug-logging-enabled?)
                     (log-to-file! (str timestamp "_response.txt") json-str))
+                  (doseq [[model-id {:keys [prompt completion]}] @usage-acc]
+                      ;; There should only be one model in the usage-acc, but doseq in case that ever changes.
+                    (track-token-usage! {:model       model-id
+                                         :prompt      prompt
+                                         :completion  completion
+                                         :duration-ms (u/since-ms start-time)
+                                         :user-id     api/*current-user-id*
+                                         :source      "oss_metabot"
+                                         :tag         "oss-sqlgen-streaming"}))
                   (write-sse! os (llm.streaming/format-sse-line
                                   :data
                                   {:sql                 final-sql
@@ -467,11 +478,24 @@
                   (log/error "Error chunk received" {:error (:error chunk)})
                   (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
 
+                (= (:type chunk) :usage)
+                (let [{:keys [usage id]} chunk
+                      model-id (or id "unknown-model")]
+                    ;; Accumulate usage - merge prompt/completion tokens as they arrive
+                  (vswap! usage-acc update model-id
+                          (fn [current]
+                            (merge current
+                                   (when (:promptTokens usage)
+                                     {:prompt (:promptTokens usage)})
+                                   (when (:completionTokens usage)
+                                     {:completion (:completionTokens usage)}))))
+                  (recur))
+
                 (= (:type chunk) :text-delta)
                 (do
-                ;; Accumulate JSON silently - don't stream raw JSON to frontend.
-                ;; With tool_use, the streamed content is JSON like {"sql": "..."}
-                ;; which isn't useful to display. We extract the SQL at the end.
+                  ;; Accumulate JSON silently - don't stream raw JSON to frontend.
+                  ;; With tool_use, the streamed content is JSON like {"sql": "..."}
+                  ;; which isn't useful to display. We extract the SQL at the end.
                   (.append text-acc (:delta chunk))
                   (recur))
 

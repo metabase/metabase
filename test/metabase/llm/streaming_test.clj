@@ -90,9 +90,32 @@
               {:type :text-delta :delta " * FROM users\"}"}]
              result))))
 
-  (testing "skips non-content_block_delta events"
+  (testing "extracts prompt tokens and model from message_start event"
     (let [chunks [{:type "message_start"
-                   :message {:id "msg_123"}}
+                   :message {:id "msg_123"
+                             :model "claude-sonnet-4-20250514"
+                             :usage {:input_tokens 1500}}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [{:type :usage :id "claude-sonnet-4-20250514" :usage {:promptTokens 1500}}]
+             result))))
+
+  (testing "extracts completion tokens with model from message_delta event"
+    (let [chunks [{:type "message_start"
+                   :message {:id "msg_123"
+                             :model "claude-sonnet-4-20250514"
+                             :usage {:input_tokens 1500}}}
+                  {:type "message_delta"
+                   :usage {:output_tokens 250}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [{:type :usage :id "claude-sonnet-4-20250514" :usage {:promptTokens 1500}}
+              {:type :usage :id "claude-sonnet-4-20250514" :usage {:completionTokens 250}}]
+             result))))
+
+  (testing "emits both usage and text-delta parts from a full stream"
+    (let [chunks [{:type "message_start"
+                   :message {:id "msg_123"
+                             :model "claude-sonnet-4-20250514"
+                             :usage {:input_tokens 1500}}}
                   {:type "content_block_start"
                    :index 0
                    :content_block {:type "tool_use" :name "generate_sql"}}
@@ -101,10 +124,27 @@
                    :delta {:type "input_json_delta"
                            :partial_json "{\"sql\":\"SELECT 1\"}"}}
                   {:type "content_block_stop"
-                   :index 0}]
+                   :index 0}
+                  {:type "message_delta"
+                   :usage {:output_tokens 250}}]
           result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
-      (is (= [{:type :text-delta :delta "{\"sql\":\"SELECT 1\"}"}]
+      (is (= [{:type :usage :id "claude-sonnet-4-20250514" :usage {:promptTokens 1500}}
+              {:type :text-delta :delta "{\"sql\":\"SELECT 1\"}"}
+              {:type :usage :id "claude-sonnet-4-20250514" :usage {:completionTokens 250}}]
              result))))
+
+  (testing "skips message_start without usage"
+    (let [chunks [{:type "message_start"
+                   :message {:id "msg_123"
+                             :model "claude-sonnet-4-20250514"}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [] result))))
+
+  (testing "skips message_delta without usage"
+    (let [chunks [{:type "message_delta"
+                   :delta {:stop_reason "end_turn"}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [] result))))
 
   (testing "skips content_block_delta with non-input_json_delta type"
     (let [chunks [{:type "content_block_delta"
