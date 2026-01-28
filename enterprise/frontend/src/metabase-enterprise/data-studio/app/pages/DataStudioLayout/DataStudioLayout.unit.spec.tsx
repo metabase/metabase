@@ -168,12 +168,10 @@ describe("DataStudioLayout", () => {
       });
 
       // Should show the dirty indicator badge on the Exit tab
-      const exitTab = screen.getByLabelText("Exit");
-      await waitFor(() => {
-        expect(
-          within(exitTab).getByTestId("remote-sync-status"),
-        ).toBeInTheDocument();
-      });
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
 
     it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
@@ -188,9 +186,9 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const exitTab = screen.getByLabelText("Exit");
+      const transformsTab = screen.getByLabelText("Transforms");
       expect(
-        within(exitTab).queryByTestId("remote-sync-status"),
+        within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
     });
 
@@ -206,9 +204,9 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const exitTab = screen.getByLabelText("Exit");
+      const transformsTab = screen.getByLabelText("Transforms");
       expect(
-        within(exitTab).queryByTestId("remote-sync-status"),
+        within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
     });
   });

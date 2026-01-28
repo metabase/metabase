@@ -24,6 +24,7 @@ import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 import { DependenciesUpsellPage } from "./upsells";
+import { DependencyDiagnosticsUpsellPage } from "./upsells/DependencyDiagnosticsUpsellPage";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -72,7 +73,7 @@ export function getDataStudioRoutes(
         ) : (
           <Route
             path="dependency-diagnostics"
-            component={DependenciesUpsellPage}
+            component={DependencyDiagnosticsUpsellPage}
           />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />

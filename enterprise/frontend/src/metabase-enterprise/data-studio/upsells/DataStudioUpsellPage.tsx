@@ -8,13 +8,14 @@ import {
   trackUpsellViewed,
 } from "metabase/admin/upsells/components/analytics";
 import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
-import { UPGRADE_URL } from "metabase/admin/upsells/constants";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import { Card, Center, Flex, Stack, Text, Title } from "metabase/ui";
+
+import { DATA_STUDIO_UPGRADE_URL } from "./constants";
 
 export type DataStudioUpsellPageProps = {
   campaign: string;
@@ -37,7 +38,7 @@ export function DataStudioUpsellPage({
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
   const genericUpsellUrl = useUpsellLink({
-    url: UPGRADE_URL,
+    url: DATA_STUDIO_UPGRADE_URL,
     campaign,
     location,
   });

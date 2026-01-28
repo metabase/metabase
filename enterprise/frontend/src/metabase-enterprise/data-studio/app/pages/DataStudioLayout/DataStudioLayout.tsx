@@ -165,7 +165,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
             isGated={!hasDependenciesFeature}
           />
-          {isAdmin && (
+          {(canAccessTransforms || isAdmin) && (
             <DataStudioTab
               label={t`Transforms`}
               icon="transform"
@@ -173,6 +173,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isSelected={currentTab === "transforms"}
               showLabel={isNavbarOpened}
               isGated={!hasTransformsFeature}
+              rightSection={
+                hasTransformDirtyChanges &&
+                PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                  <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+                ) : null
+              }
             />
           )}
         </Stack>
@@ -215,12 +221,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             icon="exit"
             to={"/"}
             showLabel={isNavbarOpened}
-            rightSection={
-              hasTransformDirtyChanges &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              ) : null
-            }
           />
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
