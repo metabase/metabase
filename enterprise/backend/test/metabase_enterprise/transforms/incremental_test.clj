@@ -1,10 +1,11 @@
-(ns ^:mb/driver-tests ^:mb/transforms-python-test metabase.transforms.incremental-test
+(ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms.incremental-test
   "Tests for incremental transforms functionality."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -14,7 +15,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.transforms-python.python-runner :as python-runner]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
