@@ -215,7 +215,9 @@ export const getStackedTooltipRows = <TDatum>(
       }
 
       return {
-        name: series.seriesName,
+        name:
+          settings?.series_settings?.[series.seriesKey]?.title ??
+          series.seriesName,
         color: seriesColors[series.seriesKey],
         value,
         formatter: (value: unknown) =>
@@ -256,9 +258,12 @@ export const getTooltipModel = <TDatum>(
     seriesColors,
   );
 
+  const currentSeriesName =
+    settings?.series_settings?.[series.seriesKey]?.title ?? series.seriesName;
+
   const [headerRows, bodyRows] = _.partition(
     rows,
-    (row) => row.name === series.seriesName,
+    (row) => row.name === currentSeriesName,
   );
 
   const totalFormatter = (value: unknown) =>
