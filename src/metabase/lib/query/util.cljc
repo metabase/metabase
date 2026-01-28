@@ -3,6 +3,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
@@ -173,6 +174,21 @@
           query
           join-specs))
 
+(mu/defn- append-filter :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   filter-spec  :- [:sequential ::lib.schema.query/expression-spec]]
+  (let [filter-clause (expression-spec->expression-clause query stage-number (lib.filter/filterable-columns query stage-number) filter-spec)]
+    (lib.filter/filter query stage-number filter-clause)))
+
+(mu/defn- append-filters :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   filter-specs  :- [:sequential ::lib.schema.query/expression-spec]]
+  (reduce #(append-filter %1 stage-number %2)
+          query
+          filter-specs))
+
 (mu/defn- append-order-by :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
@@ -194,10 +210,11 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [expressions joins breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [expressions filters joins breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
     joins (append-joins stage-number joins)
+    filters (append-filters stage-number filters)
     breakouts (append-breakouts stage-number breakouts)
     order-bys (append-order-bys stage-number order-bys)
     limit (lib.limit/limit stage-number limit)))

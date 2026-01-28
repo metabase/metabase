@@ -460,6 +460,8 @@ export type ColumnSpec = {
 
 export type ExpressionSpec = LiteralSpec | OperatorSpec | ColumnSpec;
 
+export type FilterSpec = ExpressionSpec;
+
 export type NamedExpressionSpec = {
   name: string;
   value: ExpressionSpec;
@@ -502,8 +504,9 @@ export type OrderBySpec = ColumnSpec & {
 
 export type StageSpec = {
   expressions?: NamedExpressionSpec[];
-  breakouts?: BreakoutSpec[];
+  filters?: FilterSpec[];
   joins?: JoinSpec[];
+  breakouts?: BreakoutSpec[];
   orderBys?: OrderBySpec[];
   limit?: number;
 };

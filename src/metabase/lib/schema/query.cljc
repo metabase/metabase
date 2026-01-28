@@ -83,6 +83,7 @@
    [:source      {:optional true} [:maybe ::test-source-spec]]
    [:expressions {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
    [:joins       {:optional true} [:maybe [:sequential ::test-join-spec]]]
+   [:filters     {:optional true} [:maybe [:sequential ::test-expression-spec]]]
    [:breakouts   {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
    [:order-bys   {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
    [:limit       {:optional true} [:maybe number?]]])
