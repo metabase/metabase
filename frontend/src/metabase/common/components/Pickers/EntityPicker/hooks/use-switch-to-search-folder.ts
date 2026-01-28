@@ -30,7 +30,11 @@ export function useSwitchToSearchFolder() {
           below: Array.from(validCollectionModels),
         },
       ]);
-    } else if (!searchQuery && previousSearchQuery) {
+    } else if (
+      !searchQuery &&
+      previousSearchQuery &&
+      path[0]?.id === "search-results"
+    ) {
       // Restore previous path when clearing search
       if (previousPath.length > 0) {
         setPath(previousPath);
