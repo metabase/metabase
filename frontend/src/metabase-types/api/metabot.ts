@@ -106,6 +106,10 @@ export type MetabotSeriesConfig = {
   stacked?: boolean;
 };
 
+// Extended display type for AI service - includes "histogram" which isn't a separate CardDisplayType
+// but is a specific configuration of bar charts that needs to be distinguished
+export type MetabotDisplayType = CardDisplayType | "histogram";
+
 export type MetabotChartConfig = {
   image_base_64?: string;
   title?: string | null;
@@ -121,7 +125,7 @@ export type MetabotChartConfig = {
     timestamp: string;
   }>;
   query?: DatasetQuery;
-  display_type?: CardDisplayType;
+  display_type?: MetabotDisplayType;
 };
 
 export type MetabotCardInfo = {
