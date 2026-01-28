@@ -92,6 +92,7 @@ function DashCardPlaceholderInner({
                 }
               : undefined
           }
+          options={{ hasConfirmButtons: false }}
           // TODO: account for restrictions on adding personal
           // questions to public dashboards
           models={["card", "dataset", "metric", "dashboard"]}

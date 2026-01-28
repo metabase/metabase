@@ -109,9 +109,10 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
   beforeEach(() => {
     H.restore();
     cy.signIn("readonly");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
   });
 
-  it("Should allow you to select entites in collections you have read access to (metabase#50602)", () => {
+  it("Should allow you to select entities in collections you have read access to (metabase#50602)", () => {
     H.createDashboard({ collection_id: READ_ONLY_PERSONAL_COLLECTION_ID }).then(
       ({ body }) => {
         H.visitDashboard(body.id);
@@ -124,7 +125,8 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
       .findAllByText("Select question")
       .first()
       .click({ force: true });
-    H.pickEntity({ path: ["Our analytics", "Orders, Count"], select: true });
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+    H.pickEntity({ path: ["Our analytics", "Orders, Count"] });
     H.dashboardGrid().findByText("Orders, Count").should("exist");
   });
 });
@@ -139,7 +141,7 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  H.pickEntity({ path: ["Our analytics", question], select: true });
+  H.pickEntity({ path: ["Our analytics", question] });
   cy.wait("@cardQuery");
   H.dashboardGrid().findByText(question).should("exist");
 }

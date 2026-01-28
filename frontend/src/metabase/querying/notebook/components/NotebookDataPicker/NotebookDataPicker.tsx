@@ -193,14 +193,8 @@ function ModernDataPicker({
 
     return (item: MiniPickerItem | unknown): item is MiniPickerPickableItem => {
       // FIXME: eww gross need to normalize db ids in minipicker
-      const dbId =
-        !!item &&
-        typeof item === "object" &&
-        ("db_id" in item
-          ? item.db_id
-          : "database_id" in item
-            ? item.database_id
-            : undefined);
+      // @ts-expect-error - will fix when we align types with minipicker: UXW-2735
+      const dbId = item?.db_id ?? item?.database_id ?? item?.dbId ?? undefined;
 
       return Boolean(
         // @ts-expect-error - Please fix 🥺
