@@ -1,0 +1,99 @@
+.item:not([data-css-specificity-hack="🪗"]) {
+  &,
+  & + &,
+  &[data-active="true"] {
+    border: 0;
+    margin-top: 0;
+  }
+
+  &:not(:last-child) {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.label:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+}
+
+.control:not([data-css-specificity-hack="🪗"]) {
+  background: linear-gradient(
+    to right,
+    var(--mb-color-background-hover) 3rem,
+    transparent 3rem
+  );
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  padding-left: 0;
+  height: 3rem;
+
+  &:hover {
+    background: linear-gradient(
+      to right,
+      var(--mb-color-icon-secondary) 3rem,
+      var(--mb-color-background-hover) 3rem
+    );
+    color: var(--mb-color-brand);
+  }
+
+  [data-active="true"] & {
+    background: linear-gradient(
+      to right,
+      var(--mb-color-brand) 3rem,
+      transparent 3rem
+    );
+
+    &:hover {
+      background: linear-gradient(
+        to right,
+        var(--mb-color-brand) 3rem,
+        var(--mb-color-background-hover) 3rem
+      );
+
+      .label,
+      .chevron svg {
+        color: var(--mb-color-brand);
+      }
+    }
+  }
+}
+
+.completedControl:not([data-css-specificity-hack="🪗"]) {
+  background: linear-gradient(
+    to right,
+    var(--mb-color-background-success) 3rem,
+    transparent 3rem
+  );
+
+  &:hover {
+    background: linear-gradient(
+      to right,
+      var(--mb-color-background-success) 3rem,
+      var(--mb-color-background-hover) 3rem
+    );
+  }
+}
+
+.chevron:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
+}
+
+.content:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
+  color: var(--mb-color-text-secondary);
+  padding-inline: 1rem;
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+.icon:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-brand);
+  height: 3rem;
+  margin-right: 1rem;
+  width: 3rem;
+
+  [data-active="true"] & {
+    color: var(--mb-color-text-primary-inverse);
+  }
+}
