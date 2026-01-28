@@ -28,39 +28,34 @@ export function PythonEditorResults({
   return (
     <DebouncedFrame className={S.visualization}>
       <Stack data-testid="python-results" gap={0} h="100%">
-        <ExecutionResultHeader
-          executionResult={executionResult}
-          tab={tab}
-          onTabChange={setTab}
-        />
-        {!hasDataOrError && <EmptyState />}
-        {hasDataOrError &&
-          tab === "results" &&
-          (executionResult?.error ? (
-            <ErrorState error={executionResult.error.message} />
-          ) : (
-            <ExecutionOutputTable output={executionResult?.output} />
-          ))}
-        {executionResult && tab === "output" && (
-          <ExecutionOutputLogs executionResult={executionResult} />
-        )}
+        <ExecutionResultTabs tab={tab} onTabChange={setTab} />
+        <Box className={S.content}>
+          {!hasDataOrError && <EmptyState />}
+          {hasDataOrError &&
+            tab === "results" &&
+            (executionResult?.error ? (
+              <ErrorState error={executionResult.error.message} />
+            ) : (
+              <ExecutionOutputTable output={executionResult?.output} />
+            ))}
+          {executionResult && tab === "output" && (
+            <ExecutionOutputLogs executionResult={executionResult} />
+          )}
+        </Box>
+        <ResultsFooter executionResult={executionResult} />
         {isRunning && <LoadingState />}
       </Stack>
     </DebouncedFrame>
   );
 }
 
-function ExecutionResultHeader({
-  executionResult,
+function ExecutionResultTabs({
   tab,
   onTabChange,
 }: {
-  executionResult?: TestPythonTransformResponse | null;
   tab: ResultsTab;
   onTabChange: (tab: ResultsTab) => void;
 }) {
-  const message = getMessageForExecutionResult(executionResult);
-
   return (
     <Group className={S.header} justify="space-between">
       <Box mt="xs">
@@ -78,7 +73,6 @@ function ExecutionResultHeader({
           </Tabs.List>
         </Tabs>
       </Box>
-      {message}
     </Group>
   );
 }
@@ -129,26 +123,33 @@ function ErrorState({ error }: { error: string }) {
   );
 }
 
-function getMessageForExecutionResult(
-  executionResult?: TestPythonTransformResponse | null,
-) {
+function ResultsFooter({
+  executionResult,
+}: {
+  executionResult?: TestPythonTransformResponse | null;
+}) {
   if (!executionResult) {
     return null;
   }
 
   if (executionResult.error) {
     return (
-      <Flex gap="sm" align="center" pr="md" c="error">
-        <Icon name="warning" />
-        {t`An error occurred while executing your Python script`}
+      <Flex className={S.footer} gap="sm" align="center" px="md" py="sm">
+        <Icon name="warning" c="error" />
+        <Text c="text-primary">{t`An error occurred while executing your Python script.`}</Text>
       </Flex>
     );
   }
 
+  if (!executionResult.output) {
+    return null;
+  }
+
   return (
-    <Flex gap="sm" align="center" pr="md" c="success">
-      <Icon name="check_filled" />
-      {t`Script executed successfully`}
+    <Flex className={S.footer} gap="sm" align="center" px="md" py="sm">
+      <Icon name="check_filled" c="success" />
+      <Text fw="bold" c="text-primary">{t`Done`}</Text>
+      <Text c="text-tertiary">{t`Preview based on the first 100 rows from each table.`}</Text>
     </Flex>
   );
 }
