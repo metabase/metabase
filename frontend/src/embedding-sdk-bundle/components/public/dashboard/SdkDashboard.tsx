@@ -547,7 +547,9 @@ function AutoRefreshController({ refreshPeriod }: AutoRefreshControllerProps) {
   const { onRefreshPeriodChange } = useDashboardContext();
 
   useEffect(() => {
-    onRefreshPeriodChange(refreshPeriod);
+    const normalizedRefreshPeriod =
+      refreshPeriod && refreshPeriod >= 0 ? refreshPeriod : null;
+    onRefreshPeriodChange(normalizedRefreshPeriod);
   }, [refreshPeriod, onRefreshPeriodChange]);
 
   useUnmount(() => {
