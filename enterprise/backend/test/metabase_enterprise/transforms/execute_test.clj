@@ -289,11 +289,11 @@
   (format "SELECT a FROM (SELECT pg_sleep(%d)) x, generate_series(1, %d) a;" sleep-sec num))
 
 (defmethod sleep-numbers-query :mysql [_driver sleep-sec num]
-  (format "SELECT a FROM (SELECT SLEEP(%d)) x, (SELECT 1 AS a %s) a;"
+  (format "SELECT a FROM (SELECT SLEEP(%d)) x, (%s) a;"
           sleep-sec
-          (->> (range 2 (inc num))
-               (map #(str "UNION ALL SELECT " %))
-               (str/join " "))))
+          (->> (range 1 (inc num))
+               (map #(str "SELECT " % " AS a"))
+               (str/join " UNION ALL "))))
 
 (defmethod sleep-numbers-query :clickhouse [_driver sleep-sec num]
   (let [q (quot sleep-sec 3)
@@ -350,7 +350,7 @@
                                                                                          :query new-query}})
                                      (let [new-transform (t2/select-one :model/Transform transform-id)]
                                        (transforms.execute/execute! new-transform {:run-method :manual})))
-                  query-futures (doall
+                  query-futures (vec
                                  (for [i (range 10)]
                                    (future
                                      (Thread/sleep (* i 100))
