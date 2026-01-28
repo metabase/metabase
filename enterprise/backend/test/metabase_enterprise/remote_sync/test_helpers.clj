@@ -555,6 +555,40 @@ serdes/meta:
           entity-id
           (str/replace (u/lower-case-en name) #"\s+" "_")))
 
+(defn generate-transform-yaml
+  "Generates YAML content for a transform.
+
+  Args:
+    entity-id: The unique identifier for the transform.
+    name: The name of the transform.
+
+  Returns:
+    A string containing the YAML representation of the transform."
+  [entity-id name]
+  (format "name: %s
+description: null
+entity_id: %s
+collection_id: null
+created_at: '2024-08-28T09:46:18.671622Z'
+creator_id: rasta@metabase.com
+source:
+  type: query
+  query:
+    database: 1
+    type: query
+    query:
+      source-table: 1
+target:
+  type: table
+  name: test_output
+  schema: PUBLIC
+serdes/meta:
+- id: %s
+  label: %s
+  model: Transform
+"
+          name entity-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
 (defn generate-measure-yaml
   "Generates YAML content for a measure with the given `measure-name`, `table-name`, and `db-name`.
   Optional keyword args include `:schema`, `:description`, `:entity-id`, and `:agg-field-name`
