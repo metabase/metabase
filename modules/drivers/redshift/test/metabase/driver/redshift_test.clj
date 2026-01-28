@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
@@ -533,6 +534,19 @@
       :type/DateTime           [:timestamp]
       :type/DateTimeWithTZ     [:timestamp-with-time-zone]
       :type/Time               [:time])))
+
+(deftest ^:parallel describe-fields-pre-process-xf-removes-all-duplicates-test
+  (testing "describe-fields-pre-process-xf removes ALL fields that have duplicate (table-schema, table-name, name)"
+    (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+            {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
+           (into []
+                 (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
+                 [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}])))))
 
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
