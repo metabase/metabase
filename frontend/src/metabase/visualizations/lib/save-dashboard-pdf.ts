@@ -183,7 +183,6 @@ export const saveDashboardPdf = async ({
     console.warn("No dashboard content found", selector);
     return;
   }
-  const cardsBounds = getSortedDashCardBounds(gridNode);
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
@@ -211,7 +210,7 @@ export const saveDashboardPdf = async ({
   const brandingHeight = getBrandingConfig(size).h;
   const verticalOffset =
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
-  const contentHeight = gridNode.offsetHeight + verticalOffset;
+  let contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const rawBackgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
@@ -224,6 +223,16 @@ export const saveDashboardPdf = async ({
   if (!(await isValidColor(backgroundColor))) {
     backgroundColor = "white"; // Fallback to white if the color is invalid
   }
+
+  // Add the class to the actual DOM to trigger row rendering before cloning
+  gridNode.classList.add(SAVING_DOM_IMAGE_CLASS);
+
+  // Wait for React to re-render with all rows visible
+  await new Promise<void>(resolve => setTimeout(resolve, 100));
+
+  // Recalculate content height and card bounds after all rows are rendered
+  contentHeight = gridNode.offsetHeight + verticalOffset;
+  const cardsBounds = getSortedDashCardBounds(gridNode);
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(gridNode, {
@@ -271,6 +280,9 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  // Remove the class after capturing
+  gridNode.classList.remove(SAVING_DOM_IMAGE_CLASS);
 
   const { default: jspdf } = await import("jspdf");
 
