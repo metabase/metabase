@@ -1885,6 +1885,60 @@
                 (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
                                       :transform-id (:id tx))))))))
 
+(deftest checkout-blocked-for-mbql-transforms-test
+  (testing "POST /api/ee/workspace/:id/transform blocks MBQL transform checkout"
+    (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
+                                        :source {:type  :query
+                                                 :query (mt/mbql-query venues)}
+                                        :target {:type     "table"
+                                                 :database (mt/id)
+                                                 :schema   "public"
+                                                 :name     "mbql_blocked_test"}}]
+      (ws.tu/with-workspaces! [ws {:name "Test Workspace" :database_id (mt/id)}]
+        (is (= "MBQL transforms cannot be added to workspaces."
+               (mt/user-http-request :crowberto :post 400 (ws-url (:id ws) "/transform")
+                                     (merge {:global_id (:id tx)}
+                                            (select-keys tx [:name :source :target])))))))))
+
+(deftest checkout-blocked-for-card-reference-transforms-test
+  (testing "POST /api/ee/workspace/:id/transform blocks transform with card references"
+    (mt/with-temp [:model/Card card {:name          "Referenced Card"
+                                     :database_id   (mt/id)
+                                     :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Transform tx {:name   "Card Reference Transform"
+                                        :source {:type     :query
+                                                 :database (mt/id)
+                                                 :query    (mt/native-query {:query         "SELECT * FROM {{#card}}"
+                                                                             :template-tags {"card" {:type         "card"
+                                                                                                     :card-id      (:id card)
+                                                                                                     :display-name "Card"}}})}
+                                        :target {:type     "table"
+                                                 :database (mt/id)
+                                                 :schema   "public"
+                                                 :name     "card_ref_blocked_test"}}]
+      (ws.tu/with-workspaces! [ws {:name "Test Workspace" :database_id (mt/id)}]
+        (is (= "Transforms that reference other questions cannot be added to workspaces."
+               (mt/user-http-request :crowberto :post 400 (ws-url (:id ws) "/transform")
+                                     (merge {:global_id (:id tx)}
+                                            (select-keys tx [:name :source :target])))))))))
+
+(deftest global-id-immutable-test
+  (testing "PUT /api/ee/workspace/:id/transform/:tx-id cannot change global_id"
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x1 [:t1]
+                        :x2 [:t2]}
+            :workspace {:checkouts   [:x1]
+                        :definitions {:x3 [:t3]}}})]
+      (testing "cannot clear global_id on a checked-out transform"
+        (is (=? {:cause "Cannot change global_id of an existing workspace transform."}
+                (mt/user-http-request :crowberto :put 400 (ws-url workspace-id "/transform/" (workspace-map :x1))
+                                      {:global_id nil}))))
+      (testing "cannot set global_id on a workspace-only transform"
+        (is (=? {:cause "Cannot change global_id of an existing workspace transform."}
+                (mt/user-http-request :crowberto :put 400 (ws-url workspace-id "/transform/" (workspace-map :x3))
+                                      {:global_id (global-map :x2)})))))))
+
 (defmacro ^:private with-test-resources-cleanup! [& body]
   `(mt/with-model-cleanup [:model/Transform :model/Workspace :model/Table]
      ~@body))

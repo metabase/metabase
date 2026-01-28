@@ -715,6 +715,14 @@
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
+          ;; Verify transform source is allowed in workspaces (not MBQL, no card references, etc.)
+          _         (let [source-type (transforms/transform-source-type (:source body))
+                          reason      (checkout-disabled-reason {:source_type source-type :source (:source body)})]
+                      (api/check-400 (nil? reason)
+                                     (case reason
+                                       "mbql"           (deferred-tru "MBQL transforms cannot be added to workspaces.")
+                                       "card-reference" (deferred-tru "Transforms that reference other questions cannot be added to workspaces.")
+                                       (deferred-tru "This transform cannot be added to a workspace: {0}." reason))))
           ;; For uninitialized workspaces, preserve the target database from the request body
           ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
           ;; For initialized workspaces, ensure the target database matches the workspace database
