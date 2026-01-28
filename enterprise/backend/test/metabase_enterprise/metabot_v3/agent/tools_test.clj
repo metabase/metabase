@@ -220,7 +220,7 @@
                                      :charts {"test-chart" {:type :bar}}}})
           test-stateful-tool
           (with-meta
-           (fn [_] (reset! seen-memory agent-tools/*memory-atom*) {:output "ok"})
+           (fn [_] (reset! seen-memory @#'agent-tools/*memory-atom*) {:output "ok"})
            {:doc "Test tool"
             :schema [:=> [:cat [:map]] :any]
             :system-instructions "Follow the rules."})
