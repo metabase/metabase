@@ -167,28 +167,29 @@
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest ^:parallel joined-dependencies-test
-  (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                            {:database (mt/id),
-                                             :type "query",
-                                             :query {:source-table (mt/id :orders),
-                                                     :joins
-                                                     [{:fields "all",
-                                                       :strategy "left-join",
-                                                       :alias "Products",
-                                                       :condition
-                                                       [:=
-                                                        [:field
-                                                         (mt/id :orders :product_id)
-                                                         {:base-type "type/Integer"}]
-                                                        [:field
-                                                         (mt/id :products :id)
-                                                         {:base-type "type/Integer",
-                                                          :join-alias "Products"}]],
-                                                       :source-table (mt/id :products)}]},
-                                             :parameters []})]
-    (is (= #{{:table (mt/id :orders)}
-             {:table (mt/id :products)}}
-           (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
+  (when-not (= driver/*driver* :clickouse) ;; clickhouse doesn't support left join
+    (mt/with-temp [:model/Transform {t1 :id} (make-transform
+                                              {:database (mt/id),
+                                               :type "query",
+                                               :query {:source-table (mt/id :orders),
+                                                       :joins
+                                                       [{:fields "all",
+                                                         :strategy "left-join",
+                                                         :alias "Products",
+                                                         :condition
+                                                         [:=
+                                                          [:field
+                                                           (mt/id :orders :product_id)
+                                                           {:base-type "type/Integer"}]
+                                                          [:field
+                                                           (mt/id :products :id)
+                                                           {:base-type "type/Integer",
+                                                            :join-alias "Products"}]],
+                                                         :source-table (mt/id :products)}]},
+                                               :parameters []})]
+      (is (= #{{:table (mt/id :orders)}
+               {:table (mt/id :products)}}
+             (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest card-dependencies-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})

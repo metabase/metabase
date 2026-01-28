@@ -16,6 +16,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -1323,30 +1324,35 @@
                      :last_run_message some?}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
+(defn- quote-table-name
+  [driver {:keys [name schema]}]
+  (sql.u/quote-name driver :table name schema))
+
 (deftest run-workspace-transform-bad-column-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
     (transforms.tu/with-transform-cleanup! [output-table "ws_api_badcol"]
       (ws.tu/with-workspaces! [ws {:name "Workspace for bad column test"}]
-        (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))
+        (let [order-table (t2/select-one :model/Table (mt/id :orders))
               bad-transform {:name   "Bad Column Transform"
                              :source {:type  "query"
-                                      :query (mt/native-query {:query "SELECT nocolumn FROM orders"})}
+                                      :query (mt/native-query {:query (format "SELECT * FROM %s" (quote-table-name (:engine (mt/db)) order-table))})}
                              :target {:type     "table"
                                       :database (mt/id)
-                                      :schema   target-schema
+                                      :schema   (:schema order-table)
                                       :name     output-table}}
               ref-id        (:ref_id
                              (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
               ws            (ws.tu/ws-done! (:id ws))]
+
           (testing "returns failed status with error message mentioning the bad column"
-            (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
-                           (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
+            (let [result  (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+                            (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
               (is (=? {:status     "failed"
                        :message    #"(?s).*nocolumn.*"
                        :start_time some?
                        :end_time   some?
                        :table      {:schema (:schema ws)
-                                    :name   (str target-schema "__" output-table)}}
+                                    :name   (str (:schema order-table) "__" output-table)}}
                       result))))
           (testing "transform has last_run_message mentioning the bad column"
             (is (=? {:last_run_at      some?

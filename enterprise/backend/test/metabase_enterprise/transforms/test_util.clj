@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
@@ -29,11 +30,16 @@
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
-      (-> (driver/drop-transform-target! driver (mt/db) target)
-          u/ignore-exceptions)
+      (try
+        (driver/drop-transform-target! driver (mt/db) target)
+        (catch Exception e
+          (log/warnf e "Failed to drop transform target table %s.%s for driver %s"
+                     (:schema target) (:name target) driver)))
       ;; Also clean up the Metabase metadata
-      (-> (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
-          u/ignore-exceptions))))
+      (try
+        (t2/delete! :model/Table :name (:name target) :db_id (:id (mt/db)))
+        (catch Exception e
+          (log/warnf e "Failed to delete Table metadata for %s" (:name target)))))))
 
 (defn gen-table-name
   "Generate a random table name with prefix `table-name-prefix`."
@@ -44,7 +50,7 @@
     ;; Strip off some of the randomness, so that less tests run afoul of the length limit.
     (let [table-name (str table-name-prefix \_ (subs (str/replace (str (random-uuid)) \- \_) 0 26))]
       ;; this caught me out when testing, was annoying to debug - hence assert
-      (assert (< (count table-name) (driver/table-name-length-limit driver/*driver*))
+      (assert (< (count table-name) (driver/table-name-length-limit #p driver/*driver*))
               "chosen identifier prefix should not cause identifiers longer than the driver/table-name-length-limit")
       table-name)))
 
