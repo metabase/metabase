@@ -328,7 +328,7 @@
   (with-open [^Closeable ctx (if #_config/is-dev? false
                                (acquire-dev-context)
                                (acquire-context @python-context-pool))]
-    (json/parse-string (.asString ^Value (analyze-table-joins-impl ctx sql)) true)))
+    (json/decode+kw (.asString ^Value (analyze-table-joins-impl ctx sql)) true)))
 
 (comment
   (analyze-table-joins "
