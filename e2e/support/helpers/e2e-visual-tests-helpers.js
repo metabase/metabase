@@ -86,6 +86,7 @@ export function chartPathsWithFillColors(colors) {
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
+const DIAMOND_PATH = "M0 -1L1 0L0 1L-1 0Z";
 export function cartesianChartCircle() {
   return echartsContainer()
     .find(`path[d="${CIRCLE_PATH}"]`)
@@ -261,3 +262,34 @@ export function assertEChartsTooltipNotContain(rows) {
     });
   });
 }
+
+function getBoxPlotContainer(container) {
+  if (container === undefined) {
+    return echartsContainer();
+  }
+  if (typeof container === "number") {
+    return cy
+      .findAllByTestId("chart-container")
+      .should("have.length.at.least", container + 1)
+      .eq(container);
+  }
+  return container;
+}
+
+export const BoxPlot = {
+  getContainer: getBoxPlotContainer,
+
+  getBoxes(container) {
+    return getBoxPlotContainer(container).find(
+      'path[fill-opacity="0.15"][stroke]',
+    );
+  },
+
+  getPoints(container) {
+    return getBoxPlotContainer(container).find(`path[d="${CIRCLE_PATH}"]`);
+  },
+
+  getMeanMarkers(container) {
+    return getBoxPlotContainer(container).find(`path[d="${DIAMOND_PATH}"]`);
+  },
+};

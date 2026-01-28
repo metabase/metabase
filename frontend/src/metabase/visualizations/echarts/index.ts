@@ -1,5 +1,6 @@
 import {
   BarChart,
+  BoxplotChart,
   CustomChart,
   LineChart,
   SankeyChart,
@@ -24,6 +25,7 @@ export const registerEChartsModules = () => {
   use([
     LineChart,
     BarChart,
+    BoxplotChart,
     ScatterChart,
     CustomChart,
     SunburstChart,

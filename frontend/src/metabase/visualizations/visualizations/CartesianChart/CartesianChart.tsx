@@ -22,10 +22,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getGridSizeAdjustedSettings } from "./utils";
-
-const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
-const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
+import { getDashboardAdjustedSettings } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,18 +57,17 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(() => {
-    const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
-    if (isDashboard) {
-      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.y_axis.labels_enabled"] = false;
-      }
-      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.x_axis.labels_enabled"] = false;
-      }
-    }
-    return settings;
-  }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
+  const settings = useMemo(
+    () =>
+      getDashboardAdjustedSettings(
+        originalSettings,
+        isDashboard ?? false,
+        outerWidth,
+        outerHeight,
+        gridSize,
+      ),
+    [originalSettings, isDashboard, outerWidth, outerHeight, gridSize],
+  );
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
