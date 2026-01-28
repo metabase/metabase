@@ -137,11 +137,7 @@
   is used for documentation instead of the actual schema. This allows streaming endpoints to document the
   JSON content they return while validating that the return value is a StreamingResponse instance."
   [schema]
-  (let [resolved-schema (mr/resolve-schema schema)
-        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
-        content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
-                            schema)
-        jss-schema      (mjs-collect-definitions content-schema)]
+  (let [jss-schema (mjs-collect-definitions schema)]
     {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
                (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
 
