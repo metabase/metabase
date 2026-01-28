@@ -150,6 +150,14 @@
   []
   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
 
+(defn default-schema-or-public
+  "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
+   Useful for tests that need to create tables with a schema matching transform targets."
+  []
+  (or (when (get-method driver.sql/default-schema driver/*driver*)
+        (driver.sql/default-schema driver/*driver*))
+      "public"))
+
 (defmulti delete-schema!
   "Deletes a schema."
   {:arglists '([driver db schema])}
