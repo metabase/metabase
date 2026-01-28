@@ -67,7 +67,7 @@ export const setupLicense: CliStepMethod = async (state) => {
   const spinner = ora();
 
   // Activate the license
-  // eslint-disable-next-line no-constant-condition -- ask until user provides a valid license key
+   
   while (true) {
     try {
       const token = await input({

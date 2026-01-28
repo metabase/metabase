@@ -20,7 +20,7 @@ export const generateExpressServerFile: CliStepMethod = async (state) => {
 
   let mockServerDir: string;
 
-  // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
+   
   while (true) {
     mockServerDir = await input({
       message: "Where should we save the example Express mock server folder?",

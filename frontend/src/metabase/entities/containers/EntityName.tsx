@@ -21,7 +21,7 @@ export const EntityName = <Entity, EntityWrapper>({
   const entityDefinition: EntityDefinition<Entity, EntityWrapper> =
     useMemo(() => {
       // dynamic require due to circular dependencies
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const entitiesDefinitions = require("metabase/entities");
       return entitiesDefinitions[entityType];
     }, [entityType]);

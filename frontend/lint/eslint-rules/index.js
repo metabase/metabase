@@ -1,8 +1,5 @@
-/* eslint-disable import/no-commonjs */
-
 const fs = require("fs");
 
-// eslint-disable-next-line no-undef
 const pkg = JSON.parse(fs.readFileSync(__dirname + "/package.json", "utf8"));
 
 module.exports = {

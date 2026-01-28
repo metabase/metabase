@@ -463,8 +463,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";
