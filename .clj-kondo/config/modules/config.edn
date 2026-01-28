@@ -2354,6 +2354,7 @@
            driver
            lib
            lib-be
+           models
            permissions
            query-processor
            settings

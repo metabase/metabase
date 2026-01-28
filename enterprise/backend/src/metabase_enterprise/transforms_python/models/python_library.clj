@@ -1,6 +1,9 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -28,6 +31,18 @@
 
 (doseq [trait [:metabase/model :hook/timestamped?]]
   (derive :model/PythonLibrary trait))
+
+(defmethod mi/can-read? :model/PythonLibrary
+  ([_instance]
+   (perms/has-any-transforms-permission? api/*current-user-id*))
+  ([_model _pk]
+   (perms/has-any-transforms-permission? api/*current-user-id*)))
+
+(defmethod mi/can-write? :model/PythonLibrary
+  ([_instance]
+   (perms/has-any-transforms-permission? api/*current-user-id*))
+  ([_model _pk]
+   (perms/has-any-transforms-permission? api/*current-user-id*)))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."

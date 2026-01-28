@@ -40,7 +40,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (api/check-403 (mi/can-write? (api/check-404 (t2/select-one :model/TransformTag :id tag-id))))
+  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/update! :model/TransformTag tag-id {:name name})
@@ -55,7 +55,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (api/check-403 (mi/can-write? (api/check-404 (t2/select-one :model/TransformTag :id tag-id))))
+  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
 
