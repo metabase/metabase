@@ -6,8 +6,7 @@
    [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query]
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (deftest edit-sql-query-test
   (mt/test-drivers #{:h2}
