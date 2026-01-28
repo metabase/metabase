@@ -150,9 +150,9 @@ export function TableAttributesEditBulk({
     }
 
     const shouldReset =
-      !selectedTables.isSubsetOf(previousTables) ||
-      !selectedSchemas.isSubsetOf(previousSchemas) ||
-      !selectedDatabases.isSubsetOf(previousDatabases);
+      !isSubsetOf(selectedTables, previousTables) ||
+      !isSubsetOf(selectedSchemas, previousSchemas) ||
+      !isSubsetOf(selectedDatabases, previousDatabases);
 
     if (shouldReset) {
       setDataLayer(null);
@@ -342,4 +342,8 @@ export function TableAttributesEditBulk({
       />
     </>
   );
+}
+
+function isSubsetOf<T>(subset: Set<T>, superset: Set<T>): boolean {
+  return Array.from(subset).every((element) => superset.has(element));
 }
