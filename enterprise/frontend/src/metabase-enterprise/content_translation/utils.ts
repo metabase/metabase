@@ -96,14 +96,14 @@ export type AggregationPattern = (value: string) => string;
  * aggregation pattern and translating the inner column name.
  *
  * Handles patterns where the value can be:
- * - At the end: "Sum of {value}" (English)
  * - At the start: "{value} של סכום" (Hebrew, right-to-left)
+ * - At the end: "Sum of {value}" (English)
  * - Wrapped: "Somme de {value} totale" (hypothetical)
  *
  * Examples:
- * - "Total" -> tc("Total") (no aggregation pattern matched)
- * - "Sum of Total" -> t`Sum of ${tc("Total")}`
- * - "Sum of Min of Total" -> t`Sum of ${t`Min of ${tc("Total")}`}`
+ * - "Total" => tc("Total") (no aggregation pattern matched)
+ * - "Sum of Total" => t`Sum of ${tc("Total")}`
+ * - "Sum of Min of Total" => t`Sum of ${t`Min of ${tc("Total")}`}`
  */
 export const translateAggregationDisplayName = (
   displayName: string,
