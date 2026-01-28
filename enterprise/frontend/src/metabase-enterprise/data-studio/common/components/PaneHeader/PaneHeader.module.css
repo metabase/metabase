@@ -1,4 +1,8 @@
 .ProfileLink {
+  /* This is to keep the app switcher position a consistent space away
+     from the right when the window is smaller than the data studio
+     typically allows. Once we have a more responsive data studio layout
+     this can be removed. */
   @media screen and (max-width: calc(50rem + 300px)) {
     position: fixed;
     right: 3.5rem;
