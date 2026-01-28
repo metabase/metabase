@@ -266,7 +266,11 @@
           (println (format "[FK-DEBUG] SUCCESS: setting %s.%s -> %s.id (fk_target_field_id=%d)"
                            table-name field-name target-table-name (:id target-pk-field)))
           (t2/update! :model/Field (:id source-field)
-                      {:fk_target_field_id (:id target-pk-field)}))
+                      {:fk_target_field_id (:id target-pk-field)})
+          ;; Verify the update persisted
+          (let [updated-field (t2/select-one [:model/Field :id :fk_target_field_id] :id (:id source-field))]
+            (println (format "[FK-DEBUG] VERIFIED: field %d now has fk_target_field_id=%s"
+                             (:id source-field) (:fk_target_field_id updated-field)))))
         (println (format "[FK-DEBUG] FAILED: %s.%s -> %s (source-field=%s, target-pk-field=%s)"
                          table-name field-name target-table-name
                          (boolean source-field) (boolean target-pk-field)))))))
