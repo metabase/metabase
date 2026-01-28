@@ -270,9 +270,8 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [cacheable? (is-cacheable? query)
-          description (get-cache-eligibility-description query)]
-      (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") description)
+    (let [cacheable? (is-cacheable? query)]
+      (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") (get-cache-eligibility-description query))
       (if cacheable?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
