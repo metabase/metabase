@@ -253,6 +253,55 @@
                          promote-to-t2-instance)]
     (notification/send-notification! notification :notification/sync? true)))
 
+(defn duplicate-notification!
+  "Duplicate a notification, creating a new notification with the same configuration.
+  Returns the duplicated notification."
+  [original-notification new-creator-id]
+  (api/create-check :model/Notification original-notification)
+  (let [;; Prepare the new notification data without id, timestamps, etc.
+        new-notification-base (-> original-notification
+                                   (select-keys [:payload_type :active])
+                                   (assoc :creator_id new-creator-id))
+        ;; Extract payload (for card notifications, this is the NotificationCard data)
+        payload (case (:payload_type original-notification)
+                  :notification/card
+                  (when-let [notification-card (:payload original-notification)]
+                    {:card_id (:card_id notification-card)
+                     :send_condition (:send_condition notification-card)
+                     :send_once (:send_once notification-card)})
+                  nil)
+        new-notification (if payload
+                          (assoc new-notification-base :payload payload)
+                          new-notification-base)
+        ;; Extract subscriptions (without notification_id)
+        subscriptions (map #(dissoc % :id :notification_id :created_at :updated_at :entity_id)
+                           (:subscriptions original-notification))
+        ;; Extract handlers with recipients (without ids)
+        handlers+recipients (map (fn [handler]
+                                   {:channel_type (:channel_type handler)
+                                    :channel_id (:channel_id handler)
+                                    :template_id (:template_id handler)
+                                    :active (:active handler)
+                                    :template (when-let [template (:template handler)]
+                                               (dissoc template :id :created_at :updated_at :entity_id))
+                                    :recipients (map (fn [recipient]
+                                                      (dissoc recipient :id :notification_handler_id :created_at :updated_at :entity_id))
+                                                    (:recipients handler))})
+                                 (:handlers original-notification))
+        ;; Create the new notification
+        duplicated-notification (models.notification/hydrate-notification
+                                 (models.notification/create-notification!
+                                  new-notification
+                                  subscriptions
+                                  handlers+recipients))]
+    ;; Send notification emails if it's a card notification
+    (when (card-notification? duplicated-notification)
+      (send-you-were-added-card-notification-email! duplicated-notification))
+    ;; Publish event
+    (events/publish-event! :event/notification-create {:object duplicated-notification
+                                                       :user-id new-creator-id})
+    duplicated-notification))
+
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
   [notification-id user-id]
