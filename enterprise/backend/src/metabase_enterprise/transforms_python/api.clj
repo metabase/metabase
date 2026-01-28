@@ -44,7 +44,8 @@
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (api/write-check (python-library/get-python-library-by-path path))
+  ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
+  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
   (python-library/update-python-library-source! path (:source body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
