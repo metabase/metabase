@@ -232,12 +232,13 @@
       (is (= "assistant" (:role (first formatted))))
       ;; Should preserve the array content as-is
       (is (vector? (:content (first formatted))))
-      (is (= "tool_use" (-> formatted first :content first :type)))))
+      (is (= "tool_use" (-> formatted first :content first :type))))))
 
+(deftest format-message-test-2
   (testing "handles assistant message without content (only tool_calls)"
     ;; OpenAI-style tool_calls should be converted to Claude-style content blocks
-    (let [msg {:role :assistant
-               :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}
+    (let [msg       {:role       :assistant
+                     :tool_calls [{:id "t1" :name "search" :arguments "{}"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "assistant" (:role (first formatted))))
@@ -249,9 +250,9 @@
 
   (testing "handles assistant message with both content AND tool_calls"
     ;; When there's both text and tool_calls, combine them into content blocks
-    (let [msg {:role :assistant
-               :content "I'll search for that."
-               :tool_calls [{:id "t1" :name "search" :arguments "{\"query\":\"test\"}"}]}
+    (let [msg       {:role       :assistant
+                     :content    "I'll search for that."
+                     :tool_calls [{:id "t1" :name "search" :arguments "{\"query\":\"test\"}"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "assistant" (:role (first formatted))))
@@ -267,7 +268,7 @@
 
   (testing "passes through messages with string role unchanged"
     ;; Messages that are already fully formatted should pass through
-    (let [msg {:role "user" :content "Already formatted"}
+    (let [msg       {:role "user" :content "Already formatted"}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "user" (:role (first formatted))))
@@ -276,8 +277,8 @@
   (testing "handles string role assistant message with tool_calls but no content"
     ;; This is a critical case from the frontend - messages come with string roles
     ;; and tool_calls but no :content key
-    (let [msg {:role "assistant"
-               :tool_calls [{:id "toolu_123" :name "search" :arguments "{\"query\":\"test\"}"}]}
+    (let [msg       {:role       "assistant"
+                     :tool_calls [{:id "toolu_123" :name "search" :arguments "{\"query\":\"test\"}"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "assistant" (:role (first formatted))))
@@ -294,9 +295,9 @@
 
   (testing "handles string role assistant message with both content and tool_calls"
     ;; Frontend may also send messages with both text content and tool_calls
-    (let [msg {:role "assistant"
-               :content "I'll search for that."
-               :tool_calls [{:id "toolu_456" :name "get_entity_details" :arguments "{\"table_id\":1}"}]}
+    (let [msg       {:role       "assistant"
+                     :content    "I'll search for that."
+                     :tool_calls [{:id "toolu_456" :name "get_entity_details" :arguments "{\"table_id\":1}"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "assistant" (:role (first formatted))))
@@ -310,12 +311,12 @@
       (is (= "toolu_456" (-> formatted first :content second :id)))))
 
   (testing "appends tool_calls when content is already a block list"
-    (let [msg {:role :assistant
-               :content [{:type "text" :text "Here you go."}]
-               :tool_calls [{:id "t1" :name "search" :arguments "{\"query\":\"foo\"}"}]}
+    (let [msg       {:role       :assistant
+                     :content    [{:type "text" :text "Here you go."}]
+                     :tool_calls [{:id "t1" :name "search" :arguments "{\"query\":\"foo\"}"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))
-          content (:content (first formatted))]
+          content   (:content (first formatted))]
       (is (vector? content))
       (is (= 2 (count content)))
       (is (= "text" (-> content first :type)))
@@ -323,20 +324,20 @@
       (is (= "t1" (-> content second :id)))))
 
   (testing "handles malformed tool_call arguments"
-    (let [msg {:role :assistant
-               :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}
+    (let [msg       {:role       :assistant
+                     :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))
-          content (:content (first formatted))]
+          content   (:content (first formatted))]
       (is (vector? content))
       (is (= "tool_use" (-> content first :type)))
       (is (= "{bad-json" (-> content first :input)))))
 
   (testing "handles string role tool message"
     ;; Frontend sends tool results with string roles too
-    (let [msg {:role "tool"
-               :tool_call_id "toolu_789"
-               :content "{\"results\": []}"}
+    (let [msg       {:role         "tool"
+                     :tool_call_id "toolu_789"
+                     :content      "{\"results\": []}"}
           formatted (messages/build-message-history
                      (memory/initialize [msg] {}))]
       (is (= "user" (:role (first formatted))))
@@ -349,8 +350,8 @@
     (let [context {}
           profile {:prompt-template "internal.selmer"
                    :model "claude-sonnet-4-5-20250929"}
-          tools {}
-          msg (messages/build-system-message context profile tools)]
+          tools   {}
+          msg     (messages/build-system-message context profile tools)]
       (is (= "system" (:role msg)))
       (is (string? (:content msg)))
       (is (re-find #"Metabot" (:content msg)))))

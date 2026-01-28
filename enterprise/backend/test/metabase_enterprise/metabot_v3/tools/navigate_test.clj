@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.navigate-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.navigate :as navigate]))
 
@@ -36,7 +37,7 @@
         (let [result (navigate/navigate {:destination {:page "sql_editor" :database_id 123}
                                          :memory-atom memory-atom})]
           (is (string? (get-in result [:structured-output :path])))
-          (is (clojure.string/starts-with? (get-in result [:structured-output :path]) "/question#")))))))
+          (is (str/starts-with? (get-in result [:structured-output :path]) "/question#")))))))
 
 (deftest entity->path-test
   (testing "entity navigation produces correct paths"
@@ -78,15 +79,15 @@
 
 (deftest query-navigation-test
   (testing "query navigation resolves from memory"
-    (let [query {:lib/type :mbql/query
-                 :database 1
-                 :stages [{:lib/type :mbql.stage/mbql
-                           :source-table 10}]}
+    (let [query       {:lib/type :mbql/query
+                       :database 1
+                       :stages   [{:lib/type     :mbql.stage/mbql
+                                   :source-table 10}]}
           memory-atom (atom {:state {:queries {"test-query-id" query}
-                                     :charts {}}})]
-      (let [result (navigate/navigate {:destination {:query_id "test-query-id"}
-                                       :memory-atom memory-atom})]
-        (is (clojure.string/starts-with? (get-in result [:structured-output :path]) "/question#")))))
+                                     :charts  {}}})]
+      (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
+              (navigate/navigate {:destination {:query_id "test-query-id"}
+                                  :memory-atom memory-atom})))))
 
   (testing "query navigation fails for missing query"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
@@ -98,20 +99,20 @@
 
 (deftest chart-navigation-test
   (testing "chart navigation resolves from memory"
-    (let [query {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
+    (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"q1" query}
-                                     :charts {"chart1" {:query-id "q1" :chart-type :bar}}}})]
-      (let [result (navigate/navigate {:destination {:chart_id "chart1"}
-                                       :memory-atom memory-atom})]
-        (is (clojure.string/starts-with? (get-in result [:structured-output :path]) "/question#")))))
+                                     :charts  {"chart1" {:query-id "q1" :chart-type :bar}}}})]
+      (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
+              (navigate/navigate {:destination {:chart_id "chart1"}
+                                  :memory-atom memory-atom})))))
 
   (testing "chart navigation falls back to query lookup if chart not found"
-    (let [query {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
+    (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"chart1" query}
-                                     :charts {}}})]
-      (let [result (navigate/navigate {:destination {:chart_id "chart1"}
-                                       :memory-atom memory-atom})]
-        (is (clojure.string/starts-with? (get-in result [:structured-output :path]) "/question#")))))
+                                     :charts  {}}})]
+      (is (=? {:structured-output {:path #(str/starts-with? % "/question#")}}
+              (navigate/navigate {:destination {:chart_id "chart1"}
+                                  :memory-atom memory-atom})))))
 
   (testing "chart navigation fails for missing chart and query"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]

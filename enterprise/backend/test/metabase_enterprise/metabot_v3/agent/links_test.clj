@@ -6,13 +6,13 @@
 
 (deftest resolve-metabase-uri-test
   (testing "resolves query links"
-    (let [query-id "abc-123"
-          query {:database 1 :type :query :query {:source-table 1}}
+    (let [query-id      "abc-123"
+          query         {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
-          charts-state {}]
-      (let [result (links/resolve-metabase-uri "metabase://query/abc-123" queries-state charts-state)]
-        (is (string? result))
-        (is (str/starts-with? result "/question#")))))
+          charts-state  {}
+          result        (links/resolve-metabase-uri "metabase://query/abc-123" queries-state charts-state)]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
 
   (testing "returns nil for missing query"
     (let [result (links/resolve-metabase-uri "metabase://query/missing" {} {})]
@@ -39,24 +39,24 @@
     (is (nil? (links/resolve-metabase-uri "metabase://query/" {} {}))))
 
   (testing "resolves chart links using chart state"
-    (let [query-id "query-abc"
-          chart-id "chart-123"
-          query {:database 1 :type :query :query {:source-table 1}}
+    (let [query-id      "query-abc"
+          chart-id      "chart-123"
+          query         {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
-          charts-state {chart-id {:query-id query-id :chart-type :bar}}]
-      (let [result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
-        (is (string? result))
-        (is (str/starts-with? result "/question#")))))
+          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          result (links/resolve-metabase-uri "metabase://chart/chart-123" queries-state charts-state)]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
 
   (testing "falls back to query when chart link uses query ID"
     ;; LLM sometimes uses metabase://chart/ when it should use metabase://query/
-    (let [query-id "qp_6a8c1d99-6f46-4ebb-9b7e-2fcad97a7f1c"
-          query {:database 1 :type :query :query {:source-table 1}}
+    (let [query-id      "qp_6a8c1d99-6f46-4ebb-9b7e-2fcad97a7f1c"
+          query         {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
-          charts-state {}]
-      (let [result (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
-        (is (string? result))
-        (is (str/starts-with? result "/question#"))))))
+          charts-state  {}
+          result (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
+      (is (string? result))
+      (is (str/starts-with? result "/question#")))))
 
 (deftest process-text-links-test
   (testing "processes metabase:// links in markdown"
@@ -169,58 +169,58 @@
 
 (deftest chart-link-resolution-test
   (testing "resolves chart links correctly with state"
-    (let [query-id "q-abc-123"
-          chart-id "chart-xyz-789"
-          query {:database 1 :type :query :query {:source-table 1}}
+    (let [query-id      "q-abc-123"
+          chart-id      "chart-xyz-789"
+          query         {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
-          charts-state {chart-id {:query-id query-id :chart-type :bar}}]
-      (let [result (links/resolve-metabase-uri (str "metabase://chart/" chart-id) queries-state charts-state)]
-        (is (string? result))
-        (is (str/starts-with? result "/question#")))))
+          charts-state  {chart-id {:query-id query-id :chart-type :bar}}
+          result        (links/resolve-metabase-uri (str "metabase://chart/" chart-id) queries-state charts-state)]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
 
   (testing "chart link returns nil when chart not found and no query fallback"
     (let [result (links/resolve-metabase-uri "metabase://chart/nonexistent" {} {})]
       (is (nil? result))))
 
   (testing "chart link falls back to query when chart-id matches query-id"
-    (let [query-id "shared-id-123"
-          query {:database 1 :type :query :query {:source-table 1}}
+    (let [query-id      "shared-id-123"
+          query         {:database 1 :type :query :query {:source-table 1}}
           queries-state {query-id query}
-          charts-state {}]
-      (let [result (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
-        (is (string? result))
-        (is (str/starts-with? result "/question#")))))
+          charts-state  {}
+          result        (links/resolve-metabase-uri (str "metabase://chart/" query-id) queries-state charts-state)]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
 
   (testing "chart link resolution with missing query-id in chart state"
     ;; Chart exists but references a query that doesn't exist
     (let [charts-state {"chart-1" {:query-id "missing-query" :chart-type :line}}
-          result (links/resolve-metabase-uri "metabase://chart/chart-1" {} charts-state)]
+          result       (links/resolve-metabase-uri "metabase://chart/chart-1" {} charts-state)]
       ;; Should return nil since the underlying query can't be resolved
       (is (nil? result)))))
 
 (deftest query-link-resolution-test
   (testing "resolves query links with valid query in state"
-    (let [query-id "test-query-id"
-          query {:database 1 :type :query :query {:source-table 1}}
-          queries-state {query-id query}]
-      (let [result (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
-        (is (string? result))
-        (is (str/starts-with? result "/question#")))))
+    (let [query-id      "test-query-id"
+          query         {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
+      (is (string? result))
+      (is (str/starts-with? result "/question#"))))
 
   (testing "returns nil for missing query"
     (is (nil? (links/resolve-metabase-uri "metabase://query/nonexistent" {} {}))))
 
   (testing "handles query with complex nested structure"
-    (let [query-id "complex-query"
-          query {:database 1
-                 :type :query
-                 :query {:source-table 1
-                         :joins [{:fields :all :source-table 2}]
-                         :filter [:= [:field 1 nil] "test"]}}
-          queries-state {query-id query}]
-      (let [result (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
-        (is (string? result))
-        (is (str/starts-with? result "/question#"))))))
+    (let [query-id      "complex-query"
+          query         {:database 1
+                         :type     :query
+                         :query    {:source-table 1
+                                    :joins        [{:fields :all :source-table 2}]
+                                    :filter       [:= [:field 1 nil] "test"]}}
+          queries-state {query-id query}
+          result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
+      (is (string? result))
+      (is (str/starts-with? result "/question#")))))
 
 (deftest multiple-links-in-text-test
   (testing "processes multiple different link types in same text"
@@ -242,21 +242,21 @@
 
 (deftest special-characters-in-links-test
   (testing "handles link text with special characters"
-    (let [text "[Link with (parens)](metabase://model/1)"
+    (let [text   "[Link with (parens)](metabase://model/1)"
           result (links/process-text-links text {} {})]
       ;; Markdown parser should handle this - may or may not match depending on regex
       (is (string? result))))
 
   (testing "handles entity IDs that look like UUIDs"
-    (let [query-id "550e8400-e29b-41d4-a716-446655440000"
-          query {:database 1 :type :query :query {:source-table 1}}
-          queries-state {query-id query}]
-      (let [result (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
-        (is (string? result)))))
+    (let [query-id      "550e8400-e29b-41d4-a716-446655440000"
+          query         {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
+      (is (string? result))))
 
   (testing "handles nano-id style identifiers"
-    (let [query-id "puL95JSvym3k23W1UUuog"
-          query {:database 1 :type :query :query {:source-table 1}}
-          queries-state {query-id query}]
-      (let [result (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
-        (is (string? result))))))
+    (let [query-id      "puL95JSvym3k23W1UUuog"
+          query         {:database 1 :type :query :query {:source-table 1}}
+          queries-state {query-id query}
+          result        (links/resolve-metabase-uri (str "metabase://query/" query-id) queries-state {})]
+      (is (string? result)))))

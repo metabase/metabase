@@ -1,13 +1,13 @@
 (ns metabase-enterprise.metabot-v3.agent.tools.sql
   "SQL tool wrappers."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.tools.create-sql-query :as create-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.edit-sql-query :as edit-sql-query-tools]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.replace-sql-query :as replace-sql-query-tools]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -17,8 +17,8 @@
   [type-val]
   (cond
     (keyword? type-val) (name type-val)
-    (string? type-val) (str/lower-case type-val)
-    :else ""))
+    (string? type-val)  (u/lower-case-en type-val)
+    :else               ""))
 
 (defn- first-code-editor-buffer-id
   []

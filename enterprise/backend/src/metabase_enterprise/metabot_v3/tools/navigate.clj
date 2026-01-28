@@ -94,10 +94,10 @@
     (str "Navigating to " (:entity_type destination) " " (:entity_id destination) ".")
 
     (:query_id destination)
-    (str "Navigating to query results.")
+    "Navigating to query results."
 
     (:chart_id destination)
-    (str "Navigating to chart.")
+    "Navigating to chart."
 
     :else
     "Navigating to destination."))

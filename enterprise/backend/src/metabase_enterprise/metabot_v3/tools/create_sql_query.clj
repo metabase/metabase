@@ -39,7 +39,7 @@
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql name description collection-id]}]
+  [{:keys [database-id sql name]}]
   (log/info "Creating SQL query"
             {:database-id database-id
              :name name

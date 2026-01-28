@@ -14,11 +14,11 @@
 ;;
 ;; These match the Python AI Service's AISDKDataTypes enum
 
-(def navigate-to-type "navigate_to")
-(def state-type "state")
-(def todo-list-type "todo_list")
-(def code-edit-type "code_edit")
-(def transform-suggestion-type "transform_suggestion")
+(def navigate-to-type "AI-SDK data type for navigation links." "navigate_to")
+(def state-type "AI-SDK data type for state updates." "state")
+(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
+(def code-edit-type "AI-SDK data type for code edits." "code_edit")
+(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 
 ;;; Query URL Encoding
 
@@ -26,8 +26,9 @@
   "Convert an MLv2/MBQL query to a base64-encoded URL hash.
   Used for /question# URLs."
   [query]
-  (let [;; Normalize MLv2 query to legacy MBQL format for URL
-        dataset-query (if (and (map? query) (:lib/type query))
+  ;; Frontend /question# URLs require legacy MBQL format
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [dataset-query (if (and (map? query) (:lib/type query))
                         (lib/->legacy-MBQL query)
                         query)]
     (-> {:dataset_query dataset-query}
