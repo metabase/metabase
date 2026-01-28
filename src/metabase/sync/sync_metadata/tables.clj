@@ -84,7 +84,7 @@
 
 (defenterprise is-temp-transform-table?
   "Return true if `table` references a temporary transform table created during transforms execution."
-  metabase-enterprise.transforms.util
+  metabase.transforms.util
   [_table]
   false)
 

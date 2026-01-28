@@ -1,12 +1,12 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.job-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.schedule :as transforms.schedule]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase.driver :as driver]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.transforms.schedule :as transforms.schedule]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

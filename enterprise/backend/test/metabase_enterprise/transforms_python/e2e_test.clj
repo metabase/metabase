@@ -3,11 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

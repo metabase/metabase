@@ -5,11 +5,11 @@
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.driver :as driver]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
