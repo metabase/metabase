@@ -2561,7 +2561,7 @@ LIMIT
       });
 
       cy.findByRole("dialog", { name: "Select a collection" }).within(() => {
-        cy.findByRole("button", { name: /New collection/ }).click();
+        cy.findByRole("button", { name: /New folder/ }).click();
       });
 
       cy.findByRole("dialog", { name: "Create a new collection" }).within(

@@ -84,6 +84,9 @@ export function entityPickerModalItem(level, name) {
   );
 }
 
+/**
+ *  @deprecated - we don't have tabs any more
+ **/
 export function entityPickerModalTab(name) {
   // make this a noop for now to help with debugging
   // return cy.findAllByRole("tab").filter(`:contains(${name})`);

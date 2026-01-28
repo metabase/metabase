@@ -44,6 +44,9 @@ export function PublishTableModal({
     return null;
   }
 
+  const shouldDisableItem = (item: OmniPickerItem) =>
+    item.model === "table" && "is_published" in item && !!item.is_published;
+
   return (
     <EntityPickerModal
       title={t`Select a table to publish`}
@@ -57,6 +60,7 @@ export function PublishTableModal({
         hasPersonalCollections: false,
         confirmButtonText: t`Publish`,
       }}
+      isDisabledItem={shouldDisableItem}
       onChange={onConfirm}
       onClose={onClose}
     />

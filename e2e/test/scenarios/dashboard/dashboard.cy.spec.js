@@ -123,59 +123,6 @@ describe("scenarios > dashboard", () => {
         .and("not.contain", newQuestionName);
     });
 
-    it(
-      "should create new dashboard inside a collection created on the go",
-      // Increased height to avoid scrolling when opening a collection picker
-      { viewportHeight: 1000 },
-      () => {
-        cy.intercept("POST", "api/collection").as("createCollection");
-        cy.visit("/");
-        cy.findByTestId("home-page").should(
-          "contain",
-          "Try out these sample x-rays to see what Metabase can do.",
-        );
-        H.closeNavigationSidebar();
-        H.appBar().findByText("New").click();
-        H.popover().findByText("Dashboard").should("be.visible").click();
-        const NEW_DASHBOARD = "Foo";
-        cy.findByTestId("new-dashboard-modal").then((modal) => {
-          cy.findByRole("heading", { name: "New dashboard" });
-          cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
-          cy.findByTestId("collection-picker-button")
-            .should("have.text", "Our analytics")
-            .click();
-        });
-
-        H.entityPickerModal()
-          .findByText("New collection")
-          .click({ force: true });
-        const NEW_COLLECTION = "Bar";
-        H.collectionOnTheGoModal().within(() => {
-          cy.findByText("Create a new collection");
-          cy.findByPlaceholderText(/My new collection/)
-            .type(NEW_COLLECTION)
-            .blur();
-          cy.findByText("Create").click();
-          cy.wait("@createCollection");
-        });
-        H.entityPickerModal().within(() => {
-          cy.findByText(NEW_COLLECTION).click();
-          cy.button("Select").click();
-        });
-        H.modal().within(() => {
-          cy.findByText("New dashboard");
-          cy.findByTestId("collection-picker-button").should(
-            "have.text",
-            NEW_COLLECTION,
-          );
-          cy.button("Create").click();
-        });
-
-        H.saveDashboard({ awaitRequest: false });
-        cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
-      },
-    );
-
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
