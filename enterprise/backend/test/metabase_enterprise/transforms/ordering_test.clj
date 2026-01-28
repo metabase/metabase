@@ -13,7 +13,9 @@
 
 (defn- default-schema-or-public [& [fallback-driver]]
   (let [driver (or driver/*driver* fallback-driver)]
-    (or (and driver (driver.sql/default-schema driver)) "public")))
+    (or (sql.tx/session-schema driver)
+        (and driver (driver.sql/default-schema driver))
+        "public")))
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
