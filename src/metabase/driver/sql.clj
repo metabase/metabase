@@ -18,6 +18,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
    [potemkin :as p]))
@@ -122,43 +123,58 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private transform-temp-table-prefix "metabase_transform_tmp")
-
-(defn- temp-table-name
-  "Generate a temporary table name for transform operations.
-   Uses timestamp to ensure uniqueness and allow identification of orphaned tables."
-  [driver schema]
-  (let [max-len (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        suffix (if (>= available (count timestamp))
-                 timestamp
-                 (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (if schema
-      (keyword schema table-name)
-      (keyword table-name))))
-
+;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [conn-spec output-table database] :as transform-details} {:keys [overwrite?]}]
   (let [use-temp-table? (and overwrite?
                              database
-                             (driver/database-supports? driver :rename database)
                              (driver/table-exists? driver database
                                                    {:schema (namespace output-table)
                                                     :name (name output-table)}))]
-    (if use-temp-table?
+    (cond
+      ;; Atomic renames fully supported
+      (and (driver/database-supports? driver :atomic-renames database) use-temp-table?)
       (let [schema (namespace output-table)
-            tmp-table (temp-table-name driver schema)
-            create-query (driver/compile-transform driver (assoc transform-details :output-table tmp-table))
-            rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-        (driver/drop-table! driver (:id database) output-table)
-        (driver/rename-table! driver (:id database) tmp-table output-table)
-        {:rows-affected rows-affected})
+            new-temp (driver.u/temp-table-name driver schema)
+            old-temp (loop []
+                       (let [t (driver.u/temp-table-name driver schema)]
+                         (if (= t new-temp) (recur) t)))]
+        (try
+          (let [create-query (driver/compile-transform driver (assoc transform-details :output-table new-temp))
+                rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+            (driver/rename-tables! driver (:id database) {output-table old-temp
+                                                          new-temp output-table})
+            (driver/drop-table! driver (:id database) old-temp)
+            {:rows-affected rows-affected})
+          (catch Exception e
+            (log/error e "Failed to run transform using rename-tables strategy")
+            (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
+            (throw e))))
+
+      ;; Single rename supported, partial atomicity
+      (and (driver/database-supports? driver :rename database) use-temp-table?)
+      (let [schema (namespace output-table)
+            tmp-table (driver.u/temp-table-name driver schema)]
+        (try
+          (let [create-query (driver/compile-transform driver (assoc transform-details :output-table tmp-table))
+                rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+            (driver/drop-table! driver (:id database) output-table)
+            (driver/rename-table! driver (:id database) tmp-table output-table)
+            {:rows-affected rows-affected})
+          (catch Exception e
+            (log/error e "Failed to run transform using create-drop-rename strategy")
+            (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
+            (throw e))))
+
+      ;; Drop then create, no atomicity
+      :else
       (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                       overwrite? (cons (driver/compile-drop-table driver output-table)))]
-        {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
+        (try
+          {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}
+          (catch Exception e
+            (log/error e "Failed to run transform using drop-create strategy")
+            (throw e)))))))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]

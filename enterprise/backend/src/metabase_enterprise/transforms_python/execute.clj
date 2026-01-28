@@ -166,8 +166,8 @@
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
    Creates new table, then atomically renames target->old and new->target, then drops old."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))
-        temp-table-name (u/poll {:thunk #(transforms.util/temp-table-name driver (namespace table-name))
+  (let [source-table-name (driver.u/temp-table-name driver (namespace table-name))
+        temp-table-name (u/poll {:thunk #(driver.u/temp-table-name driver (namespace table-name))
                                  :done? #(not= source-table-name %)
                                  ;; Poll every 1ms to quickly generate a different timestamp-based table name
                                  :interval-ms 1})]
@@ -190,7 +190,7 @@
   "Transfer data using create + drop + rename to minimize time without data.
    Creates new table, drops old table, then renames new->target."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))]
+  (let [source-table-name (driver.u/temp-table-name driver (namespace table-name))]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
 

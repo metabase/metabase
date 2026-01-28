@@ -822,3 +822,22 @@
                         {:macaw-error (:error result)}
                         (-> result :context :cause))))
     result))
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name with current timestamp in milliseconds.
+  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
+  [driver schema]
+  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
+        timestamp (str (System/currentTimeMillis))
+        prefix    (str transform-temp-table-prefix "_")
+        available (- max-len (count prefix))
+        ;; If we don't have enough space, take the later digits of the timestamp
+        suffix    (if (>= available (count timestamp))
+                    timestamp
+                    (subs timestamp (- (count timestamp) available)))
+        table-name (str prefix suffix)]
+    (keyword schema table-name)))
