@@ -40,10 +40,6 @@ export const ComparisonCard = ({ card }: ComparisonCardProps) => {
     ];
   }, [dataset, card]);
 
-  if (!card) {
-    return <Box />;
-  }
-
   if (isLoading || !rawSeries) {
     return (
       <Card p="md" shadow="none" withBorder>

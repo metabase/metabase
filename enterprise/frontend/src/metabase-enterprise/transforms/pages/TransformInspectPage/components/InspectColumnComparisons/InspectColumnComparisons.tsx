@@ -2,7 +2,15 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { MultiSelect, SimpleGrid, Stack, Tabs, Text, Title } from "metabase/ui";
+import {
+  Box,
+  MultiSelect,
+  SimpleGrid,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "metabase/ui";
 import type {
   TransformInspectColumnComparison,
   TransformInspectSource,
@@ -60,11 +68,6 @@ export const InspectColumnComparisons = ({
     [comparisons, selectedFields],
   );
 
-  const comparisonsMap = useMemo(
-    () => _.indexBy(comparisons, (item) => item.output_column),
-    [comparisons],
-  );
-
   // Build a set of mapped source field names by looking at input cards
   // This handles joined columns where output_column has a prefix like "Table__field"
   const mappedSourceFieldNames = useMemo(() => {
@@ -80,7 +83,8 @@ export const InspectColumnComparisons = ({
   }, [comparisons]);
 
   const unmappedOutputFields = useMemo(
-    () => sourcesFields.filter((field) => !mappedSourceFieldNames.has(field.name)),
+    () =>
+      sourcesFields.filter((field) => !mappedSourceFieldNames.has(field.name)),
     [sourcesFields, mappedSourceFieldNames],
   );
 
@@ -122,28 +126,48 @@ export const InspectColumnComparisons = ({
                   p="md"
                 >
                   <SimpleGrid cols={2} spacing="md">
-                    <Title order={5}>
-                      {inputCard
-                        ? `${inputCard.table_name} → ${inputCard.field_name}`
-                        : null}
-                    </Title>
+                    <Box>
+                      {inputCard && (
+                        <Title order={5}>
+                          {`${inputCard.table_name} → ${inputCard.field_name}`}
+                        </Title>
+                      )}
+                    </Box>
                     <Title order={5}>{outputCard?.field_name}</Title>
                   </SimpleGrid>
 
                   <SimpleGrid cols={2} spacing="md">
-                    <ComparisonCard card={inputCard} />
+                    <Box>
+                      {inputCard && <ComparisonCard card={inputCard} />}
+                    </Box>
                     <ComparisonCard card={outputCard} />
                   </SimpleGrid>
 
-                  <SimpleGrid cols={2} spacing="md">
-                    <Title order={5}>{t`Source stats`}</Title>
-                    <Title order={5}>{t`Target stats`}</Title>
-                  </SimpleGrid>
+                  {(sourceField?.stats || targetField?.stats) && (
+                    <>
+                      <SimpleGrid cols={2} spacing="md">
+                        <Box>
+                          {sourceField?.stats && (
+                            <Title order={5}>{t`Source stats`}</Title>
+                          )}
+                        </Box>
+                        {targetField?.stats && (
+                          <Title order={5}>{t`Target stats`}</Title>
+                        )}
+                      </SimpleGrid>
 
-                  <SimpleGrid cols={2} spacing="md">
-                    <FieldsStatsTable field={sourceField} />
-                    <FieldsStatsTable field={targetField} />
-                  </SimpleGrid>
+                      <SimpleGrid cols={2} spacing="md">
+                        <Box>
+                          {sourceField?.stats && (
+                            <FieldsStatsTable stats={sourceField?.stats} />
+                          )}
+                        </Box>
+                        {targetField?.stats && (
+                          <FieldsStatsTable stats={targetField?.stats} />
+                        )}
+                      </SimpleGrid>
+                    </>
+                  )}
                 </Stack>
               );
             })}
@@ -180,7 +204,7 @@ export const InspectColumnComparisons = ({
                 >
                   <Title order={5}>{field.name}</Title>
                   {field.stats ? (
-                    <FieldsStatsTable field={field} />
+                    <FieldsStatsTable stats={field.stats} />
                   ) : (
                     <Text>{t`No stats for the field`}</Text>
                   )}

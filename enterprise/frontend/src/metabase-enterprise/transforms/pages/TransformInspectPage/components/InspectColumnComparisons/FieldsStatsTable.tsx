@@ -9,7 +9,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { TreeNodeData } from "metabase/ui/components/data-display/TreeTable/types";
-import type { TransformInspectField } from "metabase-types/api";
+import type { TransformInspectFieldStats } from "metabase-types/api";
 
 interface StatRow extends TreeNodeData {
   id: string;
@@ -18,15 +18,14 @@ interface StatRow extends TreeNodeData {
 }
 
 type FieldStatsTableProps = {
-  field: TransformInspectField | undefined;
+  stats?: TransformInspectFieldStats;
 };
 
-export const FieldsStatsTable = ({ field }: FieldStatsTableProps) => {
+export const FieldsStatsTable = ({ stats }: FieldStatsTableProps) => {
   const data = useMemo(() => {
-    if (!field?.stats) {
+    if (!stats) {
       return [];
     }
-    const { stats } = field;
     const rows: StatRow[] = [];
 
     if (stats.distinct_count != null) {
@@ -57,7 +56,7 @@ export const FieldsStatsTable = ({ field }: FieldStatsTableProps) => {
       });
     }
     return rows;
-  }, [field]);
+  }, [stats]);
 
   const columns: TreeTableColumnDef<StatRow>[] = [
     {
@@ -77,10 +76,6 @@ export const FieldsStatsTable = ({ field }: FieldStatsTableProps) => {
     columns,
     getNodeId: (node) => node.id,
   });
-
-  if (data.length === 0) {
-    return null;
-  }
 
   return (
     <Card p={0} shadow="none" withBorder>
