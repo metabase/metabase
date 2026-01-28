@@ -131,6 +131,11 @@ describe("ProfileLink", () => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
       expect(screen.queryByText("Admin settings")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: /mode/i }),
+      ).not.toBeInTheDocument();
+
+      expect(screen.getByTestId("app-switcher-target")).toHaveTextContent("TT");
     });
 
     it("should show the proper set of items for admin users", async () => {
@@ -139,6 +144,13 @@ describe("ProfileLink", () => {
       ADMIN_ITEMS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+
+      expect(
+        await within(screen.getByTestId("app-switcher-target")).findByRole(
+          "img",
+          { name: /mode/ },
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -295,7 +307,7 @@ describe("ProfileLink", () => {
 });
 
 const openProfileLink = async () => {
-  await userEvent.click(screen.getByRole("img", { name: /mode/i }));
+  await userEvent.click(screen.getByTestId("app-switcher-target"));
   await screen.findByRole("menu");
 };
 

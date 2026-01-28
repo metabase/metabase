@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockMeasure } from "metabase-types/api/mocks";
@@ -18,13 +19,19 @@ const setup = ({ readOnly }: SetupOpts = {}) => {
   const measure = createMockMeasure({ name: "Order count" });
 
   renderWithProviders(
-    <MeasureHeader
-      measure={measure}
-      onRemove={jest.fn()}
-      readOnly={readOnly}
-      tabUrls={tabUrls}
-      previewUrl="/measures/1/preview"
+    <Route
+      path="/"
+      component={() => (
+        <MeasureHeader
+          measure={measure}
+          onRemove={jest.fn()}
+          readOnly={readOnly}
+          tabUrls={tabUrls}
+          previewUrl="/measures/1/preview"
+        />
+      )}
     />,
+    { withRouter: true },
   );
 };
 

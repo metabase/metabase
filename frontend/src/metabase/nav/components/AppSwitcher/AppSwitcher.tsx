@@ -40,6 +40,7 @@ import {
 
 import { AboutModal } from "../AboutModal/AboutModal";
 
+import S from "./AppSwitcher.module.css";
 import { useHelpLink } from "./useHelpLink";
 
 const getCurrentApp = (routes: PlainRoute[]) => {
@@ -155,27 +156,40 @@ export const AppSwitcher = withRouter(
       <>
         <Menu position="bottom-end" shadow="md" width={200} offset={9}>
           <Menu.Target>
-            <ActionIcon
-              size="2.25rem"
-              p="sm"
-              variant="outline"
-              bd="1px solid var(--mb-color-border)"
-              aria-label={t`Settings`}
-              bdrs="50%"
-              className={className}
-            >
-              <Icon
-                name="mode"
-                // Need an escape hatch here for the white color in admin settings
-                style={{
-                  color:
-                    currentApp === "admin"
-                      ? "var(--mantine-color-white)"
-                      : "var(--mb-color-text-primary)",
-                }}
-                size={16}
-              />
-            </ActionIcon>
+            {appsSection ? (
+              <ActionIcon
+                size="2.25rem"
+                p="sm"
+                variant="outline"
+                bd="1px solid var(--mb-color-border)"
+                aria-label={t`Settings`}
+                bdrs="50%"
+                className={className}
+                data-testid="app-switcher-target"
+              >
+                <Icon
+                  name="mode"
+                  // Need an escape hatch here for the white color in admin settings
+                  style={{
+                    color:
+                      currentApp === "admin"
+                        ? "var(--mantine-color-white)"
+                        : "var(--mb-color-text-primary)",
+                  }}
+                  size={16}
+                />
+              </ActionIcon>
+            ) : (
+              <Avatar
+                radius="lg"
+                size={32}
+                className={S.Avatar}
+                bd="1px solid var(--mb-color-border)"
+                data-testid="app-switcher-target"
+              >
+                {user ? userInitials(user) : "?"}
+              </Avatar>
+            )}
           </Menu.Target>
           <Menu.Dropdown w={320} px="0">
             {/* Avatar Stuff */}
