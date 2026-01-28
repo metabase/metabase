@@ -3,7 +3,7 @@
   ;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
   ;; checker...
   {:explicitly-safe
-   #{ ;; these toucan methods might actually set global values if it's used outside of a transaction,
+   #{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
      toucan2.core/delete!
      toucan2.core/update!
