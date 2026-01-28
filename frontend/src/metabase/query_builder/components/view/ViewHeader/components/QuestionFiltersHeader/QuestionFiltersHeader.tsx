@@ -3,6 +3,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
 
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+
 interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
@@ -24,7 +26,13 @@ export function QuestionFiltersHeader({
     return null;
   }
 
-  return <FilterPanel query={query} onChange={handleChange} />;
+  return (
+    <FilterPanel
+      query={query}
+      onChange={handleChange}
+      className={ViewTitleHeaderS.FilterPanel}
+    />
+  );
 }
 
 type RenderCheckOpts = {

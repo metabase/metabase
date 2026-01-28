@@ -17,7 +17,6 @@ import type { QueryBuilderMode } from "metabase-types/store";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
-  className?: string;
   question: Question;
   isExpanded: boolean;
   onExpand: () => void;
@@ -25,7 +24,6 @@ interface FilterHeaderButtonProps {
 }
 
 export function FilterHeaderButton({
-  className,
   question,
   isExpanded,
   onExpand,
@@ -57,9 +55,14 @@ export function FilterHeaderButton({
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
-            className={cx(className, ViewTitleHeaderS.FilterButton, {
+            className={cx(ViewTitleHeaderS.FilterButton, {
               [ViewTitleHeaderS.FiltersActive]: hasFilters,
             })}
+            classNames={{
+              root: ViewTitleHeaderS.ActionButtonRoot,
+              label: ViewTitleHeaderS.ActionButtonLabel,
+              section: ViewTitleHeaderS.ActionButtonSection,
+            }}
             leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
             onClick={toggle}
             data-testid="question-filter-header"
