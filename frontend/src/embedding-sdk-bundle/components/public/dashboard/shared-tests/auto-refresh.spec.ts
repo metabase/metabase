@@ -7,9 +7,7 @@ import type { SetupSdkDashboardOptions } from "../tests/setup";
 
 type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
 
-export const addEnterpriseAutoRefreshTests = addPremiumAutoRefreshTests;
-
-export function addPremiumAutoRefreshTests(
+export function addEnterpriseAutoRefreshTests(
   setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
 ) {
   describe("authRefreshInterval property", () => {
@@ -107,6 +105,8 @@ export function addPremiumAutoRefreshTests(
     });
   });
 }
+
+export const addPremiumAutoRefreshTests = addEnterpriseAutoRefreshTests;
 
 async function getDashboardQueryRequests() {
   return findRequests("POST").then((requests) =>
