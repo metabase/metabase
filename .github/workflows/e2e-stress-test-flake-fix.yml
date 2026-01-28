@@ -122,7 +122,7 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
