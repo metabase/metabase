@@ -50,6 +50,10 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
+(defn- check-is-data-analyst
+  []
+  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
+
 (defn- python-source-table-ref->table-id
   "Change source of python transform from name->table-ref to name->table-id.
 
@@ -97,7 +101,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
+  (check-is-data-analyst)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
@@ -309,7 +313,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
+  (check-is-data-analyst)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))

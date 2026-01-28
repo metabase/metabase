@@ -32,10 +32,11 @@
   ([instance]
    (or api/*is-superuser?*
        (and api/*is-data-analyst?*
-            (let [tag-ids (:tag_ids instance)]
-              (if (seq tag-ids)
-                (let [transforms (transform/transforms-with-tags tag-ids)]
-                  (every? mi/can-write? transforms))
+            (let [transforms (or (:transforms instance)
+                                 (when-let [tag-ids (seq (:tag_ids instance))]
+                                   (transform/transforms-with-tags tag-ids)))]
+              (if (seq transforms)
+                (every? mi/can-write? transforms)
                 true)))))
   ([_model pk]
    (when-let [job (t2/select-one :model/TransformJob :id pk)]
@@ -45,10 +46,13 @@
   [_model instance]
   (or api/*is-superuser?*
       (and api/*is-data-analyst?*
-           (let [tag-ids (:tag_ids instance)]
-             (if (seq tag-ids)
-               (let [transforms (transform/transforms-with-tags tag-ids)]
-                 (every? mi/can-write? transforms))
+           ;; Support batch hydration: check pre-hydrated :transforms first,
+           ;; then fall back to looking up transforms from :tag_ids
+           (let [transforms (or (:transforms instance)
+                                (when-let [tag-ids (seq (:tag_ids instance))]
+                                  (transform/transforms-with-tags tag-ids)))]
+             (if (seq transforms)
+               (every? mi/can-write? transforms)
                true)))))
 
 (mi/define-batched-hydration-method tag-ids
