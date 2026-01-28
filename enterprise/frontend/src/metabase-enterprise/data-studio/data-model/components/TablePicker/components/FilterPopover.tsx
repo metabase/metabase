@@ -7,6 +7,10 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { Button, Checkbox, Group, Stack } from "metabase/ui";
+import {
+  trackDataStudioTablePickerFiltersApplied,
+  trackDataStudioTablePickerFiltersCleared,
+} from "metabase-enterprise/data-studio/analytics";
 
 import type { FilterState } from "../types";
 
@@ -19,6 +23,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
   const [form, setForm] = useState(filters);
 
   const handleReset = () => {
+    trackDataStudioTablePickerFiltersCleared();
     onSubmit({
       dataLayer: null,
       dataSource: null,
@@ -32,6 +37,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        trackDataStudioTablePickerFiltersApplied();
         onSubmit(form);
       }}
       data-testid="table-picker-filter"

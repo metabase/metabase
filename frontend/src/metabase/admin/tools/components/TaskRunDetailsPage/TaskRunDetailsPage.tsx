@@ -5,12 +5,24 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetTaskRunQuery } from "metabase/api";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Anchor, Box, Flex, Grid, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Flex,
+  Grid,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import type { Task } from "metabase-types/api";
 
 import {
@@ -49,10 +61,10 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
         </Link>
       </Flex>
 
-      <Grid mt="md">
+      <Grid>
         <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
-          <Title order={3}>{t`Run details`}</Title>
-          <Stack gap="xs" mt="sm">
+          <Title order={3} mb="md">{t`Run details`}</Title>
+          <Stack gap="sm">
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`ID`}</Text>
               <Text>{taskRun.id}</Text>
@@ -84,11 +96,31 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Started at`}</Text>
-              <Text>{taskRun.started_at}</Text>
+              <Tooltip label={taskRun.started_at}>
+                <DateTime
+                  value={taskRun.started_at}
+                  unit="minute"
+                  data-testid="started-at"
+                />
+              </Tooltip>
+              <CopyButton value={taskRun.started_at} />
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Ended at`}</Text>
-              <Text>{taskRun.ended_at ?? "—"}</Text>
+              {taskRun.ended_at ? (
+                <>
+                  <Tooltip label={taskRun.ended_at}>
+                    <DateTime
+                      value={taskRun.ended_at}
+                      unit="minute"
+                      data-testid="ended-at"
+                    />
+                  </Tooltip>
+                  <CopyButton value={taskRun.ended_at} />
+                </>
+              ) : (
+                "—"
+              )}
             </Flex>
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`Task count`}</Text>
@@ -98,7 +130,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, lg: "auto" }}>
-          <Title order={3}>{t`Associated tasks`}</Title>
+          <Title order={3} mb="md">{t`Associated tasks`}</Title>
           <table
             className={cx(AdminS.ContentTable)}
             data-testid="task-run-tasks-table"

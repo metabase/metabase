@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { Box, Space, Tabs } from "metabase/ui";
 

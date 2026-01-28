@@ -38,7 +38,7 @@ import Question from "metabase-lib/v1/Question";
  * The raw un-connected component is also exported so we can unit test it
  * without the redux store.
  */
-export class AdHocQuestionLoader extends Component {
+export class AdHocQuestionLoaderView extends Component {
   state = {
     // this will store the loaded question
     question: null,
@@ -136,7 +136,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
 };
 
-export default connect(
+export const AdHocQuestionLoader = connect(
   mapStateToProps,
   mapDispatchToProps,
-)(AdHocQuestionLoader);
+)(AdHocQuestionLoaderView);

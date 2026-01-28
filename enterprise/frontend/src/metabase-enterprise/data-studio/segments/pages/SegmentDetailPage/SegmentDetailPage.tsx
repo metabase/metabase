@@ -8,11 +8,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { getUserCanWriteSegments } from "metabase-enterprise/data-studio/selectors";
 import * as Lib from "metabase-lib";
 import type { Segment } from "metabase-types/api";
 
@@ -36,9 +35,11 @@ export function SegmentDetailPage({
   breadcrumbs,
   onRemove,
 }: SegmentDetailPageProps) {
-  const canWriteSegments = useSelector(getUserCanWriteSegments);
   const metadata = useSelector(getMetadata);
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const table = metadata.tables[segment.table_id];
+  const canWriteSegments = useSelector((state) =>
+    getUserCanWriteSegments(state, !!table?.is_published),
+  );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [description, setDescription] = useState(segment.description ?? "");
@@ -46,7 +47,6 @@ export function SegmentDetailPage({
   const [savedSegment, setSavedSegment] = useState(segment);
 
   const { query, filters } = useSegmentQuery(definition, metadata);
-  const canEditSegments = canWriteSegments && !remoteSyncReadOnly;
 
   const isDirty = useMemo(
     () =>
@@ -104,11 +104,11 @@ export function SegmentDetailPage({
         segment={segment}
         tabUrls={tabUrls}
         previewUrl={previewUrl}
-        onRemove={canEditSegments ? onRemove : undefined}
-        readOnly={!canEditSegments}
+        onRemove={canWriteSegments ? onRemove : undefined}
+        readOnly={!canWriteSegments}
         breadcrumbs={breadcrumbs}
         actions={
-          canEditSegments &&
+          canWriteSegments &&
           isDirty && (
             <Group gap="sm">
               <Button onClick={handleReset}>{t`Cancel`}</Button>
@@ -127,11 +127,11 @@ export function SegmentDetailPage({
       <SegmentEditor
         query={query}
         description={description}
-        readOnly={!canEditSegments}
+        readOnly={!canWriteSegments}
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      {canEditSegments && (
+      {canWriteSegments && (
         <LeaveRouteConfirmModal
           key={segment.id}
           route={route}

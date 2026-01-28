@@ -4,7 +4,7 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
 
-const Warnings = ({ warnings, className = "", size = 16 }) => {
+export const Warnings = ({ warnings, className = "", size = 16 }) => {
   if (!warnings || warnings.length === 0) {
     return null;
   }
@@ -24,5 +24,3 @@ const Warnings = ({ warnings, className = "", size = 16 }) => {
     </Tooltip>
   );
 };
-
-export default Warnings;

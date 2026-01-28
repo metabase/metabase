@@ -1,8 +1,13 @@
-import fetchMock from "fetch-mock";
-
+import {
+  setupCollectionTreeEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import { createMockRemoteSyncEntity } from "metabase-types/api/mocks/remote-sync";
 
 import { AllChangesView } from "./AllChangesView";
@@ -31,13 +36,20 @@ const deletedEntity = createMockRemoteSyncEntity({
 const setup = ({
   entities = [updatedEntity],
   collections = [defaultCollection],
+  isTransformsSyncEnabled = false,
 }: {
   entities: RemoteSyncEntity[];
   collections?: Collection[];
+  isTransformsSyncEnabled?: boolean;
 }) => {
-  // Mock the new useListCollectionsTreeQuery endpoint format
-  fetchMock.get("path:/api/collection/tree", collections);
-  fetchMock.get("path:/api/session/properties", { "use-tenants": false });
+  // Use setupCollectionTreeEndpoint for simple tree mocking without complex filtering
+  setupCollectionTreeEndpoint(collections);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "use-tenants": false,
+      "remote-sync-transforms": isTransformsSyncEnabled,
+    }),
+  );
 
   renderWithProviders(<AllChangesView entities={entities} />);
 };
@@ -140,6 +152,253 @@ describe("AllChangesView", () => {
 
       expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
       expect(screen.getByText("Regular Item")).toBeInTheDocument();
+    });
+  });
+
+  describe("transforms namespace collections", () => {
+    it("should display transforms collections when remote-sync-transforms is enabled", async () => {
+      const transformsCollection = createMockCollection({
+        id: 100,
+        name: "My Transforms Collection",
+        namespace: "transforms",
+        effective_ancestors: [],
+      });
+      const transformEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Transform in Collection",
+        model: "transform",
+        collection_id: 100,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [transformEntity],
+        collections: [transformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("My Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Transform in Collection")).toBeInTheDocument();
+    });
+
+    it("should display transforms collection hierarchy when remote-sync-transforms is enabled", async () => {
+      const childTransformsCollection = createMockCollection({
+        id: 101,
+        name: "Child Transforms Collection",
+        namespace: "transforms",
+      });
+      const parentTransformsCollection = createMockCollection({
+        id: 100,
+        name: "Parent Transforms Collection",
+        namespace: "transforms",
+        children: [childTransformsCollection],
+      });
+      const transformEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Transform in Child",
+        model: "transform",
+        collection_id: 101,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [transformEntity],
+        collections: [parentTransformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("Parent Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Child Transforms Collection"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Transform in Child")).toBeInTheDocument();
+    });
+
+    it("should display dirty transforms collections themselves", async () => {
+      const transformsCollection = createMockCollection({
+        id: 100,
+        name: "New Transforms Collection",
+        namespace: "transforms",
+        effective_ancestors: [],
+      });
+      const collectionEntity = createMockRemoteSyncEntity({
+        id: 100,
+        name: "New Transforms Collection",
+        model: "collection",
+        collection_id: 100,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [collectionEntity],
+        collections: [transformsCollection],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByText("New Transforms Collection"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("table child models", () => {
+    it("should display measures nested under their parent table", async () => {
+      const tableEntity = createMockRemoteSyncEntity({
+        id: 100,
+        name: "Orders Table",
+        model: "table",
+        collection_id: 1,
+        sync_status: "update",
+      });
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Total Revenue",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+
+      setup({
+        entities: [tableEntity, measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Orders Table")).toBeInTheDocument();
+      expect(screen.getByText("Total Revenue")).toBeInTheDocument();
+    });
+
+    it("should display measures with table name when table is not dirty", async () => {
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Total Revenue",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+
+      setup({
+        entities: [measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Orders Table")).toBeInTheDocument();
+      expect(screen.getByText("Total Revenue")).toBeInTheDocument();
+    });
+
+    it("should display segments nested under their parent table", async () => {
+      const segmentEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "Active Users",
+        model: "segment",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+
+      setup({
+        entities: [segmentEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Users Table")).toBeInTheDocument();
+      expect(screen.getByText("Active Users")).toBeInTheDocument();
+    });
+
+    it("should group multiple table children under the same table", async () => {
+      const fieldEntity = createMockRemoteSyncEntity({
+        id: 400,
+        name: "email",
+        model: "field",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+      const measureEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "Total Users",
+        model: "measure",
+        collection_id: 1,
+        sync_status: "create",
+        table_id: 100,
+        table_name: "Users Table",
+      });
+
+      setup({
+        entities: [fieldEntity, measureEntity],
+      });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Users Table")).toBeInTheDocument();
+      expect(screen.getByText("email")).toBeInTheDocument();
+      expect(screen.getByText("Total Users")).toBeInTheDocument();
+    });
+  });
+
+  describe("snippet collections", () => {
+    it("should display snippets in snippet collections with hierarchy", async () => {
+      const snippetCollection = createMockCollection({
+        id: 50,
+        name: "My Snippets",
+        namespace: "snippets",
+        effective_ancestors: [],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 50,
+        sync_status: "create",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [snippetCollection],
+      });
+
+      expect(await screen.findByText("My Snippets")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
+    });
+
+    it("should display nested snippet collection hierarchy", async () => {
+      const childSnippetCollection = createMockCollection({
+        id: 51,
+        name: "Child Snippet Folder",
+        namespace: "snippets",
+      });
+      const parentSnippetCollection = createMockCollection({
+        id: 50,
+        name: "Parent Snippet Folder",
+        namespace: "snippets",
+        children: [childSnippetCollection],
+      });
+      const snippetEntity = createMockRemoteSyncEntity({
+        id: 300,
+        name: "SELECT Query",
+        model: "nativequerysnippet",
+        collection_id: 51,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [snippetEntity],
+        collections: [parentSnippetCollection],
+      });
+
+      expect(
+        await screen.findByText("Parent Snippet Folder"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Child Snippet Folder")).toBeInTheDocument();
+      expect(screen.getByText("SELECT Query")).toBeInTheDocument();
     });
   });
 });

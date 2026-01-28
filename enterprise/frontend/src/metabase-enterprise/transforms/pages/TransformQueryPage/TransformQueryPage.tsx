@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -21,6 +21,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Database, Transform } from "metabase-types/api";
 
 import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
@@ -97,6 +98,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const dispatch = useDispatch();
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -120,6 +122,10 @@ function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
+
+        if (isEditMode) {
+          dispatch(push(Urls.transform(transform.id)));
+        }
       }
     },
   });
@@ -139,6 +145,13 @@ function TransformQueryPageBody({
     }
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
+  useEffect(() => {
+    if (isEditMode && isRemoteSyncReadOnly) {
+      // If remote sync is set up to read-only mode, user can't edit transforms
+      dispatch(push(Urls.transform(transform.id)));
+    }
+  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+
   const handleSave = async () => {
     if (!isCompleteSource(source)) {
       return;
@@ -149,16 +162,11 @@ function TransformQueryPageBody({
         return;
       }
     }
-    await handleInitialSave({ id: transform.id, source });
 
-    if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
-    }
+    await handleInitialSave({ id: transform.id, source });
   };
 
   const handleCancel = () => {
-    setSourceAndRejectProposed(transform.source);
-
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
     }
@@ -212,7 +220,7 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
-              readOnly={!isEditMode}
+              isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
               onChangeUiState={setUiState}

@@ -1,6 +1,7 @@
 import { c, t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
+import CS from "metabase/css/core/index.css";
 import { getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
 import type { LastEditInfo, UserInfo } from "metabase-types/api";
@@ -37,7 +38,7 @@ export function EntityCreationInfo({
           data-testid="entity-creation-info-created"
         >
           <FixedSizeIcon name="ai" />
-          <Box>
+          <Box className={CS.textWrap}>
             {c(
               "Describes when an entity was created. {0} is a date/time and {1} is a person's name",
             ).jt`${(
@@ -49,7 +50,7 @@ export function EntityCreationInfo({
       {lastEditedAt != null && lastEditor != null && (
         <Group gap="sm" wrap="nowrap" data-testid="entity-creation-info-edited">
           <FixedSizeIcon name="pencil" />
-          <Box>
+          <Box className={CS.textWrap}>
             {c(
               "Describes when an entity was last edited. {0} is a date/time and {1} is a person's name",
             ).jt`${(

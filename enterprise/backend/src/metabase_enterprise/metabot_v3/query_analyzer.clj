@@ -7,7 +7,6 @@
   (:require
    [clojure.string :as str]
    [macaw.core :as macaw]
-   [metabase-enterprise.metabot-v3.query-analyzer.impl :as nqa.impl]
    [metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -117,7 +116,7 @@
   to return tables that are in the query."
   [driver query & {:keys [mode] :or {mode :compound-select}}]
   (let [db-id      (:database query)
-        macaw-opts (nqa.impl/macaw-options driver)
+        macaw-opts (driver.u/macaw-options driver)
         table-opts (assoc macaw-opts :mode mode)
         sql-string (:query (nqa.sub/replace-tags query))
         result     (macaw/query->tables sql-string table-opts)]
@@ -141,7 +140,7 @@
 (defmethod tables-for-native* :sql
   [driver query opts]
   (if (or (:all-drivers-trusted? opts)
-          (nqa.impl/trusted-for-table-permissions? driver))
+          (driver.u/trusted-for-table-permissions? driver))
     (tables-via-macaw driver query opts)
     {:error :query-analysis.error/driver-not-supported}))
 

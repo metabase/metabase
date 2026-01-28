@@ -2,11 +2,10 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-
-import { ResizeHandle } from "../ResizeHandle";
 
 import S from "./NativeQueryPreviewSidebar.module.css";
 

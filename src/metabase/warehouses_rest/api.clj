@@ -274,7 +274,9 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id* :is-superuser? (mi/superuser?)}
+        user-info {:user-id api/*current-user-id*
+                   :is-superuser? (mi/superuser?)
+                   :is-data-analyst? api/*is-data-analyst?*}
         base-where [:and
                     (when-not include-analytics?
                       [:= :is_audit false])

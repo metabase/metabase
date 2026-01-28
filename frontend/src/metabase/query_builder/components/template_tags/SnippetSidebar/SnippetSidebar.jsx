@@ -16,8 +16,8 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
+import { SidebarHeader } from "metabase/query_builder/components/SidebarHeader";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "../SnippetRow";

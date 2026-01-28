@@ -162,15 +162,6 @@
   []
   (t2/select-one :model/Collection :is_remote_synced true :location "/"))
 
-(defn create-remote-synced-collection!
-  "Create the remote-synced-collection"
-  []
-  (when-not (nil? (remote-synced-collection))
-    (throw (ex-info "Remote-synced collection already exists" {})))
-  (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
-                                                    :is_remote_synced true
-                                                    :location "/"}))
-
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
@@ -201,7 +192,8 @@
                                                                         :location base-location})]
     (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
+      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -1988,8 +1980,12 @@
                                                                                      [:= :collection_id id]
                                                                                      [:= :is_published true]
                                                                                      (when skip-archived [:= :archived_at nil])]})]
-                               {["Table" table-id] {"Collection" id}}))]
-    (merge child-colls dashboards cards documents timelines tables)))
+                               {["Table" table-id] {"Collection" id}}))
+        ;; Transforms don't have an archived column, so we don't filter by skip-archived
+        transforms  (when config/ee-available?
+                      (into {} (for [transform-id (t2/select-pks-set :model/Transform {:where [:= :collection_id id]})]
+                                 {["Transform" transform-id] {"Collection" id}})))]
+    (merge child-colls dashboards cards documents timelines tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]

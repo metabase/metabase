@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 
-export default class ExpandableString extends Component {
+export class ExpandableString extends Component {
   constructor(props, context) {
     super(props, context);
     this.toggleExpansion = this.toggleExpansion.bind(this);

@@ -18,6 +18,7 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -70,7 +71,7 @@ export const ComponentProviderInternal = (
   } = useNormalizeComponentProviderProps(props);
 
   const isGuestEmbed = !!authConfig.isGuest;
-  const { fontFamily } = theme ?? {};
+  const fontFamily = isEmbeddingThemeV1(theme) ? theme.fontFamily : undefined;
 
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:

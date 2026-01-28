@@ -26,7 +26,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.button("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("not.exist");
   });
 
@@ -39,12 +39,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByRole("button", { name: "Summarize" }).click();
 
     // count orders by user id, filter to the one user with 46 orders
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a function or metric").click();
     H.popover().within(() => {
       cy.findByText("Count of rows").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a column to group by").click();
     H.popover().within(() => {
       cy.contains("User ID").click();
@@ -61,9 +61,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("2372"); // user's id in the table
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
@@ -97,14 +97,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
     H.popover().findByText("Between").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Greater than");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Less than");
   });
 
@@ -113,7 +113,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     H.openProductsTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     addSimpleCustomColumn("EXPR");
 
@@ -135,11 +135,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("EXPR");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("EXPR (1)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("EXPR (2)");
   });
 
@@ -167,22 +167,22 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.createQuestion(questionDetails, { visitQuestion: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 98 rows");
 
     cy.findByTestId("filters-visibility-control").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
     H.popover().within(() => {
       cy.findByLabelText("Filter value").focus().type("3").blur();
       cy.button("Update filter").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
 
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 175 rows");
   });
 
@@ -210,10 +210,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should show an info card filter columns in the popover", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filters to narrow your answer").click();
 
     cy.findByRole("tree")
@@ -295,29 +295,29 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.visualize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Example");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Big");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
       H.filter({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
 
       H.enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains(/^redundant input/i).should("not.exist");
 
       cy.button("Done").should("not.be.disabled").click();
 
       H.visualize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Showing 97 rows");
     });
 
@@ -382,9 +382,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID").should("not.exist");
   });
 
@@ -624,7 +624,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         horizontal,
         vertical,
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
@@ -665,7 +665,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           vertical,
         });
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.getNotebookStep(type)
         .findAllByTestId("notebook-cell-item")
         .eq(index)
@@ -833,7 +833,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
               .should("eq", "Revenue");
           });
 
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.get("@table")
           .last()
           .as("tableBody")
@@ -1008,7 +1008,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.joinTable("Reviews", "Product ID", "Product ID");
     H.addSummaryField({ metric: "Count of rows" });
     H.addSummaryGroupingField({ field: "Created At" });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("button", { name: "Join data" }).last().click();
     H.joinTable("Reviews", "Created At: Month", "Created At");
     cy.button("Summarize").click();

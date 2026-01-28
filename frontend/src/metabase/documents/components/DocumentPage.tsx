@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
@@ -63,6 +64,7 @@ import {
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
+import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
   getDraftCards,
   getHasUnsavedChanges,
@@ -104,6 +106,7 @@ export const DocumentPage = ({
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
+  const editorContainerRef = useRef<HTMLDivElement>(null);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
@@ -204,6 +207,14 @@ export const DocumentPage = ({
   useEffect(() => {
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
+
+  // Scroll to anchor block when navigating with URL hash
+  const blockId = location.hash ? location.hash.slice(1) : null;
+  useScrollToAnchor({
+    blockId,
+    editorContainerRef,
+    isLoading: isDocumentLoading,
+  });
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
@@ -474,6 +485,7 @@ export const DocumentPage = ({
               onChange={handleChange}
               editable={canWrite}
               isLoading={isDocumentLoading}
+              editorContainerRef={editorContainerRef}
             />
           </Box>
         </Box>

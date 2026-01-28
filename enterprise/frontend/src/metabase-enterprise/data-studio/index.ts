@@ -4,8 +4,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DataStudioToolbarButton } from "./query-builder/components/DataStudioToolbarButton";
 import { getDataStudioRoutes } from "./routes";
+import { canAccessDataStudio } from "./selectors";
 import {
-  canAccessDataStudio,
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   getLibraryCollectionType,

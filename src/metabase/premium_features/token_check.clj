@@ -13,6 +13,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as analytics]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
@@ -185,15 +186,17 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (some-> body json/decode+kw)
+      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+                               (some-> body json/decode+kw))
       (<= 400 status 499) (or (some-> body json/decode+kw)
                               {:valid false
                                :status "Unable to validate token"
                                :error-details "Token validation provided no response"})
 
       ;; exceptions are not cached.
-      :else (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                :body body})))))
+      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+                (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                                    :body body}))))))
 
 (defn- metering-url
   [token base-url]
@@ -354,7 +357,7 @@
         ;; to circuit break. (#65294)
         (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
           (throw (ex-info "Metabase DB is not yet set up"
-                          {:reason :token-check/app-db-not-ready})))
+                          {:cause :token-check/app-db-not-ready})))
         (locking lock
           (binding [*token-check-happening* true]
             (try (dh/with-circuit-breaker breaker
@@ -363,7 +366,7 @@
                      (-check-token token-checker token)))
                  (catch dev.failsafe.CircuitBreakerOpenException _e
                    (throw (ex-info (tru "Token validation is currently unavailable.")
-                                   {:cause :circuit-breaker})))
+                                   {:cause :token-check/circuit-breaker})))
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
@@ -416,7 +419,9 @@
     (-check-token [_ token]
       (try (-check-token token-checker token)
            (catch Exception e
-             (u/ignore-exceptions (some-> (ex-data e) :body json/decode+kw))
+             (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
+               (log/infof "Error checking token: %s" (ex-message e))
+               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
@@ -453,12 +458,16 @@
   "The token checker. Combines http/airgapping validation, circuit breaking, grace periods, caching, and error
   handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
-                                   :delay-ms                          (u/seconds->ms 30)
-                                   :success-threshold                 1}
-                 :timeout-ms      (u/seconds->ms 10)
-                 :ttl-ms          (u/hours->ms 12)
-                 :grace-period    (guava-cache-grace-period 36 TimeUnit/HOURS)}))
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+
+                                   :delay-ms          (u/seconds->ms 30)
+                                   :success-threshold 1
+                                   :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
+                                   :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
+                                   :on-close          (fn [_] (log/info "Token Check restored"))}
+                 :timeout-ms   (u/seconds->ms 10)
+                 :ttl-ms       (u/hours->ms 12)
+                 :grace-period (guava-cache-grace-period 36 TimeUnit/HOURS)}))
 
 (defn clear-cache!
   "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
