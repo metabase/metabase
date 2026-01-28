@@ -15,7 +15,7 @@ const propTypes = {
   icon: PropTypes.object,
 };
 
-export default class LegendItem extends Component {
+export class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};

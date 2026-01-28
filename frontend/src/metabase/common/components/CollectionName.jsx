@@ -2,7 +2,7 @@
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { useTranslateContent } from "metabase/i18n/hooks";
 
-const CollectionName = ({ id }) => {
+export const CollectionName = ({ id }) => {
   const tc = useTranslateContent();
 
   if (id === "root" || id === null) {
@@ -13,5 +13,3 @@ const CollectionName = ({ id }) => {
     return <Collections.Name id={id} />;
   }
 };
-
-export default CollectionName;

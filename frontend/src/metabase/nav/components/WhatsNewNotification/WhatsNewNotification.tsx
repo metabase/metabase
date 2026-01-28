@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";

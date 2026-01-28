@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
@@ -8,10 +9,11 @@ import S from "./FilterPill.module.css";
 
 interface FilterPillProps extends HTMLAttributes<HTMLDivElement> {
   onRemoveClick?: () => void;
+  readOnly?: boolean;
 }
 
 export const FilterPill = forwardRef(function FilterPill(
-  { children, onRemoveClick, ...props }: FilterPillProps,
+  { children, onRemoveClick, readOnly, ...props }: FilterPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const handleRemoveClick = (event: MouseEvent) => {
@@ -23,7 +25,7 @@ export const FilterPill = forwardRef(function FilterPill(
     <Flex
       {...props}
       ref={ref}
-      className={S.root}
+      className={cx(S.root, { [S.readOnly]: readOnly })}
       align="center"
       gap="sm"
       px="sm"
@@ -32,7 +34,7 @@ export const FilterPill = forwardRef(function FilterPill(
       data-testid="filter-pill"
     >
       {children}
-      {onRemoveClick && (
+      {onRemoveClick && !readOnly && (
         <Icon
           className={S.icon}
           name="close"

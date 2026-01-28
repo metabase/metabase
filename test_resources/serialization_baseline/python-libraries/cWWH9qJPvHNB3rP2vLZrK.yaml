@@ -1,0 +1,9 @@
+created_at: '2026-01-21T21:50:59.518133Z'
+entity_id: cWWH9qJPvHNB3rP2vLZrK
+path: common.py
+source: |-
+  def helper():
+      return 42
+serdes/meta:
+- id: cWWH9qJPvHNB3rP2vLZrK
+  model: PythonLibrary

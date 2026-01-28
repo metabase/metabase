@@ -1,4 +1,4 @@
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import { Box, Flex, Icon } from "metabase/ui";
 
 import type { DataTypeInfoItem } from "../types";

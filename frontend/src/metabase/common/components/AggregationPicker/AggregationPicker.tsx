@@ -5,7 +5,7 @@ import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   HoverParent,
   PopoverDefaultIcon,
