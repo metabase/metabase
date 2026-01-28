@@ -109,7 +109,7 @@ describe("createTestQuery", () => {
               type: "table",
               id: PRODUCTS_ID,
             },
-            breakouts: [{ name: "CATEGORY" }],
+            breakouts: [{ type: "column", name: "CATEGORY" }],
           },
         ],
       });
@@ -129,7 +129,7 @@ describe("createTestQuery", () => {
               type: "table",
               id: PRODUCTS_ID,
             },
-            breakouts: [{ name: "CREATED_AT", unit: "month" }],
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
           },
         ],
       });
@@ -151,7 +151,7 @@ describe("createTestQuery", () => {
               type: "table",
               id: PRODUCTS_ID,
             },
-            orderBys: [{ name: "CATEGORY" }],
+            orderBys: [{ type: "column", name: "CATEGORY" }],
           },
         ],
       });
