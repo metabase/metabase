@@ -935,43 +935,6 @@
     (is (isa? :event/table-update ::remote-sync.events/table-change-event))
     (is (isa? :event/table-delete ::remote-sync.events/table-change-event))))
 
-(deftest collection-becomes-remote-synced-tracks-existing-tables-test
-  (testing "when collection becomes remote-synced, existing published tables are tracked with 'create' status"
-    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
-                   :model/Table table {:name "Test Table"
-                                       :is_published true
-                                       :collection_id (:id collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      ;; Collection is not yet remote-synced, fire update event
-      (events/publish-event! :event/collection-update
-                             {:object collection :user-id (mt/user->id :rasta)})
-      (is (= 0 (count (t2/select :model/RemoteSyncObject))))
-      ;; Now make collection remote-synced
-      (events/publish-event! :event/collection-update
-                             {:object (assoc collection :is_remote_synced true)
-                              :user-id (mt/user->id :rasta)})
-      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")
-            collection-entries (t2/select :model/RemoteSyncObject :model_type "Collection")]
-        ;; Should have both collection and table entries
-        (is (= 1 (count collection-entries)))
-        (is (= 1 (count table-entries)))
-        (is (=? {:model_type "Table"
-                 :model_id (:id table)
-                 :status "create"}
-                (first table-entries))))))
-  (testing "unpublished tables are not tracked when collection becomes remote-synced"
-    (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
-                   :model/Table _ {:name "Test Table"
-                                   :is_published false
-                                   :collection_id (:id collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      ;; Make collection remote-synced
-      (events/publish-event! :event/collection-update
-                             {:object (assoc collection :is_remote_synced true)
-                              :user-id (mt/user->id :rasta)})
-      (let [table-entries (t2/select :model/RemoteSyncObject :model_type "Table")]
-        (is (= 0 (count table-entries)))))))
-
 ;;; Segment Event Tests
 
 (deftest segment-create-event-creates-entry-test

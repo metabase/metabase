@@ -141,6 +141,22 @@ describe("useHasTransformDirtyChanges", () => {
     });
   });
 
+  it("returns true when a pythonlibrary entity is dirty", async () => {
+    const { result } = setup({
+      collections: [createMockTransformsCollection()],
+      dirty: [
+        createMockRemoteSyncEntity({
+          model: "pythonlibrary",
+          name: "common.py",
+        }),
+      ],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
   it("returns true when a transforms-namespace collection is dirty", async () => {
     const transformsCollection = createMockTransformsCollection({ id: 100 });
     const { result } = setup({

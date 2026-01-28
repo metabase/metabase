@@ -521,3 +521,166 @@ is_sample: false
                     "Local transforms collection should be deleted after import")
                 (is (t2/exists? :model/Collection :entity_id remote-coll-entity-id :namespace "transforms")
                     "Remote transforms collection should be imported")))))))))
+
+;;; ------------------------------------------- PythonLibrary Tests -------------------------------------------
+
+(defn- generate-python-library-yaml
+  "Generates YAML content for a PythonLibrary."
+  [entity-id path source]
+  (format "path: %s
+source: |
+%s
+entity_id: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+serdes/meta:
+- id: %s
+  model: PythonLibrary
+"
+          path
+          (str/join "\n" (map #(str "  " %) (str/split-lines source)))
+          entity-id
+          entity-id))
+
+(defn- with-clean-python-library
+  "Ensures PythonLibrary table is clean before and after running the test function.
+   Saves and restores any existing entries."
+  [f]
+  (let [existing (t2/select :model/PythonLibrary)]
+    (try
+      (t2/delete! :model/PythonLibrary)
+      (f)
+      (finally
+        (t2/delete! :model/PythonLibrary)
+        (when (seq existing)
+          (t2/insert! :model/PythonLibrary existing))))))
+
+(deftest python-library-event-creates-sync-object-when-setting-enabled-test
+  (testing "Creating a PythonLibrary creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+              (is (t2/exists? :model/RemoteSyncObject
+                              :model_type "PythonLibrary"
+                              :model_id (:id library))
+                  "PythonLibrary should be tracked when remote-sync-transforms is enabled"))))))))
+
+(deftest python-library-event-ignored-when-setting-disabled-test
+  (testing "PythonLibrary events are ignored when remote-sync-transforms is disabled"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms false
+                                             remote-sync-enabled true]
+            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+              (is (not (t2/exists? :model/RemoteSyncObject
+                                   :model_type "PythonLibrary"
+                                   :model_id (:id library)))
+                  "PythonLibrary should NOT be tracked when remote-sync-transforms is disabled"))))))))
+
+(deftest python-library-event-updates-sync-object-test
+  (testing "Updating a PythonLibrary updates the RemoteSyncObject entry when setting is enabled"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+              (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                          {:status "synced"})
+              (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
+              (let [entry (t2/select-one :model/RemoteSyncObject
+                                         :model_type "PythonLibrary"
+                                         :model_id (:id library))]
+                (is (= "update" (:status entry))
+                    "PythonLibrary should have 'update' status after modification")))))))))
+
+(deftest export-includes-python-library-when-setting-enabled-test
+  (testing "Export includes PythonLibrary when remote-sync-transforms is enabled"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                             remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                    library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# shared code"})]
+                (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                            {:status "create"})
+                (let [mock-source (test-helpers/create-mock-source)
+                      result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+                  (is (= :success (:status result))
+                      (str "Export should succeed. Result: " result))
+                  (let [files-after-export (get @(:files-atom mock-source) "main")]
+                    (is (some #(str/includes? % "python-libraries/") (keys files-after-export))
+                        "Export should include the PythonLibrary file")))))))))))
+
+(deftest import-python-library-from-yaml-test
+  (testing "Import brings in PythonLibrary from YAML files"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                    lib-entity-id (u/generate-nano-id)
+                    test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
+                                        (generate-python-library-yaml lib-entity-id "common.py" "def shared_func():\n    return 42")}}
+                    mock-source (test-helpers/create-mock-source :initial-files test-files)
+                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                (is (= :success (:status result))
+                    (str "Import should succeed. Result: " result))
+                (is (t2/exists? :model/PythonLibrary :path "common.py")
+                    "PythonLibrary should be imported")
+                (when-let [library (t2/select-one :model/PythonLibrary :path "common.py")]
+                  (is (str/includes? (:source library) "def shared_func()")
+                      "PythonLibrary source should be imported correctly"))))))))))
+
+(deftest import-removes-python-library-not-on-remote-test
+  (testing "Import removes local PythonLibrary that doesn't exist on the remote"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                    local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local only"})]
+                (is (t2/exists? :model/PythonLibrary :id (:id local-library))
+                    "Local PythonLibrary should exist before import")
+                (let [test-files {"main" {}}
+                      mock-source (test-helpers/create-mock-source :initial-files test-files)
+                      result (impl/import! (source.p/snapshot mock-source) task-id)]
+                  (is (= :success (:status result))
+                      (str "Import should succeed. Result: " result))
+                  (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
+                      "Local PythonLibrary should be deleted after import since it wasn't on remote"))))))))))
+
+(deftest import-replaces-python-library-with-remote-version-test
+  (testing "Import updates local PythonLibrary when remote has same entity_id"
+    (with-clean-python-library
+      (fn []
+        (mt/with-premium-features #{:transforms}
+          (mt/with-temporary-setting-values [remote-sync-transforms true
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                    local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
+                    local-entity-id (:entity_id local-library)]
+                (is (t2/exists? :model/PythonLibrary :path "common.py")
+                    "Local PythonLibrary should exist before import")
+                ;; Use the same entity_id as the local library so it gets updated
+                (let [test-files {"main" {(str "python-libraries/" local-entity-id ".yaml")
+                                          (generate-python-library-yaml local-entity-id "common.py" "# remote version\ndef new_func():\n    pass")}}
+                      mock-source (test-helpers/create-mock-source :initial-files test-files)
+                      result (impl/import! (source.p/snapshot mock-source) task-id)]
+                  (is (= :success (:status result))
+                      (str "Import should succeed. Result: " result))
+                  (let [library (t2/select-one :model/PythonLibrary :path "common.py")]
+                    (is (some? library) "PythonLibrary should still exist")
+                    (is (str/includes? (:source library) "# remote version")
+                        "PythonLibrary source should be updated with remote version")))))))))))

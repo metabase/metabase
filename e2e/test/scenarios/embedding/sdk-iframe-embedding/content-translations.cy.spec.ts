@@ -116,9 +116,16 @@ describe("scenarios > embedding > sdk iframe embedding > content-translations", 
           />
         `);
 
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("Neues Dashboard").click();
+        H.getSimpleEmbedIframeContent()
+          .findByText("Testfrage")
+          .should("be.visible");
 
+        H.getSimpleEmbedIframeContent()
+          .findByText("Neues Dashboard")
+          .should("be.visible")
+          .click();
+
+        H.getSimpleEmbedIframeContent().within(() => {
           H.modal().within(() => {
             cy.findByText("Test Sammlung").should("be.visible");
             cy.findByText("Test Sammlung").click();

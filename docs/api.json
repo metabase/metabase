@@ -13414,6 +13414,38 @@
         "tags" : [ "/api/activity" ]
       }
     },
+    "/api/agent/v1/ping" : {
+      "get" : {
+        "summary" : "GET /api/agent/v1/ping",
+        "description" : "Health check endpoint for the Agent API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "message" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
     "/api/alert/" : {
       "get" : {
         "summary" : "GET /api/alert/",
