@@ -123,6 +123,50 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- run-with-rename-tables-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [schema (namespace output-table)
+        new-temp (driver.u/temp-table-name driver schema)
+        old-temp (loop []
+                   (let [t (driver.u/temp-table-name driver schema)]
+                     (if (= t new-temp) (recur) t)))]
+    (try
+      (let [create-query (driver/compile-transform driver (assoc transform-details :output-table new-temp))
+            rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+        (driver/rename-tables! driver (:id database) {output-table old-temp
+                                                      new-temp output-table})
+        (driver/drop-table! driver (:id database) old-temp)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using rename-tables strategy")
+        (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-create-drop-rename-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [schema (namespace output-table)
+        tmp-table (driver.u/temp-table-name driver schema)]
+    (try
+      (let [create-query (driver/compile-transform driver (assoc transform-details :output-table tmp-table))
+            rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+        (driver/drop-table! driver (:id database) output-table)
+        (driver/rename-table! driver (:id database) tmp-table output-table)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using create-drop-rename strategy")
+        (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-drop-create-fallback-strategy!
+  [driver output-table transform-details conn-spec overwrite?]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    (try
+      {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}
+      (catch Exception e
+        (log/error e "Failed to run transform using drop-create strategy")
+        (throw e)))))
+
 ;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [conn-spec output-table database] :as transform-details} {:keys [overwrite?]}]
@@ -134,47 +178,15 @@
     (cond
       ;; Atomic renames fully supported
       (and (driver/database-supports? driver :atomic-renames database) use-temp-table?)
-      (let [schema (namespace output-table)
-            new-temp (driver.u/temp-table-name driver schema)
-            old-temp (loop []
-                       (let [t (driver.u/temp-table-name driver schema)]
-                         (if (= t new-temp) (recur) t)))]
-        (try
-          (let [create-query (driver/compile-transform driver (assoc transform-details :output-table new-temp))
-                rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-            (driver/rename-tables! driver (:id database) {output-table old-temp
-                                                          new-temp output-table})
-            (driver/drop-table! driver (:id database) old-temp)
-            {:rows-affected rows-affected})
-          (catch Exception e
-            (log/error e "Failed to run transform using rename-tables strategy")
-            (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
-            (throw e))))
+      (run-with-rename-tables-strategy! driver database output-table transform-details conn-spec)
 
       ;; Single rename supported, partial atomicity
       (and (driver/database-supports? driver :rename database) use-temp-table?)
-      (let [schema (namespace output-table)
-            tmp-table (driver.u/temp-table-name driver schema)]
-        (try
-          (let [create-query (driver/compile-transform driver (assoc transform-details :output-table tmp-table))
-                rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-            (driver/drop-table! driver (:id database) output-table)
-            (driver/rename-table! driver (:id database) tmp-table output-table)
-            {:rows-affected rows-affected})
-          (catch Exception e
-            (log/error e "Failed to run transform using create-drop-rename strategy")
-            (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
-            (throw e))))
+      (run-with-create-drop-rename-strategy! driver database output-table transform-details conn-spec)
 
       ;; Drop then create, no atomicity
       :else
-      (let [queries (cond->> [(driver/compile-transform driver transform-details)]
-                      overwrite? (cons (driver/compile-drop-table driver output-table)))]
-        (try
-          {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}
-          (catch Exception e
-            (log/error e "Failed to run transform using drop-create strategy")
-            (throw e)))))))
+      (run-with-drop-create-fallback-strategy! driver output-table transform-details conn-spec overwrite?))))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
