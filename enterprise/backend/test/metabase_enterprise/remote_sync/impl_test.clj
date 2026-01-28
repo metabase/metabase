@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -1064,3 +1065,131 @@
               (testing "RemoteSyncObject entry is cleaned up after export"
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Measure" :model_id measure-id)))
                     "RemoteSyncObject entry for archived measure should have synced status")))))))))
+
+;; Auto-enable transforms tests
+
+(deftest import!-auto-enables-transforms-setting-when-transforms-detected-test
+  (testing "import! auto-enables remote-sync-transforms setting only after successful import with transforms"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/RemoteSyncObject]
+        (mt/with-temporary-setting-values [remote-sync-transforms false
+                                           remote-sync-enabled true]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                transform-entity-id "auto-enable-trans-xxx"
+                ;; Include top-level transforms path (detected by snapshot-has-transforms?)
+                test-files {"main" {(str "transforms/" transform-entity-id "_test_transform.yaml")
+                                    (test-helpers/generate-transform-yaml transform-entity-id "Test Transform")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)]
+            ;; Verify setting is initially false
+            (is (false? (remote-sync.settings/remote-sync-transforms))
+                "remote-sync-transforms should be initially disabled")
+            ;; Run import
+            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  "Import should succeed")
+              ;; Verify setting was auto-enabled after successful import
+              (is (true? (remote-sync.settings/remote-sync-transforms))
+                  "remote-sync-transforms should be auto-enabled after successful import with transforms"))))))))
+
+(deftest import!-auto-enables-transforms-setting-when-python-libraries-detected-test
+  (testing "import! auto-enables remote-sync-transforms setting only after successful import with python-libraries"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary :model/RemoteSyncObject]
+        (mt/with-temporary-setting-values [remote-sync-transforms false
+                                           remote-sync-enabled true]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                lib-entity-id "auto-enable-lib-xxxxx"
+                ;; Include python-libraries path in the file list with valid YAML
+                test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
+                                    (format "path: common.py
+source: |
+  # shared code
+  def shared_func():
+      return 42
+entity_id: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+serdes/meta:
+- id: %s
+  model: PythonLibrary
+" lib-entity-id lib-entity-id)}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)]
+            ;; Verify setting is initially false
+            (is (false? (remote-sync.settings/remote-sync-transforms))
+                "remote-sync-transforms should be initially disabled")
+            ;; Run import
+            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  "Import should succeed")
+              ;; Verify setting was auto-enabled after successful import
+              (is (true? (remote-sync.settings/remote-sync-transforms))
+                  "remote-sync-transforms should be auto-enabled after successful import with python-libraries"))))))))
+
+(deftest import!-keeps-transforms-setting-disabled-when-no-transforms-present-test
+  (testing "import! keeps remote-sync-transforms setting disabled when no transforms are present"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "No Transforms Coll" :is_remote_synced true :entity_id "no-transforms-coll-xx" :location "/"}]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                ;; Only collection files, no transforms
+                test-files {"main" {"collections/no-transforms-coll-xx-_/no-transforms-coll-xx.yaml"
+                                    (test-helpers/generate-collection-yaml "no-transforms-coll-xx" "No Transforms Coll")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)]
+            ;; Verify setting is initially false
+            (is (false? (remote-sync.settings/remote-sync-transforms))
+                "remote-sync-transforms should be initially disabled")
+            ;; Run import
+            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result)))
+              ;; Verify setting was NOT auto-enabled
+              (is (false? (remote-sync.settings/remote-sync-transforms))
+                  "remote-sync-transforms should remain disabled when no transforms in remote"))))))))
+
+(deftest import!-does-not-disable-transforms-setting-when-already-enabled-test
+  (testing "import! does not modify remote-sync-transforms setting when it's already enabled"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Already Enabled Coll" :is_remote_synced true :entity_id "already-enabled-collx" :location "/"}]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                ;; No transforms in remote
+                test-files {"main" {"collections/already-enabled-collx-_/already-enabled-collx.yaml"
+                                    (test-helpers/generate-collection-yaml "already-enabled-collx" "Already Enabled Coll")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)]
+            ;; Verify setting is initially true
+            (is (true? (remote-sync.settings/remote-sync-transforms))
+                "remote-sync-transforms should be initially enabled")
+            ;; Run import
+            (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result)))
+              ;; Verify setting was NOT disabled (should still be true)
+              (is (true? (remote-sync.settings/remote-sync-transforms))
+                  "remote-sync-transforms should remain enabled even when no transforms in remote"))))))))
+
+(deftest import!-includes-all-optional-paths-regardless-of-settings-test
+  (testing "import! always includes all optional paths (transforms, python-libraries, snippets)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "All Paths Coll" :is_remote_synced true :entity_id "all-paths-coll-xxxxxx" :location "/"}]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                ;; Regular collection files
+                test-files {"main" {"collections/all-paths-coll-xxxxxx-_/all-paths-coll-xxxxxx.yaml"
+                                    (test-helpers/generate-collection-yaml "all-paths-coll-xxxxxx" "All Paths Coll")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                ;; Track what paths were filtered
+                paths-passed (atom nil)
+                ;; Capture original function to avoid infinite recursion
+                original-fn source.p/->ingestable]
+            ;; Run import and capture the path filters used
+            (with-redefs [source.p/->ingestable (fn [snapshot opts]
+                                                  (reset! paths-passed (:path-filters opts))
+                                                  (original-fn snapshot opts))]
+              (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
+                (is (= :success (:status result)))
+                ;; Verify all optional paths are included in filters
+                (when @paths-passed
+                  (let [filter-strs (map str @paths-passed)]
+                    (is (some #(str/includes? % "transforms") filter-strs)
+                        "transforms path should be included in filters")
+                    (is (some #(str/includes? % "python-libraries") filter-strs)
+                        "python-libraries path should be included in filters")
+                    (is (some #(str/includes? % "snippets") filter-strs)
+                        "snippets path should be included in filters")))))))))))
