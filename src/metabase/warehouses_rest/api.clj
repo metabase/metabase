@@ -1308,6 +1308,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
+                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
     (->> db
