@@ -2,6 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { isCypressActive } from "metabase/env";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -231,7 +232,7 @@ export const saveDashboardPdf = async ({
     width: contentWidth,
     useCORS: true,
     backgroundColor,
-    scale: window.devicePixelRatio || 1,
+    scale: isCypressActive ? 1 : window.devicePixelRatio || 1,
     /**
      * html2canvas-pro creates inline <style> elements that can be blocked by
      * CSP (observed from Firefox). We created a temporary patch to support
@@ -271,6 +272,11 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  // Expose canvas for Cypress visual testing
+  if (isCypressActive) {
+    (window as any).__cypressHtml2Canvas = image;
+  }
 
   const { default: jspdf } = await import("jspdf");
 

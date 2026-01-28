@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -9,6 +10,25 @@ import {
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const testCases = ["csv", "xlsx"];
+
+const canSavePngGridMapQuestion = {
+  type: "native",
+  native: {
+    query: `
+        select 20 as "Latitude", -110 as "Longitude", 1 as "metric" union all
+        select 70 as "Latitude", -170 as "Longitude", 5 as "metric"
+      `,
+    "template-tags": {},
+  },
+  database: SAMPLE_DB_ID,
+  display: "map",
+  visualization_settings: {
+    "map.type": "grid",
+    "map.latitude_column": "Latitude",
+    "map.longitude_column": "Longitude",
+    "map.metric_column": "metric",
+  },
+};
 
 const canSavePngQuestion = {
   name: "Q1",
@@ -493,6 +513,33 @@ describe("scenarios > dashboard > download pdf", () => {
 
     cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
     cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
+  });
+
+  it("should render grid map pins correctly (metabase#64768)", () => {
+    H.createDashboardWithQuestions({
+      dashboardName: "saving pdf grid map dashboard",
+      questions: [canSavePngGridMapQuestion],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+
+      cy.get(".leaflet-overlay-pane svg").should("exist");
+      cy.get(".leaflet-tile-loaded").should("have.length.at.least", 1);
+
+      H.openSharingMenu("Export as PDF");
+
+      cy.findByTestId("status-root-container")
+        .should("contain", "Downloading")
+        .and("contain", "Dashboard for saving pdf grid map dashboard");
+
+      cy.verifyDownload("Metabase - saving pdf grid map dashboard.pdf");
+
+      cy.window().then((win) => {
+        H.compareCanvasSnapshot(
+          win.__cypressHtml2Canvas,
+          "grid-map-pdf-export",
+        );
+      });
+    });
   });
 });
 
