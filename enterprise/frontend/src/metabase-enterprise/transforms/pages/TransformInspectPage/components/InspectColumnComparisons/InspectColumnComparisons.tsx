@@ -39,10 +39,12 @@ export const InspectColumnComparisons = ({
 
   const fieldsOptions = useMemo(
     () =>
-      comparisons.map((c) => ({
-        value: c.output_column,
-        label: c.output_column,
-      })),
+      comparisons
+        .map((c) => ({
+          value: c.output_column,
+          label: c.output_column,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [comparisons],
   );
 
@@ -120,8 +122,12 @@ export const InspectColumnComparisons = ({
                   p="md"
                 >
                   <SimpleGrid cols={2} spacing="md">
-                    <Title order={5}>{inputCard?.title}</Title>
-                    <Title order={5}>{outputCard?.title}</Title>
+                    <Title order={5}>
+                      {inputCard
+                        ? `${inputCard.table_name} → ${inputCard.field_name}`
+                        : null}
+                    </Title>
+                    <Title order={5}>{outputCard?.field_name}</Title>
                   </SimpleGrid>
 
                   <SimpleGrid cols={2} spacing="md">
