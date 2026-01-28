@@ -4746,7 +4746,6 @@
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2
                                                 :dashboard_id dashboard-id}]
-
       (letfn [(query-metadata []
                 (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
                     (api.test-util/select-query-metadata-keys-for-debugging)))]
@@ -4757,7 +4756,7 @@
                  {:cards      [{:id card-id-1}]
                   :fields     empty?
                   :dashboards empty?
-                  :tables     empty?
+                  :tables     [{:name "PRODUCTS"}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.

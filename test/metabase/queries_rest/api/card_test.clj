@@ -3873,18 +3873,17 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [{:keys [card-id table-id source-card-id]} [{:card-id card-id-1, :table-id (mt/id :products)}
-                                                               {:card-id card-id-2, :source-card-id card-id-1}]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    (if table-id
-                                 [{:id table-id}]
-                                 [])
-                    :cards     (if source-card-id
-                                 [{:id source-card-id}]
-                                 [])
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (doseq [[message {:keys [card-id table-id source-card-id]}]
+                    {"Card 1 (source Table)" {:card-id card-id-1, :table-id (mt/id :products)}
+                     "Card 2 (source Card)"  {:card-id card-id-2, :source-card-id card-id-1}}]
+              (testing message
+                (is (=? {:fields    empty?
+                         :tables    [{:id (mt/id :products), :name "PRODUCTS"}]
+                         :cards     (if source-card-id
+                                      [{:id source-card-id}]
+                                      [])
+                         :databases [{:id (mt/id) :engine string?}]}
+                        (query-metadata 200 card-id))))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
             (is (= "Not found."
