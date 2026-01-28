@@ -423,9 +423,13 @@
               ["mage -repl --port 59498 --namespace metabase.app-db.connection '(read-string \"::hello\")'"
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
-             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]
+             ["-f" "--file FILE" "A file with clojure code to evaluate"]]
    :task (let [parsed (cli/parse! (current-task))
-               code (first (:arguments parsed))
+               code (or
+                     (try (some-> parsed :options :file slurp)
+                          (catch Exception e (println "No file found at given path:" (ex-message e))))
+                     (first (:arguments parsed)))
                port (or (:port (:options parsed))
                         (slurp ".nrepl-port")
                         (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))

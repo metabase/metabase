@@ -705,7 +705,7 @@
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
     (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries-rest.api.card) "/api/card")
           schemas                (get-in openapi-object [:components :schemas])
-          body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          body-properties        (get-in openapi-object [:paths "/api/card" :post :requestBody :content "application/json" :schema :properties])
           _                      (is (some? body-properties))
           resolve-schema         (fn resolve-schema [schema]
                                    (or (some-> schema
