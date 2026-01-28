@@ -20,7 +20,9 @@
                       [:path :string]]]
   (transform-tools/get-transform-python-library-details {:path path}))
 
-(mu/defn ^{:tool-name "write_transform_sql"} write-transform-sql-tool
+(mu/defn ^{:tool-name "write_transform_sql"
+           :capabilities #{:feature-transforms :permission-write-transforms}}
+  write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
 
   Supports two modes:
@@ -61,7 +63,9 @@
         {:output (ex-message e)}
         {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name "write_transform_python"} write-transform-python-tool
+(mu/defn ^{:tool-name "write_transform_python"
+           :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}}
+  write-transform-python-tool
   "Write new Python code or edit existing code for transforms.
 
   Supports two modes:
