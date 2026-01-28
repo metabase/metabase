@@ -8,7 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^{:tool-name "navigate_user"} navigate-user-tool
+(mu/defn ^{:tool-name "navigate_user"
+           :capabilities #{:frontend-navigate-user-v1}}
+  navigate-user-tool
   "Navigate the user to a specific page or entity in Metabase.
 
   Use this tool to direct users to:
