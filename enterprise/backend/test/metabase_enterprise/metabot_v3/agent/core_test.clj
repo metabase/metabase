@@ -53,7 +53,7 @@
 (mu/defn test-search-tool
   "Mock search tool that returns test data."
   [{:keys [_query]} :- [:map {:closed true}
-                       [:query :string]]]
+                        [:query :string]]]
   {:structured-output {:data [{:id 1 :name "Test Result"}]}})
 
 (def test-tools
