@@ -155,6 +155,9 @@ const meta = {
       action: "onLoadWithoutCards",
     },
   },
+  args: {
+    autoRefreshInterval: 0,
+  },
   render: ({ "dataPickerProps.entityTypes": entityTypes, ...args }) => {
     return (
       <EditableDashboard
