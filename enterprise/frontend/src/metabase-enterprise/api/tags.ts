@@ -18,6 +18,7 @@ import {
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
+  type ExternalTransform,
   type MeasureDependencyNode,
   type PythonLibrary,
   type SandboxDependencyNode,
@@ -30,6 +31,9 @@ import {
   type TransformJob,
   type TransformRun,
   type TransformTag,
+  type Workspace,
+  type WorkspaceAllowedDatabase,
+  type WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -44,6 +48,10 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-job",
   "transform-job-via-tag",
   "transform-run",
+  "workspace-transforms",
+  "workspace-transform",
+  "workspace-tables",
+  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -52,6 +60,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
   "python-transform-library",
+  "workspace",
   "support-access-grant",
   "support-access-grant-current",
   "library-collection",
@@ -83,6 +92,18 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideWorkspacesTags(
+  workspaces: Workspace[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
+}
+
+export function provideWorkspaceTags(
+  workspace: Workspace | WorkspaceItem,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("workspace", workspace.id)];
 }
 
 export function provideTransformTags(
@@ -125,6 +146,21 @@ export function provideTransformTagListTags(
   tags: TransformTag[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideExternalTransformTags(
+  transform: ExternalTransform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("external-transform", transform.id)];
+}
+
+export function provideExternalTransformListTags(
+  transforms: ExternalTransform[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("external-transform"),
+    ...transforms.flatMap(provideExternalTransformTags),
+  ];
 }
 
 export function provideTransformJobTags(
@@ -270,6 +306,8 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
+    case "workspace-transform":
+      return [idTag("workspace-transform", node.id)];
   }
 }
 
@@ -317,5 +355,14 @@ export function provideBulkTableSelectionInfoTags({
     ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideWorkspaceAllowedDatabaseTags(
+  databases: WorkspaceAllowedDatabase[],
+) {
+  return [
+    listTag("database"),
+    ...databases.map((db) => idTag("database", db.id)),
   ];
 }

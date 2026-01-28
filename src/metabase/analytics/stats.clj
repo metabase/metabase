@@ -949,7 +949,10 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}])
 
 (defn- snowplow-features
   []

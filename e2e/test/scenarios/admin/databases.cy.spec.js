@@ -40,6 +40,81 @@ describe(
   },
 );
 
+describe(
+  "admin > database > external databases > workspaces",
+  { tags: ["@external"] },
+  () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/database/*/permission/workspace/check").as(
+        "checkPermissions",
+      );
+    });
+
+    it("should allow to enable and disable workspaces in postgres database", () => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.addPostgresDatabase("Test DB");
+
+      visitDatabase(WRITABLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+      cy.findByLabelText("Enable workspaces").parent().click();
+
+      cy.wait("@checkPermissions");
+      cy.findByLabelText("Enable workspaces").should("be.checked");
+
+      cy.findByRole("link", { name: "Exit admin" }).click();
+      cy.button("Settings").click();
+      H.popover().findByText("Data studio").click();
+      H.Workspaces.getNewWorkspaceButton().click();
+      cy.findByPlaceholderText("Select a database").click();
+      H.popover().within(() => {
+        cy.findByText("Writable Postgres12").should("be.visible");
+        cy.findByText("Test DB").should("not.exist");
+      });
+
+      cy.go(-3);
+      cy.findByLabelText("Enable workspaces").should("be.checked");
+      cy.findByLabelText("Enable workspaces").parent().click();
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+
+      cy.go(3);
+      cy.findByPlaceholderText("No database supports workspaces").should(
+        "be.visible",
+      );
+    });
+
+    it("should not show workspaces setting for unsupported mysql database", () => {
+      H.restore("mysql-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      visitDatabase(WRITABLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.exist");
+    });
+
+    it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      visitDatabase(SAMPLE_DB_ID);
+
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+      cy.findByLabelText("Enable workspaces").parent().click();
+      cy.wait("@checkPermissions");
+
+      cy.findByTestId("database-workspaces-section").should(
+        "contain.text",
+        "Failed to initialize workspace isolation",
+      );
+      cy.findByLabelText("Enable workspaces").should("not.be.checked");
+    });
+  },
+);
+
 describe("admin > database > add", () => {
   function toggleFieldWithDisplayName(displayName) {
     cy.findByLabelText(new RegExp(displayName)).click({ force: true });

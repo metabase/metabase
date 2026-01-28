@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import type { MetabotContext as MetabotContextType } from "metabase/metabot";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -13,6 +14,7 @@ import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { MetabotChat } from "./components/MetabotChat";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
@@ -31,7 +33,8 @@ import { getMetabotVisible, metabotReducer } from "./state";
  */
 PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
 PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-PLUGIN_METABOT.MetabotContext = MetabotContext;
+PLUGIN_METABOT.MetabotContext =
+  MetabotContext as React.Context<MetabotContextType>;
 
 PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 
@@ -42,6 +45,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
+    PLUGIN_METABOT.MetabotChat = MetabotChat;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
     PLUGIN_METABOT.getAdminPaths = () => [

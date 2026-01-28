@@ -63,6 +63,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "transform":
     case "sandbox":
       return node.data.table?.fields ?? [];
+    case "workspace-transform":
     case "snippet":
     case "dashboard":
     case "document":

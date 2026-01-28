@@ -49,13 +49,14 @@
    (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
-  {:details                     mi/transform-encrypted-json
-   :engine                      mi/transform-keyword
-   :metadata_sync_schedule      mi/transform-cron-string
-   :cache_field_values_schedule mi/transform-cron-string
-   :start_of_week               mi/transform-keyword
-   :settings                    mi/transform-encrypted-json
-   :dbms_version                mi/transform-json})
+  {:details                        mi/transform-encrypted-json
+   :engine                         mi/transform-keyword
+   :metadata_sync_schedule         mi/transform-cron-string
+   :cache_field_values_schedule    mi/transform-cron-string
+   :start_of_week                  mi/transform-keyword
+   :settings                       mi/transform-encrypted-json
+   :dbms_version                   mi/transform-json
+   :workspace_permissions_status   mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
@@ -588,6 +589,31 @@
                      (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
    json-generator))
 
+;;; ------------------------------------------ Workspace Permissions Cache --------------------------------------------
+
+(defn check-workspace-permissions
+  "Check isolation permissions for a database. Returns the permission check result:
+   {:status \"ok\", :checked_at ...} or {:status \"failed\", :error \"...\", :checked_at ...}
+   Does NOT update the database - use [[check-and-cache-workspace-permissions!]] if you need to persist."
+  [database]
+  (let [checked-at (java.time.Instant/now)]
+    (try
+      (let [db-driver (driver.u/database->driver database)]
+        (if-let [error (driver/check-isolation-permissions db-driver database nil)]
+          {:status "failed", :error error, :checked_at (str checked-at)}
+          {:status "ok", :checked_at (str checked-at)}))
+      (catch Exception e
+        {:status "failed", :error (ex-message e), :checked_at (str checked-at)}))))
+
+(defn check-and-cache-workspace-permissions!
+  "Check isolation permissions for a database and cache the result in workspace_permissions_status column.
+   Returns the permission check result: {:status \"ok\", :checked_at ...}
+   or {:status \"failed\", :error \"...\", :checked_at ...}"
+  [database]
+  (let [result (check-workspace-permissions database)]
+    (t2/update! :model/Database (:id database) {:workspace_permissions_status result})
+    result))
+
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
@@ -596,7 +622,9 @@
                :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
-               :cache_ttl]
+               :cache_ttl
+               ;; workspace_permissions_status is instance-specific and should not be serialized
+               :workspace_permissions_status]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context

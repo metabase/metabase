@@ -17,10 +17,12 @@ import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { createPythonImportTokenLocator } from "./utils";
 
 type PythonEditorBodyProps = {
+  disabled?: boolean;
   source: string;
   proposedSource?: string;
   isRunnable: boolean;
   isEditMode?: boolean;
+  hideRunButton?: boolean;
   onChange: (source: string) => void;
   onRun?: () => void;
   onCancel?: () => void;
@@ -37,11 +39,13 @@ const HEADER_HEIGHT = 65 + 50; // Top bar height + transform header height
 const PREVIEW_MAX_INITIAL_HEIGHT = 192;
 
 export function PythonEditorBody({
+  disabled,
   source,
   proposedSource,
   onChange,
   isRunnable,
   isEditMode,
+  hideRunButton,
   onRun,
   onCancel,
   isRunning,
@@ -96,7 +100,7 @@ export function PythonEditorBody({
           proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
-          readOnly={!isEditMode}
+          readOnly={!isEditMode || disabled}
           extensions={[clickableTokensExtension]}
           data-testid="python-editor"
         />
@@ -131,14 +135,16 @@ export function PythonEditorBody({
                 </Tooltip>
               </>
             )}
-            <RunButtonWithTooltip
-              disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
-              onRun={onRun}
-              onCancel={onCancel}
-              getTooltip={() => t`Run Python script`}
-            />
+            {!hideRunButton && (
+              <RunButtonWithTooltip
+                disabled={!isRunnable}
+                isRunning={isRunning}
+                isDirty={isDirty}
+                onRun={onRun}
+                onCancel={onCancel}
+                getTooltip={() => t`Run Python script`}
+              />
+            )}
           </Stack>
         )}
       </Flex>

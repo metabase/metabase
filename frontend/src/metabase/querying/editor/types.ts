@@ -45,6 +45,7 @@ export type QueryEditorUiOptions = {
   cardType?: CardType;
   cardDisplay?: CardDisplayType;
   cardVizSettings?: VisualizationSettings;
+  canChangeDatabase?: boolean;
   readOnly?: boolean;
   canConvertToNative?: boolean;
   convertToNativeTitle?: string;
@@ -53,5 +54,9 @@ export type QueryEditorUiOptions = {
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
+  editorHeight?: number;
   shouldShowLibrary?: false;
+  hidePreview?: boolean;
+  hideRunButton?: boolean;
+  resizable?: boolean;
 };

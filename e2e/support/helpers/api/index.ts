@@ -42,4 +42,8 @@ export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { unpublishTables } from "./unpublishTables";
 export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
-export { updateSetting, updateEnterpriseSetting } from "./updateSetting";
+export {
+  updateSetting,
+  updateEnterpriseSetting,
+  updateEnterpriseSettings,
+} from "./updateSetting";

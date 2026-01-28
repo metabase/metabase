@@ -2,6 +2,7 @@ export * from "./card";
 export * from "./click-behavior";
 export * from "./common";
 export * from "./dom";
-export * from "./settings";
 export * from "./parameters";
 export * from "./react";
+export * from "./settings";
+export * from "./workspace";

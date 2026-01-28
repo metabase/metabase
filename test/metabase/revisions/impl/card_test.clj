@@ -141,7 +141,10 @@
                          :dataset_query_metrics_v2_migration_backup
                          ;; `dependency_analysis_version` is an internal bookkeeping field.  It doesn't affect the
                          ;; actual card itself, so no description is necessary.
-                         :dependency_analysis_version} col)
+                         :dependency_analysis_version
+                         ;; this column is immutable in practice, and doesn't warrant a description
+                         :workspace_id}
+                       col)
               (testing (format "we should have a revision description for %s" col)
                 (let [diff-strings (revision/diff-strings
                                     ;; TODO -- huh? Shouldn't this be testing against `:model/Card` here???

@@ -80,7 +80,13 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  (assoc transform :source_type (transforms.util/transform-source-type source)))
+  ;; Populate computed fields
+  (let [target-db-id (transforms.i/target-db-id transform)]
+    (-> transform
+        (assoc-in [:target :database] target-db-id)
+        (assoc
+         :source_type (transforms.util/transform-source-type source)
+         :target_db_id target-db-id))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
@@ -274,15 +280,15 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type]
-   :transform {:created_at     (serdes/date)
-               :creator_id     (serdes/fk :model/User)
-               :owner_user_id  (serdes/fk :model/User)
-               :collection_id  (serdes/fk :model/Collection)
-               :source         {:export #(update % :query serdes/export-mbql)
-                                :import #(update % :query serdes/import-mbql)}
-               :target         {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags           (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+   :skip      [:dependency_analysis_version :source_type :target_db_id]
+   :transform {:created_at    (serdes/date)
+               :creator_id    (serdes/fk :model/User)
+               :owner_user_id (serdes/fk :model/User)
+               :collection_id (serdes/fk :model/Collection)
+               :source        {:export #(update % :query serdes/export-mbql)
+                               :import #(update % :query serdes/import-mbql)}
+               :target        {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags]}]

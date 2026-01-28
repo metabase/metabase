@@ -1,0 +1,201 @@
+(ns metabase-enterprise.workspaces.dag-test
+  (:require
+   [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
+   [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
+
+(use-fixtures
+  :once
+  (fn [f]
+    (mt/with-premium-features [:dependencies :transforms :workspaces]
+      (mt/with-model-cleanup [:model/Dependency :model/Transform :model/Table :model/Workspace]
+        (f)))))
+
+;;;; Example graphs for testing
+
+(def ^:private example-graph
+  {:x3  [:x1 :t2]
+   :x4  [:x3]
+   :m6  [:x4 :t5]
+   :m10 [:t9]
+   :x11 [:m10]
+   :m12 [:x11]
+   :m13 [:x11 :m12]})
+
+;;;; Test data helpers
+
+(defn- translate-result
+  "Translate result from real IDs back to shorthand notation for easier comparison."
+  [workspace-id {:keys [inputs outputs entities dependencies] :as _result} id-map]
+  (let [reverse-map (u/for-map [[k v] id-map] [v k])
+        table->kw   (comp reverse-map :id)
+        node->kw    (fn [{:keys [node-type id]}]
+                      (reverse-map (case node-type
+                                     :table (:id id)
+                                     :external-transform id
+                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id]
+                                                                            :workspace_id workspace-id :ref_id id))))]
+    {:inputs       (into #{} (map table->kw) inputs)
+     :outputs      (into #{} (map table->kw) outputs)
+     :entities     (into #{} (map node->kw) entities)
+     :dependencies (u/for-map [[child parents] dependencies]
+                     [(node->kw child) (into #{} (map node->kw parents))])}))
+
+;;;; Tests
+
+(deftest path-induced-subgraph-shorthand-test
+  (testing "graph built from shorthand matches abstract solver"
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x2 [:t1]}
+            :workspace {:checkouts [:x2]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entity     {:entity-type :transform, :id (workspace-map :x2)}
+            result     (ws.dag/path-induced-subgraph workspace-id [entity])
+            translated (translate-result workspace-id result global-map)]
+        (is (=? {:inputs       #{:t1}
+                 :outputs      #{:t2}
+                 :entities     #{:x2}
+                 :dependencies {:x2 #{:t1}}}
+                translated))))))
+
+(deftest path-induced-subgraph-larger-test
+  (testing "graph built from shorthand matches abstract solver"
+    ;; check-outs x2, x4
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x1 [:t0]
+                        :x2 [:x1 :t10]
+                        :x3 [:x2 :t8]
+                        :x4 [:x3]
+                        :x5 [:x2 :x4 :t9]}
+            :workspace {:checkouts [:x2 :x4]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entities   (for [tx [:x2 :x4]]
+                         {:entity-type :transform, :id (workspace-map tx)})
+            result     (ws.dag/path-induced-subgraph workspace-id entities)
+            translated (translate-result workspace-id result global-map)]
+        (is (=? {:inputs       #{:t1 :t8 :t10}
+                 :outputs      #{:t2 :t3 :t4}
+                 :entities     #{:x2 :x3 :x4}
+                 :dependencies {:x2 #{:t1 :t10}
+                                :x3 #{:x2 :t8}
+                                :x4 #{:x3}}}
+                translated))))))
+
+(deftest expand-solver-test
+  (testing "expand-shorthand inserts interstitial nodes for transform output tables"
+    (is (= {:t1  [:x1]
+            :x3  [:t1 :t2]
+            :t3  [:x3]
+            :x4  [:t3]
+            :t4  [:x4]
+            :m6  [:t4 :t5]
+            :m10 [:t9]
+            :x11 [:m10]
+            :t11 [:x11]
+            :m12 [:t11]
+            :m13 [:t11 :m12]}
+           (dag-abstract/expand-shorthand example-graph)))))
+
+(deftest abstract-path-induced-subgraph-test
+  (testing "path-induced-subgraph computes correct result for example graph"
+    (is (= {:check-outs   [:x3 :m6 :m10 :m13]
+            :inputs       [:t1 :t2 :t5 :t9]
+            :tables       [:t3 :t4 :t11]
+            :transforms   [:x3 :x4 :x11]
+            :entities     [:x3 :x4 :m6 :m10 :x11 :m12 :m13]
+            :dependencies (ordered-map/ordered-map
+                           :m10 []
+                           :x11 [:m10]
+                           :m12 [:t11]
+                           :m13 [:t11 :m12]
+                           :x3 []
+                           :x4 [:t3]
+                           :m6 [:t4])}
+           (dag-abstract/path-induced-subgraph
+            {:check-outs   #{:x3 :m6 :m10 :m13}
+             :dependencies (dag-abstract/expand-shorthand example-graph)})))))
+
+(deftest collapse-test
+  (is (= {:x1 [:x2 :x3]
+          :x2 [:t3]
+          :x3 [:x5]
+          :x4 []
+          :x5 []}
+         (#'ws.dag/collapse
+          ws.tu/mock-table?
+          {:x1 [:t1 :t2]
+           :t1 [:x2]
+           :t2 [:x3]
+           :x2 [:t3]
+           :x3 [:t4]
+           :t4 [:x5]
+           :t5 [:x4]
+           :x4 []
+           :x5 []}))))
+
+(defn tx->table [kw]
+  (when (ws.tu/transform? kw)
+    (keyword (str "t" (ws.tu/kw->id kw)))))
+
+(defn- solve-in-memory [init-nodes graph]
+  (let [tx-nodes (filter ws.tu/transform? init-nodes)
+        tables   (map tx->table tx-nodes)]
+    (#'ws.dag/path-induced-subgraph*
+      ;; Include all changeset targets in the init-nodes
+     (distinct (into init-nodes tables))
+     {:node-parents (dag-abstract/expand-shorthand graph)
+      :table?       ws.tu/mock-table?
+      :table-sort   ws.tu/kw->id
+      :unwrap-table identity})))
+
+(defn- chain->deps [chain]
+  (reduce
+   (fn [deps [from to]]
+     (assoc deps from [to]))
+   {}
+   (partition 2 1 (reverse chain))))
+
+(deftest in-memory-path-induced-subgraph-test
+  (testing "singleton"
+    (is (= {:inputs       [:t1]
+            :outputs      [:t2]
+            :entities     [:x2]
+            :dependencies {:x2 [:t1]}}
+           (solve-in-memory [:x2] {:x2 [:t1]}))))
+
+  (testing "encloses middle of a chain"
+    (is (= {:inputs       [:t1]
+            :outputs      [:t2 :t3 :t4]
+            :entities     [:x2 :x3 :x4]
+            :dependencies {:x2 [:t1]
+                           :x3 [:x2]
+                           :x4 [:x3]}}
+           (solve-in-memory [:x2 :x4] (chain->deps [:x1 :x2 :x3 :x4 :x5])))))
+
+  (testing "larger graph"
+    (is (= {:inputs       [:t1 :t2 :t5 :t9]
+            :outputs      [:t3 :t4 :t11]
+            :entities     [:m10 :x11 :m12 :m13 :x3 :x4 :m6]
+            :dependencies {:m10 [:t9]
+                           :m12 [:x11]
+                           :m13 [:m12 :x11]
+                           :m6  [:x4 :t5]
+                           :x11 [:m10]
+                           :x3  [:t2 :t1]
+                           :x4  [:x3]}}
+           (solve-in-memory
+            [:x3 :m6 :m10 :m13]
+            {:x3  [:x1 :t2]
+             :x4  [:x3]
+             :m6  [:x4 :t5]
+             :m10 [:t9]
+             :x11 [:m10]
+             :m12 [:x11]
+             :m13 [:x11 :m12]})))))

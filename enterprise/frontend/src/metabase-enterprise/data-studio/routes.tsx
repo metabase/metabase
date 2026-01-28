@@ -8,6 +8,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
@@ -16,12 +17,14 @@ import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
+import { getDataStudioWorkspaceRoutes } from "./workspaces/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -57,6 +60,11 @@ export function getDataStudioRoutes(
           {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
+        {hasPremiumFeature("workspaces") && (
+          <Route path="workspaces" component={WorkspacesSectionLayout}>
+            {getDataStudioWorkspaceRoutes()}
+          </Route>
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}

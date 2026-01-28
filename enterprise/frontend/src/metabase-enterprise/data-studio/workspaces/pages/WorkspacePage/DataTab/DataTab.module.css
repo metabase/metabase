@@ -1,0 +1,16 @@
+.tabsPanel {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow: auto;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--mb-color-border);
+
+  &::before {
+    display: none;
+  }
+
+  & button {
+    border-radius: 0;
+  }
+}

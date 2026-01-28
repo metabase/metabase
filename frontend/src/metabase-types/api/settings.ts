@@ -352,6 +352,7 @@ export const tokenFeatures = [
   "data_studio",
   "support-users",
   "tenants",
+  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

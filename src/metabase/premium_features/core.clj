@@ -82,6 +82,7 @@
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
+  enable-workspaces?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?

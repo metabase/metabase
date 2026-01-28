@@ -58,7 +58,8 @@
                               :collection-cleanup
                               :database-routing
                               :tenants
-                              :cloud-custom-smtp}
+                              :cloud-custom-smtp
+                              :workspaces}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -111,5 +112,6 @@
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false
-            :dependencies                   false}
+            :dependencies                   false
+            :workspaces                     true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

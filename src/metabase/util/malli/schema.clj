@@ -155,6 +155,10 @@
                      (str message))
       :api/regex   #"-[1-9]\d*"}]))
 
+(def LocalizedString
+  "Schema that is a localized string."
+  [:fn i18n/localized-string?])
+
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
@@ -237,6 +241,14 @@
     :string
     [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
+
+(def TemporalInstant
+  "Schema for temporal values (java.time objects) that serialize to ISO-8601 strings in JSON responses."
+  (mu/with-api-error-message
+   [:fn {:json-schema {:type "string" :format "date-time"}
+         :description "ISO-8601 date-time string"}
+    #(instance? java.time.temporal.Temporal %)]
+   (deferred-tru "value must be a valid date/time/datetime")))
 
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."

@@ -59,14 +59,14 @@
   [:map
    [:database {:optional true} :int]
    [:type [:= "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
+   [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]])
 
 (mr/def ::table-incremental-target
   [:map
    [:database {:optional true} :int]
    [:type [:= "table-incremental"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
+   [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]
    [:target-incremental-strategy ::target-incremental-strategy]])
 
