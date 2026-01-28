@@ -106,9 +106,11 @@ export function markAllSchemas(
   for (const schema of database.children) {
     const schemaId = getSchemaId(schema);
     if (schema.children.length === 0) {
-      targetChecked === "all"
-        ? schemas.add(schemaId)
-        : schemas.delete(schemaId);
+      if (targetChecked === "all") {
+        schemas.add(schemaId);
+      } else {
+        schemas.delete(schemaId);
+      }
     } else {
       markAllTables(schema, targetChecked, tables);
     }
@@ -127,9 +129,11 @@ function markAllTables(
   tablesSelection: Set<TableId>,
 ) {
   for (const tableId of getSchemaChildrenTableIds(schema)) {
-    targetChecked === "all"
-      ? tablesSelection.add(tableId)
-      : tablesSelection.delete(tableId);
+    if (targetChecked === "all") {
+      tablesSelection.add(tableId);
+    } else {
+      tablesSelection.delete(tableId);
+    }
   }
 }
 
@@ -171,7 +175,11 @@ export function toggleSchemaSelection(
 
 export function toggleInSet<T>(set: Set<T>, item: T): Set<T> {
   const newSet = new Set(set);
-  newSet.has(item) ? newSet.delete(item) : newSet.add(item);
+  if (newSet.has(item)) {
+    newSet.delete(item);
+  } else {
+    newSet.add(item);
+  }
   return newSet;
 }
 

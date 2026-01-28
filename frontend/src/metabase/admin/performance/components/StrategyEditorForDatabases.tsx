@@ -73,7 +73,11 @@ export const StrategyEditorForDatabases: React.FC = () => {
   const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
     if (targetId !== newTargetId) {
       const update = () => setTargetId(newTargetId);
-      isFormDirty ? askBeforeDiscardingChanges(update) : update();
+      if (isFormDirty) {
+        askBeforeDiscardingChanges(update);
+      } else {
+        update();
+      }
     }
   };
 

@@ -80,13 +80,13 @@ describe("EmailSettingsPage", () => {
   });
 
   it("should not render premium features missing from token", async () => {
-    await setup({ disablePremiumFeatures: true }),
-      [
-        "Approved domains for notifications",
-        "Suggest recipients on dashboard subscriptions and alerts",
-      ].forEach((text) => {
-        expect(screen.queryByText(text)).not.toBeInTheDocument();
-      });
+    await setup({ disablePremiumFeatures: true });
+    [
+      "Approved domains for notifications",
+      "Suggest recipients on dashboard subscriptions and alerts",
+    ].forEach((text) => {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
   });
 
   it("should update multiple settings", async () => {

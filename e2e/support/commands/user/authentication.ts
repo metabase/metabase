@@ -23,7 +23,7 @@ export const loginCache: Partial<
 > = {};
 
 try {
-   
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require for optional file
   const sampleDataFile = require("e2e/support/cypress_sample_instance_data.json");
   const { loginCache: LOGIN_CACHE } = sampleDataFile;
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,

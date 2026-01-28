@@ -131,7 +131,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         cy.findByTestId("metabot-chat-inner-messages").then(($el) => {
           const el = $el[0];
           const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
-          expect(isAtBottom).to.be.true;
+          expect(isAtBottom).to.equal(true);
         });
       });
     });

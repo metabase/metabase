@@ -94,6 +94,7 @@ const configs = [
       "**/target/**",
       "resources/**",
       "**/__snapshots__/**",
+      ".shadow-cljs/**",
       "!.storybook/**",
     ],
   },
@@ -140,8 +141,17 @@ const configs = [
       storybook: fixupPluginRules(storybookPlugin),
     },
     settings: {
-      "import-x/internal-regex": "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
+      "import-x/internal-regex":
+        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
       "import-x/resolver": {
+        node: true,
+        webpack: {
+          config: path.resolve(__dirname, "./rspack.main.config.js"),
+          typescript: true,
+        },
+      },
+      // Also set import/resolver for eslint-module-utils (used by custom rules)
+      "import/resolver": {
         node: true,
         webpack: {
           config: path.resolve(__dirname, "./rspack.main.config.js"),
@@ -388,6 +398,7 @@ const configs = [
           varsIgnorePattern: "^_.+$",
           ignoreRestSiblings: true,
           destructuredArrayIgnorePattern: "^_.+$",
+          caughtErrors: "none",
         },
       ],
       "@typescript-eslint/no-unsafe-declaration-merging": "off",
@@ -480,8 +491,7 @@ const configs = [
             },
             {
               name: "metabase-types/api/mocks/presets",
-              message:
-                "Please use e2e/support/cypress_sample_database instead",
+              message: "Please use e2e/support/cypress_sample_database instead",
             },
           ],
           patterns: [
@@ -824,6 +834,18 @@ const configs = [
     },
     settings: {
       "import-x/resolver": {
+        node: true,
+        webpack: {
+          config: path.resolve(
+            __dirname,
+            "./rspack.embedding-sdk-bundle.config.js",
+          ),
+          typescript: true,
+        },
+      },
+      // Also set import/resolver for eslint-module-utils (used by custom rules)
+      "import/resolver": {
+        node: true,
         webpack: {
           config: path.resolve(
             __dirname,
@@ -874,7 +896,9 @@ const configs = [
     },
   },
   {
-    files: ["enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*"],
+    files: [
+      "enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -984,7 +1008,10 @@ const configs = [
         "error",
         {
           allowedPaths: [
-            path.join(__dirname, "enterprise/frontend/src/embedding-sdk-package"),
+            path.join(
+              __dirname,
+              "enterprise/frontend/src/embedding-sdk-package",
+            ),
             path.resolve(__dirname, "frontend/src/embedding-sdk-shared"),
           ],
         },
@@ -1078,9 +1105,6 @@ const configs = [
         ...globals.node,
       },
     },
-    rules: {
-      "import/no-commonjs": "off",
-    },
   },
 
   // ============================================
@@ -1090,6 +1114,28 @@ const configs = [
     files: ["**/*.stories.tsx", "**/preview.tsx"],
     rules: {
       "import/no-default-export": "off",
+    },
+  },
+
+  // ============================================
+  // NODE.JS CONFIG FILES (root level + scripts)
+  // ============================================
+  {
+    files: [
+      "*.config.js",
+      "*.config.mjs",
+      "rspack.*.js",
+      "bin/**/*.js",
+      ".github/scripts/**/*.js",
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "import/no-commonjs": "off",
+      "no-console": "off",
     },
   },
 ];

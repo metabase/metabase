@@ -377,7 +377,9 @@ export function EntityPickerModal<
     (event) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        !disableCloseOnEscape && onClose();
+        if (!disableCloseOnEscape) {
+          onClose();
+        }
       }
     },
     { capture: true },

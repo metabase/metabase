@@ -55,7 +55,7 @@ export const DashboardSelector = ({
       </Group>
     );
   }
-  ``;
+
   return (
     <Flex>
       <DashboardPickerButton
