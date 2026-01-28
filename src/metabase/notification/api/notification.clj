@@ -153,14 +153,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- ::models.notification/FullyHydratedNotification request]
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
                            (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
-                           (dissoc :handlers :subscriptions))
+                           (dissoc :handlers :subscriptions)
+                           (assoc-in [:payload :disable_links]
+                                     (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)))
                        (:subscriptions body)
                        (:handlers body)))]
     (when (card-notification? notification)
