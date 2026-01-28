@@ -72,10 +72,9 @@
   Returns true if any supported dependents were found."
   [dependents]
   (let [supported-dependents (into {}
-                                   (keep (fn [[dep-type dep-ids]]
-                                           (when (and (supported-entities dep-type)
-                                                      (seq dep-ids))
-                                             [dep-type dep-ids])))
+                                   (filter (fn [[dep-type dep-ids]]
+                                             (and (supported-entities dep-type)
+                                                  (seq dep-ids))))
                                    dependents)]
     (doseq [[dep-type dep-ids] supported-dependents]
       (deps.analysis-finding/mark-stale! dep-type dep-ids))
