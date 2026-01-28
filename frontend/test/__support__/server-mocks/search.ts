@@ -4,7 +4,10 @@ import { match } from "ts-pattern";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
 
-export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
+export function setupSearchEndpoints(
+  items: (CollectionItem | SearchResult)[],
+  delay?: number,
+) {
   const name = "search";
   fetchMock.removeRoute(name);
   fetchMock.get(
@@ -39,7 +42,7 @@ export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
         table_db_id,
       };
     },
-    { name },
+    { name, delay },
   );
 }
 

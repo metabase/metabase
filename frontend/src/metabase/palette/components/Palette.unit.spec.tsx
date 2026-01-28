@@ -20,12 +20,14 @@ import { Palette } from "./Palette";
 const setup = ({
   routeProps,
   searchResults = [],
+  searchResultsDelay,
 }: {
   routeProps?: { disableCommandPalette?: boolean };
   searchResults?: SearchResult[];
+  searchResultsDelay?: number;
 } = {}) => {
   setupDatabasesEndpoints([]);
-  setupSearchEndpoints(searchResults);
+  setupSearchEndpoints(searchResults, searchResultsDelay);
   setupRecentViewsEndpoints([]);
   renderWithProviders(<Route path="/" component={Palette} {...routeProps} />, {
     withKBar: true,
@@ -97,6 +99,7 @@ describe("command palette", () => {
 
     setup({
       searchResults: [createMockSearchResult({ name: "Metric search result" })],
+      searchResultsDelay: 50, // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
     });
 
     await userEvent.keyboard("[ControlLeft>]k");
