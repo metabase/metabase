@@ -1,3 +1,4 @@
+^{:clj-kondo/ignore [:metabase/modules]}
 (ns metabase.sql-tools.common
   (:require
    [metabase.driver.sql :as driver.sql]
@@ -6,6 +7,7 @@
 
 ;; driver.sql
 (defn normalize-table-spec
+  "WIP"
   [driver {:keys [table schema]}]
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
