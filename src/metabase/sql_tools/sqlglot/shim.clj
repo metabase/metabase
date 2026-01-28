@@ -1,7 +1,8 @@
-(ns ^{:clj-kondo/ignore [:discouraged-namespace]}
- metabase.sql-tools.parsers.sqlglot.shim
+^{:clj-kondo/ignore [:metabase/modules]}
+(ns metabase.sql-tools.sqlglot.shim
   "Basic example of running Python code using GraalVM polyglot."
   (:require
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.util.json :as json])
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
@@ -91,6 +92,21 @@
                   (name driver))]
     (vec (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db])))))))
 
+;; TODO: should live in shim probably
+;; TODO: Malli
+(defn- normalize-dependency
+  [driver dependency]
+  (mapv (fn [component]
+          (when (string? (not-empty component))
+            (sql.normalize/normalize-name driver component)))
+        dependency))
+
+(defn- normalized-dependencies
+  [driver [_alias _pure? _dependencies :as single-lineage]]
+  (update single-lineage 2 #(mapv (partial normalize-dependency driver)
+                                  %)))
+
+;; TODO: Rename lineage to something more accurate
 (defn returned-columns-lineage
   "WIP"
   [driver sql catalog db schema]
@@ -99,5 +115,7 @@
         _ (.eval ctx "python" "import sql_tools")
         pyfn (.eval ctx "python" "sql_tools.returned_columns_lineage")
         dialect (when-not (= :h2 driver)
-                  (name driver))]
-    (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db schema]))))))
+                  (name driver))
+        lineage (json/decode (.asString (.execute pyfn (object-array [dialect sql catalog db schema]))))
+        normalized (mapv (partial normalized-dependencies driver) lineage)]
+    normalized))
