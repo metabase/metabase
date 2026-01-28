@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import {
   BackButton,
   Breakout,
@@ -166,17 +167,31 @@ export const _SdkQuestion = ({
     navigateToNewCard={navigateToNewCard}
     onVisualizationChange={onVisualizationChange}
   >
-    {children ?? (
-      <SdkQuestionDefaultView
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-        title={title}
-        withResetButton={withResetButton}
-        withChartTypeSelector={withChartTypeSelector}
-      />
-    )}
+    <SdkInternalNavigationProvider
+      // dashboardProps={{}}
+      renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
+      drillThroughQuestionProps={{
+        height: height,
+        width: width,
+        className: className,
+        style: style,
+        title: title,
+        withResetButton: withResetButton,
+        withChartTypeSelector: withChartTypeSelector,
+      }}
+    >
+      {children ?? (
+        <SdkQuestionDefaultView
+          height={height}
+          width={width}
+          className={className}
+          style={style}
+          title={title}
+          withResetButton={withResetButton}
+          withChartTypeSelector={withChartTypeSelector}
+        />
+      )}
+    </SdkInternalNavigationProvider>
   </SdkQuestionProvider>
 );
 
