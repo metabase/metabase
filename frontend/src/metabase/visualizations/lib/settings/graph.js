@@ -520,6 +520,49 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getDefault: (_series, settings) => getDefaultShowStackValues(settings),
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
+  "graph.stack_value_format": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Stack value format`;
+    },
+    widget: "radio",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "bar",
+      );
+      return (
+        vizSettings["stackable.stack_type"] !== "stacked" ||
+        vizSettings["graph.show_values"] !== true ||
+        !hasBars ||
+        (vizSettings["graph.show_stack_values"] !== "series" &&
+          vizSettings["graph.show_stack_values"] !== "all")
+      );
+    },
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Values`;
+          },
+          value: "value",
+        },
+        {
+          get name() {
+            return t`Percentages`;
+          },
+          value: "percentage",
+        },
+      ],
+    },
+    getDefault: () => "value",
+    readDependencies: [
+      "graph.show_values",
+      "stackable.stack_type",
+      "graph.show_stack_values",
+    ],
+  },
   "graph.label_value_formatting": {
     get section() {
       return t`Display`;
