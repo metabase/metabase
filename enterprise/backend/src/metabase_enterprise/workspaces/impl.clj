@@ -554,6 +554,8 @@
   [workspace & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
         remapping (build-remapping workspace)]
+    ;; Ensure analysis is up-to-date
+    (get-or-calculate-graph! workspace)
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
