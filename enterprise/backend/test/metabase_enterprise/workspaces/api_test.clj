@@ -557,11 +557,11 @@
                               {:commit-message commit-msg})
 
         (testing "returns merge history for a transform"
-          ;; workspace_id is nil because workspace is deleted after merge (SET NULL FK)
+          ;; workspace_id is preserved since workspace is archived (not deleted) after merge
           (is (=? [{:id                 pos-int?
                     :workspace_merge_id pos-int?
                     :commit_message     commit-msg
-                    :workspace_id       nil
+                    :workspace_id       ws-id
                     :workspace_name     ws-name
                     :merging_user_id    (mt/user->id :crowberto)
                     :created_at         some?}]
