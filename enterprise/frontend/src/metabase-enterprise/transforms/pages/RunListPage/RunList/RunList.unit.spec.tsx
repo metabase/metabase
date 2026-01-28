@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TransformRun, TransformTag } from "metabase-types/api";
+import type { TransformRun } from "metabase-types/api";
 import {
   createMockTransform,
   createMockTransformRun,
@@ -12,26 +12,15 @@ import { RunList } from "./RunList";
 
 type SetupOpts = {
   runs?: TransformRun[];
-  tags?: TransformTag[];
-  totalCount?: number;
 };
 
-function setup({
-  runs = [createMockTransformRun({ transform: createMockTransform() })],
-  tags = [],
-  totalCount = runs.length,
-}: SetupOpts = {}) {
+function setup({ runs = [] }: SetupOpts = {}) {
   return renderWithProviders(
     <>
       <Route
         path="/data-studio/transforms/runs"
         component={() => (
-          <RunList
-            params={{}}
-            runs={runs}
-            tags={tags}
-            totalCount={totalCount}
-          />
+          <RunList params={{}} runs={runs} tags={[]} totalCount={runs.length} />
         )}
       />
       <Route
