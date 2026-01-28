@@ -13,7 +13,6 @@
    [clojure.java.shell :as shell]
    [clojure.string :as str]
    [metabase.config.core :as config]
-   [metabase.plugins.core :as plugins]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -32,6 +31,16 @@
 (def ^:private python-sources-resource
   "Resource path for Python sources (sql_tools.py and sqlglot)."
   "python-sources")
+
+(defn- plugins-dir-path
+  "Get path to plugins directory. Lightweight alternative to metabase.plugins.core/plugins-dir
+   that avoids loading the entire plugin system (~8 seconds of namespace loading)."
+  ^Path []
+  (let [dir-name (or (System/getenv "MB_PLUGINS_DIR")
+                     "plugins")
+        path     (u.files/get-path dir-name)]
+    (u.files/create-dir-if-not-exists! path)
+    path))
 
 (defn- jar-resource?
   "True if the given resource is inside a JAR (production), false if from filesystem (dev)."
@@ -57,7 +66,7 @@
   "Extract python-sources from JAR to plugins directory. Returns the path as a string.
   Uses the same plugins directory as driver modules for consistency."
   ^String []
-  (let [^Path plugins-path (plugins/plugins-dir)
+  (let [^Path plugins-path (plugins-dir-path)
         dest-path          (.resolve plugins-path "python-sources")]
     (u.files/create-dir-if-not-exists! dest-path)
     (log/info "Extracting Python sources to" (str dest-path))
