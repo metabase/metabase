@@ -220,8 +220,7 @@
   {:team "UX West"
    :api  #{metabase.auth-identity.core
            metabase.auth-identity.init}
-   :uses #{channel
-           events
+   :uses #{events
            login-history
            models
            notification
@@ -286,7 +285,7 @@
    :api  #{metabase.channel.api
            metabase.channel.core
            metabase.channel.email
-           metabase.channel.email.messages
+           metabase.channel.email.core
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
@@ -479,7 +478,6 @@
            analytics
            api
            app-db
-           channel
            collections
            collections-rest
            dashboards
@@ -795,7 +793,7 @@
            metabase.login-history.init}
    :uses #{analytics
            api
-           channel
+           events
            request
            settings
            util}}
@@ -990,6 +988,7 @@
            app-db
            channel
            config
+           events
            premium-features
            settings
            task
@@ -1062,7 +1061,6 @@
            app-db
            audit-app
            cache
-           channel
            collections
            config
            content-verification
@@ -1326,7 +1324,6 @@
    :uses #{api
            app-db
            auth-identity
-           channel
            config
            events
            request
@@ -1551,7 +1548,6 @@
            metabase.users.settings}
    :uses #{api
            batch-processing
-           channel
            config
            events
            models

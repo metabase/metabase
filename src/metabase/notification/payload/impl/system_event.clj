@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.core :as messages]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]

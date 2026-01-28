@@ -1,7 +1,7 @@
 (ns metabase.login-history.record
   (:require
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.channel.email.messages :as messages]
+   [metabase.events.core :as events]
    [metabase.login-history.models.login-history :as login-history]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
@@ -24,7 +24,7 @@
         ;; off thread for both IP lookup and email sending. Either one could block and slow down user login (#16169)
         (try
           (let [[info] (login-history/human-friendly-infos [history-record])]
-            (messages/send-login-from-new-device-email! info))
+            (events/publish-event! :event/email.login-from-new-device {:login-history info}))
           (catch Throwable e
             (log/error e "Error sending 'login from new device' notification email")))))))
 

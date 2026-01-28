@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.internal :as email.internal]
    [metabase.collections.models.collection :as collection]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -113,8 +113,8 @@
 
 (defn do-with-send-messages-sync!
   [f]
-  (mt/with-dynamic-fn-redefs [messages/send-email! (fn [& args]
-                                                     (apply @#'messages/send-email-sync! args))]
+  (mt/with-dynamic-fn-redefs [email.internal/send-email! (fn [& args]
+                                                           (apply @#'email.internal/send-email-sync! args))]
     (f)))
 
 (defmacro with-send-messages-sync!
