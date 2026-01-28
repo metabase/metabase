@@ -9,7 +9,6 @@
   - Template caching for performance"
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 

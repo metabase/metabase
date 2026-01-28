@@ -17,14 +17,14 @@
    ;; Try legacy format
    (get-in query [:native :query])))
 
-(defn- update-query-sql
+(defn update-query-sql
   "Update a dataset_query map with new SQL content."
   [query new-sql]
   (cond
-    (get-in query [:stages])
+    (:stages query)
     (assoc-in query [:stages 0 :native] new-sql)
 
-    (get-in query [:native])
+    (:native query)
     (assoc-in query [:native :query] new-sql)
 
     :else
@@ -70,7 +70,7 @@
   - :query-id - The ID of the updated query
   - :query-content - The updated SQL content
   - :database - Database ID"
-  [{:keys [query-id edits queries-state name description]}]
+  [{:keys [query-id edits queries-state]}]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   ;; Look up query from in-memory state
