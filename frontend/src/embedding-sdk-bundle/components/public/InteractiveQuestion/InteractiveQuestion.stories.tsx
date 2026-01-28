@@ -8,15 +8,16 @@ import {
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { Box } from "metabase/ui";
 
-import { StaticQuestion } from "./StaticQuestion";
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
-type StaticQuestionComponentProps = ComponentProps<typeof StaticQuestion>;
-
+type InteractiveQuestionComponentProps = ComponentProps<
+  typeof InteractiveQuestion
+>;
 export default {
-  title: "EmbeddingSDK/StaticQuestion",
-  component: StaticQuestion,
+  title: "EmbeddingSDK/InteractiveQuestion",
+  component: InteractiveQuestion,
   parameters: {
     layout: "fullscreen",
   },
@@ -24,12 +25,15 @@ export default {
   argTypes: {
     questionId: questionIdArgType,
   },
-} satisfies Meta<typeof StaticQuestion>;
+  args: {
+    isSaveEnabled: true,
+  },
+} satisfies Meta<typeof InteractiveQuestion>;
 
-const Template: StoryFn<StaticQuestionComponentProps> = (args) => {
+const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
     <Box p="md">
-      <StaticQuestion {...args} />
+      <InteractiveQuestion {...args} />
     </Box>
   );
 };

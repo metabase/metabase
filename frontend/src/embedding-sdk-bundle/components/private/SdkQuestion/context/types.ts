@@ -47,6 +47,11 @@ type SdkQuestionConfig = {
   withDownloads?: boolean;
 
   /**
+   * Enables the ability to set up alerts on the question.
+   */
+  withAlerts?: boolean;
+
+  /**
    * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
    */
   targetCollection?: SdkCollectionId;
@@ -142,6 +147,7 @@ export type SdkQuestionContextType = Omit<
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
+    | "withAlerts"
     | "backToDashboard"
     | "hiddenParameters"
     | "onVisualizationChange"

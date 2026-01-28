@@ -23,7 +23,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   downloads: "1-0-0",
   embed_flow: "1-0-3",
   embed_share: "1-0-1",
-  embedded_analytics_js: "2-0-0",
+  embedded_analytics_js: "2-0-1",
   embedding_homepage: "1-0-0",
   simple_event: "1-0-0",
   invite: "1-0-1",

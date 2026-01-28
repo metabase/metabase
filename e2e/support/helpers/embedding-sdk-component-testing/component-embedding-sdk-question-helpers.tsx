@@ -1,9 +1,10 @@
 import {
   InteractiveQuestion,
+  type InteractiveQuestionProps,
   type MetabaseProviderProps,
   StaticQuestion,
+  type StaticQuestionProps,
 } from "@metabase/embedding-sdk-react";
-import type { ComponentProps } from "react";
 
 import {
   type MountSdkContentOptions,
@@ -16,7 +17,7 @@ interface MountQuestionOptions extends MountSdkContentOptions {
 }
 
 export function mountInteractiveQuestion(
-  extraProps: Partial<ComponentProps<typeof InteractiveQuestion>> = {},
+  extraProps: Partial<InteractiveQuestionProps> = {},
   { shouldAssertCardQuery, ...mountSdkContentOptions }: MountQuestionOptions = {
     shouldAssertCardQuery: true,
   },
@@ -39,7 +40,7 @@ export function mountInteractiveQuestion(
 }
 
 export function mountStaticQuestion(
-  extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
+  extraProps: Partial<StaticQuestionProps> = {},
   { shouldAssertCardQuery, sdkProviderProps }: MountQuestionOptions = {
     shouldAssertCardQuery: true,
   },

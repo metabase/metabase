@@ -510,6 +510,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "token",
   "with-title",
   "with-downloads",
+  "with-alerts",
   "drills",
   "initial-sql-parameters",
   "hidden-parameters",
