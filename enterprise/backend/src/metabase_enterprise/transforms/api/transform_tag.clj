@@ -68,7 +68,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (api/check-403 api/*is-data-analyst?*)
+  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*))
   (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
