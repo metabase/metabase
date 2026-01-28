@@ -57,8 +57,6 @@
 
 (defn- lineage->returned-columns
   [schema->table->col* lineage]
-  (def stc schema->table->col*)
-  (def lass lineage)
   (mapv (partial resolve-column schema->table->col*) lineage))
 
 (defn returned-columns
