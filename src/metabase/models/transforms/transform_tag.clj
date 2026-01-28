@@ -1,10 +1,10 @@
 (ns metabase.models.transforms.transform-tag
   (:require
-   [metabase-enterprise.transforms.models.transform :as transform]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.models.transforms.transform :as transform]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

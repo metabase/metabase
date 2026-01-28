@@ -113,9 +113,8 @@
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
 
-(defenterprise has-db-transforms-permission?
+(defn has-db-transforms-permission?
   "Returns true if the given user has the transforms permission for the given source db."
-  :feature :transforms
   [user-id database-id]
   (or (perms/is-superuser? user-id)
       (perms/user-has-permission-for-database? user-id
@@ -123,9 +122,8 @@
                                                :yes
                                                database-id)))
 
-(defenterprise has-any-transforms-permission?
+(defn has-any-transforms-permission?
   "Returns true if the current user has the transforms permission for _any_ source db."
-  :feature :transforms
   [user-id]
   (or (perms/is-superuser? user-id)
       (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
