@@ -370,12 +370,13 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
+    case "transform":
     case "segment":
     case "measure":
-    case "table":
-    case "transform":
     case "snippet":
     case "document":
+      return node.data.updated_at ?? null;
+    case "table":
     case "sandbox":
       return null;
   }
