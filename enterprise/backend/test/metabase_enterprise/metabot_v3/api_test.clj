@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.agent.core-test :as at]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
@@ -21,67 +22,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; Native agent test helpers
-;; These convert simple test parts to Claude raw SSE format that claude->aisdk-xf can process
-
-(defn- parts->claude-raw
-  "Convert simple test parts to Claude raw SSE format.
-  Accepts parts like {:type :text :text \"Hello\"} and returns Claude raw chunks."
-  [parts]
-  (let [msg-id (str "msg-" (random-uuid))]
-    (concat
-     ;; message_start
-     [{:type "message_start"
-       :message {:id msg-id
-                 :model "claude-sonnet-4-5-20250929"
-                 :role "assistant"
-                 :content []
-                 :usage {:input_tokens 10 :output_tokens 0}}}]
-     ;; content blocks for each part
-     (mapcat
-      (fn [idx {:keys [type text id function arguments]}]
-        (case type
-          :text
-          [{:type "content_block_start"
-            :index idx
-            :content_block {:type "text" :text ""}}
-           {:type "content_block_delta"
-            :index idx
-            :delta {:type "text_delta" :text text}}
-           {:type "content_block_stop"
-            :index idx}]
-
-          :tool-input
-          [{:type "content_block_start"
-            :index idx
-            :content_block {:type "tool_use" :id id :name function}}
-           {:type "content_block_delta"
-            :index idx
-            :delta {:type "input_json_delta" :partial_json (json/encode arguments)}}
-           {:type "content_block_stop"
-            :index idx}]
-
-          ;; Default: skip unknown types
-          []))
-      (range)
-      parts)
-     ;; message_delta with usage
-     [{:type "message_delta"
-       :delta {:stop_reason "end_turn"}
-       :usage {:input_tokens 10 :output_tokens 50}}
-      {:type "message_stop"}])))
-
-(defn- mock-claude-response
-  "Create a mock Claude response channel with given parts in Claude raw format."
-  [parts]
-  (let [ch (a/chan 100)
-        claude-chunks (parts->claude-raw parts)]
-    (a/go
-      (doseq [chunk claude-chunks]
-        (a/>! ch chunk))
-      (a/close! ch))
-    ch))
 
 (deftest agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
@@ -138,9 +78,9 @@
       (let [conversation-id    (str (random-uuid))
             question           {:role "user" :content "Test native streaming"}
             historical-message {:role "user" :content "previous message"}]
-        (with-redefs [self/claude-raw (fn [_]
-                                        (mock-claude-response
-                                         [{:type :text :text "Hello from native agent!"}]))]
+        (with-redefs [self/claude (fn [_]
+                                    (at/mock-llm-response
+                                     [{:type :text :text "Hello from native agent!"}]))]
           (testing "Native agent streaming request"
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
