@@ -64,14 +64,14 @@
     to right,
     var(--mb-color-background-success) 3rem,
     transparent 3rem
-  );
+  ) !important;
 
   &:hover {
     background: linear-gradient(
       to right,
       var(--mb-color-background-success) 3rem,
       var(--mb-color-background-hover) 3rem
-    );
+    ) !important;
   }
 }
 
