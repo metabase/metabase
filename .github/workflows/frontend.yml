@@ -39,8 +39,8 @@ jobs:
       - name: Get Eslint cache key
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys
-      - name: Restore ESLint cache
-        uses: actions/cache/restore@v4
+      - name: ESLint cache
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}

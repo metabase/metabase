@@ -143,7 +143,7 @@ module.exports = {
     jest: true,
     "jest/globals": true,
   },
-  parser: "babel-eslint",
+  parser: "@babel/eslint-parser",
   plugins,
   extends: [
     "eslint:recommended",
@@ -160,9 +160,10 @@ module.exports = {
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
     "import/resolver": {
-      webpack: {
-        config: path.resolve(__dirname, "./rspack.main.config.js"),
-        typescript: true,
+      typescript: {
+        alwaysTryTypes: true,
+        project: "./tsconfig.json",
+        extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".woff", ".woff2", ".ttf", ".eot"],
       },
     },
     "import/ignore": ["\\.css$"],
