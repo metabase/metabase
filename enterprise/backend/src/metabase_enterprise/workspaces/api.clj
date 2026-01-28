@@ -723,7 +723,7 @@
                                        (case reason
                                          "mbql"           (deferred-tru "This transform cannot be checked out because it uses MBQL.")
                                          "card-reference" (deferred-tru "This transform cannot be checked out because it references other questions.")
-                                         (deferred-tru "This transform cannot be checked out: {0}." reason))))))
+                                         (deferred-tru "This transform cannot be checked out: {0}." reason)))))
           ;; For uninitialized workspaces, preserve the target database from the request body
           ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
           ;; For initialized workspaces, ensure the target database matches the workspace database

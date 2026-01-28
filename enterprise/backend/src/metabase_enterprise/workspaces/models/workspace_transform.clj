@@ -52,6 +52,11 @@
   [instance]
   ;; global_id is immutable - a transform's link to the global transform it was checked out from cannot change
   (when (contains? (t2/changes instance) :global_id)
-    (throw (ex-info "Cannot change global_id of an existing workspace transform."
-                    {:ref_id (:ref_id instance)})))
+    (let [original (t2/original instance)]
+      (throw (ex-info "Cannot change global_id of an existing workspace transform."
+                      {:status-code   400
+                       :workspace_id  (:workspace_id original)
+                       :ref_id        (:ref_id original)
+                       :old_global_id (:global_id original)
+                       :new_global_id (:global_id instance)}))))
   instance)

@@ -1918,6 +1918,23 @@
                                      (merge {:global_id (:id tx)}
                                             (select-keys tx [:name :source :target])))))))))
 
+(deftest global-id-immutable-test
+  (testing "PUT /api/ee/workspace/:id/transform/:tx-id cannot change global_id"
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x1 [:t1]
+                        :x2 [:t2]}
+            :workspace {:checkouts   [:x1]
+                        :definitions {:x3 [:t3]}}})]
+      (testing "cannot clear global_id on a checked-out transform"
+        (is (=? {:cause "Cannot change global_id of an existing workspace transform."}
+                (mt/user-http-request :crowberto :put 400 (ws-url workspace-id "/transform/" (workspace-map :x1))
+                                      {:global_id nil}))))
+      (testing "cannot set global_id on a workspace-only transform"
+        (is (=? {:cause "Cannot change global_id of an existing workspace transform."}
+                (mt/user-http-request :crowberto :put 400 (ws-url workspace-id "/transform/" (workspace-map :x3))
+                                      {:global_id (global-map :x2)})))))))
+
 (defmacro ^:private with-test-resources-cleanup! [& body]
   `(mt/with-model-cleanup [:model/Transform :model/Workspace :model/Table]
      ~@body))
