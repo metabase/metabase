@@ -133,8 +133,9 @@
 
 (def col-type
   "The dispatch function logic for format format-timestring.
-  Find the highest type of the object."
-  (some-fn :semantic_type :effective_type :base_type))
+  Find the highest type of the object. Prioritize actual data type (effective/base) over semantic type
+  to ensure formatting matches the actual data structure."
+  (some-fn :effective_type :base_type :semantic_type))
 
 (defmulti global-type-settings
   "Look up the global viz settings based on the type of the column. A multimethod is used because they match well
