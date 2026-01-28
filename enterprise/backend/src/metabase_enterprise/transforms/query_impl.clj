@@ -32,13 +32,10 @@
   [:map
    [:overwrite? :boolean]])
 
-(defn- transform-opts [{:keys [transform-type database]}]
-  (case transform-type
-    ;; BigQuery uses CREATE OR REPLACE TABLE so we don't need to drop the table first
-    :table {:overwrite? (not= (:engine database) :bigquery-cloud-sdk)}
-
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+(defn- transform-opts [_transform-details]
+  ;; once we have more than just :table and :table-incremental as transform-types,
+  ;; then we can dispatch on :target-incremental-strategy
+  {})
 
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
