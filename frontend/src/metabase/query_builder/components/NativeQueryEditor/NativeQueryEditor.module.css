@@ -14,6 +14,10 @@
   flex-direction: column;
 }
 
+.resizableBoxContent {
+  overflow: hidden;
+}
+
 .actionButtons {
   /* min-height of the top bar, it's needed for vertical alignment when there
   are several template tags */

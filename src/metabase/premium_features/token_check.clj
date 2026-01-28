@@ -127,7 +127,7 @@
    :transform-python-runs    0
    :transform-usage-date     (yesterday)})
 
-(defn- stats-for-token-request
+(defn- stats-for-token-request*
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -147,6 +147,9 @@
                                           :domains                   (internal-stats/email-domain-count)})]
     (log/info "Reporting Metabase stats:" stats)
     stats))
+
+(def ^:private stats-for-token-request
+  (memoize/ttl stats-for-token-request* :ttl/threshold (u/minutes->ms 2)))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -346,7 +349,8 @@
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
-                   (throw (.getCause e)))))))
+                   ;; it should not be empty, but if so, use the outer exception
+                   (throw (or (.getCause e) e)))))))
       (-clear-cache! [_]
         ;; No cache at this level, but delegate to wrapped checker
         (-clear-cache! token-checker)))))
