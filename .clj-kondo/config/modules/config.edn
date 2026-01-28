@@ -879,6 +879,7 @@
            config
            dashboards
            driver
+           embedding
            events
            models
            parameters

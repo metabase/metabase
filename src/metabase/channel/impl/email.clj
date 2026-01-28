@@ -1,5 +1,6 @@
 (ns metabase.channel.impl.email
   (:require
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
@@ -203,7 +204,8 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true
+                                                            :channel.render/disable-links? (boolean (:disable_links notification_card))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -232,6 +234,7 @@
                                                                   (let [email-handler-id (:notification_handler_id
                                                                                           (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
                                                                     (notification-unsubscribe-url-for-non-user email-handler-id non-user-email)))}))]
+    (pprint/pprint notification_card)
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
