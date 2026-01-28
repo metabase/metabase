@@ -304,7 +304,7 @@ export const translateConfig = <T extends CacheConfig>(
   config: T,
   direction: "fromAPI" | "toAPI",
 ): T => {
-  const translated = { ...config } as T;
+  const translated = { ...config, strategy: { ...config.strategy } } as T;
 
   // If strategy type is unsupported, use a fallback
   if (!isValidStrategyName(translated.strategy.type)) {
