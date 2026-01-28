@@ -262,6 +262,7 @@
     "@eslint/compat": "^1.2.4",
     "@eslint/js": "^9.17.0",
     "eslint": "^9.17.0",
+    "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-webpack": "^0.13.10",
     "eslint-module-utils": "^2.12.1",
     "eslint-plugin-cypress": "^4.1.0",

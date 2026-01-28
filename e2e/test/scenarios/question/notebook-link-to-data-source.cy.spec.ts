@@ -40,7 +40,7 @@ describe("scenarios > notebook > link to data source", () => {
     cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
       cy.stub(win, "open").callsFake((url) => {
-        expect(win.open).to.be.calledOnce;
+        expect(win.open).to.have.callCount(1);
         // replace the current page with the linked data source upon ctrl/meta click
         win.location.assign(url);
       });

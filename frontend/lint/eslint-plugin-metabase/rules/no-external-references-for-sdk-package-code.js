@@ -1,3 +1,4 @@
+/* eslint-disable import/no-commonjs */
 const path = require("path");
 
 const resolve = require("eslint-module-utils/resolve").default;
@@ -59,7 +60,7 @@ module.exports = {
     }
 
     /**
-     * Resolve an import path and report if it’s outside all allowedDirs
+     * Resolve an import path and report if it's outside all allowedDirs
      */
     function checkImport(node, importPath) {
       const resolvedPath = resolve(importPath, context);
@@ -69,6 +70,11 @@ module.exports = {
       }
 
       const absolutePath = path.resolve(resolvedPath);
+
+      // Skip external dependencies from node_modules
+      if (absolutePath.includes(`${path.sep}node_modules${path.sep}`)) {
+        return;
+      }
 
       if (
         !resolvedAllowedPaths.some((directory) =>

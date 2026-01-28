@@ -251,7 +251,9 @@ describe(
             .invoke("text")
             .then((code: string) => {
               const match = code.match(/token="([^"]+)"/);
-              expect(match, "JWT token present in code block").to.not.be.null;
+              expect(match, "JWT token present in code block").to.not.equal(
+                null,
+              );
               const jwtToken = match ? match[1] : "";
               cy.wrap(jwtToken).as("guestEmbedToken");
             });

@@ -564,8 +564,9 @@ describe("documents card embed node custom logic", () => {
 
       // Verify window.open was called
       cy.on("uncaught:exception", (error) => {
-        expect(error.message.includes("expected '<a>' to have attribute")).to.be
-          .false;
+        expect(
+          error.message.includes("expected '<a>' to have attribute"),
+        ).to.equal(false);
       });
 
       H.onNextAnchorClick((anchor) => {
@@ -611,8 +612,9 @@ describe("documents card embed node custom logic", () => {
 
       // Verify window.open was called
       cy.on("uncaught:exception", (error) => {
-        expect(error.message.includes("expected '<a>' to have attribute")).to.be
-          .false;
+        expect(
+          error.message.includes("expected '<a>' to have attribute"),
+        ).to.equal(false);
       });
 
       H.onNextAnchorClick((anchor) => {

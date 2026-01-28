@@ -81,14 +81,14 @@ describe("scenarios > embedding-sdk > tooltip-reproductions", () => {
           const tooltipElement = $tooltip[0];
 
           // a fixed-position tooltip should be visible
-          expect(isFixedPositionElementVisible(tooltipElement)).to.be.true;
+          expect(isFixedPositionElementVisible(tooltipElement)).to.equal(true);
 
           const tooltipContainer = tooltipElement.closest(
             ".echarts-tooltip-container",
           );
 
           // tooltip container should exist
-          expect(tooltipContainer).to.exist;
+          expect(tooltipContainer).to.not.equal(null);
 
           const tooltipContainerStyle = window.getComputedStyle(
             tooltipContainer!,
