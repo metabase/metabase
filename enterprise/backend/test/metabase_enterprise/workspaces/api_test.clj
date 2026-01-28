@@ -791,12 +791,12 @@
                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
-                                                :query (mt/mbql-query transforms_products)}
+                                                :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query transforms_products)))}
                                        :target {:type "table"
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
                 (mt/user-http-request :crowberto :get 200 (ws-url ws-id))))
-        (is (=? {:transforms [{:ref_id string?, :name "Workspace Transform", :source_type "mbql"}]}
+        (is (=? {:transforms [{:ref_id string?, :name "Workspace Transform", :source_type "native"}]}
                 (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/transform"))))))))
 
 (deftest tables-endpoint-empty-ws-test
@@ -902,74 +902,6 @@
 ;; outputs:         B (from X1) and C (from X2)
 ;; external-inputs: A (raw-inputs - outputs)
 
-;;;; Card dependency rejection tests
-
-(defn- query-with-source-card
-  "Create a pMBQL query that uses a card as its source."
-  [card-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type    :mbql.stage/mbql
-               :source-card card-id}]})
-
-(defn- create-transform-with-card-source!
-  "Create a transform whose source query depends on a card.
-  The after-insert hook triggers dependency calculation automatically."
-  [card]
-  (t2/insert-returning-instance! :model/Transform
-                                 {:name   "Transform depending on card"
-                                  :source {:type  :query
-                                           :query (query-with-source-card (:id card))}
-                                  :target {:type     "table"
-                                           :database (mt/id)
-                                           :schema   "public"
-                                           :name     "card_dep_output"}}))
-
-(deftest add-transform-rejects-card-dependencies-test
-  (testing "Cannot add transforms that depend on cards"
-    (mt/with-temp [:model/Card card {:name          "Test Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      (let [tx        (create-transform-with-card-source! card)
-            ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                            {:name        "Card Dep Workspace"
-                                             :database_id (mt/id)})
-            ;; TODO add validation
-            _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx)]
-        #_(is (re-find #"Cannot add transforms that depend on saved questions" ws))))))
-
-(deftest add-transform-rejects-transitive-card-dependencies-test
-  (testing "Cannot add transforms that transitively depend on cards"
-    (mt/with-temp [:model/Card card {:name          "Base Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      ;; tx1 depends on card
-      (let [tx1 (create-transform-with-card-source! card)
-            ;; tx2 depends on tx1 (via a manually created dependency - simulating transform chain)
-            tx2 (t2/insert-returning-instance! :model/Transform
-                                               {:name   "Transform 2 - depends on tx1"
-                                                :source {:type  :query
-                                                         :query {:database (mt/id)
-                                                                 :type     :native
-                                                                 :native   {:query "SELECT 1"}}}
-                                                :target {:type     "table"
-                                                         :database (mt/id)
-                                                         :schema   "public"
-                                                         :name     "tx2_output"}})]
-        ;; Create dependency: tx2 depends on tx1
-        (t2/insert! :model/Dependency
-                    {:from_entity_type "transform"
-                     :from_entity_id   (:id tx2)
-                     :to_entity_type   "transform"
-                     :to_entity_id     (:id tx1)})
-        ;; Try to add tx2 (which transitively depends on card via tx1) to workspace
-        (let [ws        (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                              {:name        "Transitive Card Dep Workspace"
-                                               :database_id (mt/id)})
-              ;; TODO add validation
-              _response (mt/user-http-request :crowberto :post 200 #_403 (ws-url (:id ws) "/transform") tx2)]
-          #_(is (re-find #"Cannot add transforms that depend on saved questions" response)))))))
-
 (deftest rename-workspace-test
   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
     (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
@@ -991,19 +923,6 @@
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
                                    {:name "Should Fail"}))))))
-
-(deftest add-transform-rejects-card-dependencies-to-existing-workspace-test
-  (testing "Cannot add transforms with card dependencies to existing workspace"
-    (mt/with-temp [:model/Card card {:name          "Test Card"
-                                     :database_id   (mt/id)
-                                     :dataset_query (mt/mbql-query venues)}]
-      (let [tx           (create-transform-with-card-source! card)
-            workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                    {:name        "Empty Workspace"
-                                                     :database_id (mt/id)}))
-            ;; TODO add validation
-            _response    (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/transform") tx)]
-        #_(is (re-find #"Cannot add transforms that depend on saved questions" response))))))
 
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
@@ -1119,7 +1038,7 @@
       (let [transform (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform")
                                             {:name   "New Transform"
                                              :source {:type  "query"
-                                                      :query (mt/mbql-query venues)}
+                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues)))}
                                              :target {:type     "table"
                                                       :database (mt/id)
                                                       :schema   "public"
