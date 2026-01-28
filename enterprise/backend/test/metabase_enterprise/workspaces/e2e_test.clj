@@ -58,4 +58,6 @@
                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues {:limit 1})))}})
                 (is (=? {:status :failed}
                         (mt/with-current-user (mt/user->id :crowberto)
-                          (ws.impl/run-transform! workspace (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))))))))))))))
+                          (ws.impl/run-transform! workspace
+                                                  (ws.impl/get-or-calculate-graph! workspace)
+                                                  (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))))))))))))))
