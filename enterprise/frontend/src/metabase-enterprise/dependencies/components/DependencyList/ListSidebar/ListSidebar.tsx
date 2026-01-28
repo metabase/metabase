@@ -6,13 +6,12 @@ import type { DependencyNode } from "metabase-types/api";
 import { getDependencyErrorGroups, getDependencyErrors } from "../../../utils";
 
 import S from "./ListSidebar.module.css";
-import { SidebarCreationSection } from "./SidebarCreationSection";
 import { SidebarDependentsSection } from "./SidebarDependentsSection";
 import { SidebarErrorSection } from "./SidebarErrorSection";
 import { SidebarHeader } from "./SidebarHeader";
+import { SidebarInfoSection } from "./SidebarInfoSection";
 import { SidebarLocationSection } from "./SidebarLocationSection";
 import { SidebarResizableBox } from "./SidebarResizableBox";
-import { SidebarTransformSection } from "./SidebarTransformSection";
 
 type ListSidebarProps = {
   node: DependencyNode;
@@ -48,8 +47,7 @@ export const ListSidebar = memo(function ListSidebar({
         <Stack gap="lg">
           <SidebarHeader node={node} onClose={onClose} />
           <SidebarLocationSection node={node} />
-          <SidebarTransformSection node={node} />
-          <SidebarCreationSection node={node} />
+          <SidebarInfoSection node={node} />
         </Stack>
         {errorGroups.map((errorGroup) => (
           <SidebarErrorSection
