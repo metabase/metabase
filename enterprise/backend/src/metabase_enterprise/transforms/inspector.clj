@@ -4,10 +4,14 @@
    cards for inspection purposes."
   (:require
    [clojure.string :as str]
+   [macaw.ast :as macaw.ast]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -115,6 +119,11 @@
           {:lhs-field-id lhs-id
            :rhs-field-id rhs-id})))))
 
+(defn- run-pmbql-query
+  "Execute a pMBQL query and return the first value from the first row."
+  [query]
+  (-> query qp/process-query :data :rows first first))
+
 (defn- count-null-in-field
   "Count NULL values in a specific field of a table.
    Returns {:null-count <n> :total-count <n> :null-percent <0.0-1.0>}."
@@ -201,124 +210,77 @@
                        (assoc base :joins (mapv strip-join-to-essentials joins))
                        base))))))
 
-(defn- run-pmbql-query
-  "Execute a pMBQL query and return the first value from the first row."
-  [query]
-  (-> query qp/process-query :data :rows first first))
+(defn- compute-derived-join-stats
+  "Compute derived statistics for a single join step from raw counts.
+   Maps to existing field names for FE compatibility:
+   - left-row-count = count before this join
+   - right-row-count = count of the joined table
+   - output-row-count = count after this join"
+  [strategy prev-count row-count source-count null-stats rhs-null-key-stats]
+  (cond-> {:left-row-count prev-count
+           :right-row-count source-count
+           :output-row-count row-count}
+    null-stats
+    (merge null-stats)
 
-(defn- compute-iterative-join-stats
-  "Compute join statistics iteratively by building up the query one join at a time.
+    rhs-null-key-stats
+    (assoc :rhs-null-key-count (:null-count rhs-null-key-stats)
+           :rhs-null-key-percent (:null-percent rhs-null-key-stats))
 
-   For a query: FROM t1 JOIN t2 ON ... JOIN t3 ON ...
-   Executes counts for:
-   - t1 alone (base table)
-   - t1 JOIN t2
-   - t1 JOIN t2 JOIN t3
-   etc.
+    (#{:inner-join :cross-join} strategy)
+    (assoc :expansion-factor
+           (when (and prev-count (pos? prev-count))
+             (double (/ row-count prev-count))))
 
-   Returns {:base-row-count <count>
-            :joins [{:strategy :left-join
-                     :alias \"...\"
-                     :source-table <id>
-                     :stats {:prev-row-count <n>
-                             :row-count <n>
-                             :source-row-count <n>
-                             ;; for outer joins:
-                             :null-count <n>
-                             :matched-count <n>}}]}
+    (and (= :left-join strategy) (:matched-count null-stats))
+    (assoc :match-rate
+           (when (and prev-count (pos? prev-count))
+             (double (/ (:matched-count null-stats) prev-count))))
 
-   For inner/cross joins: row count shows expansion/contraction
-   For left/right/full joins: null-count shows unmatched rows"
-  [mp query]
-  (let [source-table-id (get-in query [:stages 0 :source-table])
-        all-joins (get-in query [:stages 0 :joins] [])]
-    (when (and source-table-id (seq all-joins))
-      (try
-        ;; Get base table count first (query with no joins)
-        (let [base-query (query-with-n-joins query 0)
-              base-count (run-pmbql-query (make-count-query base-query))]
-          ;; Now iterate through joins, building up the query
-          (loop [step 1
-                 prev-count base-count
-                 results []]
-            (if (> step (count all-joins))
-              {:source-table-id source-table-id
-               :base-row-count base-count
-               :joins results}
-              (let [current-join (nth all-joins (dec step))
-                    strategy (or (:strategy current-join) :left-join)
-                    alias (:alias current-join)
-                    join-source-table (get-in current-join [:stages 0 :source-table])
+    (and (= :right-join strategy) (:matched-count null-stats))
+    (assoc :match-rate
+           (when (and source-count (pos? source-count))
+             (double (/ (:matched-count null-stats) source-count))))
 
-                    ;; Query with this many joins
-                    step-query (query-with-n-joins query step)
-                    row-count (run-pmbql-query (make-count-query step-query))
+    (= :full-join strategy)
+    (assoc :expansion-factor
+           (when (and prev-count (pos? prev-count))
+             (double (/ row-count prev-count))))))
 
-                    ;; Get source table count (the table being joined)
-                    source-count (when (int? join-source-table)
-                                   (let [source-table (lib.metadata/table mp join-source-table)]
-                                     (-> (lib/query mp source-table)
-                                         (lib/aggregate (lib/count))
-                                         qp/process-query :data :rows first first)))
+(defn- iterative-join-stats
+  "Core iterative join statistics computation, shared by MBQL and native paths.
 
-                    ;; For outer joins, count nulls in RHS field to find unmatched rows
-                    null-stats (when (#{:left-join :right-join :full-join} strategy)
-                                 (when-let [rhs-field (get-rhs-field-from-condition (:conditions current-join))]
-                                   (let [non-null-count (run-pmbql-query (make-count-field-query step-query rhs-field))
-                                         null-count (- row-count non-null-count)]
-                                     {:null-count null-count
-                                      :matched-count non-null-count})))
-
-                    ;; Count NULL join keys in the RHS table (table being joined)
-                    rhs-null-key-stats (when-let [field-ids (get-join-key-field-ids (:conditions current-join))]
-                                         (when (int? join-source-table)
-                                           (count-null-in-field mp join-source-table (:rhs-field-id field-ids))))
-
-                    ;; Map iterative stats to existing field names for FE compatibility:
-                    ;; - left-row-count = prev-row-count (rows before this join)
-                    ;; - right-row-count = source-row-count (the table being joined)
-                    ;; - output-row-count = row-count (rows after this join)
-                    stats (cond-> {:left-row-count prev-count
-                                   :right-row-count source-count
-                                   :output-row-count row-count}
-                            ;; Merge null stats for outer joins
-                            null-stats
-                            (merge null-stats)
-
-                            ;; Add null join key stats for RHS table
-                            rhs-null-key-stats
-                            (assoc :rhs-null-key-count (:null-count rhs-null-key-stats)
-                                   :rhs-null-key-percent (:null-percent rhs-null-key-stats))
-
-                            ;; Add derived metrics based on join type
-                            (#{:inner-join :cross-join} strategy)
-                            (assoc :expansion-factor
-                                   (when (and prev-count (pos? prev-count))
-                                     (double (/ row-count prev-count))))
-
-                            (and (= :left-join strategy) (:matched-count null-stats))
-                            (assoc :match-rate
-                                   (when (and prev-count (pos? prev-count))
-                                     (double (/ (:matched-count null-stats) prev-count))))
-
-                            (and (= :right-join strategy) (:matched-count null-stats))
-                            (assoc :match-rate
-                                   (when (and source-count (pos? source-count))
-                                     (double (/ (:matched-count null-stats) source-count))))
-
-                            (= :full-join strategy)
-                            (assoc :expansion-factor
-                                   (when (and prev-count (pos? prev-count))
-                                     (double (/ row-count prev-count)))))
-
-                    result {:strategy strategy
-                            :alias alias
-                            :source-table join-source-table
-                            :stats stats}]
-                (recur (inc step) row-count (conj results result))))))
-        (catch Exception e
-          (log/warn e "Failed to compute iterative join stats")
-          nil)))))
+   `source-table-id` - the FROM table's ID
+   `count-with-n-joins` - (fn [n]) returns row count with first n joins (n=0 for base)
+   `joins` - seq of join descriptor maps, each with:
+     :strategy      - join strategy keyword (:left-join, :inner-join, etc.)
+     :alias         - join alias string
+     :source-table  - table ID of joined table (or nil)
+     :source-count  - (fn []) returns count of the joined table, or nil
+     :null-count    - (fn [step row-count]) returns {:null-count :matched-count} or nil
+     :rhs-null-key-stats - pre-computed {:null-count :null-percent} or nil"
+  [source-table-id count-with-n-joins joins]
+  (let [base-count (count-with-n-joins 0)]
+    (loop [step 1
+           prev-count base-count
+           results []]
+      (if (> step (count joins))
+        {:source-table-id source-table-id
+         :base-row-count base-count
+         :joins results}
+        (let [{:keys [strategy alias source-table source-count null-count rhs-null-key-stats]}
+              (nth joins (dec step))
+              row-count       (count-with-n-joins step)
+              source-cnt      (when source-count (source-count))
+              null-stats      (when null-count (null-count step row-count))
+              stats           (compute-derived-join-stats
+                               strategy prev-count row-count source-cnt
+                               null-stats rhs-null-key-stats)]
+          (recur (inc step) row-count
+                 (conj results {:strategy strategy
+                                :alias alias
+                                :source-table source-table
+                                :stats stats})))))))
 
 (defn extract-joins
   "Walk an MBQL query and extract all join information with iterative statistics.
@@ -339,8 +301,215 @@
    For inner/cross joins: shows row count expansion/contraction
    For left/right/full joins: shows null counts (unmatched rows)"
   [query]
-  (let [mp (lib.metadata/->metadata-provider query)]
-    (compute-iterative-join-stats mp query)))
+  (let [mp        (lib.metadata/->metadata-provider query)
+        source-id (get-in query [:stages 0 :source-table])
+        all-joins (get-in query [:stages 0 :joins] [])]
+    (when (and source-id (seq all-joins))
+      (try
+        (iterative-join-stats
+         source-id
+         ;; count-with-n-joins
+         (fn [n]
+           (run-pmbql-query (make-count-query (query-with-n-joins query n))))
+         ;; join descriptors
+         (mapv (fn [join]
+                 (let [strategy         (or (:strategy join) :left-join)
+                       join-source-table (get-in join [:stages 0 :source-table])]
+                   {:strategy  strategy
+                    :alias     (:alias join)
+                    :source-table join-source-table
+                    :source-count (when (int? join-source-table)
+                                    (fn []
+                                      (let [table-meta (lib.metadata/table mp join-source-table)]
+                                        (-> (lib/query mp table-meta)
+                                            (lib/aggregate (lib/count))
+                                            qp/process-query :data :rows first first))))
+                    :null-count (when (#{:left-join :right-join :full-join} strategy)
+                                  (when-let [rhs-field (get-rhs-field-from-condition (:conditions join))]
+                                    (fn [step row-count]
+                                      (let [step-query     (query-with-n-joins query step)
+                                            non-null-count (run-pmbql-query (make-count-field-query step-query rhs-field))]
+                                        {:null-count    (- row-count non-null-count)
+                                         :matched-count non-null-count}))))
+                    :rhs-null-key-stats (when-let [field-ids (get-join-key-field-ids (:conditions join))]
+                                          (when (int? join-source-table)
+                                            (count-null-in-field mp join-source-table (:rhs-field-id field-ids))))}))
+               all-joins))
+        (catch Exception e
+          (log/warn e "Failed to compute iterative join stats")
+          nil)))))
+
+(declare run-count-query)
+
+;;; -------------------------------------------------- Native SQL Join Extraction ----------------------------------------
+
+(defn- ast-join-type->strategy
+  "Map macaw AST join-type to metabase join strategy keyword."
+  [join-type]
+  (case join-type
+    :left    :left-join
+    :right   :right-join
+    :full    :full-join
+    :cross   :cross-join
+    :natural :inner-join
+    :inner   :inner-join
+    ;; default
+    :inner-join))
+
+(defn- resolve-table-name->id
+  "Build a map from table-name -> table-id from sources list."
+  [sources]
+  (into {} (map (juxt :table-name :table-id)) sources))
+
+;;; --- SQL string construction from macaw AST ---
+;; We build SQL strings directly rather than using HoneySQL because Metabase's
+;; custom h2x/identifier doesn't work in HoneySQL's :from/:join contexts.
+
+(defn- sql-quote-name
+  "Quote a SQL identifier using the driver's quoting convention.
+   Normalizes the name first to strip any existing quotes and avoid double-quoting."
+  [driver-kw s]
+  (let [style (sql.qp/quote-style driver-kw)
+        s (sql.normalize/normalize-name driver-kw (str s))]
+    (case style
+      :mysql    (str "`" (str/replace s "`" "``") "`")
+      :sqlserver (str "[" (str/replace s "]" "]]") "]")
+      ;; :ansi and everything else
+      (str "\"" (str/replace s "\"" "\"\"") "\""))))
+
+(defn- sql-table-ref
+  "Format a macaw AST table node as a SQL table reference."
+  [driver-kw {:keys [schema table table-alias]}]
+  (str (when schema (str (sql-quote-name driver-kw schema) "."))
+       (sql-quote-name driver-kw table)
+       (when table-alias (str " " (sql-quote-name driver-kw table-alias)))))
+
+(defn- sql-column-ref
+  "Format a macaw AST column node as a SQL column reference."
+  [driver-kw {:keys [schema table column]}]
+  (str/join "." (map (partial sql-quote-name driver-kw) (remove nil? [schema table column]))))
+
+(defn- sql-condition
+  "Format a macaw AST condition as a SQL string. Returns nil for unsupported expressions."
+  [driver-kw condition]
+  (when (= (:type condition) :macaw.ast/binary-expression)
+    (let [{:keys [operator left right]} condition]
+      (when (and (= (:type left) :macaw.ast/column)
+                 (= (:type right) :macaw.ast/column))
+        (str (sql-column-ref driver-kw left) " " operator " " (sql-column-ref driver-kw right))))))
+
+(defn- sql-conditions
+  "Format a seq of macaw AST conditions as a SQL ON clause string."
+  [driver-kw conditions]
+  (let [parts (keep (partial sql-condition driver-kw) conditions)]
+    (when (seq parts)
+      (str/join " AND " parts))))
+
+(def ^:private strategy->sql-keyword
+  {:left-join  "LEFT JOIN"
+   :right-join "RIGHT JOIN"
+   :full-join  "FULL JOIN"
+   :cross-join "CROSS JOIN"
+   :inner-join "JOIN"})
+
+(defn- sql-join-clause
+  "Format a macaw AST join node as a SQL JOIN clause."
+  [driver-kw join-node]
+  (let [strategy (ast-join-type->strategy (:join-type join-node))
+        join-kw  (strategy->sql-keyword strategy)
+        table    (sql-table-ref driver-kw (:source join-node))
+        on-clause (sql-conditions driver-kw (:condition join-node))]
+    (if on-clause
+      (str join-kw " " table " ON " on-clause)
+      (str join-kw " " table))))
+
+(defn- build-count-sql
+  "Build a COUNT(*) SQL string from a macaw AST FROM node and first N join nodes."
+  [driver-kw from-node joins]
+  (str "SELECT COUNT(*) FROM " (sql-table-ref driver-kw from-node)
+       (when (seq joins)
+         (str " " (str/join " " (map (partial sql-join-clause driver-kw) joins))))))
+
+(defn- build-count-field-sql
+  "Build a COUNT(field) SQL string for null detection in outer joins.
+   rhs-column is a macaw AST column node with :table and :column keys."
+  [driver-kw from-node joins rhs-column]
+  (str "SELECT COUNT(" (sql-column-ref driver-kw rhs-column) ") FROM "
+       (sql-table-ref driver-kw from-node)
+       (when (seq joins)
+         (str " " (str/join " " (map (partial sql-join-clause driver-kw) joins))))))
+
+(defn- rhs-column-from-ast-condition
+  "Extract the RHS column node from a macaw AST join condition.
+   For simple equijoins, returns the full column AST node from the right side."
+  [conditions]
+  (when-let [condition (first conditions)]
+    (when (= (:type condition) :macaw.ast/binary-expression)
+      (let [right (:right condition)]
+        (when (= (:type right) :macaw.ast/column)
+          right)))))
+
+(defn- run-native-sql-query
+  "Execute a native SQL query and return the first value from the first row."
+  [db-id sql]
+  (-> (qp/process-query
+       {:database db-id
+        :type :native
+        :native {:query sql}})
+      :data :rows first first))
+
+(defn- extract-native-joins
+  "Extract join information from a native SQL transform query.
+   Parses the SQL via macaw, extracts join structure from the AST, and computes
+   iterative join statistics using directly-constructed COUNT queries.
+
+   Returns {:source-table-id <id> :base-row-count <n> :joins [...]}
+   or nil if the SQL can't be parsed or has no joins."
+  [transform sources]
+  (try
+    (let [query       (get-in transform [:source :query])
+          sql         (get-in query [:stages 0 :native])
+          db-id       (transforms.util/transform-source-database transform)
+          database    (t2/select-one :model/Database :id db-id)
+          driver-kw   (keyword (:engine database))
+          parsed      (driver.u/parsed-query sql driver-kw)
+          ast         (macaw.ast/->ast parsed {:with-instance? false})
+          from-node   (:from ast)
+          join-nodes  (:join ast)
+          table->id   (resolve-table-name->id sources)
+          ;; Normalize AST table names (strip quotes) when looking up IDs
+          lookup-id   (fn [table-name] (table->id (sql.normalize/normalize-name driver-kw table-name)))
+          source-id   (lookup-id (:table from-node))]
+      (when (and ast (= (:type ast) :macaw.ast/select) (seq join-nodes))
+        (iterative-join-stats
+         source-id
+         ;; count-with-n-joins
+         (fn [n]
+           (run-native-sql-query db-id (build-count-sql driver-kw from-node (take n join-nodes))))
+         ;; join descriptors
+         (mapv (fn [join-node]
+                 (let [strategy      (ast-join-type->strategy (:join-type join-node))
+                       join-table-id (lookup-id (get-in join-node [:source :table]))]
+                   {:strategy     strategy
+                    :alias        (sql.normalize/normalize-name
+                                   driver-kw
+                                   (or (get-in join-node [:source :table-alias])
+                                       (get-in join-node [:source :table])))
+                    :source-table join-table-id
+                    :source-count (when join-table-id
+                                    (fn [] (run-count-query db-id join-table-id)))
+                    :null-count   (when (#{:left-join :right-join :full-join} strategy)
+                                    (when-let [rhs-col (rhs-column-from-ast-condition (:condition join-node))]
+                                      (fn [step row-count]
+                                        (let [count-sql (build-count-field-sql
+                                                         driver-kw from-node (take step join-nodes) rhs-col)
+                                              non-null-count (run-native-sql-query db-id count-sql)]
+                                          {:null-count    (- row-count non-null-count)
+                                           :matched-count non-null-count}))))}))
+               join-nodes))))
+    (catch Exception e
+      (log/warn e "Failed to extract joins from native SQL transform")
+      nil)))
 
 ;;; -------------------------------------------------- Table Statistics ---------------------------------------------------
 
@@ -624,17 +793,23 @@
 
       ;; Target exists - extract joins first for smarter column matching
       (let [input-ids (mapv :table-id sources)
-            ;; Extract joins first (MBQL only) so we can use them for column matching
+            ;; Extract joins (MBQL or native SQL) for column matching
             ;; Returns {:base-row-count <n> :joins [...]} or nil
-            join-stats (when (= source-type :mbql)
-                         (try
-                           (let [query (-> transform :source :query
-                                           transforms.util/massage-sql-query
-                                           qp.preprocess/preprocess)]
-                             (extract-joins query))
-                           (catch Exception e
-                             (log/warn e "Failed to extract joins")
-                             nil)))
+            join-stats (case source-type
+                         :mbql   (try
+                                   (let [query (-> transform :source :query
+                                                   transforms.util/massage-sql-query
+                                                   qp.preprocess/preprocess)]
+                                     (extract-joins query))
+                                   (catch Exception e
+                                     (log/warn e "Failed to extract MBQL joins")
+                                     nil))
+                         :native (try
+                                   (extract-native-joins transform sources)
+                                   (catch Exception e
+                                     (log/warn e "Failed to extract native SQL joins")
+                                     nil))
+                         nil)
             ;; Extract just the joins seq for column matching
             joins-seq (:joins join-stats)
             ;; Get the actual source table ID from the query (the FROM table)
