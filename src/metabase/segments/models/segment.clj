@@ -3,13 +3,11 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [clojure.set :as set]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.schema :as segments.schema]
@@ -76,12 +74,7 @@
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:db_id table)
-      (u/the-id table))))
+     (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 

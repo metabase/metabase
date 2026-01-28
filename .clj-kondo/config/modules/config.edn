@@ -1284,7 +1284,6 @@
            lib
            lib-be
            models
-           permissions
            remote-sync
            search
            util
