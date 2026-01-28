@@ -1,5 +1,6 @@
 (ns metabase.llm.anthropic-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
@@ -101,7 +102,7 @@
       (is (contains? (get-in tool [:input_schema :properties]) :sql))
       (is (= ["sql"] (get-in tool [:input_schema :required]))))))
 
-;;; ------------------------------------------- chat-completion error handling Tests -------------------------------------------
+;;; ------------------------------------------- chat-completion Tests -------------------------------------------
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
@@ -110,6 +111,29 @@
            clojure.lang.ExceptionInfo
            #"not configured"
            (anthropic/chat-completion {:messages [{:role "user" :content "test"}]}))))))
+
+(deftest chat-completion-returns-usage-test
+  (testing "chat-completion returns result, usage, and duration"
+    (let [mock-response {:body {:id "msg_123"
+                                :model "claude-sonnet-4-5-20250929"
+                                :content [{:type "tool_use"
+                                           :id "tool_123"
+                                           :name "generate_sql"
+                                           :input {:sql "SELECT * FROM users"
+                                                   :explanation "Fetches all users"}}]
+                                :usage {:input_tokens 1500
+                                        :output_tokens 250}}}]
+      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test-key"]
+        (with-redefs [http/post (constantly mock-response)]
+          (let [result (anthropic/chat-completion {:system "You are a SQL expert"
+                                                   :messages [{:role "user" :content "get all users"}]})]
+            (is (=? {:result {:sql "SELECT * FROM users"
+                              :explanation "Fetches all users"}
+                     :duration-ms #(and (number? %) (pos? %))
+                     :usage {:model "anthropic/claude-sonnet-4-5"
+                             :prompt 1500
+                             :completion 250}}
+                    result))))))))
 
 ;;; ------------------------------------------- default-model Tests -------------------------------------------
 

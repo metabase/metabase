@@ -4,8 +4,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -179,3 +183,86 @@
                                              {:prompt "no table mentions here"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "No tables found")))))))
+
+(deftest generate-sql-tracks-token-usage-test
+  (testing "successful /generate-sql call tracks token usage"
+    (mt/with-temp [:model/Database db {:engine :postgres}
+                   :model/Table table {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}
+                   :model/Field _ {:table_id (:id table) :name "name" :base_type :type/Text}]
+      (let [tracked-usage (atom nil)
+            mock-chat-response {:result {:sql "SELECT * FROM users"}
+                                :usage {:model "anthropic/claude-sonnet-4-5"
+                                        :prompt 1000
+                                        :completion 200}
+                                :duration-ms 500}]
+        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-test"]
+          (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)
+                        api/track-token-usage! (fn [usage] (reset! tracked-usage usage))]
+            (let [response (mt/user-http-request :rasta :post 200 "llm/generate-sql"
+                                                 {:prompt "get all users"
+                                                  :database_id (:id db)
+                                                  :referenced_entities [{:model "table" :id (:id table)}]})]
+              (is (= "SELECT * FROM users" (:sql response)))
+              (is (=? {:model "anthropic/claude-sonnet-4-5"
+                       :prompt 1000
+                       :completion 200
+                       :duration-ms 500
+                       :source "oss_metabot"
+                       :tag "oss-sqlgen"}
+                      @tracked-usage)))))))))
+
+;;; ------------------------------------------- Token Usage Tracking Tests -------------------------------------------
+
+(deftest track-token-usage-with-uuid-test
+  (testing "tracks usage with analytics uuid when no premium token is available"
+    (let [tracked-events (atom [])
+          test-analytics-uuid "test-analytics-uuid-12345"]
+      (with-redefs [snowplow/track-event! (fn [schema data user-id]
+                                            (swap! tracked-events conj {:schema schema
+                                                                        :data data
+                                                                        :user-id user-id}))
+                    premium-features/premium-embedding-token (constantly nil)
+                    analytics.settings/analytics-uuid (constantly test-analytics-uuid)]
+        (#'api/track-token-usage! {:model "anthropic/claude-sonnet-4-5"
+                                   :prompt 1000
+                                   :completion 500
+                                   :duration-ms 1234
+                                   :user-id 42
+                                   :source "oss_metabot"
+                                   :tag "oss-sqlgen"})
+        (is (= 1 (count @tracked-events)))
+        (let [{:keys [schema data user-id]} (first @tracked-events)]
+          (is (= :snowplow/token_usage schema))
+          (is (= 42 user-id))
+          (is (=? {:hashed-metabase-license-token (str "oss__" test-analytics-uuid)
+                   :request-id #"[a-h0-9]{32}" ; UUID hex format (no dashes)
+                   :model-id "anthropic/claude-sonnet-4-5"
+                   :total-tokens 1500
+                   :prompt-tokens 1000
+                   :completion-tokens 500
+                   :estimated-costs-usd pos?
+                   :duration-ms 1234
+                   :source "oss_metabot"
+                   :tag "oss-sqlgen"}
+                  data)))))))
+
+(deftest track-token-usage-with-premium-token-test
+  (testing "hashes premium token when available"
+    (let [tracked-events (atom [])]
+      (with-redefs [snowplow/track-event! (fn [schema data user-id]
+                                            (swap! tracked-events conj {:schema schema
+                                                                        :data data
+                                                                        :user-id user-id}))
+                    premium-features/premium-embedding-token (constantly "test-premium-token")]
+        (#'api/track-token-usage! {:model "anthropic/claude-sonnet-4-5"
+                                   :prompt 100
+                                   :completion 50
+                                   :duration-ms 100
+                                   :user-id 1
+                                   :source "test"
+                                   :tag "test"})
+        (let [{:keys [data]} (first @tracked-events)]
+          ;; Should be a SHA-256 hash (64 hex chars), not "oss__*"
+          (is (=? {:hashed-metabase-license-token #"[0-9a-f]{64}"}
+                  data)))))))

@@ -1,20 +1,27 @@
 (ns metabase.llm.api
   "API endpoints for LLM-powered SQL generation (OSS)."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.analytics.settings :as analytics.settings]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.costs :as llm.costs]
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.streaming :as llm.streaming]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as sr]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -188,6 +195,38 @@
                            response))
     :else              response))
 
+;;; ------------------------------------------ Token Usage Tracking ------------------------------------------
+
+(defn- track-token-usage!
+  "Track token usage for LLM API calls via Snowplow."
+  [{:keys [model prompt completion duration-ms user-id source tag]}]
+  (let [request-id      (-> (random-uuid)
+                            str
+                            ;; strip dashes and lower-case to mimic the ai-service uuid.hex formatting
+                            (str/replace "-" "")
+                            u/lower-case-en)
+        hashed-token    (some-> (not-empty (premium-features/premium-embedding-token))
+                                buddy-hash/sha256
+                                codecs/bytes->hex)
+        token-or-uuid   (or hashed-token
+                            (str "oss__" (analytics.settings/analytics-uuid)))
+        estimated-costs (llm.costs/estimate {:model      model
+                                             :prompt     prompt
+                                             :completion completion})]
+    (snowplow/track-event! :snowplow/token_usage
+                           {:hashed-metabase-license-token token-or-uuid
+                            :request-id                    request-id
+                            :model-id                      model
+                            :total-tokens                  (+ prompt completion)
+                            :prompt-tokens                 prompt
+                            :completion-tokens             completion
+                            :estimated-costs-usd           estimated-costs
+                            :user-id                       user-id
+                            :duration-ms                   duration-ms
+                            :source                        source
+                            :tag                           tag}
+                           user-id)))
+
 ;;; ------------------------------------------ Extract Tables Endpoint ------------------------------------------
 
 (def ^:private table-with-columns-schema
@@ -278,7 +317,7 @@
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
-        ;; 2. Extract table IDs from all sources and merge them
+          ;; 2. Extract table IDs from all sources and merge them
           frontend-table-ids (when (seq referenced_entities)
                                (->> referenced_entities
                                     (filter #(= "table" (:model %)))
@@ -307,12 +346,18 @@
               timestamp           (current-timestamp)]
           (when (debug-logging-enabled?)
             (log-to-file! (str timestamp "_prompt.txt") system-prompt))
-          (let [response (llm.anthropic/chat-completion
-                          {:system   system-prompt
-                           :messages [{:role "user" :content prompt}]})]
+          (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
+                                                    {:system   system-prompt
+                                                     :messages [{:role "user" :content prompt}]})]
             (when (debug-logging-enabled?)
-              (log-to-file! (str timestamp "_response.txt") (pr-str response)))
-            (let [sql                 (parse-sql-response response)
+              (log-to-file! (str timestamp "_response.txt") (pr-str result)))
+            (track-token-usage! (assoc usage
+                                       :duration-ms duration-ms
+                                       :user-id api/*current-user-id*
+                                       ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
+                                       :source "oss_metabot"
+                                       :tag "oss-sqlgen"))
+            (let [sql                 (parse-sql-response result)
                   tables-with-columns (llm.context/get-tables-with-columns database_id table-ids)
                   referenced-entities (mapv #(assoc % :model "table") tables-with-columns)]
               {:sql                 sql
