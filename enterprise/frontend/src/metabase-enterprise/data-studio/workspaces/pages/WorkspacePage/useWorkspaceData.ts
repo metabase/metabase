@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { skipToken } from "metabase/api";
 import {
@@ -19,6 +19,9 @@ type UseWorkspaceDataParams = {
 };
 
 export type SetupStatus = ReturnType<typeof useWorkspaceSetupStatus>;
+
+const LOGS_POLLING_INTERVAL_LONG = 5000;
+const LOGS_POLLING_INTERVAL_SHORT = 1000;
 
 export function useWorkspaceData({
   workspaceId,
@@ -41,7 +44,13 @@ export function useWorkspaceData({
         : skipToken,
     );
 
-  const setupStatus = useWorkspaceSetupStatus(workspaceId);
+  const setupStatus = useWorkspaceSetupStatus({
+    pollingInterval:
+      workspace?.status === "pending"
+        ? LOGS_POLLING_INTERVAL_SHORT
+        : LOGS_POLLING_INTERVAL_LONG,
+    workspaceId,
+  });
 
   const availableTransforms = useMemo(
     () => externalTransforms ?? [],
@@ -77,13 +86,13 @@ export function useWorkspaceData({
   };
 }
 
-const LONG_LOGS_POLLING_INTERVAL = 5000;
-const SHORT_LOGS_POLLING_INTERVAL = 1000;
-export function useWorkspaceSetupStatus(workspaceId: WorkspaceId) {
-  const [shouldPoll, setShouldPoll] = useState(true);
-  const [pollingInterval, setPollingInterval] = useState(
-    LONG_LOGS_POLLING_INTERVAL,
-  );
+export function useWorkspaceSetupStatus({
+  pollingInterval,
+  workspaceId,
+}: {
+  pollingInterval: number;
+  workspaceId: WorkspaceId;
+}) {
   const {
     data: workspace,
     error,
@@ -91,17 +100,7 @@ export function useWorkspaceSetupStatus(workspaceId: WorkspaceId) {
   } = useGetWorkspaceLogQuery(workspaceId, {
     pollingInterval,
     refetchOnMountOrArgChange: true,
-    skip: !shouldPoll,
   });
-
-  useEffect(() => {
-    if (workspace?.status === "pending") {
-      setPollingInterval(SHORT_LOGS_POLLING_INTERVAL);
-    }
-    if (workspace?.status === "ready" || workspace?.status === "archived") {
-      setShouldPoll(false);
-    }
-  }, [workspace?.status]);
 
   const logs = useMemo(() => workspace?.logs ?? [], [workspace]);
 

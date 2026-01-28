@@ -80,7 +80,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     try {
       await archiveWorkspace(id).unwrap();
       sendSuccessToast(t`Workspace archived successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
     } catch (error) {
       sendErrorToast(t`Failed to archive workspace`);
     }
