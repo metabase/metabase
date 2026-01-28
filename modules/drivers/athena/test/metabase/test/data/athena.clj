@@ -89,7 +89,10 @@
 ;;;    aws glue --profile athena-ci delete-database --name test_data
 ;;;   ```
 ;;;
-;;; 5. After this you can recreate the database normally using the test loading code. Note that you must
+;;; 5. Set :transaction? false for the jdbc/execute call with sql-args in the `:sql-jdbc/test-extensions` defmethod
+;;;    for `metabase.test.data.sql-jdbc.load-data/do-insert!`
+;;;
+;;; 6. After this you can recreate the database normally using the test loading code. Note that you must
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
