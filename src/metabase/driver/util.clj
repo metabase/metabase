@@ -828,16 +828,25 @@
   "mb_transform_temp_table")
 
 (defn temp-table-name
-  "Generate a temporary table name with current timestamp in milliseconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
-  [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
-        timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
-        available (- max-len (count prefix))
-        ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
-        table-name (str prefix suffix)]
-    (keyword schema table-name)))
+  "Generate a temporary table name that includes a portion of the original table name
+   and a random suffix for uniqueness. Respects driver's max table name length.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema
+   and the name is the original table name.
+
+   Format: <prefix>_<truncated_original_table>_<random_suffix>"
+  [driver table]
+  (let [schema              (some-> table namespace)
+        original-table-name (some-> table name)
+        max-len             (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
+        prefix              (str transform-temp-table-prefix "_")
+        suffix              (subs (str (random-uuid)) 0 8)
+        ;; +1 for separator between table portion and suffix
+        reserved            (+ (count prefix) (count suffix) 1)
+        available           (- max-len reserved)
+        table-portion       (when (and original-table-name (pos? available))
+                              (str (subs (str original-table-name)
+                                         0
+                                         (min available (count (str original-table-name))))
+                                   "_"))]
+    (keyword schema (str prefix table-portion suffix))))

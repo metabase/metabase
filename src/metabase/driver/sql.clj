@@ -131,11 +131,8 @@
 
 (defn- run-with-rename-tables-strategy!
   [driver database output-table transform-details conn-spec]
-  (let [schema (namespace output-table)
-        new-temp (driver.u/temp-table-name driver schema)
-        old-temp (loop []
-                   (let [t (driver.u/temp-table-name driver schema)]
-                     (if (= t new-temp) (recur) t)))]
+  (let [new-temp (driver.u/temp-table-name driver output-table)
+        old-temp (driver.u/temp-table-name driver output-table)]
     (try
       (let [new-temp-details (assoc transform-details :output-table new-temp)
             rows-affected (create-table-and-insert-data! driver new-temp-details conn-spec)]
@@ -150,8 +147,7 @@
 
 (defn- run-with-create-drop-rename-strategy!
   [driver database output-table transform-details conn-spec]
-  (let [schema (namespace output-table)
-        tmp-table (driver.u/temp-table-name driver schema)]
+  (let [tmp-table (driver.u/temp-table-name driver output-table)]
     (try
       (let [tmp-table-details (assoc transform-details :output-table tmp-table)
             rows-affected (create-table-and-insert-data! driver tmp-table-details conn-spec)]
