@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { replace } from "react-router-redux";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
@@ -33,6 +33,7 @@ export function DependencyListPage({
   mode,
   location,
 }: DependencyListPageOwnProps) {
+  const isInitializingRef = useRef(false);
   const dispatch = useDispatch();
 
   const {
@@ -61,7 +62,8 @@ export function DependencyListPage({
   };
 
   useEffect(() => {
-    if (!isLoadingParams) {
+    if (!isInitializingRef.current && !isLoadingParams) {
+      isInitializingRef.current = true;
       dispatch(replace(getPageUrl(mode, params)));
     }
   }, [mode, params, isLoadingParams, dispatch]);
