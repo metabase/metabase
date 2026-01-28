@@ -27,7 +27,7 @@
 
 (def search-expr #'search.util/to-tsquery-expr)
 
-(deftest to-tsquery-expr-test
+(deftest ^:parallel to-tsquery-expr-test
   (is (= "'a' & 'b' & 'c':*"
          (search-expr "a b c")))
 
@@ -83,9 +83,9 @@
     (is (= "'you''re':*"
            (search-expr "you're")))))
 
-(deftest available-tsv-languages-test
+(deftest ^:parallel available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
-    (let [available @#'search.util/available-tsv-languages]
+    (let [available (@#'search.util/available-tsv-languages)]
       (is (= :english (:en available)))
       (is (= :german (:de available)))
       (is (nil? (:ko available))))))
