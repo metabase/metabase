@@ -11,7 +11,7 @@
 
 ;; TODO: explain namespacing, catalog, db...
 
-(defn table-schema
+(defn- table-schema
   [driver table]
   (or (:schema table)
       (driver.sql/default-schema driver)))
