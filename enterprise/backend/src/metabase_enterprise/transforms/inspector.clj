@@ -15,6 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
@@ -511,6 +512,98 @@
       (log/warn e "Failed to extract joins from native SQL transform")
       nil)))
 
+;;; -------------------------------------------------- Visited Fields Extraction ---------------------------------------------------
+
+(defn- extract-mbql-visited-fields
+  "Extract field IDs from semantically important MBQL clauses (filters, breakout, join conditions).
+   Returns a map with :join-fields, :filter-fields, :group-by-fields, and :all."
+  [query]
+  (let [stage (get-in query [:stages 0])
+
+        ;; Extract from :filters (WHERE equivalent) - pass each filter clause directly
+        filter-fields (when-let [filters (:filters stage)]
+                        (into #{} (mapcat lib.walk.util/all-field-ids) filters))
+
+        ;; Extract from :breakout (GROUP BY equivalent) - pass each breakout clause directly
+        group-by-fields (when-let [breakout (:breakout stage)]
+                          (into #{} (mapcat lib.walk.util/all-field-ids) breakout))
+
+        ;; Extract from all join :conditions - pass each condition clause directly
+        join-fields (when-let [joins (:joins stage)]
+                      (into #{}
+                            (mapcat (fn [join]
+                                      (mapcat lib.walk.util/all-field-ids (:conditions join))))
+                            joins))]
+    {:join-fields     (or join-fields #{})
+     :filter-fields   (or filter-fields #{})
+     :group-by-fields (or group-by-fields #{})
+     :all             (into #{} cat [join-fields filter-fields group-by-fields])}))
+
+(defn- extract-columns-from-ast-node
+  "Recursively extract column nodes from a Macaw AST expression.
+   Returns a seq of maps with :column and :table keys."
+  [node]
+  (when node
+    (case (:type node)
+      :macaw.ast/column
+      [{:column (:column node) :table (:table node)}]
+
+      :macaw.ast/binary-expression
+      (concat (extract-columns-from-ast-node (:left node))
+              (extract-columns-from-ast-node (:right node)))
+
+      :macaw.ast/unary-expression
+      (extract-columns-from-ast-node (:expression node))
+
+      :macaw.ast/function
+      (mapcat extract-columns-from-ast-node (:args node))
+
+      ;; default - for other types, return empty
+      nil)))
+
+(defn- extract-native-visited-columns
+  "Extract columns from native SQL WHERE, GROUP BY, and JOIN clauses.
+   Returns a map with :where-columns, :group-by-columns, and :join-columns."
+  [ast]
+  (when (= (:type ast) :macaw.ast/select)
+    {:where-columns    (extract-columns-from-ast-node (:where ast))
+     :group-by-columns (mapcat extract-columns-from-ast-node (:group-by ast))
+     :join-columns     (mapcat (fn [join]
+                                 (mapcat extract-columns-from-ast-node
+                                         (:condition join)))
+                               (:join ast))}))
+
+(defn- resolve-column-to-field-id
+  "Map a column name to a Metabase field ID using sources info.
+   driver-kw is the database driver keyword for normalization."
+  [driver-kw sources {:keys [column table]}]
+  (let [norm-col (sql.normalize/normalize-name driver-kw column)
+        norm-tbl (when table (sql.normalize/normalize-name driver-kw table))]
+    (some (fn [{:keys [table-name fields]}]
+            (when (or (nil? norm-tbl)
+                      (= norm-tbl (sql.normalize/normalize-name driver-kw table-name)))
+              (some (fn [field]
+                      (when (= norm-col (sql.normalize/normalize-name driver-kw (:name field)))
+                        (:id field)))
+                    fields)))
+          sources)))
+
+(defn- resolve-native-visited-fields
+  "Resolve native SQL column references to Metabase field IDs.
+   Returns a map with :join-fields, :filter-fields, :group-by-fields, and :all."
+  [driver-kw sources {:keys [where-columns group-by-columns join-columns]}]
+  (let [resolve-cols (fn [cols]
+                       (into #{}
+                             (keep (partial resolve-column-to-field-id driver-kw sources))
+                             cols))
+        filter-fields (resolve-cols where-columns)
+        group-by-fields (resolve-cols group-by-columns)
+        join-fields (resolve-cols join-columns)]
+    {:join-fields     join-fields
+     :filter-fields   filter-fields
+     :group-by-fields group-by-fields
+     :all             (into #{} cat [join-fields filter-fields group-by-fields])}))
+
 ;;; -------------------------------------------------- Table Statistics ---------------------------------------------------
 
 ;; TODO: This COUNT(*) query can be slow on large tables. Consider returning a count card
@@ -793,17 +886,24 @@
 
       ;; Target exists - extract joins first for smarter column matching
       (let [input-ids (mapv :table-id sources)
+            ;; Get preprocessed query for MBQL, or native query info for native
+            mbql-query (when (= source-type :mbql)
+                         (try
+                           (-> transform :source :query
+                               transforms.util/massage-sql-query
+                               qp.preprocess/preprocess)
+                           (catch Exception e
+                             (log/warn e "Failed to preprocess MBQL query")
+                             nil)))
             ;; Extract joins (MBQL or native SQL) for column matching
             ;; Returns {:base-row-count <n> :joins [...]} or nil
             join-stats (case source-type
-                         :mbql   (try
-                                   (let [query (-> transform :source :query
-                                                   transforms.util/massage-sql-query
-                                                   qp.preprocess/preprocess)]
-                                     (extract-joins query))
-                                   (catch Exception e
-                                     (log/warn e "Failed to extract MBQL joins")
-                                     nil))
+                         :mbql   (when mbql-query
+                                   (try
+                                     (extract-joins mbql-query)
+                                     (catch Exception e
+                                       (log/warn e "Failed to extract MBQL joins")
+                                       nil)))
                          :native (try
                                    (extract-native-joins transform sources)
                                    (catch Exception e
@@ -815,7 +915,31 @@
             ;; Get the actual source table ID from the query (the FROM table)
             query-source-table-id (:source-table-id join-stats)
             ;; Pass joins to inspect-tables for alias-aware column matching
-            base-result (inspect-tables input-ids (:id target-table) joins-seq query-source-table-id)]
+            base-result (inspect-tables input-ids (:id target-table) joins-seq query-source-table-id)
+            ;; Collect source stats for native field resolution
+            source-stats (:sources base-result)
+            ;; Extract visited fields from semantically important clauses
+            visited-fields (case source-type
+                             :mbql (when mbql-query
+                                     (try
+                                       (extract-mbql-visited-fields mbql-query)
+                                       (catch Exception e
+                                         (log/warn e "Failed to extract MBQL visited fields")
+                                         nil)))
+                             :native (try
+                                       (let [query (get-in transform [:source :query])
+                                             sql (get-in query [:stages 0 :native])
+                                             db-id (transforms.util/transform-source-database transform)
+                                             database (t2/select-one :model/Database :id db-id)
+                                             driver-kw (keyword (:engine database))
+                                             parsed (driver.u/parsed-query sql driver-kw)
+                                             ast (macaw.ast/->ast parsed {:with-instance? false})
+                                             cols (extract-native-visited-columns ast)]
+                                         (resolve-native-visited-fields driver-kw source-stats cols))
+                                       (catch Exception e
+                                         (log/warn e "Failed to extract native visited fields")
+                                         nil))
+                             nil)]
 
         (cond-> (assoc base-result
                        :name (str "Transform Inspector: " (:name transform))
@@ -827,4 +951,8 @@
           ;; Add joins with iterative stats
           (seq joins-seq)
           (assoc :joins (mapv #(select-keys % [:strategy :alias :source-table :stats])
-                              joins-seq)))))))
+                              joins-seq))
+
+          ;; Add visited fields for frontend preselection
+          (and visited-fields (seq (:all visited-fields)))
+          (assoc :visited-fields visited-fields))))))

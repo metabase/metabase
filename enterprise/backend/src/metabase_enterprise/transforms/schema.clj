@@ -216,6 +216,15 @@
    [:output-column :string]
    [:cards [:sequential ::inspector-card]]])
 
+(mr/def ::visited-fields
+  "Field IDs that are used in semantically important query clauses (JOINs, WHERE, GROUP BY).
+   Used to preselect interesting columns in the frontend."
+  [:map
+   [:join-fields {:optional true} [:set pos-int?]]
+   [:filter-fields {:optional true} [:set pos-int?]]
+   [:group-by-fields {:optional true} [:set pos-int?]]
+   [:all {:optional true} [:set pos-int?]]])
+
 (mr/def ::inspector-result
   "Complete result from transform inspection."
   [:map
@@ -227,7 +236,8 @@
    [:joins {:optional true} [:maybe [:sequential ::inspector-join]]]
    [:sources [:sequential ::inspector-source-detail]]
    [:target {:optional true} ::inspector-target-detail]
-   [:column-comparisons {:optional true} [:sequential ::inspector-column-comparison]]])
+   [:column-comparisons {:optional true} [:sequential ::inspector-column-comparison]]
+   [:visited-fields {:optional true} [:maybe ::visited-fields]]])
 
 ;;; -------------------------------------------------- Generic Table Inspector Schemas ---------------------------------------------------
 
