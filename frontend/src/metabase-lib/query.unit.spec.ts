@@ -1,5 +1,9 @@
 import * as Lib from "metabase-lib";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import {
   DEFAULT_QUERY,
@@ -138,6 +142,95 @@ describe("createTestQuery", () => {
       expect(breakouts).toHaveLength(1);
       expect(Lib.displayInfo(query, 0, breakouts[0])).toMatchObject({
         displayName: "Created At: Month",
+      });
+    });
+  });
+
+  describe("joins", () => {
+    it("should create a query with joins", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            joins: [
+              {
+                source: {
+                  type: "table",
+                  id: PEOPLE_ID,
+                },
+                strategy: "inner-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: {
+                      type: "column",
+                      name: "VENDOR",
+                    },
+                    right: {
+                      type: "operator",
+                      operator: "+",
+                      args: [
+                        {
+                          type: "column",
+                          name: "ID",
+                        },
+                        {
+                          type: "literal",
+                          value: 1,
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const joins = Lib.joins(query, -1);
+      expect(joins).toHaveLength(1);
+
+      const conditions = Lib.joinConditions(joins[0]);
+      expect(conditions).toHaveLength(1);
+
+      expect(Lib.displayInfo(query, -1, conditions[0])).toMatchObject({
+        displayName: "Vendor is ID + 1",
+      });
+    });
+
+    it("should create a query with suggested joins", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            joins: [
+              {
+                source: {
+                  type: "table",
+                  id: PRODUCTS_ID,
+                },
+                strategy: "inner-join",
+              },
+            ],
+          },
+        ],
+      });
+
+      const joins = Lib.joins(query, -1);
+      expect(joins).toHaveLength(1);
+
+      const conditions = Lib.joinConditions(joins[0]);
+      expect(conditions).toHaveLength(1);
+
+      expect(Lib.displayInfo(query, -1, conditions[0])).toMatchObject({
+        displayName: "Product ID is ID",
       });
     });
   });

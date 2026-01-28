@@ -3,6 +3,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -10,6 +11,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.query :as lib.schema.query]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -127,6 +129,50 @@
           query
           expression-specs))
 
+(mu/defn- matches-strategy? :- :boolean
+  [name :- string?
+   {:keys [strategy]} :- ::lib.schema.join/strategy.option]
+  (= name strategy))
+
+(mu/defn- find-join-strategy :- ::lib.schema.join/strategy
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   strategy :- string?]
+  (let [available-strategies (lib.join/available-join-strategies query stage-number)
+        found-strategy (first (filter #(matches-strategy? strategy %) available-strategies))]
+    (if (nil? found-strategy)
+      (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy}))
+      found-strategy)))
+
+(mu/defn- join-condition-spec->join-condition :- ::lib.schema.join/condition
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   target :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
+   {:keys [operator left right]} :- ::lib.schema.query/test-join-condition-spec]
+  (let [lhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-lhs-columns query stage-number nil nil) left)
+        rhs (expression-spec->expression-clause query stage-number (lib.join/join-condition-rhs-columns query stage-number target lhs nil) right)]
+    (lib.fe-util/join-condition-clause operator lhs rhs)))
+
+(mu/defn- append-join :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   {:keys [source strategy conditions]} :- ::lib.schema.query/test-join-spec]
+  (let [join-target (find-source query source)
+        join-strategy (find-join-strategy query stage-number strategy)
+        join-conditions (if (nil? conditions)
+                          (lib.join/suggested-join-conditions query stage-number join-target)
+                          (mapv #(join-condition-spec->join-condition query stage-number join-target %) conditions))
+        join-clause (lib.join/join-clause join-target join-conditions join-strategy)]
+    (lib.join/join query stage-number join-clause)))
+
+(mu/defn- append-joins :- ::lib.schema/query
+  [query             :- ::lib.schema/query
+   stage-number      :- :int
+   join-specs  :- [:sequential ::lib.schema.query/join-spec]]
+  (reduce #(append-join %1 stage-number %2)
+          query
+          join-specs))
+
 (mu/defn- append-order-by :- ::lib.schema/query
   [query               :- ::lib.schema/query
    stage-number        :- :int
@@ -148,9 +194,10 @@
 (mu/defn- append-stage-clauses :- ::lib.schema/query
   [query                         :- ::lib.schema/query
    stage-number                  :- :int
-   {:keys [expressions breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
+   {:keys [expressions joins breakouts order-bys limit]} :- ::lib.schema.query/test-stage-spec]
   (cond-> query
     expressions (append-expressions stage-number (lib.metadata.calculation/visible-columns query stage-number) expressions)
+    joins (append-joins stage-number joins)
     breakouts (append-breakouts stage-number breakouts)
     order-bys (append-order-bys stage-number order-bys)
     limit (lib.limit/limit stage-number limit)))

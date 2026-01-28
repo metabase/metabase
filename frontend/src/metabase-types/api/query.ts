@@ -1,3 +1,4 @@
+import type * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import type { CardId } from "./card";
@@ -481,6 +482,20 @@ export type TemporalBucketSpec = {
 
 export type BreakoutSpec = ColumnSpec & TemporalBucketSpec;
 
+export type JoinSpec = {
+  source: SourceSpec;
+  strategy: JoinStrategy;
+
+  // If not set we will use the suggested join conditions
+  conditions?: JoinConditionSpec[];
+};
+
+type JoinConditionSpec = {
+  operator: Lib.JoinConditionOperator;
+  left: ExpressionSpec;
+  right: ExpressionSpec;
+};
+
 export type OrderBySpec = ColumnSpec & {
   direction?: "asc" | "desc";
 };
@@ -488,6 +503,7 @@ export type OrderBySpec = ColumnSpec & {
 export type StageSpec = {
   expressions?: NamedExpressionSpec[];
   breakouts?: BreakoutSpec[];
+  joins?: JoinSpec[];
   orderBys?: OrderBySpec[];
   limit?: number;
 };

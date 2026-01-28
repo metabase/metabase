@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -65,10 +66,23 @@
    [:name string?]
    [:value [:ref ::test-expression-spec]]])
 
+(mr/def ::test-join-spec
+  [:map
+   [:source [:ref ::test-source-spec]]
+   [:strategy ::lib.schema.join/strategy]
+   [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
+
+(mr/def ::test-join-condition-spec
+  [:map
+   [:operator string?] ;; TODO(@romeovs): be more specific here and limit?
+   [:left [:ref ::test-expression-spec]]
+   [:right [:ref ::test-expression-spec]]])
+
 (mr/def ::test-stage-spec
   [:map
    [:source      {:optional true} [:maybe ::test-source-spec]]
    [:expressions {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
+   [:joins       {:optional true} [:maybe [:sequential ::test-join-spec]]]
    [:breakouts   {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
    [:order-bys   {:optional true} [:maybe [:sequential ::test-order-by-spec]]]
    [:limit       {:optional true} [:maybe number?]]])

@@ -2770,6 +2770,20 @@
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :value ->expression-spec)))
 
+          (->join-condition-spec [join-condition-spec]
+            (-> join-condition-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :operator keyword)
+                (m/update-existing :left ->expression-spec)
+                (m/update-existing :right ->expression-spec)))
+
+          (->join-spec [join-spec]
+            (-> join-spec
+                (perf/update-keys js-key->cljs-key)
+                (m/update-existing :strategy keyword)
+                (m/update-existing :source ->source-spec)
+                (m/update-existing :conditions #(mapv ->join-condition-spec %))))
+
           (->breakout-spec [breakout-spec]
             (-> breakout-spec
                 (perf/update-keys js-key->cljs-key)
@@ -2785,6 +2799,7 @@
                 (perf/update-keys js-key->cljs-key)
                 (m/update-existing :source ->source-spec)
                 (m/update-existing :expressions #(mapv ->named-expression-spec %))
+                (m/update-existing :joins #(mapv ->join-spec %))
                 (m/update-existing :breakouts #(mapv ->breakout-spec %))
                 (m/update-existing :order-bys #(mapv ->order-by-spec %))))
 
