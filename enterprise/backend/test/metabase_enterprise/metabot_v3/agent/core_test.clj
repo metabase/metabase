@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parts->aisdk-chunks
+(defn parts->aisdk-chunks
   "Convert simple test parts to AI SDK v5 chunks (what self/claude returns).
   Accepts parts like {:type :text :text \"Hello\"} or {:type :tool-input :id \"t1\" :function \"search\" :arguments {...}}
   and returns AI SDK v5 chunks that tool-executor-xf and aisdk-xf can process."
@@ -40,7 +40,7 @@
      ;; usage
      [{:type :usage :usage {:promptTokens 10 :completionTokens 50} :id msg-id}])))
 
-(defn- mock-llm-response
+(defn mock-llm-response
   "Create a mock LLM response (reducible) with given parts in AI SDK v5 format."
   [parts]
   (let [aisdk-chunks (parts->aisdk-chunks parts)]
