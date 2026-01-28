@@ -307,10 +307,22 @@
   [{:keys [table-id model-id]}]
   (cond
     model-id
-    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+    (try
+      [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+      (catch clojure.lang.ExceptionInfo e
+        (throw (if (= (:status-code (ex-data e)) 404)
+                 (ex-info (str "No model found with model_id " model-id)
+                          {:agent-error? true :status-code 404} e)
+                 e))))
 
     table-id
-    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+    (try
+      [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+      (catch clojure.lang.ExceptionInfo e
+        (throw (if (= (:status-code (ex-data e)) 404)
+                 (ex-info (str "No table found with table_id " table-id)
+                          {:agent-error? true :status-code 404} e)
+                 e))))
 
     :else
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
