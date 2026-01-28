@@ -442,7 +442,7 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)]
     (api/check-404 workspace)
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
-    (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
+    (ws.impl/execute-workspace! workspace (ws.impl/get-or-calculate-graph! workspace) {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
 
@@ -833,10 +833,7 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    ;; Ensure the graph is calculated so all analysis is up-to-date
-    ;; (We also need the transforms for all input tables to have been analyzed)
-    (ws.impl/get-or-calculate-graph! workspace)
-    (ws.impl/run-transform! workspace transform)))
+    (ws.impl/run-transform! workspace (ws.impl/get-or-calculate-graph! workspace) transform)))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
   :- ::ws.t/dry-run-result
@@ -849,10 +846,7 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
-    ;; Ensure the graph is calculated so all analysis is up-to-date
-    ;; (We also need the transforms for all input tables to have been analyzed)
-    (ws.impl/get-or-calculate-graph! workspace)
-    (ws.impl/dry-run-transform workspace transform)))
+    (ws.impl/dry-run-transform workspace (ws.impl/get-or-calculate-graph! workspace) transform)))
 
 (def ^:private CheckoutTransformLegacy
   "Legacy format for workspace checkout transforms (DEPRECATED)."
