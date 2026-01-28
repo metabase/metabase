@@ -238,8 +238,8 @@
                    :workspace {:id ws-id :name ws-name}}
                   (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
                                         {:commit-message commit-msg}))))
-        (testing "workspace was deleted after successful merge"
-          (is (not (t2/exists? :model/Workspace :id ws-id))))
+        (testing "workspace was archived after successful merge"
+          (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id ws-id))))
         (testing "merge history was created"
           (is (=? {:commit_message commit-msg
                    :creator_id     (mt/user->id :crowberto)}
@@ -432,9 +432,8 @@
                                  :workspace_id ws-id :ref_id (:ref_id ws-x-1)))))
           (is (not (t2/exists? :model/WorkspaceTransform
                                :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
-        ;; This should change going forward. Deletion of workspace is temporary.
-        (testing "Workspace has been deleted"
-          (is (not (t2/exists? :model/Workspace :id ws-id))))))))
+        (testing "Workspace has been archived"
+          (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id ws-id))))))))
 
 (deftest merge-empty-workspace-test
   (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -446,9 +445,8 @@
         (is (=? {:errors []
                  :merged {:transforms []}}
                 resp))))
-    ;; This should change going forward. Deletion of workspace is temporary.
-    (testing "Workspace has been deleted"
-      (is (not (t2/exists? :model/Workspace :id ws-id))))))
+    (testing "Workspace has been archived"
+      (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id ws-id))))))
 
 (deftest merge-transfom-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
@@ -559,11 +557,11 @@
                               {:commit-message commit-msg})
 
         (testing "returns merge history for a transform"
-          ;; workspace_id is nil because workspace is deleted after merge (SET NULL FK)
+          ;; workspace_id is preserved since workspace is archived (not deleted) after merge
           (is (=? [{:id                 pos-int?
                     :workspace_merge_id pos-int?
                     :commit_message     commit-msg
-                    :workspace_id       nil
+                    :workspace_id       ws-id
                     :workspace_name     ws-name
                     :merging_user_id    (mt/user->id :crowberto)
                     :created_at         some?}]

@@ -929,7 +929,7 @@
       :string]
   "This will:
    1. Update original transforms with workspace versions
-   2. Delete the workspace and clean up isolated resources
+   2. Archive the workspace and clean up isolated resources
    Returns a report of merged entities, or error in errors key.
 
    Request body may include:
@@ -953,7 +953,7 @@
        :errors    errors
        :workspace {:id ws-id, :name (:name ws)}}
       (when-not (seq errors)
-        (ws.model/delete! ws)))))
+        (ws.model/archive! ws)))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/merge"
   :- [:map
