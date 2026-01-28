@@ -19,11 +19,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Cloning python-runner repository..."
-git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git python-runner
+git clone https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git python-runner
 
 if [ "$SKIP_START" = false ]; then
   echo "Starting python-runner..."
   cd python-runner
+  git checkout origin/nicola/improve-parsing-memory
   make run-ci 1> ../python-runner.out.log 2> ../python-runner.err.log
   make logs 1>> ../python-runner.out.log 2>> ../python-runner.err.log &
   cd ..
