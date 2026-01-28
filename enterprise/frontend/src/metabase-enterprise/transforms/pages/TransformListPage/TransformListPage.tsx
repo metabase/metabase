@@ -43,7 +43,6 @@ import { PaneHeader } from "metabase-enterprise/data-studio/common/components/Pa
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { TransformOwnerAvatar } from "metabase-enterprise/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 

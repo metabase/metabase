@@ -5,7 +5,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
