@@ -441,6 +441,7 @@ class DashboardGridInner extends Component<
             : undefined
         }
         models={["card", "dataset", "metric", "dashboard"]}
+        options={{ hasConfirmButtons: false }}
         onChange={handleSelect}
         onClose={handleClose}
         isDisabledItem={shouldDisableItem}
