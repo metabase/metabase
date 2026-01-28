@@ -136,7 +136,7 @@ function getFilledRowsCell(row: JoinRow): string | null | React.ReactNode {
   return match(strategy)
     .with(
       P.union("left-join", "right-join"),
-      () => stats?.matched_count?.toLocaleString() ?? "-",
+      () => stats?.output_row_count?.toLocaleString() ?? "-",
     )
     .with(P.union("inner-join"), () => (
       <Flex flex="row" gap="xs" align="center">
