@@ -94,14 +94,10 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(defn- check-analyst
-  []
-  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*)))
-
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-analyst)
+  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
          (into []
@@ -313,7 +309,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (check-analyst)
+  (api/check-403 (or api/*is-data-analyst?* api/*is-superuser?*))
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))

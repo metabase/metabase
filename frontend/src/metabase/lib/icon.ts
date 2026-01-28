@@ -22,7 +22,9 @@ export type IconModel =
   | "timeline"
   | "question"
   | "transform"
-  | "user";
+  | "user"
+  | "nativequerysnippet"
+  | "pythonlibrary";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -53,11 +55,13 @@ export const modelIconMap: Record<IconModel, IconName> = {
   card: "table2",
   segment: "segment",
   metric: "metric",
-  snippet: "unknown",
+  snippet: "snippet",
+  nativequerysnippet: "snippet",
   document: "document",
   timeline: "calendar",
   transform: "transform",
   user: "person",
+  pythonlibrary: "code_block",
 };
 
 export type IconData = {

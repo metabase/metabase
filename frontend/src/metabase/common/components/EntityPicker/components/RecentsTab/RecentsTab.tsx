@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import { Flex, Stack } from "metabase/ui";

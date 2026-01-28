@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -545,7 +545,11 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerDashboardCard(dashcard)}
-            onEditVisualization={onEditVisualization}
+            onEditVisualization={
+              isVisualizerDashboardCard(dashcard)
+                ? onEditVisualization
+                : undefined
+            }
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }

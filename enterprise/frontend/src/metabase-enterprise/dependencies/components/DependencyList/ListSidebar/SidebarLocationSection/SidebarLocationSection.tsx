@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -7,7 +6,6 @@ import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../../utils";
-import S from "../ListSidebar.module.css";
 
 type SidebarLocationSectionProps = {
   node: DependencyNode;
@@ -30,7 +28,7 @@ export function SidebarLocationSection({ node }: SidebarLocationSectionProps) {
           <Anchor
             key={linkIndex}
             component={Link}
-            className={cx(CS.textWrap, S.link)}
+            className={CS.textWrap}
             lh="1rem"
             to={link.url}
           >

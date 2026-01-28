@@ -2,9 +2,9 @@ import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import type { NumericInputProps } from "metabase/common/components/NumericInput";
-import NumericInput from "metabase/common/components/NumericInput";
+import { NumericInput } from "metabase/common/components/NumericInput";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export interface FormNumericInputProps
@@ -23,7 +23,7 @@ export interface FormNumericInputProps
 /**
  * @deprecated: use FormNumberInput from "metabase/forms"
  */
-const FormNumericInput = forwardRef(function FormNumericInput(
+export const FormNumericInput = forwardRef(function FormNumericInput(
   {
     name,
     className,
@@ -72,6 +72,3 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     </FormField>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormNumericInput;

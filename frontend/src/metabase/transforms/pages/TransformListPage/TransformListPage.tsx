@@ -16,7 +16,7 @@ import {
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -26,10 +26,10 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
-import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import {
   Card,
@@ -196,10 +196,22 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         header: t`Owner`,
         minWidth: 160,
         enableSorting: true,
-        cell: ({ row }) =>
-          row.original.nodeType !== "transform" ? null : (
-            <TransformOwnerAvatar transform={row.original} />
-          ),
+        cell: ({ row }) => {
+          const owner = row.original.owner;
+          const hasUserName = owner?.first_name || owner?.last_name;
+
+          if (hasUserName) {
+            const displayName = getUserName(owner as NamedUser);
+            return <Ellipsified>{displayName}</Ellipsified>;
+          }
+
+          const ownerEmail = row.original.owner_email ?? owner?.email;
+          if (ownerEmail) {
+            return <Ellipsified>{ownerEmail}</Ellipsified>;
+          }
+
+          return null;
+        },
       },
       {
         id: "updated_at",

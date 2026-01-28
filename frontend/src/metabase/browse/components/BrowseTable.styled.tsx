@@ -6,7 +6,7 @@ import {
   hideResponsively,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`

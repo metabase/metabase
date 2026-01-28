@@ -21,7 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";

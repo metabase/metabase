@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.models.transforms.transform :as transform]
    [metabase.models.transforms.transform-job :as transform-job]
    [metabase.permissions.core :as perms]
@@ -19,17 +20,6 @@
 (set! *warn-on-reflection* true)
 
 (comment transform-job/keep-me)
-
-(defn- check-job-edit-permissions
-  "Check that the current user edit a job with the given tags. If tag-ids are empty or nil, requires at least one transform permission"
-  [tag-ids]
-  (api/check-403 (or (perms/is-data-analyst? api/*current-user-id*) (perms/is-superuser? api/*current-user-id*)))
-  (doseq [transform (transform/transforms-with-tags tag-ids)]
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id transform)))))
-
-(defn- check-job-view-permissions
-  []
-  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
@@ -50,7 +40,6 @@
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
-  (check-job-edit-permissions tag_ids)
   ;; Validate cron expression
   (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
@@ -59,11 +48,13 @@
     (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag_ids]))]
       (api/check-400 (= (set tag_ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
-  (let [job (t2/insert-returning-instance! :model/TransformJob
-                                           {:name name
-                                            :description description
-                                            :schedule schedule
-                                            :ui_display_type ui_display_type})]
+  (let [job-data {:name            name
+                  :description     description
+                  :schedule        schedule
+                  :ui_display_type ui_display_type}
+        _        (api/check-403 (mi/can-create? :model/TransformJob (assoc job-data :tag_ids tag_ids)))
+        job      (t2/insert-returning-instance! :model/TransformJob
+                                                job-data)]
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
@@ -95,38 +86,35 @@
                                                             (ms/enum-decode-keyword ui-display-types)]
                                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (let [existing-job (api/check-404 (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))]
-    ;; Validate cron expression if provided
+  (let [existing-job (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
+    ;; Check write permission on both current state and final state (with new tags if provided)
+    (api/write-check existing-job)
+    (when (some? tag-ids)
+      (api/write-check (assoc existing-job :tag_ids tag-ids))))
+  ;; Validate cron expression if provided
+  (when schedule
+    (api/check-400 (transforms.schedule/validate-cron-expression schedule)
+                   (deferred-tru "Invalid cron expression: {0}" schedule)))
+  ;; Validate tag IDs if provided
+  (when (seq tag-ids)
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
+      (api/check-400 (= (set tag-ids) existing-tags)
+                     (deferred-tru "Some tag IDs do not exist"))))
+  (t2/with-transaction [_conn]
+    (when-let [updates (m/assoc-some nil
+                                     :name name
+                                     :description description
+                                     :schedule schedule
+                                     :ui_display_type ui_display_type)]
+      (t2/update! :model/TransformJob job-id updates))
     (when schedule
-      (api/check-400 (transforms.schedule/validate-cron-expression schedule)
-                     (deferred-tru "Invalid cron expression: {0}" schedule)))
-    ;; Validate tag IDs if provided
-    (when (seq tag-ids)
-      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
-        (api/check-400 (= (set tag-ids) existing-tags)
-                       (deferred-tru "Some tag IDs do not exist"))))
-
-    ;; Check edit permissions (based on existing tags + new ones if provided)
-    (let [all-tag-ids (set (concat
-                            (map (fn [t] (if (map? t) (:id t) t)) (:tag_ids existing-job))
-                            (or tag-ids [])))]
-      (check-job-edit-permissions all-tag-ids))
-
-    (t2/with-transaction [_conn]
-      (when-let [updates (m/assoc-some nil
-                                       :name name
-                                       :description description
-                                       :schedule schedule
-                                       :ui_display_type ui_display_type)]
-        (t2/update! :model/TransformJob job-id updates))
-      (when schedule
-        (transforms.schedule/update-job! job-id schedule))
-      ;; Update tag associations if provided
-      (when (some? tag-ids)
-        (transform-job/update-job-tags! job-id tag-ids))
-      ;; Return updated job with hydration
-      (-> (t2/select-one :model/TransformJob :id job-id)
-          (t2/hydrate :tag_ids :last_run)))))
+      (transforms.schedule/update-job! job-id schedule))
+    ;; Update tag associations if provided
+    (when (some? tag-ids)
+      (transform-job/update-job-tags! job-id tag-ids))
+    ;; Return updated job with hydration
+    (-> (t2/select-one :model/TransformJob :id job-id)
+        (t2/hydrate :tag_ids :last_run))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -136,10 +124,9 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (let [existing-job (api/check-404 (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))]
-    (check-job-edit-permissions (:tag_ids existing-job))
-    (t2/delete! :model/TransformJob :id job-id)
-    (transforms.schedule/delete-job! job-id))
+  (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
+  (t2/delete! :model/TransformJob :id job-id)
+  (transforms.schedule/delete-job! job-id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -150,8 +137,7 @@
   "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
-  (api/check-404 (t2/select-one :model/TransformJob :id job-id))
-  (check-job-edit-permissions (t2/select-fn-set :tag_id [:model/TransformJobTransformTag :tag_id] :job_id job-id))
+  (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
      (transforms.jobs/run-job! job-id {:run-method :manual
@@ -171,9 +157,8 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (check-job-view-permissions)
-  (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
-    (t2/hydrate job :tag_ids :last_run)))
+  (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
+      (t2/hydrate :tag_ids :last_run)))
 
 (defn- add-next-run
   [{id :id :as job}]
@@ -190,9 +175,9 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (check-job-view-permissions)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
   (-> (transforms.jobs/job-transforms job-id)
+      (#(do (api/check-403 (every? mi/can-read? %)) %))
       (t2/hydrate :creator)
       transforms.util/add-source-readable))
 
@@ -214,7 +199,7 @@
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (check-job-view-permissions)
+  (api/check-403 api/*is-data-analyst?*)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)

@@ -13,8 +13,8 @@ import { c, msgid, ngettext, t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
 import { useConfirmation, useDocsUrl, useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";

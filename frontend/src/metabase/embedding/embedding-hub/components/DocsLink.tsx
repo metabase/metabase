@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 import type { UtmProps } from "metabase/selectors/settings";

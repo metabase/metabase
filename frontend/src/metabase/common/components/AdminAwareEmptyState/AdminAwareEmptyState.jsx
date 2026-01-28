@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 
@@ -49,9 +49,7 @@ class AdminAwareEmptyStateInner extends Component {
   }
 }
 
-const AdminAwareEmptyState = connect(
+export const AdminAwareEmptyState = connect(
   mapStateToProps,
   null,
 )(AdminAwareEmptyStateInner);
-
-export default AdminAwareEmptyState;

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import type { NativeQuerySnippet } from "metabase-types/api";
 

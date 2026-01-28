@@ -1,5 +1,7 @@
 (ns metabase.models.transforms.transform-tag
   (:require
+   [metabase-enterprise.transforms.models.transform :as transform]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -13,6 +15,26 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(defmethod mi/can-read? :model/TransformTag
+  ([_instance]
+   (or api/*is-superuser?* api/*is-data-analyst?*))
+  ([_model _pk]
+   (or api/*is-superuser?* api/*is-data-analyst?*)))
+
+(defmethod mi/can-write? :model/TransformTag
+  ([instance]
+   (or api/*is-superuser?*
+       (and api/*is-data-analyst?*
+            (let [transforms (transform/transforms-with-tags [(:id instance)])]
+              (every? mi/can-write? transforms)))))
+  ([_model pk]
+   (when-let [tag (t2/select-one :model/TransformTag :id pk)]
+     (mi/can-write? tag))))
+
+(defmethod mi/can-create? :model/TransformTag
+  [_model _instance]
+  (or api/*is-superuser?* api/*is-data-analyst?*))
 
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"

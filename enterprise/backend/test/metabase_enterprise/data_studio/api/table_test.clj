@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

@@ -6,7 +6,7 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";

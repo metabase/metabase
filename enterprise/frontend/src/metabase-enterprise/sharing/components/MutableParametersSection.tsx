@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";

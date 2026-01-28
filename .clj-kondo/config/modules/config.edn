@@ -985,7 +985,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1216,7 +1217,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -2147,7 +2149,8 @@
 
   enterprise/metabot-v3
   {:team "Metabot"
-   :api  #{metabase-enterprise.metabot-v3.api
+   :api  #{metabase-enterprise.metabot-v3.agent-api.api
+           metabase-enterprise.metabot-v3.api
            metabase-enterprise.metabot-v3.client
            metabase-enterprise.metabot-v3.core
            metabase-enterprise.metabot-v3.init
@@ -2156,6 +2159,7 @@
            api
            app-db
            audit-app
+           auth-identity
            collections
            config
            documents
@@ -2391,8 +2395,10 @@
            app-db
            config
            driver
+           events
            lib
            lib-be
+           models
            permissions
            query-processor
            settings

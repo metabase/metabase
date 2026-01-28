@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";

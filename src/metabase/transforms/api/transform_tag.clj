@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.models.transforms.transform-tag :as transform-tag]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -10,10 +11,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- check-analyst
-  []
-  (api/check-403 (or api/*is-superuser?* api/*is-data-analyst?*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -26,7 +23,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (check-analyst)
+  (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -43,8 +40,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (check-analyst)
-  (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
+  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/update! :model/TransformTag tag-id {:name name})
@@ -59,8 +55,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (check-analyst)
-  (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
+  (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
 
@@ -73,7 +68,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (check-analyst)
+  (api/check-403 api/*is-data-analyst?*)
   (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes

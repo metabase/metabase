@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";

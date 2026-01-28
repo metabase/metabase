@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -38,7 +37,7 @@ export function SidebarTransformSection({
         <Box lh="h4" c="text-primary">
           <Anchor
             component={Link}
-            className={cx(CS.textWrap, S.link)}
+            className={CS.textWrap}
             to={Urls.transform(transform.id)}
             target="_blank"
           >

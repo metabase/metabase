@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {
   PaneHeader,
