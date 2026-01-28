@@ -50,7 +50,9 @@ If you don't see your IdP listed here:
 
 ## User provisioning
 
-By default, Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via SAML SSO.
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via SAML SSO.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 If you've set up [User provisioning with SCIM](./user-provisioning.md), you'll want to turn this setting off so that Metabase doesn't automatically create a new account for anyone who authenticates successfully, as you may want to use SCIM to determine who can and can't create an account in Metabase.
 

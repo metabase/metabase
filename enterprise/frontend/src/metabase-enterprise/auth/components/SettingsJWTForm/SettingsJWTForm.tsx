@@ -24,6 +24,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Flex, Stack } from "metabase/ui";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type JWTFormValues = Pick<
@@ -72,7 +73,8 @@ export const SettingsJWTForm = () => {
           <AdminSettingInput
             name="jwt-user-provisioning-enabled?"
             title={t`User provisioning`}
-            inputType="boolean"
+            inputType="radio"
+            options={provisioningOptions("JWT")}
           />
         </SettingsSection>
       )}
