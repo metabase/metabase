@@ -60,8 +60,7 @@ export const UserProvisioningFirstEnabledModal = ({
   );
 };
 
-interface UserProvisioningRegenerateTokenModalsProps
-  extends BaseUserProvisiongModalProps {}
+type UserProvisioningRegenerateTokenModalsProps = BaseUserProvisiongModalProps;
 
 export const UserProvisioningRegenerateTokenModal = ({
   opened,

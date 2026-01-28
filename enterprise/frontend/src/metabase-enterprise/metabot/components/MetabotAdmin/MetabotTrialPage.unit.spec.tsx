@@ -143,8 +143,8 @@ describe("MetabotTrialPage", () => {
       /\/api\/ee\/cloud-add-ons\/metabase-ai$/.test(url),
     );
     expect(cloudAddOnsRequest).toBeTruthy();
-    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
-    expect(cloudAddOnsRequest?.body?.terms_of_service).toEqual(true);
+    expect("terms_of_service" in cloudAddOnsRequest!.body).toBeTruthy();
+    expect(cloudAddOnsRequest!.body.terms_of_service).toEqual(true);
 
     setupRefreshableProperties({
       current_user_matches_store_user: true,

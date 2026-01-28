@@ -157,7 +157,8 @@ export const getCartesianChartOption = (
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey),
+        ...(chartModel.trendLinesModel?.seriesModels?.map((s) => s.dataKey) ??
+          []),
       ],
     });
   }

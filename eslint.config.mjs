@@ -88,10 +88,12 @@ const configs = [
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/embedding-sdk-host-apps/**",
+      "frontend/src/metabase-types/openapi/types.gen.ts",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
       "resources/**",
+      "**/__snapshots__/**",
       "!.storybook/**",
     ],
   },
@@ -139,13 +141,14 @@ const configs = [
     },
     settings: {
       "import-x/internal-regex": "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
-      "import/resolver": {
+      "import-x/resolver": {
+        node: true,
         webpack: {
           config: path.resolve(__dirname, "./rspack.main.config.js"),
           typescript: true,
         },
       },
-      "import/ignore": ["\\.css$"],
+      "import-x/ignore": ["\\.css$"],
       react: {
         version: "detect",
       },
@@ -190,6 +193,7 @@ const configs = [
       "no-console": ["error", { allow: ["warn", "error", "errorBuffer"] }],
 
       // Import rules
+      "import/export": "error",
       "import/no-duplicates": ["warn", { considerQueryString: true }],
       "import/no-default-export": "error",
       "import/no-named-as-default": "off",
@@ -445,6 +449,7 @@ const configs = [
         cy: "readonly",
         Cypress: "readonly",
         context: "readonly",
+        assert: "readonly", // Chai's assert, bundled with Cypress
       },
     },
     plugins: {
@@ -818,7 +823,7 @@ const configs = [
       ttag: fixupPluginRules(ttagPlugin),
     },
     settings: {
-      "import/resolver": {
+      "import-x/resolver": {
         webpack: {
           config: path.resolve(
             __dirname,
@@ -1067,7 +1072,7 @@ const configs = [
   // CUSTOM ESLINT RULES (plugin)
   // ============================================
   {
-    files: ["frontend/lint/eslint-plugin-metabase/**/*.js"],
+    files: ["frontend/lint/**/*.js"],
     languageOptions: {
       globals: {
         ...globals.node,

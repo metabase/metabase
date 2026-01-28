@@ -36,7 +36,7 @@ export const generateReactComponentFiles: CliStepMethod = async (state) => {
 
   let reactComponentPath: string;
 
-  // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
+   
   while (true) {
     reactComponentPath = await input({
       message: "Where do you want to save the example React components?",

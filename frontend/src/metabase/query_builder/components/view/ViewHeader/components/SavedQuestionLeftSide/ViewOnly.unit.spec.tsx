@@ -67,12 +67,12 @@ function setup({
 }
 
 async function expectNoPopover() {
-  userEvent.hover(screen.getByText("View-only"));
+  await userEvent.hover(screen.getByText("View-only"));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 }
 
 async function expectPopoverToHaveText(text: string) {
-  userEvent.hover(screen.getByText("View-only"));
+  await userEvent.hover(screen.getByText("View-only"));
   const dialog = await screen.findByRole("dialog");
   expect(dialog).toBeInTheDocument();
   expect(dialog).toHaveTextContent(text);

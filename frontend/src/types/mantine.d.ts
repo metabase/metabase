@@ -20,7 +20,7 @@ declare module "@mantine/core" {
     colorScheme: "light" | "dark";
     updateColorSettings: (settings: ColorSettings) => void;
   }
-  export interface MantineTheme extends _EmotionCompatibilityTheme {}
+  export type MantineTheme = _EmotionCompatibilityTheme;
 
   export interface MantineThemeColorsOverride {
     colors: Record<

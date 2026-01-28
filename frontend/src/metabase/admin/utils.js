@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useLayoutEffect } from "react";
 import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
@@ -36,6 +37,11 @@ const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
   }, [adminItems, replace]);
 
   return null;
+};
+
+_RedirectToAllowedSettings.propTypes = {
+  adminItems: PropTypes.arrayOf(PropTypes.shape({ path: PropTypes.string })),
+  replace: PropTypes.func.isRequired,
 };
 
 export const RedirectToAllowedSettings = connect(

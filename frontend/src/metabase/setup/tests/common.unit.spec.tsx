@@ -236,7 +236,7 @@ describe("setup (OSS)", () => {
 
       await userEvent.click(screen.getByText("Finish"));
 
-      userEvent.click(screen.getByText("Take me to Metabase"));
+      await userEvent.click(screen.getByText("Take me to Metabase"));
 
       expect(window.navigator.sendBeacon).not.toHaveBeenCalled();
     });

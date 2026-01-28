@@ -1,8 +1,6 @@
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
+ 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
 // Enable SDK mode as we are in the SDK package

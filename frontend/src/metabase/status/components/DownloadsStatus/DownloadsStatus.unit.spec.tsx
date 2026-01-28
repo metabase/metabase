@@ -134,7 +134,7 @@ describe("DownloadsStatus", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     // Dismiss the error
-    userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 
     await waitFor(() =>
       expect(screen.queryByRole("status")).not.toBeInTheDocument(),
@@ -163,7 +163,7 @@ describe("DownloadsStatus", () => {
 
     expect(screen.getByText("Results for test card")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    await userEvent.click(screen.getByRole("button", { name: "Collapse" }));
 
     // Shows smaller status without text
     await waitFor(() => {
@@ -182,7 +182,7 @@ describe("DownloadsStatus", () => {
     expect(screen.queryByText("test.csv")).not.toBeInTheDocument();
 
     // Expand by clicking on the smaller status
-    userEvent.click(screen.getByRole("status"));
+    await userEvent.click(screen.getByRole("status"));
 
     // Now status shows file names
     expect(await screen.findByText("test.csv")).toBeInTheDocument();

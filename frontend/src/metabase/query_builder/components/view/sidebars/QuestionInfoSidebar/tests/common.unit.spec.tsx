@@ -87,7 +87,7 @@ describe("QuestionInfoSidebar", () => {
         const insightsTab = await screen.findByRole("tab", {
           name: "Insights",
         });
-        userEvent.click(insightsTab);
+        await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),
         ).toBeInTheDocument();
