@@ -29,8 +29,7 @@
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}
        :notification_card payload
-       :subscriptions     subscriptions
-       :disable_links     (:disable_links payload)})))
+       :subscriptions     subscriptions})))
 
 (defn- goal-met? [{:keys [send_condition], :as notification_card} card_part]
   (let [goal-comparison      (if (= :goal_above (keyword send_condition)) >= <)
