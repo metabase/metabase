@@ -2,7 +2,7 @@ import { useWindowSize } from "react-use";
 
 const INITIAL_WINDOW_WIDTH = Infinity;
 
-const BREAKPOINT = 1280;
+const BREAKPOINT = 640;
 
 const NOT_MOUNTED_YET = undefined;
 

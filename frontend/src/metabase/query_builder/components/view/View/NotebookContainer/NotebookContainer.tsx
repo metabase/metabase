@@ -58,7 +58,14 @@ export const NotebookContainer = ({
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
-  const maxSidebarWidth = windowWidth - minNotebookWidth;
+  const fullWidthBreakpoint = 640;
+
+  // Below 640px viewport, sidebar should be 100% width (handled by screenSize === "small")
+  // Above 640px viewport, sidebar should be resizable with appropriate constraints
+  const shouldBeFullWidth = windowWidth < fullWidthBreakpoint;
+  const maxSidebarWidth = shouldBeFullWidth
+    ? windowWidth
+    : Math.max(windowWidth - minNotebookWidth, minSidebarWidth);
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
