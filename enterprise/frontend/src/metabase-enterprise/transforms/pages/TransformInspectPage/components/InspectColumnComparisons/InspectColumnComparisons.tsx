@@ -15,6 +15,7 @@ import type {
   TransformInspectColumnComparison,
   TransformInspectSource,
   TransformInspectTarget,
+  TransformInspectVisitedFields,
 } from "metabase-types/api";
 
 import { ComparisonCard } from "./ComparisonCard";
@@ -24,12 +25,14 @@ type InspectColumnComparisonsProps = {
   comparisons: TransformInspectColumnComparison[];
   sources: TransformInspectSource[];
   target?: TransformInspectTarget;
+  visitedFields?: TransformInspectVisitedFields;
 };
 
 export const InspectColumnComparisons = ({
   comparisons,
   sources,
   target,
+  visitedFields,
 }: InspectColumnComparisonsProps) => {
   const sourcesFields = useMemo(
     () => sources.flatMap((s) => s.fields),
@@ -60,6 +63,42 @@ export const InspectColumnComparisons = ({
     if (fieldsOptions.length === 1) {
       return [fieldsOptions[0].value];
     }
+
+    // Preselect columns that map to visited fields
+    if (visitedFields?.all && visitedFields.all.length > 0) {
+      const visitedFieldIdSet = new Set(visitedFields.all);
+
+      // Build field ID -> field name lookup from sources
+      const fieldIdToName = new Map<number, string>();
+      for (const source of sources) {
+        for (const field of source.fields ?? []) {
+          if (field.id) {
+            fieldIdToName.set(field.id, field.name);
+          }
+        }
+      }
+
+      // Find comparisons where input cards reference visited fields
+      const preselected = comparisons
+        .filter((c) =>
+          c.cards.some((card) => {
+            if (card.source !== "input") {
+              return false;
+            }
+            // Match by field name from the card
+            for (const [id, name] of fieldIdToName) {
+              if (visitedFieldIdSet.has(id) && card.field_name === name) {
+                return true;
+              }
+            }
+            return false;
+          }),
+        )
+        .map((c) => c.output_column);
+
+      return preselected.length > 0 ? preselected : [];
+    }
+
     return [];
   });
 

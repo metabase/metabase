@@ -93,6 +93,7 @@ export const TransformInspectPage = ({ params }: TransformInspectPageProps) => {
               comparisons={inspectData.column_comparisons}
               sources={inspectData.sources}
               target={inspectData.target}
+              visitedFields={inspectData.visited_fields}
             />
           )}
       </Stack>
