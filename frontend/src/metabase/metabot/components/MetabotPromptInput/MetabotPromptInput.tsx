@@ -91,6 +91,7 @@ export const MetabotPromptInput = forwardRef<
       extensions,
       content: parseMetabotMessageToTiptapDoc(value),
       autofocus: autoFocus,
+      injectNonce: window.MetabaseNonce,
       onUpdate: ({ editor }) => {
         const jsonContent = editor.getJSON();
         serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);

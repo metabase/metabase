@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
+import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { useRouter } from "metabase/router";
 import {
   Box,
@@ -22,7 +23,6 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { Urls } from "metabase-enterprise/urls";
 
 import { useMetabotAgent } from "../../hooks";
-import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotQueryBuilder.module.css";
 

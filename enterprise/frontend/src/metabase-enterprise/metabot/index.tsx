@@ -15,13 +15,12 @@ import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
-import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
+import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
-
 /**
  * This is for Metabot in embedding
  *
@@ -43,6 +42,8 @@ export function initializePlugin() {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
+
+    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionEE;
 
     PLUGIN_METABOT.getAdminPaths = () => [
       {
@@ -109,5 +110,4 @@ export function initializePlugin() {
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
-  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 }

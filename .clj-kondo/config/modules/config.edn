@@ -776,6 +776,22 @@
            settings
            util}}
 
+  llm
+  {:team "Metabot"
+   :api  #{metabase.llm.api
+           metabase.llm.init}
+   :uses #{api
+           lib
+           lib-be
+           models
+           premium-features
+           request
+           server
+           settings
+           sync
+           util
+           warehouse-schema}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api

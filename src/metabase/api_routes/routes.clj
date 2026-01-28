@@ -26,6 +26,7 @@
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.indexed-entities.api]
+   [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.measures.api]
@@ -162,6 +163,7 @@
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
+   "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/measure"              (+auth 'metabase.measures.api)
