@@ -69,7 +69,7 @@ describe("scenarios > question > native subquery", () => {
         H.openQuestionActions();
         cy.findByTestId("move-button").click();
         H.entityPickerModal().within(() => {
-          cy.findByText("Bobby Tables's Personal Collection").click();
+          cy.findByText(/Our analytics/).click();
           cy.button("Move").click();
         });
 
@@ -89,7 +89,7 @@ describe("scenarios > question > native subquery", () => {
         H.NativeEditor.completions().within(() => {
           H.NativeEditor.completion(`${questionId2}-a-`)
             .should("be.visible")
-            .should("contain", "Model in Bobby Tables's Personal Collection");
+            .should("contain", "Model in Our analytics");
           H.NativeEditor.completion(`${questionId1}-a-`)
             .should("be.visible")
             .should("contain", "Question in Our analytics");
