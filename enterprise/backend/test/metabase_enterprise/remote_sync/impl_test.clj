@@ -145,7 +145,6 @@
   (testing "export! errors when there are no remote-synced collections"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        ;; Create a regular collection (not remote-synced) to verify it's not included
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-transforms false]
             (let [mock-source (test-helpers/create-mock-source)
@@ -195,27 +194,22 @@
           (remote-sync.task/complete-sync-task! (:id export-task))
           (is (= :success (:status export-result)))
 
-          ;; Verify files were written to the mock source atom
           (let [files-after-export (get @(:files-atom mock-main) "test-branch")]
             (is (map? files-after-export))
             (is (not-empty files-after-export))
-            ;; Should have at least collection and card files
             (is (some #(str/includes? % "collection") (keys files-after-export)))
             (is (some #(str/includes? % "card") (keys files-after-export))))
 
           (t2/delete! :model/RemoteSyncTask :id (:id export-task))
-          ;; Then import - verify it succeeds and processes the exported files
           (let [import-task (t2/with-connection [_conn (app-db/app-db) (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})])
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
             (is (= "Successfully reloaded from git repository" (:message import-result)))
 
-            ;; Verify the entities still exist after import
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
 
-            ;; Verify the collection and card still have the correct attributes
             (let [collection (t2/select-one :model/Collection :id coll-id)
                   card (t2/select-one :model/Card :id card-id)]
               (is (= "Test Collection" (:name collection)))
@@ -240,7 +234,6 @@
               result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
           (is (= :success (:status result)))
 
-          ;; Verify the entities still exist (real cleanup would require more complex setup)
           (is (t2/exists? :model/Card :id card1-id))
           (is (not (t2/exists? :model/Collection :id coll2-id)))
           (is (not (t2/exists? :model/Card :id card2-id))))))))
@@ -264,12 +257,10 @@
                           (swap! progress-calls conj {:task-id task-id :progress progress}))]
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              ;; Verify progress was called with expected values
               (is (= 5 (count @progress-calls)))
               (is (= task-id (:task-id (first @progress-calls))))
               (is (= task-id (:task-id (second @progress-calls))))
               (is (= task-id (:task-id (nth @progress-calls 2))))
-              ;; Check progress values are in expected sequence
               (is (= 0.7 (:progress (nth @progress-calls 2))))
               (is (= 0.8 (:progress (nth @progress-calls 3))))
               (is (= 0.95 (:progress (nth @progress-calls 4)))))))))))
@@ -289,11 +280,8 @@
                               (swap! progress-calls conj {:task-id task-id :progress progress}))]
                 (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
                   (is (= :success (:status result)))
-                  ;; Verify progress was called with expected values
-                  ;; 1 initial call at 0.3, then N calls during store! for each entity
                   (is (pos? (count @progress-calls)))
                   (is (= task-id (:task-id (first @progress-calls))))
-                  ;; Check first progress value is expected (before store!)
                   (is (= 0.3 (:progress (first @progress-calls)))))))))))))
 
 (deftest import!-resets-remote-sync-object-table-test
@@ -453,10 +441,8 @@
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")]
-                ;; Active collection should be written by export
                 (is (some #(str/includes? % "active-coll-xxxxxxxxx") (keys files-after-export))
                     "Active collection files should exist after export")
-                ;; Both removed collections should be deleted
                 (is (not (some #(str/includes? % "removed-coll-1xxxxxxx") (keys files-after-export)))
                     "First removed collection files should be deleted")
                 (is (not (some #(str/includes? % "removed-coll-2xxxxxxx") (keys files-after-export)))
@@ -583,7 +569,6 @@
                           :is_remote_synced true
                           :entity_id "active-coll-xxxxxxxxx"
                           :location "/"}]
-            ;; Mark the table as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
@@ -614,7 +599,6 @@
                           :definition {:source-table table-id
                                        :filter [:> [:field 1 nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
-            ;; Mark the segment as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Segment" :model_id segment-id :model_name "Test Segment" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
@@ -647,18 +631,15 @@
                           :definition {:source-table table-id
                                        :filter [:> [:field 1 nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
-            ;; Create RemoteSyncObject entries with 'removed' status
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}
                          {:model_type "Field" :model_id field-id :model_name "test-field" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}
                          {:model_type "Segment" :model_id segment-id :model_name "Test Segment" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
-            ;; Verify entries exist before export
             (is (= 4 (t2/count :model/RemoteSyncObject)))
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
               (is (= :success (:status result)))
-              ;; After export, all entries should have status 'synced'
               (is (= 4 (t2/count :model/RemoteSyncObject))
                   "All RemoteSyncObject entries should remain after export")
               (let [table-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id table-id)
@@ -686,12 +667,10 @@
                           :is_remote_synced true
                           :entity_id "active-coll-xxxxxxxxx"
                           :location "/"}]
-            ;; Mark the table as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
-            (let [;; Path should include schema: databases/{db}/schemas/{schema}/tables/{table}
-                  initial-files {"main" {"databases/test-db/schemas/PUBLIC/tables/test-table/test-table.yaml"
+            (let [initial-files {"main" {"databases/test-db/schemas/PUBLIC/tables/test-table/test-table.yaml"
                                          (test-helpers/generate-table-yaml "test-table" "test-db" :schema "PUBLIC")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
@@ -730,7 +709,6 @@
                                        :filter [:> [:field 2 nil] 0]}
                           :entity_id "archived-segment-xxxx"
                           :archived true}]
-            ;; Track the collection so export runs
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
@@ -738,7 +716,6 @@
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
-                ;; File paths use entity_id, e.g. "active-segment-xxxxxx_active_segment.yaml"
                 (is (some #(str/includes? % "active-segment-xxxxxx") file-keys)
                     "Active segment should be exported")
                 (is (not (some #(str/includes? % "archived-segment-xxxx") file-keys))
@@ -763,11 +740,9 @@
                                        :filter [:> [:field 1 nil] 0]}
                           :entity_id "archived-seg-xxxxxxxx"
                           :archived true}]
-            ;; Mark the segment as 'delete' in RemoteSyncObject (simulating archival event)
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Segment" :model_id segment-id :model_name "Archived Segment" :model_table_id table-id :model_table_name "test-table" :status "delete" :status_changed_at (t/offset-date-time)}])
-            ;; File path uses slugified name to match what serdes/storage-path generates
             (let [initial-files {"main" {"databases/test-db/tables/test-table/segments/archived-seg-xxxxxxxx_archived_segment.yaml"
                                          (test-helpers/generate-segment-yaml "Archived Segment" "test-table" "test-db")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
@@ -800,7 +775,6 @@
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
-            ;; Verify RemoteSyncObject entries exist
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Collection"
                             :model_id coll-id
@@ -830,7 +804,6 @@
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
-            ;; Verify RemoteSyncObject entry exists for the field
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Field"
                             :model_id field-id
@@ -867,7 +840,6 @@
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
-            ;; Verify RemoteSyncObject entry exists for the segment
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Segment"
                             :model_id segment-id
@@ -891,7 +863,6 @@
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
-            ;; Verify RemoteSyncObject entry exists for the table
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Table"
                             :model_id table-id
@@ -955,7 +926,6 @@
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
-            ;; Verify RemoteSyncObject entry exists for the measure
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Measure"
                             :model_id measure-id
@@ -978,7 +948,6 @@
                          {:name "Test Measure"
                           :table_id table-id
                           :entity_id "test-measure-xxxxxxxx"}]
-            ;; Mark the measure as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Measure" :model_id measure-id :model_name "Test Measure" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
@@ -1018,7 +987,6 @@
                           :table_id table-id
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
-            ;; Track the collection so export runs
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
@@ -1026,7 +994,6 @@
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
-                ;; File paths use entity_id, e.g. "active-measure-xxxxxx_active_measure.yaml"
                 (is (some #(str/includes? % "active-measure-xxxxxx") file-keys)
                     (str "Active measure should be exported. Keys: " (pr-str file-keys)))
                 (is (not (some #(str/includes? % "archived-measure-xxxx") file-keys))
@@ -1049,11 +1016,9 @@
                           :table_id table-id
                           :entity_id "archived-meas-xxxxxxx"
                           :archived true}]
-            ;; Mark the measure as 'delete' in RemoteSyncObject (simulating archival event)
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Measure" :model_id measure-id :model_name "Archived Measure" :model_table_id table-id :model_table_name "test-table" :status "delete" :status_changed_at (t/offset-date-time)}])
-            ;; File path uses slugified name to match what serdes/storage-path generates
             (let [initial-files {"main" {"databases/test-db/tables/test-table/measures/archived-meas-xxxxxxx_archived_measure.yaml"
                                          (test-helpers/generate-measure-yaml "Archived Measure" "test-table" "test-db")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
@@ -1076,18 +1041,14 @@
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 transform-entity-id "auto-enable-trans-xxx"
-                ;; Include top-level transforms path (detected by snapshot-has-transforms?)
                 test-files {"main" {(str "transforms/" transform-entity-id "_test_transform.yaml")
                                     (test-helpers/generate-transform-yaml transform-entity-id "Test Transform")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            ;; Verify setting is initially false
             (is (false? (remote-sync.settings/remote-sync-transforms))
                 "remote-sync-transforms should be initially disabled")
-            ;; Run import
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result))
                   "Import should succeed")
-              ;; Verify setting was auto-enabled after successful import
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should be auto-enabled after successful import with transforms"))))))))
 
@@ -1099,7 +1060,6 @@
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id "auto-enable-lib-xxxxx"
-                ;; Include python-libraries path in the file list with valid YAML
                 test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
                                     (format "path: common.py
 source: |
@@ -1113,14 +1073,11 @@ serdes/meta:
   model: PythonLibrary
 " lib-entity-id lib-entity-id)}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            ;; Verify setting is initially false
             (is (false? (remote-sync.settings/remote-sync-transforms))
                 "remote-sync-transforms should be initially disabled")
-            ;; Run import
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status result))
+              (is (= :success (:status #p result))
                   "Import should succeed")
-              ;; Verify setting was auto-enabled after successful import
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should be auto-enabled after successful import with python-libraries"))))))))
 
@@ -1130,17 +1087,13 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms false]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "No Transforms Coll" :is_remote_synced true :entity_id "no-transforms-coll-xx" :location "/"}]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                ;; Only collection files, no transforms
                 test-files {"main" {"collections/no-transforms-coll-xx-_/no-transforms-coll-xx.yaml"
                                     (test-helpers/generate-collection-yaml "no-transforms-coll-xx" "No Transforms Coll")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            ;; Verify setting is initially false
             (is (false? (remote-sync.settings/remote-sync-transforms))
                 "remote-sync-transforms should be initially disabled")
-            ;; Run import
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              ;; Verify setting was NOT auto-enabled
               (is (false? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should remain disabled when no transforms in remote"))))))))
 
@@ -1150,17 +1103,13 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Already Enabled Coll" :is_remote_synced true :entity_id "already-enabled-collx" :location "/"}]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                ;; No transforms in remote
                 test-files {"main" {"collections/already-enabled-collx-_/already-enabled-collx.yaml"
                                     (test-helpers/generate-collection-yaml "already-enabled-collx" "Already Enabled Coll")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
-            ;; Verify setting is initially true
             (is (true? (remote-sync.settings/remote-sync-transforms))
                 "remote-sync-transforms should be initially enabled")
-            ;; Run import
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              ;; Verify setting was NOT disabled (should still be true)
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should remain enabled even when no transforms in remote"))))))))
 
@@ -1170,21 +1119,16 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms false]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "All Paths Coll" :is_remote_synced true :entity_id "all-paths-coll-xxxxxx" :location "/"}]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                ;; Regular collection files
                 test-files {"main" {"collections/all-paths-coll-xxxxxx-_/all-paths-coll-xxxxxx.yaml"
                                     (test-helpers/generate-collection-yaml "all-paths-coll-xxxxxx" "All Paths Coll")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
-                ;; Track what paths were filtered
                 paths-passed (atom nil)
-                ;; Capture original function to avoid infinite recursion
                 original-fn source.p/->ingestable]
-            ;; Run import and capture the path filters used
             (with-redefs [source.p/->ingestable (fn [snapshot opts]
                                                   (reset! paths-passed (:path-filters opts))
                                                   (original-fn snapshot opts))]
               (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result)))
-                ;; Verify all optional paths are included in filters
                 (when @paths-passed
                   (let [filter-strs (map str @paths-passed)]
                     (is (some #(str/includes? % "transforms") filter-strs)

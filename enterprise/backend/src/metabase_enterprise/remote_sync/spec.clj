@@ -601,9 +601,8 @@
   [seen-paths]
   (reduce
    (fn [acc path]
-     (let [model-type (-> path last :model)
-           spec (spec-for-model-type model-type)]
-       (if (and spec (spec-enabled? spec))
+     (let [model-type (-> path last :model)]
+       (if-let [spec (spec-for-model-type model-type)]
          (let [identity-type (:identity spec)
                identity-data (extract-identity-from-serdes-path spec path)]
            (if identity-data

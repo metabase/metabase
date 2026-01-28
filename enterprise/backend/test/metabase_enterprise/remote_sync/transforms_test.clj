@@ -230,7 +230,7 @@
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxx" :location "/"}
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxxxx" :location "/"}
                            :model/Transform transform {:name "Export Transform" :collection_id coll-id}
                            :model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
                            :model/RemoteSyncObject _rso2 {:model_type "Transform" :model_id (:id transform) :model_name "Export Transform" :model_collection_id coll-id :status "create" :status_changed_at (t/offset-date-time)}]
@@ -259,7 +259,7 @@
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-            (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxx" :location "/"}
+            (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxxxxx" :location "/"}
                            :model/RemoteSyncObject _rso {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)}]
               (let [saved-coll (t2/select-one :model/Collection :id rs-coll-id)]
                 (is (true? (:is_remote_synced saved-coll))
@@ -308,12 +308,12 @@ is_sample: false
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
           (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                coll-entity-id      "transforms-coll-xxx"
-                transform-entity-id "test-transform-xxxxx"
+                coll-entity-id      "transforms-coll-xxxxx"
+                transform-entity-id "test-transform-xxxxxx"
                 test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
                                     (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
                                     (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_test_transform.yaml")
-                                    (test-helpers/generate-transform-yaml transform-entity-id "Test Transform")}}
+                                    (test-helpers/generate-transform-yaml transform-entity-id "Test Transform" :collection-id coll-entity-id)}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
@@ -363,7 +363,7 @@ is_sample: false
               (let [initial-files {"main" {(str "collections/" coll-eid "_transforms_collection/" coll-eid "_transforms_collection.yaml")
                                            (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
                                            (str "collections/" coll-eid "_transforms_collection/transforms/" transform-eid "_child_transform.yaml")
-                                           (test-helpers/generate-transform-yaml transform-eid "Child Transform")}}
+                                           (test-helpers/generate-transform-yaml transform-eid "Child Transform" :collection-id coll-eid)}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % coll-eid) (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % transform-eid) (keys (get @(:files-atom mock-source) "main"))))
@@ -433,24 +433,24 @@ is_sample: false
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                coll-entity-id (u/generate-nano-id)
-                local-transform-entity-id (u/generate-nano-id)
-                remote-transform-entity-id (u/generate-nano-id)]
-            (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
-                                                            :namespace collection/transforms-ns
-                                                            :entity_id coll-entity-id
-                                                            :location "/"}
-                           :model/Transform {local-transform-id :id} {:name "Local Transform"
-                                                                      :entity_id local-transform-entity-id
-                                                                      :collection_id coll-id}]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              coll-entity-id (u/generate-nano-id)
+              local-transform-entity-id (u/generate-nano-id)
+              remote-transform-entity-id (u/generate-nano-id)]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                          :namespace collection/transforms-ns
+                                                          :entity_id coll-entity-id
+                                                          :location "/"}
+                         :model/Transform {local-transform-id :id} {:name "Local Transform"
+                                                                    :entity_id local-transform-entity-id
+                                                                    :collection_id coll-id}]
+            (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
               (is (t2/exists? :model/Collection :id coll-id))
               (is (t2/exists? :model/Transform :id local-transform-id))
               (let [test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
-                                        (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")}}
-                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform")}}
+                                        (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
+                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result))
@@ -721,7 +721,7 @@ serdes/meta:
               (let [test-files {"main" {(str "collections/" remote-coll-entity-id "_transforms/" remote-coll-entity-id "_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
-                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform")}}
+                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result))
@@ -800,7 +800,7 @@ serdes/meta:
               (let [test-files {"main" {(str "collections/" remote-coll-entity-id "_transforms/" remote-coll-entity-id "_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
-                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform")}}
+                                        (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
                 (is (= :success (:status result))

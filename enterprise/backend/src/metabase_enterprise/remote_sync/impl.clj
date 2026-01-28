@@ -71,9 +71,7 @@
                 entity-id-clause (if (seq entity-ids)
                                    [:not-in entity-ids]
                                    :entity_id)
-                ;; :scope-key determines collection scoping - nil means global
                 scope-key (get-in model-spec [:removal :scope-key])
-                ;; Extra conditions to protect certain rows from removal (e.g. built-in TransformTags)
                 extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
@@ -162,27 +160,27 @@
                                 #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
                   base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
                   has-transforms? (snapshot-has-transforms? base-ingestable)
-                  ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
+                  ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
+                  load-result (serdes/with-cache
+                                (serialization/load-metabase! ingestable-snapshot))
+                  seen-paths (:seen load-result)
+                  imported-data (spec/extract-imported-entities seen-paths)]
+              (remote-sync.task/update-progress! task-id 0.8)
               (when (and has-transforms?
                          (not (settings/remote-sync-transforms)))
                 (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
                 (settings/remote-sync-transforms! true))
-              (let [load-result (serdes/with-cache
-                                  (serialization/load-metabase! ingestable-snapshot))
-                    seen-paths (:seen load-result)
-                    imported-data (spec/extract-imported-entities seen-paths)]
-                (remote-sync.task/update-progress! task-id 0.8)
-                (t2/with-transaction [_conn]
-                  (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
-                  (sync-objects! sync-timestamp imported-data))
-                (remote-sync.task/update-progress! task-id 0.95)
-                (remote-sync.task/set-version!
-                 task-id
-                 (source.p/version snapshot))
-                (log/info "Successfully reloaded entities from git repository")
-                {:status :success
-                 :version (source.p/version snapshot)
-                 :message "Successfully reloaded from git repository"}))))
+              (t2/with-transaction [_conn]
+                (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
+                (sync-objects! sync-timestamp imported-data))
+              (remote-sync.task/update-progress! task-id 0.95)
+              (remote-sync.task/set-version!
+               task-id
+               (source.p/version snapshot))
+              (log/info "Successfully reloaded entities from git repository")
+              {:status :success
+               :version (source.p/version snapshot)
+               :message "Successfully reloaded from git repository"})))
         (catch Exception e
           (handle-import-exception e snapshot))
         (finally
