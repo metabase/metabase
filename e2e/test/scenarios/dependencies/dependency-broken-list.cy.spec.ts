@@ -285,6 +285,7 @@ function createContent() {
   createQuestionContent();
   createModelContent();
   breakTransform();
+  waitForBrokenDependencies();
 }
 
 function dropTransformTable() {
@@ -350,6 +351,8 @@ function breakTransform() {
 
 function createTableContent() {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    cy.wrap(tableId).as("tableId");
+
     H.getFieldId({ tableId, name: "score" }).then((scoreFieldId) => {
       H.getFieldId({ tableId, name: "status" }).then((statusFieldId) => {
         H.createQuestion({
@@ -442,6 +445,7 @@ function createQuestionContent() {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: card }) => {
+      cy.wrap(card.id).as("questionId");
       H.createQuestion({
         name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
         query: {
@@ -463,6 +467,7 @@ function createModelContent() {
         "source-table": tableId,
       },
     }).then(({ body: card }) => {
+      cy.wrap(card.id).as("modelId");
       H.createQuestion({
         name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
         type: "model",
@@ -475,6 +480,12 @@ function createModelContent() {
       });
     });
   });
+}
+
+function waitForBrokenDependencies() {
+  H.waitForBrokenDependencies(
+    (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
+  );
 }
 
 function checkList({
