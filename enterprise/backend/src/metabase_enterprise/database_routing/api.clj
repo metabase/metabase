@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-routing.api
   (:require
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -92,6 +93,15 @@
       (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
       (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute}))))
 
+(defn- database-has-transforms?
+  "Returns whether any transforms use the given database as source or target."
+  [db-id]
+  (let [all-db-ids (into #{}
+                         (t2/select-fn-reducible
+                          transforms/transform->db-id
+                          :model/Transform))]
+    (contains? all-db-ids db-id)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -109,6 +119,9 @@
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
+    (when user_attribute
+      (api/check-400 (not (transforms.util/database-has-transforms? id))
+                     "Cannot enable database routing for a database that has transforms"))
     (setting/with-database db
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
