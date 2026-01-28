@@ -266,7 +266,7 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.type(termInput, "Alpha");
 
     // Should show duplicate warning message
@@ -299,7 +299,7 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.type(termInput, "ALPHA");
 
     // Should show duplicate warning (case insensitive)
@@ -325,7 +325,7 @@ describe("GlossaryTable", () => {
     await user.click(screen.getByText("Alpha"));
 
     // The term input should have "Alpha" and no duplicate warning
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     expect(termInput).toHaveValue("Alpha");
 
     // Should NOT show duplicate warning when editing the same term
@@ -356,7 +356,7 @@ describe("GlossaryTable", () => {
     // Click on "Alpha" to edit it
     await user.click(screen.getByText("Alpha"));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.clear(termInput);
     await user.type(termInput, "Beta");
 
