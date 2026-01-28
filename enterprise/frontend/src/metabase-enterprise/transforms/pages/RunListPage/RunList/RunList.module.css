@@ -2,6 +2,14 @@
   cursor: pointer;
 }
 
+.deletedRow {
+  cursor: default;
+}
+
+.deletedRow:hover {
+  background-color: inherit;
+}
+
 .wrap {
   overflow-wrap: anywhere;
 }
