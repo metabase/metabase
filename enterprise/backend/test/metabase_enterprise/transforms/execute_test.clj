@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
@@ -271,19 +270,6 @@
                  (mt/with-current-user (mt/user->id :crowberto)
                    (transforms.execute/execute! transform {:run-method :manual}))))))))))
 
-(defn- wait-for-table
-  "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
-  [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
-
 (doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::sleep-query]
     [_driver _feature _database]
@@ -350,7 +336,8 @@
                                                             :query query}
                                                    :target target-table}]
           (transforms.execute/execute! transform {:run-method :manual})
-          (let [table-result (wait-for-table (:name target-table) 10000)
+          (let [_ (transforms.tu/wait-for-table (:name target-table) 10000)
+                table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                 transform-id (:id transform)
                 original-result [[1] [2] [3] [4] [5]]
                 query-fn (fn []
