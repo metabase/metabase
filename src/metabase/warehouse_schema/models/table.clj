@@ -33,10 +33,10 @@
 
 (def data-layers
   "Valid values for `Table.data_layer`.
-  :published - tables published for downstream consumption
+  :final     - tables published for downstream consumption
   :internal  - acceptable quality, visible, synced
   :hidden    - low quality, hidden, not synced"
-  #{:published :internal :hidden})
+  #{:final :internal :hidden})
 
 (defn- visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
@@ -52,7 +52,7 @@
   [data-layer]
   (case data-layer
     :hidden :hidden
-    ;; internal,published all map to visible (nil)
+    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings

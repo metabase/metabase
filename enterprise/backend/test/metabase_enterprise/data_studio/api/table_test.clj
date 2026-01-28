@@ -106,7 +106,7 @@
     (is (= "Data Studio is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/edit"
                                            {:table_ids  [(mt/id :users)]
-                                            :data_layer "published"}))))))
+                                            :data_layer "final"}))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (mt/with-premium-features #{:data-studio}
@@ -123,7 +123,7 @@
           (testing "data analyst can edit tables"
             (is (= {} (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/edit"
                                             {:table_ids [table-id]
-                                             :data_layer "published"}))))
+                                             :data_layer "final"}))))
           (testing "data analyst can get selection info"
             (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/selection"
                                             {:table_ids [table-id]}))))
@@ -147,7 +147,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/edit"
                                        {:table_ids [table-id]
-                                        :data_layer "published"}))))
+                                        :data_layer "final"}))))
         (testing "regular user cannot get selection info"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/selection"
@@ -318,19 +318,19 @@
 (deftest trigger-sync-on-data-layer-change-from-hidden-test
   (mt/with-premium-features #{:data-studio}
     (testing "Changing data_layer from hidden to another value triggers sync"
-      (mt/with-temp [:model/Database {db-id :id}       {}
-                     :model/Table    {hidden-1 :id}    {:db_id db-id, :data_layer :hidden}
-                     :model/Table    {hidden-2 :id}    {:db_id db-id, :data_layer :hidden}
-                     :model/Table    {hidden-3 :id}    {:db_id db-id, :data_layer :hidden}
-                     :model/Table    {internal-1 :id}  {:db_id db-id, :data_layer :internal}
-                     :model/Table    {published-1 :id} {:db_id db-id, :data_layer :published}]
+      (mt/with-temp [:model/Database {db-id :id}      {}
+                     :model/Table    {hidden-1 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-2 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-3 :id}   {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {internal-1 :id} {:db_id db-id, :data_layer :internal}
+                     :model/Table    {final-1 :id}    {:db_id db-id, :data_layer :final}]
         (let [synced-ids (atom #{})]
           (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
-            (testing "Changing from hidden to published triggers sync"
+            (testing "Changing from hidden to final triggers sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                     {:table_ids  [hidden-1 hidden-2]
-                                     :data_layer "published"})
+                                     :data_layer "final"})
               (is (= #{hidden-1 hidden-2} @synced-ids)))
 
             (testing "Changing from hidden to internal triggers sync"
@@ -344,13 +344,13 @@
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                     {:table_ids  [internal-1]
-                                     :data_layer "published"})
+                                     :data_layer "final"})
               (is (= #{} @synced-ids)))
 
             (testing "Changing to hidden does not trigger sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [published-1]
+                                    {:table_ids  [final-1]
                                      :data_layer "hidden"})
               (is (= #{} @synced-ids)))))))))
 

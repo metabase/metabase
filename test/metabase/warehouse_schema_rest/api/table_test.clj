@@ -1286,10 +1286,10 @@
                  {:display_name "Products2"}]
                 (list-tables :term "P")))
 
-        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "published"})
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "final"})
 
         (is (=? [{:display_name "Products2"}]
-                (list-tables :term "P" :data-layer "published")))
+                (list-tables :term "P" :data-layer "final")))
 
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
