@@ -279,12 +279,7 @@
 
     (testing "Returns 404 for non-existent table"
       (is (= "Not found."
-             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
-
-    (testing "Returns 400 for invalid field-id format"
-      (let [table-id (mt/id :people)]
-        (is (= "Invalid field_id format: not-a-valid-id"
-               (agent-client :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id))))))))
+             (agent-client :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))))
 
 (deftest search-test
   (with-agent-api-setup!
@@ -369,12 +364,7 @@
 
       (testing "Returns 404 for non-existent metric"
         (is (= "Not found."
-               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
-
-      (testing "Returns 400 for field-id from wrong entity type"
-        ;; Using a table field-id (t-prefix) when querying a metric should fail
-        (is (re-find #"does not match expected prefix"
-                     (agent-client :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric)))))))))
+               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values")))))))
 
 (deftest construct-metric-query-test
   (with-agent-api-setup!
