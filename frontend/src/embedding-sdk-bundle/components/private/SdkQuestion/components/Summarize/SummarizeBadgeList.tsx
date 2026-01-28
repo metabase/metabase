@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import { BadgeList, type BadgeListProps } from "../util/BadgeList";
 
@@ -24,7 +25,10 @@ export const SummarizeBadgeList = ({
     <BadgeList
       items={aggregationItems.map((item) => ({
         item,
-        name: tc(item.displayName),
+        name: PLUGIN_CONTENT_TRANSLATION.translateAggregationDisplayName(
+          item.displayName,
+          tc,
+        ),
       }))}
       addButtonLabel={t`Add another summary`}
       onSelectItem={onSelectItem}
