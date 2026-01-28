@@ -182,9 +182,7 @@
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
                 (remove-unsynced! (spec/all-syncable-collection-ids) imported-entities-by-model)
-                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
-                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
-                  (collection/create-remote-synced-collection!)))
+                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id
