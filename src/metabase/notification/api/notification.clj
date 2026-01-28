@@ -252,8 +252,7 @@
   (let [notification (-> body
                          (assoc :creator_id api/*current-user-id*)
                          (assoc-in [:payload :disable_links]
-                                   (embed.util/modular-embedding-or-modular-embedding-sdk-context?
-                                    (get-in request [:headers "x-metabase-client"])))
+                                   (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
                          promote-to-t2-instance)]
     (notification/send-notification! notification :notification/sync? true)))
 

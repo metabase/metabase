@@ -20,8 +20,8 @@
   (or (has-react-sdk-header? request)
       (has-embedded-analytics-js-header? request)))
 
-(defn modular-embedding-or-modular-embedding-sdk-context?
+(defn is-modular-embedding-or-modular-embedding-sdk-request?
   "Check if the client is in modular embedding context."
-  [client]
-  (or (= client embedding-sdk-client)
-      (= client embedded-analytics-js-client)))
+  [request]
+  (contains? #{embedding-sdk-client embedded-analytics-js-client}
+             (get-in request [:headers "x-metabase-client"])))
