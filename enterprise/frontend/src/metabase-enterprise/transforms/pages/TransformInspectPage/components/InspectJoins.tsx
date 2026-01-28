@@ -90,14 +90,10 @@ export function InspectJoins({ joins, sources }: InspectJoinsProps) {
         ),
       },
       {
-        id: "outer_join_crosses",
-        header: t`Outer join crosses`,
+        id: "warnings",
+        header: t`Warnings`,
         width: 150,
-        cell: ({ row }) => (
-          <Text size="sm" ta="right">
-            {row.original.outer_join_crosses?.toLocaleString() ?? "-"}
-          </Text>
-        ),
+        cell: ({ row }) => getCrossProductWarningCell(row.original),
       },
     ],
     [],
@@ -176,4 +172,111 @@ export function getJoinStrategyLabel(strategyInfo: string) {
   };
 
   return JOIN_LABELS[strategyInfo] || strategyInfo;
+}
+
+function getCrossProductWarningCell(
+  row: JoinRow,
+): React.ReactNode | string | null {
+  const { stats, strategy } = row;
+  const hasCrossProductWarning = getHasCrossProductWarning(row);
+
+  if (!hasCrossProductWarning) {
+    return null;
+  }
+
+  const expansionMessage = match(strategy)
+    .with("full-join", () => {
+      const factor = stats.expansion_factor
+        ? `${stats.expansion_factor.toFixed(1)}×`
+        : "high";
+      return t`${factor} expansion - check for duplicate keys`;
+    })
+    .with("left-join", () => {
+      const leftCount = stats.left_row_count ?? 0;
+      const outputCount = stats.output_row_count ?? 0;
+      const factor =
+        leftCount > 0 ? (outputCount / leftCount).toFixed(1) : "high";
+      return t`${factor}× more rows than input - check for duplicate join keys`;
+    })
+    .with("right-join", () => {
+      const rightCount = stats.right_row_count ?? 0;
+      const outputCount = stats.output_row_count ?? 0;
+      const factor =
+        rightCount > 0 ? (outputCount / rightCount).toFixed(1) : "high";
+      return t`${factor}× more rows than input - check for duplicate join keys`;
+    })
+    .with("inner-join", () => {
+      const maxInput = Math.max(
+        stats.left_row_count ?? 0,
+        stats.right_row_count ?? 0,
+      );
+      const outputCount = stats.output_row_count ?? 0;
+      const factor =
+        maxInput > 0 ? (outputCount / maxInput).toFixed(1) : "high";
+      return t`${factor}× more rows than largest input - possible cartesian product`;
+    })
+    .otherwise(() => null);
+
+  if (!expansionMessage) {
+    return null;
+  }
+
+  return (
+    <Tooltip label={expansionMessage} multiline maw={300}>
+      <Flex gap="xs" align="center" justify="flex-end">
+        <Icon name="warning" c="warning" size={16} />
+        <Text size="sm" c="warning">
+          {t`Cross product`}
+        </Text>
+      </Flex>
+    </Tooltip>
+  );
+}
+
+const CROSS_PRODUCT_THRESHOLD = 2;
+
+function getHasCrossProductWarning(row: JoinRow) {
+  const { stats, strategy } = row;
+
+  if (!stats) {
+    return false;
+  }
+
+  const {
+    output_row_count,
+    left_row_count,
+    right_row_count,
+    expansion_factor,
+  } = stats;
+
+  return match(strategy)
+    .with("left-join", () => {
+      if (!output_row_count || !left_row_count) {
+        return false;
+      }
+      return (
+        output_row_count > left_row_count &&
+        output_row_count / left_row_count > CROSS_PRODUCT_THRESHOLD
+      );
+    })
+    .with("right-join", () => {
+      if (!output_row_count || !right_row_count) {
+        return false;
+      }
+      return output_row_count / right_row_count > CROSS_PRODUCT_THRESHOLD;
+    })
+    .with("inner-join", () => {
+      if (!output_row_count || !left_row_count || !right_row_count) {
+        return false;
+      }
+      const max = Math.max(left_row_count, right_row_count);
+      return output_row_count / max > CROSS_PRODUCT_THRESHOLD;
+    })
+    .with("full-join", () => {
+      if (!expansion_factor) {
+        return false;
+      }
+      return expansion_factor > CROSS_PRODUCT_THRESHOLD;
+    })
+    .otherwise(() => false);
 }
