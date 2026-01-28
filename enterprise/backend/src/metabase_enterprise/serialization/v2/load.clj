@@ -213,6 +213,11 @@
               ctx (new-context ingestion)]
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
+                    ;; Check for thread interruption (e.g., HTTP request cancelled).
+                    ;; Uses .isInterrupted to preserve the flag for downstream cleanup.
+                    (when (.isInterrupted (Thread/currentThread))
+                      (log/info "Serialization import cancelled by client")
+                      (throw (InterruptedException. "Serialization import cancelled")))
                     (try
                       (load-one! ctx item)
                       (catch Exception e
