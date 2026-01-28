@@ -18,9 +18,13 @@ import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import type { MetabaseAccentColorKey } from "metabase/lib/colors";
+import type {
+  MetabaseAccentColorKey,
+  MetabaseColorKey,
+} from "metabase/lib/colors";
 import { mapChartColorsToAccents } from "metabase/lib/colors/accents";
 import type { MantineThemeOverride } from "metabase/ui";
+import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
 
@@ -39,6 +43,7 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
   font: string | undefined,
+  whitelabeledColors?: ColorSettings | undefined,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -58,11 +63,17 @@ export function getEmbeddingThemeOverride(
     },
 
     components: getEmbeddingComponentOverrides(),
+    colors: {},
   };
 
-  if (theme.colors) {
-    override.colors = {};
+  // Apply whitelabeled colors from appearance settings
+  for (const key in whitelabeledColors) {
+    override.colors[key as MetabaseColorKey] = colorTuple(
+      whitelabeledColors[key],
+    );
+  }
 
+  if (theme.colors) {
     const userColors = { ...theme.colors };
 
     // Apply fallback colors for missing colors that the user forgot to define.
