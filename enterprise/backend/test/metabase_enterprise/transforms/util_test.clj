@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.util-test
   "Tests for transform utility functions."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
@@ -24,19 +23,12 @@
                 table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? table-name "mb_transform_temp_table_"))
             (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" table-name))))
-
-        (testing "Table name includes original table name"
-          (let [result (driver.u/temp-table-name driver :orders)
-                table-name (name result)]
-            (is (str/starts-with? table-name "mb_transform_temp_table_orders_"))
-            (is (re-matches #"mb_transform_temp_table_orders_[a-f0-9]{8}" table-name))))
 
         (testing "Table name preserves namespace when present"
           (let [result (driver.u/temp-table-name driver :schema/orders)]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "mb_transform_temp_table_orders_"))))))))
+            (is (re-matches #"mb_transform_temp_table_[a-f0-9]{8}" (name result)))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
