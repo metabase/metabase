@@ -32,7 +32,9 @@
    - :model-type     - String name for RemoteSyncObject model_type column
    - :model-key      - Toucan2 model keyword (e.g., :model/Card)
    - :identity       - Identity strategy: :entity-id, :path, or :hybrid
-   - :path-keys      - For path-based: vector of path components [:database :schema :table :field]
+   - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
+   - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
+                       (e.g., :model/Table for Field, Segment, Measure)
    - :delete-after   - Optional vector of model keys that must be deleted AFTER this model.
                        Used to handle FK constraints during import cleanup. For example, if Card
                        has :delete-after [:model/Collection], Card will be deleted before Collection.
@@ -50,14 +52,16 @@
                        :hydrate-query  - Optional custom query for joins (overrides select-fields)
                        :field-mappings - Map of RemoteSyncObject column -> source field or [field transform-fn]
    - :removal        - Removal/cleanup configuration:
-                       :statuses  - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
-                       :scope-key - Optional key for scoping deletions (e.g., :collection_id, :id).
-                                    If nil, deletions are global (by entity_id only).
-   - :export-path    - Export path construction:
-                       :type   - Path type: :collection-entity, :table-path, :field-path, :segment-path,
-                                 :transform-path, :transform-tag-path, :snippet-path, :measure-path
-   - :side-effects   - Optional side effects:
-                       :on-first-sync - Function to call when model first becomes synced
+                       :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
+                       :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
+                                     If nil, deletions are global (by entity_id only).
+                       :conditions - Optional map of extra conditions for filtering removals
+                                     (e.g., {:built_in_type nil} to protect built-in items)
+   - :export-scope   - Export scope for query-export-roots:
+                       :root-collections - Query root-level remote-synced + namespace collections (Collection)
+                       :root-only        - Query root instances with collection_id = nil (Transform)
+                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
   {:model/Card
@@ -76,7 +80,6 @@
                                       :model_display       [:display #(some-> % name)]}}
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
-    :export-path    {:type :collection-entity}
     :enabled?       true}
 
    :model/Dashboard
@@ -94,7 +97,6 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
-    :export-path    {:type :collection-entity}
     :enabled?       true}
 
    :model/Document
@@ -112,7 +114,6 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
-    :export-path    {:type :collection-entity}
     :enabled?       true}
 
    :model/NativeQuerySnippet
@@ -128,7 +129,6 @@
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
-    :export-path    {:type :snippet-path}
     :export-scope   :all  ; export all snippets
     :enabled?       :library-synced}
 
@@ -147,7 +147,6 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
-    :export-path    {:type :collection-entity}
     :enabled?       true}
 
    :model/Collection
@@ -164,9 +163,7 @@
                                       :model_collection_id :id}}  ; collection_id is self
     :removal        {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
                      :scope-key :id}  ; collections are scoped by their own id
-    :export-path    {:type :collection-entity}
     :export-scope   :root-collections  ; query for root-level remote-synced + transforms-namespace collections
-    :side-effects   {:on-first-sync :track-published-tables}
     :enabled?       true}
 
    :model/Table
@@ -184,7 +181,6 @@
                                       :model_table_id      :id
                                       :model_table_name    :name}}  ; self-reference
     :removal        {:statuses #{"removed"}}
-    :export-path    {:type :table-path}
     :enabled?       true}
 
    :model/Field
@@ -208,7 +204,6 @@
                                       :model_table_id      :table_id
                                       :model_table_name    :table_name}}
     :removal        {:statuses #{"removed"}}
-    :export-path    {:type :field-path}
     :enabled?       true}
 
    :model/Segment
@@ -232,7 +227,6 @@
                                       :model_table_id      :table_id
                                       :model_table_name    :table_name}}
     :removal        {:statuses #{"removed" "delete"}}  ; Segment has both
-    :export-path    {:type :segment-path}
     :enabled?       true}
 
    :model/Measure
@@ -258,7 +252,6 @@
                                       :model_table_id      :table_id
                                       :model_table_name    :table_name}}
     :removal        {:statuses #{"removed" "delete"}}
-    :export-path    {:type :measure-path}
     :enabled?       true}
 
    :model/Transform
@@ -275,7 +268,6 @@
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
-    :export-path    {:type :transform-path}
     :export-scope   :root-only  ; query for root transforms (collection_id = nil)
     :enabled?       :remote-sync-transforms}
 
@@ -292,7 +284,21 @@
                      :field-mappings {:model_name :name}}
     :removal        {:statuses   #{"removed" "delete"}  ; no scope-key = global deletion
                      :conditions {:built_in_type nil}}  ; protect built-in tags from removal
-    :export-path    {:type :transform-tag-path}
+    :export-scope   :all  ; query for all instances
+    :enabled?       :remote-sync-transforms}
+
+   :model/PythonLibrary
+   {:model-type     "PythonLibrary"
+    :model-key      :model/PythonLibrary
+    :identity       :entity-id
+    :events         {:prefix :event/python-library
+                     :types  [:create :update]}  ; no delete - upsert only
+    :eligibility    {:type    :setting
+                     :setting :remote-sync-transforms}
+    :archived-key   nil  ; no archived field
+    :tracking       {:select-fields  [:path]
+                     :field-mappings {:model_name :path}}
+    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}})
 
@@ -620,7 +626,7 @@
 
 ;;; ---------------------------------------------- Spec Field Accessors ------------------------------------------------
 
-(defn select-fields-for-sync
+(defn fields-for-sync
   "Returns the fields to select for a model during sync operations.
    Falls back to default if not specified in spec."
   [model-type-str]
@@ -716,14 +722,12 @@
   ;; Hybrid models like Segment need a join query for table info
   [{:keys [model-type tracking]} entity-ids timestamp]
   (when (seq entity-ids)
-    (if-let [query-template (:hydrate-query tracking)]
+    (when-let [query-template (:hydrate-query tracking)]
       ;; Use custom hydrate query adapted for batch lookup
       ;; Keep the existing from/join structure, just modify select and where
       ;; The query template uses alias :s for the main model (segment)
       (let [base-query (-> query-template
-                           ;; Add :id to select for model_id field
                            (update :select (fn [cols] (vec (concat [:s.id] cols))))
-                           ;; Replace where clause to use batch entity_id lookup
                            (assoc :where [:in :s.entity_id entity-ids]))]
         (->> (t2/query base-query)
              (map (fn [entity]
@@ -735,9 +739,7 @@
                               :model_id          (:id entity)
                               :status            "synced"
                               :status_changed_at timestamp}
-                             mapped-fields))))))
-      ;; Fallback - shouldn't happen for hybrid models with proper spec
-      nil)))
+                             mapped-fields)))))))))
 
 (defn- build-path-where-clause
   "Builds an :or where clause for path-based lookups."

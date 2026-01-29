@@ -45,13 +45,47 @@ export const commitToRepo = (
 export function configureGit(
   syncType: "read-write" | "read-only",
   syncUrl = LOCAL_GIT_PATH + "/.git",
+  collections?: Record<number, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
     "remote-sync-url": syncUrl,
     "remote-sync-enabled": true,
+    ...(collections && { collections }),
   });
+}
+
+// Setup remote sync via the API and wait for/trigger the initial import
+export function configureGitAndPullChanges(
+  syncType: "read-write" | "read-only",
+  syncUrl = LOCAL_GIT_PATH + "/.git",
+) {
+  configureGit(syncType, syncUrl);
+
+  if (syncType === "read-only") {
+    // Read-only mode automatically triggers an import, just wait for it
+    pollForTask({ taskName: "import" });
+  } else {
+    // Read-write mode needs manual import trigger
+    cy.request("POST", "/api/ee/remote-sync/import", {});
+    pollForTask({ taskName: "import" });
+  }
+}
+
+// Setup remote sync with a new synced collection in one step
+export function configureGitWithNewSyncedCollection(
+  syncType: "read-write" | "read-only",
+  collectionName = "Test Synced Collection",
+  syncUrl = LOCAL_GIT_PATH + "/.git",
+) {
+  return cy
+    .request("POST", "/api/collection", { name: collectionName })
+    .then((response) => {
+      const collection = response.body;
+      configureGit(syncType, syncUrl, { [collection.id]: true });
+      return cy.wrap(collection);
+    });
 }
 
 // Prepare the local git repo and initializing with an empty commit
@@ -136,7 +170,10 @@ export const updateRemoteQuestion = (
   });
 };
 
-export const moveCollectionItemToSyncedCollection = (name: string) => {
+export const moveCollectionItemToSyncedCollection = (
+  name: string,
+  targetCollection = "Synced Collection",
+) => {
   navigationSidebar()
     .findByRole("treeitem", { name: /Our analytics/ })
     .click();
@@ -146,21 +183,24 @@ export const moveCollectionItemToSyncedCollection = (name: string) => {
 
   entityPickerModal().within(() => {
     cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
-    entityPickerModalItem(1, "Synced Collection").click();
+    entityPickerModalItem(1, targetCollection).click();
     cy.button("Move").click();
   });
 
   getSyncStatusIndicators().should("have.length", 1);
 
   navigationSidebar()
-    .findByRole("treeitem", { name: /Synced Collection/ })
+    .findByRole("treeitem", { name: new RegExp(targetCollection) })
     .click();
   collectionTable().findByText(name).should("exist");
 };
 
-export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
+export const goToSyncedCollection = (
+  collectionName = "Synced Collection",
+  opts?: Partial<Cypress.ClickOptions>,
+) =>
   navigationSidebar()
-    .findByRole("treeitem", { name: /Synced Collection/ })
+    .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
 // Git sync controls are now in the app bar, not the sidebar
@@ -221,4 +261,48 @@ export const waitForTask = (
       return waitForTask({ taskName }, retries + 1);
     }
   });
+};
+
+// Poll for task completion by actively querying the endpoint
+// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+export const pollForTask = (
+  { taskName }: { taskName: "import" | "export" },
+  retries = 0,
+) => {
+  if (retries > 30) {
+    throw Error(`Too many retries waiting for ${taskName}`);
+  }
+
+  return cy
+    .request("GET", "/api/ee/remote-sync/current-task")
+    .then((response) => {
+      const { body } = response;
+
+      // No task exists yet, keep waiting
+      if (!body) {
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Wrong task type, keep waiting
+      if (body.sync_task_type !== taskName) {
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Task hasn't completed successfully yet
+      if (body.status !== "successful") {
+        // Check if it errored
+        if (body.status === "errored") {
+          throw Error(
+            `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
+          );
+        }
+        cy.wait(500);
+        return pollForTask({ taskName }, retries + 1);
+      }
+
+      // Success!
+      return cy.wrap(body);
+    });
 };

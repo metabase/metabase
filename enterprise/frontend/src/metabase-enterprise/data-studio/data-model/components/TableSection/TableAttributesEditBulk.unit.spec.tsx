@@ -56,7 +56,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk hasLibrary onUpdate={_.noop} />
+      <TableAttributesEditBulk hasLibrary canPublish onUpdate={_.noop} />
       <SelectionController
         initialTables={initialTables}
         onSelectionChange={() => setSelectionChanged(true)}

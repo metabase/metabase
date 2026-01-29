@@ -13,7 +13,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library-not-synced with-library-synced]]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -41,7 +41,7 @@
 
 (deftest snippet-event-creates-sync-object-when-library-synced-test
   (testing "Creating a snippet creates a RemoteSyncObject entry when Library is remote-synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           (events/publish-event! :event/snippet-create {:object snippet :user-id (mt/user->id :rasta)})
@@ -52,7 +52,7 @@
 
 (deftest snippet-event-ignored-when-library-not-synced-test
   (testing "Snippet events are ignored when Library is not remote-synced"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           (events/publish-event! :event/snippet-create {:object snippet :user-id (mt/user->id :rasta)})
@@ -63,7 +63,7 @@
 
 (deftest snippet-event-updates-sync-object-test
   (testing "Updating a snippet updates the RemoteSyncObject entry when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
@@ -82,7 +82,7 @@
 
 (deftest archived-snippet-marked-for-deletion-test
   (testing "Archiving a snippet marks it for deletion when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
@@ -104,7 +104,7 @@
 
 (deftest snippets-namespace-collection-tracked-when-library-synced-test
   (testing "Snippets-namespace collection creates RemoteSyncObject entry when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Snippets Collection" :namespace :snippets :location "/"}]
           (events/publish-event! :event/collection-create {:object coll :user-id (mt/user->id :rasta)})
@@ -115,7 +115,7 @@
 
 (deftest snippets-namespace-collection-ignored-when-library-not-synced-test
   (testing "Snippets-namespace collection is NOT tracked when Library is not synced"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Snippets Collection" :namespace :snippets :location "/"}]
           (events/publish-event! :event/collection-create {:object coll :user-id (mt/user->id :rasta)})
@@ -128,7 +128,7 @@
 
 (deftest enable-snippet-sync-marks-all-snippets-test
   (testing "Enabling snippet sync (via Library becoming synced) marks all existing snippets for initial sync"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Snippets Collection" :namespace :snippets}
                        :model/NativeQuerySnippet snippet {:name "Existing Snippet" :content "SELECT 1" :collection_id coll-id}]
@@ -150,7 +150,7 @@
 
 (deftest disable-snippet-sync-removes-all-tracking-test
   (testing "Disabling snippet sync removes all snippet-related tracking entries"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Snippets Collection" :namespace :snippets}
                        :model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1" :collection_id coll-id}
@@ -180,7 +180,7 @@
 
 (deftest snippets-included-in-dirty-check-when-library-synced-test
   (testing "Snippets are included in dirty check when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Dirty Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry and insert with specific status
@@ -195,7 +195,7 @@
 
 (deftest snippets-excluded-from-dirty-check-when-library-not-synced-test
   (testing "Snippets are excluded from dirty check when Library is not synced"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Dirty Snippet" :content "SELECT 1"}
                        :model/RemoteSyncObject _rso {:model_type "NativeQuerySnippet"
@@ -242,10 +242,10 @@
 
 (deftest library-is-remote-synced-helper-test
   (testing "library-is-remote-synced? returns correct value"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (is (true? (settings/library-is-remote-synced?))
           "Should return true when Library is synced"))
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (is (false? (settings/library-is-remote-synced?))
           "Should return false when Library is not synced"))))
 
@@ -298,7 +298,7 @@ serdes/meta:
 
 (deftest export-includes-snippets-when-library-synced-test
   (testing "Export includes snippets when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]
@@ -338,7 +338,7 @@ serdes/meta:
   (testing "Import brings in snippets from YAML files"
     (mt/with-model-cleanup [:model/NativeQuerySnippet :model/Collection :model/RemoteSyncTask]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-        (with-library-synced
+        (collections.tu/with-library-synced
           (mt/with-temporary-setting-values [remote-sync-enabled true]
             (let [coll-entity-id "snippets-coll-importx"
                   snippet-entity-id "test-snippet-importxx"
@@ -360,14 +360,14 @@ serdes/meta:
 
 (deftest all-syncable-collection-ids-includes-all-namespace-types-test
   (testing "Snippet collections are included when Library is synced"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection {snippet-coll-id :id} {:name "Snippets Collection"
                                                                 :namespace :snippets
                                                                 :location "/"}]
           (is (contains? (set (spec/all-syncable-collection-ids)) snippet-coll-id))))))
   (testing "Snippet collections are NOT included when Library is not synced"
-    (with-library-not-synced
+    (collections.tu/with-library-not-synced
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-temp [:model/Collection {snippet-coll-id :id} {:name "Snippets Collection"
                                                                 :namespace :snippets
@@ -396,7 +396,7 @@ serdes/meta:
 
 (deftest export-deletes-archived-snippet-files-test
   (testing "export! deletes files from source for snippets with 'delete' status (archived snippets)"
-    (with-library-synced
+    (collections.tu/with-library-synced
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]

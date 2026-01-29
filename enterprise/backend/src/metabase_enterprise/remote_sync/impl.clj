@@ -144,7 +144,7 @@
               (log/infof (:message <>)))
             (let [path-filters (cond-> [#"collections/.*" #"databases/.*" #"actions/.*"]
                                  (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*")
+                                 (conj #"transforms/.*" #"python-libraries/.*")
                                  (settings/library-is-remote-synced?)
                                  (conj #"snippets/.*"))
                   ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
@@ -182,9 +182,7 @@
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
                 (remove-unsynced! (spec/all-syncable-collection-ids) imported-entities-by-model)
-                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
-                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
-                  (collection/create-remote-synced-collection!)))
+                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id
@@ -409,7 +407,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (when (or (nil? (collection/remote-synced-collection)) (= :read-only (settings/remote-sync-type)))
+      (when (= :read-only (settings/remote-sync-type))
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))

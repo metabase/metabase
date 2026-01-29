@@ -188,6 +188,19 @@ describe("scenarios > dependencies > unreferenced list", () => {
       checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
     });
 
+    it("should persist filter changes after page reload", () => {
+      createEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().findByText("Model").click();
+      checkList({ hiddenEntities: MODEL_NAMES });
+
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      checkList({ visibleEntities: METRIC_NAMES, hiddenEntities: MODEL_NAMES });
+    });
+
     it("should filter by location", () => {
       createEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
@@ -260,6 +273,19 @@ describe("scenarios > dependencies > unreferenced list", () => {
       checkListSorting({
         visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
       });
+    });
+
+    it("should persist sorting changes after page reload", () => {
+      createEntities();
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+
+      H.DependencyDiagnostics.list().findByText("Location").click();
+      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
+
+      H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type("Model for");
+      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
     });
   });
 

@@ -25,24 +25,33 @@ import { ListPaginationControls } from "./ListPaginationControls";
 import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
-import type { DependencyListMode } from "./types";
+import type { DependencyListMode, DependencyListParamsOptions } from "./types";
 import {
   getAvailableGroupTypes,
   getFilterOptions,
+  getParamsWithoutDefaults,
   getSortOptions,
 } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
   params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  isLoadingParams: boolean;
+  onParamsChange: (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => void;
 };
 
 export function DependencyList({
   mode,
   params,
+  isLoadingParams,
   onParamsChange,
 }: DependencyListProps) {
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
@@ -53,64 +62,85 @@ export function DependencyList({
   const {
     page = 0,
     query,
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    sortColumn,
-    sortDirection,
+    group_types = getAvailableGroupTypes(mode),
+    include_personal_collections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    sort_column,
+    sort_direction,
   } = params;
 
-  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    types: getDependencyTypes(groupTypes),
-    card_types: getCardTypes(groupTypes),
-    query: query,
-    include_personal_collections: includePersonalCollections,
-    sort_column: sortColumn,
-    sort_direction: sortDirection,
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-  });
-
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
+  const {
+    data,
+    isFetching: isFetchingNodes,
+    isLoading: isLoadingNodes,
+    error,
+  } = useListGraphNodesQuery(
+    {
+      types: getDependencyTypes(group_types),
+      card_types: getCardTypes(group_types),
+      query,
+      include_personal_collections,
+      sort_column,
+      sort_direction,
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    },
+    {
+      skip: isLoadingParams,
+    },
+  );
 
   const nodes = data?.data ?? [];
   const totalNodesCount = data?.total ?? 0;
+  const isFetching = isFetchingNodes || isLoadingParams;
+  const isLoading = isLoadingNodes || isLoadingParams;
 
   const selectedNode =
     selectedEntry != null
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
+  const handleParamsChange = (
+    params: Urls.DependencyListParams,
+    options?: DependencyListParamsOptions,
+  ) => {
+    onParamsChange(getParamsWithoutDefaults(mode, params), options);
+  };
+
   const handleQueryChange = (query: string | undefined) => {
-    onParamsChange({ ...params, query, page: undefined });
+    handleParamsChange({ ...params, query, page: undefined });
   };
 
   const handleFilterOptionsChange = ({
     groupTypes,
     includePersonalCollections,
   }: DependencyFilterOptions) => {
-    onParamsChange({
-      ...params,
-      groupTypes,
-      includePersonalCollections,
-      page: undefined,
-    });
+    handleParamsChange(
+      {
+        ...params,
+        group_types: groupTypes,
+        include_personal_collections: includePersonalCollections,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handleSortOptionsChange = (
     sortOptions: DependencySortOptions | undefined,
   ) => {
-    onParamsChange({
-      ...params,
-      sortColumn: sortOptions?.column,
-      sortDirection: sortOptions?.direction,
-      page: undefined,
-    });
+    handleParamsChange(
+      {
+        ...params,
+        sort_column: sortOptions?.column,
+        sort_direction: sortOptions?.direction,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
   };
 
   const handlePageChange = (page: number) => {
-    onParamsChange({ ...params, page });
+    handleParamsChange({ ...params, page });
   };
 
   useLayoutEffect(() => {
@@ -132,7 +162,8 @@ export function DependencyList({
           mode={mode}
           query={query}
           filterOptions={getFilterOptions(mode, params)}
-          hasLoader={isFetching && !isLoading}
+          isFetching={isFetching}
+          isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
         />

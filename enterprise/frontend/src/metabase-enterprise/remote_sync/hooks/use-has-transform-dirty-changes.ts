@@ -35,10 +35,14 @@ export function useHasTransformDirtyChanges(): boolean {
     );
 
     // Check if any dirty entity is:
-    // 1. A transform or transform tag
+    // 1. A transform, transform tag, or Python library
     // 2. A collection in the transforms namespace
     return dirty.some((entity) => {
-      if (entity.model === "transform" || entity.model === "transformtag") {
+      if (
+        entity.model === "transform" ||
+        entity.model === "transformtag" ||
+        entity.model === "pythonlibrary"
+      ) {
         return true;
       }
       if (
