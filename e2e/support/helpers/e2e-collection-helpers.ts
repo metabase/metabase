@@ -82,7 +82,6 @@ export const moveOpenedCollectionTo = (newParent: string) => {
   openCollectionMenu();
   popover().within(() => cy.findByText("Move").click());
 
-
   cy.wait(["@getCollectionItems", "@getCollectionItems"]);
   entityPickerModal().within(() => {
     cy.findByTestId("nested-item-picker").findByText(newParent).click();
