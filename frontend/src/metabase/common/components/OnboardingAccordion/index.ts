@@ -1,7 +1,7 @@
-export {
-  OnboardingAccordion,
-  type OnboardingAccordionProps,
-  type OnboardingAccordionItemProps,
-  type OnboardingAccordionControlProps,
-  type OnboardingAccordionPanelProps,
-} from "./OnboardingAccordion";
+export { OnboardingAccordion } from "./OnboardingAccordion";
+export type {
+  OnboardingAccordionProps,
+  OnboardingAccordionItemProps,
+  OnboardingAccordionControlProps,
+  OnboardingAccordionPanelProps,
+} from "./types";
