@@ -161,6 +161,14 @@ export function versionIsLatest({
   return result != null && result >= 0;
 }
 
+/**
+ * @deprecated
+ * In most of the cases we can rely on token features.
+ * Use it ONLY when we should apply logic for the EE build specifically including:
+ * - EE build with no license
+ * - EE build Starter
+ * - EE build Pro/Enterprise
+ */
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
 // Extract resource id from signed JWT token used in Static Embedding
