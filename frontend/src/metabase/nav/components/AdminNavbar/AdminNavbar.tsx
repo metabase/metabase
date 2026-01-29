@@ -78,8 +78,6 @@ export const AdminNavbar = ({
         </AdminLogoContainer>
       </AdminLogoLink>
 
-      <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
-
       <MobileHide>
         <AdminNavbarItems data-testid="admin-navbar-items">
           {adminPaths.map(({ name, key, path }) => (
@@ -93,11 +91,11 @@ export const AdminNavbar = ({
         </AdminNavbarItems>
 
         {!isPaidPlan && isAdmin && <StoreLink />}
-
-        <AdminButtons>
-          <AppSwitcher />
-        </AdminButtons>
       </MobileHide>
+      <AdminButtons>
+        <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+        <AppSwitcher />
+      </AdminButtons>
     </AdminNavbarRoot>
   );
 };
@@ -126,7 +124,6 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           />
         }
       />
-      <AppSwitcher />
 
       {mobileNavOpen && (
         <AdminMobileNavBarItems aria-label={t`Navigation links`}>
