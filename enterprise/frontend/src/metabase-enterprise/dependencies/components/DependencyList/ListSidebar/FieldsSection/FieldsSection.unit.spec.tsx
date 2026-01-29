@@ -2,6 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type { DependencyNode } from "metabase-types/api";
 import {
   createMockField,
+  createMockSegmentDependencyNode,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
 } from "metabase-types/api/mocks";
@@ -58,6 +59,13 @@ describe("FieldsSection", () => {
       }),
     });
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("should not render for an entity without fields", () => {
+    setup({ node: createMockSegmentDependencyNode() });
+    expect(
+      screen.queryByRole("region", { name: "Fields" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should display zero count when there are no fields", () => {
