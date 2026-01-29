@@ -233,47 +233,22 @@
 (defn- resolve-fk-relationships!
   "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
   [table-name->table {:keys [table-definitions]}]
-  ;; Debug: print all available tables at start
-  (println "[FK-DEBUG] Starting FK resolution with tables:" (keys table-name->table))
   (doseq [{:keys [table-name field-definitions]} table-definitions
           :let [table (get table-name->table table-name)]
           {:keys [field-name fk]} field-definitions
           :when fk]
-    (println (format "[FK-DEBUG] Processing FK: %s.%s -> %s" table-name field-name (if (keyword? fk) (name fk) fk)))
     (let [target-table-name (if (keyword? fk) (name fk) fk)
           target-table      (get table-name->table target-table-name)
-          _                 (when-not target-table
-                              (println (format "[FK-DEBUG] ERROR: target table '%s' not found in map. Available: %s"
-                                               target-table-name (keys table-name->table))))
           target-pk-field   (when target-table
                               (t2/select-one :model/Field
                                              :table_id (:id target-table)
                                              :semantic_type :type/PK))
-          _                 (when (and target-table (not target-pk-field))
-                              (let [fields (t2/select [:model/Field :name :semantic_type] :table_id (:id target-table))]
-                                (println (format "[FK-DEBUG] ERROR: no PK field for table '%s' (id=%d). Fields: %s"
-                                                 target-table-name (:id target-table)
-                                                 (pr-str (map #(select-keys % [:name :semantic_type]) fields))))))
           source-field      (t2/select-one :model/Field
                                            :table_id (:id table)
-                                           :%lower.name (u/lower-case-en field-name))
-          _                 (when (and table (not source-field))
-                              (let [fields (t2/select [:model/Field :name] :table_id (:id table))]
-                                (println (format "[FK-DEBUG] ERROR: source field '%s' not found in table '%s'. Fields: %s"
-                                                 field-name table-name (pr-str (map :name fields))))))]
-      (if (and source-field target-pk-field)
-        (do
-          (println (format "[FK-DEBUG] SUCCESS: setting %s.%s -> %s.id (fk_target_field_id=%d)"
-                           table-name field-name target-table-name (:id target-pk-field)))
-          (t2/update! :model/Field (:id source-field)
-                      {:fk_target_field_id (:id target-pk-field)})
-          ;; Verify the update persisted
-          (let [updated-field (t2/select-one [:model/Field :id :fk_target_field_id] :id (:id source-field))]
-            (println (format "[FK-DEBUG] VERIFIED: field %d now has fk_target_field_id=%s"
-                             (:id source-field) (:fk_target_field_id updated-field)))))
-        (println (format "[FK-DEBUG] FAILED: %s.%s -> %s (source-field=%s, target-pk-field=%s)"
-                         table-name field-name target-table-name
-                         (boolean source-field) (boolean target-pk-field)))))))
+                                           :%lower.name (u/lower-case-en field-name))]
+      (when (and source-field target-pk-field)
+        (t2/update! :model/Field (:id source-field)
+                    {:fk_target_field_id (:id target-pk-field)})))))
 
 ;; ---------------------- Main Entry Point ----------------------
 

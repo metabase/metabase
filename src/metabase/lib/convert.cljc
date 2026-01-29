@@ -706,12 +706,14 @@
            (let [inner-query (chain-stages
                               (dissoc base :fields :conditions)
                               {:top-level? false})
-                 extra-keys (set/difference (set (keys inner-query)) #{:source-table :source-query :source-metadata})]
-             ;; DEBUG: log when extra keys cause subquery wrapping
-             (when (seq extra-keys)
-               (println (format "[JOIN-DEBUG] Join being wrapped in :source-query due to extra keys: %s" (pr-str extra-keys)))
-               (println (format "[JOIN-DEBUG]   inner-query keys: %s" (pr-str (keys inner-query))))
-               (println (format "[JOIN-DEBUG]   join alias: %s" (:alias join))))
+                 ;; Keys that are allowed on a simple join without requiring :source-query wrapping:
+                 ;; - :source-table, :source-query, :source-metadata - the source itself
+                 ;; - :fields - join fields selection (converted separately)
+                 ;; - :qp/added-implicit-fields? - QP marker, should be ignored
+                 allowed-keys #{:source-table :source-query :source-metadata :fields :qp/added-implicit-fields?}
+                 ;; Strip QP-specific keys from inner-query before SQL compilation
+                 inner-query (dissoc inner-query :qp/added-implicit-fields?)
+                 extra-keys (set/difference (set (keys inner-query)) allowed-keys)]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
              (if (seq extra-keys)

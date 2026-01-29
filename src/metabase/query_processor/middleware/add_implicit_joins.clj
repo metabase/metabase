@@ -67,13 +67,7 @@
   (when (seq fk-field-infos)
     (let [fk-field-ids     (into #{} (map :fk-field-id) fk-field-infos)
           fk-fields        (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column fk-field-ids)
-          ;; DEBUG: Log what fields we got from metadata provider
-          _                (println (format "[QP-DEBUG] fk-field-infos->joins: fk-field-ids=%s" (pr-str fk-field-ids)))
-          _                (doseq [f fk-fields]
-                             (println (format "[QP-DEBUG]   field %d (%s): fk-target-field-id=%s, semantic-type=%s"
-                                              (:id f) (:name f) (:fk-target-field-id f) (:semantic-type f))))
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
-          _                (println (format "[QP-DEBUG] target-field-ids=%s (from fk-target-field-id)" (pr-str target-field-ids)))
           target-fields    (when (seq target-field-ids)
                              (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column target-field-ids))
           target-table-ids (into #{} (keep :table-id) target-fields)]
