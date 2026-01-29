@@ -151,4 +151,5 @@ SearchApp.propTypes = {
   location: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SearchApp;

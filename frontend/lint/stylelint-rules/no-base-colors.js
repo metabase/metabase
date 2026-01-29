@@ -56,4 +56,5 @@ const ruleFunction = (primary, secondaryOptions, context) => {
 ruleFunction.ruleName = ruleName;
 ruleFunction.messages = messages;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default stylelint.createPlugin(ruleName, ruleFunction);

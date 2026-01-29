@@ -43,7 +43,7 @@ export default {
 } as Meta<typeof DatePicker>;
 
 let clock: FakeTimers.InstalledClock | undefined;
-function withMockDate(StoryFn: StoryFn) {
+function WithMockDate(StoryFn: StoryFn) {
   if (!clock) {
     clock = FakeTimers.install({
       toFake: ["Date"],
@@ -187,7 +187,7 @@ export const RelativePrevious = {
     });
     next.classList.add("pseudo-hover");
   },
-  decorators: [withMockDate],
+  decorators: [WithMockDate],
 };
 export const RelativePreviousDarkTheme = merge(RelativePrevious, {
   args: {
@@ -212,7 +212,7 @@ export const RelativeNext = {
     next.classList.add("pseudo-hover");
     await userEvent.click(canvas.getByRole("textbox", { name: "Unit" }));
   },
-  decorators: [withMockDate],
+  decorators: [WithMockDate],
 };
 export const RelativeNextDarkTheme = merge(RelativeNext, {
   args: {

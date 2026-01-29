@@ -36,7 +36,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       cy.log("should show question view");
       cy.get("iframe[data-metabase-embed]").should(($iframe) => {
         const body = $iframe.contents().find("body");
-        expect(body).to.exist;
+        expect(body.length).to.be.greaterThan(0);
       });
       H.getSimpleEmbedIframeContent()
         .findByTestId("query-visualization-root", { timeout: 20_000 })

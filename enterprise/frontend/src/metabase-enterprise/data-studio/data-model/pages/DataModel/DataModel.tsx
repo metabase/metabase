@@ -64,6 +64,7 @@ export const DataModel = ({ children, params }: Props) => {
   );
 };
 
+// eslint-disable-next-line complexity
 function DataModelContent({ params }: Props) {
   const {
     hasSelectedItems,

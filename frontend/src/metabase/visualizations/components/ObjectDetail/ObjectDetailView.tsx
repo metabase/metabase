@@ -249,9 +249,9 @@ export function ObjectDetailView({
 
   const onFollowForeignKey = useCallback(
     (fk: ForeignKey) => {
-      zoomedRowID !== undefined
-        ? followForeignKey({ objectId: zoomedRowID, fk })
-        : _.noop();
+      if (zoomedRowID !== undefined) {
+        followForeignKey({ objectId: zoomedRowID, fk });
+      }
     },
     [zoomedRowID, followForeignKey],
   );

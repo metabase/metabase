@@ -3,10 +3,12 @@ import { RuleTester } from "eslint";
 import noLocaleWithIntlFunctions from "../eslint-rules/no-locale-with-intl-functions";
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
   },
 });
 

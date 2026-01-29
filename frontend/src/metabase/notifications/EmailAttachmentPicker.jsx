@@ -13,6 +13,7 @@ function getCardIdPair(card) {
   return card.id + "|" + card.dashboard_card_id;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
 

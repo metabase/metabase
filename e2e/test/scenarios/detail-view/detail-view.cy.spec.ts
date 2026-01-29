@@ -317,7 +317,7 @@ describe("detail view", () => {
 
       cy.log("very long value without whitespace wraps");
       cy.get("main").should(($main) => {
-        expect(H.isScrollableHorizontally($main[0])).to.be.false;
+        expect(H.isScrollableHorizontally($main[0])).to.equal(false);
       });
 
       cy.log("image should be rendered in a frame with a link");

@@ -441,6 +441,7 @@ export class Api extends EventEmitter {
 
 const instance = new Api();
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
 

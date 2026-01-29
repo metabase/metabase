@@ -17,4 +17,5 @@ class ScrollToTopInner extends Component {
 
 const ScrollToTop = withRouter(ScrollToTopInner);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ScrollToTop;

@@ -68,9 +68,13 @@ const TimelineCard = ({
   const handleChangeVisibility = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       if (e.target.checked) {
-        timeline.events && onShowTimelineEvents(timeline.events);
+        if (timeline.events) {
+          onShowTimelineEvents(timeline.events);
+        }
       } else {
-        timeline.events && onHideTimelineEvents(timeline.events);
+        if (timeline.events) {
+          onHideTimelineEvents(timeline.events);
+        }
       }
     },
     [timeline, onShowTimelineEvents, onHideTimelineEvents],

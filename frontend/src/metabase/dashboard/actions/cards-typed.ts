@@ -273,7 +273,9 @@ export const replaceCard =
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
-    dashboardId && trackQuestionReplaced(dashboardId);
+    if (dashboardId) {
+      trackQuestionReplaced(dashboardId);
+    }
   };
 
 export const addCardWithVisualization =

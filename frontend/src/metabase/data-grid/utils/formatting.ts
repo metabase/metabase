@@ -32,7 +32,7 @@ export const formatCellValueForCopy = (
 
     return String(rawValue);
   }
-  1;
+
   if (rawValue == null) {
     return "";
   }

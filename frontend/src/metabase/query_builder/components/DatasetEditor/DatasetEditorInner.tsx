@@ -291,7 +291,7 @@ function getComputedVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -789,4 +789,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

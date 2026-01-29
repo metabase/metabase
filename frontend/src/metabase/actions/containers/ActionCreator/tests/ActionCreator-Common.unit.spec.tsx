@@ -148,10 +148,10 @@ async function ensureSidebarIsOpen() {
  * can have no effect, so we need to retry until sidebar is open
  */
 async function openSidebar() {
-  await waitFor(async () => {
-    await userEvent.click(
+  await userEvent.click(
       screen.getByRole("button", { name: "Action settings" }),
     );
+  await waitFor(async () => {
 
     expect(screen.getByTestId("sidebar-header-title")).toBeInTheDocument();
   });

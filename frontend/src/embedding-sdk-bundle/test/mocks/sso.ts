@@ -28,7 +28,7 @@ interface BaseMockConfig {
   failureError?: string;
 }
 
-export interface SamlMockConfig extends BaseMockConfig {}
+export type SamlMockConfig = BaseMockConfig;
 
 export interface JwtMockConfig extends BaseMockConfig {
   providerResponse?: number | Record<string, any>;

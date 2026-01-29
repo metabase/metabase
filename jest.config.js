@@ -1,6 +1,5 @@
 // @ts-check
-
-// eslint-disable-next-line import/no-commonjs
+/** eslint-disable-next-line import/no-commonjs */
 const esmPackages = require("./jest.esm-packages.js");
 
 const baseConfig = {
@@ -126,10 +125,16 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/frontend/lint/tests",
       ],
+    },
+    {
+      displayName: "lint-rules",
+      testMatch: ["<rootDir>/frontend/lint/tests/**/*.unit.spec.js"],
+      testEnvironment: "node",
+      transformIgnorePatterns: baseConfig.transformIgnorePatterns,
     },
   ],
 };
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = config;

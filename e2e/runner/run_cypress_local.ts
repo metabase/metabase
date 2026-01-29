@@ -138,9 +138,11 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
     "🧹 Containers are running in background. If you wish to stop them, run:\n`docker compose -f ./e2e/test/scenarios/docker-compose.yml down`",
   );
 
-  typeof exitCode === "number"
-    ? process.exit(exitCode)
-    : process.exit(SUCCESS_EXIT_CODE);
+  if (typeof exitCode === "number") {
+    process.exit(exitCode);
+  } else {
+    process.exit(SUCCESS_EXIT_CODE);
+  }
 };
 
 init()

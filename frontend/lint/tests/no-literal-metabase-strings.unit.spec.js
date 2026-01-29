@@ -3,10 +3,12 @@ import { RuleTester } from "eslint";
 import noLiteralMetabaseString from "../eslint-rules/no-literal-metabase-strings";
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
   },
 });
 
