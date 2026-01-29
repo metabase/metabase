@@ -1,5 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
+import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
@@ -23,13 +24,13 @@ import {
   getErrorTypeLabel,
 } from "../../../../utils";
 
-import S from "./SidebarErrorSection.module.css";
+import S from "./SidebarErrorsSection.module.css";
 
-type SidebarErrorSectionProps = {
+type SidebarErrorsSectionProps = {
   node: DependencyNode;
 };
 
-export function SidebarErrorSection({ node }: SidebarErrorSectionProps) {
+export function SidebarErrorsSection({ node }: SidebarErrorsSectionProps) {
   const errors = getDependencyErrors(node.dependents_errors ?? []);
   const errorGroups = getDependencyErrorGroups(errors);
 
