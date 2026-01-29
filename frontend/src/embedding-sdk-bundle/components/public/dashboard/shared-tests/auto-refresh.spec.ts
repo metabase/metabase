@@ -10,7 +10,7 @@ type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
 export function addEnterpriseAutoRefreshTests(
   setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
 ) {
-  describe("authRefreshInterval property", () => {
+  describe("autoRefreshInterval property", () => {
     const DASHBOARD_CARD_QUERY_REQUEST_COUNT = 1;
 
     it("should support auto-refreshing dashboards for positive integers", async () => {
