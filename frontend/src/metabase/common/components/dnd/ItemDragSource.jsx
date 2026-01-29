@@ -3,7 +3,9 @@ import { Component } from "react";
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { isRootTrashCollection } from "metabase/collections/utils";
+import { useToast } from "metabase/common/hooks";
 
 import { dragTypeForItem } from ".";
 
@@ -30,7 +32,7 @@ class ItemDragSourceInner extends Component {
   }
 }
 
-export const ItemDragSource = DragSource(
+const DragSourceComponent = DragSource(
   (props) => dragTypeForItem(props.item),
   {
     canDrag({ isSelected, selected, collection, item }, monitor) {
@@ -50,7 +52,7 @@ export const ItemDragSource = DragSource(
     beginDrag(props, monitor, component) {
       return { item: props.item };
     },
-    async endDrag({ selected, onDrop }, monitor, component) {
+    async endDrag({ selected, onDrop, onMoveError }, monitor, component) {
       if (!monitor.didDrop()) {
         return;
       }
@@ -71,7 +73,7 @@ export const ItemDragSource = DragSource(
 
           onDrop && onDrop();
         } catch (e) {
-          console.error("There was a problem moving these items: ", e);
+          onMoveError?.(e);
         }
       }
     },
@@ -82,3 +84,14 @@ export const ItemDragSource = DragSource(
     isDragging: monitor.isDragging(),
   }),
 )(ItemDragSourceInner);
+
+export function ItemDragSource(props) {
+  const [sendToast] = useToast();
+  const onMoveError = (e) =>
+    sendToast({
+      message: getErrorMessage(e),
+      icon: "warning_triangle_filled",
+      iconColor: "warning",
+    });
+  return <DragSourceComponent {...props} onMoveError={onMoveError} />;
+}
