@@ -224,4 +224,37 @@ describe("UpgradeModal", () => {
       expect(body).toEqual({ "new-plan-alias": "pro-cloud" });
     });
   });
+
+  // Error state
+  describe("error state", () => {
+    it("should show error UI when trial-up-available API fails", async () => {
+      fetchMock.post("path:/api/ee/cloud-proxy/mb-plan-trial-up-available", {
+        status: 500,
+        body: { message: "Internal server error" },
+      });
+
+      setup();
+
+      expect(
+        await screen.findByText("Something went wrong"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Please try again later.")).toBeInTheDocument();
+      expect(screen.getByText("Close")).toBeInTheDocument();
+    });
+
+    it("should close modal when clicking Close on error", async () => {
+      fetchMock.post("path:/api/ee/cloud-proxy/mb-plan-trial-up-available", {
+        status: 500,
+        body: { message: "Internal server error" },
+      });
+
+      const { onClose } = setup();
+
+      await screen.findByText("Something went wrong");
+      // Click the Close button in the error content (not the modal close button)
+      await userEvent.click(screen.getByText("Close"));
+
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 });

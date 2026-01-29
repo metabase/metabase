@@ -9,6 +9,7 @@ import {
 } from "metabase/api/cloud-proxy";
 import { Center, Loader, Modal } from "metabase/ui";
 
+import { UpgradeModalError } from "./UpgradeModalError";
 import { UpgradeModalInitial } from "./UpgradeModalInitial";
 import { UpgradeModalLoading } from "./UpgradeModalLoading";
 import type { ModalStep, UpgradeFlow } from "./constants";
@@ -26,25 +27,35 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
   const [step, setStep] = useState<ModalStep>("initial");
 
   // Check if trial is available (always needed)
-  const { data: trialData, isLoading: isTrialLoading } =
-    useCheckTrialAvailableQuery(undefined, { skip: !opened });
+  const {
+    data: trialData,
+    isLoading: isTrialLoading,
+    isError: isTrialError,
+  } = useCheckTrialAvailableQuery(undefined, { skip: !opened });
 
   const isTrialAvailable = trialData?.available ?? false;
   const flow: UpgradeFlow = isTrialAvailable ? "trial" : "upgrade";
   const planAlias = trialData?.plan_alias;
 
   // Get pricing preview - only needed when trial is NOT available (states 2 & 3)
-  const { data: previewData, isLoading: isPreviewLoading } =
-    useGetChangePlanPreviewQuery(
-      { new_plan_alias: planAlias ?? "" },
-      { skip: !opened || !planAlias || isTrialAvailable },
-    );
+  const {
+    data: previewData,
+    isLoading: isPreviewLoading,
+    isError: isPreviewError,
+  } = useGetChangePlanPreviewQuery(
+    { new_plan_alias: planAlias ?? "" },
+    { skip: !opened || !planAlias || isTrialAvailable },
+  );
 
   // Determine if user is currently on trial (amount due is $0 when upgrading)
   const isOnTrial = previewData?.amount_due_now === 0;
 
   // Get plan details - only needed when NOT trial available AND on trial (state 2)
-  const { data: planData, isLoading: isPlanLoading } = useGetPlanQuery(
+  const {
+    data: planData,
+    isLoading: isPlanLoading,
+    isError: isPlanError,
+  } = useGetPlanQuery(
     { plan_alias: planAlias ?? "" },
     { skip: !opened || !planAlias || isTrialAvailable || !isOnTrial },
   );
@@ -58,6 +69,12 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
 
   // Only show plan pricing for state 2 (not available + on trial)
   const showPlanPricing = !isTrialAvailable && isOnTrial;
+
+  // Check if any required API call failed
+  const hasQueryError =
+    isTrialError ||
+    (!isTrialAvailable && isPreviewError) ||
+    (showPlanPricing && isPlanError);
 
   const planPricing = planData
     ? {
@@ -90,8 +107,7 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       // Stay in loading state - UpgradeModalLoading will poll for the
       // no-upsell feature and show success when it arrives
     } catch {
-      // TODO: handle error state
-      setStep("initial");
+      setStep("error");
     }
   }, [flow, planAlias, startTrial, changePlan]);
 
@@ -111,12 +127,12 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
 
   return (
     <Modal opened={opened} onClose={handleClose} size="md" padding="lg">
-      {step === "initial" && isDataLoading && (
+      {step === "initial" && isDataLoading && !hasQueryError && (
         <Center h={200}>
           <Loader />
         </Center>
       )}
-      {step === "initial" && !isDataLoading && (
+      {step === "initial" && !isDataLoading && !hasQueryError && (
         <UpgradeModalInitial
           flow={flow}
           dueToday={dueToday}
@@ -128,6 +144,9 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       )}
       {step === "loading" && (
         <UpgradeModalLoading flow={flow} onDone={handleClose} />
+      )}
+      {(step === "error" || (step === "initial" && hasQueryError)) && (
+        <UpgradeModalError onClose={handleClose} />
       )}
     </Modal>
   );

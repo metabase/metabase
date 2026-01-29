@@ -8,5 +8,5 @@ export const MOCK_DATA = {
   ],
 };
 
-export type ModalStep = "initial" | "loading";
+export type ModalStep = "initial" | "loading" | "error";
 export type UpgradeFlow = "trial" | "upgrade";
