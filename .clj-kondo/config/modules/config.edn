@@ -2103,7 +2103,6 @@
               api
               app-db
               audit-app
-              auth-identity
               collections
               config
               documents
