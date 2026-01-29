@@ -134,9 +134,12 @@ function ResultsFooter({
 
   if (executionResult.error) {
     return (
-      <Flex className={S.footer} gap="sm" align="center" px="md" py="sm">
-        <Icon name="warning" c="error" />
-        <Text c="text-primary">{t`An error occurred while executing your Python script.`}</Text>
+      <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
+        <Icon size="1rem" style={{ flexShrink: 0 }} name="warning" c="error" />
+        <Text
+          c="text-primary"
+          ml="xs"
+        >{t`An error occurred while executing your Python script.`}</Text>
       </Flex>
     );
   }
@@ -146,10 +149,19 @@ function ResultsFooter({
   }
 
   return (
-    <Flex className={S.footer} gap="sm" align="center" px="md" py="sm">
-      <Icon name="check_filled" c="success" />
-      <Text fw="bold" c="text-primary">{t`Done`}</Text>
-      <Text c="text-tertiary">{t`Preview based on the first 100 rows from each table.`}</Text>
+    <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
+      <Icon
+        size="1rem"
+        style={{ flexShrink: 0 }}
+        name="check_filled"
+        c="success"
+      />
+      <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
+      <Text
+        c="text-tertiary"
+        ml="xs"
+        lh="xs"
+      >{t`Preview based on the first 100 rows from each table.`}</Text>
     </Flex>
   );
 }
