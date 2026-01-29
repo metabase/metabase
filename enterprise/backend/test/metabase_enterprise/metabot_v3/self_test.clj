@@ -122,7 +122,7 @@
              {:type :tool-input :function "analyze-data-trend" :arguments {}}
              {:type :usage :usage {:total_tokens 225}}]
             (->> (json-resource "llm/openai-tool-calls.json")
-                 (into [] (comp self/openai->aisdk-xf self/aisdk-xf))))))
+                 (into [] (comp self/openai->aisdk-xf (self/aisdk-xf)))))))
   (testing "structured output is parsed too"
     (is (= {:start      1
             ;; TODO: we're representing it as just text but this needs to be improved maybe?
@@ -138,7 +138,7 @@
              {:type :text :text string?}
              {:type :usage :usage {:total_tokens 109}}]
             (->> (json-resource "llm/openai-structured-output.json")
-                 (into [] (comp self/openai->aisdk-xf self/aisdk-xf)))))))
+                 (into [] (comp self/openai->aisdk-xf (self/aisdk-xf))))))))
 
 (deftest claude-conv-test
   (testing "text is mapped well"
@@ -155,7 +155,7 @@
              {:type :text :id string? :text string?}
              {:type :usage :id string? :usage {:promptTokens 13}}]
             (->> (json-resource "llm/claude-text.json")
-                 (into [] (comp self/claude->aisdk-xf self/aisdk-xf))))))
+                 (into [] (comp self/claude->aisdk-xf (self/aisdk-xf)))))))
   (testing "tool input (also structured output) is mapped well"
     (is (= {:start                1
             :tool-input-start     1
@@ -173,7 +173,63 @@
              ;; TODO: convert usage to common format
              {:type :usage :usage {:promptTokens 737}}]
             (->> (json-resource "llm/claude-tool-input.json")
-                 (into [] (comp self/claude->aisdk-xf self/aisdk-xf)))))))
+                 (into [] (comp self/claude->aisdk-xf (self/aisdk-xf))))))))
+
+(deftest lite-aisdk-xf-test
+  (testing "streams text deltas immediately instead of batching"
+    (let [chunks [{:type :start :messageId "msg-1"}
+                  {:type :text-start :id "text-1"}
+                  {:type :text-delta :id "text-1" :delta "Hello "}
+                  {:type :text-delta :id "text-1" :delta "world"}
+                  {:type :text-delta :id "text-1" :delta "!"}
+                  {:type :text-end :id "text-1"}
+                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]]
+      (is (= [{:type :start :id "msg-1"}
+              {:type :text :id "text-1" :text "Hello "}
+              {:type :text :id "text-1" :text "world"}
+              {:type :text :id "text-1" :text "!"}
+              {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
+             (into [] (self/lite-aisdk-xf) chunks)))))
+
+  (testing "still collects tool inputs for JSON parsing"
+    (let [chunks [{:type :start :messageId "msg-1"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\":"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "\"test\"}"}
+                  {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]]
+      (is (= [{:type :start :id "msg-1"}
+              {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
+             (into [] (self/lite-aisdk-xf) chunks)))))
+
+  (testing "converts tool-output-available to tool-output"
+    (let [chunks [{:type       :tool-output-available
+                   :toolCallId "call-1"
+                   :toolName   "search"
+                   :result     {:data []}}]]
+      (is (= [{:type     :tool-output
+               :id       "call-1"
+               :function "search"
+               :result   {:data []}
+               :error    nil}]
+             (into [] (self/lite-aisdk-xf) chunks)))))
+
+  (testing "works with claude->aisdk-xf for streaming text"
+    ;; Verify it works end-to-end with real Claude format
+    (let [result (->> (json-resource "llm/claude-text.json")
+                      (into [] (comp self/claude->aisdk-xf (self/lite-aisdk-xf))))]
+      (is (< 1 (count (filter #(= :text (:type %)) result)))
+          "lite-aisdk-xf should emit multiple text parts from deltas")))
+
+  (testing "works with claude->aisdk-xf for tool inputs"
+    (let [result (->> (json-resource "llm/claude-tool-input.json")
+                      (into [] (comp self/claude->aisdk-xf (self/lite-aisdk-xf))))]
+      (is (=? [{:type :start}
+               {:type      :tool-input
+                :arguments {:currencies [{:country "CAN" :currency "CAD"}
+                                         {:country "USA" :currency "USD"}
+                                         {:country "MEX" :currency "MXN"}]}}
+               {:type :usage}]
+              result)))))
 
 ;;; tool executor
 
@@ -272,7 +328,7 @@
       (is (= {:type :text
               :id   llm-id
               :text input}
-             (last (into [] self/aisdk-xf result))))))
+             (last (into [] (self/aisdk-xf) result))))))
 
   (testing "tool-executor-xf handles tool execution errors gracefully"
     (let [chunks (parts->aisdk
