@@ -3,7 +3,7 @@
   width: 3rem;
   height: 3rem;
 
-  --border-color: var(--mb-color-brand-border);
+  --border-color: var(--mb-color-border-brand);
   --background-color: transparent;
   --icon-color: var(--mb-color-brand);
 }
