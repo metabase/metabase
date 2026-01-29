@@ -90,7 +90,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("analysis", () => {
     it("should show broken dependencies", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       checkList({
         visibleEntities: BROKEN_DEPENDENCIES,
         hiddenEntities: BROKEN_DEPENDENTS,
@@ -100,7 +100,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sidebar", () => {
     it("should show broken dependents", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
 
       cy.log("table dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
@@ -131,7 +131,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("search", () => {
     it("should search for entities", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.searchInput().type(TABLE_DISPLAY_NAME);
       checkList({
         visibleEntities: [TABLE_DISPLAY_NAME],
@@ -142,7 +142,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("filtering", () => {
     it("should filter entities by type", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.filterButton().click();
       H.popover().within(() => {
         cy.findByText("Table").click();
@@ -188,7 +188,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should filter entities by location", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.filterButton().click();
       H.popover().within(() => {
         cy.findByText("Include items in personal collections").click();
@@ -205,7 +205,7 @@ describe("scenarios > dependencies > broken list", () => {
 
   describe("sorting", () => {
     it("should sort by name", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by name by default");
@@ -227,7 +227,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by location", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by location ascending");
@@ -244,7 +244,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by dependents errors", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents errors ascending");
@@ -263,7 +263,7 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     it("should sort by dependents with errors", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.visitBreakingDependencies();
       H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents with errors ascending");
@@ -289,7 +289,7 @@ function createContent() {
   createQuestionContent();
   createModelContent();
   breakTransform();
-  waitForBrokenDependencies();
+  waitForBreakingDependencies();
 }
 
 function dropTransformTable() {
@@ -486,8 +486,8 @@ function createModelContent() {
   });
 }
 
-function waitForBrokenDependencies() {
-  H.waitForBrokenDependencies(
+function waitForBreakingDependencies() {
+  H.waitForBreakingDependencies(
     (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
   );
 }

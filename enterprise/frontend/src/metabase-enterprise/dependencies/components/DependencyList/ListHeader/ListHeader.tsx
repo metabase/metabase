@@ -13,7 +13,7 @@ export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Broken dependencies`,
-      to: Urls.brokenDependencies(),
+      to: Urls.breakingDependencies(),
       icon: "broken_link",
     },
     {

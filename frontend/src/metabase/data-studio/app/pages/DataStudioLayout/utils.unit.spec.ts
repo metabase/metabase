@@ -11,7 +11,7 @@ describe("getCurrentTab", () => {
     ${"/data-studio/dependencies"}                        | ${"dependencies"}
     ${"/data-studio/dependencies?id=1&type=card"}         | ${"dependencies"}
     ${"/data-studio/dependency-diagnostics"}              | ${"dependency-diagnostics"}
-    ${"/data-studio/dependency-diagnostics/broken"}       | ${"dependency-diagnostics"}
+    ${"/data-studio/dependency-diagnostics/breaking"}     | ${"dependency-diagnostics"}
     ${"/data-studio/dependency-diagnostics/unreferenced"} | ${"dependency-diagnostics"}
     ${"/data-studio/library"}                             | ${"library"}
     ${"/data-studio/library/collections/123"}             | ${"library"}
