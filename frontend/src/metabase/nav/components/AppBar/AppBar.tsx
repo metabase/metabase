@@ -22,7 +22,7 @@ export interface AppBarProps {
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;

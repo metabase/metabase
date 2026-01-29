@@ -23,41 +23,55 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
+(def ^:private transform-models
+  "Models that indicate transforms content in a snapshot."
+  #{"Transform" "TransformTag" "PythonLibrary"})
+
+(defn- snapshot-has-transforms?
+  "Checks if the snapshot contains any Transform, TransformTag, or PythonLibrary entities.
+   Used to auto-enable remote-sync-transforms setting during import.
+
+   Uses the ingestable to list all entities and checks their :model metadata."
+  [ingestable]
+  (let [serdes-paths (serialization/ingest-list ingestable)]
+    (some (fn [path]
+            (some #(transform-models (:model %)) path))
+          serdes-paths)))
+
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
   inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
 
-  Takes a timestamp instant, a map of imported entities grouped by model name (for standard models with entity_id),
-  and separate path collections for Table and Field models which use name-based identity.
+  Takes a timestamp instant and imported-data map from spec/extract-imported-entities.
 
   Uses the spec system to determine how to query and build sync objects for each model type."
-  [timestamp imported-entities-by-model table-paths field-paths]
+  [timestamp imported-data]
   (t2/delete! :model/RemoteSyncObject)
-  (let [all-inserts (spec/sync-all-entities! timestamp imported-entities-by-model table-paths field-paths)]
+  (let [all-inserts (spec/sync-all-entities! timestamp imported-data)]
     (when (seq all-inserts)
       (t2/insert! :model/RemoteSyncObject all-inserts))))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
-  Takes a sequence of remote-synced collection IDs and a map of imported entities grouped by model name. For each
-  entity-id based model, deletes entities whose entity_id is not in the imported set.
+  Takes a sequence of remote-synced collection IDs and imported-data map from spec/extract-imported-entities.
+  For each entity-id based model, deletes entities whose entity_id is not in the imported set.
 
   Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
   for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
 
+  Path-based models (Table, Field) are not removed here - they are controlled by published table settings.
+
   Uses specs-for-deletion to process models in dependency order (models with FK references to
   Collection are deleted before Collection itself)."
-  [synced-collection-ids imported-entities-by-model]
+  [synced-collection-ids {:keys [by-entity-id]}]
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
-                entity-ids (get imported-entities-by-model serdes-model [])
+                entity-ids (get by-entity-id serdes-model [])
                 entity-id-clause (if (seq entity-ids)
                                    [:not-in entity-ids]
                                    :entity_id)
-                ;; :scope-key determines collection scoping - nil means global
                 scope-key (get-in model-spec [:removal :scope-key])
-                ;; Extra conditions to protect certain rows from removal (e.g. built-in TransformTags)
                 extra-conditions (into [] cat (get-in model-spec [:removal :conditions]))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
@@ -142,49 +156,23 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [path-filters (cond-> [#"collections/.*" #"databases/.*" #"actions/.*"]
-                                 (settings/remote-sync-transforms)
-                                 (conj #"transforms/.*" #"python-libraries/.*")
-                                 (settings/library-is-remote-synced?)
-                                 (conj #"snippets/.*"))
-                  ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters path-filters})
-                                           (source.ingestable/wrap-progress-ingestable task-id 0.7))
+            (let [path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
+                                #"transforms/.*" #"python-libraries/.*" #"snippets/.*"]
+                  base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+                  has-transforms? (snapshot-has-transforms? base-ingestable)
+                  ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
                   seen-paths (:seen load-result)
-                  data-model-models #{"Table" "Field"}
-                  ;; For standard models (Collection, Card, Segment, etc.), extract entity_id as before
-                  imported-entities-by-model (->> seen-paths
-                                                  (remove #(data-model-models (:model (last %))))
-                                                  (map last)
-                                                  (group-by :model)
-                                                  (map (fn [[model entities]]
-                                                         [model (set (map :id entities))]))
-                                                  (into {}))
-                  ;; For Tables, capture full path for unique identification
-                  ;; Path format: [{:model "Database" :id db-name} {:model "Schema" :id schema}? {:model "Table" :id table-name}]
-                  table-paths (->> seen-paths
-                                   (filter #(= "Table" (:model (last %))))
-                                   (map (fn [path]
-                                          {:db_name    (-> path first :id)
-                                           :schema     (when (= 3 (count path)) (-> path second :id))
-                                           :table_name (-> path last :id)})))
-                  ;; For Fields, path format includes Table
-                  ;; [{:model "Database"} {:model "Schema"}? {:model "Table"} {:model "Field" :id field-name}]
-                  field-paths (->> seen-paths
-                                   (filter #(= "Field" (:model (last %))))
-                                   (map (fn [path]
-                                          (let [table-idx (dec (count path))]
-                                            {:db_name    (-> path first :id)
-                                             :schema     (when (> (count path) 3) (-> path second :id))
-                                             :table_name (-> path (nth (dec table-idx)) :id)
-                                             :field_name (-> path last :id)}))))]
+                  imported-data (spec/extract-imported-entities seen-paths)]
               (remote-sync.task/update-progress! task-id 0.8)
+              (when (and has-transforms?
+                         (not (settings/remote-sync-transforms)))
+                (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
+                (settings/remote-sync-transforms! true))
               (t2/with-transaction [_conn]
-                (remove-unsynced! (spec/all-syncable-collection-ids) imported-entities-by-model)
-                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
-                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
-                  (collection/create-remote-synced-collection!)))
+                (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
+                (sync-objects! sync-timestamp imported-data))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id

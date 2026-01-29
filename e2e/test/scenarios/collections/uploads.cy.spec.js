@@ -74,10 +74,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       "Ensure that table is visible in admin without refreshing (metabase#38041)",
     );
 
-    cy.findByTestId("app-bar")
-      .findByRole("button", { name: "Settings" })
-      .click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     cy.findByRole("link", { name: "Table Metadata" }).click();
 
