@@ -8,6 +8,7 @@
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
+   [metabase-enterprise.agent-api.api]
    [metabase-enterprise.ai-entity-analysis.api]
    [metabase-enterprise.ai-sql-fixer.api]
    [metabase-enterprise.ai-sql-generation.api]
@@ -26,7 +27,6 @@
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.llm.api]
-   [metabase-enterprise.metabot-v3.agent-api.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
@@ -47,7 +47,7 @@
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
          metabase-enterprise.llm.api/keep-me
-         metabase-enterprise.metabot-v3.agent-api.api/keep-me)
+         metabase-enterprise.agent-api.api/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
@@ -90,7 +90,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             (premium-handler metabase-enterprise.metabot-v3.agent-api.api/routes :agent-api)
+  {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
    "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
