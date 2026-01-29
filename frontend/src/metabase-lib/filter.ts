@@ -146,12 +146,7 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map((value) => {
-      const d = dayjs(value);
-      // When hasTime is true, format as ISO-8601 datetime string to preserve time component (including 00:00)
-      // When hasTime is false, format as date-only string
-      return hasTime ? d.format("YYYY-MM-DDTHH:mm:ss") : d.format("YYYY-MM-DD");
-    }),
+    values.map((value) => dayjs(value).toDate()),
     hasTime,
   );
 }

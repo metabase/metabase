@@ -35,6 +35,7 @@
   add
   extract
   format-for-base-type
+  format-date-for-filter
   local-date
   local-date-time
   local-time])

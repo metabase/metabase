@@ -706,6 +706,19 @@
                        :type/Date           :local-date)]
       (dayjs+type->iso-8601 [t value-type]))))
 
+(defn format-date-for-filter
+  "Format a value as a date or datetime string for filter clauses, preserving local time.
+   Unlike [[->dayjs]] which converts JS Dates to UTC, this uses local time to preserve
+   the user's intended date/time values."
+  [t with-time?]
+  (let [d (cond
+            (instance? js/Date t) (dayjs t)  ; dayjs(Date) uses local time
+            (string? t) (first (iso-8601->dayjs+type t))
+            :else t)]
+    (if with-time?
+      (.format d "YYYY-MM-DDTHH:mm:ss")
+      (.format d "YYYY-MM-DD"))))
+
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
   [^dayjs t unit]
