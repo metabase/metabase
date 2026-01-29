@@ -2,7 +2,9 @@
 (ns metabase.sql-tools.sqlglot.shim
   "Basic example of running Python code using GraalVM polyglot."
   (:require
+   [medley.core :as m]
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
@@ -119,6 +121,12 @@
         normalized (mapv (partial normalized-dependencies driver) lineage)]
     normalized))
 
+(defn- sanitize-validation-output
+  [validation-output]
+  (-> validation-output
+      (update :status (comp keyword u/kebab->snake))
+      (m/update-existing :type (comp keyword u/kebab->snake))))
+
 (defn validate-query
   "WIP"
   [driver sql default-table-schema sqlglot-schema]
@@ -128,7 +136,9 @@
         pyfn (.eval ctx "python" "sql_tools.validate_query")
         dialect (when-not (= :h2 driver)
                   (name driver))]
-    (json/decode (.asString (.execute pyfn (object-array [dialect
-                                                          sql
-                                                          default-table-schema
-                                                          sqlglot-schema]))))))
+    (-> (.asString (.execute pyfn (object-array [dialect
+                                                 sql
+                                                 default-table-schema
+                                                 sqlglot-schema])))
+        json/decode+kw
+        sanitize-validation-output)))
