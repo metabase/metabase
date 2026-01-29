@@ -11,6 +11,8 @@ import {
   getNodeCreatedAt,
   getNodeCreatedBy,
   getNodeDescription,
+  getNodeFields,
+  getNodeFieldsLabel,
   getNodeLastEditedAt,
   getNodeLastEditedBy,
 } from "../../../../utils";
@@ -19,7 +21,7 @@ import { GraphExternalLink } from "../../GraphExternalLink";
 import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
-import { getNodeFields, getNodeFieldsLabel, getNodeTableInfo } from "./utils";
+import { getNodeTableInfo } from "./utils";
 
 type PanelBodyProps = {
   node: DependencyNode;

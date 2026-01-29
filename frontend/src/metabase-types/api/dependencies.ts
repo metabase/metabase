@@ -72,7 +72,7 @@ export type TableDependencyNodeData = Pick<
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "created_at" | "updated_at"
+  "name" | "description" | "table" | "creator" | "created_at"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -92,7 +92,6 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "updated_at"
 > & {
   view_count?: number | null;
   query_type?: "native" | "query";
@@ -107,7 +106,6 @@ export type SnippetDependencyNodeData = Pick<
   | "created_at"
   | "collection_id"
   | "collection"
-  | "updated_at"
 >;
 
 export type DashboardDependencyNodeData = Pick<
@@ -121,7 +119,6 @@ export type DashboardDependencyNodeData = Pick<
   | "collection"
   | "moderation_reviews"
   | "view_count"
-  | "updated_at"
 >;
 
 export type DocumentDependencyNodeData = Pick<
@@ -132,7 +129,6 @@ export type DocumentDependencyNodeData = Pick<
   | "collection_id"
   | "collection"
   | "view_count"
-  | "updated_at"
 >;
 
 export type SandboxDependencyNodeData = {
@@ -177,13 +173,7 @@ export type SandboxDependencyNode = BaseDependencyNode<
 
 export type SegmentDependencyNodeData = Pick<
   Segment,
-  | "name"
-  | "description"
-  | "table_id"
-  | "created_at"
-  | "creator_id"
-  | "creator"
-  | "updated_at"
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
 > & {
   table?: Table | null;
 };
@@ -195,13 +185,7 @@ export type SegmentDependencyNode = BaseDependencyNode<
 
 export type MeasureDependencyNodeData = Pick<
   Measure,
-  | "name"
-  | "description"
-  | "table_id"
-  | "created_at"
-  | "creator_id"
-  | "creator"
-  | "updated_at"
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
 > & {
   table?: Table | null;
 };

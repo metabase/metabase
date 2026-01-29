@@ -1,6 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
@@ -12,9 +13,8 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
-  LastEditInfo,
+  Field,
   Transform,
-  UserInfo,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -349,7 +349,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
   }
 }
 
-export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
+export function getNodeCreatedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -370,19 +370,18 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
-    case "transform":
     case "segment":
     case "measure":
+    case "table":
+    case "transform":
     case "snippet":
     case "document":
-      return node.data.updated_at ?? null;
-    case "table":
     case "sandbox":
       return null;
   }
 }
 
-export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
+export function getNodeLastEditedBy(node: DependencyNode): NamedUser | null {
   switch (node.type) {
     case "card":
     case "dashboard":
@@ -439,6 +438,32 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
     return node.data.transform ?? null;
   }
   return null;
+}
+
+export function getNodeFields(node: DependencyNode): Field[] {
+  switch (node.type) {
+    case "card":
+      return node.data.result_metadata ?? [];
+    case "table":
+      return node.data.fields ?? [];
+    case "transform":
+    case "sandbox":
+      return node.data.table?.fields ?? [];
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "segment":
+    case "measure":
+      return [];
+  }
+}
+
+export function getNodeFieldsLabel(fieldCount: number) {
+  return ngettext(
+    msgid`${fieldCount} field`,
+    `${fieldCount} fields`,
+    fieldCount,
+  );
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {

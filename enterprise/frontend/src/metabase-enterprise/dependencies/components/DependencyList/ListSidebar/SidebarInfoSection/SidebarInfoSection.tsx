@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Markdown } from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
@@ -34,48 +33,32 @@ export function SidebarInfoSection({ node }: SidebarInfoSectionProps) {
 
   if (
     description == null &&
-    createdAt == null &&
-    editedAt == null &&
+    (createdAt == null || createdBy == null) &&
+    (editedAt == null || editedBy == null) &&
     transform == null
   ) {
     return null;
   }
 
   return (
-    <Card
-      p={0}
-      shadow="none"
-      withBorder
-      role="region"
-      aria-label={t`Creator and last editor`}
-    >
+    <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       {description != null && (
         <InfoSection label={t`Description`}>
           {description.length > 0 ? (
-            <Markdown>{description}</Markdown>
+            <Box className={CS.textWrap}>{description}</Box>
           ) : (
             <Box c="text-secondary">{t`No description`}</Box>
           )}
         </InfoSection>
       )}
-      {createdAt != null && (
-        <InfoSection
-          label={createdBy ? t`Created by` : t`Created at`}
-          date={createdAt}
-        >
-          {createdBy != null && (
-            <Box className={CS.textWrap}>{getUserName(createdBy)}</Box>
-          )}
+      {createdBy != null && createdAt != null && (
+        <InfoSection label={t`Created by`} date={createdAt}>
+          <Box className={CS.textWrap}>{getUserName(createdBy)}</Box>
         </InfoSection>
       )}
-      {editedAt != null && (
-        <InfoSection
-          label={editedBy ? t`Last edited by` : t`Last edited at`}
-          date={editedAt}
-        >
-          {editedBy != null && (
-            <Box className={CS.textWrap}>{getUserName(editedBy)}</Box>
-          )}
+      {editedBy != null && editedAt != null && (
+        <InfoSection label={t`Last edited by`} date={editedAt}>
+          <Box className={CS.textWrap}>{getUserName(editedBy)}</Box>
         </InfoSection>
       )}
       {transform != null && (
