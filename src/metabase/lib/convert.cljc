@@ -706,13 +706,14 @@
            (let [inner-query (chain-stages
                               (dissoc base :fields :conditions)
                               {:top-level? false})
-                 ;; Keys that are allowed on a simple join without requiring :source-query wrapping:
-                 ;; - :source-table, :source-query, :source-metadata - the source itself
-                 ;; - :fields - join fields selection (converted separately)
-                 ;; - :qp/added-implicit-fields? - QP marker, should be ignored
-                 allowed-keys #{:source-table :source-query :source-metadata :fields :qp/added-implicit-fields?}
-                 ;; Strip QP-specific keys from inner-query before SQL compilation
+                 ;; The QP middleware adds :qp/added-implicit-fields? when it adds :fields
+                 ;; to stages that don't have explicit fields. When this marker is present,
+                 ;; we should ignore both it and :fields when checking for extra keys that
+                 ;; would trigger source-query wrapping.
+                 qp-added-fields? (:qp/added-implicit-fields? inner-query)
                  inner-query (dissoc inner-query :qp/added-implicit-fields?)
+                 allowed-keys (cond-> #{:source-table :source-query :source-metadata}
+                                qp-added-fields? (conj :fields))
                  extra-keys (set/difference (set (keys inner-query)) allowed-keys)]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
              ;; it all in `:source-query` (QUE-1566, QUE-1603)
