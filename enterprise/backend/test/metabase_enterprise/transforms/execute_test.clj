@@ -361,6 +361,48 @@
                   (is (= original-result result))))
               (is (= [[1] [2] [3] [4] [5] [6]] (query-fn))))))))))
 
+(deftest run-transforms-with-strategy-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
+    (let [calls (atom [])
+          record-call! (fn [call-name] (swap! calls conj call-name))
+          mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
+          mock-rows [[1]]
+          transform-details {:conn-spec {}
+                             :output-table :test_schema/test_table
+                             :database {:id 1}
+                             :transform-type :table}]
+      (with-redefs [driver/table-exists? (constantly true)
+                    driver/compile-transform (fn [& _] (record-call! :compile-transform) mock-query)
+                    driver/execute-raw-queries! (fn [& _] (record-call! :execute-raw-queries!) mock-rows)
+                    driver/rename-tables! (fn [& _] (record-call! :rename-tables!))
+                    driver/rename-table! (fn [& _] (record-call! :rename-table!))
+                    driver/drop-table! (fn [& _] (record-call! :drop-table!))]
+        (testing "only create if table doesn't exist"
+          (reset! calls [])
+          (with-redefs [driver/table-exists? (constantly false)]
+            (driver/run-transform! driver/*driver* transform-details nil)
+            (is (= [:compile-transform :execute-raw-queries!] @calls))))
+        (testing "prefer create or replace strategy first"
+          (when (driver/database-supports? driver/*driver* :create-or-replace-table nil)
+            (reset! calls [])
+            (driver/run-transform! driver/*driver* transform-details nil)
+            (is (= [:compile-transform :execute-raw-queries!] @calls))))
+        (testing "prefer atomic renames strategy second"
+          (when (driver/database-supports? driver/*driver* :atomic-renames nil)
+            (reset! calls [])
+            (driver/run-transform! driver/*driver* transform-details nil)
+            (is (= [:compile-transform :execute-raw-queries! :rename-tables! :drop-table!] @calls))))
+        (testing "prefer partial atomic renames strategy third"
+          (when (and (driver/database-supports? driver/*driver* :rename nil)
+                     (not (driver/database-supports? driver/*driver* :atomic-renames nil)))
+            (reset! calls [])
+            (driver/run-transform! driver/*driver* transform-details nil)
+            (is (= [:compile-transform :execute-raw-queries! :drop-table! :rename-table!] @calls))))
+        (testing "fallback to drop and create strategy"
+          (reset! calls [])
+          (driver/run-transform! :h2 transform-details nil)
+          (is (= [:drop-table! :compile-transform :execute-raw-queries!] @calls)))))))
+
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
