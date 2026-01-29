@@ -45,7 +45,7 @@
           (throw (ex-info message
                           {:metabase.transforms.jobs/transform-failure true
                            :metabase.transforms.jobs/failures [{:metabase-enterprise.transforms.jobs/transform transform
-                                                                           :metabase-enterprise.transforms.jobs/message message}]}
+                                                                :metabase-enterprise.transforms.jobs/message message}]}
                           e)))
         (throw e)))))
 

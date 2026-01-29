@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-util :refer [parse-instant
-                                           utc-timestamp]]
+                                          utc-timestamp]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
