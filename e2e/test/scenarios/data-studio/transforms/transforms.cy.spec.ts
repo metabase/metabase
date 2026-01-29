@@ -1,8 +1,14 @@
 import dedent from "ts-dedent";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   CollectionId,
@@ -1723,7 +1729,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("not.exist");
 
         cy.log("results panel should be hidden in read-only mode");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
 
         cy.log("library buttons should be hidden in read-only mode");
         cy.findByLabelText("Import common library").should("not.exist");
@@ -1760,7 +1766,7 @@ LIMIT
         cy.findByTestId("python-data-picker").should("be.visible");
 
         cy.log("results panel should be visible in edit mode");
-        cy.findByTestId("python-results").should("be.visible");
+        H.DataStudio.Transforms.pythonResults().should("be.visible");
 
         cy.log("Edit definition button should be hidden in edit mode");
         H.DataStudio.Transforms.editDefinition().should("not.exist");
@@ -1803,7 +1809,7 @@ LIMIT
         cy.url().should("not.include", "/edit");
         H.DataStudio.Transforms.editDefinition().should("be.visible");
         cy.findByTestId("python-data-picker").should("not.exist");
-        cy.findByTestId("python-results").should("not.exist");
+        H.DataStudio.Transforms.pythonResults().should("not.exist");
       },
     );
 
@@ -3663,6 +3669,42 @@ describe(
         firstRows: [["43"]],
       });
     });
+
+    it("should display preview notice message", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonTransform({
+            body: dedent`
+              import pandas as pd
+
+              def transform(foo):
+                return pd.DataFrame([{"foo": 42}])
+            `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      H.DataStudio.Transforms.editDefinition().click();
+
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("not.exist");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("not.exist");
+
+      runPythonScriptAndWaitForSuccess();
+
+      cy.log("Preview disclaimer should appear");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Done")
+        .should("be.visible");
+      H.DataStudio.Transforms.pythonResults()
+        .findByText("Preview based on the first 100 rows from each table.")
+        .should("be.visible");
+    });
   },
 );
 
@@ -3996,7 +4038,7 @@ function runPythonScriptAndWaitForSuccess() {
     .findByTestId("loading-indicator", { timeout: 60000 })
     .should("not.exist");
 
-  cy.findByTestId("python-results").should("be.visible");
+  H.DataStudio.Transforms.pythonResults().should("be.visible");
 }
 
 function getRowNames(): Cypress.Chainable<string[]> {
@@ -4004,3 +4046,55 @@ function getRowNames(): Cypress.Chainable<string[]> {
     .findAllByTestId("tree-node-name")
     .then(($rows) => $rows.get().map((row) => row.textContent.trim()));
 }
+
+describe("scenarios > data studio > transforms > permissions", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+  });
+
+  it("should allow non-admin users with data-studio permission to create transforms", () => {
+    cy.log("grant data-studio permission to All Users");
+    cy.visit("/admin/permissions/application");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          transforms: DataPermissionValue.YES,
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+    H.setUserAsAnalyst(NORMAL_USER_ID);
+
+    cy.log("sign in as normal user and create a transform");
+    cy.signInAsNormalUser();
+    visitTransformListPage();
+    cy.button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.miniPicker().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText(TARGET_SCHEMA).click();
+      cy.findByText(SOURCE_TABLE).click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Non-admin transform");
+      cy.findByLabelText("Table name").type(TARGET_TABLE);
+      cy.button("Save").click();
+      cy.wait("@createTransform");
+    });
+
+    cy.log("Verify transform was created");
+    getTransformsNavLink().click();
+    H.DataStudio.Transforms.list()
+      .findByText("Non-admin transform")
+      .should("be.visible");
+  });
+});

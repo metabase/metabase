@@ -23,6 +23,7 @@ export const DataStudio = {
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
+    pythonResults: () => cy.findByTestId("python-results"),
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),

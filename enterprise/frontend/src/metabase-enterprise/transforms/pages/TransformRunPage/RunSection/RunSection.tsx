@@ -27,9 +27,10 @@ import { LogOutput } from "./LogOutput";
 
 type RunSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-export function RunSection({ transform }: RunSectionProps) {
+export function RunSection({ transform, readOnly }: RunSectionProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return (
@@ -40,7 +41,7 @@ export function RunSection({ transform }: RunSectionProps) {
       <Stack>
         <Group p="lg" justify="space-between">
           <RunStatusSection transform={transform} />
-          <RunButtonSection transform={transform} />
+          <RunButtonSection transform={transform} readOnly={readOnly} />
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
@@ -50,7 +51,10 @@ export function RunSection({ transform }: RunSectionProps) {
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
-        <TagSection transform={transform} readOnly={isRemoteSyncReadOnly} />
+        <TagSection
+          transform={transform}
+          readOnly={readOnly || isRemoteSyncReadOnly}
+        />
       </Group>
     </TitleSection>
   );
@@ -95,9 +99,10 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
 type RunButtonSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function RunButtonSection({ transform }: RunButtonSectionProps) {
+function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
@@ -129,6 +134,7 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
         allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
+        isDisabled={readOnly}
       />
       <ConfirmModal
         title={t`Cancel this run?`}
@@ -161,11 +167,11 @@ function RunOutputSection({ transform }: RunOutputSectionProps) {
 }
 
 type TagSectionProps = {
-  readOnly: boolean;
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function TagSection({ readOnly, transform }: TagSectionProps) {
+function TagSection({ transform, readOnly }: TagSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
