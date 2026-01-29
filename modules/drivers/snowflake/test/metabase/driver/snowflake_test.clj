@@ -302,11 +302,11 @@
       (tx/with-driver-supports-feature! [:snowflake :test/use-fake-sync false]
         (testing "describe-database"
           (let [expected-tables #{:tables
-                                  #{{:name "continent", :schema "PUBLIC", :description nil}
+                                  #{{:name "continent",    :schema "PUBLIC", :description nil}
                                     {:name "municipality", :schema "PUBLIC", :description nil}
-                                    {:name "region", :schema "PUBLIC", :description nil}
-                                    {:name "country", :schema "PUBLIC", :description nil}
-                                    {:name "airport", :schema "PUBLIC", :description nil}}}]
+                                    {:name "region",       :schema "PUBLIC", :description nil}
+                                    {:name "country",      :schema "PUBLIC", :description nil}
+                                    {:name "airport",      :schema "PUBLIC", :description nil}}}]
             (testing "should work with normal details"
               (is (= expected-tables
                      (:tables (driver/describe-database :snowflake (mt/db))))))
