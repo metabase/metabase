@@ -792,9 +792,13 @@
     (let [column-field-id (:id column)
           search-column   (search-field metadata-providerable column)
           search-field-id (:id search-column)]
-      {:field-id (when (int? column-field-id) column-field-id)
-       :search-field-id (when (int? search-field-id) search-field-id)
-       :search-field (when (int? search-field-id) search-column)
-       :has-field-values (if (int? column-field-id)
-                           (infer-has-field-values column)
-                           :none)})))
+      {:field-id         (when (pos-int? column-field-id) column-field-id)
+       :search-field-id  (when (pos-int? search-field-id) search-field-id)
+       :search-field     (when (pos-int? search-field-id) search-column)
+       :has-field-values (let [has-field-values (if (pos-int? column-field-id)
+                                                  (infer-has-field-values column)
+                                                  :none)]
+                           (if (and (= has-field-values :none)
+                                    (pos-int? search-field-id))
+                             :search
+                             has-field-values))})))
