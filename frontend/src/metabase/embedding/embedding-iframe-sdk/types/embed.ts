@@ -213,7 +213,9 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
   (
     | DashboardEmbedOptions
     | QuestionEmbedOptions
-    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | (Omit<ExplorationEmbedOptions, "questionId"> & {
+        questionId: "new" | "new-native";
+      })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
   );

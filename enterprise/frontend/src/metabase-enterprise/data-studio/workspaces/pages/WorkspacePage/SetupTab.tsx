@@ -62,7 +62,7 @@ export const SetupTab = ({
   const databaseOptions = useMemo(
     () =>
       allowedDatabases?.databases
-        ?.filter((db) => db.supported)
+        ?.filter((db) => db.enabled)
         ?.map((db) => ({
           value: db.id.toString(),
           label: db.name,
@@ -75,7 +75,7 @@ export const SetupTab = ({
       <Stack gap="xs">
         <Title order={3}>{t`Workspace Setup`}</Title>
 
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`Configure your data warehouse connection for this workspace`}
         </Text>
       </Stack>
@@ -88,13 +88,17 @@ export const SetupTab = ({
             data={databaseOptions}
             value={databaseId?.toString() ?? ""}
             onChange={handleDatabaseChange}
-            placeholder={t`Select a database`}
+            placeholder={
+              allowedDatabases != null && databaseOptions.length === 0
+                ? t`No database supports workspaces`
+                : t`Select a database`
+            }
             disabled={!isWorkspaceUninitialized(workspace)}
             maw="20rem"
           />
         </LoadingAndErrorWrapper>
 
-        <Text c="text-light" size="sm">
+        <Text c="text-tertiary" size="sm">
           {t`Data warehouse selection is locked after adding transforms to the workspace`}
         </Text>
       </Stack>

@@ -36,7 +36,7 @@ import {
 } from "../FlexibleSizeComponent";
 import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
@@ -124,12 +124,12 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new";
+    const isNewQuestion = originalId === "new" || originalId === "new-native";
     const isExistingQuestion =
       question &&
       !isQuestionLoading &&
       question?.isSaved() &&
-      originalId !== "new" &&
+      !isNewQuestion &&
       queryResults;
 
     const onNavigate = onNavigateBack ?? onReset ?? undefined;
@@ -137,7 +137,7 @@ export const SdkQuestionDefaultView = ({
     if (isNewQuestion) {
       reportLocation({
         type: "question",
-        id: "new",
+        id: originalId,
         name: "New exploration",
         onNavigate,
       });
@@ -235,7 +235,9 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          color="var(--mb-color-border) !important"
+                          style={{
+                            color: "var(--mb-color-border) !important",
+                          }}
                         />
                       )}
                     </>

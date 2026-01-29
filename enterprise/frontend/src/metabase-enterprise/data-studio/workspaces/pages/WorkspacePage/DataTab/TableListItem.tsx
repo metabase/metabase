@@ -4,9 +4,11 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Box,
+  Flex,
   Icon,
   type IconName,
   Loader,
+  Skeleton,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -104,13 +106,21 @@ export const TableListItem = ({
       >
         <Text
           className={S.name}
-          c={displayTooltip ? "text-light" : "text-dark"}
+          c={displayTooltip ? "text-tertiary" : "text-primary"}
           truncate
         >
           {displayName}
         </Text>
       </Tooltip>
-      {hasChanges && <StatusDot />}
+
+      {hasChanges && (
+        <Tooltip label={t`Unsaved changes`}>
+          <Box>
+            <StatusDot />
+          </Box>
+        </Tooltip>
+      )}
+
       {type === "output" && transform && (
         <Tooltip label={t`Open transform`} position="top">
           <ActionIcon
@@ -121,10 +131,19 @@ export const TableListItem = ({
             onClick={handleTransformClick}
             aria-label={t`Open transform`}
           >
-            <Icon name="code_block" size={14} c="text-medium" />
+            <Icon name="code_block" size={14} c="text-secondary" />
           </ActionIcon>
         </Tooltip>
       )}
     </Box>
   );
 };
+
+export function TableListItemSkeleton() {
+  return (
+    <Flex align="center" gap="sm" py="xs" px="sm" h="2rem">
+      <Skeleton h={14} w={14} circle />
+      <Skeleton h={14} w="70%" />
+    </Flex>
+  );
+}

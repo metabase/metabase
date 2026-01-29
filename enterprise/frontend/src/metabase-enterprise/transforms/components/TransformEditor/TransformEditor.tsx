@@ -7,15 +7,19 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
+import { EditTransformMenu } from "metabase-enterprise/transforms/components/TransformHeader/EditTransformMenu";
 import * as Lib from "metabase-lib";
 import type {
   Database,
   DatasetQuery,
   QueryTransformSource,
+  Transform,
   TransformId,
 } from "metabase-types/api";
 
-import { EditDefinitionButton } from "./EditDefinitionButton";
 import { getEditorOptions } from "./utils";
 
 export type TransformEditorProps = {
@@ -29,7 +33,9 @@ export type TransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
-  readOnly?: boolean;
+  onBlur?: () => void;
+  transform?: Transform;
+  isEditMode: boolean;
   transformId?: TransformId;
 };
 
@@ -44,7 +50,9 @@ export function TransformEditor({
   onAcceptProposed,
   onRejectProposed,
   onRunQueryStart,
-  readOnly,
+  onBlur,
+  transform,
+  isEditMode,
   transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
@@ -60,9 +68,12 @@ export function TransformEditor({
     [proposedSource, metadata],
   );
   const mergedUiOptions = useMemo(
-    () => ({ ...getEditorOptions(databases, readOnly), ...uiOptions }),
-    [databases, readOnly, uiOptions],
+    () => ({ ...getEditorOptions(databases, !isEditMode), ...uiOptions }),
+    [databases, isEditMode, uiOptions],
   );
+
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const showEditButton = !!transformId && !isEditMode && !isRemoteSyncReadOnly;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -85,9 +96,12 @@ export function TransformEditor({
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
       onRunQueryStart={onRunQueryStart}
+      onBlur={onBlur}
       topBarInnerContent={
-        readOnly &&
-        !!transformId && (
+        showEditButton &&
+        (hasPremiumFeature("workspaces") && transform ? (
+          <EditTransformMenu transform={transform} />
+        ) : (
           <EditDefinitionButton
             bg="transparent"
             fz="sm"
@@ -96,7 +110,7 @@ export function TransformEditor({
             size="xs"
             transformId={transformId}
           />
-        )
+        ))
       }
     />
   );

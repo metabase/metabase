@@ -367,7 +367,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
     cy.visit("/");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick up where you left off").should("exist");
   });
 

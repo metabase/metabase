@@ -540,21 +540,23 @@ export type WorkspaceTransformDryRunData = {
 
 export type WorkspaceTransformDryRunResponse = {
   status: "succeeded" | "failed";
-  start_time?: string | null;
-  end_time?: string | null;
   message?: string | null;
-  table: {
-    name: string;
-    schema?: string | null;
-  };
   data?: WorkspaceTransformDryRunData;
+  /** Logs from Python transform execution (only present for Python transforms) */
+  logs?: string;
+};
+
+export type WorkspacePermissionsStatus = {
+  status: "ok" | "failed" | "unknown";
+  checked_at?: string;
+  error?: string;
 };
 
 export type WorkspaceAllowedDatabase = {
   id: number;
   name: string;
-  supported: boolean;
-  reason?: string;
+  enabled: boolean;
+  workspace_permissions_status?: WorkspacePermissionsStatus;
 };
 
 export type WorkspaceAllowedDatabasesResponse = {

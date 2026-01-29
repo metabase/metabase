@@ -15,6 +15,7 @@ import {
 const setup = ({
   isAdmin = true,
   remoteSyncEnabled = true,
+  hasRemoteChanges = true,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -22,12 +23,13 @@ const setup = ({
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
+  hasRemoteChanges?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
 } = {}) => {
-  setupRemoteSyncEndpoints({ branches, dirty });
+  setupRemoteSyncEndpoints({ branches, dirty, hasRemoteChanges });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
@@ -41,7 +43,7 @@ const setup = ({
   });
 };
 
-const getOption = (name: RegExp) => screen.getByRole("option", { name });
+const findOption = (name: RegExp) => screen.findByRole("option", { name });
 const getBranchButton = (name: RegExp) => screen.getByRole("button", { name });
 const queryBranchButton = (name: RegExp) =>
   screen.queryByRole("button", { name });
@@ -120,9 +122,9 @@ describe("GitSyncControls", () => {
 
       await userEvent.click(getBranchButton(/main/));
 
-      expect(getOption(/Push changes/)).toBeInTheDocument();
-      expect(getOption(/Pull changes/)).toBeInTheDocument();
-      expect(getOption(/Switch branch/)).toBeInTheDocument();
+      expect(await findOption(/Push changes/)).toBeInTheDocument();
+      expect(await findOption(/Pull changes/)).toBeInTheDocument();
+      expect(await findOption(/Switch branch/)).toBeInTheDocument();
     });
   });
 
@@ -135,7 +137,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
 
-      expect(getOption(/Push changes/)).toBeEnabled();
+      expect(await findOption(/Push changes/)).toBeEnabled();
     });
 
     it("should be disabled and show proper tooltip when there are no changes", async () => {
@@ -145,12 +147,12 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      expect(getOption(/Push changes/)).toHaveAttribute(
+      expect(await findOption(/Push changes/)).toHaveAttribute(
         "data-combobox-disabled",
         "true",
       );
 
-      await userEvent.hover(getOption(/Push changes/));
+      await userEvent.hover(await findOption(/Push changes/));
       expect(
         await screen.findByRole("tooltip", { name: "No changes to push" }),
       ).toBeInTheDocument();
@@ -163,7 +165,7 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(getOption(/Push changes/));
+      await userEvent.click(await findOption(/Push changes/));
 
       await waitFor(() => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -179,13 +181,39 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(getOption(/Pull changes/));
+      await userEvent.click(await findOption(/Pull changes/));
 
       await waitFor(() => {
         expect(
           fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
         ).toBe(true);
       });
+    });
+
+    it("is enabled when there are changes to pull", async () => {
+      setup({ hasRemoteChanges: true });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
+    });
+
+    it("is disabled when there are no changes to pull", async () => {
+      setup({ hasRemoteChanges: false });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
     });
   });
 
@@ -197,7 +225,7 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(getOption(/Switch branch/));
+      await userEvent.click(await findOption(/Switch branch/));
 
       await waitFor(() => {
         expect(

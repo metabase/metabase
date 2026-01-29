@@ -4,7 +4,7 @@ import { generateExpression } from "../test/generator";
 
 describe("metabase/querying/expressions/tokenizer", () => {
   // quick sanity check before the real fuzzing
-  it("should tokenize custom expresssion", () => {
+  it("should tokenize custom expression", () => {
     expect(() => lexify("CASE([Deal],[Price]*7e-1,[Price]")).not.toThrow();
   });
 });

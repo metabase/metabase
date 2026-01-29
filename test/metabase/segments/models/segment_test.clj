@@ -149,11 +149,11 @@
   (testing "Inserting a segment that references an existing segment should succeed"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :table_id (mt/id :venues)
-                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
-      (mt/with-temp [:model/Segment segment-2 {:name "Segment 2"
-                                               :table_id (mt/id :venues)
-                                               :definition {:filter [:segment segment-1-id]}}]
-        (is (some? (:id segment-2)))))))
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}
+                   :model/Segment segment-2          {:name "Segment 2"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:segment segment-1-id]}}]
+      (is (some? (:id segment-2))))))
 
 (deftest update-segment-cycle-detection-test
   (testing "Updating a segment to reference a non-existent segment should fail"
@@ -175,11 +175,11 @@
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :table_id (mt/id :venues)
-                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}]
-      (mt/with-temp [:model/Segment {segment-2-id :id} {:name "Segment 2"
-                                                        :table_id (mt/id :venues)
-                                                        :definition {:filter [:segment segment-1-id]}}]
-        (is (thrown-with-msg?
-             Exception
-             #"[Cc]ycle"
-             (t2/update! :model/Segment segment-1-id {:definition {:filter [:segment segment-2-id]}})))))))
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}
+                   :model/Segment {segment-2-id :id} {:name "Segment 2"
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:segment segment-1-id]}}]
+      (is (thrown-with-msg?
+           Exception
+           #"[Cc]ycle"
+           (t2/update! :model/Segment segment-1-id {:definition {:filter [:segment segment-2-id]}}))))))

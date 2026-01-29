@@ -9,6 +9,7 @@ We recommend creating a `metabase` database user with the following database rol
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 - Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for Metabase actions.
 - Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
+- Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
@@ -133,6 +134,19 @@ GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO 
 -- Grant role to the metabase user.
 GRANT metabase_model_persistence TO metabase;
 ```
+
+## Privileges to enable transforms
+
+[Transforms](../data-modeling/transforms.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables.
+
+In addition to the [minimum database privileges](#minimum-database-privileges):
+
+- Create a new role called `metabase_transforms`.
+- Create a dedicated schema for transforms.
+- Give the `metabase_transforms` role `CREATE TABLE` / `ALTER` / `DROP` privileges for the specified schema
+- Give the `metabase_transforms` role to the `metabase` user.
+
+In certain cases, Metabase will give you an option to create new schemas for transforms, in which case you'll also need `CREATE SCHEMA` privileges for your metabase users (or `CREATE DATABASE` for ClickHouse).
 
 ## Privileges to enable uploads
 

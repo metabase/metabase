@@ -56,7 +56,11 @@ export function useTablePreview({
     queryToFetch == null
       ? skipToken
       : query
-        ? query
+        ? {
+            ...query,
+            ignore_error: true,
+            _refetchDeps: last_transform_run_time,
+          }
         : tableBasedQuery
           ? {
               ...Lib.toJsQuery(tableBasedQuery),

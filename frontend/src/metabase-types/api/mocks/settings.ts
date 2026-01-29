@@ -171,7 +171,7 @@ export const createMockSettings = (
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
-  // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
   "application-favicon-url": "",
   "available-fonts": [],
@@ -267,7 +267,7 @@ export const createMockSettings = (
    * This is a derived setting and it reads either from an env, or from the list
    * of databases. It checks whether there is a db with `is_sample` property.
    * You probably don't want to set this directly in tests because it can get out
-   * of sync with the database state (whch should be a source of truth).
+   * of sync with the database state (which should be a source of truth).
    */
   "has-sample-database?": undefined,
   "has-user-setup": true,

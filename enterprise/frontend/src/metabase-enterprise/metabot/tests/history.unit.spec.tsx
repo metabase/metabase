@@ -28,11 +28,12 @@ describe("metabot > history", () => {
   it("should send conversation history along with future messages", async () => {
     setup();
 
-    mockAgentEndpoint({
+    const { sendResponse } = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
-      initialDelay: 50,
+      waitForResponse: true,
     });
     await enterChatMessage("Who is your favorite?");
+    sendResponse();
     expect(
       await screen.findByText("You, but don't tell anyone."),
     ).toBeInTheDocument();

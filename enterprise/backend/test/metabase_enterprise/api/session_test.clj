@@ -49,6 +49,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :sso-slack
                               :support-users
                               :transforms
                               :transforms-python
@@ -98,6 +99,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
             :transforms                     true

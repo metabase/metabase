@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
-import { setup } from "./DataStudioLayout.setup.spec";
+import { mockHasPremiumFeature, setup } from "./DataStudioLayout.setup.spec";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe("DataStudioLayout", () => {
 
   describe("Set up git sync button", () => {
     it("should show Set up git sync button when git settings is visible", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should hide Set up git sync button when git settings is not visible", async () => {
-      setup({ isGitSettingsVisible: false });
+      setup({ remoteSyncEnabled: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ isGitSettingsVisible: true });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should show Set up git sync text when sidebar is expanded", async () => {
-      setup({ isGitSettingsVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncEnabled: false, isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("DataStudioLayout", () => {
 
   describe("sidebar rendering", () => {
     it("should render the sidebar with navigation tabs", async () => {
-      setup({ isGitSyncVisible: true });
+      setup({ remoteSyncBranch: "main" });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: true });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({ isGitSyncVisible: true, isNavbarOpened: false });
+      setup({ remoteSyncBranch: "main", isNavbarOpened: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -127,13 +127,102 @@ describe("DataStudioLayout", () => {
     });
 
     it("should render content area", async () => {
-      setup({ isGitSyncVisible: false });
+      setup({ remoteSyncBranch: null });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
+    });
+  });
+
+  describe("transform dirty indicator", () => {
+    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      // Should show the dirty indicator badge
+      const transformsTab = screen.getByLabelText("Transforms");
+      await waitFor(() => {
+        expect(
+          within(transformsTab).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: false,
+        remoteSyncTransforms: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+      setup({
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        hasTransformDirtyChanges: true,
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      const transformsTab = screen.getByLabelText("Transforms");
+      expect(
+        within(transformsTab).queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("workspaces feature", () => {
+    afterEach(() => {
+      mockHasPremiumFeature.mockReset();
+    });
+
+    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
+      setup({ hasWorkspacesFeature: false, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId("workspaces-section"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+    });
+
+    it("should render WorkspacesSection when workspaces feature is available", async () => {
+      setup({ hasWorkspacesFeature: true, isNavbarOpened: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
+      expect(screen.getByText("Workspaces")).toBeInTheDocument();
     });
   });
 });

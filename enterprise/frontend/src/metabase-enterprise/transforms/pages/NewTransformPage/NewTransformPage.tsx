@@ -35,7 +35,7 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { getValidationResult, isNotDraftSource } from "../../utils";
+import { getValidationResult, isCompleteSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -147,6 +147,7 @@ function NewTransformPageBody({
               {t`New transform`}
             </DataStudioBreadcrumbs>
           }
+          showMetabotButton
         />
         <Box
           w="100%"
@@ -164,13 +165,14 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
+              isEditMode
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
             />
           ) : (
             <TransformEditor
+              isEditMode
               source={source}
               proposedSource={
                 proposedSource?.type === "query" ? proposedSource : undefined
@@ -185,7 +187,7 @@ function NewTransformPageBody({
           )}
         </Box>
       </PageContainer>
-      {isModalOpened && isNotDraftSource(source) && (
+      {isModalOpened && isCompleteSource(source) && (
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}

@@ -35,7 +35,7 @@ export const TransformListItem = ({
       data-testid={`transform-list-item`}
     >
       <Flex align="center" gap="sm" style={{ overflow: "hidden" }}>
-        <Icon name="code_block" size={14} c="text-medium" />
+        <Icon name="code_block" size={14} c="text-secondary" />
         <Text truncate>{transform.name}</Text>
       </Flex>
       {diffStats && (diffStats.additions > 0 || diffStats.deletions > 0) && (

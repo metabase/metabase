@@ -131,10 +131,12 @@ export function GlossaryTable({
         rowRenderer={(row) => {
           // Create row
           if ("kind" in row && row.kind === "create") {
+            const existingTerms = glossary.map((g) => g.term);
             return (
               <tr className={cx(S.row, S.rowEditor)}>
                 <GlossaryRowEditor
                   item={{ term: "", definition: "" }}
+                  existingTerms={existingTerms}
                   onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
                     await onCreate(term, definition);
@@ -154,6 +156,9 @@ export function GlossaryTable({
                 <GlossaryRowEditor
                   item={item}
                   autoFocusField={editingField ?? "term"}
+                  existingTerms={glossary
+                    .filter((g) => g.id !== item.id)
+                    .map((g) => g.term)}
                   onCancel={() => setEditingId(null)}
                   onSave={async (newTerm, newDefinition) => {
                     await onEdit(item.id, newTerm, newDefinition);

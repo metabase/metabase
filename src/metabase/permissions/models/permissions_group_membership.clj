@@ -85,13 +85,16 @@
   [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
   (check-not-all-external-users-group group_id)
-  ;; Otherwise if this is the Admin group...
+  ;; If this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
     (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false}))))
+      (t2/update! 'User user_id {:is_superuser false})))
+  ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
+  (when (= group_id (:id (perms-group/data-analyst)))
+    (t2/update! 'User user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -198,6 +201,12 @@
                                      (when (= group-id (:id (perms-group/admin)))
                                        user-id))))
 
+          new-data-analyst-ids (->> user-id-group-id->is-group-manager?
+                                    keys
+                                    (keep (fn [[user-id group-id]]
+                                            (when (= group-id (:id (perms-group/data-analyst)))
+                                              user-id))))
+
           sql (add-users-to-groups-sql user-id-group-id->is-group-manager?)]
       (t2/with-transaction [_conn]
         (when (< (t2/query-one sql)
@@ -208,6 +217,8 @@
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
           (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+        (when (seq new-data-analyst-ids)
+          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create

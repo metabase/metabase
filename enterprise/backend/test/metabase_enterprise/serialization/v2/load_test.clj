@@ -436,6 +436,145 @@
                        :database (:id @db1d)}
                       (:definition @msr1d))))))))))
 
+(deftest measure-referencing-measure-test
+  ;; Test that a measure referencing another measure can be serialized and deserialized correctly.
+  ;; The :measure clause in the definition should use entity_id for portability.
+  (testing "measure referencing another measure round-trip"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          msr1s      (atom nil)
+          msr2s      (atom nil)
+          user1s     (atom nil)
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          msr1d      (atom nil)
+          msr2d      (atom nil)]
+
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing measures where one references the other"
+          (ts/with-db source-db
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
+            (reset! table1s (ts/create! :model/Table :name "sales" :db_id (:id @db1s)))
+            (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
+            (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            ;; Create base measure: sum(amount)
+            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+                                        :definition (pmbql-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
+                                        :creator_id (:id @user1s)))
+            ;; Create derived measure: base_measure * 2
+            (let [mp (lib-be/application-database-metadata-provider (:id @db1s))
+                  table (lib.metadata/table mp (:id @table1s))
+                  query (lib/query mp table)
+                  base-measure (lib.metadata/measure mp (:id @msr1s))
+                  derived-definition (lib/aggregate query (lib/* base-measure 2))]
+              (reset! msr2s (ts/create! :model/Measure :table_id (:id @table1s) :name "Double Sales"
+                                        :definition derived-definition
+                                        :creator_id (:id @user1s))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (testing "exported form has measure reference with entity_id"
+          (let [derived-measure (first (filter #(= "Double Sales" (:name %)) (by-model @serialized "Measure")))]
+            (is (=? {:definition {:query {:aggregation [[:* [:measure (:entity_id @msr1s)] 2]]}}}
+                    derived-measure))))
+
+        (testing "deserializing adjusts the measure IDs properly"
+          (ts/with-db dest-db
+            (reset! user1s (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
+            (reset! table1d (t2/select-one :model/Table :name "sales"))
+            (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "amount"))
+            (reset! msr1d   (t2/select-one :model/Measure :name "Total Sales"))
+            (reset! msr2d   (t2/select-one :model/Measure :name "Double Sales"))
+
+            (testing "both measures were loaded"
+              (is (some? @msr1d))
+              (is (some? @msr2d)))
+
+            (testing "the derived measure's definition references the base measure by new ID"
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :aggregation  [[:* {} [:measure {} (:id @msr1d)] 2]]}]
+                       :database (:id @db1d)}
+                      (:definition @msr2d))))))))))
+
+(deftest measure-referencing-segment-test
+  ;; Test that a measure referencing a segment can be serialized and deserialized correctly.
+  ;; The :segment clause in the definition should use entity_id for portability.
+  (testing "measure referencing a segment round-trip"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          seg1s      (atom nil)
+          msr1s      (atom nil)
+          user1s     (atom nil)
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          seg1d      (atom nil)
+          msr1d      (atom nil)]
+
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing measure that references a segment"
+          (ts/with-db source-db
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
+            (reset! table1s (ts/create! :model/Table :name "products" :db_id (:id @db1s)))
+            (reset! field1s (ts/create! :model/Field :name "price" :table_id (:id @table1s)))
+            (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            ;; Create segment: price > 100
+            (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Expensive"
+                                        :definition {:source-table (:id @table1s)
+                                                     :filter [:> [:field (:id @field1s) nil] 100]}
+                                        :creator_id (:id @user1s)))
+            ;; Create measure: count-where(segment)
+            (let [mp (lib-be/application-database-metadata-provider (:id @db1s))
+                  table (lib.metadata/table mp (:id @table1s))
+                  query (lib/query mp table)
+                  segment (lib.metadata/segment mp (:id @seg1s))
+                  measure-definition (lib/aggregate query (lib/count-where segment))]
+              (reset! msr1s (ts/create! :model/Measure :table_id (:id @table1s) :name "Expensive Count"
+                                        :definition measure-definition
+                                        :creator_id (:id @user1s))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (testing "exported form has segment reference with entity_id"
+          (let [measure (first (by-model @serialized "Measure"))]
+            (is (=? {:definition {:query {:aggregation [[:count-where [:segment (:entity_id @seg1s)]]]}}}
+                    measure))))
+
+        (testing "deserializing adjusts the segment IDs properly"
+          (ts/with-db dest-db
+            (reset! user1s (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
+            (reset! table1d (t2/select-one :model/Table :name "products"))
+            (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "price"))
+            (reset! seg1d   (t2/select-one :model/Segment :name "Expensive"))
+            (reset! msr1d   (t2/select-one :model/Measure :name "Expensive Count"))
+
+            (testing "segment and measure were loaded"
+              (is (some? @seg1d))
+              (is (some? @msr1d)))
+
+            (testing "the measure's definition references the segment by new ID"
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :aggregation  [[:count-where {} [:segment {} (:id @seg1d)]]]}]
+                       :database (:id @db1d)}
+                      (:definition @msr1d))))))))))
+
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which

@@ -1,6 +1,7 @@
 import { sql } from "@codemirror/lang-sql";
 import { useLayoutEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
+import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -14,9 +15,11 @@ import { EntityCreationInfo } from "metabase/common/components/EntityCreationInf
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Card, Center, Flex, Stack } from "metabase/ui";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PaneHeaderActions } from "../../../common/components/PaneHeader";
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
@@ -36,6 +39,7 @@ type EditSnippetPageProps = {
 export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const {
     data: snippet,
@@ -51,11 +55,12 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
     [content, snippet],
   );
 
+  const previousSnippet = usePreviousDistinct(snippet);
   useLayoutEffect(() => {
-    if (snippet) {
+    if (snippet && previousSnippet?.id !== snippet.id) {
       setContent(snippet.content);
     }
-  }, [snippet]);
+  }, [snippet, previousSnippet]);
 
   const handleSave = async () => {
     if (!snippet) {
@@ -128,6 +133,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               height="100%"
               className={S.editor}
               data-testid="snippet-editor"
+              editable={!remoteSyncReadOnly}
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
@@ -137,7 +143,10 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
             />
           </Card>
           <Stack p="md" gap="lg" flex="0 0 20rem">
-            <SnippetDescriptionSection snippet={snippet} />
+            <SnippetDescriptionSection
+              snippet={snippet}
+              isDisabled={remoteSyncReadOnly}
+            />
             <EntityCreationInfo
               createdAt={snippet.created_at}
               creator={snippet.creator}

@@ -78,7 +78,7 @@
                                                                                      metadata
                                                                                      min-value max-value)
         resolved-options                           (merge min-max resolved-options)
-        ;; Bail out and use unmodifed version if we can't converge on a nice version.
+        ;; Bail out and use unmodified version if we can't converge on a nice version.
         new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
                         resolved-options)]
     (lib/update-options field-ref update :binning merge {:strategy new-strategy} new-options)))

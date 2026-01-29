@@ -623,6 +623,57 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest update-database-settings-only-validates-changed-settings-test
+  (testing "PUT /api/database/:id only validates settings that are being changed"
+    (testing "should not validate existing settings that aren't being changed"
+      ;; api-test-disabled-for-database is always disabled, so it would fail validation if we tried to validate it
+      ;; Here we create a database with that setting already set, then update a different setting.
+      ;; If validation happens on all settings, it would fail. If it only validates changed settings, it should succeed.
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true
+                                                             :database-enable-actions        false}}]
+        (is (= {:api-test-disabled-for-database true
+                :database-enable-actions        true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:database-enable-actions true}}))))))
+
+    (testing "should not validate settings where the value hasn't changed"
+      ;; Same setup, but we set the same value as before - should skip validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should still validate settings that are actually being changed to a new value"
+      ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database false}}]
+        (is (= "Setting api-test-disabled-for-database is not enabled for this database"
+               (:message (mt/user-http-request :crowberto :put 400
+                                               (format "database/%s" db-id)
+                                               {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should not validate settings being reset to nil (default)"
+      ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database nil}}))))))
+
+    (testing "should not validate settings being reset to default value (literally)"
+      ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database false}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database false}}))))))))
+
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
@@ -1742,13 +1793,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
-      (testing "should return a 403 if there are no perms for any schema"
+      (testing "returns empty list when user has no create-queries perms for any schema"
         (mt/with-full-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
+          ;; User can access the endpoint but sees no schemas since they have no query perms
+          (is (= []
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2389,6 +2441,7 @@
 (setting/defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
+  :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
@@ -2450,3 +2503,147 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
+
+(deftest workspace-permission-endpoint-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "POST /api/database/:id/permission/workspace/check"
+      (testing "returns cached status when available"
+        ;; First call to populate cache
+        (mt/user-http-request :crowberto :post 200
+                              (format "database/%d/permission/workspace/check" (mt/id))
+                              {:cached false})
+        ;; Second call should return cached result
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          (is (nil? (:error response)))))
+
+      (testing "runs permission check when no cache exists"
+        ;; Clear the cache
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          ;; Verify it was cached
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "cached=false forces permission check"
+        ;; Set a stale cache value
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "ok" (:status response)))
+          ;; Verify cache was updated
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
+
+(deftest workspace-permission-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns failed status when permissions check fails"
+      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
+                                  (fn [_driver _database _table]
+                                    "permission denied")]
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "failed" (:status response)))
+          (is (= "permission denied" (:error response))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         can-query filter tests                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
+;; enterprise features (:perms/manage-table-metadata permission)
+
+(deftest list-databases-can-query-filter-test
+  (testing "GET /api/database with can-query=true filters to only queryable databases"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Queryable DB"}
+                   :model/Database {db-2-id :id} {:name "Not Queryable DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      ;; Grant full permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only view-data to db-2 (not queryable)
+      (data-perms/set-database-permission! pg db-2-id :perms/view-data :unrestricted)
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-query true)
+                          :data
+                          (filter #(#{db-1-id db-2-id} (:id %))))]
+        (is (= 1 (count response)))
+        (is (= "Queryable DB" (-> response first :name)))))))
+
+(deftest list-schemas-can-query-filter-test
+  (testing "GET /api/database/:id/schemas with can-query=true filters to only schemas with queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "queryable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_queryable_schema" :name "t2" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
+          (is (= ["queryable_schema"] response)))))))
+
+(deftest list-schema-tables-can-query-filter-test
+  (testing "GET /api/database/:id/schema/:schema with can-query=true filters to only queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "queryable_table" :active true}
+                   :model/Table    _ {:db_id db-id :schema "test_schema" :name "not_queryable_table" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
+          (is (= 1 (count response)))
+          (is (= "queryable_table" (-> response first :name))))))))
+
+(deftest list-databases-includes-manage-permissions-test
+  (testing "GET /api/database includes databases where user has manage-database permission (details :yes)"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Query DB"}
+                   :model/Database {db-2-id :id} {:name "Manage DB"}
+                   :model/Database {db-3-id :id} {:name "No Access DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/Table    _             {:db_id db-3-id :name "table3" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      (t2/delete! :model/DataPermissions :db_id db-3-id)
+      ;; Grant query permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only manage-database (details) permission to db-2 (no query access)
+      (data-perms/set-database-permission! pg db-2-id :perms/manage-database :yes)
+      ;; No permissions for db-3
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database")
+                          :data
+                          (filter #(#{db-1-id db-2-id db-3-id} (:id %)))
+                          (map :name)
+                          set)]
+        (testing "Both query-accessible and manage-accessible databases should be included"
+          (is (contains? response "Query DB"))
+          (is (contains? response "Manage DB")))
+        (testing "Database with no permissions should not be included"
+          (is (not (contains? response "No Access DB"))))))))

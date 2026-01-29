@@ -6,11 +6,12 @@ import { t } from "ttag";
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import {
@@ -35,6 +36,7 @@ export function SnippetHeader({
   ...rest
 }: SnippetHeaderProps & PaneHeaderProps) {
   const dispatch = useDispatch();
+  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const handleDelete = () => {
     dispatch(push(Urls.dataStudioLibrary()));
@@ -46,8 +48,14 @@ export function SnippetHeader({
 
   return (
     <PaneHeader
-      title={<SnippetNameInput snippet={snippet} />}
-      menu={<SnippetMoreMenu snippet={snippet} onDelete={handleDelete} />}
+      title={
+        <SnippetNameInput snippet={snippet} readOnly={remoteSyncReadOnly} />
+      }
+      menu={
+        remoteSyncReadOnly ? null : (
+          <SnippetMoreMenu snippet={snippet} onDelete={handleDelete} />
+        )
+      }
       tabs={<SnippetTabs snippet={snippet} />}
       actions={actions}
       data-testid="snippet-header"
@@ -61,7 +69,7 @@ export function SnippetHeader({
             <Link
               key={collection.id}
               to={Urls.dataStudioLibrary({
-                expandedIds: path.slice(1, i + 1).map((c) => c.id),
+                expandedIds: ["root", ...path.slice(0, i + 1).map((c) => c.id)],
               })}
             >
               {collection.name}
@@ -75,10 +83,11 @@ export function SnippetHeader({
 }
 
 type SnippetNameInputProps = {
+  readOnly: boolean;
   snippet: NativeQuerySnippet;
 };
 
-function SnippetNameInput({ snippet }: SnippetNameInputProps) {
+function SnippetNameInput({ readOnly, snippet }: SnippetNameInputProps) {
   const [updateSnippet] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
 
@@ -106,6 +115,7 @@ function SnippetNameInput({ snippet }: SnippetNameInputProps) {
       initialValue={snippet.name}
       maxLength={SNIPPET_NAME_MAX_LENGTH}
       onChange={handleChangeName}
+      readOnly={readOnly}
     />
   );
 }

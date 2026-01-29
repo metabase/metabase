@@ -20,6 +20,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
@@ -173,6 +174,8 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; In OSS, convert any Data Analysts group with members to a normal visible group
+  (perms/sync-data-analyst-group-for-oss!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)

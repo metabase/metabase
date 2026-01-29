@@ -1,7 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -9,16 +8,17 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
-import { useDispatch } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import type { TreeTableColumnDef } from "metabase/ui";
 import {
+  Avatar,
   Card,
   EntityNameCell,
   Flex,
@@ -26,6 +26,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
@@ -33,6 +34,7 @@ import { useListTransformsQuery } from "metabase-enterprise/api";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
@@ -80,7 +82,7 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = ({ location }: WithRouterProps) => {
-  const dispatch = useDispatch();
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const targetCollectionId =
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
@@ -135,7 +137,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         id: "name",
         accessorKey: "name",
         header: t`Name`,
-        minWidth: 320,
+        minWidth: 280,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) => (
           <EntityNameCell
@@ -147,10 +150,64 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         ),
       },
       {
+        id: "owner",
+        accessorFn: (node) => {
+          const owner = node.owner;
+          if (owner) {
+            return owner.first_name && owner.last_name
+              ? `${owner.first_name} ${owner.last_name}`
+              : owner.email;
+          }
+          return node.owner_email ?? "";
+        },
+        header: t`Owner`,
+        minWidth: 160,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const owner = row.original.owner;
+          const hasUserName = owner?.first_name || owner?.last_name;
+
+          if (hasUserName) {
+            const displayName = getUserName(owner as NamedUser);
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" name={displayName} />
+                <Ellipsified>{displayName}</Ellipsified>
+              </Flex>
+            );
+          }
+
+          const ownerEmail = row.original.owner_email ?? owner?.email;
+          if (ownerEmail) {
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" color="initials" name="emails">
+                  <Icon name="mail" />
+                </Avatar>
+                <Ellipsified>{ownerEmail}</Ellipsified>
+              </Flex>
+            );
+          }
+
+          if (row.original.nodeType === "transform") {
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" color="background-secondary" name="unknown">
+                  <Icon name="person" c="text-secondary" />
+                </Avatar>
+                <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>
+              </Flex>
+            );
+          }
+
+          return null;
+        },
+      },
+      {
         id: "updated_at",
         accessorKey: "updated_at",
         header: t`Last Modified`,
-        maxWidth: 260,
+        maxWidth: 200,
         minWidth: "auto",
         enableSorting: true,
         sortingFn: "datetime",
@@ -164,7 +221,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         id: "output_table",
         accessorFn: (node) => node.target?.name ?? "",
         header: t`Output table`,
-        minWidth: 240,
+        minWidth: 200,
+        maxAutoWidth: 800,
         enableSorting: true,
         cell: ({ row }) =>
           row.original.target?.name ? (
@@ -189,23 +247,15 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     [],
   );
 
-  const navigateToTransform = useCallback(
-    (transformId: number) => {
-      dispatch(push(Urls.transform(transformId)));
-    },
-    [dispatch],
-  );
-
-  const handleRowActivate = useCallback(
-    (row: Row<TreeNode>) => {
-      if (row.original.nodeType === "transform" && row.original.transformId) {
-        navigateToTransform(row.original.transformId);
-      } else if (row.original.nodeType === "library" && row.original.url) {
-        dispatch(push(row.original.url));
-      }
-    },
-    [navigateToTransform, dispatch],
-  );
+  const getRowHref = useCallback((row: Row<TreeNode>) => {
+    if (row.original.nodeType === "transform" && row.original.transformId) {
+      return Urls.transform(row.original.transformId);
+    }
+    if (row.original.nodeType === "library" && row.original.url) {
+      return row.original.url;
+    }
+    return null;
+  }, []);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -218,24 +268,14 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     onGlobalFilterChange: setSearchQuery,
     globalFilterFn,
     isFilterable,
-    onRowActivate: handleRowActivate,
   });
 
-  const handleRowClick = useCallback(
-    (row: Row<TreeNode>) => {
-      if (row.getCanExpand()) {
-        row.toggleExpanded();
-      } else if (
-        row.original.nodeType === "transform" &&
-        row.original.transformId
-      ) {
-        navigateToTransform(row.original.transformId);
-      } else if (row.original.nodeType === "library" && row.original.url) {
-        dispatch(push(row.original.url));
-      }
-    },
-    [navigateToTransform, dispatch],
-  );
+  const handleRowClick = useCallback((row: Row<TreeNode>) => {
+    // Navigation for leaf nodes (transforms, library) is handled by the link
+    if (row.getCanExpand()) {
+      row.toggleExpanded();
+    }
+  }, []);
 
   useEffect(() => {
     if (targetCollectionId && !hasScrolledRef.current && !isLoading) {
@@ -277,12 +317,12 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <CreateTransformMenu />
+          {!isRemoteSyncReadOnly && <CreateTransformMenu />}
         </Flex>
 
         <Card withBorder p={0}>
           {isLoading ? (
-            <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.25, 0.05]} />
+            <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
           ) : (
             <TreeTable
               instance={treeTableInstance}
@@ -290,6 +330,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
                 emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
               }
               onRowClick={handleRowClick}
+              getRowHref={getRowHref}
             />
           )}
         </Card>

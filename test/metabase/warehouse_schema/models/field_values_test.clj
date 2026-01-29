@@ -241,8 +241,8 @@
       (t2/delete! :model/FieldValues :field_id (mt/id :categories :name) :type :full)
       (is (= :full (-> (t2/select-one :model/Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
-                       :type))
-          (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full))))
+                       :type)))
+      (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full)))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)

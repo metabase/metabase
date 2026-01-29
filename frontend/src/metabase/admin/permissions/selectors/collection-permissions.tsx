@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import type { ReactElement } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -17,9 +18,11 @@ import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import {
   getGroupNameLocalized,
-  isAdminGroup,
+  getGroupSortOrder,
+  getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/lib/groups";
+import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
@@ -36,7 +39,7 @@ import type {
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";
-import type { DataPermissionValue } from "../types";
+import type { DataPermissionValue, SpecialGroupType } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 
@@ -211,6 +214,41 @@ const getToggleLabel = (namespace?: CollectionNamespace) =>
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;
 
+const getCollectionDisabledTooltip = (
+  groupType: SpecialGroupType,
+  isLibrary: boolean,
+  isIACollection: boolean,
+): string | null => {
+  if (groupType === "admin" && isIACollection) {
+    return PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE;
+  }
+  if (groupType === "analyst" && isLibrary) {
+    return Messages.UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS;
+  }
+  switch (groupType) {
+    case "admin":
+      return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+    case "external":
+      return Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION;
+    default:
+      return null;
+  }
+};
+
+type PermissionOption = {
+  label: string;
+  value: string;
+  icon: string;
+  iconColor: string;
+};
+
+type PermissionConfirmation = {
+  title: string;
+  message: string;
+  confirmButtonText: string;
+  cancelButtonText: string;
+};
+
 export type CollectionPermissionEditorType = null | {
   title: string;
   filterPlaceholder: string;
@@ -218,15 +256,18 @@ export type CollectionPermissionEditorType = null | {
   entities: {
     id: number;
     name: string;
+    icon?: ReactElement;
     permissions: {
-      toggleLabel: string;
+      toggleLabel: string | null;
       hasChildren: boolean;
       isDisabled: boolean;
       disabledTooltip: string | null;
       value: string;
       warning: string | null;
-      confirmations: (newValue: string) => string[];
-      options: string[];
+      confirmations: (
+        newValue: DataPermissionValue,
+      ) => (PermissionConfirmation | undefined)[];
+      options: PermissionOption[];
     }[];
   }[];
 };
@@ -250,14 +291,22 @@ export const getCollectionsPermissionEditor = createSelector(
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
-    const entities = groups
+    const sortedGroups = [...groups].sort(
+      (a, b) => getGroupSortOrder(a) - getGroupSortOrder(b),
+    );
+
+    const entities = sortedGroups
       .map((group: GroupType) => {
-        const isAdmin = isAdminGroup(group);
-        const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
+        const isExternalUsersGroup = PLUGIN_TENANTS.isExternalUsersGroup(group);
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+        const isExternal = isExternalUsersGroup || isTenantGroup;
+        const groupType = getSpecialGroupType(group, isExternal);
+        const isLibrary = isLibraryCollection(collection);
         const defaultGroup = _.find(
           groups,
-          isExternal ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
+          isExternalUsersGroup
+            ? PLUGIN_TENANTS.isExternalUsersGroup
+            : isDefaultGroup,
         );
 
         if (isTenantGroup && !isTenantCollection) {
@@ -283,8 +332,7 @@ export const getCollectionsPermissionEditor = createSelector(
         const isIACollection = isInstanceAnalyticsCollection(collection);
 
         const options =
-          isIACollection ||
-          (isTenantCollection && (isTenantGroup || isExternal))
+          isIACollection || (isTenantCollection && isExternal)
             ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
             : [
                 COLLECTION_OPTIONS.write,
@@ -292,14 +340,14 @@ export const getCollectionsPermissionEditor = createSelector(
                 COLLECTION_OPTIONS.none,
               ];
 
-        const disabledTooltip = isIACollection
-          ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-          : isTenantGroup || isExternal
-            ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
-            : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+        const disabledTooltip = getCollectionDisabledTooltip(
+          groupType,
+          isLibrary,
+          isIACollection,
+        );
 
-        const disabled =
-          (!isTenantCollection && (isTenantGroup || isExternal)) || isAdmin;
+        const isDisabled =
+          (!isTenantCollection && isExternal) || disabledTooltip !== null;
 
         return {
           id: group.id,
@@ -311,8 +359,8 @@ export const getCollectionsPermissionEditor = createSelector(
             {
               toggleLabel,
               hasChildren,
-              isDisabled: disabled,
-              disabledTooltip: isAdmin || isExternal ? disabledTooltip : null,
+              isDisabled,
+              disabledTooltip,
               value: getCollectionPermission(
                 permissions,
                 group.id,
@@ -325,7 +373,7 @@ export const getCollectionsPermissionEditor = createSelector(
           ],
         };
       })
-      .filter(Boolean);
+      .filter(isNotNull);
 
     return {
       title: t`Permissions for ${collection.name}`,
@@ -364,7 +412,7 @@ function getCollectionWarning(
   permissions: CollectionPermissions,
 ) {
   if (!collection) {
-    return;
+    return null;
   }
   const collectionPerm = getCollectionPermission(
     permissions,
@@ -385,4 +433,6 @@ function getCollectionWarning(
   } else if (collectionPerm === "read" && descendentPerms.has("write")) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
+
+  return null;
 }

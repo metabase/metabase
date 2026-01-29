@@ -182,7 +182,10 @@ function recursiveCheckFields(id, i = 0) {
   cy.request("GET", `/api/database/${id}/schemas`).then(({ body: schemas }) => {
     const [schema] = schemas;
     if (schema) {
-      cy.request("GET", `/api/database/${id}/schema/${schema}`)
+      cy.request(
+        "GET",
+        `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
+      )
         .then(({ body: schema }) => {
           return schema[0].id;
         })

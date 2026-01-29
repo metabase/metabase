@@ -10,10 +10,10 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -206,7 +206,7 @@ export function DetailViewSidesheet({
       }
     },
     {
-      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
       capture: true,
     },
   );

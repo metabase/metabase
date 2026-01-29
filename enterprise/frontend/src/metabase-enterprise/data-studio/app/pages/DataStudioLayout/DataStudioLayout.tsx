@@ -17,6 +17,7 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
+  ActionIcon,
   Box,
   Center,
   FixedSizeIcon,
@@ -27,7 +28,6 @@ import {
   Stack,
   Text,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -91,6 +91,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
+  const hasTransformDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const currentTab = getCurrentTab(pathname);
@@ -130,15 +132,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessDataModel && (
-          <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
-            showLabel={isNavbarOpened}
-          />
-        )}
+        <DataStudioTab
+          label={t`Glossary`}
+          icon="glossary"
+          to={Urls.dataStudioGlossary()}
+          isSelected={currentTab === "glossary"}
+          showLabel={isNavbarOpened}
+        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
@@ -150,10 +150,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
-            label={t`Tasks`}
-            icon="list"
-            to={Urls.dataStudioTasks()}
-            isSelected={currentTab === "tasks"}
+            label={t`Dependency diagnostics`}
+            icon="search_check"
+            to={Urls.dependencyDiagnostics()}
+            isSelected={currentTab === "dependency-diagnostics"}
             showLabel={isNavbarOpened}
           />
         )}
@@ -164,6 +164,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             to={Urls.transformList()}
             isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
+            rightSection={
+              hasTransformDirtyChanges &&
+              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              ) : null
+            }
           />
         )}
         {canAccessTransforms && hasPremiumFeature("workspaces") && (
@@ -274,54 +280,58 @@ function DataStudioNavbarToggle({
   onNavbarToggle,
 }: DataStudioNavbarToggleProps) {
   return (
-    <Flex justify="space-between" mb={2}>
+    <Flex
+      align="center"
+      justify="space-between"
+      mb="0.75rem"
+      mt="sm"
+      mr="0.125rem"
+    >
       <Group gap="sm">
-        <Tooltip
-          label={getSidebarTooltipLabel(isNavbarOpened)}
-          withArrow
-          offset={-12}
-          openDelay={1000}
+        <Box
+          className={cx(S.logoWrapper, { [S.navbarClosed]: !isNavbarOpened })}
         >
-          <UnstyledButton
-            className={cx(S.toggle, {
-              [S.hoverButton]: !isNavbarOpened,
-              [S.disablePointer]: isNavbarOpened,
-            })}
-            p="0.5rem"
-            bdrs="md"
-            onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-          >
-            <img
-              alt="Data Studio Logo"
-              className={cx(S.hideOnHover, S.logo)}
-              src={DataStudioLogo}
+          <img
+            alt={t`Data Studio Logo`}
+            className={S.logo}
+            src={DataStudioLogo}
+          />
+          {!isNavbarOpened && (
+            <ToggleActionIcon
+              isNavbarOpened={isNavbarOpened}
+              onNavbarToggle={onNavbarToggle}
             />
-            <FixedSizeIcon
-              name="sidebar_open"
-              className={S.showOnHover}
-              c="text-secondary"
-            />
-          </UnstyledButton>
-        </Tooltip>
+          )}
+        </Box>
         {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       </Group>
       {isNavbarOpened && (
-        <Tooltip
-          label={getSidebarTooltipLabel(isNavbarOpened)}
-          withArrow
-          offset={-12}
-          openDelay={1000}
-        >
-          <UnstyledButton
-            className={S.toggle}
-            p="0.5rem"
-            bdrs="md"
-            onClick={() => onNavbarToggle(false)}
-          >
-            <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
-          </UnstyledButton>
-        </Tooltip>
+        <ToggleActionIcon isNavbarOpened onNavbarToggle={onNavbarToggle} />
       )}
     </Flex>
+  );
+}
+
+type ToggleActionIconProps = DataStudioNavbarToggleProps & {
+  className?: string;
+};
+
+function ToggleActionIcon(props: ToggleActionIconProps) {
+  const { isNavbarOpened, onNavbarToggle } = props;
+  const label = getSidebarTooltipLabel(isNavbarOpened);
+
+  return (
+    <Tooltip label={label} openDelay={1000}>
+      <ActionIcon
+        aria-label={label}
+        className={S.toggle}
+        onClick={() => onNavbarToggle(!isNavbarOpened)}
+      >
+        <FixedSizeIcon
+          name={isNavbarOpened ? "sidebar_closed" : "sidebar_open"}
+          c="text-secondary"
+        />
+      </ActionIcon>
+    </Tooltip>
   );
 }

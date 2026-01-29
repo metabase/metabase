@@ -37,6 +37,10 @@ export const Workspaces = {
     return cy.findByTestId("workspace-sidebar");
   },
 
+  openSetupTab() {
+    this.getWorkspaceContent().findByRole("tab", { name: "Setup" }).click();
+  },
+
   openCodeTab() {
     this.getWorkspaceSidebar().findByRole("tab", { name: "Code" }).click();
   },
@@ -54,7 +58,7 @@ export const Workspaces = {
   },
 
   getWorkspaceItem(name: string) {
-    return this.getWorkspacesSection().find(`button[name="${name}"]`);
+    return this.getWorkspacesSection().find(`a[name="${name}"]`);
   },
 
   getWorkspaceItemStatus(name: string) {
@@ -101,6 +105,10 @@ export const Workspaces = {
     return this.getTransformTabHeader().findByTestId("run-button", {
       timeout: 10_000,
     });
+  },
+
+  getRunStatus() {
+    return cy.findByTestId("run-status");
   },
 
   getSaveTransformButton() {

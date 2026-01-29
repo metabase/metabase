@@ -84,10 +84,10 @@ export class EmbedAuthManager {
 
   private getAuthRequestHeader(hash?: string) {
     return {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
       "X-Metabase-Client": "embedding-simple",
 
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
       ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
     };
   }

@@ -6,6 +6,7 @@ import {
   type DatabaseEntityId,
   type EntityId,
   type PermissionSubject,
+  type SpecialGroupType,
 } from "metabase/admin/permissions/types";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -134,8 +135,7 @@ const getDefaultFeatureLevelPermissions = () => ({
   getFeatureLevelDataPermissions: (
     _entityId: DatabaseEntityId,
     _groupId: number,
-    _isAdmin: boolean,
-    _isExternal: boolean,
+    _groupType: SpecialGroupType,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,

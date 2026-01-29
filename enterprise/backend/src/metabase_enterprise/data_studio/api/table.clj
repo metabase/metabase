@@ -188,7 +188,7 @@
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         set-ks          [:data_authority
                          :data_source
@@ -201,7 +201,12 @@
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
       (t2/update! :model/Table [:in table-ids] set-map)
-      (maybe-sync-unhidden-tables! existing-tables set-map))
+      (maybe-sync-unhidden-tables! existing-tables set-map)
+      ;; Publish update events for remote sync tracking
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     {}))
 
 (api.macros/defendpoint :post "/selection" :- ::bulk-table-selection-info
@@ -209,7 +214,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         selected-tables   (t2/select fields {:where where :limit 2})
@@ -230,7 +235,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
                                                               :type collection/library-data-collection-type
                                                               {:limit 2}))]
@@ -242,11 +247,19 @@
         upstream-ids      (all-upstream-table-ids where)
         update-where      (if (seq upstream-ids)
                             [:or where [:in :id upstream-ids]]
-                            where)]
+                            where)
+        ;; Get table IDs before update for event publishing
+        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
                :where  update-where})
+    ;; Publish update events for remote sync tracking
+    (when (seq table-ids-to-update)
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -254,16 +267,24 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         downstream-ids  (all-downstream-table-ids where)
         update-where    (if (seq downstream-ids)
                           [:or where [:in :id downstream-ids]]
-                          where)]
+                          where)
+        ;; Get table IDs before update for event publishing
+        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id nil
                         :is_published  false}
                :where  update-where})
+    ;; Publish update events for remote sync tracking
+    (when (seq table-ids-to-update)
+      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*}))))
     nil))
 
 (defn- sync-schema-async!
@@ -274,11 +295,11 @@
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
-  - The sync itself is however, asyncronous. This call may return before all tables synced."
+  - The sync itself is however, asynchronous. This call may return before all tables synced."
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (t2/select :model/Database :id [:in db-ids])]
@@ -297,7 +318,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
@@ -310,7 +331,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
     (let [field-ids-to-delete-q {:select [:id]
                                  :from   [(t2/table-name :model/Field)]

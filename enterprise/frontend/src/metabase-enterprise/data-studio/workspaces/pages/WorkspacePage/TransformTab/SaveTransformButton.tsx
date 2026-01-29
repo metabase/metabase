@@ -1,8 +1,6 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -15,13 +13,11 @@ import {
 import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
-import {
-  isSameSource,
-  isSourceEmpty,
-} from "metabase-enterprise/transforms/utils";
+import { isSourceEmpty } from "metabase-enterprise/transforms/utils";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
+  SchemaName,
   TaggedTransform,
   TransformSource,
   WorkspaceId,
@@ -34,30 +30,29 @@ import {
   isWorkspaceTransform,
 } from "metabase-types/api";
 
-import type {
-  AnyWorkspaceTransform,
-  EditedTransform,
-} from "../WorkspaceProvider";
+import type { AnyWorkspaceTransform } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
+import { useEditedTransform } from "./useEditedTransform";
 import { useTransformValidation } from "./useTransformValidation";
+
+const schemasFilter = (schema: SchemaName) =>
+  !schema.startsWith("mb__isolation");
 
 type SaveTransformButtonProps = {
   databaseId: DatabaseId;
-  editedTransform: EditedTransform;
-  transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformListItem[];
+  transform: AnyWorkspaceTransform;
   isDisabled: boolean;
   onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
 };
 
 export const SaveTransformButton = ({
   databaseId,
-  editedTransform,
-  transform,
   workspaceId,
   workspaceTransforms,
+  transform,
   isDisabled,
   onSaveTransform,
 }: SaveTransformButtonProps) => {
@@ -71,39 +66,18 @@ export const SaveTransformButton = ({
     removeEditedTransform,
   } = useWorkspace();
 
-  const [updateTransform, { isLoading: isUpdating }] =
+  const [updateTransformMutation, { isLoading: isUpdating }] =
     useUpdateWorkspaceTransformMutation();
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  const { editedTransform, hasChanges } = useEditedTransform(transform);
 
   // Determine transform state
   const isSaved =
     isWorkspaceTransform(transform) &&
     workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isNewTransform = isUnsavedTransform(transform);
-
-  // Check for changes
-  const hasSourceChanged = !isSameSource(
-    editedTransform.source,
-    transform.source,
-  );
-  const hasTargetNameChanged =
-    "target" in editedTransform &&
-    "target" in transform &&
-    transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
-
-  // Fetch schemas for CreateTransformModal
-  const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId && isNewTransform
-      ? { id: databaseId, include_hidden: false }
-      : skipToken,
-  );
-  const allowedSchemas = useMemo(
-    () =>
-      fetchedSchemas.filter((schema) => !schema.startsWith("mb__isolation")),
-    [fetchedSchemas],
-  );
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
@@ -125,7 +99,7 @@ export const SaveTransformButton = ({
     }
 
     try {
-      const updated = await updateTransform({
+      const updated = await updateTransformMutation({
         workspaceId,
         transformId: transform.ref_id,
         source: editedTransform.source as TransformSource,
@@ -184,8 +158,8 @@ export const SaveTransformButton = ({
       const savedTransform = await createWorkspaceTransform(request).unwrap();
 
       // Remove from unsaved transforms and refresh workspace
-      if ("id" in editedTransform && typeof editedTransform.id === "number") {
-        removeUnsavedTransform(editedTransform.id);
+      if (isNewTransform) {
+        removeUnsavedTransform(transform.id);
       }
 
       // Invalidate workspace transforms after creating new one
@@ -276,12 +250,12 @@ export const SaveTransformButton = ({
           source={editedTransform.source as TransformSource}
           defaultValues={initialCreateTransformValues}
           onClose={() => setSaveModalOpen(false)}
-          schemas={allowedSchemas}
-          showIncrementalSettings={true}
+          schemasFilter={schemasFilter}
           validationSchemaExtension={validationSchemaExtension}
           validateOnMount
           handleSubmit={handleCreateNewTransform}
           targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
+          showIncrementalSettings={false}
         />
       )}
     </>

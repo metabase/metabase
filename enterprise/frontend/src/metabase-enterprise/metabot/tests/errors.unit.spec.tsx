@@ -71,7 +71,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("");
   });
 
-  it("should remove previous error messages and prompt when submiting next prompt", async () => {
+  it("should remove previous error messages and prompt when submitting next prompt", async () => {
     setup();
     fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 

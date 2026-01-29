@@ -8,7 +8,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -76,66 +77,74 @@
 
 (defn- add-filter
   [query llm-filter]
-  (let [{:keys [operation value values]} llm-filter
-        expr (filter-bucketed-column llm-filter)
-        with-values-or-value (fn with-values-or-value
-                               ([f]
-                                (with-values-or-value f expr))
-                               ([f expr]
-                                (if values
-                                  (apply f expr values)
-                                  (f expr value))))
-        string-match (fn [match-fn]
-                       (-> (with-values-or-value match-fn)
-                           (lib.options/update-options assoc :case-sensitive false)))
-        filter
-        (case operation
-          :is-null                      (lib/is-null expr)
-          :is-not-null                  (lib/not-null expr)
-          :string-is-empty              (lib/is-empty expr)
-          :string-is-not-empty          (lib/not-empty expr)
-          :is-true                      (lib/= expr true)
-          :is-false                     (lib/= expr false)
-          :equals                       (with-values-or-value lib/=)
-          :not-equals                   (with-values-or-value lib/!=)
-          :greater-than                 (lib/> expr value)
-          :greater-than-or-equal        (lib/>= expr value)
-          :less-than                    (lib/< expr value)
-          :less-than-or-equal           (lib/<= expr value)
-          :year-equals                  (with-values-or-value lib/=  (lib/get-year expr))
-          :year-not-equals              (with-values-or-value lib/!= (lib/get-year expr))
-          :quarter-equals               (with-values-or-value lib/=  (lib/get-quarter expr))
-          :quarter-not-equals           (with-values-or-value lib/!= (lib/get-quarter expr))
-          :month-equals                 (with-values-or-value lib/=  (lib/get-month expr))
-          :month-not-equals             (with-values-or-value lib/!= (lib/get-month expr))
-          :day-of-week-equals           (with-values-or-value lib/=  (lib/get-day-of-week expr :iso))
-          :day-of-week-not-equals       (with-values-or-value lib/!= (lib/get-day-of-week expr :iso))
-          :hour-equals                  (with-values-or-value lib/=  (lib/get-hour expr))
-          :hour-not-equals              (with-values-or-value lib/!= (lib/get-hour expr))
-          :minute-equals                (with-values-or-value lib/=  (lib/get-minute expr))
-          :minute-not-equals            (with-values-or-value lib/!= (lib/get-minute expr))
-          :second-equals                (with-values-or-value lib/=  (lib/get-second expr))
-          :second-not-equals            (with-values-or-value lib/!= (lib/get-second expr))
-          :date-equals                  (with-values-or-value lib/=)
-          :date-not-equals              (with-values-or-value lib/!=)
-          :date-before                  (lib/< expr value)
-          :date-on-or-before            (lib/<= expr value)
-          :date-after                   (lib/> expr value)
-          :date-on-or-after             (lib/>= expr value)
-          :string-equals                (with-values-or-value lib/=)
-          :string-not-equals            (with-values-or-value lib/!=)
-          :string-contains              (string-match lib/contains)
-          :string-not-contains          (string-match lib/does-not-contain)
-          :string-starts-with           (string-match lib/starts-with)
-          :string-ends-with             (string-match lib/ends-with)
-          :number-equals                (with-values-or-value lib/=)
-          :number-not-equals            (with-values-or-value lib/!=)
-          :number-greater-than          (lib/> expr value)
-          :number-greater-than-or-equal (lib/>= expr value)
-          :number-less-than             (lib/< expr value)
-          :number-less-than-or-equal    (lib/<= expr value)
-          (throw (ex-info (str "unknown filter operation " operation) {:agent-error? true})))]
-    (lib/filter query filter)))
+  (if-let [segment-id (:segment-id llm-filter)]
+    ;; Segment-based filter
+    (if-let [segment (lib.metadata/segment query segment-id)]
+      (lib/filter query segment)
+      (throw (ex-info (tru "Segment with id {0} not found" segment-id)
+                      {:agent-error? true
+                       :segment-id segment-id})))
+    ;; Standard field-based filter logic
+    (let [{:keys [operation value values]} llm-filter
+          expr (filter-bucketed-column llm-filter)
+          with-values-or-value (fn with-values-or-value
+                                 ([f]
+                                  (with-values-or-value f expr))
+                                 ([f expr]
+                                  (if values
+                                    (apply f expr values)
+                                    (f expr value))))
+          string-match (fn [match-fn]
+                         (-> (with-values-or-value match-fn)
+                             (lib.options/update-options assoc :case-sensitive false)))
+          filter
+          (case operation
+            :is-null                      (lib/is-null expr)
+            :is-not-null                  (lib/not-null expr)
+            :string-is-empty              (lib/is-empty expr)
+            :string-is-not-empty          (lib/not-empty expr)
+            :is-true                      (lib/= expr true)
+            :is-false                     (lib/= expr false)
+            :equals                       (with-values-or-value lib/=)
+            :not-equals                   (with-values-or-value lib/!=)
+            :greater-than                 (lib/> expr value)
+            :greater-than-or-equal        (lib/>= expr value)
+            :less-than                    (lib/< expr value)
+            :less-than-or-equal           (lib/<= expr value)
+            :year-equals                  (with-values-or-value lib/=  (lib/get-year expr))
+            :year-not-equals              (with-values-or-value lib/!= (lib/get-year expr))
+            :quarter-equals               (with-values-or-value lib/=  (lib/get-quarter expr))
+            :quarter-not-equals           (with-values-or-value lib/!= (lib/get-quarter expr))
+            :month-equals                 (with-values-or-value lib/=  (lib/get-month expr))
+            :month-not-equals             (with-values-or-value lib/!= (lib/get-month expr))
+            :day-of-week-equals           (with-values-or-value lib/=  (lib/get-day-of-week expr :iso))
+            :day-of-week-not-equals       (with-values-or-value lib/!= (lib/get-day-of-week expr :iso))
+            :hour-equals                  (with-values-or-value lib/=  (lib/get-hour expr))
+            :hour-not-equals              (with-values-or-value lib/!= (lib/get-hour expr))
+            :minute-equals                (with-values-or-value lib/=  (lib/get-minute expr))
+            :minute-not-equals            (with-values-or-value lib/!= (lib/get-minute expr))
+            :second-equals                (with-values-or-value lib/=  (lib/get-second expr))
+            :second-not-equals            (with-values-or-value lib/!= (lib/get-second expr))
+            :date-equals                  (with-values-or-value lib/=)
+            :date-not-equals              (with-values-or-value lib/!=)
+            :date-before                  (lib/< expr value)
+            :date-on-or-before            (lib/<= expr value)
+            :date-after                   (lib/> expr value)
+            :date-on-or-after             (lib/>= expr value)
+            :string-equals                (with-values-or-value lib/=)
+            :string-not-equals            (with-values-or-value lib/!=)
+            :string-contains              (string-match lib/contains)
+            :string-not-contains          (string-match lib/does-not-contain)
+            :string-starts-with           (string-match lib/starts-with)
+            :string-ends-with             (string-match lib/ends-with)
+            :number-equals                (with-values-or-value lib/=)
+            :number-not-equals            (with-values-or-value lib/!=)
+            :number-greater-than          (lib/> expr value)
+            :number-greater-than-or-equal (lib/>= expr value)
+            :number-less-than             (lib/< expr value)
+            :number-less-than-or-equal    (lib/<= expr value)
+            (throw (ex-info (str "unknown filter operation " operation) {:agent-error? true})))]
+      (lib/filter query filter))))
 
 (defn- add-breakout
   [query {:keys [column field-granularity]}]
@@ -146,17 +155,18 @@
     (lib/breakout query expr)))
 
 (defn- query-metric*
-  [{:keys [metric-id filters group-by]}]
+  [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        ;; Separate segment filters from field filters before column resolution
+        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         query (as-> base-query $q
-                (reduce add-filter
-                        $q
-                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) filters))
+                (reduce add-filter $q resolved-filters)
                 (reduce add-breakout
                         $q
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
@@ -165,8 +175,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
-     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -183,23 +192,37 @@
         {:output (str "No metric found with metric_id " metric-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(defn- apply-aggregation-sort-order
+  "If sort-order is specified, add an order-by clause for the last aggregation in the query."
+  [query sort-order]
+  (if sort-order
+    (let [query-aggregations (lib/aggregations query)
+          last-aggregation-idx (dec (count query-aggregations))]
+      (lib/order-by query (lib/aggregation-ref query last-aggregation-idx) sort-order))
+    query))
+
 (defn- add-aggregation
   [query aggregation]
-  (let [expr     (bucketed-column aggregation)
-        sort-order (:sort-order aggregation)
-        agg-expr (case (:function aggregation)
-                   :count          (lib/count)
-                   :count-distinct (lib/distinct expr)
-                   :sum            (lib/sum expr)
-                   :min            (lib/min expr)
-                   :max            (lib/max expr)
-                   :avg            (lib/avg expr))
-        query-with-aggregation (lib/aggregate query agg-expr)]
-    (if sort-order
-      (let [query-aggregations (lib/aggregations query-with-aggregation)
-            last-aggregation-idx (dec (count query-aggregations))]
-        (lib/order-by query-with-aggregation (lib/aggregation-ref query-with-aggregation last-aggregation-idx) sort-order))
-      query-with-aggregation)))
+  (let [sort-order (:sort-order aggregation)
+        query-with-aggregation
+        (if-let [measure-id (:measure-id aggregation)]
+          ;; Measure-based aggregation
+          (if-let [measure (lib.metadata/measure query measure-id)]
+            (lib/aggregate query measure)
+            (throw (ex-info (tru "Measure with id {0} not found" measure-id)
+                            {:agent-error? true
+                             :measure-id measure-id})))
+          ;; Field-based aggregation
+          (let [expr (bucketed-column aggregation)
+                agg-expr (case (:function aggregation)
+                           :count          (lib/count)
+                           :count-distinct (lib/distinct expr)
+                           :sum            (lib/sum expr)
+                           :min            (lib/min expr)
+                           :max            (lib/max expr)
+                           :avg            (lib/avg expr))]
+            (lib/aggregate query agg-expr)))]
+    (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
 (defn- expression?
   [expr-or-column]
@@ -219,16 +242,18 @@
   (lib/order-by query (:column field) direction))
 
 (defn- add-limit [query limit]
-  (cond-> query limit (lib/limit limit)))
+  (if limit
+    (lib/limit query limit)
+    query))
 
 (defn- query-model*
-  [{:keys [model-id fields filters aggregations group-by order-by limit]}]
+  [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card model-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -236,24 +261,26 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        query (as-> base-query query
-                (reduce (fn [query [expr-or-column expr-name]]
-                          (lib/expression query expr-name expr-or-column))
-                        query
-                        (filter (comp expression? first) projection))
-                (add-fields query projection)
-                (reduce add-filter query (map resolve-visible-column filters))
-                (reduce add-aggregation query (map resolve-visible-column aggregations))
-                (reduce add-breakout query (map resolve-visible-column group-by))
-                (reduce add-order-by query (map resolve-order-by-column order-by))
-                (add-limit query limit))
+        ;; Measures and segments don't require column resolution
+        resolved-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter resolved-filters)
+                  (reduce-query add-aggregation resolved-aggregations)
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
-     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -288,7 +315,7 @@
   [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -296,24 +323,26 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        query (as-> base-query query
-                (reduce (fn [query [expr-or-column expr-name]]
-                          (lib/expression query expr-name expr-or-column))
-                        query
-                        (filter (comp expression? first) projection))
-                (add-fields query projection)
-                (reduce add-filter query (map resolve-visible-column filters))
-                (reduce add-aggregation query (map resolve-visible-column aggregations))
-                (reduce add-breakout query (map resolve-visible-column group-by))
-                (reduce add-order-by query (map resolve-order-by-column order-by))
-                (add-limit query limit))
+        ;; Measures and segments don't require column resolution
+        all-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter all-filters)
+                  (reduce-query add-aggregation all-aggregations)
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
-     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :query query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -380,7 +409,7 @@
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"
-  [{:keys [data-source filters]}]
+  [{:keys [data-source filters] :as _arguments}]
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
@@ -390,8 +419,7 @@
       {:structured-output
        {:type :query
         :query-id query-id
-        ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
-        :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+        :query query
         :result-columns (into []
                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                               (lib/returned-columns query))}})

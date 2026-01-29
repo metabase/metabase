@@ -284,9 +284,11 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
   // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
-  const metricColumns = cols.filter((col) => isMetric(col));
+  const metricColumns = cols.filter(
+    (col) => isMetric(col) && !col.binning_info, // do not treat column with binning_info as metric by default (metabase#10493)
+  );
   const dimensionNotMetricColumns = cols.filter(
-    (col) => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !metricColumns.find((item) => item === col),
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
@@ -521,3 +523,6 @@ export function findSensibleSankeyColumns(data) {
     metric: metricColumn.name,
   };
 }
+
+export const segmentIsValid = ({ min, max }) =>
+  !isNaN(min) && !isNaN(max) && min !== null && max !== null;

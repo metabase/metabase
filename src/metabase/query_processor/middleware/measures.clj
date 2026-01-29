@@ -6,11 +6,13 @@
 
   Measures can reference other measures, so expansion is recursive. Cycles are detected
   by tracking the path of measure IDs being expanded."
-  (:refer-clojure :exclude [not-empty some])
+  (:refer-clojure :exclude [select-keys some])
   (:require
+   [better-cond.core :as b]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -20,20 +22,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty some]]))
-
-(mu/defn- unresolved-measure-ids :- [:maybe [:set {:min 1} pos-int?]]
-  "Find all the unresolved :measure references in `query`."
-  [query :- ::lib.schema/query]
-  (let [ids (transient #{})]
-    (lib.walk/walk-stages
-     query
-     (fn [_query _path stage]
-       (lib.util.match/match stage
-         [:measure _opts (id :guard pos-int?)]
-         (conj! ids id))
-       nil))
-    (not-empty (persistent! ids))))
+   [metabase.util.performance :refer [select-keys some]]))
 
 (defn- contains-metric-reference?
   "Check if the given query or clause contains any `:metric` references.
@@ -61,7 +50,7 @@
   (when (contains-metric-reference? definition)
     (throw (ex-info (tru "Measures cannot reference metrics. Measure \"{0}\" (ID {1}) contains a metric reference."
                          name id)
-                    {:type qp.error-type/invalid-query
+                    {:type qp.error-type/invalid-measure
                      :measure-id id
                      :measure-name name}))))
 
@@ -77,7 +66,7 @@
         (check-no-metric-references! measure)
         (throw (ex-info (tru "Measure {0} does not exist or belongs to a different Database."
                              id)
-                        {:type qp.error-type/invalid-query, :id id}))))))
+                        {:type qp.error-type/missing-measure, :id id}))))))
 
 (defn- measure-aggregation
   "Extract the aggregation clause from a measure's definition.
@@ -92,19 +81,18 @@
    id->measure  :- [:map-of pos-int? :map]]
   (lib.util.match/replace stage
     [:measure opts (id :guard pos-int?)]
-    (if-let [measure (get id->measure id)]
-      (if-let [aggregation (measure-aggregation measure)]
-        (do
-          (log/debugf "Expanding measure %d:\n%s\n->\n%s" id (u/pprint-to-str &match) (u/pprint-to-str aggregation))
-          ;; Preserve :lib/uuid and :display-name from the measure clause options if present
-          ;; This is important so that :aggregation refs pointing to the measure remain valid
-          (cond-> aggregation
-            (:lib/uuid opts)     (assoc-in [1 :lib/uuid] (:lib/uuid opts))
-            (:display-name opts) (assoc-in [1 :display-name] (:display-name opts))))
-        (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
-                        {:type qp.error-type/invalid-query, :measure measure})))
-      (throw (ex-info (tru "Measure {0} not found." id)
-                      {:type qp.error-type/invalid-query, :id id})))))
+    (b/cond
+      :let [measure (get id->measure id)]
+      (not measure) (throw (ex-info (tru "Measure {0} not found." id)
+                                    {:type qp.error-type/missing-measure, :id id}))
+      :let [aggregation (measure-aggregation measure)]
+      (not aggregation) (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
+                                        {:type qp.error-type/invalid-measure, :measure measure}))
+      :else (do
+              (log/debugf "Expanding measure %d:\n%s\n->\n%s" id (u/pprint-to-str &match) (u/pprint-to-str aggregation))
+              ;; Preserve :lib/uuid and :display-name from the measure clause options if present
+              ;; This is important so that :aggregation refs pointing to the measure remain valid
+              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :display-name]))))))
 
 (mu/defn- expand-measures-once :- ::lib.schema/query
   "Expand all :measure clauses in the query (single pass)."
@@ -132,9 +120,9 @@
    depth    :- :int]
   (when (> depth max-expansion-depth)
     (throw (ex-info (tru "Measure expansion exceeded maximum depth of {0}." max-expansion-depth)
-                    {:type qp.error-type/invalid-query
+                    {:type qp.error-type/invalid-measure
                      :seen-ids seen-ids})))
-  (if-let [measure-ids (unresolved-measure-ids query)]
+  (if-let [measure-ids (lib/all-measure-ids query)]
     ;; Check for cycles: if any measure ID is already in seen-ids, we have a cycle
     (if-let [cycle-id (some seen-ids measure-ids)]
       ;; Found a cycle - use lib/check-measure-cycles to get a detailed error with the cycle path

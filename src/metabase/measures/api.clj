@@ -4,8 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -29,6 +28,24 @@
    [:entity_id   {:optional true} [:maybe :string]]
    [:creator     {:optional true} [:maybe :map]]])
 
+(defn- normalize-input-definition
+  "Normalize measure definition from API input to MBQL5.
+  Accepts MBQL4 definitions for Cypress e2e test support:
+  - MBQL5 full queries (passed through)
+  - MBQL4 full queries (converted to MBQL5)
+  - MBQL4 fragments (wrapped in full query, then converted to MBQL5)"
+  [definition table-id database-id]
+  (if (seq definition)
+    (-> (case (lib/normalized-mbql-version definition)
+          (:mbql-version/mbql5 :mbql-version/legacy)
+          definition
+          ;; default: MBQL4 fragment - wrap it in a full query
+          {:database database-id
+           :type :query
+           :query (merge {:source-table table-id} definition)})
+        lib-be/normalize-query)
+    {}))
+
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`."
   [_route-params
@@ -39,13 +56,15 @@
                                                                 [:definition  ms/Map]
                                                                 [:description {:optional true} [:maybe :string]]]]
   (api/create-check :model/Measure body)
-  (let [measure (api/check-500
+  (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)
+        normalized-definition (normalize-input-definition definition table_id database-id)
+        measure (api/check-500
                  (first (t2/insert-returning-instances! :model/Measure
                                                         :table_id    table_id
                                                         :creator_id  api/*current-user-id*
                                                         :name        name
                                                         :description description
-                                                        :definition  definition)))]
+                                                        :definition  normalized-definition)))]
     (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
     (t2/hydrate measure :creator)))
 
@@ -75,9 +94,9 @@
                                        :present #{:description}
                                        :non-nil #{:archived :definition :name})
         new-def    (when-let [def (:definition clean-body)]
-                     (cond->> def
-                       (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
-                       (mbql.normalize/normalize ::mbql.s/MBQLQuery)))
+                     (let [table-id (:table_id existing)
+                           database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
+                       (normalize-input-definition def table-id database-id)))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))

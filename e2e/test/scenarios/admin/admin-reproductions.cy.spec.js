@@ -3,7 +3,7 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue 26470", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres_12");
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
     cy.request("POST", "/api/persist/enable");
   });
@@ -242,7 +242,7 @@ describe("(metabase#46714)", () => {
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");

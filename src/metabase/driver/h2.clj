@@ -75,7 +75,9 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :workspace                 true
+                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
+                              ;; is useless with out transforms, so we disable it for now
+                              :workspace                 false
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true
@@ -706,10 +708,8 @@
         new-db      (replace-credentials original-db username password)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
-                     ;; H2 syntax: CREATE USER userName PASSWORD 'password'
-                     (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
-                     ;; Grant access on the isolation schema
+        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))
@@ -730,10 +730,15 @@
 
 (defmethod driver/grant-workspace-read-access! :h2
   [_driver database workspace tables]
-  (let [username (-> workspace :database_details :db get-user-from-connection-string)]
-    ;; Grant SELECT on each specific table only - no schema-level grants
+  (let [username (-> workspace :database_details :db get-user-from-connection-string)
+        schemas  (distinct (map :schema tables))]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [schema schemas]
+          (.addBatch ^Statement stmt
+                     ^String (format "GRANT SELECT ON SCHEMA \"%s\" TO \"%s\"" schema username)))
+        ;; Also grant on individual tables for more fine-grained access
         (doseq [table tables]
           (.addBatch ^Statement stmt
                      ^String (format "GRANT SELECT ON \"%s\".\"%s\" TO \"%s\""

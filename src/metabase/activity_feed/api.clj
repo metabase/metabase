@@ -217,7 +217,7 @@
 
                                ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
                                ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                               ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                               ;; a long time ago. This may not even make it into the first 10 items from the query, even though it might be worth showing
                                (when-not (zero? max-count)
                                  (* (/ cnt max-count) views-wt))])]
            (assoc item :score (double (reduce + scores))))) items))))

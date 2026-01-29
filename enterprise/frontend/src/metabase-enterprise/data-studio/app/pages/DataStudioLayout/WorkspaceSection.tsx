@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import type { MetabaseColorKey } from "metabase/lib/colors/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -60,23 +61,16 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     return sortWorkspaceItems(workspacesData?.items ?? []);
   }, [workspacesData]);
 
-  const handleOpenWorkspace = useCallback(
-    (workspaceId: number) => {
-      dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
-    },
-    [dispatch],
-  );
-
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleCreateWorkspace = useCallback(async () => {
     try {
       const workspace = await createWorkspace().unwrap();
-      handleOpenWorkspace(workspace.id);
+      dispatch(push(Urls.dataStudioWorkspace(workspace.id)));
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }
-  }, [createWorkspace, handleOpenWorkspace, sendErrorToast]);
+  }, [createWorkspace, dispatch, sendErrorToast]);
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
   const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
@@ -86,7 +80,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     try {
       await archiveWorkspace(id).unwrap();
       sendSuccessToast(t`Workspace archived successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
     } catch (error) {
       sendErrorToast(t`Failed to archive workspace`);
     }
@@ -178,7 +171,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
               ) : (
                 <Icon name="add" size={16} />
               )}
-              <Text size="sm" fw={500}>
+              <Text c="inherit" size="sm" fw={500}>
                 {t`New workspace`}
               </Text>
             </Flex>
@@ -206,7 +199,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
                     key={workspace.id}
                     workspace={workspace}
                     isSelected={isSelected}
-                    onOpen={handleOpenWorkspace}
                     onArchive={handleWorkspaceArchive}
                     onUnarchive={handleWorkspaceUnarchive}
                     onDelete={handleWorkspaceDelete}
@@ -226,7 +218,6 @@ export { WorkspacesSection };
 interface WorkspaceItemProps {
   workspace: Workspace;
   isSelected: boolean;
-  onOpen: (workspaceId: WorkspaceId) => void;
   onArchive: (workspaceId: WorkspaceId) => Promise<void>;
   onUnarchive: (workspaceId: WorkspaceId) => Promise<void>;
   onDelete: (workspaceId: WorkspaceId) => Promise<void>;
@@ -253,7 +244,6 @@ function sortWorkspaceItems(
 function WorkspaceItem({
   workspace,
   isSelected,
-  onOpen,
   onArchive,
   onUnarchive,
   onDelete,
@@ -288,7 +278,8 @@ function WorkspaceItem({
   return (
     <UnstyledButton
       className={cx(S.workspaceItem, { [S.selected]: isSelected })}
-      onClick={() => onOpen(workspace.id)}
+      component={ForwardRefLink}
+      to={Urls.dataStudioWorkspace(workspace.id)}
       p="0.75rem"
       bdrs="md"
       name={workspace.name}
@@ -323,14 +314,22 @@ function WorkspaceItem({
               className={S.workspaceMenuButton}
               component="span"
               aria-label={t`More actions`}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
               size="sm"
               variant="subtle"
             >
               <Icon name="ellipsis" size={16} />
             </ActionIcon>
           </Menu.Target>
-          <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <Menu.Dropdown
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
             {workspace.status === "archived" ? (
               <>
                 <Menu.Item
@@ -376,12 +375,12 @@ function WorkspaceItem({
 type WorkspaceListStatus = {
   label: string;
   icon: IconName;
-  color: string;
+  color: MetabaseColorKey;
 };
 
 function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
   if (workspace.status === "archived") {
-    return { label: t`Archived`, icon: "archive", color: "text-light" };
+    return { label: t`Archived`, icon: "archive", color: "text-tertiary" };
   }
 
   if (workspace.status === "pending") {

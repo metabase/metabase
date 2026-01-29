@@ -36,12 +36,12 @@ export function getDashboardCards() {
 }
 
 export function getDashboardCard(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return getDashboardCards().eq(index);
 }
 
 export function ensureDashboardCardHasText(text: string, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
 }
 

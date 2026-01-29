@@ -10,6 +10,7 @@ import _ from "underscore";
 
 import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
@@ -73,6 +74,7 @@ export const {
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   addSuggestedCodeEdit,
@@ -301,6 +303,7 @@ export const sendAgentRequest = createAsyncThunk<
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
     const isEmbedding = getIsEmbedding(getState());
+    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -338,7 +341,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
+                if (!isEmbedding && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
@@ -398,7 +401,7 @@ export const sendAgentRequest = createAsyncThunk<
             (tc) => tc.state === "call",
           ),
           history: [...getHistory(getState(), agentId), ...response.history],
-          // state object comes at the end, so we may not have recieved it
+          // state object comes at the end, so we may not have received it
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
         });

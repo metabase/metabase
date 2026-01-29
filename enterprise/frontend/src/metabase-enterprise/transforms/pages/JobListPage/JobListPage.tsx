@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -45,20 +46,22 @@ export const JobListPage = () => {
         id: "name",
         accessorKey: "name",
         header: t`Name`,
+        minWidth: 120,
+        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
       },
       {
         id: "last_run",
         accessorFn: (job) => job.last_run?.start_time,
         header: t`Last Run`,
-        minWidth: "auto",
+        minWidth: 120,
         cell: ({ row }) =>
           row.original.last_run ? (
-            <>
+            <Ellipsified>
               {row.original.last_run.status === "failed"
                 ? t`Failed`
                 : t`Last run`}{" "}
               <DateTime value={row.original.last_run.start_time} />
-            </>
+            </Ellipsified>
           ) : null,
       },
     ],

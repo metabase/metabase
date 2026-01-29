@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   Box,
   type BoxProps,

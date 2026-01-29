@@ -30,6 +30,7 @@ export function getInitialPythonSource(): PythonTransformSourceDraft {
     "source-database": undefined,
     "source-tables": {},
     body: `# Write your Python transformation script here
+import common
 import pandas as pd
 
 def transform():

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
-import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
@@ -79,7 +78,7 @@ export function MeasureAggregationPicker({
         items={aggregations}
         initialAddText={t`Pick an aggregation function`}
         readOnly={readOnly}
-        color={color("summarize")}
+        color="summarize"
         isLastOpened={false}
         hasAddButton={hasAddButton}
         hasRemoveButton={hasRemoveButton}

@@ -9,6 +9,7 @@ import type { DatasetQuery, DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
   disabled: boolean;
+  hideRunButton?: boolean;
   source: DraftTransformSource;
   onChange: (source: DraftTransformSource) => void;
   proposedSource?: DraftTransformSource;
@@ -16,10 +17,13 @@ type TransformEditorProps = {
   onRejectProposed?: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
+  /** Custom run handler for Python transforms (used for dry-run) */
+  onRun?: () => void;
 };
 
 export function TransformEditor({
   disabled,
+  hideRunButton,
   source,
   onChange,
   proposedSource,
@@ -27,6 +31,7 @@ export function TransformEditor({
   onRejectProposed,
   onRunQueryStart,
   onRunTransform,
+  onRun,
 }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
 
@@ -35,8 +40,10 @@ export function TransformEditor({
       canChangeDatabase: false,
       readOnly: disabled,
       hidePreview: true,
+      hideRunButton,
+      resizable: false,
     }),
-    [disabled],
+    [disabled, hideRunButton],
   );
 
   const handleSourceChange = (source: DraftTransformSource) => {
@@ -47,16 +54,17 @@ export function TransformEditor({
     <TransformQueryPageEditor
       source={source}
       proposedSource={proposedSource}
-      isDirty={false}
       uiState={uiState}
       setUiState={setUiState}
       uiOptions={uiOptions}
       databases={[]}
+      isEditMode={true}
       setSourceAndRejectProposed={handleSourceChange}
       acceptProposed={onAcceptProposed ?? _.noop}
       rejectProposed={onRejectProposed ?? _.noop}
       onRunQueryStart={onRunQueryStart}
       onRunTransform={onRunTransform}
+      onRun={onRun}
     />
   );
 }

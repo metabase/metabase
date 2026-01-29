@@ -1,0 +1,114 @@
+name: Loki Visual Stress Test Flake Fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      stories_filter:
+        description: "Regex pattern to filter stories (e.g. 'DataGrid' or 'static-viz|viz')"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 50)"
+        type: string
+        required: true
+        default: "50"
+
+jobs:
+  workflow-summary:
+    name: Stress test inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `stories_filter`: ${{ inputs.stories_filter }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
+  stress-test-loki:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    name: Stress test Loki visual tests
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2376:2376
+        env:
+          DOCKER_TLS_CERTDIR: /certs
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /tmp/docker-certs:/certs/client
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development yarn build-pure:cljs
+
+      - name: Build Storybook (once)
+        run: yarn build-storybook
+
+      - name: Stress-test Loki "${{ inputs.stories_filter }}" ${{ inputs.burn_in }} times
+        run: |
+          BURN_IN=${{ inputs.burn_in }}
+          STORIES_FILTER='${{ inputs.stories_filter }}'
+
+          echo "Running Loki visual tests $BURN_IN times for stories matching: $STORIES_FILTER"
+          echo ""
+
+          FAILED=0
+          for i in $(seq 1 $BURN_IN); do
+            echo "=========================================="
+            echo "Run $i of $BURN_IN"
+            echo "=========================================="
+
+            if yarn test-visual:loki \
+              --reactUri file:./storybook-static \
+              --verboseRenderer \
+              --storiesFilter "$STORIES_FILTER"; then
+              echo "✅ Run $i passed"
+            else
+              echo "❌ Run $i FAILED"
+              FAILED=$((FAILED + 1))
+
+              mkdir -p .loki/failures/run-$i
+              cp -r .loki/difference/* .loki/failures/run-$i/ 2>/dev/null || true
+            fi
+            echo ""
+          done
+
+          echo "=========================================="
+          echo "Summary: $((BURN_IN - FAILED))/$BURN_IN passed, $FAILED failed"
+          echo "=========================================="
+
+          if [ $FAILED -gt 0 ]; then
+            echo "::error::$FAILED out of $BURN_IN runs failed"
+            exit 1
+          fi
+
+      - name: Generate Visual Report on Failure
+        if: failure()
+        run: yarn test-visual:loki-report
+
+      - name: Upload Artifact
+        id: artifact-upload-step
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loki-stress-test-report
+          include-hidden-files: true
+          path: .loki/
+          if-no-files-found: ignore

@@ -162,7 +162,7 @@ describe("DatabaseForm with provider name", () => {
     });
 
     const connectionString =
-      "jdbc:postgresql://user:passs@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
+      "jdbc:postgresql://user:pass@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,
@@ -187,7 +187,7 @@ describe("DatabaseForm with provider name", () => {
       },
     });
 
-    const connectionString = "jdbc:postgresql://user:passs@localhost:5432/mydb";
+    const connectionString = "jdbc:postgresql://user:pass@localhost:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,

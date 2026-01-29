@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -15,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -271,9 +273,10 @@
   [table-id source-incremental-strategy transform-id limit]
   (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
-        table-metadata    (lib.metadata/table metadata-provider table-id)]
+        table-metadata    (lib.metadata/table metadata-provider table-id)
+        transform         (t2/select-one :model/Transform transform-id)]
     (cond-> (lib/query metadata-provider table-metadata)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform-id))
+      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
@@ -322,8 +325,78 @@
           (throw (ex-info "An error occurred while copying table data to S3"
                           {:table-id table-id
                            :transform-message (or (:transform-message (ex-data t))
-                                                  (i18n/tru "Failed to copy table contents to shared storage {0} ({1})" table-name table-id))}
+                                                  ;; Cast table-id to string manually, to avoid thousands separators.
+                                                  (i18n/tru "Failed to copy table contents to shared storage: {0} ({1})" table-name (str table-id)))}
                           t)))
         (finally
           (safe-delete tmp-data-file)
           (safe-delete tmp-meta-file))))))
+
+(defn execute-and-read-output!
+  "Execute Python code and return output rows without persisting to a database.
+   Used for dry-run/preview/test-run scenarios.
+
+   Args:
+     :code          - Python code to execute
+     :source-tables - Map of table-name -> table-id (already resolved)
+     :row-limit     - Max rows to return (also limits input rows)
+     :timeout-secs  - Optional timeout override
+
+   Returns:
+     {:status  :succeeded/:failed
+      :cols    [{:name ...} ...]      ; on success
+      :rows    [[...] ...]            ; on success, values in column order
+      :logs    [{:message ...} ...]   ; events from Python execution
+      :message \"error message\"}     ; on failure
+"
+  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
+    (let [server-url (transforms-python.settings/python-runner-url)
+          _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
+                                          :source         {:source-tables source-tables}
+                                          :limit          (or per-input-limit row-limit)})
+          {:keys [status body]}
+          (execute-python-code-http-call!
+           {:server-url     server-url
+            :code           code
+            :request-id     (u/generate-nano-id)
+            :table-name->id source-tables
+            :timeout-secs   timeout-secs
+            :shared-storage @shared-storage-ref})
+          events (read-events @shared-storage-ref)]
+      (cond
+        (:timeout body)
+        {:status  :failed
+         :logs    events
+         :message (i18n/deferred-tru "Python execution timed out")}
+
+        (not= 200 status)
+        {:status  :failed
+         :logs    events
+         :message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
+
+        :else
+        (let [output-manifest (read-output-manifest @shared-storage-ref)
+              {:keys [fields]} output-manifest]
+          ;; TODO (Chris 2026-01-27) Disabled this check to match behavior in master, but *real* execution does it.
+          ;;      It seems we added the check as part of DRY-ing up transforms code to reuse with workspaces.
+          #_(if-not (seq fields)
+              {:status  :failed
+               :logs    events
+               :message (i18n/deferred-tru "No fields in output metadata")})
+          (with-open [in  (open-output @shared-storage-ref)
+                      rdr (io/reader in)]
+            (let [cols (mapv (fn [c]
+                               {:name      (:name c)
+                                :base_type (some-> c :base_type keyword)})
+                             fields)
+                  rows (into []
+                             (comp
+                              (remove str/blank?)
+                              (take row-limit)
+                              (map json/decode))
+                             (line-seq rdr))]
+              {:status :succeeded
+               :cols   cols
+               :rows   rows
+               :logs   events})))))))

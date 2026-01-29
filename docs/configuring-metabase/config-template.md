@@ -106,6 +106,7 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
+    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     custom-formatting: {}
@@ -221,7 +222,9 @@ config:
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-task-time-limit-ms: 300000
+    remote-sync-transforms: false
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
@@ -269,6 +272,12 @@ config:
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
+    slack-connect-attribute-team-id: https://slack.com/team_id
+    slack-connect-authentication-mode: sso
+    slack-connect-client-id: null
+    slack-connect-client-secret: null
+    slack-connect-enabled: false
+    slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500

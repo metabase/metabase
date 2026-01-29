@@ -436,13 +436,12 @@ visualization_settings:
     - {base-type: type/Integer, join-alias: People - User}
     name: user_id
   table.pivot_column: error
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: j5X79-yP1N3FeZSPlbGgw, label: last_downloads, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

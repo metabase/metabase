@@ -194,7 +194,7 @@ export function isSourceEmpty(
   return !nativeQuery?.trim();
 }
 
-export function isNotDraftSource(
+export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
   return source.type !== "python" || source["source-database"] != null;
@@ -228,3 +228,25 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
 
   return { isValid: Lib.canSave(query, "question") };
 }
+
+export const getLibQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  if (source.type !== "query") {
+    return null;
+  }
+  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+};
+
+// Check if this is an MBQL query (not native SQL or Python)
+export const isMbqlQuery = (
+  source: DraftTransformSource,
+  metadata: Metadata,
+) => {
+  const query = getLibQuery(source, metadata);
+  if (!query) {
+    return false;
+  }
+  return !Lib.queryDisplayInfo(query).isNative;
+};

@@ -2,7 +2,7 @@ import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
   SidebarFeatures,
@@ -32,7 +32,6 @@ interface ViewNativeQueryEditorProps {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -77,10 +76,11 @@ interface ViewNativeQueryEditorProps {
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  availableHeight?: number;
 }
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
-  const { question, height, isNativeEditorOpen, card, onSetDatabaseId } = props;
+  const { question, isNativeEditorOpen, onSetDatabaseId } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -97,7 +97,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   // This check makes it hide the editor in this particular case
   // More details: https://github.com/metabase/metabase/pull/20161
   const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (question.type() === "model" && !isEditable) {
+  if ((question.type() === "model" && !isEditable) || !legacyNativeQuery) {
     return null;
   }
 
@@ -106,10 +106,8 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
       <NativeQueryEditor
         {...props}
         query={legacyNativeQuery}
-        viewHeight={height}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
-        datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
         extensions={inlineSQLPrompt?.extensions}
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}

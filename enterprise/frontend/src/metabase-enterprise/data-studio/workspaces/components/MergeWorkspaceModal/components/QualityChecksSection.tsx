@@ -111,7 +111,7 @@ export const QualityChecksSection = ({
                     <Stack gap="xs" mt="xs" pl="md">
                       {checkStatus.problems.map((problem, idx) => (
                         <Box key={idx}>
-                          <Text size="sm" c="text-medium">
+                          <Text size="sm" c="text-secondary">
                             {formatProblemDetails(problem)}
                           </Text>
                         </Box>

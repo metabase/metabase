@@ -562,3 +562,147 @@
         (is (= coll1-id (-> hydrated first :collection :id)))
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
+
+;;; ---------------------------------------- can-read? permission tests ----------------------------------------
+
+(deftest table-can-read?-with-view-data-and-create-queries-permission-test
+  (testing "User with view-data and create-queries permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-read?-with-view-data-permission-test
+  (testing "User with view-data and create-queries permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table table-id)))))))))
+
+(deftest table-can-read?-with-manage-table-metadata-permission-test
+  (testing "User with manage-table-metadata permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-read?-without-permissions-test
+  (testing "User with neither permission cannot read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+;;; ---------------------------------------- can-query? permission tests ----------------------------------------
+
+(deftest table-can-query?-requires-both-view-data-and-create-queries-test
+  (testing "User needs BOTH view-data AND create-queries to query"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      ;; Only view-data - not enough
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? (t2/select-one :model/Table table-id)))))
+      ;; Add create-queries - now can query
+      (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-query?-manage-table-metadata-does-not-grant-query-access-test
+  (testing "manage-table-metadata alone does NOT grant query access"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+
+;;; ---------------------------------------- can_query hydration test ----------------------------------------
+
+(deftest table-can-query-hydration-test
+  (testing ":can_query hydration works for tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [hydrated (t2/hydrate table :can_query)]
+          (is (contains? hydrated :can_query))
+          (is (boolean? (:can_query hydrated))))))))
+
+(deftest serdes-descendants-includes-fields-and-segments-test
+  (testing "Table descendants includes Fields and Segments"
+    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
+                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
+                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
+                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
+                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
+      (let [descendants (serdes/descendants "Table" table-id {})]
+        (testing "Fields are included"
+          (is (contains? descendants ["Field" field1-id]))
+          (is (contains? descendants ["Field" field2-id])))
+        (testing "Segments are included"
+          (is (contains? descendants ["Segment" segment-id]))))))
+  (testing "Table with no fields or segments returns empty map"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
+                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
+      (is (= {} (serdes/descendants "Table" table-id {}))))))
+
+(deftest serdes-descendants-skip-archived-segments-test
+  (testing "Table descendants respects skip-archived option for Segments"
+    (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
+                   :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}
+                   :model/Field    {field-id :id}        {:name "Test Field" :table_id table-id :base_type :type/Integer}
+                   :model/Segment  {active-seg-id :id}   {:name "Active Segment" :table_id table-id :definition {} :archived false}
+                   :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
+      (testing "archived segments are excluded when skip-archived: true"
+        (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
+          (is (contains? descendants ["Field" field-id])
+              "Fields are still included")
+          (is (contains? descendants ["Segment" active-seg-id])
+              "Active segments are included")
+          (is (not (contains? descendants ["Segment" archived-seg-id]))
+              "Archived segments are excluded")))
+      (testing "archived segments are included when skip-archived: false"
+        (let [descendants (serdes/descendants "Table" table-id {:skip-archived false})]
+          (is (contains? descendants ["Segment" active-seg-id]))
+          (is (contains? descendants ["Segment" archived-seg-id]))))
+      (testing "archived segments are included when skip-archived is not specified"
+        (let [descendants (serdes/descendants "Table" table-id {})]
+          (is (contains? descendants ["Segment" active-seg-id]))
+          (is (contains? descendants ["Segment" archived-seg-id])))))))

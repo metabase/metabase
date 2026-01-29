@@ -214,10 +214,16 @@
   [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql transform-version]
   (let [isolated-table    (ws.u/isolated-table-name schema table)
         qry-table-id      (fn [s t]
-                            (t2/select-one-fn :id [:model/Table :id]
-                                              :db_id db_id
-                                              :schema (normalize-sql s)
-                                              :name (normalize-sql t)))
+                            (or (t2/select-one-fn :id [:model/Table :id]
+                                                  :db_id db_id
+                                                  :schema (normalize-sql s)
+                                                  :name (normalize-sql t))
+                                ;; Turns out transforms don't normalize the metadata they create
+                                ;; TODO (Chris 2026-01-26) This is getting really tangled and expensive, revisit
+                                (t2/select-one-fn :id [:model/Table :id]
+                                                  :db_id db_id
+                                                  :schema s
+                                                  :name t)))
         global-table-id   (qry-table-id schema table)
         isolated-table-id (qry-table-id isolated-schema isolated-table)]
     (ws.u/ignore-constraint-violation

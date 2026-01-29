@@ -2,8 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import { alpha, darken } from "metabase/lib/colors";
-import { Icon, useMantineTheme } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { DatasetEditorTab } from "metabase-types/store";
 
 import EditorTabsS from "./EditorTabs.module.css";
@@ -21,18 +20,14 @@ export function EditorTabs({
   disabledColumns,
   onChange,
 }: Props) {
-  const theme = useMantineTheme();
-
   return (
     <ul
       className={EditorTabsS.TabBar}
       style={
         {
-          "--active-tab-color": darken(theme.fn.themeColor("brand")),
-          "--inactive-tab-color": alpha(
-            darken(theme.fn.themeColor("brand")),
-            0.3,
-          ),
+          "--active-tab-color": "var(--mb-color-brand-dark)",
+          "--inactive-tab-color":
+            "color-mix(in srgb, var(--mb-color-brand-dark) 30%, transparent )",
         } as CSSProperties
       }
     >

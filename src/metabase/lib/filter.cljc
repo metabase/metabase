@@ -412,7 +412,7 @@
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.
-  If `stage-number` is omitted, the last stage is used. Logicaly, the
+  If `stage-number` is omitted, the last stage is used. Logically, the
   filter attached to the query is the conjunction of the expressions
   in the returned list. If the returned list is empty, then there is no
   filter attached to the query.
@@ -468,10 +468,15 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
+   (filterable-columns query stage-number nil))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
    (let [columns (sequence
                   (comp (map add-column-operators)
                         (clojure.core/filter :operators))
-                  (lib.metadata.calculation/visible-columns query stage-number))
+                  (lib.metadata.calculation/visible-columns query stage-number options))
          existing-filters (filters query stage-number)]
      (cond
        (empty? columns)
@@ -530,7 +535,7 @@
 
 (mu/defn filter-parts :- FilterParts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
-  Might obsolate [[filter-operator]]."
+  Might obsolete [[filter-operator]]."
   ([query a-filter-clause]
    (filter-parts query -1 a-filter-clause))
 

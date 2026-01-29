@@ -175,50 +175,52 @@
      :type :schema-filters
      :display-name "Schemas"
      :visible-if {"destination-database" false}}
-    driver.common/default-ssl-details
-    {:name         "ssl-mode"
-     :display-name (trs "SSL Mode")
-     :type         :select
-     :options [{:name  "allow"
-                :value "allow"}
-               {:name  "prefer"
-                :value "prefer"}
-               {:name  "require"
-                :value "require"}
-               {:name  "verify-ca"
-                :value "verify-ca"}
-               {:name  "verify-full"
-                :value "verify-full"}]
-     :default "require"
-     :visible-if {"ssl" true}}
-    {:name         "ssl-root-cert"
-     :display-name (trs "SSL Root Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     ;; only need to specify the root CA if we are doing one of the verify modes
-     :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
-    {:name         "ssl-use-client-auth"
-     :display-name (trs "Authenticate client certificate?")
-     :type         :boolean
-     ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
-     :visible-if   {"ssl" true}}
-    {:name         "ssl-client-cert"
-     :display-name (trs "SSL Client Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER)")
-     :type         :secret
-     ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
-     :secret-kind  :binary-blob
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key-password"
-     :display-name (trs "SSL Client Key Password")
-     :type         :secret
-     :secret-kind  :password
-     :visible-if   {"ssl-use-client-auth" true}}
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              {:name         "ssl-mode"
+               :display-name (trs "SSL Mode")
+               :type         :select
+               :options [{:name  "allow"
+                          :value "allow"}
+                         {:name  "prefer"
+                          :value "prefer"}
+                         {:name  "require"
+                          :value "require"}
+                         {:name  "verify-ca"
+                          :value "verify-ca"}
+                         {:name  "verify-full"
+                          :value "verify-full"}]
+               :default "require"
+               :visible-if {"ssl" true}}
+              {:name         "ssl-root-cert"
+               :display-name (trs "SSL Root Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               ;; only need to specify the root CA if we are doing one of the verify modes
+               :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+              {:name         "ssl-use-client-auth"
+               :display-name (trs "Authenticate client certificate?")
+               :type         :boolean
+               ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+               :visible-if   {"ssl" true}}
+              {:name         "ssl-client-cert"
+               :display-name (trs "SSL Client Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key"
+               :display-name (trs "SSL Client Key (PKCS-8/DER)")
+               :type         :secret
+               ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+               :secret-kind  :binary-blob
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key-password"
+               :display-name (trs "SSL Client Key Password")
+               :type         :secret
+               :secret-kind  :password
+               :visible-if   {"ssl-use-client-auth" true}}
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
 
@@ -259,7 +261,12 @@
                            :else nil]
                           :type]
                          [:d.description :description]
-                         [:stat.n_live_tup :estimated_row_count]]
+                         ;; In many cases tables will yield 0 as they have not been analyzed (recently).
+                         ;; if they actually have 0 rows, showing they have 0 is mostly uninteresting.
+                         ;; so we 'hide' 0, as on balance it seems to cause _less_ confusion.
+                         ;; Also considered: analyze during sync, doing a bounded count or limited scan.
+                         ;; we might change our mind on this when we explore estimates with more drivers.
+                         [[:nullif :stat.n_live_tup 0] :estimated_row_count]]
              :from      [[:pg_catalog.pg_class :c]]
              :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
              :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
@@ -1360,12 +1367,20 @@
 
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        ;; Grant SELECT on each specific table only - no schema-level grants
-        sqls     (for [{s :schema, t :name} tables]
-                   (if (str/blank? s)
-                     (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
-                     (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username)))]
+  (let [username       (-> workspace :database_details :user)
+        ;; Collect all unique source schemas that contain the tables we need to grant access to
+        source-schemas (into #{} (keep :schema) tables)
+        ;; Grant USAGE on source schemas, then SELECT on each table
+        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
+        sqls           (concat
+                        ;; USAGE on each source schema containing tables we're granting access to
+                        (for [s source-schemas]
+                          (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+                        ;; SELECT on each table
+                        (for [{s :schema, t :name} tables]
+                          (if (str/blank? s)
+                            (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                            (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

@@ -31,14 +31,15 @@
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
-  [{:keys [inputs outputs entities dependencies] :as _result} id-map]
+  [workspace-id {:keys [inputs outputs entities dependencies] :as _result} id-map]
   (let [reverse-map (u/for-map [[k v] id-map] [v k])
         table->kw   (comp reverse-map :id)
         node->kw    (fn [{:keys [node-type id]}]
                       (reverse-map (case node-type
                                      :table (:id id)
                                      :external-transform id
-                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id] :ref_id id))))]
+                                     :workspace-transform (t2/select-one-fn :global_id [:model/WorkspaceTransform :global_id]
+                                                                            :workspace_id workspace-id :ref_id id))))]
     {:inputs       (into #{} (map table->kw) inputs)
      :outputs      (into #{} (map table->kw) outputs)
      :entities     (into #{} (map node->kw) entities)
@@ -56,7 +57,7 @@
       (ws.tu/analyze-workspace! workspace-id)
       (let [entity     {:entity-type :transform, :id (workspace-map :x2)}
             result     (ws.dag/path-induced-subgraph workspace-id [entity])
-            translated (translate-result result global-map)]
+            translated (translate-result workspace-id result global-map)]
         (is (=? {:inputs       #{:t1}
                  :outputs      #{:t2}
                  :entities     #{:x2}
@@ -78,7 +79,7 @@
       (let [entities   (for [tx [:x2 :x4]]
                          {:entity-type :transform, :id (workspace-map tx)})
             result     (ws.dag/path-induced-subgraph workspace-id entities)
-            translated (translate-result result global-map)]
+            translated (translate-result workspace-id result global-map)]
         (is (=? {:inputs       #{:t1 :t8 :t10}
                  :outputs      #{:t2 :t3 :t4}
                  :entities     #{:x2 :x3 :x4}
@@ -120,33 +121,6 @@
            (dag-abstract/path-induced-subgraph
             {:check-outs   #{:x3 :m6 :m10 :m13}
              :dependencies (dag-abstract/expand-shorthand example-graph)})))))
-
-;;;; Card dependency detection tests
-
-(deftest unsupported-dependency-no-transforms-test
-  (testing "empty input returns nil"
-    (is (nil? (ws.dag/unsupported-dependency? {})))
-    (is (nil? (ws.dag/unsupported-dependency? {:transforms []})))))
-
-(deftest unsupported-dependency-mbql-card-test
-  #_(testing "transform with card dependencies are unsupported"
-      (let [tx-with-no-dependencies               1
-             ;; These tests transforms must seem pretty redundant - but it's intentional: we may relax them one case at
-             ;; at time in the future.
-             ;; ----------------------
-             ;; We don't allow MBQL card dependencies, as we do not support re-mapping their references on execution.
-             ;; This is only a problem if the card depends on a table that is shadowed in the isolated schema, but we
-             ;; want to keep the semantics simple.
-            tx-with-direct-mbql-card-dependency   2
-             ;; Even a transitive dependency would need to be remapped.
-            tx-with-indirect-mbql-card-dependency 3
-             ;; In fact, we don't allow *any* card dependency for two reasons:
-             ;; 1. We don't yet support reference re-mapping across entity references.
-             ;; 2. It's an anti-pattern to build transforms on models, the relationship is intended to be the other way
-             ;;    around.
-            tx-with-sql-card-dependency           4]
-        (is (= nil (ws.dag/unsupported-dependency? {:transforms [1]})))
-        (is (= {:transforms [2 3 4]} (ws.dag/unsupported-dependency? {:transforms [1 2 3 4]}))))))
 
 ;;;; Graph utility tests
 
@@ -229,7 +203,7 @@
           :x4 []
           :x5 []}
          (#'ws.dag/collapse
-          ws.tu/table?
+          ws.tu/mock-table?
           {:x1 [:t1 :t2]
            :t1 [:x2]
            :t2 [:x3]
@@ -251,7 +225,7 @@
       ;; Include all changeset targets in the init-nodes
      (distinct (into init-nodes tables))
      {:node-parents (dag-abstract/expand-shorthand graph)
-      :table?       ws.tu/table?
+      :table?       ws.tu/mock-table?
       :table-sort   ws.tu/kw->id
       :unwrap-table identity})))
 

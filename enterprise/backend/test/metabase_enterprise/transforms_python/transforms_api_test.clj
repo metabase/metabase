@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
+   [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
@@ -16,6 +17,8 @@
    (java.time Duration Instant)))
 
 (set! *warn-on-reflection* true)
+
+(def fast-log-polling-ms "A bit of time to wait for when running periodic processes" 50)
 
 (deftest create-python-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -165,27 +168,31 @@
   "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
   Close with .close, grab the vector of values with deref."
   ^Closeable [transform-id]
-  (let [states (atom [])
-        fut    (future
-                 (try
-                   (loop []
-                     (let [{:keys [message]} (get-last-run transform-id)]
-                       (cond
-                         (.isInterrupted (Thread/currentThread))
-                         nil
+  (let [states   (atom [])
+        stopped? (atom false)
+        fut      (future
+                   (try
+                     (loop []
+                       (Thread/sleep ^long fast-log-polling-ms) ; avoid hammering the API
+                       (when-not @stopped?
+                         (let [{:keys [message]} (get-last-run transform-id)]
+                           (cond
+                             (.isInterrupted (Thread/currentThread))
+                             nil
 
-                        ;; same message as last time
-                         (= message (peek @states))
-                         (recur)
+                             ;; same message as last time
+                             (= message (peek @states))
+                             (recur)
 
-                        ;; new message value
-                         :else (do (swap! states conj message)
-                                   (recur)))))
-                   (catch InterruptedException _ nil)))]
+                             ;; new message value
+                             :else (do (swap! states conj message)
+                                       (recur))))))
+                     (catch InterruptedException _ nil)))]
     (reify IDeref
       (deref [_] @states)
       Closeable
       (close [_]
+        (reset! stopped? true)
         (future-cancel fut)
         (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
 
@@ -217,7 +224,7 @@
               (transforms.tu/wait-for-table (:name target) 5000)))
 
           (run-scenario [scenario schema]
-            (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO
+            (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
                           transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
                                                                                          (fn [& _] (throw e))
                                                                                          @#'transforms-python.execute/transfer-file-to-db)]
@@ -451,7 +458,7 @@
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-                (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO]
+                (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
                   (with-transform-cleanup! [target {:type   "table"
                                                     :schema schema
                                                     :name   "result"}]

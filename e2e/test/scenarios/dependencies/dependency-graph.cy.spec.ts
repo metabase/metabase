@@ -611,25 +611,25 @@ describe("scenarios > dependencies > dependency graph", () => {
   });
 
   describe("dependent filtering", () => {
-    function verifyFilter({
-      filterName,
-      visibleItems,
-      hiddenItems,
-    }: {
-      filterName: string;
-      visibleItems: string[];
-      hiddenItems: string[];
-    }) {
+    function toggleFilter({ filterName }: { filterName: string }) {
       H.DependencyGraph.dependencyPanel().icon("filter").click();
       H.popover().findByText(filterName).click();
+      H.DependencyGraph.dependencyPanel().icon("filter").click();
+    }
+
+    function verifyItems({
+      visibleItems = [],
+      hiddenItems = [],
+    }: {
+      visibleItems?: string[];
+      hiddenItems?: string[];
+    }) {
       H.DependencyGraph.dependencyPanel().within(() => {
         visibleItems.forEach((item) =>
           cy.findByText(item).should("be.visible"),
         );
         hiddenItems.forEach((item) => cy.findByText(item).should("not.exist"));
       });
-      H.popover().findByText(filterName).click();
-      H.DependencyGraph.dependencyPanel().icon("filter").click();
     }
 
     it("should be able to filter questions", () => {
@@ -666,16 +666,20 @@ describe("scenarios > dependencies > dependency graph", () => {
         .findByLabelText(TABLE_DISPLAY_NAME)
         .findByText("5 questions")
         .click();
-      verifyFilter({
-        filterName: "In a dashboard",
-        visibleItems: ["Question in dashboard"],
-        hiddenItems: [
+
+      verifyItems({
+        visibleItems: [
+          "Question in dashboard",
+          "Question in root collection",
           "Question in first collection",
           "Question in second collection",
+          "Question in personal collection",
         ],
       });
-      verifyFilter({
-        filterName: "Not in personal collection",
+      toggleFilter({
+        filterName: "Include items in personal collections",
+      });
+      verifyItems({
         visibleItems: [
           "Question in dashboard",
           "Question in root collection",

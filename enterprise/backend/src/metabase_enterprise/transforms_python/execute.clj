@@ -13,7 +13,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
@@ -352,13 +351,17 @@
   "Execute a Python transform by calling the python runner.
 
   Blocks until the transform returns."
-  [transform {:keys [run-method start-promise]}]
+  [transform {:keys [run-method start-promise user-id]}]
   (assert (transforms.util/python-transform? transform) "Transform must be a python transform")
   (try
     (let [message-log (empty-message-log)
-          {:keys [target] transform-id :id} transform
+          {:keys [target owner_user_id creator_id] transform-id :id} transform
           {driver :engine :as db} (t2/select-one :model/Database (transforms.i/target-db-id transform))
-          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
+          ;; For manual runs, use the triggering user; for cron, use owner/creator
+          run-user-id (if (and (= run-method :manual) user-id)
+                        user-id
+                        (or owner_user_id creator_id))
+          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
@@ -376,10 +379,10 @@
             ex-message-fn     #(exceptional-run-message message-log %)
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
-        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db)
-          (events/publish-event! :event/transform-run-complete {:object transform-details}))
-        (transforms.util/execute-secondary-index-ddl-if-required! transform run-id db target)
+        (transforms.util/handle-transform-complete!
+         :run-id run-id
+         :transform transform
+         :db db)
         {:run_id run-id
          :result result}))
     (catch Throwable t

@@ -3,7 +3,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
@@ -11,7 +11,7 @@ import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
 
-import LegendActions from "../LegendActions";
+import { LegendActions } from "../LegendActions";
 
 import {
   LegendCaptionRoot,

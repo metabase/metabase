@@ -3,8 +3,13 @@ import { Route } from "react-router";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as transformsUtils from "metabase-enterprise/transforms/utils";
 import type { DraftTransformSource } from "metabase-types/api";
+import { createMockTransform } from "metabase-types/api/mocks";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
 
 const mockQuerySource: DraftTransformSource = {
   type: "query",
@@ -17,12 +22,20 @@ const mockQuerySource: DraftTransformSource = {
   },
 };
 
+const mockPythonSource: DraftTransformSource = {
+  type: "python",
+  body: "# Python script",
+  "source-database": 1,
+  "source-tables": {},
+};
+
 type SetupOpts = {
   isDirty?: boolean;
   isEditMode?: boolean;
   isSaving?: boolean;
   source?: DraftTransformSource;
   isNative?: boolean;
+  isPython?: boolean;
 };
 
 function setup({
@@ -31,6 +44,7 @@ function setup({
   isSaving = false,
   source = mockQuerySource,
   isNative = false,
+  isPython = false,
 }: SetupOpts = {}) {
   const handleCancel = jest.fn();
   const handleSave = jest.fn().mockResolvedValue(undefined);
@@ -44,6 +58,17 @@ function setup({
     },
   };
 
+  const resolvedSource = isPython
+    ? mockPythonSource
+    : isNative
+      ? nativeSource
+      : source;
+
+  const transform = createMockTransform({
+    id: 1,
+    source_type: isPython ? "python" : isNative ? "native" : "mbql",
+  });
+
   const { unmount } = renderWithProviders(
     <Route
       component={() => (
@@ -53,7 +78,8 @@ function setup({
           isDirty={isDirty}
           isEditMode={isEditMode}
           isSaving={isSaving}
-          source={isNative ? nativeSource : source}
+          source={resolvedSource}
+          transform={transform}
           transformId={1}
         />
       )}
@@ -129,13 +155,6 @@ describe("TransformPaneHeaderActions", () => {
   });
 
   describe("read-only mode (not edit mode)", () => {
-    it("should render EditDefinitionButton", () => {
-      setup({ isEditMode: false, isNative: false });
-      expect(
-        screen.getByRole("link", { name: /edit definition/i }),
-      ).toBeInTheDocument();
-    });
-
     it("should not render Save and Cancel", () => {
       setup({ isEditMode: false, isNative: true });
 
@@ -145,6 +164,58 @@ describe("TransformPaneHeaderActions", () => {
       expect(
         screen.queryByRole("button", { name: /save/i }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should render nothing for native transforms when workspaces not available", () => {
+      setup({ isEditMode: false, isNative: true });
+
+      expect(
+        screen.queryByRole("button", { name: /save/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /cancel/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /edit definition/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /edit/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render EditDefinitionButton for MBQL transforms", () => {
+      setup({ isEditMode: false, isNative: false });
+
+      expect(
+        screen.getByRole("link", { name: /edit definition/i }),
+      ).toBeInTheDocument();
+    });
+
+    describe("workspaces feature availability", () => {
+      it("should render EditDefinitionButton when workspaces feature is not available", () => {
+        setup({ isEditMode: false, isNative: false });
+
+        expect(
+          screen.getByRole("link", { name: /edit definition/i }),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Python transforms", () => {
+    it("should not render EditDefinitionButton for Python transforms (moved to EditTransformMenu in header)", () => {
+      setup({ isEditMode: false, isPython: true });
+      expect(
+        screen.queryByRole("link", { name: /edit definition/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render Save and Cancel in edit mode for Python transforms", () => {
+      setup({ isEditMode: true, isPython: true, isDirty: true });
+      expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /cancel/i }),
+      ).toBeInTheDocument();
     });
   });
 });

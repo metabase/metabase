@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
+
 import type { EntityDefinition, EntityId, EntityType } from "./rtk-query";
 
 interface Props {
@@ -14,6 +16,8 @@ export const EntityName = <Entity, EntityWrapper>({
   entityType,
   entityId,
 }: Props) => {
+  const tc = useTranslateContent();
+
   const entityDefinition: EntityDefinition<Entity, EntityWrapper> =
     useMemo(() => {
       // dynamic require due to circular dependencies
@@ -38,5 +42,5 @@ export const EntityName = <Entity, EntityWrapper>({
     return null;
   }
 
-  return <span>{entityDefinition.objectSelectors.getName(entity)}</span>;
+  return <span>{tc(entityDefinition.objectSelectors.getName(entity))}</span>;
 };

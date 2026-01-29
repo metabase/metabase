@@ -253,6 +253,7 @@ export const ParameterValueWidget = ({
       position="bottom-start"
       trapFocus
       middlewares={{ flip: true, shift: true }}
+      clickOutsideEvents={["mousedown", "touchstart", "pointerdown"]}
       {...popoverProps}
     >
       <Popover.Target>

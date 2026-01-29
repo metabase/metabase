@@ -22,22 +22,22 @@ export const EmbedHomepage = () => {
   const hasEmbeddingFeature = useHasTokenFeature("embedding");
 
   const embeddingDocsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
   );
 
   const learnMoreInteractiveEmbedding = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/interactive-embedding" }),
   );
 
   const learnMoreStaticEmbedding = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
 
   const embedJsDocsUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/embedded-analytics-js" }),
   );
 
@@ -89,7 +89,7 @@ export const EmbedHomepage = () => {
         hasEmbeddingFeature={hasEmbeddingFeature}
         embeddingDocsUrl={embeddingDocsUrl + utmTags}
         analyticsDocsUrl={
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+          // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- only visible to admins
           "https://www.metabase.com/learn/customer-facing-analytics/" + utmTags
         }
         learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}

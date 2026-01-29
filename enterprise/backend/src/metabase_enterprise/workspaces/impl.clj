@@ -81,7 +81,37 @@
               (when-not (some->> (ex-message e) (re-find #"(?i)(does not exist|not found|no such table)"))
                 (log/warn e "Error granting RO table permissions")))))))))
 
-(defn- build-remapping [workspace]
+(defn- batch-lookup-table-ids
+  "Given a bounded list of tables, all within the same database, return an association list of [db schema table] => id"
+  [db-id schema-key table-key table-refs]
+  (when (seq table-refs)
+    (t2/select-fn-vec (juxt (juxt (constantly db-id) :schema :name) :id)
+                      [:model/Table :id :schema :name]
+                      :db_id db-id
+                      {:where (into [:or] (for [tr table-refs]
+                                            [:and
+                                             [:= :schema (get tr schema-key)]
+                                             [:= :name (get tr table-key)]]))})))
+
+(defn table-ids-fallbacks
+  "Given a list of maps holding [db_id schema table], return a mapping from those tuples => table_id"
+  ([table-refs]
+   (table-ids-fallbacks :schema :name :id table-refs))
+  ([schema-key table-key id-key table-refs]
+   (when-let [table-refs (seq (remove id-key table-refs))]
+     ;; These are ordered by db, so this will partition fine.
+     (u/for-map [table-refs (partition-by :db_id table-refs)
+                 :let [db_id (:db_id (first table-refs))]
+                 ;; Guesstimating a number that prevents this query being too large.
+                 table-refs (partition-all 20 table-refs)
+                 map-entry (batch-lookup-table-ids db_id schema-key table-key table-refs)]
+       map-entry))))
+
+(defn- build-remapping
+  "Build the mapping of external tables to isolated tables within the workspace schema.
+   Takes `graph` as a parameter to ensure that analysis has been performed.
+   Currently, it queries the related analysis tables directly, but in theory this data could be saved in the graph."
+  [workspace _graph]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
   ;; Also maps global_table_id -> same. This is more convenient and reliable for MBQL queries and Python transforms.
@@ -102,14 +132,21 @@
                            (t2/select-fn->fn :id #(driver.sql/default-schema (:engine %))
                                              [:model/Database :id :engine]
                                              :id [:in db-ids]))
+        fallback-map     (merge
+                          (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
+                          (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
         table-map        (reduce
                           (fn [m {:keys [db_id global_schema global_table global_table_id
                                          isolated_schema isolated_table isolated_table_id]}]
-                            (let [replacement    {:db-id  db_id
-                                                  :schema isolated_schema
-                                                  :table  isolated_table
-                                                  :id     isolated_table_id}
-                                  default-schema (get db-id->default db_id)]
+                            (let [global_table_id   (or global_table_id
+                                                        (fallback-map [db_id global_schema global_table]))
+                                  isolated_table_id (or isolated_table_id
+                                                        (fallback-map [db_id isolated_schema isolated_table]))
+                                  replacement       {:db-id  db_id
+                                                     :schema isolated_schema
+                                                     :table  isolated_table
+                                                     :id     isolated_table_id}
+                                  default-schema    (get db-id->default db_id)]
                               (cond-> (assoc m [db_id global_schema global_table] replacement)
                                 global_table_id (assoc global_table_id replacement)
                                 ;; Add nil-schema entry for tables in the default schema
@@ -217,9 +254,9 @@
 
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
-  ([workspace transform]
-   (run-transform! workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
+  ([workspace graph transform]
+   (run-transform! workspace graph transform (build-remapping workspace graph)))
+  ([workspace _graph transform remapping]
    (let [ref-id      (:ref_id transform)
          external-id (:id transform)
          start-time  (db-time)
@@ -263,12 +300,10 @@
 (defn dry-run-transform
   "Execute the given workspace transform without persisting to the target table.
    Returns the first 2000 rows of transform output for preview purposes."
-  ([workspace transform]
-   (dry-run-transform workspace transform (build-remapping workspace)))
-  ([workspace transform remapping]
-   (ws.isolation/with-workspace-isolation
-     workspace
-     (ws.execute/run-transform-preview transform remapping))))
+  [workspace graph transform]
+  (ws.isolation/with-workspace-isolation
+    workspace
+    (ws.execute/run-transform-preview transform (build-remapping workspace graph))))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
@@ -415,6 +450,7 @@
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
+                                 ;; TODO (Chris 2026-01-26) 2N + 1 is really not great here...
                                  global-table-id   (t2/select-one-fn :id [:model/Table :id]
                                                                      :db_id database :schema schema :name name)
                                  isolated-table-id (t2/select-one-fn :id [:model/Table :id]
@@ -632,10 +668,10 @@
       (calculate-and-persist-graph! workspace graph-version)))
 
 (defn- transforms-to-execute
-  "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
-  [{ws-id :id :as workspace} & {:keys [stale-only?]}]
-  (let [graph        (cond-> (get-or-calculate-graph! workspace)
-                       stale-only? (->> (with-staleness workspace)))
+  "Given a workspace, graph, and an optional filter, return the global and workspace definitions to run, in order."
+  [{ws-id :id :as workspace} graph & {:keys [stale-only?]}]
+  (let [graph        (cond->> graph
+                       stale-only? (with-staleness workspace))
         entities     (:entities graph)
         entities     (if stale-only?
                        (filter :stale entities)
@@ -661,16 +697,16 @@
 
 (defn execute-workspace!
   "Execute all the transforms within a given workspace."
-  [workspace & {:keys [stale-only?] :or {stale-only? false}}]
+  [workspace graph & {:keys [stale-only?] :or {stale-only? false}}]
   (let [ws-id     (:id workspace)
-        remapping (build-remapping workspace)]
+        remapping (build-remapping workspace graph)]
     (reduce
      (fn [acc {external-id :id ref-id :ref_id :as transform}]
        (let [node-type (if external-id :external-transform :workspace-transform)
              id-str    (id->str (or external-id ref-id))]
          (try
            ;; Perhaps we want to return some of the metadata from this as well?
-           (if (= :succeeded (:status (run-transform! workspace transform remapping)))
+           (if (= :succeeded (:status (run-transform! workspace graph transform remapping)))
              (update acc :succeeded conj id-str)
              ;; Perhaps the status might indicate it never ran?
              (update acc :failed conj id-str))
@@ -680,4 +716,4 @@
      {:succeeded []
       :failed    []
       :not_run   []}
-     (transforms-to-execute workspace {:stale-only stale-only?}))))
+     (transforms-to-execute workspace graph {:stale-only stale-only?}))))

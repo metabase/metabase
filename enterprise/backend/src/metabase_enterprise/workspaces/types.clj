@@ -37,12 +37,7 @@
    Data is nested under :data to match /api/dataset response format."
   [:map
    [:status [:enum :succeeded :failed]]
-   [:start_time {:optional true} [:maybe some?]]
-   [:end_time {:optional true} [:maybe some?]]
    [:message {:optional true} [:maybe :string]]
-   [:table [:map
-            [:name :string]
-            [:schema {:optional true} [:maybe :string]]]]
    [:data {:optional true}
     [:map
      [:rows {:optional true} [:sequential :any]]

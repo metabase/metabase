@@ -6,6 +6,7 @@ import type {
   PythonTransformTableAliases,
   TransformId,
   TransformRun,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -29,6 +30,10 @@ export function createTransformCollection({
 
 export function visitTransform(transformId: TransformId) {
   cy.visit(`/data-studio/transforms/${transformId}`);
+}
+
+export function runTransform(transformId: TransformId) {
+  cy.request("POST", `/api/ee/transform/${transformId}/run`);
 }
 
 const WAIT_TIMEOUT = 10000;
@@ -113,12 +118,14 @@ export function createSqlTransform({
   targetSchema,
   tagIds,
   visitTransform,
+  sourceCheckpointStrategy,
 }: {
   sourceQuery: string;
   targetTable: string;
   targetSchema: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
 }) {
   return createTransform(
     {
@@ -132,6 +139,7 @@ export function createSqlTransform({
             query: sourceQuery,
           },
         },
+        "source-incremental-strategy": sourceCheckpointStrategy,
       },
       target: {
         type: "table",

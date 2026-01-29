@@ -137,7 +137,7 @@
 
 (deftest write-dependencies-creates-output-test
   (testing "write-dependencies! creates workspace_output record"
-    (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
+    (mt/with-temp [:model/Workspace workspace {:name        (ws.tu/unique-name)
                                                :database_id (mt/id)
                                                :schema      "test_isolated_schema"}
                    :model/WorkspaceTransform wt {:workspace_id (:id workspace)
@@ -164,7 +164,7 @@
 (deftest write-dependencies-creates-inputs-test
   (testing "write-dependencies! creates workspace_input records for external dependencies"
     (let [iso-schema "test_isolated_schema"]
-      (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
+      (mt/with-temp [:model/Workspace workspace {:name        (ws.tu/unique-name)
                                                  :database_id (mt/id)
                                                  :schema      iso-schema}
                      :model/WorkspaceTransform wt {:workspace_id (:id workspace)
@@ -192,7 +192,7 @@
 
 (deftest write-dependencies-updates-on-change-test
   (testing "write-dependencies! replaces inputs when dependencies change"
-    (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
+    (mt/with-temp [:model/Workspace workspace {:name        (ws.tu/unique-name)
                                                :database_id (mt/id)
                                                :schema      "test_isolated_schema"}
                    :model/WorkspaceTransform wt {:workspace_id (:id workspace)

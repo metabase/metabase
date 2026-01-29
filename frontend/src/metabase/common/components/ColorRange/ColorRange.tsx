@@ -53,6 +53,7 @@ export const ColorRange = forwardRef(function ColorRange(
     >
       {_.range(0, sections).map((section) => (
         <>
+          {/* @ts-expect-error color range needs access to arbitrary color values */}
           <Box key={section} flex="1" bg={scale(section)} />
         </>
       ))}

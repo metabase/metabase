@@ -5,6 +5,7 @@ import {
   useBreakoutData,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Breakout/use-breakout-data";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 import { BadgeList } from "../util/BadgeList";
 
@@ -18,12 +19,13 @@ export const BreakoutBadgeListInner = ({
   onRemoveItem: (item: SDKBreakoutItem, index: number) => void;
 }) => {
   const breakoutItems = useBreakoutData();
+  const tc = useTranslateContent();
 
   return (
     <BadgeList
       items={breakoutItems.map((item) => ({
         item,
-        name: item.longDisplayName,
+        name: tc(item.longDisplayName),
       }))}
       addButtonLabel={t`Add another grouping`}
       onSelectItem={onSelectItem}

@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -11,15 +10,6 @@
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
-
-;; should be encapsulated in our dag namespace, or dependency module
-(defn check-no-card-dependencies!
-  "Check that transforms don't depend on cards. Throws 400 if they do."
-  [transform-ids]
-  (when-let [card-ids (seq (ws.dag/unsupported-dependency? transform-ids))]
-    (api/check-400 false
-                   (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
-                           (pr-str (vec card-ids))))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
@@ -74,8 +64,8 @@
         ws      (assoc ws :collection_id (:id coll))]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
-    ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
-    #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
+    ;; TODO (Sanya 2025-11-18) -- for now we expose this in logs for manual testing, in future we need a secure channel
+    (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
     ws))
 
 (defn- unique-constraint-violation?
@@ -167,8 +157,7 @@
       (let [workspace-id    (:id workspace)
             workspace-db-id (:database_id workspace)
             body            (assoc-in body [:target :database] workspace-db-id)
-            transform       (t2/insert-returning-instance!
-                             :model/WorkspaceTransform
+            transform       (ws.u/insert-returning-ws-tx!
                              (assoc (select-keys body [:name :description :source :target])
                                     :ref_id (ws.u/generate-ref-id)
                                     :creator_id creator-id

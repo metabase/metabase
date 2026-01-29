@@ -32,6 +32,39 @@
   (or (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
+(defenterprise table-editable?
+  "Determines if a table's metadata should be editable.
+
+  Takes a table to check for editability.
+
+  Returns true if the table is editable, false otherwise. Returns false if:
+  - remote-sync-type is :read-only AND
+  - table is published AND
+  - table is in a remote-synced collection
+
+  Always returns true on OSS.
+
+  If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
+  :feature :none
+  [table]
+  (or (= (settings/remote-sync-type) :read-write)
+      (not (:is_published table))
+      ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
+      (not (collections/remote-synced-collection? (or (:collection table)
+                                                      (:collection_id table))))))
+
+(defenterprise transforms-editable?
+  "Determines if transforms should be editable.
+
+  Returns true if transforms are editable, false otherwise. Transforms are globally
+  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+
+  Always returns true on OSS."
+  :feature :none
+  []
+  (or (not (settings/remote-sync-enabled))
+      (= (settings/remote-sync-type) :read-write)))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
@@ -50,15 +83,19 @@
       (when (seq sync-on)
         (t2/query {:update (t2/table-name :model/Collection)
                    :set {:is_remote_synced true}
-                   :where (into [:or [:in :id (map :id sync-on)]]
-                                (for [collection sync-on]
-                                  [:like :location (str (collections/location-path collection) "%")]))}))
+                   :where [:and
+                           [:= :is_remote_synced false]
+                           (into [:or [:in :id (map :id sync-on)]]
+                                 (for [collection sync-on]
+                                   [:like :location (str (collections/location-path collection) "%")]))]}))
       (when (seq sync-off)
         (t2/query {:update (t2/table-name :model/Collection)
                    :set {:is_remote_synced false}
-                   :where (into [:or [:in :id (map :id sync-off)]]
-                                (for [collection sync-off]
-                                  [:like :location (str (collections/location-path collection) "%")]))}))
+                   :where [:and
+                           [:= :is_remote_synced true]
+                           (into [:or [:in :id (map :id sync-off)]]
+                                 (for [collection sync-off]
+                                   [:like :location (str (collections/location-path collection) "%")]))]}))
       (doseq [collection sync-on]
         (collections/check-non-remote-synced-dependencies collection))
       (doseq [collection sync-off]

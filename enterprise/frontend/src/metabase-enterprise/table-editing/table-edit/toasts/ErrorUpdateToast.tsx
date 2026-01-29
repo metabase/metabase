@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
+import * as Urls from "metabase/lib/urls";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import {
@@ -38,7 +39,11 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
         <Text c="text-primary-inverse">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
-            to={`/data-studio/data/database/${table?.db_id}/schema/${table?.schema}/table/${table?.id}`}
+            to={Urls.dataStudioData({
+              databaseId: table?.db_id,
+              schemaName: table?.schema,
+              tableId: table?.id,
+            })}
             disabled={!table}
             key="entity-key-link"
             target="_blank"

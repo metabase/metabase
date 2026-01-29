@@ -128,7 +128,7 @@
              (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
-          "no sync occured even when called directly for audit db."))))
+          "no sync occurred even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]

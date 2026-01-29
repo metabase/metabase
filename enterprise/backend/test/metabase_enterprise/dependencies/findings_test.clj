@@ -49,3 +49,16 @@
     (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
       ;; can't check the actual cards analyzed here because this could be any starting card in the data
       (is (= 2 (deps.findings/analyze-batch! :card 2))))))
+
+(deftest ^:sequential does-not-analyze-native-entities-test
+  (testing "assumes native queries are always fine"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "utter nonsense")}]
+          (is (= 1 (deps.findings/analyze-batch! :card 1)))
+          (is (= [models.analysis-finding/*current-analysis-finding-version* true]
+                 (t2/select-one-fn (juxt :analysis_version :result)
+                                   :model/AnalysisFinding
+                                   :analyzed_entity_id card-id
+                                   :analyzed_entity_type :card))))))))

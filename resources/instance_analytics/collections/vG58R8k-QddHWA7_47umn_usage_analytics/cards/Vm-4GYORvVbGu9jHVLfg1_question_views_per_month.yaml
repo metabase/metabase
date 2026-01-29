@@ -93,13 +93,12 @@ visualization_settings:
   graph.dimensions: [timestamp]
   graph.metrics: [count]
   graph.show_values: true
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: Vm-4GYORvVbGu9jHVLfg1, label: question_views_per_month, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

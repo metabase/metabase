@@ -248,7 +248,7 @@ const computeDiffWithPreviousPeriod = (
     getDaylightSavingsChangeTolerance(xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
-  // specially, because there are fewer days in this period due to Feburary
+  // specially, because there are fewer days in this period due to February
   // being shorter than a normal month (89 days in a normal year, 90 days in a
   // leap year).
   if (!isOneIntervalAgo && unit === "quarter") {

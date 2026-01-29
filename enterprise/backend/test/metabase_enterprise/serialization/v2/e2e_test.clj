@@ -422,7 +422,7 @@
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
 
               (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-                ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+                ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
                 (is (= 2 (t2/count :model/ParameterCard))))
 
               (testing "extract and store"

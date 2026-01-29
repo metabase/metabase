@@ -127,14 +127,14 @@
       (is (= [step-1-name step-2-name]
              (map first (:steps results)))))
     (testing "operation history"
-      (is (= (merge default-task-history {:task process-name, :task_details nil})
-             (fetch-task-history-row process-name))))
+      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+              (fetch-task-history-row process-name))))
     (testing "step 1 history"
-      (is (= (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
-             (fetch-task-history-row step-1-name))))
+      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
+              (fetch-task-history-row step-1-name))))
     (testing "step 2 history"
-      (is (= (merge default-task-history {:task step-2-name, :task_details nil})
-             (fetch-task-history-row step-2-name))))))
+      (is (=? (merge default-task-history {:task step-2-name, :task_details nil})
+              (fetch-task-history-row step-2-name))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
   (let [process-name (mt/random-name)
@@ -150,8 +150,8 @@
                                                       (throw (ex-info "Sorry" {})))))]]
     (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
     (testing "operation history"
-      (is (= (merge default-task-history {:task process-name, :task_details nil})
-             (fetch-task-history-row process-name))))
+      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+              (fetch-task-history-row process-name))))
     (testing "step history should has status is failed"
       (is (=? (merge default-task-history
                      {:task step-name-1

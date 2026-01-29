@@ -218,6 +218,7 @@ const ColumnPicker = ({
           placeholder={
             filterByTableColumn ? t`Pick a column` : t`Pick a parameter`
           }
+          includeSensitiveFields
         />
       </Box>
     );

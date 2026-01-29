@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import * as d3 from "d3";
-import { Component } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import * as React from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +11,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/ui/utils/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -58,9 +58,7 @@ const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 const radians = (degrees) => (degrees * Math.PI) / 180;
 const degrees = (radians) => (radians * 180) / Math.PI;
 
-const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
-
-export default class Gauge extends Component {
+export class Gauge extends Component {
   static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
@@ -312,7 +310,7 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <HideIfOverlowingSVG key={index}>
+                  <HideIfOverflowingSVG key={index}>
                     <GaugeSegmentLabel
                       position={valuePosition(
                         value,
@@ -324,7 +322,7 @@ export default class Gauge extends Component {
                     >
                       {label}
                     </GaugeSegmentLabel>
-                  </HideIfOverlowingSVG>
+                  </HideIfOverflowingSVG>
                 ))}
               {/* CENTER LABEL */}
               {/* NOTE: can't be a component because ref doesn't work? */}
@@ -450,35 +448,43 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
   </text>
 );
 
-class HideIfOverlowingSVG extends React.Component {
-  componentDidMount() {
-    this._hideIfClipped();
-  }
-  componentDidUpdate() {
-    this._hideIfClipped();
-  }
-  _hideIfClipped() {
-    const element = ReactDOM.findDOMNode(this);
+const HideIfOverflowingSVG = ({ children }) => {
+  const elementRef = useRef(null);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const hideIfClipped = useCallback(() => {
+    const element = elementRef.current;
+
     if (element) {
       let svg = element;
-      while (svg.nodeName.toLowerCase() !== "svg") {
+
+      while (svg && svg.nodeName.toLowerCase() !== "svg") {
         svg = svg.parentNode;
       }
-      const svgRect = svg.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      if (
-        elementRect.left >= svgRect.left &&
-        elementRect.right <= svgRect.right &&
-        elementRect.top >= svgRect.top &&
-        elementRect.bottom <= svgRect.bottom
-      ) {
-        element.classList.remove(CS.hidden);
-      } else {
-        element.classList.add(CS.hidden);
+
+      if (svg) {
+        const svgRect = svg.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+
+        const shouldBeHidden = !(
+          elementRect.left >= svgRect.left &&
+          elementRect.right <= svgRect.right &&
+          elementRect.top >= svgRect.top &&
+          elementRect.bottom <= svgRect.bottom
+        );
+
+        setIsHidden(shouldBeHidden);
       }
     }
-  }
-  render() {
-    return this.props.children;
-  }
-}
+  }, []);
+
+  useEffect(() => {
+    hideIfClipped();
+  });
+
+  return (
+    <g ref={elementRef} className={isHidden ? CS.hidden : undefined}>
+      {children}
+    </g>
+  );
+};

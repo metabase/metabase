@@ -1,5 +1,5 @@
 (ns metabase.legacy-mbql.util
-  "Utilitiy functions for working with MBQL queries.
+  "Utility functions for working with MBQL queries.
 
   DEPRECATED: Use [[metabase.lib.core]] for MBQL manipulation in all new code."
   {:deprecated "0.57.0"}

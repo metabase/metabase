@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -20,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
@@ -31,8 +31,10 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
    [toucan2.core :as t2])
+  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql PreparedStatement)
+   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
    (net.sf.jsqlparser.statement.select PlainSelect)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
@@ -103,7 +105,7 @@
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps))
                 (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
+          (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -125,6 +127,83 @@
     [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
+(defn- extract-all-columns-from-query
+  "Extracts column metadata (name and type) from a query.
+
+  Returns a sequence of maps with `:name` and `:base_type` keys, or nil if extraction fails.
+
+  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
+  to inspect the query structure. This works for most modern JDBC drivers but may not
+  be supported by all drivers or for all query types."
+  [driver database-id query]
+  (try
+    (let [{:keys [query]} (qp.compile/compile query)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database-id
+       {}
+       (fn [conn]
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
+           (when-let [rsmeta (.getMetaData stmt)]
+             (seq (sql-jdbc.execute/column-metadata driver rsmeta)))))))
+    (catch Exception e
+      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
+      nil)))
+
+(defn- extract-incremental-filter-columns-from-query
+  "Extracts column names suitable for incremental transform checkpoint filtering.
+
+  This function is specifically for incremental transform checkpoint column selection.
+  It only returns columns with types supported for checkpoint filtering:
+  - Temporal types (timestamp, timestamp with timezone)
+  - Numeric types (integer, float, decimal)
+
+  Text, boolean, and other types are filtered out as they are not supported for
+  incremental checkpointing.
+
+  Returns a vector of column names (as strings), or nil if extraction fails.
+
+  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
+  to inspect the query structure. This works for most modern JDBC drivers but may not
+  be supported by all drivers or for all query types."
+  [driver database-id query]
+  (some->> (extract-all-columns-from-query driver database-id query)
+           (filter (comp transforms.util/supported-incremental-filter-type? :base_type))
+           (mapv :name)))
+
+(defn- validate-incremental-column-type!
+  "Validates that the checkpoint column for an incremental transform has a supported type.
+
+  For MBQL/Python transforms, resolves the column from the query using the unique key.
+  For native queries, extracts columns from the query and checks the checkpoint-filter column.
+
+  Throws a 400 error if the column type is not supported or cannot be resolved."
+  [{:keys [source]}]
+  (when-let [{:keys [checkpoint-filter checkpoint-filter-unique-key] strategy-type :type}
+             (:source-incremental-strategy source)]
+    (when (and (= :query (:type source)) (= "checkpoint" strategy-type))
+      (let [{:keys [query]} source
+            database-id (:database query)
+            database    (api/check-404 (t2/select-one :model/Database :id database-id))
+            driver-name (driver/the-initialized-driver (:engine database))]
+        (cond
+          ;; For MBQL, resolve column from query metadata
+          checkpoint-filter-unique-key
+          (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
+            (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
+            (api/check-400 (transforms.util/supported-incremental-filter-type? (:base-type column))
+                           (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
+                                         (pr-str (:base-type column)))))
+
+          ;; For native query with checkpoint-filter, validate type if we can extract the column metadata
+          checkpoint-filter
+          (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
+            (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
+              (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type column))
+                             (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                           checkpoint-filter
+                                           (pr-str (:base_type column)))))))))))
+
 (defn create-transform!
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
@@ -133,22 +212,29 @@
   ([body creator-id]
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
-                      (let [tag-ids   (:tag_ids body)
-                            transform (t2/insert-returning-instance!
-                                       :model/Transform
-                                       (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                              :creator_id creator-id))]
+                      (let [tag-ids       (:tag_ids body)
+                            ;; Set owner_user_id to current user if not explicitly provided
+                            owner-user-id (when-not (:owner_email body)
+                                            (or (:owner_user_id body) creator-id))
+                            transform     (t2/insert-returning-instance!
+                                           :model/Transform
+                                           (assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                     :collection_id :owner_email])
+                                                  :creator_id creator-id
+                                                  :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
                         (when (seq tag-ids)
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator)))]
-     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+                        (t2/hydrate transform :transform_tag_ids :creator :owner)))]
+     (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
-;; TODO (chris 2025/12/16) fully populate the result schema
-;; TODO (lbrdnk 2025/12/16) relaxed result schema to unblock FE. This should be properly handled later.
-(api.macros/defendpoint :post "/" :- [:map [:name :string] [:description {:optional true} [:maybe :string]]]
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
    _query-params
@@ -159,36 +245,26 @@
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:owner_email {:optional true} [:maybe :string]]]]
+  (api/create-check :model/Transform body)
   (check-database-feature body)
   (check-feature-enabled! body)
+  (validate-incremental-column-type! body)
 
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
-                                            :creator_id api/*current-user-id*))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    (python-source-table-ref->table-id transform)))
+  (-> (create-transform! body) python-source-table-ref->table-id))
 
 (defn get-transform
   "Get a specific transform."
   [id]
-  (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
         python-source-table-ref->table-id)))
@@ -211,13 +287,12 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        _ (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
-    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator))))
+    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator :owner))))
 
 (def ^:private MergeHistoryEntry
   [:map
@@ -286,6 +361,7 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
+                      (validate-incremental-column-type! new)
                       (when (transforms.util/query-transform? old)
                         (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
@@ -298,7 +374,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (python-source-table-ref->table-id transform)))
 
@@ -339,8 +415,7 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (delete-transform! (api/check-404 (t2/select-one :model/Transform id))))
+  (delete-transform! (api/write-check :model/Transform id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -350,7 +425,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
@@ -362,8 +437,7 @@
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/write-check :model/Transform id)
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
@@ -378,7 +452,8 @@
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
-                                             :run-method :manual}))
+                                             :run-method :manual
+                                             :user-id api/*current-user-id*}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
@@ -397,37 +472,17 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (run-transform! (api/check-404 (t2/select-one :model/Transform id))))
-
-(defn- extract-columns-from-query
-  "Attempts to extract column names from an MBQL query without executing it.
-
-  Returns a vector of column names (as strings), or nil if extraction fails.
-
-  The query is first compiled to native SQL, hen uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (try
-    (let [{:keys [query]} (qp.compile/compile query)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database-id
-       {}
-       (fn [conn]
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
-           (when-let [rsmeta (.getMetaData stmt)]
-             (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
-               (seq (mapv :name columns))))))))
-    (catch Exception e
-      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
-      nil)))
+  (run-transform! (api/write-check :model/Transform id)))
 
 (defn- simple-native-query?
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
   [sql-string]
   (try
-    (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
+    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
+    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
+    ;;         adding at least default :non-resserved-words.
+    ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
+    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
       (cond
         (not (instance? PlainSelect parsed))
         {:is_simple false
@@ -463,16 +518,19 @@
   (api/check-superuser)
   (simple-native-query? query))
 
-;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/extract-columns"
-  "Extract column names from an MBQL query without executing it.
+  :- [:map [:columns [:maybe [:sequential :string]]]]
+  "Extract column names suitable for incremental transform checkpoint filtering.
 
-  Compiles the query to native SQL using [[qp.compile/compile-with-inline-parameters]],
+  This endpoint is specifically for populating the checkpoint column dropdown in
+  incremental transforms. It only returns columns with types supported for checkpoint
+  filtering: temporal (timestamp/tz) and numeric (int/float) types.
+
+  Text, boolean, and other unsupported column types are filtered out.
+
+  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
   which handles parameterized queries with template tags. Then extracts column names
-  using PreparedStatement metadata.
+  and types using PreparedStatement metadata.
 
   Returns a map with a :columns key containing a vector of column names (strings).
   If extraction fails, returns nil for :columns."
@@ -482,9 +540,9 @@
                        [:query ::qp.schema/any-query]]]
   (api/check-superuser)
   (let [database-id (:database query)
-        database (api/check-404 (t2/select-one :model/Database :id database-id))
+        database    (api/check-404 (t2/select-one :model/Database :id database-id))
         driver-name (driver/the-initialized-driver (:engine database))
-        columns (extract-columns-from-query driver-name database-id query)]
+        columns     (extract-incremental-filter-columns-from-query driver-name database-id query)]
     {:columns columns}))
 
 (def ^{:arglists '([request respond raise])} routes

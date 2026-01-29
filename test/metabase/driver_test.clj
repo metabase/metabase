@@ -8,6 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -48,19 +49,6 @@
     (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))
 
-(defn- flatten-connection-properties
-  "Recursively flatten connection properties, extracting all properties from groups.
-  Groups have :type :group and contain a :fields array with nested properties."
-  [props]
-  (mapcat (fn [prop]
-            (if (and (= (:type prop) :group)
-                     (seq (:fields prop)))
-              ;; If it's a group, recursively flatten its fields
-              (flatten-connection-properties (:fields prop))
-              ;; Otherwise, return the property as-is
-              [prop]))
-          props))
-
 (deftest ^:parallel unique-connection-property-test
   ;; abnormal usage here; we are not using the regular mt/test-driver or mt/test-drivers, because those involve
   ;; initializing the driver and test data namespaces, which don't necessarily exist for all drivers (ex:
@@ -68,17 +56,30 @@
 
   ;; so instead, just iterate through all drivers currently set to test by the environment, and check their
   ;; connection-properties; between all the different CI driver runs, this should cover everything
-  (doseq [d (tx.env/test-drivers)]
-    (testing (str d " has entirely unique connection property names")
-      (let [props         (driver/connection-properties d)
-            flattened-props (flatten-connection-properties props)
-            props-by-name (group-by :name flattened-props)]
-        (is (= (count flattened-props) (count props-by-name))
-            (format "Property(s) with duplicate name: %s" (-> (filter (fn [[_ props]]
-                                                                        (> (count props) 1))
-                                                                      props-by-name)
-                                                              vec
-                                                              pr-str)))))))
+  (letfn [(count-named-props [props]
+            ;; Recursively count all properties with :name, including within groups
+            (reduce (fn [acc prop]
+                      (cond
+                        (= :group (:type prop))
+                        (+ acc (count-named-props (:fields prop)))
+
+                        (:name prop)
+                        (inc acc)
+
+                        :else
+                        acc))
+                    0
+                    props))]
+    (doseq [d (tx.env/test-drivers)]
+      (testing (str d " has entirely unique connection property names")
+        (let [props           (driver/connection-properties d)
+              props-by-name   (driver.u/collect-all-props-by-name props)
+              total-props     (count-named-props props)]
+          ;; If there are duplicate names, some will be overwritten in the map,
+          ;; so the map size will be less than the total count of named properties
+          (is (= total-props (count props-by-name))
+              (format "Property(s) with duplicate name: %d total properties but only %d unique names in %s"
+                      total-props (count props-by-name) d)))))))
 
 (deftest supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)

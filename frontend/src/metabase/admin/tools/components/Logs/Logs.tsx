@@ -10,7 +10,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
-import Select, { Option } from "metabase/common/components/Select";
+import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
@@ -27,7 +27,7 @@ import {
 interface LogsProps {
   children?: ReactNode;
   location: Location;
-  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB isntance
+  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
   pollingDurationMs?: number;

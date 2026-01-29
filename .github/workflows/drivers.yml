@@ -146,6 +146,7 @@ jobs:
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
 # DS 2025-09-26 temporarily disabled while we diagnose flakes
 #          - name: Transforms Python Tests
 #            test-args: >-
@@ -1224,6 +1225,7 @@ jobs:
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
 
 # DS 2025-09-26 temporarily disabled while we diagnose flakes
 #          - name: Transforms Python Tests

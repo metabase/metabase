@@ -317,13 +317,12 @@ result_metadata:
   lib/source-column-alias: recipient_external
   qp/implicit-field?: true
 visualization_settings: {column_settings: null, table.cell_column: card_id, table.pivot_column: schedule_day}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: YiHMsA2dv3iQob11DLTIz, label: alerts_on_this_question, model: Card}
 archived_directly: false
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

@@ -30,3 +30,10 @@
   metabase-enterprise.data-studio.permissions.published-tables
   [_database-id]
   false)
+
+(defenterprise can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions.
+  OSS implementation always returns false - published tables only grant access in EE."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table]
+  false)

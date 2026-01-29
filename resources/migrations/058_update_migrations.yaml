@@ -1082,7 +1082,6 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-11-26T12:00:00
-      validCheckSum: ANY
       author: piranha
       comment: Create workspace table
       validCheckSum: ANY
@@ -1253,10 +1252,7 @@ databaseChangeLog:
                   remarks: Workspace that owns schema with this table
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:08
@@ -1301,10 +1297,7 @@ databaseChangeLog:
                   remarks: Workspace that owns schema with this field
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: metabase_field
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:10
@@ -1349,29 +1342,7 @@ databaseChangeLog:
                   remarks: Workspace containing this collection
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: collection
-            columnName: workspace_id
-
-  - changeSet:
-      id: v58.2025-11-26T12:00:12
-      validCheckSum: ANY
-      author: piranha
-      comment: Add foreign key constraint from collection.workspace_id to workspace
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_collection_workspace_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-      rollback:
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:13
@@ -1394,10 +1365,7 @@ databaseChangeLog:
                   remarks: Workspace containing this card
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: report_card
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:14
@@ -1442,10 +1410,7 @@ databaseChangeLog:
                   remarks: Workspace containing this transform
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T12:00:18
@@ -1544,10 +1509,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: upstream_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_table
-            indexName: idx_workspace_mapping_table_upstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:45
@@ -1566,10 +1528,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: downstream_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_table
-            indexName: idx_workspace_mapping_table_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:46
@@ -1588,10 +1547,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_table
-            indexName: idx_workspace_mapping_table_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:47
@@ -1611,10 +1567,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_table
-            constraintName: fk_workspace_mapping_table_upstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:48
@@ -1634,10 +1587,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_table
-            constraintName: fk_workspace_mapping_table_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:49
@@ -1657,10 +1607,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_table
-            constraintName: fk_workspace_mapping_table_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:50
@@ -1737,10 +1684,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: upstream_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_transform
-            indexName: idx_workspace_mapping_transform_upstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:54
@@ -1759,10 +1703,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: downstream_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_transform
-            indexName: idx_workspace_mapping_transform_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:55
@@ -1781,10 +1722,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_mapping_transform
-            indexName: idx_workspace_mapping_transform_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:56
@@ -1804,10 +1742,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_transform
-            constraintName: fk_workspace_mapping_transform_upstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:57
@@ -1827,10 +1762,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_transform
-            constraintName: fk_workspace_mapping_transform_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:58
@@ -1850,10 +1782,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_mapping_transform
-            constraintName: fk_workspace_mapping_transform_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:34:59
@@ -1872,41 +1801,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      # MySQL requires FK to be dropped before its underlying index can be dropped
-      # Use modifySql to make the FK drop conditional since rollback doesn't support preconditions
-      rollback:
-        - sql:
-            dbms: mysql,mariadb
-            failOnError: false
-            sql: ALTER TABLE collection DROP FOREIGN KEY fk_collection_workspace_id
-        - sql:
-            dbms: h2
-            sql: ALTER TABLE COLLECTION DROP CONSTRAINT FK_COLLECTION_WORKSPACE_ID
-        - dropIndex:
-            tableName: collection
-            indexName: idx_collection_workspace_id
-
-  - changeSet:
-      id: v58.2025-11-26T13:35:02
-      validCheckSum: ANY
-      author: christruter
-      comment: Drop collection.workspace_id FK for cascade update
-      validCheckSum: ANY
-      preConditions:
-        - onFail: MARK_RAN
-        - foreignKeyConstraintExists:
-            foreignKeyName: fk_collection_workspace_id
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
 
   - changeSet:
       id: v58.2025-11-26T13:35:03
@@ -2080,13 +1974,7 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
             constraintName: fk_metabase_field_workspace_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_field
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_field_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:35:13
@@ -2106,10 +1994,7 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_field
-            constraintName: fk_metabase_field_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:35:14
@@ -2129,20 +2014,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_field
-            constraintName: fk_metabase_field_workspace_id
-        - dropIndex:
-            tableName: metabase_field
-            indexName: idx_metabase_field_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: metabase_field
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_field_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: SET NULL
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T13:35:15
@@ -2162,19 +2034,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_workspace_id
-        - dropIndex:
-            tableName: metabase_table
-            indexName: idx_metabase_table_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: metabase_table
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_table_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T14:50:00
@@ -2192,10 +2052,7 @@ databaseChangeLog:
             tableName: workspace_mapping_table
             columnNames: downstream_id
             constraintName: uq_workspace_mapping_table_downstream_id
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_mapping_table
-            constraintName: uq_workspace_mapping_table_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T14:50:01
@@ -2213,10 +2070,7 @@ databaseChangeLog:
             tableName: workspace_mapping_transform
             columnNames: downstream_id
             constraintName: uq_workspace_mapping_transform_downstream_id
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_mapping_transform
-            constraintName: uq_workspace_mapping_transform_downstream_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-11-26T14:50:02
@@ -2680,6 +2534,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-09T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.workspace_id
       preConditions:
@@ -2694,13 +2549,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_transform
-            indexName: idx_workspace_transform_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:02
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.global_id
       preConditions:
@@ -2715,13 +2568,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: global_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_transform
-            indexName: idx_workspace_transform_global_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:03
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_transform.collection_id
       preConditions:
@@ -2736,13 +2587,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_transform
-            indexName: idx_workspace_transform_collection_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:04
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.workspace_id to workspace
       preConditions:
@@ -2758,13 +2607,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:05
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.global_id to transform with SET NULL on delete
       preConditions:
@@ -2780,13 +2627,11 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_global_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:06
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_transform.collection_id to collection with SET NULL on delete
       preConditions:
@@ -2802,10 +2647,7 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_collection_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:07
@@ -2827,13 +2669,11 @@ databaseChangeLog:
         - sql:
             dbms: h2,mysql,mariadb
             sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id)
-      rollback:
-        - dropIndex:
-            tableName: workspace_transform
-            indexName: idx_workspace_transform_workspace_global_unique
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-09T10:00:08
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace.name
       preConditions:
@@ -2846,10 +2686,7 @@ databaseChangeLog:
             tableName: workspace
             columnNames: name
             constraintName: idx_workspace_name_unique
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace
-            constraintName: idx_workspace_name_unique
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:00
@@ -2921,6 +2758,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:01
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_input.workspace_id
       preConditions:
@@ -2935,13 +2773,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:02
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_input.workspace_id to workspace
       preConditions:
@@ -2957,13 +2793,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input
-            constraintName: fk_workspace_input_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:04
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_input (workspace_id, db_id, schema, table)
       preConditions:
@@ -2977,10 +2811,7 @@ databaseChangeLog:
             tableName: workspace_input
             columnNames: workspace_id, db_id, schema, table
             constraintName: uq_workspace_input_logical_table
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_input
-            constraintName: uq_workspace_input_logical_table
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:05
@@ -3052,6 +2883,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:06
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_output.workspace_id
       preConditions:
@@ -3066,13 +2898,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_output
-            indexName: idx_workspace_output_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:07
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_output.ref_id
       preConditions:
@@ -3087,13 +2917,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: ref_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_output
-            indexName: idx_workspace_output_ref_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:08
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_output.workspace_id to workspace
       preConditions:
@@ -3109,13 +2937,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output
-            constraintName: fk_workspace_output_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:09
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_output.ref_id to workspace_transform
       preConditions:
@@ -3131,13 +2957,11 @@ databaseChangeLog:
             referencedTableName: workspace_transform
             referencedColumnNames: ref_id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output
-            constraintName: fk_workspace_output_ref_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:10
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_output (workspace_id, ref_id)
       preConditions:
@@ -3151,10 +2975,7 @@ databaseChangeLog:
             tableName: workspace_output
             columnNames: workspace_id, ref_id
             constraintName: uq_workspace_output_workspace_ref
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_output
-            constraintName: uq_workspace_output_workspace_ref
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:11
@@ -3220,6 +3041,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-10T10:00:12
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency.workspace_id
       preConditions:
@@ -3234,13 +3056,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_dependency
-            indexName: idx_workspace_dependency_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:13
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_dependency.workspace_id to workspace
       preConditions:
@@ -3256,13 +3076,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_dependency
-            constraintName: fk_workspace_dependency_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:14
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add unique constraint on workspace_dependency edges
       preConditions:
@@ -3276,13 +3094,11 @@ databaseChangeLog:
             tableName: workspace_dependency
             columnNames: workspace_id, from_entity_type, from_entity_id, to_entity_type, to_entity_id
             constraintName: uq_workspace_dependency_edge
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_dependency
-            constraintName: uq_workspace_dependency_edge
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:15
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency from entity
       preConditions:
@@ -3299,13 +3115,11 @@ databaseChangeLog:
                   name: from_entity_type
               - column:
                   name: from_entity_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_dependency
-            indexName: idx_workspace_dependency_from
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:00:16
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add index on workspace_dependency to entity
       preConditions:
@@ -3322,10 +3136,7 @@ databaseChangeLog:
                   name: to_entity_type
               - column:
                   name: to_entity_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_dependency
-            indexName: idx_workspace_dependency_to
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:30:00
@@ -3343,9 +3154,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-10T10:30:05
+      validCheckSum: ANY
       author: qnkhuat
       comment: Add foreign key constraint from workspace_input.table_id to metabase_table with SET NULL
       preConditions:
@@ -3361,10 +3174,7 @@ databaseChangeLog:
             referencedTableName: metabase_table
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input
-            constraintName: fk_workspace_input_table_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-11T10:00:00
@@ -4115,6 +3925,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_output_external.workspace_id
       preConditions:
@@ -4129,13 +3940,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_output_external
-            indexName: idx_workspace_output_external_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:02
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_output_external.transform_id
       preConditions:
@@ -4150,13 +3959,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: transform_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_output_external
-            indexName: idx_workspace_output_external_transform_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:03
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_output_external.workspace_id to workspace
       preConditions:
@@ -4172,13 +3979,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output_external
-            constraintName: fk_workspace_output_external_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:04
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_output_external.transform_id to transform
       preConditions:
@@ -4194,13 +3999,11 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_output_external
-            constraintName: fk_workspace_output_external_transform_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:05
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace_output_external (workspace_id, transform_id)
       preConditions:
@@ -4214,10 +4017,7 @@ databaseChangeLog:
             tableName: workspace_output_external
             columnNames: workspace_id, transform_id
             constraintName: uq_workspace_output_external_workspace_transform
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_output_external
-            constraintName: uq_workspace_output_external_workspace_transform
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:06
@@ -4296,6 +4096,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-19T10:00:07
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_input_external.workspace_id
       preConditions:
@@ -4310,13 +4111,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_input_external
-            indexName: idx_workspace_input_external_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:08
+      validCheckSum: ANY
       author: christruter
       comment: Add foreign key constraint from workspace_input_external.workspace_id to workspace
       preConditions:
@@ -4332,13 +4131,11 @@ databaseChangeLog:
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_input_external
-            constraintName: fk_workspace_input_external_workspace_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-19T10:00:09
+      validCheckSum: ANY
       author: christruter
       comment: Add unique constraint on workspace_input_external (workspace_id, db_id, schema, table)
       preConditions:
@@ -4352,13 +4149,11 @@ databaseChangeLog:
             tableName: workspace_input_external
             columnNames: workspace_id, db_id, schema, table
             constraintName: uq_workspace_input_external_logical_table
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_input_external
-            constraintName: uq_workspace_input_external_logical_table
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-22T10:00:00
+      validCheckSum: ANY
       author: piranha
       comment: Add creator_id column to workspace_transform
       preConditions:
@@ -4377,13 +4172,11 @@ databaseChangeLog:
                   remarks: FK to core_user who created this workspace transform
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: creator_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-22T10:00:01
+      validCheckSum: ANY
       author: piranha
       comment: Add index on workspace_transform.creator_id
       preConditions:
@@ -4398,13 +4191,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_transform
-            indexName: idx_workspace_transform_creator_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-22T10:00:02
+      validCheckSum: ANY
       author: piranha
       comment: Add foreign key constraint from workspace_transform.creator_id to core_user
       preConditions:
@@ -4420,13 +4211,11 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: workspace_transform
-            constraintName: fk_workspace_transform_creator_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-23T10:00:00
+      validCheckSum: ANY
       author: piranha
       comment: Add last_run_message column to workspace_transform
       preConditions:
@@ -4445,10 +4234,7 @@ databaseChangeLog:
                   remarks: Message from the last transform run (success or failure message)
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: last_run_message
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-29T18:30:00
@@ -4487,6 +4273,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-29T19:00:00
+      validCheckSum: ANY
       author: christruter
       comment: Add db_status column for tracking database isolation state
       changes:
@@ -4500,13 +4287,11 @@ databaseChangeLog:
                   defaultValue: "uninitialized"
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace
-            columnName: db_status
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-29T19:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add base_status column for tracking workspace lifecycle
       changes:
@@ -4520,10 +4305,7 @@ databaseChangeLog:
                   defaultValue: "empty"
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace
-            columnName: base_status
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-29T19:00:02
@@ -4583,6 +4365,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2025-12-30T10:00:00
+      validCheckSum: ANY
       author: christruter
       comment: Add analysis_stale column to workspace_transform for lazy analysis
       changes:
@@ -4596,13 +4379,11 @@ databaseChangeLog:
                   remarks: Whether dependency analysis needs to be recalculated
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: analysis_stale
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-30T10:00:01
+      validCheckSum: ANY
       author: christruter
       comment: Add analysis_stale column to workspace for lazy graph caching
       changes:
@@ -4616,10 +4397,7 @@ databaseChangeLog:
                   remarks: Whether the graph needs to be recalculated
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace
-            columnName: analysis_stale
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2025-12-30T10:00:02
@@ -4684,6 +4462,52 @@ databaseChangeLog:
                   name: workspace_id
       rollback: # will be removed along the table
 
+  - changeSet:
+      id: v58.2025-12-30T22:48:02
+      author: edpaget
+      comment: Add remote_sync_object.model_table_id for parent table reference
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_id
+                  type: int
+                  remarks: Parent table ID for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-12-30T22:48:03
+      author: edpaget
+      comment: Add remote_sync_object.model_table_name for parent table name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+                  remarks: Parent table name for Field/Segment/Table models
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_data_analyst column to core_user table for analyst role
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_data_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if the user has data analyst privileges for Data Studio
+                  constraints:
+                    nullable: false
+
   # Denormalize workspace_dependency into workspace_input by adding ref_id column
   # This allows direct lookup of inputs per transform without a join table
 
@@ -4698,6 +4522,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T07:51:01
+      validCheckSum: ANY
       author: christruter
       comment: Add ref_id column to workspace_input
       changes:
@@ -4710,10 +4535,7 @@ databaseChangeLog:
                   remarks: ref_id of the workspace_transform that depends on this input
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_input
-            columnName: ref_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2026-01-09T07:51:02
@@ -4737,27 +4559,22 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace_input
-            columnName: access_granted
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2026-01-09T07:51:03
+      validCheckSum: ANY
       author: christruter
       comment: Drop old unique constraint on workspace_input (workspace_id, db_id, schema, table)
       changes:
         - dropUniqueConstraint:
             tableName: workspace_input
             constraintName: uq_workspace_input_logical_table
-      rollback:
-        - addUniqueConstraint:
-            tableName: workspace_input
-            columnNames: workspace_id, db_id, schema, table
-            constraintName: uq_workspace_input_logical_table
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2026-01-09T07:51:04
+      validCheckSum: ANY
       author: christruter
       comment: Add new unique constraint on workspace_input including ref_id
       changes:
@@ -4765,13 +4582,11 @@ databaseChangeLog:
             tableName: workspace_input
             columnNames: workspace_id, ref_id, db_id, schema, table
             constraintName: uq_workspace_input_transform_table
-      rollback:
-        - dropUniqueConstraint:
-            tableName: workspace_input
-            constraintName: uq_workspace_input_transform_table
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2026-01-09T07:51:05
+      validCheckSum: ANY
       author: christruter
       comment: Add index on workspace_input (workspace_id, ref_id) for DAG queries
       changes:
@@ -4783,10 +4598,7 @@ databaseChangeLog:
                   name: workspace_id
               - column:
                   name: ref_id
-      rollback:
-        - dropIndex:
-            tableName: workspace_input
-            indexName: idx_workspace_input_ref_id
+      rollback: # will be removed along with the table
 
   - changeSet:
       id: v58.2026-01-09T07:51:06
@@ -4850,6 +4662,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-09T09:28:40
+      validCheckSum: ANY
       author: piranha
       comment: Add target_db_id column to transform table
       preConditions:
@@ -4868,10 +4681,37 @@ databaseChangeLog:
                   remarks: Target database ID for the transform output
                   constraints:
                     nullable: true
+      rollback: # will be removed along with the table
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:00
+      author: johnswanson
+      comment: Create data-analyst magic permissions group
+      changes:
+        - sql:
+            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
       rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: target_db_id
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
   - changeSet:
       id: v58.2026-01-09T10:00:00
@@ -4935,6 +4775,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v58.2026-01-12T10:47:48
+      validCheckSum: ANY
       author: christruter
       comment: Add last_run_status column to workspace_transform
       preConditions:
@@ -4953,10 +4794,7 @@ databaseChangeLog:
                   remarks: Status of the last transform run (succeeded or failed)
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: last_run_status
+      rollback: # will be removed along with the table
 
   # ===== Epochal Versioning for Thread-Safe Graph Calculation =====
   # Replace boolean analysis_stale flags with incrementing version numbers.
@@ -5341,6 +5179,31 @@ databaseChangeLog:
                   remarks: Whether dependency analysis needs to be recalculated
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v58.2026-01-13T10:00:01
+      author: qnkhuat
+      comment: Add workspace_permissions_status column to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: workspace_permissions_status
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspace_permissions_status
+                  type: ${text.type}
+                  remarks: Status of workspace isolation permission check (JSON)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

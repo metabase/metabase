@@ -1,23 +1,21 @@
 // eslint-disable-next-line no-restricted-imports
-import type { Theme } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import Link from "metabase/common/components/Link";
-import Label from "metabase/common/components/type/Label";
+import { Link } from "metabase/common/components/Link";
+import { Label } from "metabase/common/components/type/Label";
 import { Icon, type IconProps } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
-const getTableBorder = (theme: Theme) =>
-  `1px solid color-mix(in srgb, ${theme.fn.themeColor("border")}, transparent 50%)`;
+const getTableBorder = () =>
+  `1px solid color-mix(in srgb, var(--mb-color-border), transparent 50%)`;
 
 // background with 1px of border color at the bottom
 // to work properly with sticky positioning
-const getHeaderBackground = (theme: Theme) =>
+const getHeaderBackground = () =>
   `linear-gradient(
     to top,
-    color-mix(in srgb, ${theme.fn.themeColor("border")} 50%, ${theme.fn.themeColor("background-primary")} 50%) 1px,
+    color-mix(in srgb, var(--mb-color-border) 50%, var(--mb-color-background-primary) 50%) 1px,
     var(--mb-color-background-primary) 1px,
     var(--mb-color-background-primary) 100%
   )`;
@@ -51,7 +49,7 @@ export const PermissionsTableCell = styled.td`
       right: 0;
       top: 0;
       height: 100%;
-      border-right: ${({ theme }) => getTableBorder(theme)};
+      border-right: ${() => getTableBorder()};
       content: " ";
     }
   }
@@ -63,11 +61,11 @@ export const PermissionTableHeaderCell = styled(
   position: sticky;
   top: 0;
   border: none;
-  background: ${({ theme }) => getHeaderBackground(theme)};
+  background: ${() => getHeaderBackground()};
   z-index: 1;
 
   &:first-of-type {
-    background: ${({ theme }) => getHeaderBackground(theme)};
+    background: ${() => getHeaderBackground()};
     z-index: 2;
 
     &:after {
@@ -77,7 +75,7 @@ export const PermissionTableHeaderCell = styled(
 `;
 
 export const PermissionsTableRow = styled.tr`
-  border-bottom: ${({ theme }) => getTableBorder(theme)};
+  border-bottom: ${() => getTableBorder()};
 `;
 
 export const EntityNameLink = styled(Link)`

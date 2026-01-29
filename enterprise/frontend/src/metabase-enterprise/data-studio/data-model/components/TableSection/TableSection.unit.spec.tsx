@@ -4,9 +4,10 @@ import {
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
-import type { Segment, Table } from "metabase-types/api";
+import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
 import {
   createMockSegment,
   createMockTable,
@@ -23,17 +24,24 @@ type SetupOpts = {
   activeTab?: DataStudioTableMetadataTab;
   segments?: Segment[];
   isAdmin?: boolean;
+  isDataAnalyst?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 function setup({
   table = createMockTable(),
   activeTab = "field",
   segments,
-  isAdmin = true,
+  isAdmin = false,
+  isDataAnalyst = false,
+  remoteSyncType,
 }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
-
   const tableWithSegments = segments ? { ...table, segments } : table;
+  const settings = mockSettings({
+    "remote-sync-type": remoteSyncType,
+    "remote-sync-enabled": !!remoteSyncType,
+  });
 
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
@@ -57,7 +65,11 @@ function setup({
     {
       withRouter: true,
       storeInitialState: {
-        currentUser: createMockUser({ is_superuser: isAdmin }),
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+          is_data_analyst: isDataAnalyst,
+        }),
+        settings,
       },
     },
   );
@@ -78,15 +90,23 @@ describe("TableSection", () => {
     );
   });
 
-  it("should not render publish button for non-admin users", () => {
-    setup({ isAdmin: false });
+  it("should render publish button for admins", () => {
+    setup({ isAdmin: true });
 
-    expect(
-      screen.queryByRole("button", { name: /Publish/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Unpublish/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+  });
+
+  it("should render publish button for data analysts", () => {
+    setup({ isDataAnalyst: true });
+
+    expect(screen.getByText("Publish")).toBeInTheDocument();
+  });
+
+  it("should not render publish button when remote sync is set to read-only", () => {
+    setup({ remoteSyncType: "read-only" });
+
+    expect(screen.queryByText("Publish")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unpublish")).not.toBeInTheDocument();
   });
 
   describe("tabs", () => {

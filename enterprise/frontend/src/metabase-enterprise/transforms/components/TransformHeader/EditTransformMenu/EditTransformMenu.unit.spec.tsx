@@ -76,10 +76,10 @@ function setup({
   );
 }
 
-async function openMenu() {
-  await userEvent.click(
-    await screen.findByRole("button", { name: /Edit transform/i }),
-  );
+function findMenuItemByText(text: string) {
+  return screen.getAllByRole("menuitem").find((item) => {
+    return item.textContent?.includes(text);
+  });
 }
 
 describe("EditTransformMenu", () => {
@@ -105,7 +105,13 @@ describe("EditTransformMenu", () => {
       },
     });
 
-    await openMenu();
+    // Wait for button to finish loading before clicking
+    const editButton = await screen.findByRole("button", { name: /Edit/i });
+    await waitFor(() => {
+      expect(editButton).not.toHaveAttribute("data-loading", "true");
+    });
+
+    await userEvent.click(editButton);
 
     // Verify basic menu structure renders
     expect(screen.getByText("Add to workspace")).toBeInTheDocument();
@@ -132,5 +138,118 @@ describe("EditTransformMenu", () => {
     expect(menuItems[0]).toHaveTextContent("Workspace C");
     expect(menuItems[1]).toHaveTextContent("Workspace A");
     expect(menuItems[2]).toHaveTextContent("Workspace B");
+  });
+
+  describe("checkout disabled tooltips", () => {
+    it("should disable 'New workspace' and workspace items when checkout_disabled is 'mbql'", async () => {
+      setup({
+        workspaces: [createMockWorkspaceItem({ id: 1, name: "Workspace A" })],
+        checkoutResponse: {
+          checkout_disabled: "mbql",
+          workspaces: [
+            { id: 1, name: "Workspace A", status: "ready", existing: null },
+          ],
+        },
+      });
+
+      const editButton = await screen.findByRole("button", { name: /Edit/i });
+      await waitFor(() => {
+        expect(editButton).not.toHaveAttribute("data-loading", "true");
+      });
+
+      await userEvent.click(editButton);
+
+      // Find menu items
+      const newWorkspaceItem = findMenuItemByText("New workspace");
+      const workspaceAItem = findMenuItemByText("Workspace A");
+
+      expect(newWorkspaceItem).toHaveAttribute("data-disabled", "true");
+      expect(workspaceAItem).toHaveAttribute("data-disabled", "true");
+    });
+
+    it("should show tooltip with MBQL message when hovering disabled items", async () => {
+      setup({
+        workspaces: [createMockWorkspaceItem({ id: 1, name: "Workspace A" })],
+        checkoutResponse: {
+          checkout_disabled: "mbql",
+          workspaces: [
+            { id: 1, name: "Workspace A", status: "ready", existing: null },
+          ],
+        },
+      });
+
+      const editButton = await screen.findByRole("button", { name: /Edit/i });
+      await waitFor(() => {
+        expect(editButton).not.toHaveAttribute("data-loading", "true");
+      });
+
+      await userEvent.click(editButton);
+
+      const newWorkspaceItem = findMenuItemByText("New workspace");
+      await userEvent.hover(newWorkspaceItem!);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This transform cannot be edited in a workspace because it uses MBQL.",
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should show tooltip with card-reference message when checkout is disabled", async () => {
+      setup({
+        workspaces: [createMockWorkspaceItem({ id: 1, name: "Workspace A" })],
+        checkoutResponse: {
+          checkout_disabled: "card-reference",
+          workspaces: [
+            { id: 1, name: "Workspace A", status: "ready", existing: null },
+          ],
+        },
+      });
+
+      const editButton = await screen.findByRole("button", { name: /Edit/i });
+      await waitFor(() => {
+        expect(editButton).not.toHaveAttribute("data-loading", "true");
+      });
+
+      await userEvent.click(editButton);
+
+      const workspaceItem = findMenuItemByText("Workspace A");
+      await userEvent.hover(workspaceItem!);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This transform cannot be edited in a workspace because it references other questions.",
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not disable items when checkout_disabled is null", async () => {
+      setup({
+        workspaces: [createMockWorkspaceItem({ id: 1, name: "Workspace A" })],
+        checkoutResponse: {
+          checkout_disabled: null,
+          workspaces: [
+            { id: 1, name: "Workspace A", status: "ready", existing: null },
+          ],
+        },
+      });
+
+      const editButton = await screen.findByRole("button", { name: /Edit/i });
+      await waitFor(() => {
+        expect(editButton).not.toHaveAttribute("data-loading", "true");
+      });
+
+      await userEvent.click(editButton);
+
+      const newWorkspaceItem = findMenuItemByText("New workspace");
+      const workspaceAItem = findMenuItemByText("Workspace A");
+
+      expect(newWorkspaceItem).not.toHaveAttribute("data-disabled", "true");
+      expect(workspaceAItem).not.toHaveAttribute("data-disabled", "true");
+    });
   });
 });

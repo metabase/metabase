@@ -89,7 +89,7 @@
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
-  * _Application permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+  * _Application permissions_ -- are per-Group permissions that give non-admin users access to features like:
     change instance's Settings; access Audit, Tools, Troubleshooting ...
 
   ### Determining CRUD permissions in the REST API
@@ -262,7 +262,7 @@
     this                 :- [:map
                              [:collection_id [:maybe ms/PositiveInt]]]
     read-or-write        :- [:enum :read :write]]
-   ;; based on value of read-or-write determine the approprite function used to calculate the perms path
+   ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
    (let [path-fn (case read-or-write
                    :read  permissions.path/collection-read-path
                    :write permissions.path/collection-readwrite-path)
@@ -358,10 +358,10 @@
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
   This includes *both* ancestor and descendant paths. For example:
 
-  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Depending on the
+  Suppose we asked this functions to delete related permissions for `/db/1/schema/PUBLIC/`. Depending on the
   permissions the group has, it could end up doing something like:
 
-    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
+    *  deleting `/db/1/` permissions (because the ancestor perms implicitly grant you full perms for `schema/PUBLIC`)
     *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
 
   In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
@@ -437,12 +437,12 @@
 ; Audit permissions helper fns end
 
 (defn revoke-application-permissions!
-  "Remove all permissions entries for a Group to access a Application permisisons"
+  "Remove all permissions entries for a Group to access a Application permissions"
   [group-or-id perm-type]
   (delete-related-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
 (defn grant-application-permissions!
-  "Grant full permissions for a group to access a Application permisisons."
+  "Grant full permissions for a group to access a Application permissions."
   [group-or-id perm-type]
   (when (and (perms-group/is-tenant-group? group-or-id)
              (not= perm-type :subscription))

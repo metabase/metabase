@@ -40,15 +40,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
     useDiscardChangesAndImportAction();
-  const isForcingPush = variant === "push" && optionValue === "push";
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
       return;
     }
 
-    if (optionValue === "push") {
-      await pushChanges(currentBranch, variant === "push", onClose);
+    if (optionValue === "push" || optionValue === "force-push") {
+      await pushChanges(currentBranch, optionValue === "force-push", onClose);
     }
 
     if (optionValue === "new-branch") {
@@ -114,12 +113,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           <Button
             color={optionValue === "discard" ? "error" : "brand"}
             disabled={isButtonDisabled}
-            leftSection={isForcingPush ? <Icon name="warning" /> : undefined}
+            leftSection={
+              optionValue === "force-push" ? <Icon name="warning" /> : undefined
+            }
             loading={isProcessing}
             onClick={handleContinueButtonClick}
             variant="filled"
             title={
-              isForcingPush
+              optionValue === "force-push"
                 ? t`Force push will replace the remote version with your changes`
                 : undefined
             }

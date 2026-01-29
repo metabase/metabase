@@ -78,7 +78,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   warning?: boolean;
   cancel?: boolean;
   white?: boolean;
-  purple?: boolean;
 
   disabled?: boolean;
   round?: boolean;
@@ -128,7 +127,6 @@ const BaseButton = forwardRef(function BaseButton(
         },
         className,
       )}
-      purple={props.purple}
     >
       <ButtonContent iconVertical={iconVertical}>
         {icon && typeof icon === "string" ? (
@@ -173,11 +171,8 @@ StyledButton.displayName = "Button";
 /**
  * @deprecated: use Button from "metabase/ui"
  */
-const Button = Object.assign(StyledButton, {
+export const Button = Object.assign(StyledButton, {
   Root: ButtonRoot,
   Content: ButtonContent,
   TextContainer: ButtonTextContainer,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Button;

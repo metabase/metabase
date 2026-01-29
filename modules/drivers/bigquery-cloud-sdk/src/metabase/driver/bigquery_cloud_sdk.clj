@@ -36,6 +36,7 @@
    (com.google.cloud.bigquery
     Acl Acl$Role Acl$User
     BigQuery
+    BigQuery$DatasetDeleteOption
     BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$IAMOption
@@ -64,7 +65,7 @@
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.common.collect ImmutableMap)
    (com.google.gson JsonParser)
-   (com.google.iam.admin.v1 CreateServiceAccountRequest ServiceAccount)
+   (com.google.iam.admin.v1 CreateServiceAccountRequest DeleteServiceAccountRequest ServiceAccount)
    (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)
    (java.io ByteArrayInputStream)
    (java.util Iterator)))
@@ -351,7 +352,7 @@
   "_PARTITIONTIME")
 
 (def ^:private partitioned-date-field-name
-  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  "This is also a pseudo-column, similar to [[partitioned-time-field-name]].
   In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
@@ -581,7 +582,7 @@
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 3. `execute-bigquery`
 ;;;     - Makes the initial query and checks `cancel-chan` in case the browser cancels execution.
-;;;     - Either throws approriate exceptions or takes the initial page `TableResult` to the next step.
+;;;     - Either throws appropriate exceptions or takes the initial page `TableResult` to the next step.
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 4. `bigquery-execute-response`
 ;;;     - Builds `cols` metadata response.
@@ -831,7 +832,7 @@
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
-                              :workspace                        true}]
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -854,7 +855,7 @@
   * any associated Table instances will be updated to have schema set (to the dataset-id value)
   * the Database model itself will be updated to persist this change to db-details back to the app DB
 
-  Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
+  Returns the passed `database` parameter with the aforementioned changes having been made and persisted."
   [database dataset-id]
   (let [db-id (u/the-id database)]
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
@@ -884,7 +885,7 @@
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
-                     " be automatically migrated to the newer driver (since it *requires* service-account-json intead);"
+                     " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
                      " this database must therefore be updated by an administrator (by adding a service-account-json)"
                      " before sync and queries will work again")
                 (u/the-id database)))
@@ -1058,7 +1059,7 @@
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
               driver-api/raw-native-query
-              macaw/parsed-query
+              (driver.u/parsed-query driver)
               macaw/query->components
               :tables))))
 
@@ -1172,6 +1173,20 @@
           (.createServiceAccount iam-client request)
           (log/infof "Created service account: %s" sa-email))))
     sa-email))
+
+(defn- ws-delete-service-account!
+  "Delete a service account for a workspace. Idempotent - does nothing if SA doesn't exist."
+  [^IAMClient iam-client ^String project-id workspace]
+  (let [sa-id    (ws-service-account-id workspace)
+        sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+        sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
+    (when (ws-service-account-exists? iam-client project-id sa-email)
+      (log/infof "Deleting service account %s" sa-email)
+      (let [request (-> (DeleteServiceAccountRequest/newBuilder)
+                        (.setName sa-name)
+                        (.build))]
+        (.deleteServiceAccount iam-client request)
+        (log/infof "Deleted service account: %s" sa-email)))))
 
 (defn- ws-has-role-binding?
   "Check if a policy already has a binding for the given role and member."
@@ -1459,3 +1474,31 @@
         (try
           (driver/destroy-workspace-isolation! driver database test-workspace)
           (catch Exception _ nil))))))
+
+(defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
+  [_driver database workspace]
+  (let [details      (:details database)
+        client       (ws-database-details->client details)
+        iam-client   (ws-database-details->iam-client details)
+        project-id   (get-project-id details)
+        dataset-name (driver.u/workspace-isolation-namespace-name workspace)
+        dataset-id   (DatasetId/of project-id dataset-name)]
+    (try
+      (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
+
+      ;; Delete the dataset if it exists (deleteContents=true removes all tables)
+      (when (.getDataset client dataset-id
+                         ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                         (into-array BigQuery$DatasetOption []))
+        (log/infof "Deleting dataset %s" dataset-name)
+        (.delete client dataset-id
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
+                 (into-array BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)]))
+        (log/infof "Deleted dataset %s" dataset-name))
+
+      ;; Delete the service account (this also removes its IAM bindings)
+      (ws-delete-service-account! iam-client project-id workspace)
+
+      {:success true}
+      (finally
+        (.close iam-client)))))

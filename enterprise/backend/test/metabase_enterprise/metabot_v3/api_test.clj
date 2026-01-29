@@ -125,7 +125,7 @@
                   (testing "request to ai-service was canceled"
                     (is (< 20 @cnt) "Stopped writing when channel closed")
                     ;; see `metabase.server.streaming-response-test/canceling-chan-is-working-test` for explanation,
-                    ;; reducing flakyness here
+                    ;; reducing flakiness here
                     (is (some? @canceled)))))))))
       (finally
         (.stop ai-server)))))

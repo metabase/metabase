@@ -57,7 +57,7 @@ export const TablePicker = ({
     data: databasesResponse,
     error: errorDatabases,
     isFetching: isLoadingDatabases,
-  } = useListDatabasesQuery({ saved: false });
+  } = useListDatabasesQuery({ saved: false, "can-query": true });
 
   const databases = isLoadingDatabases ? undefined : databasesResponse?.data;
 
@@ -65,7 +65,9 @@ export const TablePicker = ({
     data: schemas,
     error: errorSchemas,
     isFetching: isLoadingSchemas,
-  } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken);
+  } = useListDatabaseSchemasQuery(
+    isNotNull(dbId) ? { id: dbId, "can-query": true } : skipToken,
+  );
 
   const {
     data: tables,
@@ -73,7 +75,7 @@ export const TablePicker = ({
     isFetching: isLoadingTables,
   } = useListDatabaseSchemaTablesQuery(
     isNotNull(dbId) && isNotNull(schemaName)
-      ? { id: dbId, schema: schemaName }
+      ? { id: dbId, schema: schemaName, "can-query": true }
       : skipToken,
   );
 

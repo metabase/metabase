@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
 import { Box, Flex, Group, Icon, Stack, Tabs, Text } from "metabase/ui";

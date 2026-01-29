@@ -7,8 +7,8 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import MetabaseLogo from "metabase/common/components/LogoIcon";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { LogoIcon as MetabaseLogo } from "metabase/common/components/LogoIcon";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
@@ -39,7 +39,7 @@ export const SdkUsageProblemBanner = ({
   // we fall back to the system font.
   const fontFamily = `${DEFAULT_FONT}, sans-serif`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- shown in development
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- shown in development
   const pillTitle = "Metabase SDK";
 
   return (
@@ -81,11 +81,16 @@ export const SdkUsageProblemBanner = ({
         >
           <Stack gap="sm">
             <Flex w="100%" justify="space-between">
-              <Text fw="bold" size="md" c={unthemedTextDark} ff={fontFamily}>
+              <Text
+                fw="bold"
+                size="md"
+                style={{ color: unthemedTextDark }}
+                ff={fontFamily}
+              >
                 {title}
               </Text>
             </Flex>
-            <Text c={unthemedTextDark} ff={fontFamily} fz="sm">
+            <Text style={{ color: unthemedTextDark }} ff={fontFamily} fz="sm">
               {problem.message}
             </Text>
 

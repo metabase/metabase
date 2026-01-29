@@ -65,6 +65,7 @@
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
+  :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -304,7 +305,8 @@
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
-   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}
+   macaw.core/parsed-query                            {:message "Use metabase.driver.util/parsed-query instead of macaw.core/parsed-query"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -528,8 +530,10 @@
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
+   metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
+   metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { CONTAINER_WIDTH } from "metabase/query_builder/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
@@ -24,6 +25,7 @@ export function SimpleDataPickerView({
   options,
   onClick,
 }: SimpleDataPickerProps) {
+  const tc = useTranslateContent();
   const shouldShowSearchBar = options.length > 10;
   const [searchText, setSearchText] = useState("");
   function filterSearch(option: Options): boolean {
@@ -79,7 +81,7 @@ export function SimpleDataPickerView({
                   key={option.id}
                   active={selectedEntity === option.id}
                   leftSection={<Icon c={iconColor} name="table" aria-hidden />}
-                  label={option.name}
+                  label={tc(option.name)}
                   onClick={() => onClick(option.id)}
                   variant="default"
                 />

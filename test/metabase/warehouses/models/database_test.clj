@@ -848,3 +848,73 @@
                                              default-permission-mapping
                                              :id)
                        db-id))))))
+
+;;; ---------------------------------------- can-read? permission tests ----------------------------------------
+
+(deftest database-can-read?-with-create-queries-permission-test
+  (testing "User with create-queries permission can read database"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table _ {:db_id db-id :name "Table1"}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? :model/Database db-id)))))))
+
+(deftest database-can-read?-with-manage-database-permission-test
+  (testing "User with manage-database permission can read database"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table _ {:db_id db-id :name "Table1"}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? :model/Database db-id)))))))
+
+(deftest database-can-read?-with-manage-table-metadata-on-any-table-test
+  (testing "User with manage-table-metadata on any table can read database"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id :name "Table1"}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? :model/Database db-id)))))))
+
+;;; ---------------------------------------- can-query? permission tests ----------------------------------------
+
+(deftest database-can-query?-requires-create-queries-permission-test
+  (testing "User needs create-queries to query database"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table _ {:db_id db-id :name "Table1"}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? :model/Database db-id))))
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-query? :model/Database db-id)))))))
+
+(deftest database-can-query?-manage-database-does-not-grant-query-access-test
+  (testing "manage-database alone does NOT grant query access"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table _ {:db_id db-id :name "Table1"}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-database-permission! pg db-id :perms/manage-database :yes)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? :model/Database db-id)))))))

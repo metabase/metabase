@@ -10,7 +10,7 @@
 ;; ## `team`:
 ;;
 ;; The team that owns this module. This has to match one of the team names in `.github/team.json` EXACTLY. You can
-;; run [metabase.core.modules-test/all-modules-have-teams-test]] to make sure you did this correctly.
+;; run [[metabase.core.modules-test/all-modules-have-teams-test]] to make sure you did this correctly.
 ;;
 ;; ## `api`:
 ;;
@@ -38,6 +38,17 @@
 ;;
 ;; 2. A set of module symbols. This is the list of modules that are allowed to be referenced. An empty set means no
 ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
+;;
+;; ## `friends`:
+;;
+;; 'Friend' in the C++ sense; set of modules that are allowed free access into the internals of this module including
+;; namespaces that are not `:api` namespaces. This is useful when writing modules that are 'extensions' of other
+;; modules, for example `enterprise/search` might be enterprise extensions of `search`, or `search-rest` might be the
+;; REST API component for `search`.
+;;
+;;    search
+;;    {...
+;;     :friends #{enterprise/search search-rest}}
 ;;
 ;; ## Tips
 ;;
@@ -367,11 +378,11 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api}
+   :api  #{metabase.collections-rest.api
+           metabase.collections-rest.init}
    :uses #{api
            app-db
            collections
-           config
            eid-translation
            events
            lib-be
@@ -382,6 +393,7 @@
            queries
            request
            revisions
+           settings
            upload
            util}}
 
@@ -606,7 +618,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
            premium-features
            server
            settings
@@ -707,19 +718,13 @@
   lib
   {:team "Querying"
    :api  #{metabase.lib.binning
-           metabase.lib.binning.util
-           metabase.lib.card
-           metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
            metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
-           metabase.lib.field.resolution
-           metabase.lib.filter
            metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.hierarchy
            metabase.lib.init
-           metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
            metabase.lib.metadata.column
@@ -747,7 +752,6 @@
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
-           metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
            metabase.lib.schema.settings
@@ -761,9 +765,11 @@
            metabase.lib.util.match
            metabase.lib.walk}
    :uses #{config
+           graph
            legacy-mbql
            types
-           util}}
+           util}
+   :friends #{query-processor}}
 
   lib-be
   {:team "Querying"
@@ -803,11 +809,11 @@
    :api  #{metabase.measures.api}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
            permissions
+           remote-sync
            search
            util}}
 
@@ -968,7 +974,8 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            classloader
            config
@@ -1199,7 +1206,8 @@
    :api  #{metabase.request.core
            metabase.request.init
            metabase.request.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            config
            embedding
            permissions ; FIXME
@@ -1281,6 +1289,7 @@
            lib-be
            models
            permissions
+           remote-sync
            search
            util
            xrays}}
@@ -1386,6 +1395,7 @@
            permissions
            premium-features
            settings
+           system
            util}}
 
   startup
@@ -1448,9 +1458,12 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
+           config
            models
            permissions
            premium-features
+           query-processor
            request
            task
            util}}
@@ -1494,7 +1507,6 @@
    :uses #{analytics
            api
            collections
-           config
            events
            models
            util}}
@@ -1633,6 +1645,7 @@
            permissions
            premium-features
            query-processor
+           remote-sync
            search
            util
            warehouses}}
@@ -1658,7 +1671,6 @@
            upload
            util
            warehouse-schema
-           warehouses-rest
            xrays}}
 
   warehouses
@@ -1776,6 +1788,7 @@
            premium-features
            query-permissions
            query-processor
+           remote-sync
            util
            warehouses
            enterprise/impersonation}}
@@ -1985,6 +1998,7 @@
            premium-features
            queries
            query-processor
+           request
            revisions
            settings
            task
@@ -2315,6 +2329,7 @@
    :uses #{analytics
            api
            app-db
+           channel
            collections
            driver
            events
@@ -2324,7 +2339,9 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
+           revisions
            search
            settings
            sync
@@ -2335,13 +2352,13 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.init}
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.python-runner}
    :uses #{analytics
            api
            app-db
            config
            driver
-           events
            lib
            lib-be
            query-processor
@@ -2364,7 +2381,7 @@
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
-           app-db
+           config
            driver
            events
            lib
@@ -2374,9 +2391,11 @@
            ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
            request
+           settings
            system
            util
-           enterprise/transforms}}}
+           enterprise/transforms
+           enterprise/transforms-python}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

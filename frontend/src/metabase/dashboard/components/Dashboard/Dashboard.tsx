@@ -104,6 +104,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         mih={0}
         className={cx(S.DashboardBody, {
           [S.isEditingOrSharing]: isEditing || isSharing,
+          [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
         <Box

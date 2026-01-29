@@ -20,11 +20,11 @@ import { t } from "ttag";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { ResizeHandle } from "metabase/querying/editor/components/QueryEditor/ResizeHandle";
 import {
   ActionIcon,
   Box,
@@ -47,12 +47,10 @@ import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { GraphTab } from "./GraphTab";
-import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
-  type EditedTransform,
   WorkspaceProvider,
   type WorkspaceTab,
   getTransformId,
@@ -61,7 +59,6 @@ import {
 } from "./WorkspaceProvider";
 import { useWorkspaceActions } from "./useWorkspaceActions";
 import { useWorkspaceData } from "./useWorkspaceData";
-import { useWorkspaceMetabot } from "./useWorkspaceMetabot";
 
 const DEFAULT_SIDEBAR_WIDTH = 400;
 
@@ -95,7 +92,6 @@ function WorkspacePageContent({
     removeOpenedTab,
     setOpenedTabs,
     addOpenedTransform,
-    patchEditedTransform,
     hasUnsavedChanges,
     unsavedTransforms,
   } = useWorkspace();
@@ -141,23 +137,6 @@ function WorkspacePageContent({
     availableTransforms,
   });
 
-  // Metabot
-  const {
-    isMetabotAvailable,
-    metabotContextTransform,
-    metabotContextSource,
-    setMetabotContextTransform,
-    setMetabotContextSource,
-  } = useWorkspaceMetabot({
-    workspaceId,
-    databaseId: workspace?.database_id,
-    transformId,
-    isLoading,
-    allTransforms,
-    setTab,
-    handleNavigateToTransform,
-  });
-
   useEffect(() => {
     // Handle transformId URL param - initialize transform tab if redirected from transform page
     if (!transformId || isLoading) {
@@ -177,16 +156,6 @@ function WorkspacePageContent({
     handleNavigateToTransform,
     dispatch,
   ]);
-
-  const handleTransformChange = useCallback(
-    (patch: Partial<EditedTransform>) => {
-      patchEditedTransform(
-        getTransformId(checkNotNull(activeTransform)),
-        patch,
-      );
-    },
-    [activeTransform, patchEditedTransform],
-  );
 
   const handleTabClose = useCallback(
     (event: React.MouseEvent, tab: WorkspaceTab, index: number) => {
@@ -212,7 +181,7 @@ function WorkspacePageContent({
         setActiveTab(fallback);
         setTab(fallback.id);
       } else {
-        setActiveTab(undefined);
+        setActiveTab(null);
         setTab("setup");
       }
     },
@@ -248,37 +217,18 @@ function WorkspacePageContent({
 
   const handleTabChange = useCallback(
     (newTab: string | null) => {
-      if (newTab === "metabot") {
-        if (activeTransform) {
-          setMetabotContextTransform(activeTransform);
-          setMetabotContextSource(
-            activeEditedTransform?.source ?? activeTransform.source,
-          );
-        } else {
-          setMetabotContextTransform(undefined);
-          setMetabotContextSource(undefined);
-        }
-      }
-
       if (newTab) {
         setTab(newTab);
       }
     },
-    [
-      activeTransform,
-      activeEditedTransform,
-      setTab,
-      setMetabotContextTransform,
-      setMetabotContextSource,
-    ],
+    [setTab],
   );
 
-  if (error || isLoadingWorkspace || isLoadingWorkspaceTransforms) {
+  if (error || isLoadingWorkspace) {
     return (
-      <LoadingAndErrorWrapper
-        error={error}
-        loading={isLoadingWorkspace || isLoadingWorkspaceTransforms}
-      />
+      <Stack h="100%" justify="center">
+        <LoadingAndErrorWrapper error={error} loading={isLoadingWorkspace} />
+      </Stack>
     );
   }
 
@@ -383,21 +333,13 @@ function WorkspacePageContent({
                     className={styles.tabsPanel}
                     data-testid="workspace-tabs"
                   >
-                    <Tabs.Tab value="setup">
+                    <Tabs.Tab value="setup" onClick={() => setActiveTab(null)}>
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />
                         {t`Setup`}
                       </Group>
                     </Tabs.Tab>
-                    {isMetabotAvailable && (
-                      <Tabs.Tab value="metabot">
-                        <Group gap="xs" wrap="nowrap">
-                          <Icon name="message_circle" aria-hidden />
-                          {t`Agent Chat`}
-                        </Group>
-                      </Tabs.Tab>
-                    )}
-                    <Tabs.Tab value="graph">
+                    <Tabs.Tab value="graph" onClick={() => setActiveTab(null)}>
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="dependencies" aria-hidden />
                         {t`Graph`}
@@ -455,13 +397,7 @@ function WorkspacePageContent({
               </DndContext>
             </Flex>
 
-            <Box
-              flex={1}
-              mih={0}
-              style={{
-                overflow: tab === "metabot" ? "auto" : undefined,
-              }}
-            >
+            <Box flex={1} mih={0}>
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab
                   databaseId={databaseId}
@@ -477,20 +413,6 @@ function WorkspacePageContent({
               >
                 <GraphTab workspaceId={workspace?.id} />
               </Tabs.Panel>
-              {isMetabotAvailable && (
-                <Tabs.Panel
-                  value="metabot"
-                  h="100%"
-                  mah="100%"
-                  pos="relative"
-                  style={{ overflow: "auto" }}
-                >
-                  <MetabotTab
-                    transform={metabotContextTransform}
-                    source={metabotContextSource}
-                  />
-                </Tabs.Panel>
-              )}
 
               {activeTable && activeTab?.type === "table" && (
                 <Tabs.Panel value={activeTab.id} h="100%">
@@ -512,18 +434,16 @@ function WorkspacePageContent({
                   style={{ overflow: "auto" }}
                 >
                   {!activeEditedTransform ? (
-                    <Text c="text-medium">
+                    <Text c="text-secondary">
                       {t`Select a transform on the right.`}
                     </Text>
                   ) : (
                     <TransformTab
                       databaseId={checkNotNull(workspace.database_id)}
                       transform={activeTransform}
-                      editedTransform={activeEditedTransform}
                       workspaceId={workspaceId}
                       workspaceTransforms={workspaceTransforms}
                       isDisabled={isArchived || isPending}
-                      onChange={handleTransformChange}
                       onSaveTransform={(transform) => {
                         // After adding first transform to a workspace,
                         // show 'Setup' tab with initialization status log.
@@ -583,11 +503,12 @@ function WorkspacePageContent({
                   databaseId={databaseId}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
+                  isLoadingWorkspaceTransforms={isLoadingWorkspaceTransforms}
                   onTransformClick={(transform) => {
                     addOpenedTransform(transform);
                     setTab(getTransformTabId(transform));
                     if (activeTable) {
-                      setActiveTable(undefined);
+                      setActiveTable(null);
                     }
                   }}
                 />
@@ -654,7 +575,7 @@ function useWorkspaceUiTabs() {
     if (activeTab) {
       setTab(activeTab.id);
     } else {
-      setTab("setup");
+      setTab((tab) => (["setup", "graph"].includes(tab) ? tab : "setup"));
     }
   }, [activeTab, setTab]);
 

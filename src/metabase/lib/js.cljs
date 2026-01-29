@@ -56,6 +56,7 @@
    :exclude
    [filter])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -205,7 +206,7 @@
 
 (defn ^:export as-returned
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
-  (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and
+  (with access to the columns before aggregation) or adding it to stage `N+1` (with access to the aggregations and
   breakouts).
 
   Given `a-query` and `stage-number`, this returns a **JS object** with `query` and `stageIndex` keys, for working with
@@ -595,13 +596,6 @@
 ;; will also remove anything that depended on it, recursively. Moving or replacing a clause will update any references
 ;; to it in other places (eg. an aggregation based on a custom expression that was just renamed).
 
-(defn- ->clj
-  "Convert JS objects to CLJS, but pass through CLJS data structures unchanged."
-  [x]
-  (if (or (map? x) (vector? x))
-    x
-    (js->clj x :keywordize-keys true)))
-
 (defn ^:export remove-clause
   "Removes the `target-clause` from the given stage of `a-query`.
 
@@ -616,7 +610,7 @@
   [a-query stage-number clause]
   (lib.core/remove-clause
    a-query stage-number
-   (lib.core/normalize (->clj clause))))
+   (lib.core/normalize (js->clj clause :keywordize-keys true))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage.
@@ -627,8 +621,8 @@
   [a-query stage-number target-clause new-clause]
   (lib.core/replace-clause
    a-query stage-number
-   (lib.core/normalize (->clj target-clause))
-   (lib.core/normalize (->clj new-clause))))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
 
 (defn ^:export swap-clauses
   "Exchanges the positions of two clauses of the same kind. Can be used for filters, aggregations, breakouts, and
@@ -641,8 +635,8 @@
   [a-query stage-number source-clause target-clause]
   (lib.core/swap-clauses
    a-query stage-number
-   (lib.core/normalize (->clj source-clause))
-   (lib.core/normalize (->clj target-clause))))
+   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
 (defn- -unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.
@@ -867,7 +861,7 @@
 
   > **Code health:** Healthy"
   [a-query stage-number an-aggregate-clause]
-  (lib.core/aggregate a-query stage-number (->clj an-aggregate-clause)))
+  (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
 (defn ^:export aggregations
   "Return a JS array of aggregations on a given stage of `a-query`.
@@ -936,15 +930,23 @@
 
   The columns have extra information attached, giving the filter operators that can be used with that column.
 
+  `options` is an optional JS object that can include:
+    - `includeSensitiveFields`: if true, includes fields with visibility_type :sensitive (default false)
+
   Cached on the query.
 
   > **Code health:** Healthy"
-  [a-query stage-number]
-  ;; Attaches the cached columns directly to this query, in case it gets called again.
-  (lib.cache/side-channel-cache
-   (keyword "filterable-columns" (str "stage-" stage-number)) a-query
-   (fn [_]
-     (to-array (lib.core/filterable-columns a-query stage-number)))))
+  ([a-query stage-number]
+   (filterable-columns a-query stage-number nil))
+  ([a-query stage-number options]
+   ;; Attaches the cached columns directly to this query, in case it gets called again.
+   (let [opts (-> (js-obj->cljs-map options)
+                  (set/rename-keys {:include-sensitive-fields :include-sensitive-fields?}))
+         include-sensitive? (:include-sensitive-fields? opts)]
+     (lib.cache/side-channel-cache
+      (keyword "filterable-columns" (str "stage-" stage-number (when include-sensitive? "-include-sensitive"))) a-query
+      (fn [_]
+        (to-array (lib.core/filterable-columns a-query stage-number opts)))))))
 
 (defn ^:export filterable-column-operators
   "Returns the filter operators which can be used in a filter for `filterable-column`.
@@ -975,7 +977,7 @@
 (defn ^:export filter
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query stage-number a-filter-clause]
-  (lib.core/filter a-query stage-number (->clj a-filter-clause)))
+  (lib.core/filter a-query stage-number (js->clj a-filter-clause :keywordize-keys true)))
 
 (defn ^:export filters
   "Returns a JS array of all the filters on stage `stage-number` of `a-query`.
@@ -2196,7 +2198,7 @@
   (lib.core/database-id a-query))
 
 (defn ^:export join-condition-update-temporal-bucketing
-  "Updates the provided `join-condition` so both the LHS and RHS columns have the provied temporal bucketing option.
+  "Updates the provided `join-condition` so both the LHS and RHS columns have the provided temporal bucketing option.
 
   `join-condition` must be a *standard join condition*, meaning it's in the form constructed by the query builder UI,
   where the LHS is a column in the outer query and RHS is a column from the joinable.

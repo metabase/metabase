@@ -20,7 +20,6 @@
   (when (#{:create :update} op)
     (t2/insert! :model/WorkspaceMergeTransform merge-map)))
 
-;; TODO (crisptrutski 2025/12/10): When there are more entity types support, this should update those too.
 (mu/defn merge-transform! :- [:map
                               [:op [:enum :create :delete :noop :update]]
                               [:ref_id ::ws.types/ref-id]
@@ -76,7 +75,9 @@
                    {:error e}))))]
 
     (when-not error
-      (t2/delete! :model/WorkspaceTransform :ref_id ref_id)
+      ;; See https://linear.app/metabase/issue/GDGT-1591/merging-a-workspace-removes-transforms-from-it
+      ;; Keeping this stub as we may want to revisit it in the future.
+      #_(t2/delete! :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref_id)
       (create-merge-transform-history!
        (:op result)
        {:workspace_merge_id workspace-merge-id
@@ -88,10 +89,8 @@
 
     result))
 
-;; TODO (crisptrutski 2025-12-XX): When there are more entity types support, this should update those too.
 (defn merge-workspace!
   "Make all the transforms in the Changeset public, i.e. create or update the relevant model/Transform entities.
-   This should also clear the entire Changeset, as it no longer has any changes.
 
    - workspace: The workspace map (must have :id and :name keys)
    - merging-user-id: user performing the merge
@@ -117,13 +116,11 @@
                           (if error
                             (reduced (-> acc
                                          (update :errors conj result)
-                                         (assoc-in [:merged :transforms] [])
-                                         #_(assoc :short_circuit true)))
+                                         (assoc-in [:merged :transforms] [])))
                             (update-in acc [:merged :transforms] conj result))))
                       {:merged {:transforms []}
-                       :errors []
-                       #_#_:short_circuit false}
-                      (t2/select :model/WorkspaceTransform :workspace_id (:id workspace)))]
+                       :errors []}
+                      (t2/select :model/WorkspaceTransform :workspace_id (:id workspace) {:order-by [:created_at]}))]
       (when (seq (:errors result))
         (.rollback ^Connection tx savepoint))
       result)))

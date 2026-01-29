@@ -7,9 +7,9 @@ import { t } from "ttag";
 import { useCreateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -36,7 +36,7 @@ type NewSnippetPageProps = {
 export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(t`New SQL snippet`);
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);

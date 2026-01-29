@@ -110,14 +110,12 @@
       (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
         (mt/with-current-user (mt/user->id :rasta)
           (is (= #{"VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.NAME"}
-                 (->> [(mt/id :venues) (mt/id :checkins)]
-                      table/batch-fetch-table-query-metadatas
+                 (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names)))))
 
       (testing "Users with full permissions should not be affected by this field filtering"
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= #{"CHECKINS.DATE" "CHECKINS.ID" "CHECKINS.USER_ID" "CHECKINS.VENUE_ID"
                    "VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.LATITUDE" "VENUES.LONGITUDE" "VENUES.NAME" "VENUES.PRICE"}
-                 (->> [(mt/id :venues) (mt/id :checkins)]
-                      table/batch-fetch-table-query-metadatas
+                 (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names))))))))

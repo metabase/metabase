@@ -8,10 +8,10 @@
 }
 
 .logo {
-  width: 32px;
-  height: 32px;
-  margin: 0 -8px;
   display: block;
+  height: 2rem;
+  transition: opacity 400ms ease;
+  width: 2rem;
 }
 
 .icon {
@@ -31,9 +31,10 @@
 
 .tab,
 .toggle {
-  position: relative;
   color: var(--mb-color-text-primary);
   font-weight: 600;
+  position: relative;
+  transition: opacity 400ms ease;
 
   &:hover,
   &.selected {
@@ -89,7 +90,6 @@
   &.selected {
     background-color: var(--mb-color-brand-lighter);
     border-color: var(--mb-color-brand);
-    color: var(--mb-color-brand);
   }
 
   &.selected .workspaceMenuButton {
@@ -146,22 +146,28 @@
   }
 }
 
-.showOnHover {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 400ms ease;
-}
+.logoWrapper {
+  position: relative;
 
-.hideOnHover {
-  opacity: 1;
-  transition: opacity 400ms ease;
-}
+  .toggle {
+    left: 50%;
+    opacity: 0;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
 
-.disablePointer {
-  cursor: default;
+  &.navbarClosed {
+    &:hover {
+      .toggle {
+        opacity: 1;
+      }
+
+      .logo {
+        opacity: 0;
+      }
+    }
+  }
 }
 
 .badgeOverlay {

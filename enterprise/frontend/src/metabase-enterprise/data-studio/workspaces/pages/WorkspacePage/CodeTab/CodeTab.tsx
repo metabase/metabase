@@ -2,8 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack, Text } from "metabase/ui";
 import {
@@ -23,9 +22,12 @@ import type {
 } from "metabase-types/api";
 import { isUnsavedTransform } from "metabase-types/api";
 
-import { getTransformId, useWorkspace } from "../WorkspaceProvider";
+import { useWorkspace } from "../WorkspaceProvider";
 
-import { TransformListItem } from "./TransformListItem";
+import {
+  TransformListItem,
+  TransformListItemSkeleton,
+} from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
 
 /** Item that can be displayed in the workspace transforms list */
@@ -45,17 +47,19 @@ type CodeTabProps = {
   databaseId: DatabaseId | null | undefined;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformItem[];
+  isLoadingWorkspaceTransforms?: boolean;
   readOnly: boolean;
-  onTransformClick: (transform: TaggedTransform | WorkspaceTransform) => void;
+  onTransformClick: (
+    transform: TaggedTransform | WorkspaceTransform | UnsavedTransform,
+  ) => void;
 };
-
-const DEFAULT_AVAILABLE_TRANFORMS: ExternalTransform[] = [];
 
 export const CodeTab = ({
   activeTransformId,
   databaseId,
   workspaceId,
   workspaceTransforms,
+  isLoadingWorkspaceTransforms,
   readOnly,
   onTransformClick,
 }: CodeTabProps) => {
@@ -63,7 +67,7 @@ export const CodeTab = ({
   const { sendErrorToast } = useMetadataToasts();
 
   const {
-    data: availableTransforms = DEFAULT_AVAILABLE_TRANFORMS,
+    data: availableTransforms,
     error,
     isLoading,
   } = useGetExternalTransformsQuery(
@@ -72,20 +76,6 @@ export const CodeTab = ({
 
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const [fetchTransform] = useLazyGetTransformQuery();
-
-  const handleFullTransformClick = useCallback(
-    (transform: TaggedTransform | WorkspaceTransform) => {
-      const transformId = getTransformId(transform);
-      const edited = editedTransforms.get(transformId);
-      // Cast is safe because we're just merging edited fields into the transform
-      const transformToOpen = (
-        edited != null ? { ...transform, ...edited } : transform
-      ) as TaggedTransform | WorkspaceTransform;
-
-      onTransformClick(transformToOpen);
-    },
-    [editedTransforms, onTransformClick],
-  );
 
   const handleExternalTransformClick = useCallback(
     async (externalTransform: ExternalTransform) => {
@@ -105,10 +95,10 @@ export const CodeTab = ({
           ...transform,
           type: "transform",
         };
-        handleFullTransformClick(taggedTransform);
+        onTransformClick(taggedTransform);
       }
     },
-    [fetchTransform, handleFullTransformClick, sendErrorToast],
+    [fetchTransform, onTransformClick, sendErrorToast],
   );
 
   const handleWorkspaceTransformItemClick = useCallback(
@@ -119,7 +109,7 @@ export const CodeTab = ({
         // Unsaved transforms should already be opened via the provider
         // This path shouldn't normally be hit, but if it is, we can't
         // call onTransformClick because we don't have a full transform
-        return;
+        return onTransformClick(item);
       }
 
       const { data: transform, error } = await fetchWorkspaceTransform(
@@ -133,15 +123,10 @@ export const CodeTab = ({
       if (error) {
         sendErrorToast(t`Failed to fetch transform`);
       } else if (transform) {
-        handleFullTransformClick(transform);
+        onTransformClick(transform);
       }
     },
-    [
-      fetchWorkspaceTransform,
-      workspaceId,
-      handleFullTransformClick,
-      sendErrorToast,
-    ],
+    [fetchWorkspaceTransform, workspaceId, onTransformClick, sendErrorToast],
   );
 
   return (
@@ -156,39 +141,47 @@ export const CodeTab = ({
       >
         <Stack gap={0}>
           <Text fw={600}>{t`Workspace transforms`}</Text>
-          {workspaceTransforms.map((item) => {
-            const itemId = getWorkspaceTransformItemId(item);
-            const isUnsaved = isUnsavedTransform(item);
-            const globalId = isUnsaved ? null : item.global_id;
-            const isEdited = isUnsaved || editedTransforms.has(itemId);
-            const isActive =
-              activeTransformId === itemId || activeTransformId === globalId;
+          {isLoadingWorkspaceTransforms ? (
+            <>
+              <TransformListItemSkeleton />
+              <TransformListItemSkeleton />
+              <TransformListItemSkeleton />
+            </>
+          ) : (
+            workspaceTransforms.map((item) => {
+              const itemId = getWorkspaceTransformItemId(item);
+              const isUnsaved = isUnsavedTransform(item);
+              const globalId = isUnsaved ? null : item.global_id;
+              const isEdited = isUnsaved || editedTransforms.has(itemId);
+              const isActive =
+                activeTransformId === itemId || activeTransformId === globalId;
 
-            return (
-              <TransformListItem
-                key={itemId}
-                name={item.name}
-                icon="pivot_table"
-                fw={600}
-                isActive={isActive}
-                isEdited={isEdited}
-                menu={
-                  readOnly ? null : (
-                    <TransformListItemMenu
-                      transform={item}
-                      workspaceId={workspaceId}
-                    />
-                  )
-                }
-                onClick={() => {
-                  handleWorkspaceTransformItemClick(item);
-                }}
-              />
-            );
-          })}
+              return (
+                <TransformListItem
+                  key={itemId}
+                  name={item.name}
+                  icon="pivot_table"
+                  fw={600}
+                  isActive={isActive}
+                  isEdited={isEdited}
+                  menu={
+                    readOnly ? null : (
+                      <TransformListItemMenu
+                        transform={item}
+                        workspaceId={workspaceId}
+                      />
+                    )
+                  }
+                  onClick={() => {
+                    handleWorkspaceTransformItemClick(item);
+                  }}
+                />
+              );
+            })
+          )}
         </Stack>
 
-        {workspaceTransforms.length === 0 && (
+        {!isLoadingWorkspaceTransforms && workspaceTransforms.length === 0 && (
           <EmptyState message={t`Workspace is empty`} />
         )}
       </Stack>
@@ -196,27 +189,37 @@ export const CodeTab = ({
       <Stack data-testid="mainland-transforms" py="sm" gap="xs">
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
 
-        <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          {availableTransforms.map((transform) => (
-            <TransformListItem
-              key={transform.id}
-              name={transform.name}
-              isActive={activeTransformId === transform.id}
-              isEdited={editedTransforms.has(transform.id)}
-              onClick={() => {
-                handleExternalTransformClick(transform);
-              }}
-              opacity={transform.checkout_disabled ? 0.5 : 1}
-              tooltipLabel={getCheckoutDisabledMessage(
-                transform.checkout_disabled,
-              )}
-            />
-          ))}
+        {isLoading ? (
+          <>
+            <TransformListItemSkeleton />
+            <TransformListItemSkeleton />
+            <TransformListItemSkeleton />
+          </>
+        ) : error ? (
+          <Text c="error" size="sm">{t`Failed to load transforms`}</Text>
+        ) : (
+          <>
+            {availableTransforms?.map((transform) => (
+              <TransformListItem
+                key={transform.id}
+                name={transform.name}
+                isActive={activeTransformId === transform.id}
+                isEdited={editedTransforms.has(transform.id)}
+                onClick={() => {
+                  handleExternalTransformClick(transform);
+                }}
+                opacity={transform.checkout_disabled ? 0.5 : 1}
+                tooltipLabel={getCheckoutDisabledMessage(
+                  transform.checkout_disabled,
+                )}
+              />
+            ))}
 
-          {availableTransforms.length === 0 && (
-            <EmptyState message={t`No available transforms`} />
-          )}
-        </LoadingAndErrorWrapper>
+            {availableTransforms?.length === 0 && (
+              <EmptyState message={t`No available transforms`} />
+            )}
+          </>
+        )}
       </Stack>
     </Stack>
   );

@@ -14,7 +14,7 @@ import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 

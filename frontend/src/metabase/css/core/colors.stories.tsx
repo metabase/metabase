@@ -54,6 +54,7 @@ export function Default() {
       {COLOR_NAMES.map((colorName) => {
         return (
           <Card
+            // @ts-expect-error story file
             bg={`var(${colorName})`}
             key={colorName}
             withBorder
@@ -61,6 +62,7 @@ export function Default() {
               flexBasis: "24%",
             }}
           >
+            {/* @ts-expect-error story file */}
             <Text c="black">{colorName}</Text>
           </Card>
         );

@@ -188,7 +188,7 @@
   (lib.util.match/replace expr
     [:does-not-contain opts whole & parts]
     (-> (lib.filter/not (-> (apply lib.filter/contains whole parts)
-                            ;; need to preserve stuff like `:case-sensitve`. Prefer values in each clause over `opts`
+                            ;; need to preserve stuff like `:case-sensitive`. Prefer values in each clause over `opts`
                             ;; so we don't get duplicate UUIDs
                             (lib.options/update-options #(merge opts %))))
         (merge-options opts))))

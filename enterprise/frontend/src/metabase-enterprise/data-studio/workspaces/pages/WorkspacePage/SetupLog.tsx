@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
-import { Group, Icon, Loader, Stack, Tooltip } from "metabase/ui";
+import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
+import { Group, Icon, Loader, Stack, Text, Tooltip } from "metabase/ui";
 import type { WorkspaceLogStatus } from "metabase-types/api";
 
 import type { SetupStatus } from "./useWorkspaceData";
@@ -27,6 +27,10 @@ export const SetupLog = ({ setupStatus }: SetupLogProps) => {
     >
       {logs.length === 0 && workspace?.status === "pending" && (
         <Loader size="xs" />
+      )}
+
+      {logs.length === 0 && workspace?.status !== "pending" && (
+        <Text>{t`No logs to display`}</Text>
       )}
 
       {logs.map((log) => {
@@ -56,7 +60,7 @@ export const SetupLog = ({ setupStatus }: SetupLogProps) => {
 
       {workspace?.status === "archived" && (
         <Group gap="xs" wrap="nowrap">
-          <Icon c="text-light" name="archive" />
+          <Icon c="text-tertiary" name="archive" />
 
           {t`Workspace is archived`}
         </Group>

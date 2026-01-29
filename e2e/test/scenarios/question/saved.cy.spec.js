@@ -30,13 +30,13 @@ describe("scenarios > question > saved", () => {
       cy.findByText("100").click();
       cy.findByText("Add filter").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
     // check that save will give option to replace
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText('Replace original question, "Orders"');
@@ -45,13 +45,13 @@ describe("scenarios > question > saved", () => {
     });
 
     // click "Started from Orders" and check that the original question is restored
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").within(() => cy.findByText("Orders").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows"); // query updated
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
@@ -244,10 +244,10 @@ describe("scenarios > question > saved", () => {
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Our analytics").click());
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
@@ -257,10 +257,10 @@ describe("scenarios > question > saved", () => {
     });
 
     H.visitQuestion(ORDERS_QUESTION_ID);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Second collection").click());
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
@@ -284,7 +284,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 

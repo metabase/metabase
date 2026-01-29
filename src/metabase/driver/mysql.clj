@@ -120,6 +120,15 @@
   [database]
   (-> database :dbms_version :flavor (= "MariaDB")))
 
+(defn- mysql?
+  "Returns true if the database is MySQL (not MariaDB).
+   Returns true for unsynced databases (unknown flavor)."
+  [db]
+  (= "MySQL"
+     (if-let [conn (:connection db)]
+       (->> ^java.sql.Connection conn .getMetaData .getDatabaseProductName)
+       (-> db :dbms_version :flavor))))
+
 (defn mariadb-connection?
   "Returns true if the database is MariaDB."
   [driver conn]
@@ -146,7 +155,7 @@
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (not (mariadb? db))
+       (mysql? db)
        (not (try
               (partial-revokes-enabled? driver db)
               (catch Exception e
@@ -243,9 +252,11 @@
            :visible-if {"use-auth-provider" false})
     driver.common/default-role-details
     driver.common/cloud-ip-address-info
-    driver.common/default-ssl-details
-    default-ssl-cert-details
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              default-ssl-cert-details
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
     (assoc driver.common/additional-options
@@ -734,7 +745,7 @@
 ;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
 ;; timezone and the local datetime portion of the parameter, in UTC. Bad!
 ;;
-;; Convert it to a LocalDateTime, in the report timezone, so comparisions will work correctly.
+;; Convert it to a LocalDateTime, in the report timezone, so comparisons will work correctly.
 ;;
 ;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
 ;;
@@ -765,7 +776,7 @@
 ;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
 ;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
 ;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
-;; java.time.LocalTime)` will throw Exceptions theses cases.
+;; java.time.LocalTime)` will throw Exceptions in these cases.
 ;;
 ;; Thus we should attempt to fetch temporal results the normal way and fall back to string representations for cases
 ;; where the values are unparseable.

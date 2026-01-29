@@ -4,10 +4,15 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { EditDefinitionButton } from "metabase-enterprise/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { DraftTransformSource, TransformId } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformId,
+} from "metabase-types/api";
 
 type Props = {
   handleCancel: VoidFunction;
@@ -16,6 +21,7 @@ type Props = {
   isEditMode: boolean;
   isSaving: boolean;
   source: DraftTransformSource;
+  transform: Transform;
   transformId: TransformId;
 };
 
@@ -27,9 +33,10 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
-    transformId,
+    transform,
   } = props;
   const metadata = useSelector(getMetadata);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
@@ -49,17 +56,13 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isPythonTransform && !isNative && !isEditMode) {
-    return <EditDefinitionButton transformId={transformId} />;
-  }
-
-  if (!isEditMode && isNative) {
-    return null;
+  if (!isEditMode && !isPythonTransform && !isNative && !isRemoteSyncReadOnly) {
+    return <EditDefinitionButton transformId={transform.id} />;
   }
 
   return (
     <PaneHeaderActions
-      alwaysVisible={!isPythonTransform && isEditMode}
+      alwaysVisible={isEditMode}
       errorMessage={validationResult.errorMessage}
       isDirty={isDirty}
       isSaving={isSaving}

@@ -81,7 +81,7 @@ describe("visualization.lib.numeric", () => {
     );
 
     // With the current implementation this is guaranteed to be true. This test
-    // is left in incase that implementation changes.
+    // is left in in case that implementation changes.
     [123456.123456, -123456.123456, 1.23456789, -1.23456789].map((value) =>
       it(`${value} should be a multiple of its precision (${precision(
         value,

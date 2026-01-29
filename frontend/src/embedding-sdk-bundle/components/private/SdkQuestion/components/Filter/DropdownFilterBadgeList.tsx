@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Group, Popover } from "metabase/ui";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
@@ -15,6 +16,7 @@ const DropdownFilterBadgeListContent = ({
   item: SDKFilterItem;
 } & FilterProps) => {
   const [opened, { open, close }] = useDisclosure(false);
+  const tc = useTranslateContent();
 
   return (
     <Popover opened={opened} onClose={close}>
@@ -22,7 +24,7 @@ const DropdownFilterBadgeListContent = ({
         <BadgeListItem
           onClick={open}
           onRemoveItem={() => item.onRemoveFilter()}
-          name={item.displayName}
+          name={tc(item.displayName)}
         />
       </Popover.Target>
       <Popover.Dropdown>

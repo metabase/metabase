@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Flex, Text } from "metabase/ui";
 
 export const TenantsListingEmptyState = ({

@@ -38,7 +38,7 @@
        " }"))
 
 (defn- arithmetic-operator
-  "Interpose artihmetic `operator` between `args`, and wrap the entire expression in parens."
+  "Interpose arithmetic `operator` between `args`, and wrap the entire expression in parens."
   ^String [operator & args]
   (parens (str/join (str " " (name operator) " ")
                     (map ->js args))))

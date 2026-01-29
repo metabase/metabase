@@ -77,6 +77,7 @@
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
+                              :regex/lookaheads-and-lookbehinds       false
                               :transforms/python                      true
                               :transforms/table                       true
                               :workspace                              true}]
@@ -455,7 +456,7 @@
   "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
   [unit x y]
   (let [milliseconds [:datediff [:raw "milliseconds"] x y]]
-    ;; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    ;; milliseconds needs to be cast to float because division rounds incorrectly with large integers
     [:trunc (h2x// (h2x/cast :float milliseconds)
                    (case unit :hour 3600000 :minute 60000 :second 1000))]))
 
@@ -1002,7 +1003,7 @@
                  (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
-     :database_details (assoc read-user :role role-name)}))
+     :database_details (assoc read-user :role role-name :use-password true)}))
 
 (defmethod driver/destroy-workspace-isolation! :snowflake
   [_driver database workspace]
@@ -1031,7 +1032,11 @@
     (when-not role-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Grant SELECT on each specific table only - no schema-level grants
+    ;; Grant USAGE on each unique schema first (required to access tables within)
+    (doseq [schema (distinct (map :schema tables))]
+      (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\""
+                                        db-name schema role-name)]))
+    ;; Grant SELECT on each specific table
     (doseq [table tables]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE \"%s\".\"%s\".\"%s\" TO ROLE \"%s\""
                                         db-name (:schema table) (:name table) role-name)]))))

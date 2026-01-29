@@ -1,93 +1,172 @@
-import { useMemo } from "react";
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
+import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
-import type {
-  DependencyEntry,
-  DependencyGroupType,
-  DependencyNode,
-} from "metabase-types/api";
+import {
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
+} from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
-import type { DependencyFilterOptions } from "../../types";
-import { isSameNode } from "../../utils";
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "../../constants";
+import type {
+  DependencyFilterOptions,
+  DependencySortOptions,
+} from "../../types";
+import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
-import { ListEmptyState } from "./ListEmptyState";
 import { ListHeader } from "./ListHeader";
+import { ListPaginationControls } from "./ListPaginationControls";
 import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
+import { PAGE_SIZE } from "./constants";
+import type { DependencyListMode } from "./types";
+import {
+  getAvailableGroupTypes,
+  getFilterOptions,
+  getSortOptions,
+} from "./utils";
 
 type DependencyListProps = {
-  nodes: DependencyNode[];
-  selectedEntry: DependencyEntry | null;
-  searchValue: string;
-  filterOptions: DependencyFilterOptions;
-  availableGroupTypes: DependencyGroupType[];
-  notFoundMessage: string;
-  isLoading: boolean;
-  isFetching: boolean;
-  error: unknown;
-  withErrorsColumn?: boolean;
-  withDependentsCountColumn?: boolean;
-  onSelect: (entry: DependencyEntry | null) => void;
-  onSearchValueChange: (searchValue: string) => void;
-  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
+  mode: DependencyListMode;
+  params: Urls.DependencyListParams;
+  onParamsChange: (params: Urls.DependencyListParams) => void;
 };
 
 export function DependencyList({
-  nodes,
-  searchValue,
-  filterOptions,
-  availableGroupTypes,
-  notFoundMessage,
-  isLoading,
-  isFetching,
-  error,
-  selectedEntry,
-  withErrorsColumn = false,
-  withDependentsCountColumn = false,
-  onSelect,
-  onSearchValueChange,
-  onFilterOptionsChange,
+  mode,
+  params,
+  onParamsChange,
 }: DependencyListProps) {
-  const selectedNode = useMemo(() => {
-    return selectedEntry != null
+  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
+
+  const useListGraphNodesQuery =
+    mode === "broken"
+      ? useListBrokenGraphNodesQuery
+      : useListUnreferencedGraphNodesQuery;
+
+  const {
+    page = 0,
+    query,
+    groupTypes = getAvailableGroupTypes(mode),
+    includePersonalCollections = DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    sortColumn,
+    sortDirection,
+  } = params;
+
+  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
+    types: getDependencyTypes(groupTypes),
+    card_types: getCardTypes(groupTypes),
+    query: query,
+    include_personal_collections: includePersonalCollections,
+    sort_column: sortColumn,
+    sort_direction: sortDirection,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
+
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+
+  const nodes = data?.data ?? [];
+  const totalNodesCount = data?.total ?? 0;
+
+  const selectedNode =
+    selectedEntry != null
       ? nodes.find((node) => isSameNode(node, selectedEntry))
-      : null;
-  }, [nodes, selectedEntry]);
+      : undefined;
+
+  const handleQueryChange = (query: string | undefined) => {
+    onParamsChange({ ...params, query, page: undefined });
+  };
+
+  const handleFilterOptionsChange = ({
+    groupTypes,
+    includePersonalCollections,
+  }: DependencyFilterOptions) => {
+    onParamsChange({
+      ...params,
+      groupTypes,
+      includePersonalCollections,
+      page: undefined,
+    });
+  };
+
+  const handleSortOptionsChange = (
+    sortOptions: DependencySortOptions | undefined,
+  ) => {
+    onParamsChange({
+      ...params,
+      sortColumn: sortOptions?.column,
+      sortDirection: sortOptions?.direction,
+      page: undefined,
+    });
+  };
+
+  const handlePageChange = (page: number) => {
+    onParamsChange({ ...params, page });
+  };
+
+  useLayoutEffect(() => {
+    if (selectedEntry != null && selectedNode == null) {
+      setSelectedEntry(undefined);
+    }
+  }, [selectedEntry, selectedNode]);
 
   return (
-    <Flex h="100%">
-      <Stack className={S.main} flex={1} px="3.5rem" py="md" gap="md">
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+    >
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <ListHeader />
         <ListSearchBar
-          searchValue={searchValue}
-          filterOptions={filterOptions}
-          availableGroupTypes={availableGroupTypes}
+          mode={mode}
+          query={query}
+          filterOptions={getFilterOptions(mode, params)}
           hasLoader={isFetching && !isLoading}
-          onSearchValueChange={onSearchValueChange}
-          onFilterOptionsChange={onFilterOptionsChange}
+          onQueryChange={handleQueryChange}
+          onFilterOptionsChange={handleFilterOptionsChange}
         />
-        {isLoading || error != null ? (
+        {error != null ? (
           <Center flex={1}>
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-          </Center>
-        ) : nodes.length === 0 ? (
-          <Center flex={1}>
-            <ListEmptyState label={notFoundMessage} />
           </Center>
         ) : (
           <ListBody
             nodes={nodes}
-            withErrorsColumn={withErrorsColumn}
-            withDependentsCountColumn={withDependentsCountColumn}
-            onSelect={onSelect}
+            mode={mode}
+            sortOptions={getSortOptions(params)}
+            isLoading={isLoading}
+            onSelect={setSelectedEntry}
+            onSortOptionsChange={handleSortOptionsChange}
+          />
+        )}
+        {!isLoading && error == null && (
+          <ListPaginationControls
+            page={page}
+            pageNodesCount={nodes.length}
+            totalNodesCount={totalNodesCount}
+            onPageChange={handlePageChange}
           />
         )}
       </Stack>
       {selectedNode != null && (
-        <ListSidebar node={selectedNode} onClose={() => onSelect(null)} />
+        <ListSidebar
+          node={selectedNode}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
+          onClose={() => setSelectedEntry(undefined)}
+        />
       )}
     </Flex>
   );

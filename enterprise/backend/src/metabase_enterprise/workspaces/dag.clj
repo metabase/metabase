@@ -12,14 +12,6 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-;; Is this working with appdb-ids or ref-ids?
-(defn unsupported-dependency?
-  "Return a map of the entities which have unsupported dependencies, or nil if there are none."
-  [{transform-ids :transforms :as _entity-map}]
-  ;; TODO filter out those that don't have a card dependency
-  (when (seq transform-ids)
-    {:transforms transform-ids}))
-
 ;; TODO (chris 2025/12/15) Should we leverage data-authority table metadata to speed things up?
 
 (defn- table-id->coord [id]

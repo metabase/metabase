@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { transformEdit } from "metabase/lib/urls";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -126,71 +128,94 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
   return (
     <Menu position="bottom-end" width={280}>
       <Menu.Target>
-        <Tooltip
-          label={getCheckoutDisabledMessage(checkoutData?.checkout_disabled)}
-          disabled={!checkoutData?.checkout_disabled}
+        <Button
+          role="button"
+          data-testid="transform-edit-menu-button"
+          rightSection={<Icon name="chevrondown" />}
+          loading={isBusy}
+          size="xs"
         >
-          <Button
-            leftSection={<Icon name="pencil" />}
-            rightSection={<Icon name="chevrondown" />}
-            loading={isBusy}
-            disabled={!!checkoutData?.checkout_disabled}
-          >
-            {t`Edit transform`}
-          </Button>
-        </Tooltip>
+          {t`Edit`}
+        </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>{t`Add to workspace`}</Menu.Label>
         <Menu.Item
-          disabled={isBusy}
-          leftSection={<Icon name="add" />}
-          onClick={() => {
-            handleCreateWorkspace({ databaseId: sourceDatabaseId });
-          }}
+          component={Link}
+          to={transformEdit(transform.id)}
+          leftSection={<Icon name="pencil" />}
         >
-          <Stack gap={0} align="flex-start">
-            <Text fw={600}>{t`New workspace`}</Text>
-            <Text size="sm" c="text-light">
-              {t`Create a new workspace`}
-            </Text>
-          </Stack>
+          {t`Edit definition`}
         </Menu.Item>
-        <Menu.Divider />
 
-        {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
-          <Flex justify="center" align="center" py="md">
-            <Loader size="sm" />
-          </Flex>
-        ) : matchingWorkspaces.length === 0 ? (
-          <Box px="md" py="sm">
-            <Text size="sm" c="text-light">
-              {emptyMessage}
-            </Text>
-          </Box>
-        ) : (
-          <ScrollArea.Autosize mah={320} type="scroll">
-            <Stack gap={0}>
-              {matchingWorkspaces.map((workspace) => (
-                <Menu.Item
-                  key={workspace.id}
-                  leftSection={
-                    <Icon
-                      name="sparkles"
-                      c={workspace.isChecked ? "brand" : "text-dark"}
-                    />
-                  }
-                  onClick={() => handleWorkspaceSelect(workspace)}
-                  disabled={isBusy}
-                >
-                  <Stack gap={2} align="flex-start">
-                    <Text fw={600}>{workspace.name}</Text>
-                  </Stack>
-                </Menu.Item>
-              ))}
-            </Stack>
-          </ScrollArea.Autosize>
-        )}
+        {
+          <>
+            <Menu.Divider />
+            <Menu.Label>{t`Add to workspace`}</Menu.Label>
+            <Tooltip
+              label={getCheckoutDisabledMessage(
+                checkoutData?.checkout_disabled,
+              )}
+              disabled={!checkoutData?.checkout_disabled}
+            >
+              <Menu.Item
+                disabled={isBusy || !!checkoutData?.checkout_disabled}
+                leftSection={<Icon name="add" />}
+                onClick={() => {
+                  handleCreateWorkspace({ databaseId: sourceDatabaseId });
+                }}
+              >
+                <Stack gap={0} align="flex-start">
+                  <Text fw={600}>{t`New workspace`}</Text>
+                  <Text size="sm" c="text-tertiary">
+                    {t`Create a new workspace`}
+                  </Text>
+                </Stack>
+              </Menu.Item>
+            </Tooltip>
+            <Menu.Divider />
+
+            {isLoadingWorkspaces || isWorkspaceCheckoutLoading ? (
+              <Flex justify="center" align="center" py="md">
+                <Loader size="sm" />
+              </Flex>
+            ) : matchingWorkspaces.length === 0 ? (
+              <Box px="md" py="sm">
+                <Text size="sm" c="text-tertiary">
+                  {emptyMessage}
+                </Text>
+              </Box>
+            ) : (
+              <ScrollArea.Autosize mah={320} type="scroll">
+                <Stack gap={0}>
+                  {matchingWorkspaces.map((workspace) => (
+                    <Tooltip
+                      key={workspace.id}
+                      label={getCheckoutDisabledMessage(
+                        checkoutData?.checkout_disabled,
+                      )}
+                      disabled={!checkoutData?.checkout_disabled}
+                    >
+                      <Menu.Item
+                        leftSection={
+                          <Icon
+                            name="sparkles"
+                            c={workspace.isChecked ? "brand" : "text-primary"}
+                          />
+                        }
+                        onClick={() => handleWorkspaceSelect(workspace)}
+                        disabled={isBusy || !!checkoutData?.checkout_disabled}
+                      >
+                        <Stack gap={2} align="flex-start">
+                          <Text fw={600}>{workspace.name}</Text>
+                        </Stack>
+                      </Menu.Item>
+                    </Tooltip>
+                  ))}
+                </Stack>
+              </ScrollArea.Autosize>
+            )}
+          </>
+        }
       </Menu.Dropdown>
     </Menu>
   );

@@ -99,13 +99,12 @@ visualization_settings:
   graph.metrics: [count]
   table.cell_column: model_id
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: gYt6bo9DFKz6tSeDLxYVs, label: active_users_last_week, model: Card}
 archived_directly: false
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

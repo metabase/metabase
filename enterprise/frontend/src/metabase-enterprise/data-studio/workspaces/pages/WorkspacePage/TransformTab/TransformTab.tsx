@@ -1,18 +1,22 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { useDryRunWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import {
+  getInitialNativeSource,
+  getInitialPythonSource,
+} from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -20,19 +24,17 @@ import type {
   DatasetQuery,
   DraftTransformSource,
   TaggedTransform,
+  TestPythonTransformResponse,
   WorkspaceId,
   WorkspaceTransform,
+  WorkspaceTransformDryRunResponse,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
-import { isWorkspaceTransform } from "metabase-types/api";
+import { isUnsavedTransform, isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
-import type {
-  AnyWorkspaceTransform,
-  EditedTransform,
-  TableTab,
-} from "../WorkspaceProvider";
+import type { AnyWorkspaceTransform, TableTab } from "../WorkspaceProvider";
 import {
   getNumericTransformId,
   getTransformId,
@@ -41,29 +43,31 @@ import {
 
 import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
+import { useEditedTransform } from "./useEditedTransform";
 
 interface Props {
   databaseId: DatabaseId;
-  editedTransform: EditedTransform;
   transform: AnyWorkspaceTransform;
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransformListItem[];
   isDisabled: boolean;
-  onChange: (patch: Partial<EditedTransform>) => void;
   onSaveTransform: (transform: TaggedTransform | WorkspaceTransform) => void;
 }
 
-export const TransformTab = ({
+export function TransformTab({
   databaseId,
-  editedTransform,
   transform,
   workspaceId,
   workspaceTransforms,
   isDisabled,
-  onChange,
   onSaveTransform,
-}: Props) => {
-  const { updateTransformState, addOpenedTab } = useWorkspace();
+}: Props) {
+  const {
+    updateTransformState,
+    addOpenedTab,
+    editedTransforms,
+    patchEditedTransform,
+  } = useWorkspace();
   const { sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
@@ -77,15 +81,32 @@ export const TransformTab = ({
   );
   const metadata = useSelector(getMetadata);
 
-  // Only WorkspaceTransforms can be run - cast for the hook
+  // Local source state to prevent re-renders on every keystroke
+  // This is the key optimization: we manage source locally and sync to provider
+  const [localSource, setLocalSource] = useState<DraftTransformSource>(() => {
+    const edited = editedTransforms.get(transformId);
+    return edited?.source ?? transform.source;
+  });
+
+  // Track previous transform ID to detect when we switch transforms
+  const prevTransformIdRef = useRef(transformId);
+
+  // Reset local source when switching to a different transform
+  useEffect(() => {
+    if (prevTransformIdRef.current !== transformId) {
+      const edited = editedTransforms.get(transformId);
+      setLocalSource(edited?.source ?? transform.source);
+      prevTransformIdRef.current = transformId;
+    }
+    // Note: editedTransforms is intentionally excluded from deps
+    // We only want to sync when transform ID changes, not on every edit
+  }, [transformId, transform.source, editedTransforms]);
+
+  const { editedTransform, hasChanges, providerEdited } =
+    useEditedTransform(transform);
+
   const wsTransform = isWorkspaceTransform(transform) ? transform : null;
-  const hasSourceChanged = !isSameSource(
-    editedTransform.source,
-    transform.source,
-  );
-  const hasChanges = hasSourceChanged;
-  const dryRunTransformId =
-    wsTransform && !hasChanges ? wsTransform.ref_id : undefined;
+  const currentSource = providerEdited?.source ?? localSource;
 
   // Run transform hook - handles run state, API calls, and error handling
   const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
@@ -100,21 +121,24 @@ export const TransformTab = ({
       // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
 
+      // Use dry-run API to preview the saved transform's source.
+      // The preview button is only shown when transform is saved and has no unsaved changes,
+      // so we can safely use dry-run which executes the saved source.
       const tableTab: TableTab = {
         id: tableTabId,
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: transformId,
+          tableId: null,
           name: t`Preview (${transform.name})`,
           query,
-          transformId: dryRunTransformId,
+          transformId: String(transformId),
         },
       };
       addOpenedTab(tableTab);
       return false;
     },
-    [transformId, transform.name, addOpenedTab, dryRunTransformId],
+    [transformId, transform.name, addOpenedTab],
   );
 
   const handleRunTransform = useCallback(
@@ -137,6 +161,35 @@ export const TransformTab = ({
     },
     [transformId, transform.name, addOpenedTab],
   );
+
+  // Dry-run handler for Python transforms
+  const [dryRunTransform] = useDryRunWorkspaceTransformMutation();
+
+  const handlePythonRun = useCallback(async () => {
+    if (!wsTransform) {
+      return;
+    }
+
+    try {
+      const result = await dryRunTransform({
+        workspaceId,
+        transformId: wsTransform.ref_id,
+      }).unwrap();
+
+      // Convert dry-run response to TestPythonTransformResponse format
+      const converted = convertDryRunToTestResponse(result);
+      handleRunTransform(converted);
+    } catch (error) {
+      // Handle error - show in preview results
+      const errorResult: TestPythonTransformResponse = {
+        error: {
+          message:
+            error instanceof Error ? error.message : "Transform preview failed",
+        },
+      };
+      handleRunTransform(errorResult);
+    }
+  }, [wsTransform, workspaceId, dryRunTransform, handleRunTransform]);
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource): DraftTransformSource => {
@@ -162,9 +215,11 @@ export const TransformTab = ({
     [metadata],
   );
 
+  // Show proposed source when there's an active suggested transform
+  // Even if sources are the same (e.g., when transform was created with suggested source),
+  // we still want to show the buttons so user can reject the suggestion
   const proposedSource: DraftTransformSource | undefined =
-    suggestedTransform?.source &&
-    !isSameSource(suggestedTransform.source, editedTransform.source)
+    suggestedTransform?.source
       ? normalizeSource(suggestedTransform.source)
       : undefined;
 
@@ -173,38 +228,66 @@ export const TransformTab = ({
     workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isEditable = !isDisabled;
 
-  const handleSourceChange = (source: DraftTransformSource) => {
-    onChange({ source });
-  };
+  const handleSourceChange = useCallback(
+    (source: DraftTransformSource) => {
+      setLocalSource(source);
+      patchEditedTransform(transformId, { source });
+    },
+    [transformId, patchEditedTransform],
+  );
 
-  const handleAcceptProposed = useCallback(() => {
+  const handleMetabotAcceptProposed = useCallback(() => {
     if (proposedSource == null) {
       return;
     }
 
-    if (!isSaved) {
+    // Allow applying suggestions to both saved workspace transforms and unsaved transforms
+    // Only block if it's a tagged transform (external transform) that hasn't been checked out
+    const isUnsaved = isUnsavedTransform(transform);
+    if (!isSaved && !isUnsaved) {
       sendErrorToast(
         t`Add this transform to the workspace before applying Metabot changes.`,
       );
       return;
     }
 
-    onChange({ source: proposedSource });
+    // When accepting, we DO need to update localSource to reset the editor
+    setLocalSource(proposedSource);
+    patchEditedTransform(transformId, { source: proposedSource });
     dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
   }, [
     proposedSource,
-    onChange,
     dispatch,
     suggestedTransform?.id,
     isSaved,
+    transform,
     sendErrorToast,
+    transformId,
+    patchEditedTransform,
   ]);
 
-  const handleRejectProposed = useCallback(() => {
+  const handleMetabotRejectProposed = useCallback(() => {
     if (suggestedTransform) {
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+
+      // For unsaved transforms, clear the source back to empty state when rejecting
+      if (isUnsavedTransform(transform)) {
+        const emptySource = createEmptySourceForType(currentSource);
+        if (emptySource) {
+          // When rejecting, we DO need to update localSource to reset the editor
+          setLocalSource(emptySource);
+          patchEditedTransform(transformId, { source: emptySource });
+        }
+      }
     }
-  }, [dispatch, suggestedTransform]);
+  }, [
+    dispatch,
+    suggestedTransform,
+    transform,
+    currentSource,
+    transformId,
+    patchEditedTransform,
+  ]);
 
   const handleTargetUpdate = useCallback(
     (updatedTransform?: WorkspaceTransform) => {
@@ -250,9 +333,8 @@ export const TransformTab = ({
             <SaveTransformButton
               databaseId={databaseId}
               workspaceId={workspaceId}
-              editedTransform={editedTransform}
-              transform={transform}
               workspaceTransforms={workspaceTransforms}
+              transform={transform}
               isDisabled={isDisabled}
               onSaveTransform={onSaveTransform}
             />
@@ -280,13 +362,15 @@ export const TransformTab = ({
         >
           <TransformEditor
             disabled={!isEditable}
-            source={editedTransform.source}
+            hideRunButton={!isSaved || hasChanges}
+            source={localSource}
             proposedSource={proposedSource}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={handleRejectProposed}
+            onAcceptProposed={handleMetabotAcceptProposed}
+            onRejectProposed={handleMetabotRejectProposed}
             onChange={handleSourceChange}
             onRunQueryStart={handleRunQueryStart}
             onRunTransform={handleRunTransform}
+            onRun={handlePythonRun}
           />
         </Box>
       )}
@@ -300,4 +384,65 @@ export const TransformTab = ({
       )}
     </Stack>
   );
-};
+}
+
+/**
+ * Creates an empty source based on the type of the current source.
+ * Used when rejecting a metabot suggestion on an unsaved transform.
+ */
+function createEmptySourceForType(
+  currentSource: DraftTransformSource,
+): DraftTransformSource | null {
+  if (currentSource.type === "query") {
+    const emptySource = getInitialNativeSource();
+    // Preserve the database ID from the current source
+    const databaseId =
+      "database" in currentSource.query ? currentSource.query.database : null;
+    if (databaseId) {
+      return {
+        ...emptySource,
+        query: { ...emptySource.query, database: databaseId },
+      };
+    }
+    return emptySource;
+  }
+
+  if (currentSource.type === "python") {
+    const emptySource = getInitialPythonSource();
+    // Preserve the database ID from the current source
+    return {
+      ...emptySource,
+      "source-database": currentSource["source-database"],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Converts a dry-run response to the TestPythonTransformResponse format
+ * expected by PythonEditorResults component.
+ */
+function convertDryRunToTestResponse(
+  dryRun: WorkspaceTransformDryRunResponse,
+): TestPythonTransformResponse {
+  if (dryRun.status === "failed") {
+    return {
+      error: { message: dryRun.message ?? "Transform failed" },
+      logs: dryRun.logs ?? "",
+    };
+  }
+
+  const cols = (dryRun.data?.cols ?? []).map((col) => ({
+    name: col.name ?? "",
+  }));
+  // Convert rows from array format [[val1, val2], ...] to object format [{col1: val1, col2: val2}, ...]
+  const rows = (dryRun.data?.rows ?? []).map((row) =>
+    Object.fromEntries(cols.map((col, i) => [col.name, row[i]])),
+  );
+
+  return {
+    logs: dryRun.logs ?? "",
+    output: { cols, rows },
+  };
+}

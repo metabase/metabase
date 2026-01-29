@@ -7,7 +7,6 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { isEEBuild } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
 
@@ -39,7 +38,8 @@ export function EmbeddingNav() {
           icon="gear"
         />
 
-        {isEEBuild() && (
+        {/* EE with non-starter plan has embedding settings on different pages */}
+        {hasSimpleEmbedding && (
           <>
             <EmbeddingNavItem
               path="/admin/embedding/guest"

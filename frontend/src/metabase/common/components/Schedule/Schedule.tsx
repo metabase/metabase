@@ -43,6 +43,7 @@ export interface ScheduleProps {
   verb?: string;
   minutesOnHourPicker?: boolean;
   labelAlignment?: "compact" | "left";
+  layout?: "vertical" | "horizontal";
   isCustomSchedule?: boolean;
   renderScheduleDescription?: (
     schedule: ScheduleSettings,
@@ -59,6 +60,7 @@ export const Schedule = ({
   minutesOnHourPicker,
   onScheduleChange,
   labelAlignment = "compact",
+  layout = "vertical",
   isCustomSchedule,
   renderScheduleDescription,
   ...flexProps
@@ -285,6 +287,7 @@ export const Schedule = ({
           S.Schedule,
           {
             [S.CompactLabels]: labelAlignment === "compact",
+            [S.Horizontal]: layout === "horizontal",
           },
           className,
         )}

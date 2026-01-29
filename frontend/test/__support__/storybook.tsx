@@ -116,6 +116,7 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
+    // @ts-expect-error story file
     <Box w={1000} h={600} bg={theme?.colors?.background}>
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>
