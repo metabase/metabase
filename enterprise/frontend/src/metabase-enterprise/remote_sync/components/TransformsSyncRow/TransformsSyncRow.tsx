@@ -1,20 +1,17 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/bordered.module.css";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 
 import { TRANSFORMS_KEY } from "../../constants";
 
 interface TransformsSyncRowProps {
-  isLast: boolean;
   isReadOnly: boolean;
 }
 
-export const TransformsSyncRow = ({
-  isLast,
-  isReadOnly,
-}: TransformsSyncRowProps) => {
+export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
   const { values, setFieldValue } =
     useFormikContext<RemoteSyncConfigurationSettings>();
   const isChecked = values[TRANSFORMS_KEY] ?? false;
@@ -24,12 +21,7 @@ export const TransformsSyncRow = ({
   };
 
   return (
-    <Box
-      p="md"
-      style={{
-        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
-      }}
-    >
+    <Box p="md" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name="transform" c="text-secondary" />

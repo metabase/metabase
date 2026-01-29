@@ -39,7 +39,8 @@ type NewSnippetPageProps = {
 export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [name, setName] = useState(t`New SQL snippet`);
+  const defaultName = t`New SQL snippet`;
+  const [name, setName] = useState(defaultName);
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
@@ -49,7 +50,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
   const isValid = name.length > 0 && content.length > 0;
   const isDirty =
-    name !== t`New SQL snippet` || description.length > 0 || content.length > 0;
+    name !== defaultName || description.length > 0 || content.length > 0;
 
   const handleCreateSnippet = async (
     collectionId: RegularCollectionId | null,
