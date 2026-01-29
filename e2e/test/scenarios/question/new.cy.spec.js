@@ -640,10 +640,7 @@ describe(
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Databases").click();
-        H.entityPickerModalItem(3, "Products").click();
-      });
+      H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
 
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
@@ -657,9 +654,7 @@ describe(
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(1, "Orders").click();
-      });
+      H.pickEntity({ path: ["Our analytics", "Orders"] });
 
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
@@ -681,9 +676,7 @@ describe(
       cy.visit("/question/notebook");
 
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(1, "Orders Model").click();
-      });
+      H.pickEntity({ path: ["Our analytics", "Orders Model"] });
 
       cy.wait("@recents");
 

@@ -28,14 +28,14 @@ describe("scenarios > notebook > data source", () => {
       H.entityPickerModal().within(() => {
         // databases is selected already
         H.entityPickerModalLevel(1).findByText("Sample Database").click();
-        assertDataPickerEntityNotSelected(3, "Accounts");
-        assertDataPickerEntityNotSelected(3, "Analytic Events");
-        assertDataPickerEntityNotSelected(3, "Feedback");
-        assertDataPickerEntityNotSelected(3, "Invoices");
-        assertDataPickerEntityNotSelected(3, "Orders");
-        assertDataPickerEntityNotSelected(3, "People");
-        assertDataPickerEntityNotSelected(3, "Products");
-        assertDataPickerEntityNotSelected(3, "Reviews");
+        assertDataPickerEntityNotSelected(2, "Accounts");
+        assertDataPickerEntityNotSelected(2, "Analytic Events");
+        assertDataPickerEntityNotSelected(2, "Feedback");
+        assertDataPickerEntityNotSelected(2, "Invoices");
+        assertDataPickerEntityNotSelected(2, "Orders");
+        assertDataPickerEntityNotSelected(2, "People");
+        assertDataPickerEntityNotSelected(2, "Products");
+        assertDataPickerEntityNotSelected(2, "Reviews");
       });
     });
   });

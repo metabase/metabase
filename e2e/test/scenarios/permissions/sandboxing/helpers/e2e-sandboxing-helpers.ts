@@ -367,6 +367,13 @@ export const configureSandboxPolicy = (
       name: /Filter by a column in the table/,
     }).should("be.checked");
   } else if (customViewName) {
+    // activity/recents invalidates the card cache, causing the component to refetch and show the loading spinner
+    // which makes this test flaky. so we'll return an error to prevent the invalidation
+    cy.intercept("POST", "/api/activity/recents", {
+      statusCode: 500,
+      body: { message: "Stubbed to prevent flaky test" },
+    }).as("activityRecents");
+
     cy.findByText(
       /Use a saved question to create a custom view for this table/,
     ).click();

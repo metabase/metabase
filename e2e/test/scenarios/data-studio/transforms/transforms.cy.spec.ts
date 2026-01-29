@@ -2231,7 +2231,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
@@ -2344,7 +2344,7 @@ LIMIT
           .click();
 
         H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
+          cy.findByText("Schema A").click();
           cy.findByText("Animals").click();
         });
 
