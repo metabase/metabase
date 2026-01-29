@@ -419,9 +419,7 @@ const SdkDashboardInner = ({
                   style={style}
                 >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
-                  <AutoRefreshController
-                    refreshPeriod={autoRefreshInterval ?? null}
-                  />
+                  <AutoRefreshController refreshPeriod={autoRefreshInterval} />
                 </SdkDashboardStyledWrapperWithRef>
               )}
             </SdkDashboardProvider>
@@ -541,7 +539,7 @@ function DashboardQueryBuilder({
 }
 
 interface AutoRefreshControllerProps {
-  refreshPeriod: RefreshPeriod;
+  refreshPeriod: RefreshPeriod | undefined;
 }
 function AutoRefreshController({ refreshPeriod }: AutoRefreshControllerProps) {
   const { onRefreshPeriodChange } = useDashboardContext();
