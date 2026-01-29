@@ -21,8 +21,7 @@
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
             [java.sql SQLException PreparedStatement]
-            [java.time LocalDate]
-            [java.util.concurrent Executors]))
+            [java.time LocalDate]))
 
 (set! *warn-on-reflection* true)
 
