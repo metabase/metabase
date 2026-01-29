@@ -84,8 +84,8 @@
    stage-number :- :int
    unit         :- ::lib.schema.temporal-bucketing/unit
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (let [temporal-bucket  (find-temporal-bucket query stage-number column unit)]
-    (lib.temporal-bucket/with-temporal-bucket column temporal-bucket)))
+  (->> (find-temporal-bucket query stage-number column unit)
+       (lib.temporal-bucket/with-temporal-bucket column)))
 
 (mu/defn- matches-bin-count-option? :- :boolean
   [bin-count      :- ::lib.schema.binning/num-bins
@@ -111,8 +111,8 @@
    stage-number :- :int
    bin-count    :- ::lib.schema.binning/num-bins
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (let [strategy (find-bin-count-strategy query stage-number bin-count column)]
-    (lib.binning/with-binning column strategy)))
+  (->> (find-bin-count-strategy query stage-number bin-count column)
+       (lib.binning/with-binning column)))
 
 (mu/defn- matches-bin-width-option? :- :boolean
   [bin-width      :- ::lib.schema.binning/bin-width
@@ -138,8 +138,8 @@
    stage-number :- :int
    bin-width    :- ::lib.schema.binning/bin-width
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (let [strategy (find-bin-width-strategy query stage-number bin-width column)]
-    (lib.binning/with-binning column strategy)))
+  (->> (find-bin-width-strategy query stage-number bin-width column)
+       (lib.binning/with-binning column)))
 
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query                         :- ::lib.schema/query
@@ -201,8 +201,8 @@
    stage-number         :- :int
    available-columns    :- [:sequential ::lib.schema.metadata/column]
    {:keys [name value]} :- ::lib.schema.query/test-named-expression-spec]
-  (let [expression-clause (expression-spec->expression-clause query stage-number available-columns value)]
-    (lib.expression/expression query stage-number name expression-clause)))
+  (->> (expression-spec->expression-clause query stage-number available-columns value)
+       (lib.expression/expression query stage-number name)))
 
 (mu/defn- append-expressions :- ::lib.schema/query
   [query             :- ::lib.schema/query
@@ -265,8 +265,8 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    filter-spec  :- ::lib.schema.query/test-expression-spec]
-  (let [filter-clause (expression-spec->expression-clause query stage-number (lib.filter/filterable-columns query stage-number) filter-spec)]
-    (lib.filter/filter query stage-number filter-clause)))
+  (->> (expression-spec->expression-clause query stage-number (lib.filter/filterable-columns query stage-number) filter-spec)
+       (lib.filter/filter query stage-number)))
 
 (mu/defn- append-filters :- ::lib.schema/query
   [query         :- ::lib.schema/query
@@ -280,8 +280,8 @@
   [query             :- ::lib.schema/query
    stage-number      :- :int
    aggregation-spec  :- ::lib.schema.query/test-aggregation-spec]
-  (let [aggregation-clause (expression-spec->expression-clause query stage-number (lib.aggregation/aggregable-columns query stage-number) aggregation-spec)]
-    (lib.aggregation/aggregate query stage-number aggregation-clause)))
+  (->> (expression-spec->expression-clause query stage-number (lib.aggregation/aggregable-columns query stage-number) aggregation-spec)
+       (lib.aggregation/aggregate query stage-number)))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
