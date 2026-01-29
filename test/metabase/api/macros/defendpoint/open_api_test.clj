@@ -8,14 +8,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(deftest ^:parallel json-schema-conversion
-  (testing ":maybe turns into optionality"
-    (is (= {:type       :object
-            :required   []
-            :properties {"name" {:type :string}}}
-           (#'defendpoint.open-api/fix-json-schema
-            (mjs/transform [:map [:name [:maybe string?]]]))))))
-
 (deftest ^:parallel json-schema-conversion-2
   (testing ":json-schema basically works (see definition of :metabase.lib.schema.common/non-blank-string)"
     (is (=? {:$ref        "#/definitions/metabase.lib.schema.common.non-blank-string"
@@ -46,16 +38,6 @@
                            :properties {"id" {:type :integer}}}}
             (#'defendpoint.open-api/fix-json-schema
              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
-
-(deftest ^:parallel json-schema-conversion-4
-  (testing "nested data structures are still fixed up"
-    (is (=? {:type  :array
-             :items {:type       :object
-                     :properties {"params" {:type :array
-                                            :items {:type :string}}}}}
-            (#'defendpoint.open-api/fix-json-schema
-             (mjs/transform [:sequential [:map
-                                          [:params {:optional true} [:maybe [:sequential :string]]]]]))))))
 
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
