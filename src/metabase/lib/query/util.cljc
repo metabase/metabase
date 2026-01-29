@@ -1,6 +1,7 @@
 (ns metabase.lib.query.util
   (:refer-clojure :exclude [mapv name])
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
@@ -171,7 +172,7 @@
      (expression-spec->expression-parts query
                                         stage-number
                                         available-columns
-                                        
+
                                         expression-spec))))
 
 (mu/defn- append-expression :- ::lib.schema/query
@@ -203,7 +204,6 @@
   (let [available-strategies (lib.join/available-join-strategies query stage-number)]
     (if-let [found-strategy (m/find-first #(= (:strategy %) strategy) available-strategies)]
       found-strategy
-      
       (throw (ex-info "No join strategy found" {:available-strategies available-strategies, :strategy strategy})))))
 
 (mu/defn- join-condition-spec->join-condition :- ::lib.schema.join/condition
