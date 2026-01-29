@@ -1,6 +1,5 @@
 (ns metabase.channel.impl.email
   (:require
-   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
@@ -234,7 +233,6 @@
                                                                   (let [email-handler-id (:notification_handler_id
                                                                                           (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
                                                                     (notification-unsubscribe-url-for-non-user email-handler-id non-user-email)))}))]
-    (pprint/pprint notification_card)
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
