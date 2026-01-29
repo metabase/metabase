@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -40,12 +41,21 @@
     ;; once we have more than just append, dispatch on :target-incremental-strategy
     :table-incremental {}))
 
+(defn- throw-if-db-routing-enabled [transform driver database]
+  (when (transforms.util/db-routing-enabled? database)
+    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                              (:name transform)
+                              (:name database))
+                    {:driver driver, :database database}))))
+
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
   ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
+           ;; important to test routing before calling compile-source (whose qp middleware will also throw)
+           _ (throw-if-db-routing-enabled transform driver database)
            transform-details {:db-id db
                               :database database
                               :transform-id   id
@@ -57,9 +67,6 @@
            opts (transform-opts transform-details)
            features (transforms.util/required-database-features transform)]
 
-       (when (transforms.util/db-routing-enabled? database)
-         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
-                         {:driver driver, :database database})))
        (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :features features})))
