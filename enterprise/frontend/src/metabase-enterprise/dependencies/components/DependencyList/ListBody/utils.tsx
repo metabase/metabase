@@ -25,7 +25,7 @@ function getNameColumn(
 ): TreeTableColumnDef<DependencyNode> {
   return {
     id: "name" satisfies DependencySortColumn,
-    header: mode === "broken" ? t`Dependency` : t`Name`,
+    header: mode === "breaking" ? t`Dependency` : t`Name`,
     minWidth: 100,
     enableSorting: true,
     accessorFn: (node) => getNodeLabel(node),
@@ -93,13 +93,13 @@ export function getColumns(
   return [
     getNameColumn(mode),
     getLocationColumn(),
-    ...(mode === "broken" ? [getDependentsErrorsColumn()] : []),
-    ...(mode === "broken" ? [getDependentsWithErrorsColumn()] : []),
+    ...(mode === "breaking" ? [getDependentsErrorsColumn()] : []),
+    ...(mode === "breaking" ? [getDependentsWithErrorsColumn()] : []),
   ];
 }
 
 export function getColumnWidths(mode: DependencyListMode): number[] {
-  if (mode === "broken") {
+  if (mode === "breaking") {
     return [0.3, 0.3, 0.3, 0.1];
   } else {
     return [0.5, 0.5];
@@ -134,7 +134,7 @@ export function getSortingOptions(
 }
 
 export function getNotFoundMessage(mode: DependencyListMode) {
-  return mode === "broken"
+  return mode === "breaking"
     ? t`No broken dependencies found`
     : t`No unreferenced entities found`;
 }
