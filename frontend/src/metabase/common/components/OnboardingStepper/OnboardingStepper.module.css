@@ -35,10 +35,25 @@
   background-color: var(--mb-color-background-primary);
 }
 
+.ActiveStepLabelCompleted {
+  border-color: var(--mb-color-border);
+  background-color: var(--mb-color-background-success);
+}
+
 .ActiveStepLabelText {
   color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
+}
+
+.ActiveStepLabelIcon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--mb-color-success);
+}
+
+.ActiveStepTitleCompleted {
+  color: var(--mb-color-text-secondary);
 }
 
 .ActiveStepContent {

@@ -37,10 +37,26 @@ export const OnboardingStepperStep = forwardRef(function OnboardingStepperStep(
           aria-current="step"
           data-testid={testId}
         >
-          <div className={S.ActiveStepLabel}>
-            <span className={S.ActiveStepLabelText}>{label}</span>
+          <div
+            className={cx(
+              S.ActiveStepLabel,
+              isCompleted && S.ActiveStepLabelCompleted,
+            )}
+          >
+            {isCompleted ? (
+              <Icon name="check" className={S.ActiveStepLabelIcon} />
+            ) : (
+              <span className={S.ActiveStepLabelText}>{label}</span>
+            )}
           </div>
-          <div className={S.ActiveStepTitle}>{title}</div>
+          <div
+            className={cx(
+              S.ActiveStepTitle,
+              isCompleted && S.ActiveStepTitleCompleted,
+            )}
+          >
+            {title}
+          </div>
           <div className={S.ActiveStepContent}>{children}</div>
         </Box>
       </ItemContext.Provider>
