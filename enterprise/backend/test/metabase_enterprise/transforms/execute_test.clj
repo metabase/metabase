@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
@@ -13,6 +14,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]
    [toucan2.util :as u]))
@@ -267,3 +269,94 @@
                  #"Transforms are not supported on databases with DB routing enabled."
                  (mt/with-current-user (mt/user->id :crowberto)
                    (transforms.execute/execute! transform {:run-method :manual}))))))))))
+
+(doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
+  (defmethod driver/database-supports? [driver ::sleep-query]
+    [_driver _feature _database]
+    true))
+
+(defmethod driver/database-supports? [:redshift ::sleep-query]
+  [_driver _feature _database]
+  false)
+
+(defmulti sleep-numbers-query
+  "Returns a query that will sleep for a few seconds and return a list of numbers."
+  {:arglists '([driver sleep-sec num])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sleep-numbers-query :postgres [_driver sleep-sec num]
+  (format "SELECT a FROM (SELECT pg_sleep(%d)) x, generate_series(1, %d) a;" sleep-sec num))
+
+(defmethod sleep-numbers-query :mysql [_driver sleep-sec num]
+  (format "SELECT a FROM (SELECT SLEEP(%d)) x, (%s) a;"
+          sleep-sec
+          (->> (range 1 (inc num))
+               (map #(str "SELECT " % " AS a"))
+               (str/join " UNION ALL "))))
+
+(defmethod sleep-numbers-query :clickhouse [_driver sleep-sec num]
+  (let [q (quot sleep-sec 3)
+        r (rem sleep-sec 3)
+        threes (repeat q "sleep(3)") ;; max time clickhouse can sleep at once is 3 seconds
+        parts (concat threes [(format "sleep(%d)" r)])
+        sleeps (str/join " + " parts)]
+    (format "SELECT number + 1 AS a FROM numbers(%d) WHERE %s = 0;" num sleeps)))
+
+(defmethod sleep-numbers-query :snowflake [_driver sleep-sec num]
+  (format "SELECT SEQ4() + 1 AS a FROM (SELECT SYSTEM$WAIT(%d)), TABLE(GENERATOR(ROWCOUNT => %d))" sleep-sec num))
+
+;; Bigquery doesn't have a generic sleep function so we can't set a specific sleep time.
+;; 110000 has been tested to take 5-10 seconds, adjust this value as needed.
+(defmethod sleep-numbers-query :bigquery-cloud-sdk [_driver _sleep-sec num]
+  (format  "SELECT s
+            FROM UNNEST(GENERATE_ARRAY(1, %d)) AS s
+            JOIN (
+                SELECT ARRAY_LENGTH(
+                    ARRAY(
+                        SELECT SUM(SQRT(x * y))
+                        FROM UNNEST(GENERATE_ARRAY(1, 110000)) AS x
+                        CROSS JOIN UNNEST(GENERATE_ARRAY(1, 1000)) AS y
+                    )
+                ) AS force_eval
+            ) ON force_eval = 1
+            ORDER BY s ASC;"
+           num))
+
+(deftest run-mbql-transform-long-running-transform-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table ::sleep-query]})
+    (with-transform-cleanup! [target-table {:type   :table
+                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                            :name   "sleep_table"}]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 5))
+            new-query (lib/native-query mp (sleep-numbers-query driver/*driver* 5 6))]
+        (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                   :source {:type  :query
+                                                            :query query}
+                                                   :target target-table}]
+          (transforms.execute/execute! transform {:run-method :manual})
+          (let [_ (transforms.tu/wait-for-table (:name target-table) 10000)
+                table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
+                transform-id (:id transform)
+                original-result [[1] [2] [3] [4] [5]]
+                query-fn (fn []
+                           (->> (lib/query mp table-result)
+                                (qp/process-query)
+                                (mt/formatted-rows [int])))]
+            (is (= original-result (query-fn)))
+            (let [transform-future (future
+                                     (t2/update! :model/Transform transform-id {:source {:type :query
+                                                                                         :query new-query}})
+                                     (let [new-transform (t2/select-one :model/Transform transform-id)]
+                                       (transforms.execute/execute! new-transform {:run-method :manual})))
+                  query-futures (vec
+                                 (for [i (range 10)]
+                                   (future
+                                     (Thread/sleep (* i 100))
+                                     (query-fn))))]
+              @transform-future
+              (let [query-results (map deref query-futures)]
+                (doseq [result query-results]
+                  (is (= original-result result))))
+              (is (= [[1] [2] [3] [4] [5] [6]] (query-fn))))))))))

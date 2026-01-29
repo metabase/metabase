@@ -822,3 +822,31 @@
                         {:macaw-error (:error result)}
                         (-> result :context :cause))))
     result))
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name that includes a portion of the original table name
+   and a random suffix for uniqueness. Respects driver's max table name length.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema
+   and the name is the original table name.
+
+   Format: <prefix>_<truncated_original_table>_<random_suffix>"
+  [driver table]
+  (let [schema              (some-> table namespace)
+        original-table-name (some-> table name)
+        max-len             (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
+        prefix              (str transform-temp-table-prefix "_")
+        suffix              (subs (str (random-uuid)) 0 8)
+        ;; +1 for separator between table portion and suffix
+        reserved            (+ (count prefix) (count suffix) 1)
+        available           (- max-len reserved)
+        table-portion       (when (and original-table-name (pos? available))
+                              (str (subs (str original-table-name)
+                                         0
+                                         (min available (count (str original-table-name))))
+                                   "_"))]
+    (keyword schema (str prefix table-portion suffix))))
