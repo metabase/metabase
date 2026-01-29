@@ -42,7 +42,9 @@ describe("Metabot Query Builder", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+      cy.intercept("POST", "/api/ee/metabot-v3/native-agent-streaming").as(
+        "agentReq",
+      );
     });
 
     it("should be able to successfully generate a notebook query", () => {

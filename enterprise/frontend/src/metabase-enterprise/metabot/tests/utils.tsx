@@ -42,7 +42,7 @@ import { getMetabotInitialState } from "../state/reducer-utils";
 export { createMockReadableStream, createPauses };
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
+  mockStreamedEndpoint("/api/ee/metabot-v3/native-agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
 export const chatMessages = () =>

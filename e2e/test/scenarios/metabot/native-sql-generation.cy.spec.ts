@@ -163,7 +163,7 @@ describe("Native SQL generation", () => {
         H.restore();
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
-        cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as(
+        cy.intercept("POST", "/api/ee/metabot-v3/native-agent-streaming").as(
           "agentReq",
         );
       });
@@ -258,7 +258,7 @@ describe("Native SQL generation", () => {
         H.restore("postgres-12");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
-        cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as(
+        cy.intercept("POST", "/api/ee/metabot-v3/native-agent-streaming").as(
           "agentReq",
         );
       });
