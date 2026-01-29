@@ -56,6 +56,7 @@
    [metabase.session.init]
    [metabase.settings.init]
    [metabase.setup.init]
+   [metabase.sql-tools.init]
    [metabase.sso.init]
    [metabase.store-api.init]
    [metabase.sync.init]
