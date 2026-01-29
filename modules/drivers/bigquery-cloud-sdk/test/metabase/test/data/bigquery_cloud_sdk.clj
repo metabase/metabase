@@ -39,6 +39,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; Dummy comment to trigger BigQuery CI tests
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
