@@ -1,7 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -102,7 +100,6 @@ interface SetupOpts {
   libraryCollection?: Collection | null;
   dirty?: any[];
   variant?: RemoteSyncSettingsFormProps["variant"];
-  loadPlugins?: ENTERPRISE_PLUGIN_NAME[];
 }
 
 export const setup = ({
@@ -116,7 +113,6 @@ export const setup = ({
   libraryCollection = null,
   dirty = [],
   variant,
-  loadPlugins = [],
 }: SetupOpts = {}) => {
   setupEndpoints({
     remoteSyncEnabled,
@@ -128,8 +124,6 @@ export const setup = ({
     libraryCollection,
     dirty,
   });
-
-  loadPlugins.forEach(setupEnterpriseOnlyPlugin);
 
   renderWithProviders(
     <RemoteSyncSettingsForm onCancel={onCancel} variant={variant} />,
