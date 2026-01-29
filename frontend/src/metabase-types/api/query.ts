@@ -488,7 +488,11 @@ export type BinCountSpec = {
   bins?: number;
 };
 
-type BinningSpec = TemporalBucketSpec | BinCountSpec;
+export type BinWidthSpec = {
+  binWidth?: number;
+};
+
+type BinningSpec = TemporalBucketSpec | BinCountSpec | BinWidthSpec;
 
 export type BreakoutSpec = ColumnSpec & BinningSpec;
 

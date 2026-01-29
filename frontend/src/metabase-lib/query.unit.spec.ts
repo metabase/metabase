@@ -205,6 +205,33 @@ describe("createTestQuery", () => {
         displayName: "Rating: 10 bins",
       });
     });
+
+    it("should create a query with breakouts with binning based on width", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PEOPLE_ID,
+            },
+            breakouts: [
+              {
+                type: "column",
+                name: "LATITUDE",
+                sourceName: "PEOPLE",
+                binWidth: 10,
+              },
+            ],
+          },
+        ],
+      });
+
+      const breakouts = Lib.breakouts(query, 0);
+      expect(breakouts).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, breakouts[0])).toMatchObject({
+        displayName: "Latitude: 10°",
+      });
+    });
   });
 
   describe("joins", () => {
