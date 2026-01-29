@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -5,6 +6,8 @@ import { Badge, Box, Card, Group, Stack, Title } from "metabase/ui";
 import type { DependencyNode, Field } from "metabase-types/api";
 
 import { getNodeFields, getNodeFieldsLabel } from "../../../../utils";
+
+import S from "./SidebarFieldsSection.module.css";
 
 type SidebarFieldsSectionProps = {
   node: DependencyNode;
@@ -38,9 +41,12 @@ type FieldListItemProps = {
 
 function FieldListItem({ field }: FieldListItemProps) {
   return (
-    <Stack gap="xs">
+    <Stack className={S.item} p="md" gap="xs">
       <Box className={CS.textWrap} lh="1rem">
         {field.display_name}
+      </Box>
+      <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="1rem">
+        {field.name}
       </Box>
     </Stack>
   );
