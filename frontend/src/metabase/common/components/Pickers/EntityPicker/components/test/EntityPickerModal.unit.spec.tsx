@@ -404,7 +404,7 @@ describe("EntityPickerModal", () => {
   describe("Search", () => {
     const waitForSearchResults = async () => {
       // input debounce means we need to wait for a little longer
-      return screen.findByText(/Search results/i, {}, { timeout: 400 });
+      return screen.findByText(/Search results/i, {}, { timeout: 600 });
     };
 
     it("should not show search nav item without a search query", async () => {

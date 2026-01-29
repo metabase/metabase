@@ -1,5 +1,4 @@
 import {
-  entityPickerModal,
   modal,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";

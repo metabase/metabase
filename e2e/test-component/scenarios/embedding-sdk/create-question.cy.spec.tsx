@@ -1,5 +1,4 @@
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
