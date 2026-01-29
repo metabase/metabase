@@ -20,7 +20,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql Connection SQLException PreparedStatement]
+            [java.sql SQLException PreparedStatement]
             [java.time LocalDate]
             [java.util.concurrent Executors]))
 
@@ -313,9 +313,6 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
-
-(defonce ^:private connection-abort-executor
-  (delay (Executors/newCachedThreadPool)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
