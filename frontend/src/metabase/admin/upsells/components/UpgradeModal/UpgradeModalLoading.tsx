@@ -79,7 +79,14 @@ export function UpgradeModalLoading({
       </Stack>
 
       <Flex justify="center" w="100%">
-        <Button variant="filled" color="brand" onClick={onDone}>
+        <Button
+          variant="filled"
+          color="brand"
+          onClick={() => {
+            onDone();
+            window.location.reload();
+          }}
+        >
           {t`Done`}
         </Button>
       </Flex>

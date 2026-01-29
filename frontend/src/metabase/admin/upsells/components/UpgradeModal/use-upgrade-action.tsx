@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 
@@ -29,8 +29,8 @@ export function useUpgradeAction({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const urlWithParams = useUpsellLink({ url, campaign, location });
 
-  const openModal = useCallback(() => setIsModalOpen(true), []);
-  const closeModal = useCallback(() => setIsModalOpen(false), []);
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   const shouldUseModal = isHosted && url === UPGRADE_URL;
 
