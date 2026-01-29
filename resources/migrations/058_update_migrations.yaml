@@ -1332,27 +1332,6 @@ databaseChangeLog:
               WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
 
   - changeSet:
-      id: v58.2026-01-27T13:00:00
-      author: wotbrew
-      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'copper' THEN 'hidden'
-                ELSE 'internal'
-              END
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'hidden' THEN 'copper'
-                ELSE 'bronze'
-              END
-
-  - changeSet:
       id: v58.2026-01-23T05:55:14
       author: johnswanson
       comment: Fix missing perm_value/perm_type/collection_id from v58.2026-01-09T12:00:01
@@ -1404,6 +1383,27 @@ databaseChangeLog:
                     AND p.object = '/collection/' || c.id || '/'
                     AND c.type IN ('library', 'library-data', 'library-metrics')
                 )
+
+  - changeSet:
+      id: v58.2026-01-27T13:00:00
+      author: wotbrew
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'copper' THEN 'hidden'
+                ELSE 'internal'
+              END
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'hidden' THEN 'copper'
+                ELSE 'bronze'
+              END
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
