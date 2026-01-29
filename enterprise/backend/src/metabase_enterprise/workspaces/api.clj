@@ -98,30 +98,23 @@
 
 (defn- workspace-service-user?
   "Check if the current user is the service user for the given workspace-id."
-  [workspace-id]
-  (and api/*current-user-id*
-       (t2/exists? :model/Workspace
-                   :id workspace-id
-                   :execution_user api/*current-user-id*)))
+  [workspace-id user-id]
+  (and user-id (t2/exists? :model/Workspace :id workspace-id :execution_user user-id)))
 
 (defn- any-workspace-service-user?
   "Check if the current user is a service user for ANY workspace."
-  []
-  (and api/*current-user-id*
-       (t2/exists? :model/Workspace
-                   :execution_user api/*current-user-id*)))
+  [user-id]
+  (and user-id (t2/exists? :model/Workspace :execution_user user-id)))
 
 (defn- check-workspace-access!
   "Check that the current user is either a superuser OR the workspace's service user."
   [workspace-id]
-  (api/check-403 (or api/*is-superuser?*
-                     (workspace-service-user? workspace-id))))
+  (api/check-403 (or api/*is-superuser?* (workspace-service-user? workspace-id api/*current-user-id*))))
 
 (defn- check-any-workspace-access!
   "Check that the current user is either a superuser OR a service user for any workspace."
   []
-  (api/check-403 (or api/*is-superuser?*
-                     (any-workspace-service-user?))))
+  (api/check-403 (or api/*is-superuser?* (any-workspace-service-user? api/*current-user-id*))))
 
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."

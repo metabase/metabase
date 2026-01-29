@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO: Authorization Test Matrix for Workspace Service User Access Control
+;; TODO: (Chris 2026-01-29) Authorization Test Matrix for Workspace Service User Access Control
 ;;
 ;; We need comprehensive tests for the new authorization model where:
 ;; - Superusers have access to all routes
@@ -112,7 +112,7 @@
 
     (testing "GET /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "")))))
+             (mt/user-http-request :rasta :get 403 (ws-url (:id workspace))))))
 
     (testing "POST /api/ee/workspace requires superuser"
       (is (= "You don't have permissions to do that."
@@ -121,12 +121,12 @@
 
     (testing "PUT /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
+             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
                                    {:name "Updated"}))))
 
     (testing "DELETE /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) "")))))
+             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace))))))
 
     (testing "POST /api/ee/workspace/:id/promote requires superuser"
       (is (= "You don't have permissions to do that."
@@ -835,7 +835,7 @@
     (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/transform")
-                                   {:name "blah", :source {}, :target {}}))))))
+                                   {:name "blah", :source {:type "query", :query {}}, :target {}}))))))
 
 (deftest create-workspace-transform-test
   (mt/dataset transforms-dataset/transforms-test
