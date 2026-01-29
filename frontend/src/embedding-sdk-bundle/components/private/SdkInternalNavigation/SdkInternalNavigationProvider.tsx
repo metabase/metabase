@@ -1,10 +1,10 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import {
   type CSSProperties,
   type ReactNode,
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
@@ -39,7 +39,12 @@ type Props = {
   className?: string;
 };
 
-export const SdkInternalNavigationProvider = ({
+/**
+ * Inner component that contains all hooks. This is rendered only when not nested.
+ * Separating this from the outer component fixes the React hooks rules violation
+ * where hooks were being called conditionally based on the nesting check.
+ */
+const SdkInternalNavigationProviderInner = ({
   style,
   className,
   children,
@@ -47,13 +52,8 @@ export const SdkInternalNavigationProvider = ({
   renderDrillThroughQuestion: RenderDrillThroughQuestion,
   drillThroughQuestionProps,
 }: Props) => {
-  const isNested = useContext(SdkInternalNavigationContext);
-  if (isNested) {
-    // TODO: fix conditional hooks
-    return children;
-  }
-
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
+  const isNavigatingRef = useRef(false);
 
   const push = useCallback((entry: SdkInternalNavigationEntry) => {
     setStack((prev) => [...prev, entry]);
@@ -97,25 +97,40 @@ export const SdkInternalNavigationProvider = ({
   // This is used when drilling from a question to another ad-hoc question
   const navigateToNewCard = useCallback(
     async (params: NavigateToNewCardParams) => {
-      const { nextCard } = params;
-      // Generate URL for the ad-hoc question
-      const url = Urls.question(null, { hash: nextCard });
-      const currentEntry = stack.at(-1);
+      // Prevent race conditions from rapid clicks
+      if (isNavigatingRef.current) {
+        console.warn(
+          "[SDK Navigation] Navigation already in progress, ignoring",
+        );
+        return;
+      }
+      isNavigatingRef.current = true;
 
-      // If we're already on an adhoc question, just update its path instead of pushing
-      // otherwise we'll have an entry for each filter change done from drills
-      if (currentEntry?.type === "adhoc-question") {
-        updateCurrentEntry(() => ({
-          type: "adhoc-question",
-          questionPath: url,
-          name: nextCard.name || t`Question`,
-        }));
-      } else {
-        push({
-          type: "adhoc-question",
-          questionPath: url,
-          name: nextCard.name || t`Question`,
-        });
+      try {
+        const { nextCard } = params;
+        // Generate URL for the ad-hoc question
+        const url = Urls.question(null, { hash: nextCard });
+        const currentEntry = stack.at(-1);
+
+        // If we're already on an adhoc question, just update its path instead of pushing
+        // otherwise we'll have an entry for each filter change done from drills
+        if (currentEntry?.type === "adhoc-question") {
+          updateCurrentEntry(() => ({
+            type: "adhoc-question",
+            questionPath: url,
+            name: nextCard.name || t`Question`,
+          }));
+        } else {
+          push({
+            type: "adhoc-question",
+            questionPath: url,
+            name: nextCard.name || t`Question`,
+          });
+        }
+      } catch (error) {
+        console.warn("[SDK Navigation] Failed to navigate to new card:", error);
+      } finally {
+        isNavigatingRef.current = false;
       }
     },
     [push, stack, updateCurrentEntry],
@@ -205,4 +220,19 @@ export const SdkInternalNavigationProvider = ({
       )}
     </SdkInternalNavigationContext.Provider>
   );
+};
+
+/**
+ * Outer component that handles the nesting check.
+ * If already inside a navigation provider, just render children directly.
+ * This pattern ensures hooks are always called consistently (not conditionally).
+ */
+export const SdkInternalNavigationProvider = (props: Props) => {
+  const isNested = useContext(SdkInternalNavigationContext);
+
+  if (isNested) {
+    return props.children;
+  }
+
+  return <SdkInternalNavigationProviderInner {...props} />;
 };

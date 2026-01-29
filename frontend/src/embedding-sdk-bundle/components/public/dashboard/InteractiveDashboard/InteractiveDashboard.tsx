@@ -88,8 +88,8 @@ export const InteractiveDashboardContent = (
       const dashboardId = props.dashboardId;
 
       if (dashboardId === null) {
-        console.error(
-          "dashboardId is null inside navigateToNewCardFromDashboard",
+        console.warn(
+          "[SDK Navigation] dashboardId is null in navigateToNewCardFromDashboard",
         );
         return;
       }

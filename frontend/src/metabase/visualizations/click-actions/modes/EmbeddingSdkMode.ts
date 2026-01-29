@@ -50,9 +50,14 @@ const getClickBehaviorTarget = (
     linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
   const target = entitiesMap?.[targetId];
 
-  return target
-    ? { type: linkType, id: target.id, name: target.name, parameters }
-    : null;
+  if (!target) {
+    console.warn(
+      `[SDK Navigation] Could not find ${linkType} with id ${targetId}`,
+    );
+    return null;
+  }
+
+  return { type: linkType, id: target.id, name: target.name, parameters };
 };
 
 type CreateEmbeddingSdkModeOptions = {
