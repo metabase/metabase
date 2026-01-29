@@ -22,7 +22,7 @@ export function getPageUrl(
   params: Urls.DependencyListParams,
 ): string {
   return mode === "breaking"
-    ? Urls.brokenDependencies(params)
+    ? Urls.breakingDependencies(params)
     : Urls.unreferencedDependencies(params);
 }
 

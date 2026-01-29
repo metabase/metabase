@@ -36,7 +36,7 @@ export function setupListGraphNodeDependentsEndpoint(nodes: DependencyNode[]) {
 export function setupListBreakingGraphNodesEndpoint(
   response: ListBreakingGraphNodesResponse,
 ) {
-  fetchMock.get("path:/api/ee/dependencies/graph/broken", response);
+  fetchMock.get("path:/api/ee/dependencies/graph/breaking", response);
 }
 
 export function setupListBrokenGraphNodesEndpoint(nodes: DependencyNode[]) {
