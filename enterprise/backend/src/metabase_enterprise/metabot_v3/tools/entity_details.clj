@@ -374,7 +374,9 @@
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
@@ -389,7 +391,9 @@
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
@@ -407,7 +411,9 @@
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn get-document-details
   "Get information about the document with ID `document-id`."

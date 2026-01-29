@@ -191,7 +191,9 @@
       (throw (ex-info (str "Invalid metric_id " metric-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- apply-aggregation-sort-order
   "If sort-order is specified, add an order-by clause for the last aggregation in the query."
@@ -296,7 +298,9 @@
       (throw (ex-info (str "Invalid model_id " model-id)
                       {:agent-error? true :status-code 400})))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- resolve-datasource
   "Resolve datasource parameters to [field-id-prefix base-query] tuple.
@@ -387,7 +391,9 @@
       (throw (ex-info "Either table_id or model_id must be provided"
                       {:agent-error? true :status-code 400})))
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- base-query
   [data-source]
