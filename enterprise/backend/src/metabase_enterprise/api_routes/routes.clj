@@ -52,6 +52,7 @@
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
+   :agent-api                  (deferred-tru "Agent API")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
@@ -90,7 +91,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             (premium-handler metabase-enterprise.metabot-v3.agent-api.api/routes :metabot-v3)
+  {"/agent"             (premium-handler metabase-enterprise.metabot-v3.agent-api.api/routes :agent-api)
    "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})

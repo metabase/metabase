@@ -1,3 +1,4 @@
+import { deriveChartShadeColor, deriveChartTintColor } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { METABASE_LIGHT_THEME } from "./constants/themes/light";
 import { deriveFullMetabaseTheme } from "./derive-theme";
@@ -83,5 +84,47 @@ describe("deriveFullMetabaseTheme", () => {
     expect(colors["accent0"]).toBe("#ff0000");
     expect(colors["accent0-light"]).toBe("#ff8888");
     expect(colors["accent0-dark"]).toBe("#880000");
+  });
+
+  it("applies whitelabel accent colors over the base theme", () => {
+    const derived = deriveFullMetabaseTheme({
+      colorScheme: "light",
+      whitelabelColors: {
+        accent0: "#ff0000",
+        "accent0-light": "#00ff00",
+        "accent0-dark": "#0000ff",
+        accent2: "#bada55",
+        "accent3-light": "#4B9CD3",
+      },
+    });
+
+    //accent 0 should use provided colors
+    expect(derived.colors["accent0"]).toBe("#ff0000");
+    expect(derived.colors["accent0-light"]).toBe("#00ff00");
+    expect(derived.colors["accent0-dark"]).toBe("#0000ff");
+
+    //accent 1 should be default
+    expect(derived.colors["accent1"]).toBe(METABASE_LIGHT_THEME.chartColors[1]);
+    expect(derived.colors["accent1-light"]).toBe(
+      deriveChartTintColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+    );
+    expect(derived.colors["accent1-dark"]).toBe(
+      deriveChartShadeColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+    );
+
+    //accent 2 should calculate light and dark from provided color
+    expect(derived.colors["accent2"]).toBe("#bada55");
+    expect(derived.colors["accent2-light"]).toBe(
+      deriveChartTintColor("#bada55"),
+    );
+    expect(derived.colors["accent2-dark"]).toBe(
+      deriveChartShadeColor("#bada55"),
+    );
+
+    //accent 3 should calculate base and dark from provided color
+    const base = deriveChartShadeColor("#4B9CD3");
+    expect(derived.colors["accent3"]).toBe(base);
+    expect(derived.colors["accent3-light"]).toBe("#4B9CD3");
+    expect(derived.colors["accent3-dark"]).toBe(deriveChartShadeColor(base));
   });
 });

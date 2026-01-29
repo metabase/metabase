@@ -16,6 +16,7 @@ export * from "./constants";
 export * from "./dashboard";
 export * from "./data-studio";
 export * from "./database";
+export * from "./dependencies";
 export * from "./dataset";
 export * from "./document";
 export * from "./email";

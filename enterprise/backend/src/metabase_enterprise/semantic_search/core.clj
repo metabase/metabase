@@ -79,8 +79,12 @@
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take total-limit deduped-results)))))
     (catch Exception e
-      (log/error e "Error executing semantic search")
-      (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
+      (log/error e "Error executing semantic search, falling back to appdb")
+      (let [fallback (fallback-engine)]
+        (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
+        (if fallback
+          (search.engine/results (assoc search-ctx :search-engine fallback))
+          (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."

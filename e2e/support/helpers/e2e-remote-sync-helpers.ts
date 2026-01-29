@@ -45,12 +45,14 @@ export const commitToRepo = (
 export function configureGit(
   syncType: "read-write" | "read-only",
   syncUrl = LOCAL_GIT_PATH + "/.git",
+  collections?: Record<number, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
     "remote-sync-url": syncUrl,
     "remote-sync-enabled": true,
+    ...(collections && { collections }),
   });
 }
 
@@ -69,6 +71,21 @@ export function configureGitAndPullChanges(
     cy.request("POST", "/api/ee/remote-sync/import", {});
     pollForTask({ taskName: "import" });
   }
+}
+
+// Setup remote sync with a new synced collection in one step
+export function configureGitWithNewSyncedCollection(
+  syncType: "read-write" | "read-only",
+  collectionName = "Test Synced Collection",
+  syncUrl = LOCAL_GIT_PATH + "/.git",
+) {
+  return cy
+    .request("POST", "/api/collection", { name: collectionName })
+    .then((response) => {
+      const collection = response.body;
+      configureGit(syncType, syncUrl, { [collection.id]: true });
+      return cy.wrap(collection);
+    });
 }
 
 // Prepare the local git repo and initializing with an empty commit
@@ -153,7 +170,10 @@ export const updateRemoteQuestion = (
   });
 };
 
-export const moveCollectionItemToSyncedCollection = (name: string) => {
+export const moveCollectionItemToSyncedCollection = (
+  name: string,
+  targetCollection = "Synced Collection",
+) => {
   navigationSidebar()
     .findByRole("treeitem", { name: /Our analytics/ })
     .click();
@@ -163,21 +183,24 @@ export const moveCollectionItemToSyncedCollection = (name: string) => {
 
   entityPickerModal().within(() => {
     cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
-    entityPickerModalItem(1, "Synced Collection").click();
+    entityPickerModalItem(1, targetCollection).click();
     cy.button("Move").click();
   });
 
   getSyncStatusIndicators().should("have.length", 1);
 
   navigationSidebar()
-    .findByRole("treeitem", { name: /Synced Collection/ })
+    .findByRole("treeitem", { name: new RegExp(targetCollection) })
     .click();
   collectionTable().findByText(name).should("exist");
 };
 
-export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
+export const goToSyncedCollection = (
+  collectionName = "Synced Collection",
+  opts?: Partial<Cypress.ClickOptions>,
+) =>
   navigationSidebar()
-    .findByRole("treeitem", { name: /Synced Collection/ })
+    .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
 // Git sync controls are now in the app bar, not the sidebar

@@ -1,4 +1,8 @@
-import { embedModalEnableEmbeddingCard } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  embedModalEnableEmbeddingCard,
+  openSharingMenu,
+} from "e2e/support/helpers";
 
 import { getEmbedSidebar } from "./helpers";
 
@@ -27,142 +31,162 @@ const DATA_BY_EMBEDDING_TYPE = {
   },
 } as const;
 
-Object.entries(DATA_BY_EMBEDDING_TYPE).forEach(([key, value]) => {
-  describe(`scenarios > embedding > sdk iframe embed setup > enable embed js (EE) > ${key}`, () => {
-    const {
-      path,
-      token,
-      authMethodLabel,
-      embeddingSettingName,
-      showTermsSettingName,
-      cardTestId,
-      cardText,
-    } = value;
+describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
 
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+    H.mockEmbedJsToDevServer();
+  });
 
-      if (token) {
-        H.activateToken(token);
-      }
+  Object.entries(DATA_BY_EMBEDDING_TYPE).forEach(([key, value]) => {
+    describe(key, () => {
+      const {
+        path,
+        token,
+        authMethodLabel,
+        embeddingSettingName,
+        showTermsSettingName,
+        cardTestId,
+        cardText,
+      } = value;
 
-      H.mockEmbedJsToDevServer();
-    });
-
-    it("shows the Enable to Continue button and enables embedding on click", () => {
-      H.updateSetting(embeddingSettingName, false);
-      H.updateSetting(showTermsSettingName, true);
-
-      cy.visit(path);
-
-      cy.findAllByTestId(cardTestId)
-        .first()
-        .within(() => {
-          cy.findByText("New embed").click();
-        });
-
-      cy.findByLabelText(authMethodLabel).click();
-
-      embedModalEnableEmbeddingCard().within(() => {
-        cy.findByText(cardText).should("exist");
+      beforeEach(() => {
+        if (token) {
+          H.activateToken(token);
+        }
       });
 
-      cy.log("shows tooltip with fair usage info");
-      embedModalEnableEmbeddingCard()
-        .findByLabelText("info icon")
-        .trigger("mouseover");
+      it("shows the Enable to Continue button and enables embedding on click", () => {
+        H.updateSetting(embeddingSettingName, false);
+        H.updateSetting(showTermsSettingName, true);
 
-      H.hovercard()
-        .contains(
-          /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
-        )
-        .should("be.visible");
+        cy.visit(path);
 
-      embedModalEnableEmbeddingCard()
-        .findByLabelText("info icon")
-        .trigger("mouseout");
+        cy.findAllByTestId(cardTestId)
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
 
-      cy.findByRole("button", { name: "Agree and enable" }).should(
-        "be.visible",
-      );
+        cy.findByLabelText(authMethodLabel).click();
 
-      cy.log("preview panel should show placeholder");
-      cy.get('[alt="No results"]').should("be.visible");
+        embedModalEnableEmbeddingCard().within(() => {
+          cy.findByText(cardText).should("exist");
+        });
 
-      cy.findByRole("button", { name: "Agree and enable" }).click();
+        cy.log("shows tooltip with fair usage info");
+        embedModalEnableEmbeddingCard()
+          .findByLabelText("info icon")
+          .trigger("mouseover");
 
-      cy.log("button should change to Enabled state");
-      cy.findByRole("button", { name: /Enabled/ })
-        .should("be.visible")
-        .should("be.disabled");
+        H.hovercard()
+          .contains(
+            /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
+          )
+          .should("be.visible");
 
-      // Going to the next step and selecting "Orders in a dashboard" explicitely
-      // because sometimes it selects another one that's been used recently
-      // see EMB-1106
-      cy.log("Navigating to embed flow step 2 and selecting an item to embed");
-      cy.findByRole("button", { name: "Next" }).click();
-      cy.get('[data-testid="embed-recent-item-card"]')
-        .should("have.length.greaterThan", 0)
-        .contains("Orders in a dashboard")
-        .click();
+        embedModalEnableEmbeddingCard()
+          .findByLabelText("info icon")
+          .trigger("mouseout");
 
-      cy.log("Preview should load after embedding is enabled");
-      H.waitForSimpleEmbedIframesToLoad();
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders in a dashboard", { timeout: 60_000 }).should(
+        cy.findByRole("button", { name: "Agree and enable" }).should(
           "be.visible",
         );
-      });
-    });
 
-    it("shows the enable card with fair usage terms when embedding is already enabled", () => {
-      H.updateSetting(embeddingSettingName, true);
-      H.updateSetting(showTermsSettingName, true);
+        cy.log("preview panel should show placeholder");
+        cy.get('[alt="No results"]').should("be.visible");
 
-      cy.visit(path);
+        cy.findByRole("button", { name: "Agree and enable" }).click();
 
-      cy.findAllByTestId(cardTestId)
-        .first()
-        .within(() => {
-          cy.findByText("New embed").click();
-        });
+        cy.log("button should change to Enabled state");
+        cy.findByRole("button", { name: /Enabled/ })
+          .should("be.visible")
+          .should("be.disabled");
 
-      cy.findByLabelText(authMethodLabel).click();
-
-      embedModalEnableEmbeddingCard().within(() => {
-        cy.findByText("Agree to the usage conditions to continue.").should(
-          "exist",
+        // Going to the next step and selecting "Orders in a dashboard" explicitely
+        // because sometimes it selects another one that's been used recently
+        // see EMB-1106
+        cy.log(
+          "Navigating to embed flow step 2 and selecting an item to embed",
         );
+        cy.findByRole("button", { name: "Next" }).click();
+        cy.get('[data-testid="embed-recent-item-card"]')
+          .should("have.length.greaterThan", 0)
+          .contains("Orders in a dashboard")
+          .click();
 
-        cy.findByText(cardText).should("not.exist");
+        cy.log("Preview should load after embedding is enabled");
+        H.waitForSimpleEmbedIframesToLoad();
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Orders in a dashboard", { timeout: 60_000 }).should(
+            "be.visible",
+          );
+        });
       });
 
-      cy.log("shows tooltip with fair usage info");
-      getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
+      it("shows the enable card with fair usage terms when embedding is already enabled", () => {
+        H.updateSetting(embeddingSettingName, true);
+        H.updateSetting(showTermsSettingName, true);
 
-      H.hovercard()
-        .contains(
-          /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
-        )
-        .should("be.visible");
-    });
+        cy.visit(path);
 
-    it("hides the enable card when embedding is already enabled", () => {
-      H.updateSetting(embeddingSettingName, true);
-      H.updateSetting(showTermsSettingName, false);
+        cy.findAllByTestId(cardTestId)
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
 
-      cy.visit(path);
+        cy.findByLabelText(authMethodLabel).click();
 
-      cy.findAllByTestId(cardTestId)
-        .first()
-        .within(() => {
-          cy.findByText("New embed").click();
+        embedModalEnableEmbeddingCard().within(() => {
+          cy.findByText("Agree to the usage conditions to continue.").should(
+            "exist",
+          );
+
+          cy.findByText(cardText).should("not.exist");
         });
 
-      cy.findByLabelText(authMethodLabel).click();
+        cy.log("shows tooltip with fair usage info");
+        getEmbedSidebar().findByLabelText("info icon").trigger("mouseover");
 
-      getEmbedSidebar().contains(cardText).should("not.exist");
+        H.hovercard()
+          .contains(
+            /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
+          )
+          .should("be.visible");
+      });
+
+      it("hides the enable card when embedding is already enabled", () => {
+        H.updateSetting(embeddingSettingName, true);
+        H.updateSetting(showTermsSettingName, false);
+
+        cy.visit(path);
+
+        cy.findAllByTestId(cardTestId)
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+
+        cy.findByLabelText(authMethodLabel).click();
+
+        getEmbedSidebar().contains(cardText).should("not.exist");
+      });
     });
+  });
+
+  it("shows guest embed status bar when guest embedding is toggled from disabled to enabled state", () => {
+    H.updateSetting("enable-embedding-static", false);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    openSharingMenu("Embed");
+
+    cy.findByTestId("embed-modal-content-status-bar").should("not.exist");
+
+    cy.findByRole("button", { name: "Agree and enable" }).click();
+
+    cy.findByTestId("embed-modal-content-status-bar").should("exist");
   });
 });

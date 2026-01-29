@@ -357,6 +357,9 @@
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
                         :labels [:fallback-engine]})
+   (prometheus/counter :metabase-search/semantic-error-fallback
+                       {:description "Number of times semantic search failed with an error and fell back to another engine"
+                        :labels [:fallback-engine]})
    (prometheus/histogram :metabase-search/semantic-results-before-fallback
                          {:description "Distribution of result counts from semantic search when fallback is triggered"
                           :buckets [0 1 5 10 20 50 100]})
