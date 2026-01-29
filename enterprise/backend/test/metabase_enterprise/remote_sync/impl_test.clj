@@ -1061,7 +1061,7 @@
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id "auto-enable-lib-xxxxx"
                 test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
-                                    (format "path: common.py
+                                    (format "path: uncommon.py
 source: |
   # shared code
   def shared_func():
@@ -1076,7 +1076,7 @@ serdes/meta:
             (is (false? (remote-sync.settings/remote-sync-transforms))
                 "remote-sync-transforms should be initially disabled")
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status #p result))
+              (is (= :success (:status result))
                   "Import should succeed")
               (is (true? (remote-sync.settings/remote-sync-transforms))
                   "remote-sync-transforms should be auto-enabled after successful import with python-libraries"))))))))
