@@ -669,7 +669,7 @@ export function ensureParameterColumnValue({ columnName, columnValue }) {
 }
 
 export function getProfileLink() {
-  return cy.findByRole("button", { name: "Settings" });
+  return cy.findByTestId("app-switcher-target");
 }
 
 export const mainAppLinkText = "Main app";
