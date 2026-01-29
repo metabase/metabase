@@ -28,59 +28,45 @@
 
 ;; TODO: (Chris 2026-01-29) Authorization Test Matrix for Workspace Service User Access Control
 ;;
-;; We need comprehensive tests for the new authorization model where:
-;; - Superusers have access to all routes
-;; - Workspace service users (execution_user) have access to their own workspace's "safe" routes
-;; - Regular users should get 403 on all routes
-;; - Unauthenticated users should get 401 on all routes
+;; Authorization is handled by the +authorize middleware which reads {:access ...} from route metadata.
+;; Routes default to :admin (superuser-only). Routes with {:access :workspace} allow service users.
 ;;
-;; Test Matrix:
+;; Access patterns:
+;;   :admin     -> superuser: 200, all others: 403, unauth: 401
+;;   :workspace -> superuser: 200, own service user: 200, other service user: 403, regular: 403, unauth: 401
 ;;
-;; | Route                                    | Superuser | Service User (own ws) | Service User (other ws) | Regular User | Unauth |
-;; |------------------------------------------|-----------|----------------------|-------------------------|--------------|--------|
-;; | SUPERUSER-ONLY ROUTES:                   |           |                      |                         |              |        |
-;; | GET /                                    | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /                                   | 200       | 403                  | 403                     | 403          | 401    |
-;; | GET /enabled                             | 200       | 403                  | 403                     | 403          | 401    |
-;; | GET /database                            | 200       | 403                  | 403                     | 403          | 401    |
-;; | PUT /:ws-id                              | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/archive                     | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/unarchive                   | 200       | 403                  | 403                     | 403          | 401    |
-;; | DELETE /:ws-id                           | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/merge                       | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/:tx-id/merge      | 200       | 403                  | 403                     | 403          | 401    |
-;; | POST /test-resources                     | 200       | 403                  | 403                     | 403          | 401    |
-;; |------------------------------------------|-----------|----------------------|-------------------------|--------------|--------|
-;; | SERVICE USER OR SUPERUSER ROUTES:        |           |                      |                         |              |        |
-;; | GET /:ws-id                              | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/table                        | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/log                          | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/graph                        | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/problem                      | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/external/transform           | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/transform                    | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /:ws-id/transform/:tx-id             | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform                   | 200       | 200                  | 403                     | 403          | 401    |
-;; | PUT /:ws-id/transform/:tx-id             | 200       | 200                  | 403                     | 403          | 401    |
-;; | DELETE /:ws-id/transform/:tx-id          | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/:tx-id/archive    | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/:tx-id/unarchive  | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/run                         | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/:tx-id/run        | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/:tx-id/dry-run    | 200       | 200                  | 403                     | 403          | 401    |
-;; | POST /:ws-id/transform/validate/target   | 200       | 200                  | 403                     | 403          | 401    |
-;; | GET /checkout                            | 200       | 200                  | 200                     | 403          | 401    |
+;; Admin-only routes (no metadata):
+;;   GET    /
+;;   POST   /
+;;   GET    /enabled
+;;   GET    /database
+;;   GET    /checkout
+;;   PUT    /:ws-id
+;;   POST   /:ws-id/archive
+;;   POST   /:ws-id/unarchive
+;;   DELETE /:ws-id
+;;   POST   /:ws-id/merge
+;;   POST   /:ws-id/transform/:tx-id/merge
+;;   POST   /test-resources
 ;;
-;; Implementation approach:
-;; 1. Create test fixtures that set up:
-;;    - A workspace with a known service user (execution_user)
-;;    - Test transforms within that workspace
-;; 2. For each route category, test with:
-;;    - mt/user-http-request :crowberto (superuser) -> expect success
-;;    - Binding api/*current-user-id* to workspace's execution_user -> expect success for service-user routes
-;;    - Binding api/*current-user-id* to a different workspace's execution_user -> expect 403
-;;    - mt/user-http-request :rasta (regular user) -> expect 403
-;;    - Anonymous request -> expect 401
+;; Workspace service user routes ({:access :workspace}):
+;;   GET    /:ws-id
+;;   GET    /:ws-id/table
+;;   GET    /:ws-id/log
+;;   GET    /:ws-id/graph
+;;   GET    /:ws-id/problem
+;;   GET    /:ws-id/external/transform
+;;   GET    /:ws-id/transform
+;;   POST   /:ws-id/transform
+;;   GET    /:ws-id/transform/:tx-id
+;;   PUT    /:ws-id/transform/:tx-id
+;;   DELETE /:ws-id/transform/:tx-id
+;;   POST   /:ws-id/transform/:tx-id/archive
+;;   POST   /:ws-id/transform/:tx-id/unarchive
+;;   POST   /:ws-id/run
+;;   POST   /:ws-id/transform/:tx-id/run
+;;   POST   /:ws-id/transform/:tx-id/dry-run
+;;   POST   /:ws-id/transform/validate/target
 
 (ws.tu/ws-fixtures!)
 
