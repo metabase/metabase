@@ -363,4 +363,6 @@
   [driver database]
   (merge
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
+   ;; This is to work around 68674 where connections are being poisoned with bad roles
    {"preferredTestQuery" "SELECT 1"}))
