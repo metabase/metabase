@@ -205,20 +205,36 @@
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
 
+(defn- accumulating-xf
+  "Transducer that passes all parts through while accumulating them into an atom.
+  Used to stream parts immediately while also collecting them for later processing."
+  [parts-atom]
+  (map (fn [part]
+         (swap! parts-atom conj part)
+         part)))
+
 (defn- loop-step
-  "Execute one iteration of the agent loop. Returns next loop state."
+  "Execute one iteration of the agent loop. Returns next loop state.
+
+  Streams parts to the consumer as they arrive while simultaneously accumulating
+  them for memory updates and control flow decisions."
   [{:keys [agent rf result iteration] :as loop-state}]
   (let [{:keys [memory-atom context profile tools]} agent
-        max-iter (:max-iterations profile 10)
-        parts    (into [] (call-llm @memory-atom context profile tools))]
+        max-iter   (:max-iterations profile 10)
+        parts-atom (atom [])
+        ;; Compose: post-process for streaming output, accumulate for later decisions
+        xf         (comp (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
+                                                    (get-in @memory-atom [:state :charts] {}))
+                         (accumulating-xf parts-atom))
+        ;; Stream parts to consumer AND accumulate them simultaneously
+        result'    (transduce xf rf result (call-llm @memory-atom context profile tools))
+        parts      @parts-atom]
     (log/debug "Iteration" {:n iteration})
     (if (empty? parts)
       (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
-      (let [_       (do (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
-                        (swap! memory-atom update-memory parts))
-            xf      (streaming/post-process-xf (get-in @memory-atom [:state :queries] {})
-                                               (get-in @memory-atom [:state :charts] {}))
-            result' (reduce rf result (eduction xf parts))]
+      (do
+        (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
+        (swap! memory-atom update-memory parts)
         (cond
           (reduced? result')
           (assoc loop-state :status :reduced :result @result')
