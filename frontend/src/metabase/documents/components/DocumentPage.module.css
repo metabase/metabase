@@ -104,3 +104,19 @@
   gap: 0.25rem;
   color: var(--mb-color-text-secondary);
 }
+
+.highlighted {
+  animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: var(--mb-color-background-highlight);
+    box-shadow: 0 0 0 4px var(--mb-color-background-highlight);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
