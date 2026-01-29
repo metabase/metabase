@@ -14,7 +14,7 @@
 
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  ['driver 'enterprise/transforms 'query-processor])
+  ['driver 'enterprise/transforms])
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -346,7 +346,8 @@
   [driver
    {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
    driver-deps-affected?
-   quarantined-drivers]
+   quarantined-drivers
+   updated]
   (cond
     ;; Priority 1: Global skip (no backend changes)
     skip
@@ -387,7 +388,9 @@
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
     ;; Priority 7: Cloud driver, no relevant changes
-    (contains? cloud-drivers driver)
+    (and (contains? cloud-drivers driver)
+         (or (contains? updated 'query-processor)
+             (contains? particular-driver-changed? driver)))
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
@@ -433,7 +436,7 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
+                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
                                  :driver driver))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
