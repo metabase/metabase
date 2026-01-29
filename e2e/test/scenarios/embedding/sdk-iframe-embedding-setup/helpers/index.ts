@@ -132,7 +132,7 @@ export const navigateToEntitySelectionStep = (
     });
 
     entityPickerModal().within(() => {
-      cy.findByText(resourceType).click();
+      cy.findByText("Our analytics").click();
       cy.findAllByText(options.resourceName).first().click();
 
       // Collection picker requires an explicit confirmation.

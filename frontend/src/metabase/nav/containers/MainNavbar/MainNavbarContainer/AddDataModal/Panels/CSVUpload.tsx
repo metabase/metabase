@@ -15,9 +15,9 @@ import { getComposedDragProps } from "metabase/collections/components/Collection
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import {
-  type CollectionPickerItem,
   CollectionPickerModal,
-} from "metabase/common/components/Pickers/CollectionPicker";
+  type OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import { UploadInput } from "metabase/common/components/upload";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -66,7 +66,7 @@ export const CSVUpload = ({
   );
 
   const handleCollectionChange = useCallback(
-    (item: CollectionPickerItem) => {
+    (item: OmniPickerItem) => {
       // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
       // In case anything ever changes in the picker, we want to ignore it in this handler.
       if (item.model !== "collection") {
@@ -294,18 +294,12 @@ export const CSVUpload = ({
           onChange={handleCollectionChange}
           onClose={() => closeCollectionPicker()}
           options={{
-            showPersonalCollections: true,
-            showRootCollection: true,
-            showSearch: true,
+            hasPersonalCollections: true,
+            hasRootCollection: true,
+            hasSearch: true,
             confirmButtonText: t`Select this collection`,
           }}
-          models={["collection"]}
           entityType="dataset"
-          recentFilter={(items) =>
-            items.filter((item) => {
-              return item.model !== "table" && item.can_write;
-            })
-          }
         />
       )}
     </>

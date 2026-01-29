@@ -948,7 +948,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.modal().findByText("Select a question").click();
 
-      H.entityPickerModal().findByText(QUESTION_NAME).click();
+      H.pickEntity({ path: ["Our analytics", QUESTION_NAME], select: true });
       H.modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);

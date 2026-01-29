@@ -96,7 +96,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "indexed-entity"
     | "snippet"
     | "document"
-    | "table";
+    | "table"
+    | "transform";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{

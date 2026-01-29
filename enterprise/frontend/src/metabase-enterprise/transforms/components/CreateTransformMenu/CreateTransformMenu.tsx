@@ -115,12 +115,10 @@ export const CreateTransformMenu = () => {
         <QuestionPickerModal
           title={t`Pick a question or a model`}
           models={["card", "dataset"]}
-          shouldDisableItem={(item) => shouldDisableItem(item, databases?.data)}
+          isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            if (item.model === "card") {
-              dispatch(push(Urls.newTransformFromCard(item.id)));
-              closePicker();
-            }
+            dispatch(push(Urls.newTransformFromCard(item.id)));
+            closePicker();
           }}
           onClose={closePicker}
         />

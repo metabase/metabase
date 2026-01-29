@@ -16,7 +16,7 @@ import { t } from "ttag";
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import {

@@ -4,8 +4,8 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { TransformPicker } from "./components/TransformPicker";
 import { getDataStudioTransformRoutes } from "./routes";
+import { getRootCollectionItem } from "./utils";
 
 /**
  * Initialize transforms plugin features.
@@ -24,7 +24,7 @@ export function initializePlugin() {
     PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
-    PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
     PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
+    PLUGIN_TRANSFORMS.getRootCollectionItem = getRootCollectionItem;
   }
 }

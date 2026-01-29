@@ -2,7 +2,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import { useDispatch } from "metabase/lib/redux";
 import type { TableId } from "metabase-types/api";
 
@@ -28,14 +27,13 @@ export const EmbeddingHubXrayPickerModal = ({
   return (
     <DataPickerModal
       title={t`Choose a table to generate a dashboard`}
-      value={{ model: "table", id: null } as unknown as TablePickerValue}
       models={["table"]}
       onChange={handleTableSelect}
       onClose={onClose}
       options={{
-        showLibrary: false,
-        showRootCollection: false,
-        showPersonalCollections: false,
+        hasLibrary: false,
+        hasRootCollection: false,
+        hasPersonalCollections: false,
       }}
     />
   );

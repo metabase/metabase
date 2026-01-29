@@ -10,7 +10,13 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
@@ -31,6 +37,7 @@ import { EmbeddingHub } from "./EmbeddingHub";
 const mockPush = push as jest.MockedFunction<typeof push>;
 
 const setup = ({ isAdmin = true, checklist = {} } = {}) => {
+  mockGetBoundingClientRect();
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
@@ -101,7 +108,7 @@ describe("EmbeddingHub", () => {
   it("opens table picker when 'Create a dashboard' is clicked", async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Create a dashboard"));
+    await userEvent.click(await screen.findByText("Create a dashboard"));
 
     const dialog = await screen.findByTestId("entity-picker-modal");
     expect(dialog).toBeInTheDocument();
@@ -110,7 +117,7 @@ describe("EmbeddingHub", () => {
       await within(dialog).findByText("Choose a table to generate a dashboard"),
     ).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByText("Recents"));
+    await userEvent.click(await screen.findByText("Recent items"));
 
     expect(
       await within(dialog).findByText("Foo Bar Table"),

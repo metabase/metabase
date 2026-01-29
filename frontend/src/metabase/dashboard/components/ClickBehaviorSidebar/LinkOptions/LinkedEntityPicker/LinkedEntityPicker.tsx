@@ -36,6 +36,7 @@ import { SidebarItem } from "../../SidebarItem";
 import S from "../LinkOptions.module.css";
 
 const LINK_TARGETS = {
+  // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
     Entity: Questions,
     PickerComponent: QuestionPickerModal,
@@ -309,8 +310,8 @@ export function LinkedEntityPicker({
           }}
           onClose={() => setIsPickerOpen(false)}
           options={{
-            showPersonalCollections: filterPersonalCollections !== "exclude",
-            showRootCollection: true,
+            hasPersonalCollections: filterPersonalCollections !== "exclude",
+            hasRootCollection: true,
             hasConfirmButtons: false,
           }}
         />

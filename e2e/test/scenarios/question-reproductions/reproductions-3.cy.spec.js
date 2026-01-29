@@ -1535,6 +1535,7 @@ describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     H.restore("postgres-12");
     cy.signInAsAdmin();
   });
@@ -1562,11 +1563,16 @@ describe("issue 44974", { tags: "@external" }, () => {
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
 
+      cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("not.exist");
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders Model").should("be.visible");
-        cy.findByText(questionDetails.name).should("not.exist");
+        H.entityPickerModalItem(1, questionDetails.name).should(
+          "have.attr",
+          "data-disabled",
+          "true",
+        );
         cy.button("Close").click();
       });
     });
@@ -2309,7 +2315,10 @@ describe("issue 48829", () => {
       cy.findByText("Saved question").click();
     });
 
-    H.entityPickerModal().findByText(questionDetails.name).click();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText(questionDetails.name).click();
+    });
     H.sidebar().findByTestId("click-mappings").findByText("Title").click();
     H.popover().findByText("Title").click();
     H.saveDashboard();

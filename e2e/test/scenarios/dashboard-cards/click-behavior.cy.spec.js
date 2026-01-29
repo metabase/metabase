@@ -2734,7 +2734,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByText("Saved question").click();
     });
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Questions").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("click-mappings").findByText("Product ID").click();
@@ -2776,10 +2775,7 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Dashboards/ })
-    .click();
-  H.entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
+  H.pickEntity({ path: ["Our analytics", TARGET_DASHBOARD.name] });
 };
 
 const addUrlDestination = () => {
@@ -2790,9 +2786,6 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
   H.entityPickerModal().findByText(TARGET_QUESTION.name).click();
 };
 

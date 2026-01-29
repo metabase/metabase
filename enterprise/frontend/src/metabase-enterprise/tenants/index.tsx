@@ -25,12 +25,10 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import type { TenantCollectionPathItem } from "metabase/plugins/oss/tenants";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -53,73 +51,18 @@ import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
 import { TenantsListingApp } from "./containers/TenantsListingApp";
 import {
+  SHARED_TENANT_NAMESPACE,
+  TENANT_SPECIFIC_NAMESPACE,
+} from "./utils/constants";
+import {
+  canPlaceEntityInCollection,
+  getNamespaceDisplayName,
+  getRootCollectionItem,
   isExternalUser,
   isExternalUsersGroup,
   isTenantCollection,
   isTenantGroup,
 } from "./utils/utils";
-
-const SHARED_TENANT_NAMESPACE: CollectionNamespace = "shared-tenant-collection";
-
-const isTenantNamespace = (namespace?: CollectionNamespace): boolean => {
-  return (
-    namespace === SHARED_TENANT_NAMESPACE || namespace === "tenant-specific"
-  );
-};
-
-const isTenantCollectionId = (id: CollectionId): boolean => {
-  return id === "tenant" || id === "tenant-specific";
-};
-
-const getNamespaceForTenantId = (id: CollectionId): CollectionNamespace => {
-  if (id === "tenant") {
-    return SHARED_TENANT_NAMESPACE;
-  }
-  return null;
-};
-
-const getTenantCollectionPathPrefix = (
-  collection: TenantCollectionPathItem,
-): CollectionId[] | null => {
-  if (collection.id === "tenant") {
-    return ["tenant"];
-  }
-  if (collection.id === "tenant-specific") {
-    return ["tenant-specific"];
-  }
-
-  if (collection.type === "tenant-specific-root-collection") {
-    if (collection.collection_id === "tenant-specific") {
-      return ["tenant-specific", collection.id];
-    }
-    return [collection.id];
-  }
-
-  if (collection.namespace === "tenant-specific") {
-    return ["tenant"];
-  }
-
-  const isTenant =
-    isTenantNamespace(collection.namespace) ||
-    isTenantNamespace(collection.collection_namespace) ||
-    collection.is_shared_tenant_collection ||
-    collection.is_tenant_dashboard;
-
-  if (isTenant) {
-    return ["tenant"];
-  }
-
-  return null;
-};
-
-const getNamespaceDisplayName = (
-  namespace?: CollectionNamespace,
-): string | null => {
-  if (namespace === SHARED_TENANT_NAMESPACE) {
-    return t`Shared collections`;
-  }
-  return null;
-};
 
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
@@ -238,6 +181,7 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
     PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
       TenantUsersPersonalCollectionList;
+    PLUGIN_TENANTS.canPlaceEntityInCollection = canPlaceEntityInCollection;
 
     // Category 1: UI Components
     PLUGIN_TENANTS.GroupDescription = function GroupDescription({ group }) {
@@ -266,24 +210,11 @@ export function initializePlugin() {
 
     // Category 2: Collection namespace utilities
     PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE = SHARED_TENANT_NAMESPACE;
-    PLUGIN_TENANTS.isTenantNamespace = isTenantNamespace;
-    PLUGIN_TENANTS.isTenantCollectionId = isTenantCollectionId;
-    PLUGIN_TENANTS.getNamespaceForTenantId = getNamespaceForTenantId;
-    PLUGIN_TENANTS.getTenantCollectionPathPrefix =
-      getTenantCollectionPathPrefix;
+    PLUGIN_TENANTS.TENANT_SPECIFIC_NAMESPACE = TENANT_SPECIFIC_NAMESPACE;
     PLUGIN_TENANTS.getTenantRootDisabledReason = () =>
       t`Items cannot be saved directly to the tenant root collection. Please select a sub-collection.`;
     PLUGIN_TENANTS.getNamespaceDisplayName = getNamespaceDisplayName;
-    PLUGIN_TENANTS.TENANT_SPECIFIC_COLLECTIONS = {
-      id: "tenant-specific" as const,
-      get name() {
-        return t`Tenant collections`;
-      },
-      location: "/",
-      path: ["root"],
-      can_write: false,
-    };
-
+    PLUGIN_TENANTS.getRootCollectionItem = getRootCollectionItem;
     PLUGIN_TENANTS.getFlattenedCollectionsForNavbar = ({
       currentUser,
       sharedTenantCollections,
