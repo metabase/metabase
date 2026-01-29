@@ -256,7 +256,7 @@
   "Execute the given workspace transform or enclosed external transform."
   ([workspace graph transform]
    (run-transform! workspace graph transform (build-remapping workspace graph)))
-  ([workspace _graph transform remapping]
+  ([workspace graph transform remapping]
    (let [ref-id      (:ref_id transform)
          external-id (:id transform)
          start-time  (db-time)
@@ -276,7 +276,7 @@
      ;; We don't currently keep any record of when enclosed transforms were run.
      (when ref-id
        (let [succeeded? (= :succeeded (:status result))
-             graph      (get-or-calculate-graph! workspace)]
+             pre-stale? (any-internal-ancestor-stale? graph workspace ref-id)]
          (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
                      (cond-> {:last_run_at      (:end_time result)
                               :last_run_status  (some-> (:status result) name)
@@ -284,7 +284,8 @@
                        ;; On success, always clear definition_changed
                        succeeded? (assoc :definition_changed false)
                        ;; On success, clear input_data_changed only if no ancestors are stale
-                       succeeded? (assoc :input_data_changed (boolean (any-internal-ancestor-stale? graph workspace ref-id)))))
+                       (and succeeded? (not pre-stale?))
+                       (assoc :input_data_changed false)))
          ;; Always mark transitive downstream as stale when we run successfully
          ;; (their input data may have changed even if nothing was "stale")
          (when succeeded?
