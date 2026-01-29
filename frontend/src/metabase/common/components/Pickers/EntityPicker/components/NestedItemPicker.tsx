@@ -33,7 +33,11 @@ export function NestedItemPicker() {
                 key={generateKey(item)}
               >
                 <ErrorBoundary>
-                  <ItemListRouter parentItem={item} pathIndex={index} />
+                  <ItemListRouter
+                    parentItem={item}
+                    pathIndex={index}
+                    isLoading={isLoadingPath}
+                  />
                 </ErrorBoundary>
               </Box>
             );

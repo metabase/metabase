@@ -154,7 +154,6 @@ describe(
 
         H.entityPickerModal().within(() => {
           cy.findByText("Select a chart").should("be.visible");
-          cy.findByText("Questions").click();
           cy.findByText(FIRST_QUESTION_NAME).click();
         });
 

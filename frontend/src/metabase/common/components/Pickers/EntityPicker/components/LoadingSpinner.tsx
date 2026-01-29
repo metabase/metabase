@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
-import { Flex, Loader, Text } from "metabase/ui";
+import { Box, Center, Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
   <Flex
@@ -41,3 +42,11 @@ export const DelayedLoadingSpinner = ({
 
   return <LoadingSpinner text={text} />;
 };
+
+export const ItemListLoader = () => (
+  <Box w={365} h="100%" aria-label={t`Loading...`}>
+    <Center p="lg" h="100%">
+      <DelayedLoadingSpinner delay={300} />
+    </Center>
+  </Box>
+);

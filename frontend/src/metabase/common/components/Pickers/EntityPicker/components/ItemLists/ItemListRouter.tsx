@@ -1,6 +1,7 @@
-import type {
-  OmniPickerFolderItem,
-  OmniPickerItem,
+import {
+  ItemListLoader,
+  type OmniPickerFolderItem,
+  type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
@@ -23,10 +24,16 @@ const isDbItem = (item: OmniPickerItem) => {
 export const ItemListRouter = ({
   parentItem,
   pathIndex,
+  isLoading,
 }: {
   parentItem: OmniPickerFolderItem;
   pathIndex: number;
+  isLoading?: boolean;
 }) => {
+  if (isLoading) {
+    return <ItemListLoader />;
+  }
+
   if (!parentItem) {
     console.error("No parent item");
     return null;
