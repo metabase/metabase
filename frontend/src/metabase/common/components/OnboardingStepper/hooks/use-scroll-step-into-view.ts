@@ -1,15 +1,15 @@
 import { createRef, useCallback, useMemo } from "react";
 
-interface UseScrollItemIntoViewResult {
-  itemRefs: Record<string, React.RefObject<HTMLDivElement>>;
-  handleChange: (value: string | null) => void;
+interface UseScrollStepIntoViewResult {
+  stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
+  handleStepChange: (value: string | null) => void;
 }
 
-export function useScrollItemIntoView(
+export function useScrollStepIntoView(
   stepIds: string[],
   onChange?: (value: string | null) => void,
-): UseScrollItemIntoViewResult {
-  const itemRefs = useMemo(() => {
+): UseScrollStepIntoViewResult {
+  const stepRefs = useMemo(() => {
     return stepIds.reduce(
       (refs, stepId) => {
         refs[stepId] = createRef<HTMLDivElement>();
@@ -21,17 +21,17 @@ export function useScrollItemIntoView(
 
   const scrollIntoView = useCallback(
     (stepId: string | null) => {
-      if (stepId && itemRefs[stepId]) {
-        itemRefs[stepId].current?.scrollIntoView({
+      if (stepId && stepRefs[stepId]) {
+        stepRefs[stepId].current?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
       }
     },
-    [itemRefs],
+    [stepRefs],
   );
 
-  const handleChange = useCallback(
+  const handleStepChange = useCallback(
     (newValue: string | null) => {
       scrollIntoView(newValue);
       onChange?.(newValue);
@@ -39,5 +39,5 @@ export function useScrollItemIntoView(
     [scrollIntoView, onChange],
   );
 
-  return { itemRefs, handleChange };
+  return { stepRefs, handleStepChange };
 }
