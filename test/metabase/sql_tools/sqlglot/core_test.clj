@@ -11,12 +11,12 @@
    [metabase.test :as mt]))
 
 ;; copied from enterprise/backend/test/metabase_enterprise/dependencies/native_validation_test.clj
-(defn- fake-query
-  ([mp query]
-   (fake-query mp query {}))
-  ([mp query template-tags]
-   (-> (lib/native-query mp query)
-       (lib/with-template-tags template-tags))))
+#_(defn- fake-query
+    ([mp query]
+     (fake-query mp query {}))
+    ([mp query template-tags]
+     (-> (lib/native-query mp query)
+         (lib/with-template-tags template-tags))))
 
 (defn- validates?
   [mp driver card-id expected & [thunk]]
