@@ -28,7 +28,6 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   "transforms-python": "metabase-enterprise/transforms-python",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
-  transforms: "metabase-enterprise/transforms",
   support: "metabase-enterprise/support",
   upload_management: "metabase-enterprise/upload_management",
   "public-sharing": "metabase-enterprise/public-sharing",

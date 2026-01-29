@@ -18,7 +18,7 @@ describe("DataStudioLayout", () => {
 
   describe("Set up git sync button", () => {
     it("should show Set up git sync button when git settings is visible", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -27,8 +27,20 @@ describe("DataStudioLayout", () => {
       expect(screen.getByLabelText("Set up git sync")).toBeInTheDocument();
     });
 
+    it("should hide Set up git sync button when git settings is not visible", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByLabelText("Set up git sync"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should open modal when Set up git sync button is clicked", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -45,7 +57,7 @@ describe("DataStudioLayout", () => {
     });
 
     it("should close modal when onClose is called", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
+      setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();

@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
@@ -178,29 +180,46 @@ export const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(
-    <DataStudioLayout>
-      <div data-testid="content">{"Content"}</div>
-    </DataStudioLayout>,
-    {
-      storeInitialState: state,
-      withRouter: false,
-    },
-  );
+  const hasUpsell = !remoteSyncEnabled;
+
+  if (hasUpsell) {
+    renderWithProviders(
+      <Route
+        path="/"
+        component={() => (
+          <DataStudioLayout>
+            <div data-testid="content">{"Content"}</div>
+          </DataStudioLayout>
+        )}
+      />,
+      {
+        storeInitialState: state,
+        withRouter: true,
+      },
+    );
+  } else {
+    renderWithProviders(
+      <DataStudioLayout>
+        <div data-testid="content">{"Content"}</div>
+      </DataStudioLayout>,
+      {
+        storeInitialState: state,
+        withRouter: false,
+      },
+    );
+  }
 };
 
 export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
   enterprisePlugins: [
     "library",
     "remote_sync",
-    "transforms",
     "dependencies",
     "feature_level_permissions",
   ],
   tokenFeatures: {
     remote_sync: true,
     advanced_permissions: true,
-    transforms: true,
     data_studio: true,
     dependencies: true,
   },
