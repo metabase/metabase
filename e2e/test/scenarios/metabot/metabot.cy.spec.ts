@@ -9,7 +9,9 @@ describe("Metabot UI", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+    cy.intercept("POST", "/api/ee/metabot-v3/native-agent-streaming").as(
+      "agentReq",
+    );
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );
