@@ -14,7 +14,7 @@ import { TableTabs } from "./TableTabs";
 
 type TableHeaderProps = {
   table: Table;
-} & PaneHeaderProps;
+} & Omit<PaneHeaderProps, "breadcrumbs">;
 
 export function TableHeader({ table, ...rest }: TableHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
@@ -27,6 +27,7 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
       icon="table"
       menu={<TableMoreMenu table={table} />}
       tabs={<TableTabs table={table} />}
+      {...rest}
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
           {path?.map((collection, i) => (
@@ -42,7 +43,6 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
           <span>{table.display_name}</span>
         </DataStudioBreadcrumbs>
       }
-      {...rest}
     />
   );
 }

@@ -33,7 +33,7 @@ export function SnippetHeader({
   snippet,
   actions,
   ...rest
-}: SnippetHeaderProps & PaneHeaderProps) {
+}: SnippetHeaderProps & Omit<PaneHeaderProps, "breadcrumbs">) {
   const dispatch = useDispatch();
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
