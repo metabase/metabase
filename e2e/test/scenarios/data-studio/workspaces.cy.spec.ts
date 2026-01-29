@@ -261,7 +261,7 @@ describe("scenarios > data studio > workspaces", () => {
         verifyAndCloseToast("Workspace archived successfully");
         cy.log("Updates setup logs (GDGT-1583)");
         Workspaces.getWorkspaceContent()
-          .findByText("Workspace is archived")
+          .findByText(/Workspace is archived/)
           .should("be.visible");
         Workspaces.getWorkspaceItem(workspaceName).should(
           "contain.text",
@@ -1259,7 +1259,9 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" LIMIT 1;");
-      cy.findByTestId("run-button").click();
+      Workspaces.getSaveTransformButton().click();
+      cy.log("open preview");
+      cy.findByLabelText("Get Answer").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
@@ -1291,7 +1293,8 @@ describe("scenarios > data studio > workspaces", () => {
           .findByText("Python transform")
           .click();
 
-        cy.findByTestId("run-button").click();
+        Workspaces.getSaveTransformButton().click();
+        cy.findByLabelText("Get Answer").click();
 
         Workspaces.getWorkspaceTabs().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
@@ -1318,7 +1321,8 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" INVALID SYNTAX");
-      cy.findByTestId("run-button").click();
+      Workspaces.getSaveTransformButton().click();
+      cy.findByLabelText("Get Answer").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Preview (SQL transform)", [
@@ -1347,7 +1351,8 @@ describe("scenarios > data studio > workspaces", () => {
           .click();
 
         H.PythonEditor.clear().paste("invalid python syntax !!!");
-        cy.findByTestId("run-button").click();
+        Workspaces.getSaveTransformButton().click();
+        cy.findByLabelText("Get Answer").click();
 
         Workspaces.getWorkspaceContent().within(() => {
           H.tabsShouldBe("Preview (Python transform)", [
@@ -2298,7 +2303,9 @@ describe("scenarios > data studio > workspaces", () => {
         .findByRole("menuitem", { name: /SQL Transform/ })
         .click();
       H.NativeEditor.type("INVALID SQL QUERY");
+      H.NativeEditor.rejectCompletion();
       Workspaces.getSaveTransformButton().click();
+
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Failing transform");
         cy.findByText("Save").click();
