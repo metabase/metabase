@@ -387,19 +387,23 @@
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 7: Cloud driver, no relevant changes
+    ;; Priority 7: Cloud driver + query-processor updated → run it
     (and (contains? cloud-drivers driver)
-         (or (contains? updated 'query-processor)
-             (contains? particular-driver-changed? driver)))
+         (contains? updated 'query-processor))
+    {:should-run true
+     :reason "query-processor module updated"}
+
+    ;; Priority 8: Cloud driver, no relevant changes → skip
+    (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 8: Driver deps affected by shared code changes
+    ;; Priority 9: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 9: Self-hosted driver, not affected
+    ;; Priority 10: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
