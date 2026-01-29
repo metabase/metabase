@@ -64,7 +64,7 @@
         ws      (assoc ws :collection_id (:id coll))]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
-    ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
+    ;; TODO (Sanya 2025-11-18) - for now we expose this in logs for manual testing, in future we need a secure channel
     (log/infof "Generated API key for workspace: %s" (:unmasked_key api-key))
     ws))
 
