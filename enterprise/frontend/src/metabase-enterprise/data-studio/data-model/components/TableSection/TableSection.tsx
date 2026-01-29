@@ -243,7 +243,7 @@ const TableSectionBase = ({
               entry: { id: Number(table.id), type: "table" },
             })}
             p="sm"
-            leftSection={<Icon name="network" />}
+            leftSection={<Icon name="dependencies" />}
             style={{
               flexGrow: 0,
               width: 40,

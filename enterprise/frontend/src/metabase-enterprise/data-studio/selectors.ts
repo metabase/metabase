@@ -1,6 +1,5 @@
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { State } from "metabase-types/store";
 
@@ -9,10 +8,7 @@ export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
   }
-  return (
-    getUserIsAdmin(state) ||
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
-  );
+  return getUserIsAdmin(state) || getUserIsAnalyst(state);
 }
 
 export const getUserCanWriteSegments = (

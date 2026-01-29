@@ -247,7 +247,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
-      cy.icon("gear").click();
+      H.getProfileLink().click();
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
         .click();
@@ -259,7 +259,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .findByText("Pick a function or metric")
         .click();
       // Click outside to close this popover
-      cy.icon("gear").click();
+      H.getProfileLink().click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
       H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
