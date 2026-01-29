@@ -16,9 +16,6 @@ export function RefreshIndicator() {
     setRefreshElapsedHook(setElapsed);
   }, [setRefreshElapsedHook]);
 
-  if (refreshPeriod == null || refreshPeriod <= 0) {
-    return null;
-  }
   return (
     <RefreshWidgetTarget
       elapsed={elapsed}

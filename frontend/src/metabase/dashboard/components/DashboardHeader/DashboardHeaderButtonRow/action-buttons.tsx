@@ -137,7 +137,7 @@ export const dashboardActionButtons: Record<
     component: () => <DashboardSubscriptionsButton />,
   },
   [DASHBOARD_ACTION.REFRESH_INDICATOR]: {
-    enabled: () => true,
+    enabled: ({ refreshPeriod }) => refreshPeriod != null && refreshPeriod > 0,
     component: () => <RefreshIndicator />,
   },
 };

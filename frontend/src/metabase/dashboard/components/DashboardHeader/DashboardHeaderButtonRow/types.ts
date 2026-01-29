@@ -38,6 +38,7 @@ export type DashboardActionButton = {
         | "isFullscreen"
         | "onFullscreenChange"
         | "withSubscriptions"
+        | "refreshPeriod"
       >,
   ) => boolean;
 };
