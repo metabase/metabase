@@ -1057,7 +1057,7 @@ function checkSidebar({
         .should("be.visible");
     }
     if (creatorName) {
-      H.DependencyDiagnostics.Sidebar.creationSection().should(
+      H.DependencyDiagnostics.Sidebar.infoSection().should(
         "contain.text",
         creatorName,
       );

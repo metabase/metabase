@@ -510,7 +510,7 @@ function checkSidebar({
       .findByText(entityName)
       .should("be.visible");
     if (transformName) {
-      H.DependencyDiagnostics.Sidebar.transformSection()
+      H.DependencyDiagnostics.Sidebar.infoSection()
         .findByText(transformName)
         .should("exist");
     }
