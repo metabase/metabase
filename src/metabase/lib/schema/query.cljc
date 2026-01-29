@@ -43,12 +43,16 @@
   [:map
    [:bin-width {:optional true} [:maybe [:ref ::lib.schema.binning/bin-width]]]])
 
-(mr/def ::test-breakout-spec
+(mr/def ::test-binning-spec
   [:merge
-   ::test-column-spec
    ::test-temporal-bucket-spec
    ::test-bin-count-bucket-spec
    ::test-bin-width-bucket-spec])
+
+(mr/def ::test-breakout-spec
+  [:merge
+   ::test-column-spec
+   ::test-binning-spec])
 
 (mr/def ::test-order-by-spec
   [:merge
