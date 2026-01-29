@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 
 import { useSetting } from "metabase/common/hooks";
 
+import { UPGRADE_URL } from "../../constants";
 import { useUpsellLink } from "../use-upsell-link";
 
 import { UpgradeModal } from "./UpgradeModal";
@@ -31,11 +32,13 @@ export function useUpgradeAction({
   const openModal = useCallback(() => setIsModalOpen(true), []);
   const closeModal = useCallback(() => setIsModalOpen(false), []);
 
-  const modal = isHosted ? (
+  const shouldUseModal = isHosted && url === UPGRADE_URL;
+
+  const modal = shouldUseModal ? (
     <UpgradeModal opened={isModalOpen} onClose={closeModal} />
   ) : null;
 
-  if (isHosted) {
+  if (shouldUseModal) {
     return {
       onClick: openModal,
       url: undefined,
