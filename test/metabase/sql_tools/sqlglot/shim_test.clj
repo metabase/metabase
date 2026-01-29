@@ -271,3 +271,101 @@
         (let [result (sqlglot.shim/validate-query dialect sql "public" {})]
           (is (= :ok (:status result))
               (format "dialect %s: UDTF query should validate OK, got %s" dialect result)))))))
+
+;;; ------------------------------------------ Set Operation Tests (UNION, INTERSECT, EXCEPT) ------------------------------------------
+
+;; Set operation queries for testing - UNION, UNION ALL, INTERSECT, EXCEPT
+(def set-operation-queries
+  {:union          "SELECT id, name FROM users UNION SELECT id, name FROM archived_users"
+   :union-all      "SELECT id, name FROM users UNION ALL SELECT id, name FROM archived_users"
+   :intersect      "SELECT id FROM users INTERSECT SELECT id FROM premium_users"
+   :except         "SELECT id FROM users EXCEPT SELECT id FROM banned_users"
+   :nested-union   "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+   :cte-with-union "WITH all_users AS (SELECT id FROM users UNION SELECT id FROM guests) SELECT * FROM all_users"})
+
+(deftest ^:parallel set-operation-referenced-tables-test
+  (testing "Set operations correctly identify all referenced tables"
+    (testing "UNION"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:union set-operation-queries)
+                                                   "public")]
+        (is (= #{"users" "archived_users"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "UNION should reference both tables")))
+
+    (testing "UNION ALL"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:union-all set-operation-queries)
+                                                   "public")]
+        (is (= #{"users" "archived_users"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "UNION ALL should reference both tables")))
+
+    (testing "INTERSECT"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:intersect set-operation-queries)
+                                                   "public")]
+        (is (= #{"users" "premium_users"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "INTERSECT should reference both tables")))
+
+    (testing "EXCEPT"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:except set-operation-queries)
+                                                   "public")]
+        (is (= #{"users" "banned_users"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "EXCEPT should reference both tables")))
+
+    (testing "nested UNION in subquery"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:nested-union set-operation-queries)
+                                                   "public")]
+        (is (= #{"a" "b"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "Nested UNION should reference tables from both sides")))
+
+    (testing "UNION in CTE"
+      (let [result (sqlglot.shim/referenced-tables "postgres"
+                                                   (:cte-with-union set-operation-queries)
+                                                   "public")]
+        (is (= #{"users" "guests"}
+               (into #{} (map (comp clojure.string/lower-case second) result)))
+            "UNION in CTE should reference both tables")))))
+
+(deftest ^:parallel set-operation-returned-columns-lineage-test
+  (testing "Set operations return correct column lineage"
+    (testing "UNION - columns from both sides"
+      (let [result (sqlglot.shim/returned-columns-lineage
+                    "postgres"
+                    (:union set-operation-queries)
+                    "public"
+                    {})]
+        (is (sequential? result) "Should return sequential")
+        ;; UNION returns columns - should have id and name
+        (is (= 2 (count result)) "UNION should return 2 columns (id, name)")))
+
+    (testing "INTERSECT - single column"
+      (let [result (sqlglot.shim/returned-columns-lineage
+                    "postgres"
+                    (:intersect set-operation-queries)
+                    "public"
+                    {})]
+        (is (sequential? result) "Should return sequential")
+        (is (= 1 (count result)) "INTERSECT should return 1 column (id)")))
+
+    (testing "nested UNION"
+      (let [result (sqlglot.shim/returned-columns-lineage
+                    "postgres"
+                    (:nested-union set-operation-queries)
+                    "public"
+                    {})]
+        (is (sequential? result) "Should return sequential")))))
+
+(deftest ^:parallel set-operation-validate-query-test
+  (testing "Set operations validate correctly"
+    (doseq [[op-name sql] set-operation-queries]
+      (testing (str "operation: " (name op-name))
+        (let [result (sqlglot.shim/validate-query "postgres" sql "public" {})]
+          (is (= :ok (:status result))
+              (format "%s query should validate OK, got %s" (name op-name) result)))))))
