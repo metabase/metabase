@@ -13,13 +13,13 @@ summary: Create a source of truth for analytics with curated tables, metrics, an
 
 ![Library in the main navigation sidebar](./images/library-in-sidebar.png)
 
-The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.
+The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. Use the Library to separate authoritative, reusable components from ad-hoc analyses.
 
 ## How the Library works
 
 ![The Library in Data Studio](./images/library-in-data-studio.png)
 
-The Library is a special section in the navigation sidebar that you curate in [Data Studio](./overview.md).
+The Library is a special section in the navigation sidebar of the main Metabase app that you curate in [Data Studio](./overview.md) (and only in Data Studio).
 
 You can use the Library to curate:
 
@@ -27,11 +27,19 @@ You can use the Library to curate:
 - [Metrics](../data-modeling/metrics.md): standardized calculations that people can trust.
 - [SQL snippets](../questions/native-editor/snippets.md): reusable bits of code.
 
-Unlike collections, each section in the Library restricts which type of content it contains (which helps keep the Library tidy). For example, the Library's Metrics collection can only contain metrics.
+Unlike collections, each folder in the Library restricts which type of content it contains (which helps keep the Library tidy). For example, the Library's Metrics folder can only contain metrics.
 
-## Adding tables to the Library
+## Adding items to the Library
 
-To include a table in the Library as a data source, you must **publish** the table. Once published, the table will appear first when people pick data for new questions.
+1. Click the grid icon in the upper right.
+2. Select **Data Studio**.
+3. In the **Library** tab, click **+ New**.
+
+You can add a metric or snippet, or publish a table. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. Tables people can use to get answers they can trust. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../data-modeling/transforms.md).
+
+You can also publish tables directly from the table view in the [Data Structures](./data-structures.md) tab.
+
+In addition to being available for browsing in the library, published tables appear first when people pick data for new questions.
 
 ### Published tables can't have dependencies outside of the Library
 
@@ -57,11 +65,19 @@ Once a table is published, you can view and manage its metadata, and more.
 - Measures
 - [Dependencies](./dependency-graph.md).
 
-To explore a table from the Library in Data Studio:
+To query a table from the Library in Data Studio:
 
 1. Click on the table.
 2. Click the three-dot menu.
 3. Select **View**.
+
+## Metrics in the Library
+
+For how Metrics work, see [Metrics](../data-modeling/metrics.md).
+
+## Snippets in the Library
+
+For how snippets work, see [SQL snippets](../questions/native-editor/snippets.md).
 
 ## Versioning the Library
 
@@ -73,7 +89,7 @@ You can [sync Library content to version control](../installation-and-operation/
 
 Metabase uses the standard [collection permissions](../permissions/collections.md) to determine who can view and edit items in the Library. One difference to note is that people in the Data Analyst group always have Curate access to the Library. Like with the Admin group, you can't change the Data Analyst's Curate access to the Library.
 
-[Data permissions](../permissions/data.md) work the same way in the Library as everywhere else in Metabase. Adding items to the Library doesn't grant anyone new data access—people still need the right permissions to view the underlying data, or be in a group with access to the collection.
+[Data permissions](../permissions/data.md) work the same way in the Library as everywhere else in Metabase. One thing to call out: like with models, if you publish a table to the Library, it will grant query access to a group with view access to the database, even if their group has Create Queries set to No in [data permissions](../permissions/data.md) for that particular table.
 
 ## Further reading
 
